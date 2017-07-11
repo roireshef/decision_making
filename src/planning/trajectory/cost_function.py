@@ -30,10 +30,10 @@ class SigmoidStatic2DBoxObstacle:
         self.R = CartesianFrame.homo_matrix_2d(self.theta, np.array([self.x, self.y]))
 
     @staticmethod
-    def parse(static_object):
+    def parse(object_state):
         """
-        Additional constructor that takes a static object from
-        :param static_object:
+        Additional constructor that takes a ObjectState from the State object and wraps it
+        :param object_state: ObjectState object from State object
         :return:
         """
         pass
