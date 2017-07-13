@@ -12,7 +12,7 @@ class TrajectoryPlanningFacade:
         :param strategy_handlers: a dictionary of trajectory planners as strategy handlers -
         types are {TrajectoryPlanningStrategy: TrajectoryPlanner}
         """
-        self.__assert_strategy_handlers(strategy_handlers)
+        self.__validate_strategy_handlers(strategy_handlers)
         self.__strategy_handlers = strategy_handlers
 
     def plan(self, strategy: TrajectoryPlanningStrategy):
@@ -28,7 +28,7 @@ class TrajectoryPlanningFacade:
 
     # TODO: should also be published to DDS logger
     @staticmethod
-    def __assert_strategy_handlers(strategy_handlers):
+    def __validate_strategy_handlers(strategy_handlers):
         for elem in TrajectoryPlanningStrategy.__members__.values():
             if not strategy_handlers.keys().__contains__(elem):
                 raise KeyError('strategy_handlers does not contain a  record for ' + elem)

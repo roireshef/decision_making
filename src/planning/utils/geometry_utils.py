@@ -24,7 +24,7 @@ class CartesianFrame:
         pass
 
     @staticmethod
-    def homo_matrix_3d(quaternion: np.ndarray, translation: np.ndarray) -> np.ndarray:
+    def homo_matrix_3d_from_quaternion(quaternion: np.ndarray, translation: np.ndarray) -> np.ndarray:
         """
         Generates a 2D homogeneous matrix for cartesian frame projections
         :param quaternion: numpy array of quaternion rotation
@@ -59,8 +59,10 @@ class FrenetMovingFrame:
         :param s_idx: distance travelled from the beginning of the curve (in self.__ds units)
         :return: numpy array of shape [3,3] of homogeneous matrix
         """
-        assert self.__h_tensor.size > 0, 'H tensor must be cached first'
-        return self.__h_tensor[s_idx]
+        if self.__h_tensor.size > s_idx:
+            return self.__h_tensor[s_idx]
+        else:
+            raise ValueError('index ' + str(s_idx) + 'is not found in __h_tensor (probably __h_tensor is not cached)')
 
     def cpoint_to_fpoint(self, cpoint: np.ndarray) -> np.ndarray:
         """
