@@ -5,7 +5,7 @@ import unittest
 
 class TestGeometryUtils(unittest.TestCase):
 
-    ACCURACY_TH = 0.05
+    ACCURACY_TH = 0.1
 
     def test(self):
         self.assertFrenetAccuracy()
@@ -25,7 +25,7 @@ class TestGeometryUtils(unittest.TestCase):
         errors = np.linalg.norm(cpoints-new_cpoints, axis=1)
 
         for error in errors:
-            self.assertLess(error, self.ACCURACY_TH)
+            self.assertLess(error, self.ACCURACY_TH, 'FrenetMovingFrame point conversions aren\'t accurate enough')
 
         # import matplotlib.pyplot as plt
         #
@@ -41,6 +41,7 @@ class TestGeometryUtils(unittest.TestCase):
         # print(errors)
         #
         # fig.show()
+        # fig.clear()
 
     @staticmethod
     def _get_route(lng=200, k=0.05, step=40, lat=100, offset=-50.0):
