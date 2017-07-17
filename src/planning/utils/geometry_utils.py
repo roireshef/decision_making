@@ -141,6 +141,9 @@ class FrenetMovingFrame:
     def curve(self):
         return self._curve.copy()
 
+    def sx_to_s_idx(self, sx: float):
+        return int(sx / self._ds)
+
     def get_homo_matrix_2d(self, s_idx: float) -> np.ndarray:
         """
         Returns the homogeneuos matrix (rotation+translation) for the FrenetFrame at a point along the curve
@@ -160,14 +163,23 @@ class FrenetMovingFrame:
         """
         # (for each cpoint:) find the (index of the) closest point on the Frenet-curve to serve as the Frenet-origin
         norm_dists = np.linalg.norm(self._curve[:, 0:2] - cpoint, axis=1)
-        sx = np.argmin(norm_dists)
-        if sx.size > 1:
-            sx = sx[0]
+        s_idx = np.argmin(norm_dists)
+        if s_idx.size > 1:
+            s_idx = s_idx[0]
 
-        h = self.get_homo_matrix_2d(sx)  # projection from global coord-frame to the Frenet-origin
-        dx = np.dot(np.linalg.inv(h), np.append(cpoint, [1]))[1]
+        h = self.get_homo_matrix_2d(s_idx)  # projection from global coord-frame to the Frenet-origin
 
-        return np.array([sx * self._ds, dx])
+        # the point in the cartesian-frame of the frenet-origin
+        point = np.dot(np.linalg.inv(h), np.append(cpoint, [1]))
+
+        # the value in the y-axis is frenet-frame dx, the x-axis is the offset in the tangential direction to the curve
+        tan_offset, dx = point[0], point[1]
+
+        if s_idx == len(self._curve) and tan_offset > 0:
+            raise ArithmeticError('Extrapolation beyond the frenet curve is not supported. tangential offset is ' +
+                                  str(tan_offset))
+
+        return np.array([s_idx * self._ds, dx])
 
     def fpoint_to_cpoint(self, fpoint: np.ndarray) -> np.ndarray:
         """
@@ -176,7 +188,7 @@ class FrenetMovingFrame:
         :return: cartesian-frame point [x, y]
         """
         sx, dx = fpoint[0], fpoint[1]
-        s_idx = int(sx / self._ds)
+        s_idx = self.sx_to_s_idx(sx)
         h = self.get_homo_matrix_2d(s_idx)  # projection from global coord-frame to the Frenet-origin
         abs_point = np.dot(h, [0, dx, 1])[:2]
 

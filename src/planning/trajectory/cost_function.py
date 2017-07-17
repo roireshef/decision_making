@@ -69,3 +69,8 @@ class SigmoidStatic2DBoxObstacle(object):
         :return: numpy vector of corresponding costs to the original points
         """
         pass
+
+
+class CostParams:
+    def __init__(self, T):
+        self.T = T

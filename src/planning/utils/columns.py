@@ -1,3 +1,6 @@
+# Column indices for ego-state [x, y, theta, v]
+EGO_X, EGO_Y, EGO_THETA, EGO_V = 0, 1, 2, 3
+
 # Column indices for cartesian-frame [x, y, yad, curvature, curvature-tag]
 C_X, C_Y, C_THETA, C_K, C_K_TAG = 0, 1, 2, 3, 4
 
