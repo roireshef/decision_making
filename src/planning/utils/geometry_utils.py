@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import interpolate as interp
 from src.planning.global_constants import *
-from src.planning.utils.constants import *
+from src.planning.utils.columns import *
 
 
 class CartesianFrame:
@@ -91,7 +91,7 @@ class CartesianFrame:
         else:
             last_point_factor = 0
         interp_arc = np.arange(0, arc_len_vec[-1]+last_point_factor, step=step_size)
-        max_index_in_bounds = np.where(interp_arc <= arc_len_vec[-1])[0][-1] # remove values out of bounds of route
+        max_index_in_bounds = np.where(interp_arc <= arc_len_vec[-1])[0][-1]  # remove values out of bounds of route
         interp_arc = interp_arc[:max_index_in_bounds + 1]
         ##
 
