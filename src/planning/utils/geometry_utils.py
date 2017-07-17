@@ -1,7 +1,11 @@
+from typing import Union
+
 import numpy as np
 from scipy import interpolate as interp
+
 from src.planning.global_constants import *
 from src.planning.utils.columns import *
+from src.planning.utils import math as robust_math
 
 
 class CartesianFrame:
@@ -24,11 +28,11 @@ class CartesianFrame:
     def homo_matrix_3d(rotation_matrix: np.ndarray, translation: np.ndarray) -> np.ndarray:
         """
         Generates a 3D homogeneous matrix for cartesian frame projections
-        :param rotation_angle: 3D rotation matrix
+        :param rotation_matrix: 3D rotation matrix
         :param translation: a [x, y, z] translation vector
         :return: a 3x3 numpy matrix for projection (translation+rotation)
         """
-        t = translation.reshape([-1, 1])  #translation vector
+        t = translation.reshape([-1, 1])  # translation vector
         return np.vstack((np.hstack((rotation_matrix, t[:3, 1])), [0, 0, 0, 1]))
 
     @staticmethod
@@ -57,8 +61,8 @@ class CartesianFrame:
         xy_dot = np.concatenate((xy_dot, np.array([xy_dot[-1, :]])), axis=0)
         xy_dotdot = np.concatenate((np.array([xy_dotdot[0, :]]), xy_dotdot, np.array([xy_dotdot[-1, :]])), axis=0)
 
-        theta = np.arctan2(xy_dot[:, 1], xy_dot[:, 0])                                              # orientation
-        k = (xy_dot * xy_dotdot[:, [1, 0]]).dot([1, -1]) / (np.linalg.norm(xy_dot, axis=1) ** 3)    # curvature
+        theta = np.arctan2(xy_dot[:, 1], xy_dot[:, 0])  # orientation
+        k = (xy_dot * xy_dotdot[:, [1, 0]]).dot([1, -1]) / (np.linalg.norm(xy_dot, axis=1) ** 3)  # curvature
 
         theta_col = theta.reshape([-1, 1])
         k_col = k.reshape([-1, 1])
@@ -69,39 +73,54 @@ class CartesianFrame:
         return np.concatenate((xy_points, theta_col, k_col, k_tag_col), 1)
 
     @staticmethod
-    def resample_curve(curve: np.ndarray, step_size: float, include_last_point: bool=True,
-                       interp_type: str='linear') -> np.ndarray:
+    def resample_curve(curve: np.ndarray, step_size: int, desired_curve_len: Union[None, float] = None,
+                       preserve_step_size: bool = False, interp_type: str = 'linear') -> (np.ndarray, float):
         """
-        Takes a discrete set of points [x, y] and perform interpolation (with a constant step size)
-        :param curve: numpy array of shape [n, k] where the first two columns are x and y coordinates
-        :param step_size: interpolation (resampling) step-size
-        :param include_last_point: whether to include the last point in the curve
-        :param sampling_points:
-        :param normalize_sampling_points:
-        :param interp_type:
-        :return:
+        Takes a discrete set of points [x, y] and perform interpolation (with a constant step size). \n
+        Note: user may specify a desired final curve length. If she doesn't, it uses the total distance travelled over a
+        linear fit of 'curve'. \n
+        :param curve:
+        :param step_size:
+        :param desired_curve_len:
+        :param preserve_step_size: If True - once desired_curve_len is not a multiply of step_size, desired_curve_len is
+        trimmed to its nearest multiply. If False - once desired_curve_len is not a multiply of step_size, the step_size
+        is efficiently "stretched" to preserve the exact given desired_curve_len.
+        :param interp_type: order of interpolation (either: 'linear', 'bilinear', 'cubic', etc)
+        :return: (the resampled curve, the effective step size)
         """
-        num_cols = curve.shape[1]
 
-        arc_len_vec = np.concatenate(([.0], np.cumsum(np.linalg.norm(np.diff(curve[:, :2], axis=0), axis=1))))
+        # accumulated distance travelled on the original curve (linear fit over the discrete points)
+        org_s = np.concatenate(([.0], np.cumsum(np.linalg.norm(np.diff(curve[:, :2], axis=0), axis=1))))
 
-        ## TODO: make this block prettier
-        if include_last_point:
-            last_point_factor = 1e-6
+        # if desired curve length is not specified, use the total distance travelled over curve (via linear fit)
+        if desired_curve_len is None:
+            desired_curve_len = org_s[-1]
+
+        # this method does not support extrapolation
+        if desired_curve_len > org_s[-1]:
+            raise ValueError('resampled_curve_len (' + str(desired_curve_len) + ') is greater than the accumulated ' +
+                             'actual arc length (' + org_s + ')')
+
+        # handles cases where we suffer from floating point division inaccuracies
+        num_samples = robust_math.div(desired_curve_len, step_size) + 1
+
+        # if step_size must be preserved but desired_curve_len is not a multiply of step_size - trim desired_curve_len
+        if robust_math.mod(desired_curve_len, step_size) > 0 and preserve_step_size:
+            desired_curve_len = (num_samples - 1) * step_size
+            effective_step_size = step_size
         else:
-            last_point_factor = 0
-        interp_arc = np.arange(0, arc_len_vec[-1]+last_point_factor, step=step_size)
-        max_index_in_bounds = np.where(interp_arc <= arc_len_vec[-1])[0][-1]  # remove values out of bounds of route
-        interp_arc = interp_arc[:max_index_in_bounds + 1]
-        ##
+            effective_step_size = desired_curve_len / (num_samples - 1)
 
-        interp_route = np.zeros(shape=[len(interp_arc), num_cols])
+        # the newly sampled accumulated distance travelled (used for interpolation)
+        s = np.linspace(0, desired_curve_len, num_samples)
 
-        for col in range(num_cols):
-            route_func = interp.interp1d(arc_len_vec, curve[:, col], kind=interp_type)
-            interp_route[:, col] = route_func(interp_arc)
+        # interpolation each of the dimensions in curve over samples from s
+        interp_curve = np.zeros(shape=[len(s), curve.shape[1]])
+        for col in range(curve.shape[1]):
+            curve_func = interp.interp1d(org_s, curve[:, col], kind=interp_type)
+            interp_curve[:, col] = curve_func(s)
 
-        return interp_route
+        return interp_curve, effective_step_size
 
 
 class FrenetMovingFrame:
@@ -109,16 +128,18 @@ class FrenetMovingFrame:
     A 2D Frenet moving coordinate frame. Within this class: fpoint, fstate and ftrajectory are in frenet frame;
     cpoint, cstate, and ctrajectory are in cartesian coordinate frame
     """
-    # TODO: consider moving curve-interpolation outside of this class
+
     def __init__(self, curve_xy, resolution=TRAJECTORY_ARCLEN_RESOLUTION):
-        resampled_curve = CartesianFrame.resample_curve(curve_xy, resolution, interp_type=TRAJECTORY_CURVE_INTERP_TYPE)
+        # TODO: consider moving curve-interpolation outside of this class
+        resampled_curve, self._ds = CartesianFrame.resample_curve(curve_xy, resolution,
+                                                                  interp_type=TRAJECTORY_CURVE_INTERP_TYPE)
         self._curve = CartesianFrame.add_yaw_and_derivatives(resampled_curve)
-        self._ds = resolution
         self._h_tensor = np.array([CartesianFrame.homo_matrix_2d(self._curve[s_idx, 2], self._curve[s_idx, 0:2])
                                    for s_idx in range(len(self._curve))])
 
     @property
-    def curve(self): return self._curve.copy()
+    def curve(self):
+        return self._curve.copy()
 
     def get_homo_matrix_2d(self, s_idx: float) -> np.ndarray:
         """
@@ -143,8 +164,8 @@ class FrenetMovingFrame:
         if sx.size > 1:
             sx = sx[0]
 
-        H = self.get_homo_matrix_2d(sx)     # projection from global coord-frame to the Frenet-origin
-        dx = np.dot(np.linalg.inv(H), np.append(cpoint, [1]))[1]
+        h = self.get_homo_matrix_2d(sx)  # projection from global coord-frame to the Frenet-origin
+        dx = np.dot(np.linalg.inv(h), np.append(cpoint, [1]))[1]
 
         return np.array([sx * self._ds, dx])
 
@@ -156,8 +177,8 @@ class FrenetMovingFrame:
         """
         sx, dx = fpoint[0], fpoint[1]
         s_idx = int(sx / self._ds)
-        H = self.get_homo_matrix_2d(s_idx)  # projection from global coord-frame to the Frenet-origin
-        abs_point = np.dot(H, [0, dx, 1])[:2]
+        h = self.get_homo_matrix_2d(s_idx)  # projection from global coord-frame to the Frenet-origin
+        abs_point = np.dot(h, [0, dx, 1])[:2]
 
         return np.array(abs_point)
 
@@ -178,15 +199,15 @@ class FrenetMovingFrame:
         d_v = ftrajectory[:, F_DV]
         d_a = ftrajectory[:, F_DA]
 
-        s_idx = np.array(s_x / self._ds, dtype=int) # index of frenet-origin
-        theta_r = self._curve[s_idx, C_THETA]       # yaw of frenet-origin
-        k_r = self._curve[s_idx, C_K]               # curvature of frenet-origin
-        k_r_tag = self._curve[s_idx, C_K_TAG]       # derivative by distance (curvature is already in ds units)
+        s_idx = np.array(np.divide(s_x, self._ds), dtype=int)  # index of frenet-origin
+        theta_r = self._curve[s_idx, C_THETA]  # yaw of frenet-origin
+        k_r = self._curve[s_idx, C_K]  # curvature of frenet-origin
+        k_r_tag = self._curve[s_idx, C_K_TAG]  # derivative by distance (curvature is already in ds units)
 
         # pre-compute terms to use below
         term1 = (1 - k_r * d_x)
-        d_x_tag = d_v / s_v                                 # 1st derivative of d_x by distance
-        d_x_tagtag = (d_a - d_x_tag * s_a) / (s_v ** 2)     # 2nd derivative of d_x by distance
+        d_x_tag = d_v / s_v  # 1st derivative of d_x by distance
+        d_x_tagtag = (d_a - d_x_tag * s_a) / (s_v ** 2)  # 2nd derivative of d_x by distance
         tan_theta_diff = d_x_tag / term1
         theta_diff = np.arctan2(d_x_tag, term1)
         cos_theta_diff = np.cos(theta_diff)
