@@ -212,9 +212,9 @@ class FrenetMovingFrame:
         d_a = ftrajectory[:, F_DA]
 
         s_idx = np.array(np.divide(s_x, self._ds), dtype=int)  # index of frenet-origin
-        theta_r = self._curve[s_idx, C_THETA]  # yaw of frenet-origin
-        k_r = self._curve[s_idx, C_K]  # curvature of frenet-origin
-        k_r_tag = self._curve[s_idx, C_K_TAG]  # derivative by distance (curvature is already in ds units)
+        theta_r = self._curve[s_idx, R_THETA]  # yaw of frenet-origin
+        k_r = self._curve[s_idx, R_K]  # curvature of frenet-origin
+        k_r_tag = self._curve[s_idx, R_K_TAG]  # derivative by distance (curvature is already in ds units)
 
         # pre-compute terms to use below
         term1 = (1 - k_r * d_x)

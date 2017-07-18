@@ -2,7 +2,9 @@ from abc import abstractmethod
 
 import numpy as np
 
+from src.planning.global_constants import EXP_CLIP_TH
 from src.planning.utils.geometry_utils import CartesianFrame
+from src.state.enriched_state import ObjectState as EnrichedObjectState
 
 
 class BoxObstcle(object):
@@ -75,7 +77,7 @@ class SigmoidStatic2DBoxObstacle(BoxObstcle):
     def margin(self): return self._margin
 
     @classmethod
-    def from_object_state(cls, os, k, offset):
+    def from_object_state(cls, os: EnrichedObjectState, k, offset):
         """
         Additional constructor that takes a ObjectState from the State object and wraps it
         :param os: ObjectState object from State object
@@ -83,13 +85,15 @@ class SigmoidStatic2DBoxObstacle(BoxObstcle):
         :param offset:
         :return: new SigmoidStatic2DBoxObstacle instance
         """
-        pass  # return cls(os.x, os.y, ...)
+        # TODO: understand length,width,height. solve type hints problems with enriched_state
+        pass #return cls(os.x, os.y, os.object_size)
 
-    def compute_cost(self, points):
+    def compute_cost(self, points: np.ndarray) -> np.ndarray:
         """
         Takes a list of points in vehicle's coordinate frame and returns cost of proximity (to self) for each point
-        :param points: numpy array where each row is a point [x, y] relative to vehicle's coordinate frame
-        :return: numpy vector of corresponding costs to the original points
+        :param points: either a numpy matrix of trajectory points of shape [p, 2] ( p points, [x, y] in each point),
+        or a numpy tensor of trajectories of shape [t, p, 2] (t trajectories, p points, [x, y] in each point)
+        :return: numpy vector of corresponding trajectory-costs
         """
         if len(points.shape) == 2:
             points = np.array([points])
@@ -106,17 +110,14 @@ class SigmoidStatic2DBoxObstacle(BoxObstcle):
         points_offset = np.subtract(points_proj, [self.height / 2 + self.margin, self.width / 2 + self.margin])
 
         # compute a sigmoid for each dimension [x, y] of each point (in each trajectory)
-        logit_costs = np.divide(1.0, (1.0 + np.exp(self.k * points_offset)))
+        logit_costs = np.divide(1.0, (1.0 + np.exp(np.clip(self.k * points_offset, -np.inf, EXP_CLIP_TH))))
 
-        # the multiplication of [x, y] costs for each point is the cost we want
-        return np.einsum('ij, ik -> i', logit_costs[:, :, 0], logit_costs[:, :, 1])
-
+        return np.sum(logit_costs[:, :, 0] * logit_costs[:, :, 1], axis=1)
 
 class CostParams:
     def __init__(self, T: float, ref_deviation_weight: float, lane_deviation_weight: float, obstacle_weight: float,
                  left_lane_offset: float, right_lane_offset: float, left_deviation_coef: float,
-                 right_deviation_coeft: float,
-                 obstacle_offset: float, obstacle_exp: float):
+                 right_deviation_coeft: float, obstacle_offset: float, obstacle_exp: float):
         self._T = T
         self._ref_deviation_weight = ref_deviation_weight
         self._lane_deviation_weight = lane_deviation_weight

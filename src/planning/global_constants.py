@@ -11,8 +11,11 @@ TRAJECTORY_CURVE_INTERP_TYPE = 'cubic'
 # [m] Trajectory Planner - Do not consider obastacles that are distant than this thershold
 MAXIMAL_OBSTACLE_PROXIMITY = 25
 
-# [m] Trajectory Planner - Cost function clips higher distances when exponentiating
-LATERAL_DIST_CLIP_TH = 20
+# [m] Trajectory Planner - Cost function clips higher distances before exponentiation
+EXP_CLIP_TH = 50
+
+# Trajectory Planner - Number of (best) trajectories to publish to visualization
+NUM_ALTERNATIVE_TRAJECTORIES = 10
 
 #### Werling Planner ####
 

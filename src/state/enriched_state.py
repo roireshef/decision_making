@@ -48,8 +48,7 @@ class ObjectState(state.ObjectState):
         :param confidence: of object's existence
         :param localization_confidence: of location
         """
-        super(ObjectState, self).__init__(obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence,
-                                          localization_confidence)
+        super().__init__(obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence)
 
 
 class DynamicObject(ObjectState, state.DynamicObject):
