@@ -3,15 +3,15 @@ from typing import Union
 
 import numpy as np
 
-from src.planning.global_constants import WERLING_DT
-from src.planning.trajectory.cost_function import CostParams
+from src.planning.global_constants import *
+from src.planning.trajectory.cost_function import CostParams, SigmoidStatic2DBoxObstacle
 from src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from src.planning.utils.columns import *
 from src.planning.utils.geometry_utils import FrenetMovingFrame
 
 
 class WerlingPlanner(TrajectoryPlanner):
-    def __init__(self, dt=WERLING_DT):
+    def __init__(self, dt=WERLING_TIME_RESOLUTION):
         self.dt = dt
 
     # TODO: link state to its type once interface is merged
@@ -36,19 +36,57 @@ class WerlingPlanner(TrajectoryPlanner):
 
         goal_theta_diff = goal[C_THETA] - route[frenet.sx_to_s_idx(goal_sx), C_THETA]
 
-        # TODO: parameterize this smartly
-        sv_range = np.linspace(-2, 2, 6)
-        sx_range = np.linspace(-3, 0, 3)
-        dx_range = np.linspace(-1.5, 1.5, 3)
+        sx_range = np.linspace(SX_OFFSET_MIN, SX_OFFSET_MAX, SX_RES)
+        sv_range = np.linspace(SV_OFFSET_MIN, SV_OFFSET_MAX, SV_RES)
+        dx_range = np.linspace(DX_OFFSET_MIN, DX_OFFSET_MAX, DX_RES)
         fconstraints_tT = FrenetConstraints(sx_range + goal_sx, sv_range + np.cos(goal_theta_diff) * goal[EGO_V],   0,
                                             dx_range + goal_dx, np.sin(goal_theta_diff) * goal[EGO_V],              0)
 
         ftrajectories = self.__solve_quintic_poly_frenet(fconstraints_t0, fconstraints_tT, cost_params.T)
+
+        # TODO: rewrite as tensor multiplication in FrenetMovingFrame
         ctrajectories = np.array([frenet.ftrajectory_to_ctrajectory(ftraj) for ftraj in ftrajectories])
 
-        # TODO: copy and clean the rest
+        costs = self._compute_cost(ctrajectories, ftrajectories, state)
 
         pass
+
+    # TODO: add type hint for state
+    @staticmethod
+    def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state, params: CostParams):
+        """
+
+        :param ctrajectories:
+        :param ftrajectories:
+        :param state:
+        :param params:
+        :return:
+        """
+        ''' OBSTACLES (Sigmoid cost from bounding-box) '''
+
+        static_obstacles = [SigmoidStatic2DBoxObstacle.from_object_state(obs) for obs in state.static_objects]
+        # TODO: consider max over trajectory points?
+        close_obstacles = filter(lambda o: np.linalg.norm([o.x, o.y]) < MAXIMAL_OBSTACLE_PROXIMITY, static_obstacles)
+
+        # TODO: make it use tensor operations instead
+        obstacles_costs = np.sum([[obs.compute_cost(ctraj[:, 0:2]) for obs in close_obstacles]
+                                  for ctraj in ctrajectories], axis=1)
+
+        ''' DISTANCE FROM REFERENCE ROUTE ( DX ^ 2 ) '''
+
+        ref_deviation_costs = np.sum(ftrajectories[:, :, F_DX] ** 2, axis=1)
+
+        ''' ROAD STRUCTURE '''
+
+        left_lane_deviations = np.clip(ftrajectories[:, :, F_DX] - params.left_lane_offset, 0, LATERAL_DIST_CLIP_TH)
+        left_lane_deviations_costs = np.sum(np.exp(params.left_deviation_exp * left_lane_deviations), axis=1)
+
+        right_lane_deviations = np.clip(ftrajectories[:, :, F_DX] - params.right_lane_offset, 0, LATERAL_DIST_CLIP_TH)
+        right_lane_deviations_costs = np.sum(np.exp(params.right_deviation_exp * right_lane_deviations), axis=1)
+
+        return params.lane_deviation_weight * (left_lane_deviations_costs + right_lane_deviations_costs) + \
+               params.ref_deviation_weight * ref_deviation_costs + \
+               params.obstacle_weight * obstacles_costs
 
     # solves the 2-point boundary value problem for each cell on a frenet grid
     # with constant time (T)
