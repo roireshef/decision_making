@@ -1,5 +1,6 @@
 from src.planning.behavioral.behavioral_state import BehavioralState
 from src.planning.messages.trajectory_parameters import TrajectoryParameters
+from src.state.enriched_state import State
 
 
 class BehavioralFacade:
@@ -16,7 +17,7 @@ class BehavioralFacade:
         self.__publish_debug(trajectory_params)
 
     # TODO: implement message passing, including type hints.
-    def __get_current_state(self):
+    def __get_current_state(self)->State:
         pass
 
     def __get_current_navigation_plan(self):
