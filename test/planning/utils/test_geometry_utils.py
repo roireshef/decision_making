@@ -1,6 +1,7 @@
-from src.planning.utils.geometry_utils import *
-import numpy as np
 import unittest
+
+from src.planning.utils.geometry_utils import *
+from test.planning.route_fixture import RouteFixture
 
 
 class TestGeometryUtils(unittest.TestCase):
@@ -11,7 +12,7 @@ class TestGeometryUtils(unittest.TestCase):
         self.assertFrenetAccuracy()
 
     def assertFrenetAccuracy(self):
-        route_points = self._get_route()
+        route_points = RouteFixture.get_route(lng=200, k=0.05, step=40, lat=100, offset=-50.0)
         cpoints = np.array([[220.0, 0.0], [150.0, 0.0],
                             [280.0, 40.0], [320.0, 60.0],
                             [350.0, 0.0]
@@ -24,7 +25,7 @@ class TestGeometryUtils(unittest.TestCase):
 
         errors = np.linalg.norm(cpoints-new_cpoints, axis=1)
 
-        for error in errors:
+        for error in errors.__iter__():
             self.assertLess(error, self.ACCURACY_TH, 'FrenetMovingFrame point conversions aren\'t accurate enough')
 
         # import matplotlib.pyplot as plt
@@ -43,19 +44,3 @@ class TestGeometryUtils(unittest.TestCase):
         # fig.show()
         # fig.clear()
 
-    @staticmethod
-    def _get_route(lng=200, k=0.05, step=40, lat=100, offset=-50.0):
-        def stretch(v):
-            min = np.min(v[:, 1])
-            max = np.max(v[:, 1])
-
-            for i in range(len(v)):
-                v[i, 1] = lat * (v[i, 1] - min) / (max - min) + offset
-
-            return v
-
-        return np.concatenate((
-            np.array([[i, offset] for i in range(0, lng, step)]),
-            stretch(np.array([[i + lng, 1 / (1 + np.exp(-k * (i - lng / 2)))] for i in range(0, lng, step)])),
-            np.array([[i + 2 * lng, lat + offset] for i in range(0, lng, step)])
-        ), axis=0)
