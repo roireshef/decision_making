@@ -1,20 +1,19 @@
 from abc import ABCMeta, abstractmethod
 
 
-class DdsMessage(metaclass=ABCMeta):
-    @abstractmethod
+class DDSMessage(metaclass=ABCMeta):
     def serialize(self)->dict:
         """
         used to create the dds message
         :return: dict containing all the fields of the class
         """
-        pass
+        return self.__dict__
 
-    @abstractmethod
-    def deserialize(self, message: dict)->None:
+    @classmethod
+    def deserialize(cls, message: dict):
         """
-        used to populate the fields of the class given a dds message dict
+        used to create an instance of cls represented by the dds message
         :param message: dict containing all fields of the class
-        :return: void
+        :return: object of type cls, constructed with the arguments from message
         """
-        pass
+        return cls(**message)
