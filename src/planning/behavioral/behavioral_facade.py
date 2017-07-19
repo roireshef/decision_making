@@ -6,6 +6,10 @@ from src.state.enriched_state import State
 
 class BehavioralFacade:
     def __init__(self, policy: Policy, behavioral_state: BehavioralState):
+        """
+        :param policy: decision making component
+        :param behavioral_state: initial state of the system. Can be empty, i.e. initialized with default values.
+        """
         self._policy = policy
         self._behavioral_state = behavioral_state
 
@@ -26,6 +30,7 @@ class BehavioralFacade:
     # TODO : implement message passing
     def __get_current_state(self) -> State:
         pass
+    
     # TODO add navigation_plan type hint once available
     def __get_current_navigation_plan(self):
         pass
