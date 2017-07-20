@@ -1,9 +1,5 @@
-from typing import List
-import numpy as np
-
-
 class RoadLocalization:
-    def __init__(self, road_id: int, lane: int, intra_lane_lat: float, road_lon: float, intra_lane_yaw: float):
+    def __init__(self, road_id, lane, intra_lane_lat, road_lon, intra_lane_yaw):
         """
         location in road coordinates (road_id, lat, lon)
         :param road_id:
@@ -20,7 +16,7 @@ class RoadLocalization:
 
 
 class OccupancyState:
-    def __init__(self, free_space: np.ndarray, confidence: np.ndarray):
+    def __init__(self, free_space, confidence):
         """
         free space description
         :param free_space: list of directed segments defines a free space border
@@ -31,15 +27,14 @@ class OccupancyState:
 
 
 class ObjectSize:
-    def __init__(self, length: float, width: float, height: float):
+    def __init__(self, length, width, height):
         self.length = length
         self.width = width
         self.height = height
 
 
 class ObjectState:
-    def __init__(self, obj_id: int, timestamp: int, x: float, y: float, z: float, yaw: float, size: ObjectSize,
-                 road_localization: RoadLocalization, confidence: float, localization_confidence: float):
+    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence):
         """
         base class for ego, static & dynamic objects
         :param obj_id: object id
@@ -66,9 +61,9 @@ class ObjectState:
 
 
 class DynamicObject(ObjectState):
-    def __init__(self, obj_id: int, timestamp: int, x: float, y: float, z: float, yaw: float, size: ObjectSize,
-                 road_localization: RoadLocalization, confidence: float, localization_confidence: float,
-                 v_x: float, v_y: float):
+    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
+                 v_x,
+                 v_y):
         """
         both ego and other dynamic objects
         :param obj_id:
@@ -90,9 +85,9 @@ class DynamicObject(ObjectState):
 
 
 class EgoState(DynamicObject):
-    def __init__(self, obj_id: int, timestamp: int, x: float, y: float, z: float, yaw: float, size: ObjectSize,
-                 road_localization: RoadLocalization, confidence: float, localization_confidence: float,
-                 v_x: float, v_y: float, steering_angle: float):
+    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
+                 v_x,
+                 v_y, steering_angle):
         """
         :param obj_id:
         :param timestamp:
@@ -109,12 +104,13 @@ class EgoState(DynamicObject):
         :param steering_angle: equivalent to knowing of turn_radius
         """
         super().__init__(obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
-                         v_x, v_y)
+                         v_x,
+                         v_y)
         self.steering_angle = steering_angle
 
 
 class LanesStructure:
-    def __init__(self, center_of_lane_points: np.ndarray, width_vec: np.ndarray):
+    def __init__(self, center_of_lane_points, width_vec):
         """
         this class is instantiated for each lane
         :param center_of_lane_points:  # points array for a given lane
@@ -125,7 +121,7 @@ class LanesStructure:
 
 
 class PerceivedRoad:
-    def __init__(self, timestamp: int, lanes_structure: List[LanesStructure], confidence: float):
+    def __init__(self, timestamp, lanes_structure, confidence):
         """
         the road of ego as it viewed by perception
         :param timestamp:
@@ -138,9 +134,7 @@ class PerceivedRoad:
 
 
 class State:
-    def __init__(self, occupancy_state: OccupancyState, static_objects:
-    List[ObjectState], dynamic_objects: List[DynamicObject],
-                 ego_state: EgoState, perceived_road: PerceivedRoad):
+    def __init__(self, occupancy_state, static_objects, dynamic_objects, ego_state, perceived_road):
         """
         main class for the world state
         :param occupancy_state: free space
