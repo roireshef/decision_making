@@ -68,13 +68,12 @@ class DynamicObject(ObjectState, state.DynamicObject):
         :param road_localization:
         :param confidence:
         :param localization_confidence:
-        :param v_x: for ego in world coordinates, for the rest relatively to ego
-        :param v_y:
+        :param v_x: in m/sec; for ego in world coordinates, for the rest relatively to ego
+        :param v_y: in m/sec
         """
         super().__init__(obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence)
         super().__init__(obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
-                         v_x,
-                         v_y)
+                         v_x, v_y)
         self.acceleration_x = acceleration_x
         self.turn_radius = turn_radius
 
@@ -102,8 +101,10 @@ class EgoState(DynamicObject, state.EgoState):
         :param road_localization:
         :param confidence:
         :param localization_confidence:
-        :param v_x:
-        :param v_y:
+        :param v_x: in m/sec
+        :param v_y: in m/sec
+        :param acceleration_x: in m/s^2
+        :param turn_radius: radius of turning of the ego
         :param steering_angle: equivalent to knowing of turn_radius
         """
         super().__init__(obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
