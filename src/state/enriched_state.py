@@ -134,8 +134,9 @@ class PerceivedRoad(state.PerceivedRoad):
 
 
 class State(state.State):
-    def __init__(self, occupancy_state: OccupancyState, static_objects: ObjectState, dynamic_objects: DynamicObject,
-                 ego_state: EgoState, perceived_road: PerceivedRoad):
+    def __init__(self, occupancy_state: OccupancyState, static_objects:
+                    List[ObjectState], dynamic_objects: List[DynamicObject],
+                    ego_state: EgoState, perceived_road: PerceivedRoad):
         """
         main class for the world state
         :param occupancy_state: free space
