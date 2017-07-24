@@ -73,7 +73,7 @@ class CartesianFrame:
         return np.concatenate((xy_points, theta_col, k_col, k_tag_col), 1)
 
     @staticmethod
-    def resample_curve(curve: np.ndarray, step_size: int, desired_curve_len: Union[None, float] = None,
+    def resample_curve(curve: np.ndarray, step_size: float, desired_curve_len: Union[None, float] = None,
                        preserve_step_size: bool = False, interp_type: str = 'linear') -> (np.ndarray, float):
         """
         Takes a discrete set of points [x, y] and perform interpolation (with a constant step size). \n
@@ -129,17 +129,24 @@ class FrenetMovingFrame:
     cpoint, cstate, and ctrajectory are in cartesian coordinate frame
     """
 
-    def __init__(self, curve_xy, resolution=TRAJECTORY_ARCLEN_RESOLUTION):
+    def __init__(self, curve_xy: np.ndarray, resolution=TRAJECTORY_ARCLEN_RESOLUTION):
         # TODO: consider moving curve-interpolation outside of this class
-        resampled_curve, self._ds = CartesianFrame.resample_curve(curve_xy, resolution,
+        resampled_curve, self._ds = CartesianFrame.resample_curve(curve=curve_xy, step_size=resolution/4,
                                                                   interp_type=TRAJECTORY_CURVE_INTERP_TYPE)
+        resampled_curve, self._ds = CartesianFrame.resample_curve(curve=resampled_curve, step_size=resolution,
+                                                                  interp_type='linear')
         self._curve = CartesianFrame.add_yaw_and_derivatives(resampled_curve)
         self._h_tensor = np.array([CartesianFrame.homo_matrix_2d(self._curve[s_idx, 2], self._curve[s_idx, 0:2])
                                    for s_idx in range(len(self._curve))])
 
     @property
-    def curve(self):
-        return self._curve.copy()
+    def curve(self): return self._curve.copy()
+
+    @property
+    def resolution(self): return self._ds
+
+    @property
+    def length(self): return len(self.curve)
 
     def sx_to_s_idx(self, sx: float):
         return int(sx / self._ds)
@@ -253,4 +260,49 @@ class FrenetMovingFrame:
         :return: a numpy tensor with dimensions [0 - trajectories, 1 - trajectory points,
             2 - cartesian-state [x, y, theta, v, a, k]) in car's coordinate frame
         """
-        pass
+        num_t = ftrajectories.shape[0]
+        num_p = ftrajectories.shape[1]
+
+        s_x = ftrajectories[:, :, F_SX]
+        s_v = ftrajectories[:, :, F_SV]
+        s_a = ftrajectories[:, :, F_SA]
+        d_x = ftrajectories[:, :, F_DX]
+        d_v = ftrajectories[:, :, F_DV]
+        d_a = ftrajectories[:, :, F_DA]
+
+        s_idx = np.array(np.divide(s_x, self._ds), dtype=int)  # index of frenet-origin
+        theta_r = self._curve[s_idx, R_THETA]  # yaw of frenet-origin
+        k_r = self._curve[s_idx, R_K]  # curvature of frenet-origin
+        k_r_tag = self._curve[s_idx, R_K_TAG]  # derivative by distance (curvature is already in ds units)
+
+        # pre-compute terms to use below
+        term1 = (1 - k_r * d_x)
+        d_x_tag = d_v / s_v  # 1st derivative of d_x by distance
+        d_x_tagtag = (d_a - d_x_tag * s_a) / (s_v ** 2)  # 2nd derivative of d_x by distance
+        tan_theta_diff = d_x_tag / term1
+        theta_diff = np.arctan2(d_x_tag, term1)
+        cos_theta_diff = np.cos(theta_diff)
+
+        # compute x, y (position)
+        norm = np.reshape(np.concatenate((d_x.reshape([num_t, num_p, 1]), np.ones([num_t, num_p, 1])), axis=2), [num_t, num_p, 2, 1])
+        xy_abs = np.einsum('tijk, tikl -> tijl', self._h_tensor[s_idx, 0:2, 1:3], norm)
+
+        # compute v (velocity)
+        v = np.divide(s_v * term1, cos_theta_diff)
+
+        # compute k (curvature)
+        k = np.divide(cos_theta_diff ** 3 * (d_x_tagtag + tan_theta_diff * (k_r_tag * d_x + k_r * d_x_tag)) +
+                      cos_theta_diff * term1, term1 ** 2)
+
+        # compute theta
+        theta_x = theta_r + theta_diff
+
+        # compute a (acceleration) via pseudo derivative
+        a = np.diff(v, axis=1)
+        a_col = np.concatenate((a, np.array([a[:, -1]]).reshape(num_t, 1)), axis=1)
+
+        return np.concatenate((xy_abs.reshape([num_t, num_p, 2]), theta_x.reshape([num_t, num_p, 1]),
+                               v.reshape([num_t, num_p, 1]), a_col.reshape([num_t, num_p, 1]),
+                               k.reshape([num_t, num_p, 1])), axis=2)
+
+

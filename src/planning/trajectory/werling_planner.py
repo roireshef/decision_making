@@ -17,47 +17,74 @@ class WerlingPlanner(TrajectoryPlanner):
 
     def plan(self, state: EnrichedState, reference_route: np.ndarray, goal: np.ndarray, cost_params: CostParams) -> \
             Tuple[np.ndarray, float, dict]:
-        """
-        see parent method in TrajectoryPlanner
-        """
+
+        # create road coordinate-frame
         frenet = FrenetMovingFrame(reference_route)
-        route = frenet.curve
 
-        # TODO: replace this object
-        ego = state.ego_state
-
-        ego_in_frenet = frenet.cpoint_to_fpoint(np.array([0, 0]))  # the ego-vehicle origin in the road-frenet-frame
-        ego_theta_diff = route[0, R_THETA]
+        # the convention is that the reference_route is given in the vehicle's coordinate-frame, so that the vehicle
+        # is always at the origin. Nonetheless, the vehicle doesn't need to lay parallel to the road
+        ego_in_frenet = frenet.cpoint_to_fpoint(np.array([0, 0]))
+        ego_theta_diff = frenet.curve[0, R_THETA]
 
         # TODO: fix velocity jitters at the State level
-        ego_v_x = np.max(ego.v_x, 0)
+        ego_v_x = np.max((state.ego_state.v_x, 0))
 
+        # define constraints for the initial state
         fconstraints_t0 = FrenetConstraints(0, np.cos(ego_theta_diff) * ego_v_x, 0,
                                             ego_in_frenet[1], np.sin(ego_theta_diff) * ego_v_x, 0)
 
+        # define constraints for the terminal (goal) state
         goal_in_frenet = frenet.cpoint_to_fpoint(goal[[EGO_X, EGO_Y]])
         goal_sx, goal_dx = goal_in_frenet[0], goal_in_frenet[1]
 
-        goal_theta_diff = goal[R_THETA] - route[frenet.sx_to_s_idx(goal_sx), R_THETA]
+        goal_theta_diff = goal[EGO_THETA] - frenet.curve[frenet.sx_to_s_idx(goal_sx), R_THETA]
 
-        sx_range = np.linspace(SX_OFFSET_MIN, SX_OFFSET_MAX, SX_RES)
-        sv_range = np.linspace(SV_OFFSET_MIN, SV_OFFSET_MAX, SV_RES)
-        dx_range = np.linspace(DX_OFFSET_MIN, DX_OFFSET_MAX, DX_RES)
-        fconstraints_tT = FrenetConstraints(sx_range + goal_sx, sv_range + np.cos(goal_theta_diff) * goal[EGO_V], 0,
-                                            dx_range + goal_dx, np.sin(goal_theta_diff) * goal[EGO_V], 0)
+        sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_sx, 0)),
+                               np.min((SX_OFFSET_MAX + goal_sx, frenet.length * frenet.resolution)),
+                               SX_STEPS)
+        sv_range = np.linspace(np.max((SV_OFFSET_MIN + np.cos(goal_theta_diff) * goal[EGO_V], cost_params.v_x_min_limit)),
+                               np.min((SV_OFFSET_MAX + np.cos(goal_theta_diff) * goal[EGO_V], cost_params.v_x_max_limit)),
+                               SV_STEPS)
+        dx_range = np.linspace(DX_OFFSET_MIN + goal_dx,
+                               DX_OFFSET_MAX + goal_dx,
+                               DX_STEPS)
 
-        ftrajectories = self._solve_quintic_poly_frenet(fconstraints_t0, fconstraints_tT, cost_params.T)
+        fconstraints_tT = FrenetConstraints(sx_range, sv_range, 0,
+                                            dx_range, np.sin(goal_theta_diff) * goal[EGO_V], 0)
 
-        # TODO: rewrite as tensor multiplication in FrenetMovingFrame
-        ctrajectories = np.array([frenet.ftrajectory_to_ctrajectory(ftraj) for ftraj in ftrajectories])
+        # solve problem in frenet-frame
+        ftrajectories = self._solve_quintic_poly_frenet(fconstraints_t0, fconstraints_tT, cost_params.time)
 
-        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories, state)
+        # filter resulting trajectories by velocity and acceleration
+        ftrajectories_filtered = self._filter_limits(ftrajectories, cost_params)
+
+        # project trajectories from frenet-frame to vehicle's cartesian frame
+        ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
+
+        # compute trajectory costs
+        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, cost_params)
         sorted_idxs = trajectory_costs.argsort()
 
-        debug_results = {'trajectories': ctrajectories[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES], :, :EGO_V],
+        debug_results = {'ref_route': frenet.curve,
+                         'trajectories': ctrajectories[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES], :, :EGO_V],
                          'costs': trajectory_costs[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES]]}
 
         return ctrajectories[sorted_idxs[0], :, :EGO_V], trajectory_costs[sorted_idxs[0]], debug_results
+
+    @staticmethod
+    def _filter_limits(ftrajectories: np.ndarray, cost_params: CostParams) -> np.ndarray:
+        """
+        filters trajectories in their frenet-frame representation according to velocity and acceleration limits
+        :param ftrajectories: trajectories in frenet-frame. A numpy array of shape [t, p, 6] with t trajectories,
+        p points in each, and 6 frenet-frame axes
+        :param cost_params: A CostParams instance specifying the required limitations
+        :return: a numpy array of valid trajectories. shape is [reduced_t, p, 6]
+        """
+        conforms = np.all((ftrajectories[:, :, F_SV] >= cost_params.v_x_min_limit) &
+                          (ftrajectories[:, :, F_SV] <= cost_params.v_x_max_limit) &
+                          (ftrajectories[:, :, F_SA] >= cost_params.a_x_min_limit) &
+                          (ftrajectories[:, :, F_SA] <= cost_params.a_x_max_limit), axis=1)
+        return ftrajectories[conforms]
 
     @staticmethod
     def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: EnrichedState, params: CostParams):
@@ -69,15 +96,18 @@ class WerlingPlanner(TrajectoryPlanner):
         :param params: parameters for the cost function (from behavioral layer)
         :return:
         """
+        # TODO: bom!
+        # TODO: add jerk cost
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
 
-        static_obstacles = [SigmoidStatic2DBoxObstacle.from_object_state(obs) for obs in state.static_objects]
+        static_obstacles = [SigmoidStatic2DBoxObstacle.from_object_state(obs, params.obstacle_exp, params.obstacle_offset)
+                            for obs in state.static_objects]
+
         # TODO: consider max over trajectory points?
+        # TODO: what if there's no static obstacles? what if close_obstacles is empty?
         close_obstacles = filter(lambda o: np.linalg.norm([o.x, o.y]) < MAXIMAL_OBSTACLE_PROXIMITY, static_obstacles)
 
-        # TODO: make it use tensor operations instead
-        obstacles_costs = np.sum([[obs.compute_cost(ctraj[:, 0:2]) for obs in close_obstacles]
-                                  for ctraj in ctrajectories], axis=1)
+        obstacles_costs = np.sum([obs.compute_cost(ctrajectories[:, :, 0:2]) for obs in close_obstacles], axis=0)
 
         ''' DISTANCE FROM REFERENCE ROUTE ( DX ^ 2 ) '''
 
@@ -158,6 +188,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
 
 class FrenetConstraints:
+    # this class stores in its fields values for grid-search over frenet-frame parameters for the werling planner
     def __init__(self, sx: Union[np.ndarray, Number], sv: Union[np.ndarray, Number], sa: Union[np.ndarray, Number],
                  dx: Union[np.ndarray, Number], dv: Union[np.ndarray, Number], da: Union[np.ndarray, Number]):
         self.sx = np.array(sx)
@@ -167,7 +198,11 @@ class FrenetConstraints:
         self.dv = np.array(dv)
         self.da = np.array(da)
 
-    def get_grid_s(self):
+    def get_grid_s(self) -> np.ndarray:
+        """
+        Generates a grid (cartesian product) of all (position, velocity and acceleration) on dimension S
+        :return:
+        """
         return np.array(np.meshgrid(self.sx, self.sv, self.sa)).T.reshape(-1, 3)
 
     def get_grid_d(self):

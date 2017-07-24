@@ -1,3 +1,5 @@
+# This file stores column names for numpy matrices #
+
 # Column indices for ego-state [x, y, theta, v]
 EGO_X, EGO_Y, EGO_THETA, EGO_V = 0, 1, 2, 3
 

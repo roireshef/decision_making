@@ -8,18 +8,18 @@ from src.state.enriched_state import ObjectState as EnrichedObjectState
 
 
 class BoxObstcle(object):
-    def __init__(self, x, y, theta, height, width):
+    def __init__(self, x, y, theta, length, width):
         """
         :param x: relative location in vehicle's longitudinal axis
         :param y: relative location in vehicle's lateral axis
         :param theta: object yaw
-        :param height: length of the box in its own longitudinal axis (box's x)
+        :param length: length of the box in its own longitudinal axis (box's x)
         :param width: length of the box in its own lateral axis (box's y)
         """
         self._x = x
         self._y = y
         self._theta = theta
-        self._height = height
+        self._length = length
         self._width = width
         self._R = CartesianFrame.homo_matrix_2d(self.theta, np.array([self.x, self.y]))
 
@@ -33,7 +33,7 @@ class BoxObstcle(object):
     def theta(self): return self._theta
 
     @property
-    def height(self): return self._height
+    def length(self): return self._length
 
     @property
     def width(self): return self._width
@@ -56,17 +56,17 @@ class SigmoidStatic2DBoxObstacle(BoxObstcle):
     """
 
     # width is on y, height is on x
-    def __init__(self, x, y, theta, height, width, k, margin):
+    def __init__(self, x, y, theta, length, width, k, margin):
         """
         :param x: relative location in vehicle's longitudinal axis
         :param y: relative location in vehicle's lateral axis
         :param theta: object yaw
-        :param height: length of the box in its own longitudinal axis (box's x)
+        :param length: length of the box in its own longitudinal axis (box's x)
         :param width: length of the box in its own lateral axis (box's y)
         :param k: sigmoid's  exponent coefficient
         :param margin: center of sigmoid offset
         """
-        super().__init__(x, y, theta, height, width)
+        super().__init__(x, y, theta, length, width)
         self._k = k
         self._margin = margin
 
@@ -85,8 +85,7 @@ class SigmoidStatic2DBoxObstacle(BoxObstcle):
         :param offset:
         :return: new SigmoidStatic2DBoxObstacle instance
         """
-        # TODO: understand length,width,height. solve type hints problems with enriched_state
-        pass #return cls(os.x, os.y, os.object_size)
+        return cls(os.x, os.y, os.yaw, os.object_size.length, os.object_size.width, k, offset)
 
     def compute_cost(self, points: np.ndarray) -> np.ndarray:
         """
@@ -98,7 +97,7 @@ class SigmoidStatic2DBoxObstacle(BoxObstcle):
         if len(points.shape) == 2:
             points = np.array([points])
 
-        # add a third value (=1.0) to each point in each trajectory
+        # add a third value (=1.0) to each point in each trajectory for multiplication with homo-matrix
         ones = np.ones(points.shape[:2])
         points_ext = np.dstack((points, ones))
 
@@ -107,30 +106,37 @@ class SigmoidStatic2DBoxObstacle(BoxObstcle):
         points_proj = np.abs(np.einsum('ijk, kl -> ijl', points_ext, np.linalg.inv(self._R).transpose())[:, :, :2])
 
         # subtract from the distances: 1. the box dimensions (height, width) and the margin
-        points_offset = np.subtract(points_proj, [self.height / 2 + self.margin, self.width / 2 + self.margin])
+        points_offset = np.subtract(points_proj, [self.length / 2 + self.margin, self.width / 2 + self.margin])
 
         # compute a sigmoid for each dimension [x, y] of each point (in each trajectory)
         logit_costs = np.divide(1.0, (1.0 + np.exp(np.clip(self.k * points_offset, -np.inf, EXP_CLIP_TH))))
 
         return np.sum(logit_costs[:, :, 0] * logit_costs[:, :, 1], axis=1)
 
+
+# TODO: move to messages package once committed
 class CostParams:
-    def __init__(self, T: float, ref_deviation_weight: float, lane_deviation_weight: float, obstacle_weight: float,
-                 left_lane_offset: float, right_lane_offset: float, left_deviation_coef: float,
-                 right_deviation_coeft: float, obstacle_offset: float, obstacle_exp: float):
-        self._T = T
+    def __init__(self, time: float, ref_deviation_weight: float, lane_deviation_weight: float, obstacle_weight: float,
+                 left_lane_offset: float, right_lane_offset: float, left_deviation_exp: float,
+                 right_deviation_exp: float, obstacle_offset: float, obstacle_exp: float, v_x_min_limit: float,
+                 v_x_max_limit: float, a_x_min_limit: float, a_x_max_limit: float):
+        self._time = time
         self._ref_deviation_weight = ref_deviation_weight
         self._lane_deviation_weight = lane_deviation_weight
         self._obstacle_weight = obstacle_weight
         self._left_lane_offset = left_lane_offset
         self._right_lane_offset = right_lane_offset
-        self._left_deviation_exp = left_deviation_coef
-        self._right_deviation_exp = right_deviation_coeft
+        self._left_deviation_exp = left_deviation_exp
+        self._right_deviation_exp = right_deviation_exp
         self._obstacle_offset = obstacle_offset
         self._obstacle_exp = obstacle_exp
+        self._v_x_min_limit = v_x_min_limit
+        self._v_x_max_limit = v_x_max_limit
+        self._a_x_min_limit = a_x_min_limit
+        self._a_x_max_limit = a_x_max_limit
 
     @property
-    def T(self): return self._T
+    def time(self): return self._time
 
     @property
     def ref_deviation_weight(self): return self._ref_deviation_weight
@@ -152,3 +158,21 @@ class CostParams:
 
     @property
     def right_deviation_exp(self): return self._right_deviation_exp
+
+    @property
+    def obstacle_offset(self): return self._obstacle_offset
+
+    @property
+    def obstacle_exp(self): return self._obstacle_exp
+
+    @property
+    def v_x_min_limit(self): return self._v_x_min_limit
+
+    @property
+    def v_x_max_limit(self): return self._v_x_max_limit
+
+    @property
+    def a_x_min_limit(self): return self._a_x_min_limit
+
+    @property
+    def a_x_max_limit(self): return self._a_x_max_limit

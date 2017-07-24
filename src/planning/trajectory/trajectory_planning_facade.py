@@ -7,10 +7,12 @@ from src.state.enriched_state import State as EnrichedState
 
 import numpy as np
 
+
 class TrajectoryPlanningFacade:
     """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
     """
+
     def __init__(self, strategy_handlers: dict):
         """
         :param strategy_handlers: a dictionary of trajectory planners as strategy handlers -
