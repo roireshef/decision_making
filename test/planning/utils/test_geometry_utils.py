@@ -1,11 +1,10 @@
 import unittest
 
 from src.planning.utils.geometry_utils import *
-from test.planning.route_fixture import RouteFixture
+from test.planning.trajectory.utils import RouteFixture
 
 
 class TestGeometryUtils(unittest.TestCase):
-
     ACCURACY_TH = 0.1
 
     def test(self):
@@ -23,7 +22,7 @@ class TestGeometryUtils(unittest.TestCase):
         fpoints = np.array([frenet.cpoint_to_fpoint(cpoint) for cpoint in cpoints])
         new_cpoints = np.array([frenet.fpoint_to_cpoint(fpoint) for fpoint in fpoints])
 
-        errors = np.linalg.norm(cpoints-new_cpoints, axis=1)
+        errors = np.linalg.norm(cpoints - new_cpoints, axis=1)
 
         for error in errors.__iter__():
             self.assertLess(error, self.ACCURACY_TH, 'FrenetMovingFrame point conversions aren\'t accurate enough')
@@ -43,4 +42,3 @@ class TestGeometryUtils(unittest.TestCase):
         #
         # fig.show()
         # fig.clear()
-
