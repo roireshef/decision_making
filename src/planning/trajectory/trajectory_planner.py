@@ -8,9 +8,10 @@ from src.state.enriched_state import State as EnrichedState
 
 
 class TrajectoryPlanner(metaclass=ABCMeta):
+    # TODO: object type-hint should be changed to DDSMessage type once commited
     @abstractmethod
     def plan(self, state: EnrichedState, reference_route: np.ndarray, goal: np.ndarray, cost_params: CostParams) -> \
-            Tuple[np.ndarray, float, dict]:
+            Tuple[np.ndarray, float, object]:
         """
         Plans a trajectory according to the specifications in the arguments
         :param state: environment & ego state object

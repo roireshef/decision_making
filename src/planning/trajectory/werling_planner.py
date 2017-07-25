@@ -13,10 +13,14 @@ from src.state.enriched_state import State as EnrichedState
 
 class WerlingPlanner(TrajectoryPlanner):
     def __init__(self, dt=WERLING_TIME_RESOLUTION):
-        self.dt = dt
+        self._dt = dt
 
+    @property
+    def dt(self): self._dt
+
+    # TODO: object type-hint should be changed to DDSMessage type once commited
     def plan(self, state: EnrichedState, reference_route: np.ndarray, goal: np.ndarray, cost_params: CostParams) -> \
-            Tuple[np.ndarray, float, dict]:
+            Tuple[np.ndarray, float, object]:
 
         # create road coordinate-frame
         frenet = FrenetMovingFrame(reference_route)
@@ -65,9 +69,9 @@ class WerlingPlanner(TrajectoryPlanner):
         trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, cost_params)
         sorted_idxs = trajectory_costs.argsort()
 
-        debug_results = {'ref_route': frenet.curve,
-                         'trajectories': ctrajectories[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES], :, :EGO_V],
-                         'costs': trajectory_costs[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES]]}
+        debug_results = WerlingPlannerDebugResults(frenet.curve,
+                                                   ctrajectories[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES], :, :EGO_V],
+                                                   trajectory_costs[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES]])
 
         return ctrajectories[sorted_idxs[0], :, :EGO_V], trajectory_costs[sorted_idxs[0]], debug_results
 
@@ -191,19 +195,35 @@ class FrenetConstraints:
     # this class stores in its fields values for grid-search over frenet-frame parameters for the werling planner
     def __init__(self, sx: Union[np.ndarray, Number], sv: Union[np.ndarray, Number], sa: Union[np.ndarray, Number],
                  dx: Union[np.ndarray, Number], dv: Union[np.ndarray, Number], da: Union[np.ndarray, Number]):
-        self.sx = np.array(sx)
-        self.sv = np.array(sv)
-        self.sa = np.array(sa)
-        self.dx = np.array(dx)
-        self.dv = np.array(dv)
-        self.da = np.array(da)
+        self._sx = np.array(sx)
+        self._sv = np.array(sv)
+        self._sa = np.array(sa)
+        self._dx = np.array(dx)
+        self._dv = np.array(dv)
+        self._da = np.array(da)
 
     def get_grid_s(self) -> np.ndarray:
         """
         Generates a grid (cartesian product) of all (position, velocity and acceleration) on dimension S
         :return:
         """
-        return np.array(np.meshgrid(self.sx, self.sv, self.sa)).T.reshape(-1, 3)
+        return np.array(np.meshgrid(self._sx, self._sv, self._sa)).T.reshape(-1, 3)
 
     def get_grid_d(self):
-        return np.array(np.meshgrid(self.dx, self.dv, self.da)).T.reshape(-1, 3)
+        return np.array(np.meshgrid(self._dx, self._dv, self._da)).T.reshape(-1, 3)
+
+
+# TODO: should inherit DDSMessage once commited and moved to src.planning.messages package
+class WerlingPlannerDebugResults:
+    def __init__(self, _reference_route: np.ndarray, _trajectories: np.ndarray, _costs: np.ndarray):
+        """
+        Message that holds debug results of WerlingPlanner to be broadcasted further
+        :param reference_route: numpy array the refernce route. please see FrenetMovingFrame.curve documentation
+        :param trajectories: a tensor of the best <NUM_ALTERNATIVE_TRAJECTORIES> trajectory points in the vehicle's
+        coordinate frame. numpy array of shape [NUM_ALTERNATIVE_TRAJECTORIES, p, 4] where p is the number of points in
+        each trajectory and each point consists of [x, y, yaw, velocity]
+        :param costs: 1D numpy array of the above trajectories, respectively.
+        """
+        self._reference_route = _reference_route
+        self._trajectories = _trajectories
+        self._costs = _costs

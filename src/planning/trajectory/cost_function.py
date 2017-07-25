@@ -7,8 +7,8 @@ from src.planning.utils.geometry_utils import CartesianFrame
 from src.state.enriched_state import ObjectState as EnrichedObjectState
 
 
-class BoxObstcle(object):
-    def __init__(self, x, y, theta, length, width):
+class BoxObstacle:
+    def __init__(self, x: float, y: float, theta: float, length: float, width: float):
         """
         :param x: relative location in vehicle's longitudinal axis
         :param y: relative location in vehicle's lateral axis
@@ -49,7 +49,7 @@ class BoxObstcle(object):
         pass
 
 
-class SigmoidStatic2DBoxObstacle(BoxObstcle):
+class SigmoidStatic2DBoxObstacle(BoxObstacle):
     """
     Static 2D obstacle represented in vehicle's coordinate frame that computes sigmoid costs for
     points in the vehicle's coordinate frame

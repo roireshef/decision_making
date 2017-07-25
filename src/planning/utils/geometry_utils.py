@@ -43,6 +43,7 @@ class CartesianFrame:
         :param translation: a [x, y, z] translation vector
         :return: a 3x3 numpy matrix for projection (translation+rotation)
         """
+        # TODO: reimplement without tf (ROS) dependency, if needed
         # rotation_matrix = tf.transformations.quaternion_matrix(quaternion)     #rotation matrix
         # return CartesianFrame.homo_matrix_3d(rotation_matrix, translation)
         pass
@@ -209,48 +210,7 @@ class FrenetMovingFrame:
         :param ftrajectory: a numpy matrix of rows of the form [sx, sv, sa, dx, dv, da]
         :return: a numpy matrix of rows of the form [x, y, theta, v, a, k] in car's coordinate frame
         """
-        n = len(ftrajectory)
-
-        s_x = ftrajectory[:, F_SX]
-        s_v = ftrajectory[:, F_SV]
-        s_a = ftrajectory[:, F_SA]
-        d_x = ftrajectory[:, F_DX]
-        d_v = ftrajectory[:, F_DV]
-        d_a = ftrajectory[:, F_DA]
-
-        s_idx = np.array(np.divide(s_x, self._ds), dtype=int)  # index of frenet-origin
-        theta_r = self._curve[s_idx, R_THETA]  # yaw of frenet-origin
-        k_r = self._curve[s_idx, R_K]  # curvature of frenet-origin
-        k_r_tag = self._curve[s_idx, R_K_TAG]  # derivative by distance (curvature is already in ds units)
-
-        # pre-compute terms to use below
-        term1 = (1 - k_r * d_x)
-        d_x_tag = d_v / s_v  # 1st derivative of d_x by distance
-        d_x_tagtag = (d_a - d_x_tag * s_a) / (s_v ** 2)  # 2nd derivative of d_x by distance
-        tan_theta_diff = d_x_tag / term1
-        theta_diff = np.arctan2(d_x_tag, term1)
-        cos_theta_diff = np.cos(theta_diff)
-
-        # compute x, y (position)
-        norm = np.reshape(np.concatenate((d_x.reshape([n, 1]), np.ones([n, 1])), axis=1), [n, 2, 1])
-        xy_abs = np.einsum('ijk, ikl -> ijl', self._h_tensor[s_idx, 0:2, 1:3], norm)
-
-        # compute v (velocity)
-        v = np.divide(s_v * term1, cos_theta_diff)
-
-        # compute k (curvature)
-        k = np.divide(cos_theta_diff ** 3 * (d_x_tagtag + tan_theta_diff * (k_r_tag * d_x + k_r * d_x_tag)) +
-                      cos_theta_diff * term1, term1 ** 2)
-
-        # compute theta
-        theta_x = theta_r + theta_diff
-
-        # compute a (acceleration) via pseudo derivative
-        a = np.diff(v, axis=0)
-        a_col = np.concatenate((a, [a[-1]]))
-
-        return np.concatenate((xy_abs.reshape([n, 2]), theta_x.reshape([n, 1]), v.reshape([n, 1]),
-                               a_col.reshape([n, 1]), k.reshape([n, 1])), axis=1)
+        return self.ftrajectories_to_ctrajectories(np.array([ftrajectory]))[0]
 
     def ftrajectories_to_ctrajectories(self, ftrajectories: np.ndarray) -> np.ndarray:
         """
