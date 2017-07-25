@@ -78,7 +78,6 @@ class DynamicObject(ObjectState):
         :param v_x: in m/sec; for ego in world coordinates, for the rest relatively to ego
         :param v_y: in m/sec
         """
-        #super().__init__(obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence)
         ObjectState.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence)
         self.v_x = v_x
         self.v_y = v_y
@@ -102,8 +101,6 @@ class EgoState(DynamicObject):
         :param v_y: in m/sec
         :param steering_angle: equivalent to knowing of turn_radius
         """
-        # super().__init__(obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
-        #                  v_x, v_y)
         DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
                          v_x, v_y)
         self.steering_angle = steering_angle
