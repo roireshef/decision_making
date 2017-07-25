@@ -1,7 +1,7 @@
 from typing import List
 
 import numpy as np
-from state.state import *
+from state import *
 
 
 class EnrichedRoadLocalization(RoadLocalization):
@@ -14,7 +14,7 @@ class EnrichedRoadLocalization(RoadLocalization):
         :param road_lon: in meters, longitude relatively to the road start
         :param intra_lane_yaw: 0 is along road's local tangent
         """
-        super().__init__(road_id, lane, intra_lane_lat, road_lon, intra_lane_yaw)
+        RoadLocalization.__init__(self, road_id, lane, intra_lane_lat, road_lon, intra_lane_yaw)
 
 
 class EnrichedOccupancyState(OccupancyState):
@@ -24,7 +24,7 @@ class EnrichedOccupancyState(OccupancyState):
         :param free_space: array of directed segments defines a free space border
         :param confidence: array per segment
         """
-        super().__init__(free_space, confidence)
+        OccupancyState.__init__(self, free_space, confidence)
 
 
 class EnrichedObjectSize(ObjectSize):
@@ -48,8 +48,8 @@ class EnrichedObjectState(ObjectState):
         :param confidence: of object's existence
         :param localization_confidence: of location
         """
-        ObjectState.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence)
-        #super().__init__(obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence)
+        ObjectState.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence,
+                             localization_confidence)
 
 
 class EnrichedDynamicObject(EnrichedObjectState, DynamicObject):
@@ -71,10 +71,11 @@ class EnrichedDynamicObject(EnrichedObjectState, DynamicObject):
         :param v_x: in m/sec; for ego in world coordinates, for the rest relatively to ego
         :param v_y: in m/sec
         """
-        #super().__init__(obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence)
-        EnrichedObjectState.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence)
-        DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
-                         v_x, v_y)
+        EnrichedObjectState.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence,
+                                     localization_confidence)
+        DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence,
+                               localization_confidence,
+                               v_x, v_y)
         self.acceleration_x = acceleration_x
         self.turn_radius = turn_radius
 
@@ -108,12 +109,12 @@ class EnrichedEgoState(EnrichedDynamicObject, EgoState):
         :param turn_radius: radius of turning of the ego
         :param steering_angle: equivalent to knowing of turn_radius
         """
-        #super().__init__(obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
-        #                 v_x, v_y, acceleration_x, turn_radius)
-        EnrichedDynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
-                         v_x, v_y, acceleration_x, turn_radius)
-        EgoState.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
-                         v_x, v_y, steering_angle)
+        EnrichedDynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence,
+                                       localization_confidence,
+                                       v_x, v_y, acceleration_x, turn_radius)
+        EgoState.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence,
+                          localization_confidence,
+                          v_x, v_y, steering_angle)
 
 
 class EnrichedLanesStructure(LanesStructure):
@@ -123,10 +124,10 @@ class EnrichedLanesStructure(LanesStructure):
         :param center_of_lane_points:  points array for a given lane
         :param width_vec:  array of width: lane width per lane point
         """
-        super().__init__(center_of_lane_points, width_vec)
+        LanesStructure.__init__(self, center_of_lane_points, width_vec)
 
 
-class PerceivedRoad(PerceivedRoad):
+class EnrichedPerceivedRoad(PerceivedRoad):
     def __init__(self, timestamp: int, lanes_structure: List[EnrichedLanesStructure], confidence: float):
         """
         the road of ego as it viewed by perception
@@ -134,13 +135,13 @@ class PerceivedRoad(PerceivedRoad):
         :param lanes_structure: list of elements of type LanesStructure, per lane
         :param confidence:
         """
-        super().__init__(timestamp, lanes_structure, confidence)
+        PerceivedRoad.__init__(self, timestamp, lanes_structure, confidence)
 
 
 class EnrichedState(State):
     def __init__(self, occupancy_state: EnrichedOccupancyState, static_objects:
-                    List[EnrichedObjectState], dynamic_objects: List[EnrichedDynamicObject],
-                 ego_state: EnrichedEgoState, perceived_road: PerceivedRoad):
+    List[EnrichedObjectState], dynamic_objects: List[EnrichedDynamicObject],
+                 ego_state: EnrichedEgoState, perceived_road: EnrichedPerceivedRoad):
         """
         main class for the world state
         :param occupancy_state: free space
@@ -149,7 +150,7 @@ class EnrichedState(State):
         :param ego_state:
         :param perceived_road: the road of ego as it viewed by perception, relatively to ego
         """
-        super().__init__(occupancy_state, static_objects, dynamic_objects, ego_state, perceived_road)
+        State.__init__(self, occupancy_state, static_objects, dynamic_objects, ego_state, perceived_road)
 
     def update_objects(self):
         """
