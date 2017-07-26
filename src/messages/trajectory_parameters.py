@@ -1,5 +1,6 @@
-from src.planning.messages.dds_message import DDSMessage
 import numpy as np
+
+from src.messages.dds_message import DDSMessage
 
 
 class TrajectoryParameters(DDSMessage):
