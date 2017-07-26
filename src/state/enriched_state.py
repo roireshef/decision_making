@@ -1,7 +1,7 @@
 from typing import List
 
 import numpy as np
-from state import *
+from state.state import *
 
 
 class EnrichedRoadLocalization(RoadLocalization):
