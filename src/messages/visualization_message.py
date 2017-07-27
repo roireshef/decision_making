@@ -11,20 +11,20 @@ class RvizVisualizationMessage(DDSMessage):
     implement its' properties in a way that fits it's architecture
     """
 
-    def __init__(self, _topic: str, _markers_max: int, _frame_id: str, _marker_type: MarkerType, _scale: np.array,
-                 _color_a: float, _color_r: float, _color_g: float, _color_b: float,
-                 _markers_positions: list[np.array] = None, _markers_orientations: list[np.array] = None):
-        self._topic = _topic
-        self._markers_max = _markers_max
-        self._frame_id = _frame_id
-        self._markers_type = _marker_type
-        self._scale = _scale
-        self._color_a = _color_a
-        self._color_r = _color_r
-        self._color_g = _color_g
-        self._color_b = _color_b
-        self._markers_positions = _markers_positions
-        self._markers_orientations = _markers_orientations
+    def __init__(self, topic: str, markers_max: int, frame_id: str, marker_type: MarkerType, scale: np.array,
+                 color_a: float, color_r: float, color_g: float, color_b: float,
+                 markers_positions: list[np.array] = None, markers_orientations: list[np.array] = None):
+        self._topic = topic
+        self._markers_max = markers_max
+        self._frame_id = frame_id
+        self._markers_type = marker_type
+        self._scale = scale
+        self._color_a = color_a
+        self._color_r = color_r
+        self._color_g = color_g
+        self._color_b = color_b
+        self._markers_positions = markers_positions
+        self._markers_orientations = markers_orientations
 
     def update_marker_arguments(self, positions: list[np.array], orientations: list[np.array]):
         self._markers_positions = positions
