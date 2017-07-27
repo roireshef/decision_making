@@ -1,7 +1,6 @@
 import numpy as np
 from src.planning.global_constants import *
 
-
 class CartesianFrame:
     @staticmethod
     def homo_matrix_2d(rotation_angle: float, translation: np.ndarray) -> np.ndarray:

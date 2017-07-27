@@ -133,7 +133,7 @@ class PerceivedRoad:
         self.confidence = confidence
 
 
-class State:
+class State():
     def __init__(self, occupancy_state, static_objects, dynamic_objects, ego_state, perceived_road):
         """
         main class for the world state
@@ -143,6 +143,7 @@ class State:
         :param ego_state:
         :param perceived_road: the road of ego as it viewed by perception, relatively to ego
         """
+        super.__init__()
         self.occupancy_state = occupancy_state
         self.static_objects = static_objects
         self.dynamic_objects = dynamic_objects
