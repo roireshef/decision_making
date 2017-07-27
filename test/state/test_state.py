@@ -1,5 +1,5 @@
 
-from state.enriched_state import *
+from src.state.enriched_state import *
 
 
 def test_init():
