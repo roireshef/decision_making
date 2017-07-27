@@ -8,10 +8,10 @@ class DDSMessage(metaclass=ABCMeta):
         used to create the dds message
         :return: dict containing all the fields of the class
         """
-        complex_dict = {k[1:]: v for k, v in self.__dict__.items()}
+        complex_dict = self.__dict__.copy()
         for key, val in complex_dict.items():
             if isinstance(val, np.ndarray):
-                complex_dict[key] = {'array': val.__array__(), 'shape': val.shape}
+                complex_dict[key] = {'array': val.flat.__array__(), 'shape': val.shape}
             if isinstance(val, DDSMessage):
                 complex_dict[key] = val.serialize()
         return complex_dict
