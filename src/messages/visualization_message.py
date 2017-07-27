@@ -6,11 +6,8 @@ import numpy as np
 
 class RvizVisualizationMessage(DDSMessage):
     """
-    The struct used for communicating the behavioral debug data to the debug modules.
-    It is defined as abstract class, so every instance of behavioral planner would
-    implement its' properties in a way that fits it's architecture
+    The struct used for communicating visualization data to the visualizer modules.
     """
-
     def __init__(self, _topic: str, _markers_max: int, _frame_id: str, _marker_type: MarkerType, _scale: np.array,
                  _color_a: float, _color_r: float, _color_g: float, _color_b: float,
                  _markers_positions: list[np.array] = None, _markers_orientations: list[np.array] = None):
