@@ -14,21 +14,21 @@ class RvizVisualizationMessage(DDSMessage):
     def __init__(self, topic: str, markers_max: int, frame_id: str, marker_type: MarkerType, scale: np.array,
                  color_a: float, color_r: float, color_g: float, color_b: float,
                  markers_positions: list[np.array] = None, markers_orientations: list[np.array] = None):
-        self._topic = topic
-        self._markers_max = markers_max
-        self._frame_id = frame_id
-        self._markers_type = marker_type
-        self._scale = scale
-        self._color_a = color_a
-        self._color_r = color_r
-        self._color_g = color_g
-        self._color_b = color_b
-        self._markers_positions = markers_positions
-        self._markers_orientations = markers_orientations
+        self.topic = topic
+        self.markers_max = markers_max
+        self.frame_id = frame_id
+        self.markers_type = marker_type
+        self.scale = scale
+        self.color_a = color_a
+        self.color_r = color_r
+        self.color_g = color_g
+        self.color_b = color_b
+        self.markers_positions = markers_positions
+        self.markers_orientations = markers_orientations
 
     def update_marker_arguments(self, positions: list[np.array], orientations: list[np.array]):
-        self._markers_positions = positions
-        self._markers_orientations = orientations
+        self.markers_positions = positions
+        self.markers_orientations = orientations
 
 
 class MarkerType(Enum):
