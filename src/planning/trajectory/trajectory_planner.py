@@ -3,15 +3,15 @@ from typing import Tuple
 
 import numpy as np
 
-from src.planning.trajectory.cost_function import CostParams
+from src.messages.trajectory_parameters import TrajectoryCostParams
 from src.state.enriched_state import State as EnrichedState
 
 
 class TrajectoryPlanner(metaclass=ABCMeta):
     # TODO: object type-hint should be changed to DDSMessage type once commited
     @abstractmethod
-    def plan(self, state: EnrichedState, reference_route: np.ndarray, goal: np.ndarray, cost_params: CostParams) -> \
-            Tuple[np.ndarray, float, object]:
+    def plan(self, state: EnrichedState, reference_route: np.ndarray, goal: np.ndarray,
+             cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, object]:
         """
         Plans a trajectory according to the specifications in the arguments
         :param state: environment & ego state object

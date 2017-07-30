@@ -4,7 +4,8 @@ from typing import Union, Tuple
 import numpy as np
 
 from src.global_constants import *
-from src.planning.trajectory.cost_function import CostParams, SigmoidStatic2DBoxObstacle
+from src.messages.trajectory_parameters import TrajectoryCostParams
+from src.planning.trajectory.cost_function import SigmoidStatic2DBoxObstacle
 from src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from src.planning.utils.columns import *
 from src.planning.utils.geometry_utils import FrenetMovingFrame
@@ -16,11 +17,11 @@ class WerlingPlanner(TrajectoryPlanner):
         self._dt = dt
 
     @property
-    def dt(self): self._dt
+    def dt(self): return self._dt
 
     # TODO: object type-hint should be changed to DDSMessage type once commited
-    def plan(self, state: EnrichedState, reference_route: np.ndarray, goal: np.ndarray, cost_params: CostParams) -> \
-            Tuple[np.ndarray, float, object]:
+    def plan(self, state: EnrichedState, reference_route: np.ndarray, goal: np.ndarray,
+             cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, object]:
 
         # create road coordinate-frame
         frenet = FrenetMovingFrame(reference_route)
@@ -76,7 +77,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return ctrajectories[sorted_idxs[0], :, :EGO_V], trajectory_costs[sorted_idxs[0]], debug_results
 
     @staticmethod
-    def _filter_limits(ftrajectories: np.ndarray, cost_params: CostParams) -> np.ndarray:
+    def _filter_limits(ftrajectories: np.ndarray, cost_params: TrajectoryCostParams) -> np.ndarray:
         """
         filters trajectories in their frenet-frame representation according to velocity and acceleration limits
         :param ftrajectories: trajectories in frenet-frame. A numpy array of shape [t, p, 6] with t trajectories,
@@ -91,7 +92,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return ftrajectories[conforms]
 
     @staticmethod
-    def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: EnrichedState, params: CostParams):
+    def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: EnrichedState, params: TrajectoryCostParams):
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
