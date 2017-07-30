@@ -5,6 +5,7 @@ import numpy as np
 
 from src.global_constants import *
 from src.messages.trajectory_parameters import TrajectoryCostParams
+from src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMessage
 from src.planning.trajectory.cost_function import SigmoidStatic2DBoxObstacle
 from src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from src.planning.utils.columns import *
@@ -70,7 +71,7 @@ class WerlingPlanner(TrajectoryPlanner):
         trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, cost_params)
         sorted_idxs = trajectory_costs.argsort()
 
-        debug_results = WerlingPlannerDebugResults(frenet.curve,
+        debug_results = TrajectoryVisualizationMessage(frenet.curve,
                                                    ctrajectories[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES], :, :EGO_V],
                                                    trajectory_costs[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES]])
 
@@ -212,19 +213,3 @@ class FrenetConstraints:
 
     def get_grid_d(self):
         return np.array(np.meshgrid(self._dx, self._dv, self._da)).T.reshape(-1, 3)
-
-
-# TODO: should inherit DDSMessage once commited and moved to src.planning.messages package
-class WerlingPlannerDebugResults:
-    def __init__(self, _reference_route: np.ndarray, _trajectories: np.ndarray, _costs: np.ndarray):
-        """
-        Message that holds debug results of WerlingPlanner to be broadcasted further
-        :param reference_route: numpy array the refernce route. please see FrenetMovingFrame.curve documentation
-        :param trajectories: a tensor of the best <NUM_ALTERNATIVE_TRAJECTORIES> trajectory points in the vehicle's
-        coordinate frame. numpy array of shape [NUM_ALTERNATIVE_TRAJECTORIES, p, 4] where p is the number of points in
-        each trajectory and each point consists of [x, y, yaw, velocity]
-        :param costs: 1D numpy array of the above trajectories, respectively.
-        """
-        self._reference_route = _reference_route
-        self._trajectories = _trajectories
-        self._costs = _costs
