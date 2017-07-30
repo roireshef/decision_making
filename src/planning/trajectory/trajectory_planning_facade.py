@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Tuple
 
-from src.planning.trajectory.cost_function import CostParams
+from src.planning.trajectory.cost_function import TrajectoryCostParams
 from src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from src.state.enriched_state import State as EnrichedState
 
@@ -50,7 +50,7 @@ class TrajectoryPlanningFacade:
     def __read_current_state(self) -> EnrichedState:
         pass
 
-    def __read_mission_specs(self) -> Tuple[np.ndarray, np.ndarray, CostParams]:
+    def __read_mission_specs(self) -> Tuple[np.ndarray, np.ndarray, TrajectoryCostParams]:
         pass
 
     def __publish_trajectory(self, results):
