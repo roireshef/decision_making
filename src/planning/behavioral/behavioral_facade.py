@@ -1,3 +1,5 @@
+from rte.python.logger.AV_logger import AV_Logger
+from src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
 from src.messages.trajectory_parameters import TrajectoryParameters
 from src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMessage
 from src.planning.behavioral.behavioral_state import BehavioralState
@@ -14,6 +16,8 @@ class BehavioralFacade:
         """
         self._policy = policy
         self._behavioral_state = behavioral_state
+        self._logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
+        self._logger.info("Initialized Behavioral Planner Facade.")
 
     def update_state_and_plan(self):
         """
@@ -41,6 +45,4 @@ class BehavioralFacade:
 
     def __publish_visualization(self, visualization_message: BehavioralVisualizationMessage) -> None:
         pass
-
-
 
