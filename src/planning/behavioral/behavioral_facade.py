@@ -1,6 +1,5 @@
-from src.messages.visualization_message import RvizVisualizationMessage
-
 from src.messages.trajectory_parameters import TrajectoryParameters
+from src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMessage
 from src.planning.behavioral.behavioral_state import BehavioralState
 from src.planning.behavioral.policy import Policy
 from src.planning.navigation.navigation_plan import NavigationPlan
@@ -26,9 +25,9 @@ class BehavioralFacade:
         state = self.__get_current_state()
         navigation_plan = self.__get_current_navigation_plan()
         self._behavioral_state.update_behavioral_state(state, navigation_plan)
-        trajectory_params, visualization_messages = self._policy.plan(behavioral_state=self._behavioral_state)
+        trajectory_params, behavioral_visualization_message = self._policy.plan(behavioral_state=self._behavioral_state)
         self.__publish_results(trajectory_params)
-        self.__publish_visualization(visualization_messages)
+        self.__publish_visualization(behavioral_visualization_message)
 
     # TODO : implement message passing
     def __get_current_state(self) -> State:
@@ -40,6 +39,8 @@ class BehavioralFacade:
     def __publish_results(self, results: TrajectoryParameters) -> None:
         pass
 
-    def __publish_visualization(self, visualization_messages: list[RvizVisualizationMessage]) -> None:
+    def __publish_visualization(self, visualization_message: BehavioralVisualizationMessage) -> None:
         pass
+
+
 
