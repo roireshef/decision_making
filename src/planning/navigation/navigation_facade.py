@@ -12,7 +12,7 @@ class NavigationFacade:
         Recompute navigation plan and update _navigation_plan field. For now, takes a constant plan from configuration.
         :return: Void
         """
-        self._navigation_plan = ONE_TWO_NAVIGATION_PLAN
+        self._navigation_plan = NavigationPlan(ONE_TWO_NAVIGATION_PLAN)
 
     # TODO implement message passing
     def __publish_navigation_plan(self):
