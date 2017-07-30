@@ -1,5 +1,6 @@
-from src.planning.global_constants import DIVISION_FLOATING_ACCURACY
 import math
+
+from src.global_constants import DIVISION_FLOATING_ACCURACY
 
 
 def div(a: float,  b: float, precision: float = DIVISION_FLOATING_ACCURACY):

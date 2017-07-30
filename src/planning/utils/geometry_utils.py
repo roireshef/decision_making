@@ -3,9 +3,9 @@ from typing import Union
 import numpy as np
 from scipy import interpolate as interp
 
-from src.planning.global_constants import *
-from src.planning.utils.columns import *
+from src.global_constants import *
 from src.planning.utils import math as robust_math
+from src.planning.utils.columns import *
 
 
 class CartesianFrame:

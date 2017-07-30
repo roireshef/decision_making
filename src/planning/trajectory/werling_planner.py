@@ -3,7 +3,7 @@ from typing import Union, Tuple
 
 import numpy as np
 
-from src.planning.global_constants import *
+from src.global_constants import *
 from src.planning.trajectory.cost_function import CostParams, SigmoidStatic2DBoxObstacle
 from src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from src.planning.utils.columns import *

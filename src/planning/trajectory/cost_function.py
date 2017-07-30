@@ -2,7 +2,7 @@ from abc import abstractmethod
 
 import numpy as np
 
-from src.planning.global_constants import EXP_CLIP_TH
+from src.global_constants import EXP_CLIP_TH
 from src.planning.utils.geometry_utils import CartesianFrame
 from src.state.enriched_state import ObjectState as EnrichedObjectState
 
