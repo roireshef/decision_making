@@ -56,7 +56,7 @@ class SigmoidStatic2DBoxObstacle(BoxObstacle):
     """
 
     # width is on y, height is on x
-    def __init__(self, x, y, theta, length, width, k, margin):
+    def __init__(self, x: float, y: float, theta: float, length: float, width: float, k: float, margin: float):
         """
         :param x: relative location in vehicle's longitudinal axis
         :param y: relative location in vehicle's lateral axis
