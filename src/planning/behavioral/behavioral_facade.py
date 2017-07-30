@@ -1,10 +1,12 @@
 from src.messages.visualization_message import RvizVisualizationMessage
-
 from src.messages.trajectory_parameters import TrajectoryParameters
 from src.planning.behavioral.behavioral_state import BehavioralState
 from src.planning.behavioral.policy import Policy
 from src.planning.navigation.navigation_plan import NavigationPlan
 from src.state.enriched_state import State
+
+from rte.python.logger.AV_logger import AV_Logger
+from src.planning.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
 
 
 class BehavioralFacade:
@@ -15,6 +17,8 @@ class BehavioralFacade:
         """
         self._policy = policy
         self._behavioral_state = behavioral_state
+        self._logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
+        self._logger.info("Initialized Behavioral Planner Facade.")
 
     def update_state_and_plan(self):
         """
