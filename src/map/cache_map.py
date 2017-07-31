@@ -1,8 +1,7 @@
 import numpy as np
 from .map_model import MapModel
 from abc import ABCMeta, abstractmethod
-
-LARGE_NUM = 1000000
+from decision_making_sim.src.world_generator.constants import *
 
 
 class CacheMap(metaclass=ABCMeta):
@@ -56,8 +55,8 @@ class CacheMap(metaclass=ABCMeta):
         :param y: world coordinates in meters
         :return: road_ids containing the point x, y
         """
-        X = int(round(x / self.cached_map_model.xy2road_map_cell_size))
-        Y = int(round(y / self.cached_map_model.xy2road_map_cell_size))
+        X = int(round(x / ROADS_MAP_TILE_SIZE))
+        Y = int(round(y / ROADS_MAP_TILE_SIZE))
         if (layer, X, Y) in self.cached_map_model.xy2road_map:
             return self.cached_map_model.xy2road_map[(layer, X, Y)]
         return None
@@ -112,7 +111,7 @@ class CacheMap(metaclass=ABCMeta):
             if road_ids is None:
                 road_ids = self.xy2road(1, x, y)
         if road_ids is None or len(road_ids) == 0:
-            return None, None, None, None, None, None, None
+            return None, None, None, None, None, None
 
         closest_dist = LARGE_NUM
         closest_id = closest_sign = closest_yaw = closest_lon = closest_lat = None
@@ -163,7 +162,7 @@ class CacheMap(metaclass=ABCMeta):
         full_lat = lat_dist * sign + 0.5 * lanes_num * lane_width  # latitude relatively to the left road edge
         lane = float(int(full_lat / lane_width))  # from left to right
         lane = np.clip(lane, 0, lanes_num - 1)
-        yaw_in_road = (yaw - road_yaw + 2 * np.pi) % 2 * np.pi
+        yaw_in_road = (yaw - road_yaw + 2 * np.pi) % (2 * np.pi)
         lane_lat = full_lat % lane_width
         return road_id, lane, full_lat, lane_lat, lon, yaw_in_road
 
@@ -234,6 +233,71 @@ class CacheMap(metaclass=ABCMeta):
         shifted_points = points + lat_vec * lat_shift
         return shifted_points
 
+    def lon_2_world(self, road_id, pnt_ind, road_lon, navigation_plan, road_index_in_plan=None):
+        """
+        Calculate world point matching to a given longitude of a given road.
+        If the given longitude exceeds the current road length, then calculate the point in the next road.
+        The next road is picked from the navigation plan.
+        :param road_id: current road_id
+        :param pnt_ind: index of the road point, from which we can search the new point (for speed optimization)
+        :param road_lon: the point's longitude relatively to the start of the road_id
+        :param navigation_plan: of type NavigationPlan, includes list of road_ids
+        :param road_index_in_plan: current index in the navigation plan
+        :return: new road_id (maybe the same one) and its length,
+            most left road point at the given longitude with latitude vector (perpendicular to the local road's tangent),
+            the first point index with longitude > the given longitude (for the next search)
+            the longitude relatively to the next road (in case if the road_id has changed)
+            the navigation plan index
+        """
+        if road_index_in_plan is None:
+            road_index_in_plan = navigation_plan.get_road_index_in_plan(road_id)
+
+        longitudes = self.get_road_attribute(road_id, 'longitudes')
+        if road_lon > longitudes[-1]:  # then advance to the next road
+            road_lon -= longitudes[-1]
+            road_id, road_index_in_plan = navigation_plan.get_next_road(direction=1, road_index=road_index_in_plan)
+            if road_id is None:
+                return None, None, None, None, None, None, None
+            pnt_ind = 1
+            longitudes = self.get_road_attribute(road_id, 'longitudes')
+        points = self.get_road_attribute(road_id, 'points')[0:2].transpose()
+        width = self.get_road_attribute(road_id, 'width')
+        length = self.get_road_attribute(road_id, 'longitudes')[-1]
+        # get point with longitude > cur_lon
+        while pnt_ind < len(points) - 1 and road_lon > longitudes[pnt_ind]:
+            pnt_ind += 1
+        pnt_ind = max(1, pnt_ind)
+        lane_vec = [points[pnt_ind][0] - points[pnt_ind - 1][0], points[pnt_ind][1] - points[pnt_ind - 1][1]]
+        lane_vec_len = np.sqrt(lane_vec[0] * lane_vec[0] + lane_vec[1] * lane_vec[1])
+        lane_vec = [lane_vec[0] / lane_vec_len, lane_vec[1] / lane_vec_len]
+        lat_vec = [lane_vec[1], -lane_vec[0]]
+        center_point = [points[pnt_ind][0] - lane_vec[0] * (longitudes[pnt_ind] - road_lon),
+                        points[pnt_ind][1] - lane_vec[1] * (longitudes[pnt_ind] - road_lon)]
+        left_point = [center_point[0] - lat_vec[0] * width / 2., center_point[1] - lat_vec[1] * width / 2.]
+        # if longitudes[pnt_ind] - cur_lon > cur_lon - longitudes[pnt_ind-1]:
+        #    pnt_ind -= 1
+        return road_id, length, left_point, lat_vec, pnt_ind, road_lon, road_index_in_plan
+
+    def lat_lon_2_world(self, road_id, lat, lon, navigation_plan):
+        """
+        Given road_id, lat & lon, calculate the point in world coordinates.
+        Z coordinate is calculated using the OSM data: if road's head and tail are at different layers (height),
+        then interpolate between them.
+        :param road_id:
+        :param lat:
+        :param lon:
+        :return: point in 3D world coordinates
+        """
+        id, length, left_point, lat_vec, _, _, _ = self.lon_2_world(road_id, 0, lon, navigation_plan)
+        if id != road_id:
+            return None
+        head_layer = self.get_road_attribute(road_id, 'head_layer')
+        tail_layer = self.get_road_attribute(road_id, 'tail_layer')
+        tail_wgt = lon / length
+        Z = head_layer * (1 - tail_wgt) + tail_layer * tail_wgt
+        world_pnt = np.array([left_point[0] + lat_vec[0] * lat, left_point[1] + lat_vec[1] * lat, Z])
+        return world_pnt
+
     def get_path_lookahead(self, road_id, lon, lat, max_lookahead_distance, navigation_plan, direction=1):
         """
         Get path with lookahead distance (starting from certain road, and continuing to the next ones if lookahead distance > road length)
@@ -270,6 +334,8 @@ class CacheMap(metaclass=ABCMeta):
         if direction == 1:
             target_longitude_index = np.argmin(np.abs(longitudes - (residual_lookahead + road_starting_longitude)))
             first_exact_lon_point = self.lat_lon_2_world(road_id, center_road_lat, lon, navigation_plan)
+            if first_exact_lon_point is None:
+                return None
             partial_path_points = path_points[:, closest_longitude_index:target_longitude_index + 1]
             partial_path_points[:, 0] = first_exact_lon_point[0:2]
             achieved_lookahead = road_length - lon
@@ -322,6 +388,8 @@ class CacheMap(metaclass=ABCMeta):
         else:
             lon = road_length - (road_starting_longitude + residual_lookahead)
         last_exact_lon_point = self.lat_lon_2_world(road_id, center_road_lat, lon, navigation_plan)
+        if last_exact_lon_point is None:
+            return None
 
         # if path consists of a single point, add it to the end of route. else, replace last point
         path_length = path.shape[1]
@@ -341,7 +409,7 @@ class CacheMap(metaclass=ABCMeta):
 
         return lat_shifted_path
 
-    def get_uniform_path_lookahead(self, road_id, lat, starting_lon, lon_step, steps_num):
+    def get_uniform_path_lookahead(self, road_id, lat, starting_lon, lon_step, steps_num, navigation_plan):
         """
         Create array of uniformly distanced points along the given road, shifted by lat.
         When some road finishes, it automatically continues to the next road, according to the navigation plan.
@@ -360,74 +428,14 @@ class CacheMap(metaclass=ABCMeta):
         road_index_in_plan = None
         for step in range(steps_num):
             road_id, _, left_point, lat_vec, pnt_ind, lon, road_index_in_plan = \
-                self.lon_2_world(road_id, pnt_ind, lon, road_index_in_plan)
+                self.lon_2_world(road_id, pnt_ind, lon, navigation_plan, road_index_in_plan)
+            if road_id is None:
+                return points, lat_vecs
             world_pnt = [left_point[0] + lat_vec[0] * lat, left_point[1] + lat_vec[1] * lat]
             points = np.concatenate((points, np.array(world_pnt).reshape([2, 1])), axis=1)
             lat_vecs = np.concatenate((lat_vecs, np.array(lat_vec).reshape([2, 1])), axis=1)
             lon += lon_step
         return points, lat_vecs
-
-    def lon_2_world(self, road_id, pnt_ind, road_lon, navigation_plan, road_index_in_plan=None):
-        """
-        Calculate world point matching to a given longitude of a given road.
-        If the given longitude exceeds the current road length, then calculate the point in the next road.
-        The next road is picked from the navigation plan.
-        :param road_id: current road_id
-        :param pnt_ind: index of the road point, from which we can search the new point (for speed optimization)
-        :param road_lon: the point's longitude relatively to the start of the road_id
-        :param road_index_in_plan: current index in the navigation plan
-        :return: new road_id (maybe the same one) and its length,
-            most left road point at the given longitude with latitude vector (perpendicular to the local road's tangent),
-            the first point index with longitude > the given longitude (for the next search)
-            the longitude relatively to the next road (in case if the road_id has changed)
-            the navigation plan index
-        """
-        if road_index_in_plan is None:
-            road_index_in_plan = navigation_plan.get_road_index_in_plan(road_id)
-
-        longitudes = self.get_road_attribute(road_id, 'longitudes')
-        if road_lon > longitudes[-1]:  # then advance to the next road
-            road_lon -= longitudes[-1]
-            road_id, road_index_in_plan = navigation_plan.get_next_road(direction=1, road_index=road_index_in_plan)
-            pnt_ind = 1
-            longitudes = self.get_road_attribute(road_id, 'longitudes')
-        points = self.get_road_attribute(road_id, 'points')[0:2].transpose()
-        width = self.get_road_attribute(road_id, 'width')
-        length = self.get_road_attribute(road_id, 'longitudes')[-1]
-        # get point with longitude > cur_lon
-        while pnt_ind < len(points) - 1 and road_lon > longitudes[pnt_ind]:
-            pnt_ind += 1
-        pnt_ind = max(1, pnt_ind)
-        lane_vec = [points[pnt_ind][0] - points[pnt_ind - 1][0], points[pnt_ind][1] - points[pnt_ind - 1][1]]
-        lane_vec_len = np.sqrt(lane_vec[0] * lane_vec[0] + lane_vec[1] * lane_vec[1])
-        lane_vec = [lane_vec[0] / lane_vec_len, lane_vec[1] / lane_vec_len]
-        lat_vec = [lane_vec[1], -lane_vec[0]]
-        center_point = [points[pnt_ind][0] - lane_vec[0] * (longitudes[pnt_ind] - road_lon),
-                        points[pnt_ind][1] - lane_vec[1] * (longitudes[pnt_ind] - road_lon)]
-        left_point = [center_point[0] - lat_vec[0] * width / 2., center_point[1] - lat_vec[1] * width / 2.]
-        # if longitudes[pnt_ind] - cur_lon > cur_lon - longitudes[pnt_ind-1]:
-        #    pnt_ind -= 1
-        return road_id, length, left_point, lat_vec, pnt_ind, road_lon, road_index_in_plan
-
-    def lat_lon_2_world(self, road_id, lat, lon, navigation_plan):
-        """
-        Given road_id, lat & lon, calculate the point in world coordinates.
-        Z coordinate is calculated using the OSM data: if road's head and tail are at different layers (height),
-        then interpolate between them.
-        :param road_id:
-        :param lat:
-        :param lon:
-        :return: point in 3D world coordinates
-        """
-        id, length, left_point, lat_vec, _, _, _ = self.lon_2_world(road_id, 0, lon, navigation_plan)
-        if id != road_id:
-            return None
-        head_layer = self.get_road_attribute(road_id, 'head_layer')
-        tail_layer = self.get_road_attribute(road_id, 'tail_layer')
-        tail_wgt = lon / length
-        Z = head_layer * (1 - tail_wgt) + tail_layer * tail_wgt
-        world_pnt = np.array([left_point[0] + lat_vec[0] * lat, left_point[1] + lat_vec[1] * lat, Z])
-        return world_pnt
 
     def update_perceived_roads(self):
         pass
