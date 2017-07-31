@@ -4,7 +4,7 @@ from src.messages.dds_nontyped_message import DDSNonTypedMsg
 
 
 class TrajectoryVisualizationMsg(DDSNonTypedMsg):
-    def __init__(self, reference_route: np.ndarray, trajectories: np.ndarray, costs: np.ndarray):
+    def __init__(self, reference_route, trajectories, costs):
         """
         Message that holds debug results of WerlingPlanner to be broadcasted to the visualizer
         :param reference_route: numpy array the refernce route. please see FrenetMovingFrame.curve documentation
