@@ -1,5 +1,4 @@
 import numpy as np
-import pickle
 from .map_model import MapModel
 from abc import ABCMeta, abstractmethod
 
@@ -14,7 +13,7 @@ class CacheMap(metaclass=ABCMeta):
     @abstractmethod
     def load_map(self, map_model_pickle_filename):  # abstract method
         """
-        abstract method
+        abstract method; is implemented in NaiveCacheMap
         :param map_model_pickle_filename: python "pickle" file containing the dictionaries of map_model
         :return:
         """
@@ -434,11 +433,6 @@ class CacheMap(metaclass=ABCMeta):
         pass
 
 
-class NaiveCacheMap(CacheMap):
-    def load_map(self, map_model_pickle_filename):
-        self.cached_map_model = pickle.load(open(map_model_pickle_filename, "rb"))
-
-
 def CalcPointSegmentDist(p, p1, p2):
     """
     Given point p and directed segment p1->p2, calculate:
@@ -460,7 +454,6 @@ def CalcPointSegmentDist(p, p1, p2):
     normal = [v[1], -v[0]]  # normal of v toward right if v looks up
     dotn = normal[0] * v1[0] + normal[1] * v1[1]
     sign = np.sign(dotn)
-    # print 'p='+str(p)+' p1='+str(p1)+' p2='+str(p2)+' dot1='+str(dot1)+' dot2='+str(dot2)+' dotn='+str(dotn)
     proj = 0
     if dot1 > 0 and dot2 > 0:  # then p is between p1,p2, so calc dist to the line
         one_over_vnorm = 1. / np.sqrt(v[0] * v[0] + v[1] * v[1])
