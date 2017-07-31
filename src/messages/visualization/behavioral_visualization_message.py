@@ -1,6 +1,6 @@
 import numpy as np
 
-from src.messages.dds_message import DDSMessage
+from decision_making.src.messages.dds_message import DDSMessage
 
 
 class BehavioralVisualizationMessage(DDSMessage):

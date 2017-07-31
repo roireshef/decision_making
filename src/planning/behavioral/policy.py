@@ -1,8 +1,8 @@
 from abc import ABCMeta, abstractmethod
 
-from src.messages.trajectory_parameters import TrajectoryParameters
-from src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMessage
-from src.planning.behavioral.behavioral_state import BehavioralState
+from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
+from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMessage
+from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 
 
 class Policy(metaclass=ABCMeta):

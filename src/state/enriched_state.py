@@ -1,7 +1,7 @@
 from typing import List
 
 import numpy as np
-from src.state.state import *
+from decision_making.src.state.state import *
 
 
 class EnrichedRoadLocalization(RoadLocalization):

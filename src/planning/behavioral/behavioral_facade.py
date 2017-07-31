@@ -1,11 +1,13 @@
+import time
+from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from rte.python.logger.AV_logger import AV_Logger
-from src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
-from src.messages.trajectory_parameters import TrajectoryParameters
-from src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMessage
-from src.planning.behavioral.behavioral_state import BehavioralState
-from src.planning.behavioral.policy import Policy
-from src.planning.navigation.navigation_plan import NavigationPlan
-from src.state.enriched_state import State
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
+from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
+from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMessage
+from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
+from decision_making.src.planning.behavioral.policy import Policy
+from decision_making.src.planning.navigation.navigation_plan import NavigationPlan
+from decision_making.src.state.enriched_state import State
 
 
 class BehavioralFacade:
@@ -46,3 +48,15 @@ class BehavioralFacade:
     def __publish_visualization(self, visualization_message: BehavioralVisualizationMessage) -> None:
         pass
 
+
+if __name__ == '__main__':
+    dds = DdsPubSub("DecisionMakingParticipantLibrary::BehavioralPlanner",
+                    '../../../../common_data/dds/generatedFiles/xml/decisionMakingMain.xml')
+
+
+    while True:
+        input_state = dds.poll(topic='BehavioralPlannerSub::StateReader', timeout=1)
+
+        print (input_state)
+
+        time.sleep(1)
