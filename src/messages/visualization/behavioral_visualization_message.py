@@ -1,5 +1,3 @@
-import numpy as np
-
 from src.messages.dds_nontyped_message import DDSNonTypedMsg
 
 
