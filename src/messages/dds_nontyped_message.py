@@ -12,16 +12,18 @@ class DDSNonTypedMsg(DDSMsg):
         used to create the dds message
         :return: dict containing all the fields of the class
         """
-        complex_dict = self.__dict__.copy()
-        for key, val in complex_dict.items():
+        ser_dict = {}
+        for key, val in self.__dict__.items():
             if issubclass(type(val), np.ndarray):
-                complex_dict[key] = {'array': val.flat.__array__(), 'shape': val.shape, 'type': 'numpy.ndarray'}
-            if issubclass(type(val), DDSMsg):
+                ser_dict[key] = {'array': val.flat.__array__(), 'shape': val.shape, 'type': 'numpy.ndarray'}
+            elif issubclass(type(val), DDSMsg):
                 item_dict = val.serialize()
-                class_type = re.sub('\'>', '', re.sub('<class \'', '', str(type(val))))
+                class_type = val.__module__ + "." + val.__class__.__name__
                 item_dict['type'] = class_type
-                complex_dict[key] = item_dict
-        return complex_dict
+                ser_dict[key] = item_dict
+            else:
+                ser_dict[key] = val
+        return ser_dict
 
     @classmethod
     def deserialize(cls, message):
