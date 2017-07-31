@@ -1,4 +1,4 @@
-from ddspubsub import DdsPubSub
+from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from rte.python.logger.AV_logger import AV_Logger
 
 class DM_Module():

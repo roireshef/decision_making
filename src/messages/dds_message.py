@@ -10,10 +10,21 @@ class DDSMessage(metaclass=ABCMeta):
         """
         complex_dict = self.__dict__.copy()
         for key, val in complex_dict.items():
-            if isinstance(val, np.ndarray):
-                complex_dict[key] = {'array': val.flat.__array__(), 'shape': val.shape}
-            if isinstance(val, DDSMessage):
-                complex_dict[key] = val.serialize()
+            if isinstance(val, list):
+                # handle case of list of complex types
+                list_values = val
+                for key_index in range(len(list_values)):
+                    if isinstance(list_values[key_index], np.ndarray):
+                        list_values[key_index] = {'array': list_values[key_index].flat.__array__().tolist(), 'shape': list(list_values[key_index].shape)}
+                    elif isinstance(list_values[key_index], DDSMessage):
+                        list_values[key_index] = list_values[key_index].serialize()
+            else:
+                # TODO: hanlde list of complex types
+                # handle complex types
+                if isinstance(val, np.ndarray):
+                    complex_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': list(val.shape)}
+                elif isinstance(val, DDSMessage):
+                    complex_dict[key] = val.serialize()
         return complex_dict
 
     @classmethod
@@ -26,7 +37,7 @@ class DDSMessage(metaclass=ABCMeta):
         message_copy = message.copy()
         for name, type in cls.__init__.__annotations__.items():
             if 'numpy.ndarray' in str(type):
-                message_copy[name] = np.array(message_copy[name]['array']).reshape(message_copy[name]['shape'])
+                message_copy[name] = np.array(message_copy[name]['array']).reshape(tuple(message_copy[name]['shape']))
             elif isinstance(type, ABCMeta):
                 real_type = type(type.__name__, '')
                 if isinstance(real_type, DDSMessage):

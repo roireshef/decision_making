@@ -1,6 +1,9 @@
+import time
 from enum import Enum
 from typing import Tuple
 
+from common_data.dds.python.Communication.ddspubsub import DdsPubSub
+from decision_making.src.infra.dm_module import DM_Module
 from decision_making.src.planning.trajectory.cost_function import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.state.enriched_state import State as EnrichedState
@@ -8,16 +11,17 @@ from decision_making.src.state.enriched_state import State as EnrichedState
 import numpy as np
 
 
-class TrajectoryPlanningFacade:
+class TrajectoryPlanningFacade(DM_Module):
     """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
     """
 
-    def __init__(self, strategy_handlers: dict):
+    def __init__(self, dds : DdsPubSub, logger, strategy_handlers: dict):
         """
         :param strategy_handlers: a dictionary of trajectory planners as strategy handlers -
         types are {TrajectoryPlanningStrategy: TrajectoryPlanner}
         """
+        super().__init__(DDS=dds, logger=logger)
         self.__validate_strategy_handlers(strategy_handlers)
         self.__strategy_handlers = strategy_handlers
 
@@ -48,7 +52,8 @@ class TrajectoryPlanningFacade:
 
     # TODO: implement message passing
     def __read_current_state(self) -> EnrichedState:
-        pass
+        input_state = self.DDS.get_latest_sample(topic='TrajectoryPlannerSub::StateReader', timeout=1)
+        return input_state
 
     def __read_mission_specs(self) -> Tuple[np.ndarray, np.ndarray, TrajectoryCostParams]:
         pass
@@ -64,3 +69,21 @@ class TrajectoryPlanningStrategy(Enum):
     HIGHWAY = 0
     TRAFFIC_JAM = 1
     PARKING = 2
+
+
+if __name__ == '__main__':
+    strategy_handlers = dict()
+
+    logger = None
+    dds_object = DdsPubSub("DecisionMakingParticipantLibrary::TrajectoryPlanner",
+                    '../../../../common_data/dds/generatedFiles/xml/decisionMakingMain.xml')
+
+    trajecotry_planning_module = TrajectoryPlanningFacade(dds=dds_object, logger=logger,
+                                                          strategy_handlers=strategy_handlers)
+    trajecotry_planning_module.start()
+
+    while True:
+        trajecotry_planning_module.plan(strategy=TrajectoryPlanningStrategy.HIGHWAY)
+        time.sleep(1)
+
+    trajecotry_planning_module.stop()

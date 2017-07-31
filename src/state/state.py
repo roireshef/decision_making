@@ -1,4 +1,7 @@
-class RoadLocalization:
+from decision_making.src.messages.dds_message import DDSMessage
+
+
+class RoadLocalization(DDSMessage):
     def __init__(self, road_id, lane, intra_lane_lat, road_lon, intra_lane_yaw):
         """
         location in road coordinates (road_id, lat, lon)
@@ -15,7 +18,7 @@ class RoadLocalization:
         self.intra_lane_yaw = intra_lane_yaw
 
 
-class OccupancyState:
+class OccupancyState(DDSMessage):
     def __init__(self, free_space, confidence):
         """
         free space description
@@ -26,14 +29,14 @@ class OccupancyState:
         self.confidence = confidence
 
 
-class ObjectSize:
+class ObjectSize(DDSMessage):
     def __init__(self, length, width, height):
         self.length = length
         self.width = width
         self.height = height
 
 
-class ObjectState:
+class ObjectState(DDSMessage):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence):
         """
         base class for ego, static & dynamic objects
@@ -60,7 +63,7 @@ class ObjectState:
         self.localization_confidence = localization_confidence
 
 
-class DynamicObject(ObjectState):
+class DynamicObject(ObjectState, DDSMessage):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
                  v_x, v_y):
         """
@@ -83,7 +86,7 @@ class DynamicObject(ObjectState):
         self.v_y = v_y
 
 
-class EgoState(DynamicObject):
+class EgoState(DynamicObject, DDSMessage):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
                  v_x, v_y, steering_angle):
         """
@@ -106,7 +109,7 @@ class EgoState(DynamicObject):
         self.steering_angle = steering_angle
 
 
-class LanesStructure:
+class LanesStructure(DDSMessage):
     def __init__(self, center_of_lane_points, width_vec):
         """
         this class is instantiated for each lane
@@ -117,7 +120,7 @@ class LanesStructure:
         self.width_vec = width_vec
 
 
-class PerceivedRoad:
+class PerceivedRoad(DDSMessage):
     def __init__(self, timestamp, lanes_structure, confidence):
         """
         the road of ego as it viewed by perception
@@ -130,7 +133,7 @@ class PerceivedRoad:
         self.confidence = confidence
 
 
-class State():
+class State(DDSMessage):
     def __init__(self, occupancy_state, static_objects, dynamic_objects, ego_state, perceived_road):
         """
         main class for the world state
@@ -140,7 +143,6 @@ class State():
         :param ego_state:
         :param perceived_road: the road of ego as it viewed by perception, relatively to ego
         """
-        super.__init__()
         self.occupancy_state = occupancy_state
         self.static_objects = static_objects
         self.dynamic_objects = dynamic_objects

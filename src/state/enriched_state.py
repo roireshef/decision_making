@@ -140,8 +140,7 @@ class EnrichedPerceivedRoad(PerceivedRoad):
 
 class EnrichedState(State):
     def __init__(self, occupancy_state: EnrichedOccupancyState, static_objects:
-    List[EnrichedObjectState], dynamic_objects: List[EnrichedDynamicObject],
-                 ego_state: EnrichedEgoState, perceived_road: EnrichedPerceivedRoad):
+    list, dynamic_objects: list, ego_state: EnrichedEgoState, perceived_road: EnrichedPerceivedRoad):
         """
         main class for the world state
         :param occupancy_state: free space
