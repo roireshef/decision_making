@@ -7,7 +7,6 @@ from src.global_constants import *
 from src.planning.utils import math as robust_math
 from src.planning.utils.columns import *
 
-
 class CartesianFrame:
     @staticmethod
     def homo_matrix_2d(rotation_angle: float, translation: np.ndarray) -> np.ndarray:
