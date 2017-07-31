@@ -7,11 +7,13 @@ class state_module(DM_Module):
 
     def start(self):
         self.logger.info("Starting state module")
-        self.DDS.subscribe("StateSubscriber::DynamicObjectsReader", self.DynamicObj_callback)
+        self.DDS.subscribe("StateSubscriber::DynamicObjectsReader", self.__dynamic_obj_callback)
 
     def stop(self):
         self.logger.info("Stopping state module")
         self.DDS.unsubscribe("StateSubscriber::DynamicObjectsReader")
 
-    def DynamicObj_callback(self, dict):
-        self.logger.info("got dynamic objects %s", dict)
+    def __dynamic_obj_callback(self, objects: dict):
+        self.logger.info("got dynamic objects %s", objects)
+
+
