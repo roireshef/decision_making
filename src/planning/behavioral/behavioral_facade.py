@@ -1,7 +1,7 @@
 from rte.python.logger.AV_logger import AV_Logger
 from src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
-from src.messages.trajectory_parameters import TrajectoryParameters
-from src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMessage
+from src.messages.trajectory_parameters import TrajectoryParamsMsg
+from src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from src.planning.behavioral.behavioral_state import BehavioralState
 from src.planning.behavioral.policy import Policy
 from src.planning.navigation.navigation_plan import NavigationPlan
@@ -40,9 +40,9 @@ class BehavioralFacade:
     def __get_current_navigation_plan(self) -> NavigationPlan:
         pass
 
-    def __publish_results(self, results: TrajectoryParameters) -> None:
+    def __publish_results(self, results: TrajectoryParamsMsg) -> None:
         pass
 
-    def __publish_visualization(self, visualization_message: BehavioralVisualizationMessage) -> None:
+    def __publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
         pass
 

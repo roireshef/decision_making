@@ -1,9 +1,9 @@
 import numpy as np
 
-from src.messages.dds_message import DDSMessage
+from src.messages.dds_message import DDSTypedMsg
 
 
-class TrajectoryParameters(DDSMessage):
+class TrajectoryParamsMsg(DDSTypedMsg):
     def __init__(self, reference_route: np.ndarray, target_state: np.array, cost_params: TrajectoryCostParams):
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
@@ -16,7 +16,7 @@ class TrajectoryParameters(DDSMessage):
         self.cost_params = cost_params
 
 
-class TrajectoryCostParams(DDSMessage):
+class TrajectoryCostParams(DDSTypedMsg):
     def __init__(self, time: float, ref_deviation_weight: float, lane_deviation_weight: float, obstacle_weight: float,
                  left_lane_offset: float, right_lane_offset: float, left_deviation_exp: float,
                  right_deviation_exp: float, obstacle_offset: float, obstacle_exp: float, v_x_min_limit: float,

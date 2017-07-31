@@ -5,7 +5,7 @@ import numpy as np
 
 from src.global_constants import *
 from src.messages.trajectory_parameters import TrajectoryCostParams
-from src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMessage
+from src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from src.planning.trajectory.cost_function import SigmoidStatic2DBoxObstacle
 from src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from src.planning.utils.columns import *
@@ -71,7 +71,7 @@ class WerlingPlanner(TrajectoryPlanner):
         trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, cost_params)
         sorted_idxs = trajectory_costs.argsort()
 
-        debug_results = TrajectoryVisualizationMessage(frenet.curve,
+        debug_results = TrajectoryVisualizationMsg(frenet.curve,
                                                    ctrajectories[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES], :, :EGO_V],
                                                    trajectory_costs[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES]])
 

@@ -1,17 +1,10 @@
-from src.messages.dds_message import DDSMessage
+import sys
 import numpy as np
 
-
-class Foo(DDSMessage):
-    def __init__(self, a: float, b: float):
-        self._a = a
-        self._b = b
-
-
-class Voo(DDSMessage):
-    def __init__(self, x: Foo, y: np.ndarray):
-        self._x = x
-        self._y = y
+if sys.version_info > (3, 0):
+    from test.messages.typed_messages_fixture import *
+else:
+    from test.messages.nontyped_messages_fixture import *
 
 
 def test_serialize_dummyMsg_successful():
@@ -21,4 +14,6 @@ def test_serialize_dummyMsg_successful():
 
     v_new = Voo.deserialize(v_ser)
 
-    assert isinstance(v_new, DDSMessage)
+    assert isinstance(v_new, Voo)
+    assert isinstance(v_new.x, Foo)
+    assert isinstance(v_new.y, np.ndarray)

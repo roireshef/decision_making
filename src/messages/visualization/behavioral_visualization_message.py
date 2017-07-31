@@ -1,9 +1,9 @@
 import numpy as np
 
-from src.messages.dds_message import DDSMessage
+from src.messages.dds_nontyped_message import DDSNonTypedMsg
 
 
-class BehavioralVisualizationMessage(DDSMessage):
+class BehavioralVisualizationMsg(DDSNonTypedMsg):
     def __init__(self, reference_route: np.ndarray):
         """
         The struct used for communicating the behavioral plan to the visualizer.

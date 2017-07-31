@@ -1,9 +1,9 @@
 import numpy as np
 
-from src.messages.dds_message import DDSMessage
+from src.messages.dds_nontyped_message import DDSNonTypedMsg
 
 
-class TrajectoryVisualizationMessage(DDSMessage):
+class TrajectoryVisualizationMsg(DDSNonTypedMsg):
     def __init__(self, reference_route: np.ndarray, trajectories: np.ndarray, costs: np.ndarray):
         """
         Message that holds debug results of WerlingPlanner to be broadcasted to the visualizer
