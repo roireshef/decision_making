@@ -1,12 +1,18 @@
 from enum import Enum
+from typing import Tuple
 
+from src.planning.trajectory.cost_function import TrajectoryCostParams
 from src.planning.trajectory.trajectory_planner import TrajectoryPlanner
+from src.state.enriched_state import State as EnrichedState
+
+import numpy as np
 
 
 class TrajectoryPlanningFacade:
     """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
     """
+
     def __init__(self, strategy_handlers: dict):
         """
         :param strategy_handlers: a dictionary of trajectory planners as strategy handlers -
@@ -21,10 +27,15 @@ class TrajectoryPlanningFacade:
         :param strategy: desired planning strategy
         :return: no return value. results are published in self.__publish_results()
         """
-        state, ref_route, goal, cost_params = self.__get_mission_specs()
-        results, debug_data = self.__strategy_handlers[strategy].plan(state, ref_route, goal, cost_params)
-        self.__publish_results(results)
-        self.__publish_debug(debug_data)
+        state = self.__read_current_state()
+        ref_route, goal, cost_params = self.__read_mission_specs()
+
+        trajectory, cost, debug_results = self.__strategy_handlers[strategy].plan(state, ref_route, goal, cost_params)
+
+        # TODO: publish cost to behavioral layer?
+
+        self.__publish_trajectory(trajectory)
+        self.__publish_debug(debug_results)
 
     # TODO: should also be published to DDS logger
     @staticmethod
@@ -36,13 +47,13 @@ class TrajectoryPlanningFacade:
                 raise ValueError('strategy_handlers does not contain a TrajectoryPlanner impl. for ' + elem)
 
     # TODO: implement message passing
-    def __get_current_state(self):
+    def __read_current_state(self) -> EnrichedState:
         pass
 
-    def __get_mission_specs(self):
+    def __read_mission_specs(self) -> Tuple[np.ndarray, np.ndarray, TrajectoryCostParams]:
         pass
 
-    def __publish_results(self, results):
+    def __publish_trajectory(self, results):
         pass
 
     def __publish_debug(self, debug_data):
