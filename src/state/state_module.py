@@ -46,6 +46,7 @@ if __name__ == '__main__':
                                        perceived_road=perceived_road)
 
         enriched_state_serialized = enriched_state.serialize()
+        print (enriched_state_serialized)
         state_module.DDS.publish(topic='StateModulePub::StateWriter', data=enriched_state_serialized)
 
         time.sleep(1)

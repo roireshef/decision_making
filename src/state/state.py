@@ -2,17 +2,17 @@ from decision_making.src.messages.dds_message import DDSMessage
 
 
 class RoadLocalization(DDSMessage):
-    def __init__(self, road_id, lane, intra_lane_lat, road_lon, intra_lane_yaw):
+    def __init__(self, road_id, lane_num, intra_lane_lat, road_lon, intra_lane_yaw):
         """
         location in road coordinates (road_id, lat, lon)
         :param road_id:
-        :param lane: 0 is the leftmost
-        :param intra_lane_lat: in meters, 0 is lane left edge
+        :param lane_num: 0 is the leftmost
+        :param intra_lane_lat: in meters, 0 is lane_num left edge
         :param road_lon: in meters, longitude relatively to the road start
         :param intra_lane_yaw: 0 is along road's local tangent
         """
         self.road_id = road_id
-        self.lane_num = lane
+        self.lane_num = lane_num
         self.intra_lane_lat = intra_lane_lat
         self.road_lon = road_lon
         self.intra_lane_yaw = intra_lane_yaw
@@ -51,13 +51,13 @@ class ObjectState(DDSMessage):
         :param confidence: of object's existence
         :param localization_confidence: of location
         """
-        self.id = obj_id
-        self._timestamp = timestamp
+        self.obj_id = obj_id
+        self.timestamp = timestamp
         self.x = x
         self.y = y
         self.z = z
         self.yaw = yaw
-        self.object_size = size
+        self.size = size
         self.road_localization = road_localization
         self.confidence = confidence
         self.localization_confidence = localization_confidence
@@ -128,7 +128,7 @@ class PerceivedRoad(DDSMessage):
         :param lanes_structure: list of elements of type LanesStructure, per lane
         :param confidence:
         """
-        self._timestamp = timestamp
+        self.timestamp = timestamp
         self.lanes_structure = lanes_structure
         self.confidence = confidence
 

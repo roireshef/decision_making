@@ -10,21 +10,11 @@ class DDSMessage(metaclass=ABCMeta):
         """
         complex_dict = self.__dict__.copy()
         for key, val in complex_dict.items():
-            if isinstance(val, list):
-                # handle case of list of complex types
-                list_values = val
-                for key_index in range(len(list_values)):
-                    if isinstance(list_values[key_index], np.ndarray):
-                        list_values[key_index] = {'array': list_values[key_index].flat.__array__().tolist(), 'shape': list(list_values[key_index].shape)}
-                    elif isinstance(list_values[key_index], DDSMessage):
-                        list_values[key_index] = list_values[key_index].serialize()
-            else:
-                # TODO: hanlde list of complex types
-                # handle complex types
-                if isinstance(val, np.ndarray):
-                    complex_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': list(val.shape)}
-                elif isinstance(val, DDSMessage):
-                    complex_dict[key] = val.serialize()
+            # handle complex types
+            if isinstance(val, np.ndarray):
+                complex_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': list(val.shape)}
+            elif isinstance(val, DDSMessage):
+                complex_dict[key] = val.serialize()
         return complex_dict
 
     @classmethod
