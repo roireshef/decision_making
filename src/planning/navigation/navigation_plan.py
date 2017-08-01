@@ -1,7 +1,13 @@
+import numpy as np
+
 class NavigationPlan:
     """
     This class hold the navigation plan.
     """
+    def __init__(self, road_ids: np.array):
+        """
+        Initialization of the navigation plan. This is an initial implementation which contains only a list o road ids.
+        :param road_ids: list of road ids corresponding to the map.
+        """
+        self._road_ids = road_ids
 
-    # TODO: implement class
-    pass
