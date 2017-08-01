@@ -1,16 +1,24 @@
 from abc import ABCMeta, abstractmethod
+from typing import Tuple
+
+import numpy as np
+
+from src.messages.trajectory_parameters import TrajectoryCostParams
+from src.state.enriched_state import State as EnrichedState
 
 
 class TrajectoryPlanner(metaclass=ABCMeta):
+    # TODO: object type-hint should be changed to DDSMessage type once commited
     @abstractmethod
-    def plan(self, state, reference_route, goal, cost_params):
+    def plan(self, state: EnrichedState, reference_route: np.ndarray, goal: np.ndarray,
+             cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, object]:
         """
-        plans a trajectory according to the specifications in the arguments
+        Plans a trajectory according to the specifications in the arguments
         :param state: environment & ego state object
-        :param reference_route: a route given by the previous planning layer, often the center of lane
-        :param goal: the goal state to plan toward
+        :param reference_route: a reference route (often the center of lane). A numpy array of the shape [-1, 2]
+        :param goal: A numpy array of the desired ego-state to plan towards, from utils.columns (ego coord-frame)
         :param cost_params: a dictionary of parameters that specify how to build the planning's cost function
-        :return: a numpy tensor of the following dimensions [0-trajectories, 1-trajectory interm.
-            states, 2-interm state of the form [x, y, yaw, velocity] in vehicle's coordinate frame]
+        :return: a tuple of: (numpy array: trajectory - each row is [x, y, yaw, velocity], trajectory cost,
+        debug results dictionary)
         """
         pass

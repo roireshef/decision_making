@@ -62,8 +62,7 @@ class ObjectState:
 
 class DynamicObject(ObjectState):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
-                 v_x,
-                 v_y):
+                 v_x, v_y):
         """
         both ego and other dynamic objects
         :param obj_id:
@@ -76,18 +75,17 @@ class DynamicObject(ObjectState):
         :param road_localization:
         :param confidence:
         :param localization_confidence:
-        :param v_x: for ego in world coordinates, for the rest relatively to ego
-        :param v_y:
+        :param v_x: in m/sec; for ego in world coordinates, for the rest relatively to ego
+        :param v_y: in m/sec
         """
-        super().__init__(obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence)
+        ObjectState.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence)
         self.v_x = v_x
         self.v_y = v_y
 
 
 class EgoState(DynamicObject):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
-                 v_x,
-                 v_y, steering_angle):
+                 v_x, v_y, steering_angle):
         """
         :param obj_id:
         :param timestamp:
@@ -99,13 +97,12 @@ class EgoState(DynamicObject):
         :param road_localization:
         :param confidence:
         :param localization_confidence:
-        :param v_x:
-        :param v_y:
+        :param v_x: in m/sec
+        :param v_y: in m/sec
         :param steering_angle: equivalent to knowing of turn_radius
         """
-        super().__init__(obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
-                         v_x,
-                         v_y)
+        DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
+                         v_x, v_y)
         self.steering_angle = steering_angle
 
 
