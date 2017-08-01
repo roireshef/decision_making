@@ -1,10 +1,9 @@
 import numpy as np
 
-from decision_making.src.messages.dds_message import DDSMessage
+from decision_making.src.messages.dds_typed_message import DDSTypedMsg
 
 
-
-class TrajectoryCostParams(DDSMessage):
+class TrajectoryCostParams(DDSTypedMsg):
     def __init__(self, time: float, ref_deviation_weight: float, lane_deviation_weight: float, obstacle_weight: float,
                  left_lane_offset: float, right_lane_offset: float, left_deviation_exp: float,
                  right_deviation_exp: float, obstacle_offset: float, obstacle_exp: float, v_x_min_limit: float,
@@ -25,7 +24,7 @@ class TrajectoryCostParams(DDSMessage):
         self.a_x_max_limit = a_x_max_limit
 
 
-class TrajectoryParameters(DDSMessage):
+class TrajectoryParameters(DDSTypedMsg):
     def __init__(self, reference_route: np.ndarray, target_state: np.array, cost_params: TrajectoryCostParams):
         """
         The struct used for communicating the behavioral plan to the trajectory planner.

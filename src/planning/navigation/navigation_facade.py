@@ -1,5 +1,5 @@
-from src.planning.navigation.constants import ONE_TWO_NAVIGATION_PLAN
-from src.planning.navigation.navigation_plan import NavigationPlan
+from decision_making.src.planning.navigation.constants import ONE_TWO_NAVIGATION_PLAN
+from decision_making.src.planning.navigation.navigation_plan import NavigationPlan
 
 
 class NavigationFacade:
