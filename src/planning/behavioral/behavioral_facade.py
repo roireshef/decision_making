@@ -39,7 +39,7 @@ class BehavioralFacade(DM_Module):
     # TODO : implement message passing
     def __get_current_state(self) -> State:
         input_state = self.DDS.get_latest_sample(topic='BehavioralPlannerSub::StateReader', timeout=1)
-        print('Received: ' + input_state)
+        print('Received: ' + str(input_state))
     
     def __get_current_navigation_plan(self) -> NavigationPlan:
         pass

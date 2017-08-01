@@ -15,7 +15,7 @@ class DDSTypedMsg(DDSMsg):
         ser_dict = {}
         for key, val in self_dict.items():
             if isinstance(val, np.ndarray):
-                ser_dict[key] = {'array': val.flat.__array__(), 'shape': val.shape}
+                ser_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': val.shape}
             elif inspect.isclass(type(val)) and issubclass(type(val), DDSMsg):
                 ser_dict[key] = val.serialize()
             else:
