@@ -4,7 +4,7 @@ from typing import Tuple
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.infra.dm_module import DM_Module
-from decision_making.src.planning.trajectory.cost_function import TrajectoryCostParams
+from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.state.enriched_state import State as EnrichedState
 

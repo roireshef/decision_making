@@ -1,6 +1,6 @@
 from rte.python.logger.AV_logger import AV_Logger
 from ddspubsub import DdsPubSub
-from src.state.state_module import state_module
+from decision_making.src.state.state_module import state_module
 import time
 
 

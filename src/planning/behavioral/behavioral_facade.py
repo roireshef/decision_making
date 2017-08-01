@@ -4,7 +4,7 @@ from decision_making.src.infra.dm_module import DM_Module
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
-from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMessage
+from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.policy import Policy, DefaultPolicy
 from decision_making.src.planning.navigation.navigation_plan import NavigationPlan
@@ -39,7 +39,7 @@ class BehavioralFacade(DM_Module):
     # TODO : implement message passing
     def __get_current_state(self) -> State:
         input_state = self.DDS.get_latest_sample(topic='BehavioralPlannerSub::StateReader', timeout=1)
-        print(input_state)
+        print('Received: ' + input_state)
     
     def __get_current_navigation_plan(self) -> NavigationPlan:
         pass
@@ -47,7 +47,7 @@ class BehavioralFacade(DM_Module):
     def __publish_results(self, results: TrajectoryParameters) -> None:
         pass
 
-    def __publish_visualization(self, visualization_message: BehavioralVisualizationMessage) -> None:
+    def __publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
         pass
 
 
