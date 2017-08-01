@@ -28,7 +28,8 @@ class DM_ModuleProcess():
 
 
     def start_process(self):
-        self.process = Process(target = self.module_process_entry)
+        process_name = "DM_process_{}".format(self.name)
+        self.process = Process(target=self.module_process_entry, name=process_name)
         self.process.start()
 
 
