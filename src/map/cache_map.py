@@ -255,7 +255,7 @@ class CacheMap(metaclass=ABCMeta):
         longitudes = self.get_road_attribute(road_id, 'longitudes')
         if road_lon > longitudes[-1]:  # then advance to the next road
             road_lon -= longitudes[-1]
-            road_id, road_index_in_plan = navigation_plan.get_next_road(direction=1, road_index=road_index_in_plan)
+            road_id, road_index_in_plan = navigation_plan.get_next_road(1, road_index_in_plan)
             if road_id is None:
                 return None, None, None, None, None, None, None
             pnt_ind = 1
