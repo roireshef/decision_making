@@ -1,5 +1,6 @@
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from rte.python.logger.AV_logger import AV_Logger
+from abc import abstractmethod
 
 class DM_Module():
 
@@ -7,11 +8,12 @@ class DM_Module():
         self.DDS = DDS
         self.logger = logger
 
+    @abstractmethod
     def start(self):
-        self.logger.info('starting')
+        pass
 
+    @abstractmethod
     def stop(self):
-        self.logger.info('stopping')
+        pass
 
-    def tick(self):
-        self.logger.info('tick')
+
