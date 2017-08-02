@@ -10,10 +10,11 @@ else:
 def test_serialize_dummyMsg_successful():
     f = Foo(2, 3)
     v = Voo(f, np.array([[.1, .2, 3], [11, 22, 33]]))
-    v_ser = v.serialize()
+    w = Woo(list((v, v)))
+    w_ser = w.serialize()
 
-    v_new = Voo.deserialize(v_ser)
+    w_new = Woo.deserialize(w_ser)
 
-    assert isinstance(v_new, Voo)
-    assert isinstance(v_new.x, Foo)
-    assert isinstance(v_new.y, np.ndarray)
+    assert isinstance(w_new, Woo)
+    assert isinstance(w_new.l, list)
+    assert isinstance(w_new.l[0].y, np.ndarray)

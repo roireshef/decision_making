@@ -11,3 +11,8 @@ class Voo(DDSNonTypedMsg):
     def __init__(self, x, y):
         self.x = x
         self.y = y
+
+
+class Woo(DDSNonTypedMsg):
+    def __init__(self, l):
+        self.l = l

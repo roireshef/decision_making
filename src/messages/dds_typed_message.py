@@ -1,4 +1,6 @@
 import inspect
+from typing import List, TypeVar
+import typing
 
 import numpy as np
 
@@ -16,7 +18,9 @@ class DDSTypedMsg(DDSMsg):
         for key, val in self_dict.items():
             if isinstance(val, np.ndarray):
                 ser_dict[key] = {'array': val.flat.__array__(), 'shape': val.shape}
-            elif inspect.isclass(type(val)) and issubclass(type(val), DDSMsg):
+            elif isinstance(val, list):
+                ser_dict[key] = list(map(lambda item: item.serialize(), val))
+            elif inspect.isclass(type(val)) and issubclass(type(val), DDSTypedMsg):
                 ser_dict[key] = val.serialize()
             else:
                 ser_dict[key] = val
@@ -32,11 +36,12 @@ class DDSTypedMsg(DDSMsg):
         :return: object of type cls, constructed with the arguments from message
         """
         message_copy = message.copy()
-        for name, type in cls.__init__.__annotations__.items():
-            if 'numpy.ndarray' in str(type):
-                message_copy[name] = np.array(message_copy[name]['array']).reshape(message_copy[name]['shape'])
-            elif isinstance(type, ABCMeta):
-                real_type = type(type.__name__, '')
-                if isinstance(real_type, DDSTypedMsg):
-                    message_copy[name] = real_type.deserialize(message_copy[name])
+        for name, tpe in cls.__init__.__annotations__.items():
+            if inspect.isclass(tpe):
+                if issubclass(tpe, np.ndarray):
+                    message_copy[name] = np.array(message_copy[name]['array']).reshape(message_copy[name]['shape'])
+                elif issubclass(tpe, List):
+                    message_copy[name] = list(map(lambda d: tpe.__args__[0].deserialize(d), message[name]))
+                elif issubclass(tpe, DDSTypedMsg):
+                    message_copy[name] = tpe.deserialize(message_copy[name])
         return cls(**message_copy)
