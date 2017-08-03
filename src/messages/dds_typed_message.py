@@ -15,13 +15,17 @@ class DDSTypedMsg(DDSMsg):
         """
         self_dict = self.__dict__
         ser_dict = {}
-        for key, val in self_dict.items():
-            if isinstance(val, np.ndarray):
-                ser_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': val.shape}
-            elif inspect.isclass(type(val)) and issubclass(type(val), DDSTypedMsg):
-                ser_dict[key] = val.serialize()
-            else:
-                ser_dict[key] = val
+        for name, tpe in self.__init__.__annotations__.items():
+            if inspect.isclass(tpe):
+                if issubclass(tpe, np.ndarray):
+                    ser_dict[name] = {'array': self_dict[name].flat.__array__().tolist(),
+                                      'shape': list(self_dict[name].shape)}
+                elif issubclass(tpe, list):
+                    ser_dict[name] = list(map(lambda x: x.serialize(), self_dict[name]))
+                elif inspect.isclass(tpe) and issubclass(tpe, DDSTypedMsg):
+                    ser_dict[name] = self_dict[name].serialize()
+                else:
+                    ser_dict[name] = self_dict[name]
         return ser_dict
 
 
@@ -33,13 +37,15 @@ class DDSTypedMsg(DDSMsg):
         :param message: dict containing all fields of the class
         :return: object of type cls, constructed with the arguments from message
         """
-        message_copy = message.copy()
+        deser_dict = {}
         for name, tpe in cls.__init__.__annotations__.items():
             if inspect.isclass(tpe):
                 if issubclass(tpe, np.ndarray):
-                    message_copy[name] = np.array(message_copy[name]['array']).reshape(message_copy[name]['shape'])
-                elif issubclass(tpe, List):
-                    message_copy[name] = list(map(lambda d: tpe.__args__[0].deserialize(d), message[name]))
+                    deser_dict[name] = np.array(message[name]['array']).reshape(tuple(message[name]['shape']))
                 elif issubclass(tpe, DDSTypedMsg):
-                    message_copy[name] = tpe.deserialize(message_copy[name])
-        return cls(**message_copy)
+                    deser_dict[name] = tpe.deserialize(message[name])
+                elif issubclass(tpe, List):
+                    deser_dict[name] = list(map(lambda d: tpe.__args__[0].deserialize(d), message[name]))
+                else:
+                    deser_dict[name] = message[name]
+        return cls(**deser_dict)

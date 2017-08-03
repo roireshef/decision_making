@@ -2,9 +2,9 @@ import sys
 import numpy as np
 
 if sys.version_info > (3, 0):
-    from test.messages.typed_messages_fixture import *
+    from decision_making.test.messages.typed_messages_fixture import *
 else:
-    from test.messages.nontyped_messages_fixture import *
+    from decision_making.test.messages.nontyped_messages_fixture import *
 
 
 def test_serialize_dummyMsg_successful():
@@ -18,3 +18,5 @@ def test_serialize_dummyMsg_successful():
     assert isinstance(w_new, Woo)
     assert isinstance(w_new.l, list)
     assert isinstance(w_new.l[0].y, np.ndarray)
+
+test_serialize_dummyMsg_successful()
