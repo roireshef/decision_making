@@ -18,5 +18,3 @@ def test_serialize_dummyMsg_successful():
     assert isinstance(w_new, Woo)
     assert isinstance(w_new.l, list)
     assert isinstance(w_new.l[0].y, np.ndarray)
-
-test_serialize_dummyMsg_successful()
