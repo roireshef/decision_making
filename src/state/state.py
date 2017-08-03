@@ -1,21 +1,24 @@
-class RoadLocalization:
-    def __init__(self, road_id, lane, intra_lane_lat, road_lon, intra_lane_yaw):
+from decision_making.src.messages.dds_typed_message import DDSTypedMsg
+
+
+class RoadLocalization(DDSTypedMsg):
+    def __init__(self, road_id, lane_num, intra_lane_lat, road_lon, intra_lane_yaw):
         """
         location in road coordinates (road_id, lat, lon)
         :param road_id:
-        :param lane: 0 is the leftmost
-        :param intra_lane_lat: in meters, 0 is lane left edge
+        :param lane_num: 0 is the leftmost
+        :param intra_lane_lat: in meters, 0 is lane_num left edge
         :param road_lon: in meters, longitude relatively to the road start
         :param intra_lane_yaw: 0 is along road's local tangent
         """
         self.road_id = road_id
-        self.lane_num = lane
+        self.lane_num = lane_num
         self.intra_lane_lat = intra_lane_lat
         self.road_lon = road_lon
         self.intra_lane_yaw = intra_lane_yaw
 
 
-class OccupancyState:
+class OccupancyState(DDSTypedMsg):
     def __init__(self, free_space, confidence):
         """
         free space description
@@ -26,14 +29,14 @@ class OccupancyState:
         self.confidence = confidence
 
 
-class ObjectSize:
+class ObjectSize(DDSTypedMsg):
     def __init__(self, length, width, height):
         self.length = length
         self.width = width
         self.height = height
 
 
-class ObjectState:
+class ObjectState(DDSTypedMsg):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence):
         """
         base class for ego, static & dynamic objects
@@ -48,19 +51,19 @@ class ObjectState:
         :param confidence: of object's existence
         :param localization_confidence: of location
         """
-        self.id = obj_id
-        self._timestamp = timestamp
+        self.obj_id = obj_id
+        self.timestamp = timestamp
         self.x = x
         self.y = y
         self.z = z
         self.yaw = yaw
-        self.object_size = size
+        self.size = size
         self.road_localization = road_localization
         self.confidence = confidence
         self.localization_confidence = localization_confidence
 
 
-class DynamicObject(ObjectState):
+class DynamicObject(ObjectState, DDSTypedMsg):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
                  v_x, v_y):
         """
@@ -83,7 +86,7 @@ class DynamicObject(ObjectState):
         self.v_y = v_y
 
 
-class EgoState(DynamicObject):
+class EgoState(DynamicObject, DDSTypedMsg):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
                  v_x, v_y, steering_angle):
         """
@@ -106,7 +109,7 @@ class EgoState(DynamicObject):
         self.steering_angle = steering_angle
 
 
-class LanesStructure:
+class LanesStructure(DDSTypedMsg):
     def __init__(self, center_of_lane_points, width_vec):
         """
         this class is instantiated for each lane
@@ -117,7 +120,7 @@ class LanesStructure:
         self.width_vec = width_vec
 
 
-class PerceivedRoad:
+class PerceivedRoad(DDSTypedMsg):
     def __init__(self, timestamp, lanes_structure, confidence):
         """
         the road of ego as it viewed by perception
@@ -125,12 +128,12 @@ class PerceivedRoad:
         :param lanes_structure: list of elements of type LanesStructure, per lane
         :param confidence:
         """
-        self._timestamp = timestamp
+        self.timestamp = timestamp
         self.lanes_structure = lanes_structure
         self.confidence = confidence
 
 
-class State:
+class State(DDSTypedMsg):
     def __init__(self, occupancy_state, static_objects, dynamic_objects, ego_state, perceived_road):
         """
         main class for the world state

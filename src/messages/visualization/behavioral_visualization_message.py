@@ -1,4 +1,4 @@
-from src.messages.dds_nontyped_message import DDSNonTypedMsg
+from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
 
 
 class BehavioralVisualizationMsg(DDSNonTypedMsg):

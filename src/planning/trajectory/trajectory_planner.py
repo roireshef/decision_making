@@ -3,8 +3,8 @@ from typing import Tuple
 
 import numpy as np
 
-from src.messages.trajectory_parameters import TrajectoryCostParams
-from src.state.enriched_state import State as EnrichedState
+from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
+from decision_making.src.state.enriched_state import State as EnrichedState
 
 
 class TrajectoryPlanner(metaclass=ABCMeta):

@@ -1,5 +1,5 @@
-from src.messages.dds_message import DDSTypedMsg
-from src.planning.navigation.navigation_plan import NavigationPlan
+from decision_making.src.messages.dds_message import DDSTypedMsg
+from decision_making.src.planning.navigation.navigation_plan import NavigationPlan
 
 
 class NavigationPlanMsg(DDSTypedMsg):

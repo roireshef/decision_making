@@ -4,7 +4,7 @@ import typing
 
 import numpy as np
 
-from src.messages.dds_message import *
+from decision_making.src.messages.dds_message import *
 
 
 class DDSTypedMsg(DDSMsg):
@@ -17,9 +17,7 @@ class DDSTypedMsg(DDSMsg):
         ser_dict = {}
         for key, val in self_dict.items():
             if isinstance(val, np.ndarray):
-                ser_dict[key] = {'array': val.flat.__array__(), 'shape': val.shape}
-            elif isinstance(val, list):
-                ser_dict[key] = list(map(lambda item: item.serialize(), val))
+                ser_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': val.shape}
             elif inspect.isclass(type(val)) and issubclass(type(val), DDSTypedMsg):
                 ser_dict[key] = val.serialize()
             else:

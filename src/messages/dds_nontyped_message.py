@@ -3,7 +3,7 @@ from pydoc import locate
 
 import numpy as np
 
-from src.messages.dds_message import *
+from decision_making.src.messages.dds_message import *
 
 
 class DDSNonTypedMsg(DDSMsg):

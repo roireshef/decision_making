@@ -1,23 +1,26 @@
+import time
+from common_data.dds.python.Communication.ddspubsub import DdsPubSub
+from decision_making.src.infra.dm_module import DM_Module
 from rte.python.logger.AV_logger import AV_Logger
-from src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
-from src.messages.trajectory_parameters import TrajectoryParamsMsg
-from src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from src.planning.behavioral.behavioral_state import BehavioralState
-from src.planning.behavioral.policy import Policy
-from src.planning.navigation.navigation_plan import NavigationPlan
-from src.state.enriched_state import State
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
+from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
+from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
+from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
+from decision_making.src.planning.behavioral.policy import Policy, DefaultPolicy
+from decision_making.src.planning.navigation.navigation_plan import NavigationPlan
+from decision_making.src.state.enriched_state import State
 
 
-class BehavioralFacade:
-    def __init__(self, policy: Policy, behavioral_state: BehavioralState):
+class BehavioralFacade(DM_Module):
+    def __init__(self, dds : DdsPubSub, logger, policy: Policy, behavioral_state: BehavioralState):
         """
         :param policy: decision making component
         :param behavioral_state: initial state of the system. Can be empty, i.e. initialized with default values.
         """
+        super().__init__(DDS=dds, logger=logger)
         self._policy = policy
         self._behavioral_state = behavioral_state
-        self._logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
-        self._logger.info("Initialized Behavioral Planner Facade.")
+        self.logger.info("Initialized Behavioral Planner Facade.")
 
     def update_state_and_plan(self):
         """
@@ -35,14 +38,36 @@ class BehavioralFacade:
 
     # TODO : implement message passing
     def __get_current_state(self) -> State:
-        pass
+        input_state = self.DDS.get_latest_sample(topic='BehavioralPlannerSub::StateReader', timeout=1)
+        print('Received: ' + str(input_state))
     
     def __get_current_navigation_plan(self) -> NavigationPlan:
         pass
 
-    def __publish_results(self, results: TrajectoryParamsMsg) -> None:
+    def __publish_results(self, results: TrajectoryParameters) -> None:
         pass
 
     def __publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
         pass
 
+
+if __name__ == '__main__':
+    policy_params = dict()
+    policy = DefaultPolicy(policy_params)
+    behavioral_state = BehavioralState()
+
+    logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
+    dds_object = DdsPubSub("DecisionMakingParticipantLibrary::BehavioralPlanner",
+                    '../../../../common_data/dds/generatedFiles/xml/decisionMakingMain.xml')
+
+    behavioral_module = BehavioralFacade(dds=dds_object, logger=logger, policy=policy,
+                                         behavioral_state=behavioral_state)
+
+    behavioral_module.start()
+
+
+    while True:
+        behavioral_module.update_state_and_plan()
+        time.sleep(1)
+
+    behavioral_module.stop()
