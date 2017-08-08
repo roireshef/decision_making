@@ -21,6 +21,7 @@ def test_serialize_dummyMsg_successful():
     assert isinstance(w_new.l, list)
     assert isinstance(w_new.l[0].y, np.ndarray)
 
+
 def test_serialize_dummyWrongFieldsMsg_throwsError():
     f = Foo(2, 3)
     v = Voo(f, np.array([[.1, .2, 3], [11, 22, 33]]))
