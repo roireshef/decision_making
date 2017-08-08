@@ -25,7 +25,7 @@ class TrajectoryPlanningFacade(DmModule):
         :param strategy_handlers: a dictionary of trajectory planners as strategy handlers -
         types are {TrajectoryPlanningStrategy: TrajectoryPlanner}
         """
-        super().__init__(DDS=dds, logger=logger)
+        super().__init__(dds=dds, logger=logger)
         self.__validate_strategy_handlers(strategy_handlers)
         self.__strategy_handlers = strategy_handlers
 

@@ -21,6 +21,9 @@ class DmProcess():
         self.process = None
         self.module_instance = None
 
+    def get_name(self):
+        return str(self.module_type)
+
     def start_process(self):
         '''
         Create and start a process for the DM module
