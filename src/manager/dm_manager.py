@@ -45,12 +45,3 @@ class DmManager:
 
         self.logger.debug('stopping all DM modules complete')
 
-
-def main():
-
-    manager = DmManager()
-    manager.start_modules()
-
-if __name__ == '__main__':
-    main()
-

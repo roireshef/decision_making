@@ -40,6 +40,7 @@ class DmModuleFactory:
     def __create_behavioral_planner() -> BehavioralFacade:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
         dds = DdsPubSub(BEHAVIORAL_PLANNER_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
+        # TODO: fill the policy
         policy_params = dict()
         policy = DefaultPolicy(policy_params)
         behavioral_state = BehavioralState()
@@ -51,6 +52,7 @@ class DmModuleFactory:
     def __create_trajectory_planner() -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
         dds = DdsPubSub(TRAJECTORY_PLANNER_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
+        # TODO: fill the strategy handlers
         strategy_handlers = dict()
         trajectory_planning_module = TrajectoryPlanningFacade(dds=dds, logger=logger,
                                                               strategy_handlers=strategy_handlers)
