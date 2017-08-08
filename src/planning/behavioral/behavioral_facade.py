@@ -1,6 +1,6 @@
 import time
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
-from decision_making.src.infra.dm_module import DM_Module
+from decision_making.src.infra.dm_module import DmModule
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
@@ -11,18 +11,30 @@ from decision_making.src.planning.navigation.navigation_plan import NavigationPl
 from decision_making.src.state.enriched_state import State
 
 
-class BehavioralFacade(DM_Module):
+class BehavioralFacade(DmModule):
     def __init__(self, dds : DdsPubSub, logger, policy: Policy, behavioral_state: BehavioralState):
         """
         :param policy: decision making component
         :param behavioral_state: initial state of the system. Can be empty, i.e. initialized with default values.
         """
-        super().__init__(DDS=dds, logger=logger)
+        super().__init__(dds=dds, logger=logger)
         self._policy = policy
         self._behavioral_state = behavioral_state
         self.logger.info("Initialized Behavioral Planner Facade.")
 
-    def update_state_and_plan(self):
+    def start(self):
+        self.logger.info("Starting behavioral facade module")
+        policy_params = dict()
+        self._policy = DefaultPolicy(policy_params)
+        self._behavioral_state = BehavioralState()
+
+    def stop(self):
+        self.logger.info("Stopping behavioral facade module")
+
+    def periodic_action(self):
+        self._update_state_and_plan()
+
+    def _update_state_and_plan(self):
         """
         The main function of the behavioral planner. It read the most up-to-date enriched state and navigation plan,
          processes them into the behavioral state, and then performs behavioral planning. The results are then published
@@ -38,8 +50,8 @@ class BehavioralFacade(DM_Module):
 
     # TODO : implement message passing
     def __get_current_state(self) -> State:
-        input_state = self.DDS.get_latest_sample(topic='BehavioralPlannerSub::StateReader', timeout=1)
-        print('Received: ' + str(input_state))
+        input_state = self.dds.get_latest_sample(topic='BehavioralPlannerSub::StateReader', timeout=1)
+        self.logger.debug('Received: %s', input_state)
     
     def __get_current_navigation_plan(self) -> NavigationPlan:
         pass

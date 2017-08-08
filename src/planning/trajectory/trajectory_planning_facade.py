@@ -3,15 +3,19 @@ from enum import Enum
 from typing import Tuple
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
-from decision_making.src.infra.dm_module import DM_Module
+from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.state.enriched_state import State as EnrichedState
 
 import numpy as np
 
+class TrajectoryPlanningStrategy(Enum):
+    HIGHWAY = 0
+    TRAFFIC_JAM = 1
+    PARKING = 2
 
-class TrajectoryPlanningFacade(DM_Module):
+class TrajectoryPlanningFacade(DmModule):
     """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
     """
@@ -24,6 +28,15 @@ class TrajectoryPlanningFacade(DM_Module):
         super().__init__(DDS=dds, logger=logger)
         self.__validate_strategy_handlers(strategy_handlers)
         self.__strategy_handlers = strategy_handlers
+
+    def start(self):
+        pass
+
+    def stop(self):
+        pass
+
+    def periodic_action(self):
+        pass # TODO: call plan with the configured strategy
 
     def plan(self, strategy: TrajectoryPlanningStrategy):
         """
@@ -63,12 +76,6 @@ class TrajectoryPlanningFacade(DM_Module):
 
     def __publish_debug(self, debug_data):
         pass
-
-
-class TrajectoryPlanningStrategy(Enum):
-    HIGHWAY = 0
-    TRAFFIC_JAM = 1
-    PARKING = 2
 
 
 if __name__ == '__main__':

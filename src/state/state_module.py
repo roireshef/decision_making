@@ -1,33 +1,39 @@
 import time
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
-from decision_making.src.infra.dm_module import DM_Module
+from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.state.enriched_state import *
 from rte.python.logger.AV_logger import AV_Logger
-from rte.python.periodic_timer.periodic_timer import PeriodicTimer
+from decision_making.src.global_constants import *
 
-class StateModule(DM_Module):
+class StateModule(DmModule):
 
     def __init__(self, dds: DdsPubSub, logger):
         super().__init__(dds, logger)
 
     def start(self):
         self.logger.info("Starting state module")
-        self.DDS.subscribe("StateSubscriber::DynamicObjectsReader", self.__dynamic_obj_callback)
-        self.timer = PeriodicTimer(2, self.__timer_callback)
-        self.timer.start()
+        self.dds.subscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, self.__dynamic_obj_callback)
+        self.dds.subscribe(SELF_LOCALIZATION_SUBSCRIBE_TOPIC, self.__self_localization_callback)
+        self.dds.subscribe(OCCUPANCY_STATE_SUBSCRIBE_TOPIC, self.__occupancy_state_callback)
 
     def stop(self):
         self.logger.info("Stopping state module")
-        self.DDS.unsubscribe("StateSubscriber::DynamicObjectsReader")
-        self.timer.stop()
+        self.dds.unsubscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC)
+        self.dds.unsubscribe(SELF_LOCALIZATION_SUBSCRIBE_TOPIC)
+        self.dds.unsubscribe(OCCUPANCY_STATE_SUBSCRIBE_TOPIC)
 
-    def __timer_callback(self):
-        self.logger.info("periodic timer")
+    def periodic_action(self):
+        #self.__publish_enriched_state()
+        pass
 
     def __dynamic_obj_callback(self, objects: dict):
         self.logger.info("got dynamic objects %s", objects)
 
+    def __self_localization_callback(self, ego_localization: dict):
+        self.logger.debug("got self localization %s", ego_localization)
 
+    def __occupancy_state_callback(self, occupancy: dict):
+        self.logger.info("got occupancy status %s", occupancy)
 
 if __name__ == '__main__':
     logger = AV_Logger.get_logger('StateModule')

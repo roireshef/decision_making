@@ -34,6 +34,24 @@ DX_OFFSET_MIN, DX_OFFSET_MAX = -1, 1
 # Linspace number of steps in the constraints parameters grid-search
 SX_STEPS, SV_STEPS, DX_STEPS = 5, 10, 5
 
+### DM Manager configuration ###
+STATE_MODULE_PERIOD = 0
+BEHAVIORAL_PLANNING_MODULE_PERIOD = 1
+TRAJECTORY_PLANNING_MODULE_PERIOD = 0.1
+
+### DDS Constants ###
+STATE_MODULE_DDS_PARTICIPANT = "DecisionMakingParticipantLibrary::StateModule"
+BEHAVIORAL_PLANNER_DDS_PARTICIPANT = "DecisionMakingParticipantLibrary::BehavioralPlanner"
+TRAJECTORY_PLANNER_DDS_PARTICIPANT = "DecisionMakingParticipantLibrary::TrajectoryPlanner"
+
+DECISION_MAKING_DDS_FILE = "decisionMakingMain.xml"
+
+DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC = "StateSubscriber::DynamicObjectsReader"
+SELF_LOCALIZATION_SUBSCRIBE_TOPIC = "StateSubscriber::SelfLocalizationReader"
+OCCUPANCY_STATE_SUBSCRIBE_TOPIC = "StateSubscriber::OccupancyStateReader"
 
 #### NAMES OF MODULES FOR LOGGING ####
 BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
+TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
+STATE_MODULE_NAME_FOR_LOGGING = "State Module"
+
