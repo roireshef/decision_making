@@ -5,9 +5,9 @@ from abc import abstractmethod
 
 class DmModule:
     def __init__(self, dds: DdsPubSub, logger: AV_Logger):
-        self.logger.info("initializing module: " + self.__class__.__name__)
         self.dds = dds
         self.logger = logger
+        self.logger.info("initializing module: " + self.__class__.__name__)
 
     @abstractmethod
     def _start_impl(self):
@@ -30,9 +30,9 @@ class DmModule:
         pass
 
     def periodic_action(self):
-        self.logger.info("executing periodic action at module: " + self.__class__.__name__)
+        self.logger.debug("executing periodic action at module: " + self.__class__.__name__)
         self._periodic_action_impl()
-        self.logger.info("finished periodic action at module: " + self.__class__.__name__)
+        self.logger.debug("finished periodic action at module: " + self.__class__.__name__)
 
 
 
