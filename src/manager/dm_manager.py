@@ -7,7 +7,7 @@ from rte.python.logger.AV_logger import AV_Logger
 class DmManager:
 
     def __init__(self):
-        self.logger = AV_Logger.get_logger("DM Manager")
+        self.logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
         self.modules_list = \
             [
                 DmProcess(module_type=DmModulesEnum.DM_MODULE_STATE,
