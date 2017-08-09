@@ -1,25 +1,23 @@
 from multiprocessing import Queue, Process
 
 from decision_making.src.infra.dm_factory import DmModulesEnum, DmModuleFactory
-from rte.python.periodic_timer.periodic_timer import PeriodicTimer
-
+from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTimerTrigger
 
 class DmProcess():
-    def __init__(self, module_type : DmModulesEnum, period: float) -> None:
+    def __init__(self, module_type: DmModulesEnum, trigger_type: DmTriggerType, trigger_args: dict) -> None:
         """
         Manager for a single DM module running in a separate process
-        :param cls: the class of the DM module to be instantiated
-        :param name: a string name of the module
-        :param period: time period in seconds for calling the modules periodic_action method. 
-                    if period=0 then periodic_action will not be called.
-        :param dds_participant: the name of the DDS participant
-        :param dds_file: the DDS XML generated file name
+        :param module_type: the type of the DM module to be instantiated
+        :param trigger_type: the type of trigger to use
+        :param trigger_args: dictionary containing keyword arguments for initializing the trigger
         """
         self.module_type = module_type
-        self.period = period
+        self.trigger_type = trigger_type
+        self.trigger_args = trigger_args
         self.queue = Queue()
         self.process = None
         self.module_instance = None
+        self.trigger = None
 
     def get_name(self):
         return str(self.module_type)
@@ -35,7 +33,7 @@ class DmProcess():
 
     def stop_process(self):
         """
-        signal to the DM mmodule's process to stop 
+        signal to the DM module's process to stop
         :return: None
         """
         self.queue.put(0)
@@ -50,21 +48,28 @@ class DmProcess():
         self.module_instance = DmModuleFactory.create_dm_module(self.module_type)
         self.module_instance.start()
 
-        # create a timer for the module only if the period is defined
-        if self.period > 0:
-            self.timer = PeriodicTimer(self.period, self.__timer_callback)
-            self.timer.start(run_in_thread=False)
+        # create the trigger and activate it.
+        # It is important to create the trigger inside the new process!!
+        if self.trigger_type == DmTriggerType.DM_TRIGGER_PERIODIC:
+            self.trigger = DmPeriodicTimerTrigger(self.__trigger_callback, **self.trigger_args)
+
+        # activate method can be blocking, depending on the trigger type
+        self.trigger.activate()
 
         # wait until a stop signal is received on the queue to stop the module
         self.queue.get()
+        if self.trigger.is_active():
+            self.trigger.deactivate()
         self.module_instance.stop()
 
-    def __timer_callback(self):
+    def __trigger_callback(self):
         """
         __timer_callback - this method runs in the module's process
         :return: None
         """
         self.module_instance.periodic_action()
-        # check if a stop signal was received
+        # check if a stop signal was received (necessary in case the trigger method is blocking)
         if not self.queue.empty():
+            if self.trigger.is_active():
+                self.trigger.deactivate()
             self.module_instance.stop()

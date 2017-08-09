@@ -1,6 +1,7 @@
 from decision_making.src.global_constants import *
 from decision_making.src.infra.dm_factory import DmModulesEnum
 from decision_making.src.manager.dm_process import DmProcess
+from decision_making.src.manager.dm_trigger import DmTriggerType
 from rte.python.logger.AV_logger import AV_Logger
 
 
@@ -11,13 +12,16 @@ class DmManager:
         self.modules_list = \
             [
                 DmProcess(module_type=DmModulesEnum.DM_MODULE_STATE,
-                          period=STATE_MODULE_PERIOD),
+                          trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
+                          trigger_args={'period':STATE_MODULE_PERIOD}),
 
                 DmProcess(module_type=DmModulesEnum.DM_MODULE_BEHAVIORAL_PLANNER,
-                          period=BEHAVIORAL_PLANNING_MODULE_PERIOD),
+                          trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
+                          trigger_args={'period':BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
                 DmProcess(module_type=DmModulesEnum.DM_MODULE_TRAJECTORY_PLANNER,
-                          period=TRAJECTORY_PLANNING_MODULE_PERIOD)
+                          trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
+                          trigger_args={'period':TRAJECTORY_PLANNING_MODULE_PERIOD})
             ]
 
     def start_modules(self):

@@ -15,6 +15,7 @@ class TrajectoryPlanningStrategy(Enum):
     TRAFFIC_JAM = 1
     PARKING = 2
 
+
 class TrajectoryPlanningFacade(DmModule):
     """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
@@ -59,7 +60,7 @@ class TrajectoryPlanningFacade(DmModule):
     def __validate_strategy_handlers(strategy_handlers):
         for elem in TrajectoryPlanningStrategy.__members__.values():
             if not strategy_handlers.keys().__contains__(elem):
-                raise KeyError('strategy_handlers does not contain a  record for ' + elem)
+                raise KeyError('strategy_handlers does not contain a  record for ' + str(elem))
             if not isinstance(strategy_handlers[elem], TrajectoryPlanner):
                 raise ValueError('strategy_handlers does not contain a TrajectoryPlanner impl. for ' + elem)
 
