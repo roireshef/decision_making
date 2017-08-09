@@ -30,14 +30,17 @@ class TrajectoryPlanningFacade(DmModule):
         self.__validate_strategy_handlers(strategy_handlers)
         self.__strategy_handlers = strategy_handlers
 
-    def start(self):
+    # TODO: implement
+    def _start_impl(self):
         pass
 
-    def stop(self):
+    # TODO: implement
+    def _stop_impl(self):
         pass
 
-    def periodic_action(self):
-        pass # TODO: call plan with the configured strategy
+    # TODO: implement. call plan with the configured strategy
+    def _periodic_action_impl(self):
+        pass
 
     def plan(self, strategy: TrajectoryPlanningStrategy):
         """

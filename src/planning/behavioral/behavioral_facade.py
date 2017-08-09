@@ -20,18 +20,20 @@ class BehavioralFacade(DmModule):
         super().__init__(dds=dds, logger=logger)
         self._policy = policy
         self._behavioral_state = behavioral_state
-        self.logger.info("Initialized Behavioral Planner Facade.")
 
-    def start(self):
+    # TODO: implement
+    def _start_impl(self):
         pass
 
-    def stop(self):
+    # TODO: implement
+    def _stop_impl(self):
         pass
 
-    def periodic_action(self):
+    # TODO: implement
+    def _periodic_action_impl(self):
         pass
 
-    def update_state_and_plan(self):
+    def _update_state_and_plan(self):
         """
         The main function of the behavioral planner. It read the most up-to-date enriched state and navigation plan,
          processes them into the behavioral state, and then performs behavioral planning. The results are then published
