@@ -31,6 +31,8 @@ class DmModule:
 
     def periodic_action(self):
         self.logger.info("executing periodic action at module: " + self.__class__.__name__)
-        self._stop_impl()
+        self._periodic_action_impl()
+        self.logger.info("finished periodic action at module: " + self.__class__.__name__)
+
 
 
