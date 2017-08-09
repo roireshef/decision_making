@@ -11,19 +11,16 @@ class StateModule(DmModule):
         super().__init__(dds, logger)
 
     def start(self):
-        self.logger.info("Starting state module")
         self.dds.subscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, self.__dynamic_obj_callback)
         self.dds.subscribe(SELF_LOCALIZATION_SUBSCRIBE_TOPIC, self.__self_localization_callback)
         self.dds.subscribe(OCCUPANCY_STATE_SUBSCRIBE_TOPIC, self.__occupancy_state_callback)
 
     def stop(self):
-        self.logger.info("Stopping state module")
         self.dds.unsubscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC)
         self.dds.unsubscribe(SELF_LOCALIZATION_SUBSCRIBE_TOPIC)
         self.dds.unsubscribe(OCCUPANCY_STATE_SUBSCRIBE_TOPIC)
 
     def periodic_action(self):
-        #self.__publish_enriched_state()
         pass
 
     def __dynamic_obj_callback(self, objects: dict):

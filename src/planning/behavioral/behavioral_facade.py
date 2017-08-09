@@ -20,19 +20,18 @@ class BehavioralFacade(DmModule):
         super().__init__(dds=dds, logger=logger)
         self._policy = policy
         self._behavioral_state = behavioral_state
-        self.logger.info("Initialized Behavioral Planner Facade.")
 
-    def start(self):
-        self.logger.info("Starting behavioral facade module")
-        policy_params = dict()
-        self._policy = DefaultPolicy(policy_params)
-        self._behavioral_state = BehavioralState()
+    # TODO: implement
+    def _start_impl(self):
+        pass
 
-    def stop(self):
-        self.logger.info("Stopping behavioral facade module")
+    # TODO: implement
+    def _stop_impl(self):
+        pass
 
-    def periodic_action(self):
-        self._update_state_and_plan()
+    # TODO: implement
+    def _periodic_action_impl(self):
+        pass
 
     def _update_state_and_plan(self):
         """
