@@ -21,19 +21,19 @@ class DmManager:
             ]
 
     def start_modules(self):
-        '''
+        """
         start all the configured modules one by one in new processes
         :return: None
-        '''
+        """
         for dm_module in self.modules_list:
             self.logger.debug('starting DM module %s', dm_module.get_name())
             dm_module.start_process()
 
     def stop_modules(self):
-        '''
+        """
         signal to all the configured modules to stop their processes
         :return: 
-        '''
+        """
         for dm_module in self.modules_list:
             self.logger.debug('stopping DM module %s', dm_module.get_name())
             dm_module.stop_process()
