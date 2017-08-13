@@ -63,7 +63,7 @@ class BehavioralFacade(DmModule):
     def __get_current_navigation_plan(self) -> NavigationPlanMsg:
         input_plan = self.dds.get_latest_sample(topic=BEHAVIORAL_NAV_PLAN_READER_TOPIC, timeout=1)
         self.logger.debug('Received navigation plan: %s', input_plan)
-        return input_plan
+        return NavigationPlanMsg.deserialize(input_plan)
 
     def __publish_results(self, trajectory_parameters: TrajectoryParameters) -> None:
         self.dds.publish(BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC, trajectory_parameters.serialize())
