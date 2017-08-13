@@ -43,12 +43,11 @@ class TrajectoryPlanningFacade(DmModule):
     def _periodic_action_impl(self):
         """
         will execute planning with using the implementation for the desired planning-strategy provided
-        :param strategy: desired planning strategy
         :return: no return value. results are published in self.__publish_results()
         """
         try:
-            state = self.__read_current_state()
-            params = self.__read_mission_specs()
+            state = self.__get_current_state()
+            params = self.__get_mission_params()
 
             # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
             trajectory, cost, debug_results = self._strategy_handlers[params.strategy].plan(
