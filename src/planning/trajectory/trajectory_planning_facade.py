@@ -1,4 +1,3 @@
-import time
 from enum import Enum
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
@@ -30,15 +29,16 @@ class TrajectoryPlanningFacade(DmModule):
         self.__validate_strategy_handlers(strategy_handlers)
         self._strategy_handlers = strategy_handlers
 
-    # TODO: turn-on subscriptions?
-    def start(self):
+    # TODO: implement
+    def _start_impl(self):
         pass
 
-    # TODO: turn-off subscriptions
-    def stop(self):
+    # TODO: implement
+    def _stop_impl(self):
         pass
 
-    def periodic_action(self):
+    # TODO: implement. call plan with the configured strategy
+    def _periodic_action_impl(self):
         """
         will execute planning with using the implementation for the desired planning-strategy provided
         :param strategy: desired planning strategy
@@ -70,6 +70,7 @@ class TrajectoryPlanningFacade(DmModule):
     # TODO: move state into constants file
     def __read_current_state(self) -> EnrichedState:
         input_state = self.dds.get_latest_sample(topic='TrajectoryPlannerSub::StateReader', timeout=1)
+        self.logger.info("Recevied state: " + str(input_state))
         return input_state
 
     # TODO: implement message passing
