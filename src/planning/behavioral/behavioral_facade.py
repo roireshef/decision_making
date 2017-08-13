@@ -21,6 +21,17 @@ class BehavioralFacade(DM_Module):
         :param behavioral_state: initial state of the system. Can be empty, i.e. initialized with default values.
         """
         super().__init__(DDS=dds, logger=logger)
+        self._policy = policy
+        self._behavioral_state = behavioral_state
+        self.logger.info("Initialized Behavioral Planner Facade.")
+
+    def update_state_and_plan(self):
+        """
+        The main function of the behavioral planner. It read the most up-to-date enriched state and navigation plan,
+         processes them into the behavioral state, and then performs behavioral planning. The results are then published
+          to the trajectory planner and as debug information to the visualizer.
+        :return: void
+        """
         state = self.__get_current_state()
         navigation_plan = self.__get_current_navigation_plan()
         self._behavioral_state.update_behavioral_state(state, navigation_plan)
