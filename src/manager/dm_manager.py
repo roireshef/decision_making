@@ -12,8 +12,8 @@ class DmManager:
         self.modules_list = \
             [
                 DmProcess(module_type=DmModulesEnum.DM_MODULE_STATE,
-                          trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                          trigger_args={'period':STATE_MODULE_PERIOD}),
+                          trigger_type=DmTriggerType.DM_TRIGGER_NONE,
+                          trigger_args={}),
 
                 DmProcess(module_type=DmModulesEnum.DM_MODULE_BEHAVIORAL_PLANNER,
                           trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,

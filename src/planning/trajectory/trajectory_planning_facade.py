@@ -1,4 +1,3 @@
-import time
 from enum import Enum
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
@@ -7,6 +6,7 @@ from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.state.enriched_state import State as EnrichedState
+from rte.python.logger import AV_logger
 
 
 class TrajectoryPlanningStrategy(Enum):
@@ -20,7 +20,7 @@ class TrajectoryPlanningFacade(DmModule):
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
     """
 
-    def __init__(self, dds: DdsPubSub, logger, strategy_handlers: dict):
+    def __init__(self, dds: DdsPubSub, logger: AV_logger, strategy_handlers: dict):
         """
         :param strategy_handlers: a dictionary of trajectory planners as strategy handlers -
         types are {TrajectoryPlanningStrategy: TrajectoryPlanner}
@@ -69,12 +69,12 @@ class TrajectoryPlanningFacade(DmModule):
     def __get_current_state(self) -> EnrichedState:
         input_state = self.dds.get_latest_sample(topic=TRAJECTORY_STATE_READER_TOPIC, timeout=1)
         self.logger.debug('Received state: %s', input_state)
-        return input_state
+        return EnrichedState.deserialize(input_state)
 
     def __get_mission_params(self) -> TrajectoryParameters:
-        params = self.dds.get_latest_sample(topic=TRAJECTORY_STATE_READER_TOPIC, timeout=1)
-        self.logger.debug('Received state: %s', params)
-        return params
+        input_params = self.dds.get_latest_sample(topic=TRAJECTORY_STATE_READER_TOPIC, timeout=1)
+        self.logger.debug('Received state: %s', input_params)
+        return TrajectoryParameters.deserialize(input_params)
 
     # TODO: add type hints
     def __publish_trajectory(self, results):
@@ -82,21 +82,3 @@ class TrajectoryPlanningFacade(DmModule):
 
     def __publish_debug(self, debug_data):
         pass
-
-
-if __name__ == '__main__':
-    strategy_handlers = dict()
-
-    logger = None
-    dds_object = DdsPubSub("DecisionMakingParticipantLibrary::TrajectoryPlanner",
-                           '../../../../common_data/dds/generatedFiles/xml/decisionMakingMain.xml')
-
-    trajecotry_planning_module = TrajectoryPlanningFacade(dds=dds_object, logger=logger,
-                                                          strategy_handlers=strategy_handlers)
-    trajecotry_planning_module.start()
-
-    while True:
-        trajecotry_planning_module.plan(strategy=TrajectoryPlanningStrategy.HIGHWAY)
-        time.sleep(1)
-
-    trajecotry_planning_module.stop()
