@@ -33,7 +33,7 @@ class DmProcess():
 
     def stop_process(self):
         """
-        signal to the DM module's process to stop
+        API for signaling to the DM module's process to stop
         :return: None
         """
         self.queue.put(0)
@@ -58,6 +58,13 @@ class DmProcess():
 
         # wait until a stop signal is received on the queue to stop the module
         self.queue.get()
+        self.__module_process_exit()
+
+    def __module_process_exit(self):
+        """
+        perform the actions necessary to stop the DM module running inside the process
+        :return: None
+        """
         if self.trigger.is_active():
             self.trigger.deactivate()
         self.module_instance.stop()
@@ -70,6 +77,4 @@ class DmProcess():
         self.module_instance.periodic_action()
         # check if a stop signal was received (necessary in case the trigger method is blocking)
         if not self.queue.empty():
-            if self.trigger.is_active():
-                self.trigger.deactivate()
-            self.module_instance.stop()
+            self.__module_process_exit()
