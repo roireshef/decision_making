@@ -1,8 +1,10 @@
 import numpy as np
 
 from decision_making.src.messages.dds_typed_message import DDSTypedMsg
+from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningStrategy
 
 
+# TODO: discuss this and implement IDL
 class TrajectoryCostParams(DDSTypedMsg):
     def __init__(self, time: float, ref_deviation_weight: float, lane_deviation_weight: float, obstacle_weight: float,
                  left_lane_offset: float, right_lane_offset: float, left_deviation_exp: float,
@@ -25,7 +27,9 @@ class TrajectoryCostParams(DDSTypedMsg):
 
 
 class TrajectoryParameters(DDSTypedMsg):
-    def __init__(self, reference_route: np.ndarray, target_state: np.array, cost_params: TrajectoryCostParams):
+    # TODO: add <strategy> to IDL
+    def __init__(self, strategy: TrajectoryPlanningStrategy, reference_route: np.ndarray,
+                 target_state: np.array, cost_params: TrajectoryCostParams):
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
         :param reference_route: of type np.ndarray, with rows of [(x ,y, theta)] where x, y, theta are floats
@@ -35,4 +39,4 @@ class TrajectoryParameters(DDSTypedMsg):
         self.reference_route = reference_route
         self.target_state = target_state
         self.cost_params = cost_params
-
+        self.strategy = strategy
