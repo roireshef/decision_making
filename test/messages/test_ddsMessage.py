@@ -23,13 +23,9 @@ def test_serialize_dummyMsg_successful():
 
 
 def test_serialize_dummyWrongFieldsMsg_throwsError():
-    f = Foo(2, 3)
-    v = Voo(f, np.array([[.1, .2, 3], [11, 22, 33]]))
-    w = Woo(list((f, v)))
-
-    try:
+    with pytest.raises(Exception, message="Trying to Ser/De wrong class-types passed without an exception"):
+        f = Foo(2, 3)
+        v = Voo(f, np.array([[.1, .2, 3], [11, 22, 33]]))
+        w = Woo(list((f, v)))
         w_ser = w.serialize()
         w_new = Woo.deserialize(w_ser)
-        pytest.fail("An exception was meant to be thrown but nothing was actually thrown")
-    except Exception:
-        assert True
