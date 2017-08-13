@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
+from typing import Callable
 from rte.python.periodic_timer.periodic_timer import PeriodicTimer
 
 
@@ -49,12 +50,14 @@ class DmPeriodicTimerTrigger(DmTrigger):
     This trigger will call the given callback according to the given period
     """
 
-    def __init__(self, callback: function, period: float):
+    def __init__(self, callback: Callable[[None], None], period: float):
         super().__init__(callback)
         self.is_active = False
         self.period = period
         if self.period > 0:
             self.timer = PeriodicTimer(self.period, self.callback)
+        else:
+            raise ValueError('invalid period ({}) set for DmPeriodicTimerTrigger'.format(period))
 
     def is_active(self) -> bool:
         return self.is_active

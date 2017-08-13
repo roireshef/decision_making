@@ -1,7 +1,7 @@
 from multiprocessing import Queue, Process
 
 from decision_making.src.infra.dm_factory import DmModulesEnum, DmModuleFactory
-from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTimerTrigger
+from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTimerTrigger, DmNullTrigger
 
 class DmProcess():
     def __init__(self, module_type: DmModulesEnum, trigger_type: DmTriggerType, trigger_args: dict) -> None:
@@ -52,6 +52,8 @@ class DmProcess():
         # It is important to create the trigger inside the new process!!
         if self.trigger_type == DmTriggerType.DM_TRIGGER_PERIODIC:
             self.trigger = DmPeriodicTimerTrigger(self.__trigger_callback, **self.trigger_args)
+        elif self.trigger_type == DmTriggerType.DM_TRIGGER_NONE:
+            self.trigger = DmNullTrigger()
 
         # activate method can be blocking, depending on the trigger type
         self.trigger.activate()
