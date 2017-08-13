@@ -3,6 +3,7 @@ from enum import Enum
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import TRAJECTORY_STATE_READER_TOPIC, TRAJECTORY_PUBLISH_TOPIC
 from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.messages.exceptions import MsgDeserializationError
 from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.state.enriched_state import State as EnrichedState
@@ -47,16 +48,22 @@ class TrajectoryPlanningFacade(DmModule):
         :param strategy: desired planning strategy
         :return: no return value. results are published in self.__publish_results()
         """
-        state = self.__get_current_state()
-        params = self.__get_mission_params()
+        try:
+            state = self.__get_current_state()
+            params = self.__get_mission_params()
 
-        trajectory, cost, debug_results = self._strategy_handlers[strategy]. \
-            plan(state, params.reference_route, params.target_state, params.cost_params)
+            trajectory, cost, debug_results = self._strategy_handlers[strategy]. \
+                plan(state, params.reference_route, params.target_state, params.cost_params)
 
-        # TODO: publish cost to behavioral layer?
+            # TODO: publish cost to behavioral layer?
 
-        self.__publish_trajectory(trajectory)
-        self.__publish_debug(debug_results)
+            self.__publish_trajectory(trajectory)
+            self.__publish_debug(debug_results)
+
+        except MsgDeserializationError as e:
+            self.logger.debug(str(e))
+            self.logger.warn("MsgDeserializationError was raised. skipping planning. " +
+                             "turn on debug logging level for more details.")
 
     @staticmethod
     def __validate_strategy_handlers(strategy_handlers):

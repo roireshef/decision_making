@@ -3,6 +3,7 @@ import inspect
 import numpy as np
 
 from decision_making.src.messages.dds_message import *
+from decision_making.src.messages.exceptions import MsgDeserializationError
 
 
 class DDSTypedMsg(DDSMsg):
@@ -22,8 +23,6 @@ class DDSTypedMsg(DDSMsg):
                 ser_dict[key] = val
         return ser_dict
 
-
-
     @classmethod
     def deserialize(cls, message: dict):
         """
@@ -40,4 +39,9 @@ class DDSTypedMsg(DDSMsg):
                 real_type = type(type.__name__, '')
                 if isinstance(real_type, DDSTypedMsg):
                     message_copy[name] = real_type.deserialize(message_copy[name])
-        return cls(**message_copy)
+        try:
+            return cls(**message_copy)
+        except:
+            raise MsgDeserializationError("Deserialization error: could not deserialize into " +
+                            cls.__class__.__name__ + " from " + str(message))
+

@@ -6,7 +6,6 @@ from rte.python.logger.AV_logger import AV_Logger
 
 
 class DmManager:
-
     def __init__(self):
         self.logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
         self.modules_list = \
@@ -17,11 +16,11 @@ class DmManager:
 
                 DmProcess(module_type=DmModulesEnum.DM_MODULE_BEHAVIORAL_PLANNER,
                           trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                          trigger_args={'period':BEHAVIORAL_PLANNING_MODULE_PERIOD}),
+                          trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
                 DmProcess(module_type=DmModulesEnum.DM_MODULE_TRAJECTORY_PLANNER,
                           trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                          trigger_args={'period':TRAJECTORY_PLANNING_MODULE_PERIOD})
+                          trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD})
             ]
 
     def start_modules(self):
@@ -48,4 +47,3 @@ class DmManager:
                 self.logger.error('module %s has not stopped', dm_module.get_name())
 
         self.logger.debug('stopping all DM modules complete')
-

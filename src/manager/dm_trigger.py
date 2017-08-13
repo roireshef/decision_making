@@ -1,16 +1,16 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Callable
+
 from rte.python.periodic_timer.periodic_timer import PeriodicTimer
 
 
 class DmTriggerType(Enum):
-    DM_TRIGGER_NONE = 0 # for modules without a trigger
+    DM_TRIGGER_NONE = 0  # for modules without a trigger
     DM_TRIGGER_PERIODIC = 1
 
 
 class DmTrigger(ABC):
-
     def __init__(self, callback):
         self.callback = callback
 
@@ -71,5 +71,3 @@ class DmPeriodicTimerTrigger(DmTrigger):
         if self.is_active:
             self.timer.stop()
             self.is_active = False
-
-

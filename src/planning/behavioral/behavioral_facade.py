@@ -1,17 +1,15 @@
-import time
-
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, BEHAVIORAL_STATE_READER_TOPIC, \
+from decision_making.src.global_constants import BEHAVIORAL_STATE_READER_TOPIC, \
     BEHAVIORAL_NAV_PLAN_READER_TOPIC, BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC
 from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.messages.exceptions import MsgDeserializationError
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.behavioral.policy import Policy, DefaultPolicy
+from decision_making.src.planning.behavioral.policy import Policy
 from decision_making.src.state.enriched_state import EnrichedState
 from rte.python.logger.AV_logger import AV_Logger
-
 
 
 class BehavioralFacade(DmModule):
@@ -41,21 +39,26 @@ class BehavioralFacade(DmModule):
           to the trajectory planner and as debug information to the visualizer.
         :return: void
         """
-        state = self.__get_current_state()
-        navigation_plan = self.__get_current_navigation_plan()
-        self._behavioral_state.update_behavioral_state(state, navigation_plan)
-        trajectory_params, behavioral_visualization_message = self._policy.plan(behavioral_state=self._behavioral_state)
-        self.__publish_results(trajectory_params)
-        self.__publish_visualization(behavioral_visualization_message)
+        try:
+            state = self.__get_current_state()
+            navigation_plan = self.__get_current_navigation_plan()
+
+            self._behavioral_state.update_behavioral_state(state, navigation_plan)
+            trajectory_params, behavioral_visualization_message = self._policy.plan(
+                behavioral_state=self._behavioral_state)
+
+            self.__publish_results(trajectory_params)
+            self.__publish_visualization(behavioral_visualization_message)
+
+        except MsgDeserializationError as e:
+            self.logger.debug(str(e))
+            self.logger.warn("MsgDeserializationError was raised. skipping planning. " +
+                             "turn on debug logging level for more details.")
 
     def __get_current_state(self) -> EnrichedState:
         input_state = self.dds.get_latest_sample(topic=BEHAVIORAL_STATE_READER_TOPIC, timeout=1)
-        if input_state is None:
-            self.logger.error('Received None State')
-            return None
-        else:
-            self.logger.debug('Received State: ' + str(input_state))
-            return EnrichedState.deserialize(input_state)
+        self.logger.debug('Received State: ' + str(input_state))
+        return EnrichedState.deserialize(input_state)
 
     def __get_current_navigation_plan(self) -> NavigationPlanMsg:
         input_plan = self.dds.get_latest_sample(topic=BEHAVIORAL_NAV_PLAN_READER_TOPIC, timeout=1)

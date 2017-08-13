@@ -3,6 +3,7 @@ from multiprocessing import Queue, Process
 from decision_making.src.infra.dm_factory import DmModulesEnum, DmModuleFactory
 from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTimerTrigger, DmNullTrigger
 
+
 class DmProcess():
     def __init__(self, module_type: DmModulesEnum, trigger_type: DmTriggerType, trigger_args: dict) -> None:
         """

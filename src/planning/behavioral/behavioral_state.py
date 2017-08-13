@@ -1,7 +1,6 @@
 from decision_making.src.state.enriched_state import State, EgoState
 
 
-
 class MarginInfo:
     def __init__(self, right_width: float, right_clear: bool, left_width: float, left_clear: bool):
         """
@@ -62,4 +61,3 @@ class BehavioralState:
         :return: void
         """
         pass
-
