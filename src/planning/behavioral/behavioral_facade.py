@@ -54,9 +54,6 @@ class BehavioralFacade(DM_Module):
     def __get_current_navigation_plan(self) -> NavigationPlan:
         pass
 
-    def __publish_results(self, results: TrajectoryParameters) -> None:
-        self.DDS.publish(topic="BehavioralPlannerPub::TrajectoryParametersWriter", data=results.serialize())
-
     def __publish_results(self, trajectory_parameters: TrajectoryParameters) -> None:
         self.DDS.publish(topic="BehavioralPlannerPub::TrajectoryParametersWriter",
                          data=trajectory_parameters.serialize())
