@@ -46,9 +46,24 @@ TRAJECTORY_PLANNER_DDS_PARTICIPANT = "DecisionMakingParticipantLibrary::Trajecto
 
 DECISION_MAKING_DDS_FILE = "decisionMakingMain.xml"
 
+# State Module
 DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC = "StateSubscriber::DynamicObjectsReader"
 SELF_LOCALIZATION_SUBSCRIBE_TOPIC = "StateSubscriber::SelfLocalizationReader"
 OCCUPANCY_STATE_SUBSCRIBE_TOPIC = "StateSubscriber::OccupancyStateReader"
+STATE_PUBLISH_TOPIC = "StatePublisher::StateWriter"
+
+# Navigation Planning Module
+NAVIGATION_PLAN_PUBLISH_TOPIC = "NavigationPublisher::NavigationPlanWriter"
+
+# Behavioral Module
+BEHAVIORAL_STATE_READER_TOPIC = "BehavioralSubscriber::StateReader"
+BEHAVIORAL_NAV_PLAN_READER_TOPIC = "BehavioralSubscriber::NavigationPlanReader"
+BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC = "BehavioralPublisher::TrajectoryParametersWriter"
+
+# Trajectory Planning Module
+TRAJECTORY_STATE_READER_TOPIC = "TrajectorySubscriber::StateReader"
+TRAJECTORY_PARAMS_READER_TOPIC = "TrajectorySubscriber::TrajectoryParametersReader"
+TRAJECTORY_PUBLISH_TOPIC = "TrajectoryPublisher::TrajectoryWriter"
 
 #### NAMES OF MODULES FOR LOGGING ####
 DM_MANAGER_NAME_FOR_LOGGING = "DM Manager"
