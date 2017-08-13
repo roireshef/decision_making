@@ -15,7 +15,7 @@ class DDSTypedMsg(DDSMsg):
         ser_dict = {}
         for key, val in self_dict.items():
             if isinstance(val, np.ndarray):
-                ser_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': val.shape}
+                ser_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': list(val.shape)}
             elif inspect.isclass(type(val)) and issubclass(type(val), DDSMsg):
                 ser_dict[key] = val.serialize()
             else:
@@ -34,7 +34,8 @@ class DDSTypedMsg(DDSMsg):
         message_copy = message.copy()
         for name, type in cls.__init__.__annotations__.items():
             if 'numpy.ndarray' in str(type):
-                message_copy[name] = np.array(message_copy[name]['array']).reshape(message_copy[name]['shape'])
+                message_copy[name] = np.array(message_copy[name]['array']).reshape(
+                    tuple(message_copy[name]['shape']))
             elif isinstance(type, ABCMeta):
                 real_type = type(type.__name__, '')
                 if isinstance(real_type, DDSTypedMsg):

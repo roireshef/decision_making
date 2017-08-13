@@ -8,11 +8,12 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.policy import Policy, DefaultPolicy
 from decision_making.src.planning.navigation.navigation_plan import NavigationPlan
-from decision_making.src.state.enriched_state import State
+from decision_making.src.state.enriched_state import State, EnrichedState
 
 
 class BehavioralFacade(DmModule):
-    def __init__(self, dds : DdsPubSub, logger, policy: Policy, behavioral_state: BehavioralState):
+    def __init__(self, dds: DdsPubSub, logger: AV_Logger, policy: Policy = None,
+                 behavioral_state: BehavioralState = None):
         """
         :param policy: decision making component
         :param behavioral_state: initial state of the system. Can be empty, i.e. initialized with default values.
@@ -20,6 +21,7 @@ class BehavioralFacade(DmModule):
         super().__init__(dds=dds, logger=logger)
         self._policy = policy
         self._behavioral_state = behavioral_state
+        self.logger.info("Initialized Behavioral Planner Facade.")
 
     # TODO: implement
     def _start_impl(self):
@@ -51,34 +53,20 @@ class BehavioralFacade(DmModule):
     def __get_current_state(self) -> State:
         input_state = self.dds.get_latest_sample(topic='BehavioralPlannerSub::StateReader', timeout=1)
         self.logger.debug('Received: %s', input_state)
-    
+
+        if input_state is None:
+            self.logger.info('Received None State')
+            return None
+        else:
+            self.logger.info('Received State: ' + str(input_state))
+            return EnrichedState.deserialize(input_state)
+
     def __get_current_navigation_plan(self) -> NavigationPlan:
         pass
 
-    def __publish_results(self, results: TrajectoryParameters) -> None:
-        pass
+    def __publish_results(self, trajectory_parameters: TrajectoryParameters) -> None:
+        self.dds.publish(topic="BehavioralPlannerPub::TrajectoryParametersWriter",
+                         data=trajectory_parameters.serialize())
 
     def __publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
         pass
-
-
-if __name__ == '__main__':
-    policy_params = dict()
-    policy = DefaultPolicy(policy_params)
-    behavioral_state = BehavioralState()
-
-    logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
-    dds_object = DdsPubSub("DecisionMakingParticipantLibrary::BehavioralPlanner",
-                    '../../../../common_data/dds/generatedFiles/xml/decisionMakingMain.xml')
-
-    behavioral_module = BehavioralFacade(dds=dds_object, logger=logger, policy=policy,
-                                         behavioral_state=behavioral_state)
-
-    behavioral_module.start()
-
-
-    while True:
-        behavioral_module.update_state_and_plan()
-        time.sleep(1)
-
-    behavioral_module.stop()
