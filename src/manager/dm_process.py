@@ -57,8 +57,13 @@ class DmProcess():
         self.trigger.activate()
 
         # wait until a stop signal is received on the queue to stop the module
-        self.queue.get()
+        self.__module_process_wait_for_signal()
+
+        # after a stop signal was received we should perform the exit flow
         self.__module_process_exit()
+
+    def __module_process_wait_for_signal(self):
+        self.queue.get()
 
     def __module_process_exit(self):
         """

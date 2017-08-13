@@ -4,7 +4,8 @@ from rte.python.periodic_timer.periodic_timer import PeriodicTimer
 
 
 class DmTriggerType(Enum):
-    DM_TRIGGER_PERIODIC = 0
+    DM_TRIGGER_NONE = 0 # for modules without a trigger
+    DM_TRIGGER_PERIODIC = 1
 
 
 class DmTrigger(ABC):
@@ -13,7 +14,7 @@ class DmTrigger(ABC):
         self.callback = callback
 
     @abstractmethod
-    def is_active(self):
+    def is_active(self) -> bool:
         pass
 
     @abstractmethod
@@ -25,16 +26,37 @@ class DmTrigger(ABC):
         pass
 
 
-class DmPeriodicTimerTrigger(DmTrigger):
+class DmNullTrigger(DmTrigger):
+    """
+    This trigger does nothing, it is for modules that don't need a trigger
+    """
 
-    def __init__(self, callback, period):
+    def __init__(self):
+        pass
+
+    def is_active(self) -> bool:
+        return False
+
+    def activate(self):
+        pass
+
+    def deactivate(self):
+        pass
+
+
+class DmPeriodicTimerTrigger(DmTrigger):
+    """
+    This trigger will call the given callback according to the given period
+    """
+
+    def __init__(self, callback: function, period: float):
         super().__init__(callback)
         self.is_active = False
         self.period = period
         if self.period > 0:
             self.timer = PeriodicTimer(self.period, self.callback)
 
-    def is_active(self):
+    def is_active(self) -> bool:
         return self.is_active
 
     def activate(self):
