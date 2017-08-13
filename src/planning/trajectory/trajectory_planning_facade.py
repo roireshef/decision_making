@@ -4,11 +4,22 @@ from typing import Tuple
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.infra.dm_module import DM_Module
+from decision_making.src.messages.dds_message import DDSMsg
+from decision_making.src.messages.dds_typed_message import DDSTypedMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.state.enriched_state import State as EnrichedState
 
 import numpy as np
+
+from rte.python.logger import AV_logger
+from rte.python.periodic_timer.periodic_timer import PeriodicTimer
+
+
+class TrajectoryPlanningStrategy(Enum):
+    HIGHWAY = 0
+    TRAFFIC_JAM = 1
+    PARKING = 2
 
 
 class TrajectoryPlanningFacade(DM_Module):
@@ -16,30 +27,36 @@ class TrajectoryPlanningFacade(DM_Module):
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
     """
 
-    def __init__(self, dds : DdsPubSub, logger, strategy_handlers: dict):
+    def __init__(self, dds: DdsPubSub, logger: AV_logger):
         """
         :param strategy_handlers: a dictionary of trajectory planners as strategy handlers -
         types are {TrajectoryPlanningStrategy: TrajectoryPlanner}
         """
         super().__init__(DDS=dds, logger=logger)
-        self.__validate_strategy_handlers(strategy_handlers)
-        self.__strategy_handlers = strategy_handlers
+        self.logger.info("Initialized Behavioral Planner Facade.")
+        self.timer = PeriodicTimer(1, self.plan)
 
-    def plan(self, strategy: TrajectoryPlanningStrategy):
+    def start(self):
+        strategy_handlers = dict()
+        # self.__validate_strategy_handlers(strategy_handlers)
+        # self.__strategy_handlers = strategy_handlers
+
+        self.timer.start()
+
+    def plan(self, strategy: TrajectoryPlanningStrategy = TrajectoryPlanningStrategy.HIGHWAY):
         """
         will execute planning with using the implementation for the desired planning-strategy provided
         :param strategy: desired planning strategy
         :return: no return value. results are published in self.__publish_results()
         """
+        self.logger.info('performing trajectory planning')
         state = self.__read_current_state()
         ref_route, goal, cost_params = self.__read_mission_specs()
-
-        trajectory, cost, debug_results = self.__strategy_handlers[strategy].plan(state, ref_route, goal, cost_params)
+        # trajectory, cost, debug_results = self.__strategy_handlers[strategy].plan(state, ref_route, goal, cost_params)
 
         # TODO: publish cost to behavioral layer?
-
-        self.__publish_trajectory(trajectory)
-        self.__publish_debug(debug_results)
+        # self.__publish_trajectory(trajectory)
+        # self.__publish_debug(debug_results)
 
     # TODO: should also be published to DDS logger
     @staticmethod
@@ -53,37 +70,23 @@ class TrajectoryPlanningFacade(DM_Module):
     # TODO: implement message passing
     def __read_current_state(self) -> EnrichedState:
         input_state = self.DDS.get_latest_sample(topic='TrajectoryPlannerSub::StateReader', timeout=1)
-        return input_state
+        self.logger.info("Recevied state: " + str(input_state))
 
     def __read_mission_specs(self) -> Tuple[np.ndarray, np.ndarray, TrajectoryCostParams]:
-        pass
+        serialized_input_mission = self.DDS.get_latest_sample(topic='TrajectoryPlannerSub::TrajectoryParametersReader',
+                                                              timeout=1)
+
+        if serialized_input_mission is None:
+            self.logger.info('Received None mission')
+            return None, None, None
+        else:
+            self.logger.info("Recevied mission: " + str(serialized_input_mission))
+            # trajectory_cost_params = TrajectoryCostParams.deserialize(serialized_input_mission)
+            trajectory_cost_params = None
+            return np.array([0.0]), np.array([0.0]), trajectory_cost_params
 
     def __publish_trajectory(self, results):
         pass
 
     def __publish_debug(self, debug_data):
         pass
-
-
-class TrajectoryPlanningStrategy(Enum):
-    HIGHWAY = 0
-    TRAFFIC_JAM = 1
-    PARKING = 2
-
-
-if __name__ == '__main__':
-    strategy_handlers = dict()
-
-    logger = None
-    dds_object = DdsPubSub("DecisionMakingParticipantLibrary::TrajectoryPlanner",
-                    '../../../../common_data/dds/generatedFiles/xml/decisionMakingMain.xml')
-
-    trajecotry_planning_module = TrajectoryPlanningFacade(dds=dds_object, logger=logger,
-                                                          strategy_handlers=strategy_handlers)
-    trajecotry_planning_module.start()
-
-    while True:
-        trajecotry_planning_module.plan(strategy=TrajectoryPlanningStrategy.HIGHWAY)
-        time.sleep(1)
-
-    trajecotry_planning_module.stop()
