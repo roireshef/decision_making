@@ -29,7 +29,7 @@ class TrajectoryCostParams(DDSTypedMsg):
 class TrajectoryParameters(DDSTypedMsg):
     # TODO: add <strategy> to IDL
     def __init__(self, strategy: TrajectoryPlanningStrategy, reference_route: np.ndarray,
-                 target_state: np.array, cost_params: TrajectoryCostParams):
+                 target_state: np.ndarray, cost_params: TrajectoryCostParams):
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
         :param reference_route: of type np.ndarray, with rows of [(x ,y, theta)] where x, y, theta are floats
