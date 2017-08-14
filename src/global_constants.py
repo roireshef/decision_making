@@ -1,6 +1,14 @@
 DIVISION_FLOATING_ACCURACY = 10 ** -10
 
+# Behavioral Planner
+
+# [m] high-level behavioral planner lookahead distance
+BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 50.0
+
 # Trajectory Planner #
+
+# [m] length of reference trajectory provided by behavioral plenner
+REFERENCE_TRAJECTORY_LENGTH = 25.0
 
 # [m] Resolution for the interpolation of the reference route
 TRAJECTORY_ARCLEN_RESOLUTION = 0.1
