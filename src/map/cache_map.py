@@ -4,9 +4,9 @@ from abc import ABCMeta, abstractmethod
 from decision_making_sim.src.world_generator.constants import *
 
 
-class CacheMap(metaclass=ABCMeta):
+class MapAPI(metaclass=ABCMeta):
     def __init__(self):
-        self.cached_map_model = MapModel()
+        self._cached_map_model = MapModel()
         pass
 
     @abstractmethod
@@ -25,7 +25,7 @@ class CacheMap(metaclass=ABCMeta):
         :param attribute: e.g. lanes num, center points
         :return: the road's attribute
         """
-        return self.cached_map_model.roads_data[road_id][attribute]
+        return self._cached_map_model.roads_data[road_id][attribute]
 
     def calc_distance_between_point_and_road(self, x, y, road_id):
         """
@@ -57,8 +57,8 @@ class CacheMap(metaclass=ABCMeta):
         """
         X = int(round(x / ROADS_MAP_TILE_SIZE))
         Y = int(round(y / ROADS_MAP_TILE_SIZE))
-        if (layer, X, Y) in self.cached_map_model.xy2road_map:
-            return self.cached_map_model.xy2road_map[(layer, X, Y)]
+        if (layer, X, Y) in self._cached_map_model.xy2road_map:
+            return self._cached_map_model.xy2road_map[(layer, X, Y)]
         return None
 
     def get_center_lanes_latitudes(self, road_id):
@@ -79,7 +79,7 @@ class CacheMap(metaclass=ABCMeta):
         :param road_id:
         :return: lanes number, road width, road length, road's points
         """
-        if road_id not in self.cached_map_model.roads_data.keys():
+        if road_id not in self._cached_map_model.roads_data.keys():
             return None, None, None, None
         lanes_num = self.get_road_attribute(road_id, 'lanes')
         width = self.get_road_attribute(road_id, 'width')
