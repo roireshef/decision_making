@@ -3,10 +3,10 @@ from enum import Enum
 from typing import Callable
 
 from rte.python.periodic_timer.periodic_timer import PeriodicTimer
-
+from decision_making.src.manager.trigger_exceptions import DmTriggerActivationException
 
 class DmTriggerType(Enum):
-    DM_TRIGGER_NONE = 0  # for modules without a trigger
+    DM_TRIGGER_NONE = 0 # for modules without a trigger
     DM_TRIGGER_PERIODIC = 1
 
 
@@ -63,11 +63,16 @@ class DmPeriodicTimerTrigger(DmTrigger):
         return self.is_active
 
     def activate(self):
-        if self.period > 0:
+        if not self.is_active:
             self.is_active = True
             self.timer.start(run_in_thread=False)
+        else:
+            raise DmTriggerActivationException('trying to activate an already active DmPeriodicTimerTrigger')
 
     def deactivate(self):
         if self.is_active:
             self.timer.stop()
             self.is_active = False
+        else:
+            raise DmTriggerActivationException('trying to deactivate an already inactive DmPeriodicTimerTrigger')
+
