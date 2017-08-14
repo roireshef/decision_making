@@ -1,7 +1,7 @@
 from typing import List
-import copy
+
 import numpy as np
-from state.state import *
+from src.state.state import *
 
 
 class EnrichedRoadLocalization(RoadLocalization):
@@ -70,46 +70,22 @@ class EnrichedDynamicObject(EnrichedObjectState, DynamicObject):
         :param localization_confidence:
         :param v_x: in m/sec; for ego in world coordinates, for the rest relatively to ego
         :param v_y: in m/sec
-        :param acceleration_x: acceleration in longitude axis
-        :param turn_radius: 0 for straight motion, positive for CW (yaw increases), negative for CCW
         """
         EnrichedObjectState.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence,
                                      localization_confidence)
         DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence,
                                localization_confidence,
                                v_x, v_y)
-        self.acceleration_lon = acceleration_x
+        self.acceleration_x = acceleration_x
         self.turn_radius = turn_radius
 
-    def predict(self, goal_timestamp: int):
+    def predict(self, timestamp: int):
         """
         predict the object's location for the future timestamp
-        !!! This function changes the object's location, velocity and timestamp !!!
         :param timestamp:
         :return:
         """
-        dt = goal_timestamp - self._timestamp
-        sin_yaw = np.sin(self.yaw)
-        cos_yaw = np.cos(self.yaw)
-        acc_x = self.acceleration_lon * cos_yaw
-        acc_y = self.acceleration_lon * sin_yaw
-        if self.turn_radius is not None and self.turn_radius != 0:
-            start_vel = np.sqrt(self.v_x * self.v_x + self.v_y * self.v_y)
-            dist = start_vel * dt + 0.5 * self.acceleration_lon * dt * dt
-            turn_angle = dist / self.turn_radius
-            next_yaw = self.yaw + turn_angle
-            circle_center = [self.x - self.turn_radius * sin_yaw,
-                             self.y + self.turn_radius * cos_yaw]
-            end_loc = [circle_center[0] + self.turn_radius * np.sin(next_yaw),
-                       circle_center[1] - self.turn_radius * np.cos(next_yaw)]
-        else:  # straight movement
-            end_loc = [self.x + self.v_x * dt + 0.5 * acc_x * dt * dt, self.y + self.v_y * dt + 0.5 * acc_y * dt * dt]
-
-        self.x = end_loc[0]
-        self.y = end_loc[1]
-        self.v_x += dt * acc_x
-        self.v_y += dt * acc_y
-        self._timestamp = goal_timestamp
+        pass
 
 
 class EnrichedEgoState(EnrichedDynamicObject, EgoState):
@@ -196,32 +172,4 @@ class EnrichedState(State):
         :param timestamp:
         :return:
         """
-        # update dynamic objects
-        for dyn_obj in self.dynamic_objects:
-            dyn_obj.predict(timestamp)
-        # backup ego_state
-        prev_ego_state = copy.copy(self.ego_state)
-        # update ego_state
-        self.ego_state.predict(timestamp)
-
-        # since all objects are given relatively to ego, update them accordingly to ego change
-        rot_ang = self.ego_state.yaw - prev_ego_state.yaw
-        cosa = np.cos(rot_ang)
-        sina = np.sin(rot_ang)
-        dx = self.ego_state.x - prev_ego_state.x
-        dy = self.ego_state.y - prev_ego_state.y
-        # update static objects according to ego change
-        for stat_obj in self.static_objects:
-            new_x = stat_obj.x * cosa + stat_obj.y * sina - dx
-            new_y = -stat_obj.y * sina + stat_obj.y * cosa - dy
-            stat_obj.x = new_x
-            stat_obj.y = new_y
-        # update dynamic objects according to ego change
-        for dyn_obj in self.dynamic_objects:
-            new_x = dyn_obj.x * cosa + dyn_obj.y * sina - dx
-            new_y = -dyn_obj.y * sina + dyn_obj.y * cosa - dy
-            dyn_obj.x = new_x
-            dyn_obj.y = new_y
-            dyn_obj.v_x -= self.ego_state.v_x - prev_ego_state.v_x
-            dyn_obj.v_y -= self.ego_state.v_y - prev_ego_state.v_y
-            # TODO update free space similarly to static objects
+        pass
