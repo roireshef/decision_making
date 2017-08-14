@@ -1,19 +1,11 @@
-from enum import Enum
-
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
+from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.state.enriched_state import EnrichedState
 from rte.python.logger.AV_logger import AV_Logger
-
-
-class TrajectoryPlanningStrategy(Enum):
-    HIGHWAY = 0
-    TRAFFIC_JAM = 1
-    PARKING = 2
-
 
 class TrajectoryPlanningFacade(DmModule):
     def __init__(self, dds: DdsPubSub, logger: AV_Logger, strategy_handlers: dict):

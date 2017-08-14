@@ -2,7 +2,6 @@ import time
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.infra.dm_module import DmModule
 from rte.python.logger.AV_logger import AV_Logger
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState

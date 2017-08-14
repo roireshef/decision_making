@@ -1,7 +1,7 @@
 import numpy as np
 
 from decision_making.src.messages.dds_typed_message import DDSTypedMsg
-from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningStrategy
+from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 
 
 # TODO: discuss this and implement IDL
