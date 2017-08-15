@@ -5,6 +5,7 @@ import typing
 import numpy as np
 
 from decision_making.src.messages.dds_message import *
+from decision_making.src.messages.exceptions import MsgDeserializationError
 
 
 class DDSTypedMsg(DDSMsg):
@@ -28,8 +29,6 @@ class DDSTypedMsg(DDSMsg):
                     ser_dict[name] = self_dict[name]
         return ser_dict
 
-
-
     @classmethod
     def deserialize(cls, message: dict):
         """
@@ -37,15 +36,20 @@ class DDSTypedMsg(DDSMsg):
         :param message: dict containing all fields of the class
         :return: object of type cls, constructed with the arguments from message
         """
-        deser_dict = {}
-        for name, tpe in cls.__init__.__annotations__.items():
-            if inspect.isclass(tpe):
-                if issubclass(tpe, np.ndarray):
-                    deser_dict[name] = np.array(message[name]['array']).reshape(tuple(message[name]['shape']))
-                elif issubclass(tpe, DDSTypedMsg):
-                    deser_dict[name] = tpe.deserialize(message[name])
-                elif issubclass(tpe, List):
-                    deser_dict[name] = list(map(lambda d: tpe.__args__[0].deserialize(d), message[name]))
-                else:
-                    deser_dict[name] = message[name]
-        return cls(**deser_dict)
+        try:
+            deser_dict = {}
+            for name, tpe in cls.__init__.__annotations__.items():
+                if inspect.isclass(tpe):
+                    if issubclass(tpe, np.ndarray):
+                        deser_dict[name] = np.array(message[name]['array']).reshape(tuple(message[name]['shape']))
+                    elif issubclass(tpe, DDSTypedMsg):
+                        deser_dict[name] = tpe.deserialize(message[name])
+                    elif issubclass(tpe, List):
+                        deser_dict[name] = list(map(lambda d: tpe.__args__[0].deserialize(d), message[name]))
+                    else:
+                        deser_dict[name] = message[name]
+            return cls(**deser_dict)
+        except:
+            raise MsgDeserializationError("Deserialization error: could not deserialize into " +
+                                          cls.__class__.__name__ + " from " + str(message))
+
