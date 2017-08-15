@@ -18,13 +18,24 @@ class ObjectOnRoad(EnrichedDynamicObject):
         :param relative_longitude_to_ego: relative longitudinal distance in [m] from ego to object\
                 (according to driving route)
         """
+        v_x = None
+        v_y = None
+        acceleration_x = None
+        turn_radius = None
+
+        if isinstance(enriched_dynamic_object, EnrichedDynamicObject):
+            v_x = enriched_dynamic_object.v_x
+            v_y = enriched_dynamic_object.v_y
+            acceleration_x = enriched_dynamic_object.acceleration_x
+            turn_radius = enriched_dynamic_object.turn_radius
+
         EnrichedDynamicObject.__init__(self, enriched_dynamic_object.obj_id, enriched_dynamic_object.timestamp,
                                        enriched_dynamic_object.x, enriched_dynamic_object.y, enriched_dynamic_object.z,
                                        enriched_dynamic_object.yaw, enriched_dynamic_object.size,
                                        enriched_dynamic_object.road_localization, enriched_dynamic_object.confidence,
                                        enriched_dynamic_object.localization_confidence,
-                                       enriched_dynamic_object.v_x, enriched_dynamic_object.v_y,
-                                       enriched_dynamic_object.acceleration_x, enriched_dynamic_object.turn_radius)
+                                       v_x, v_y,
+                                       acceleration_x, turn_radius)
 
         self.road_latitude = road_latitude
         self.lane = lane
@@ -94,22 +105,24 @@ class BehavioralState:
         self.road_data = None  # of type (lanes_num, width, length, points)
         # each element in this list is of type (object_road_id, object_lane, object_full_lat, lon_distance_relative_to_ego)
         self.static_objects = None
+        self.dynamic_objects = None
 
-    def get_object_road_localization_relative_to_ego(self, map: MapAPI,
-                                                     target_object: Union[
-                                                         EnrichedDynamicObject, EnrichedObjectState]) -> (
+
+    def get_object_road_localization_relative_to_ego(self, target_object: Union[
+        EnrichedDynamicObject, EnrichedObjectState]) -> (
             bool, float, float, int):
-        object_road_id, lane, road_latitude, object_long, object_on_road = map.get_point_in_road_coordinates(
+        object_road_id, lane, road_latitude, object_long, object_on_road = self.map.get_point_in_road_coordinates(
             X=target_object.x, Y=target_object.y, Z=0.0)
 
         if not object_on_road:
             return False, None, None, None
 
-        lon_distance_relative_to_ego, found_connection = map.get_point_relative_longitude(
+        lon_distance_relative_to_ego, found_connection = self.map.get_point_relative_longitude(
             to_road_id=object_road_id, to_lon_in_road=object_long, from_road_id=self.current_road_id,
             from_lon_in_road=self.current_long,
             max_lookahead_distance=global_constants.BEHAVIORAL_PLANNING_LOOKAHEAD_DIST)
         return found_connection, lon_distance_relative_to_ego, road_latitude, lane
+
 
     def update_behavioral_state(self, state: EnrichedState, navigation_plan: NavigationPlan) -> None:
         """
@@ -121,16 +134,17 @@ class BehavioralState:
         :return: void
         """
 
-        # updating information from ego_state
+        # Update navigation plan
+        self._navigation_plan = navigation_plan
+
+        # Process ego_state
         ego_state = state.ego_state
         self.current_yaw = ego_state.yaw
         self.current_position = np.array([ego_state.x, ego_state.y, ego_state.z])
         self.current_orientation = np.array(ego_state.getOrientationQuaternion())
         self.current_velocity = np.sqrt(ego_state.v_x * ego_state.v_x + ego_state.v_y * ego_state.v_y)
 
-        ###################
-        # getting relevant information about our car from semantic DB
-        ###################
+        # Process map-related localization
         ego_road_id, ego_lane, ego_full_lat, ego_long, is_on_road = self.map.get_point_in_road_coordinates(
             X=self.current_position[0], Y=self.current_position[1], Z=self.current_position[2])
         ego_off_road = not is_on_road
@@ -144,18 +158,25 @@ class BehavioralState:
         self.ego_off_road = ego_off_road
         self.road_data = self.map.get_road_details(self.current_road_id)
 
-        ###################
-        # getting relevant information about objects (using semantic DB)
-        ###################
+        # TODO: get actual length and width, relative to objects's orientation
+        OBJECT_CONST_WIDTH_IN_METERS = 1.2
+        OBJECT_CONST_LENGTH_IN_METERS = 1.7
+
+        # Process static and dynamic objects
         self.static_objects = []
-        for obj in state.static_objects:
+        for static_obj in state.static_objects:
+            found_connection, lon_distance_relative_to_ego, road_latitude, lane = self.get_object_road_localization_relative_to_ego(
+                state.map, navigation_plan, static_obj)
+            if found_connection:  # ignoring everything not in our path looking forward
+                self.static_objects.append(
+                    ObjectOnRoad(static_obj, road_latitude=object_full_lat, lane=object_lane,
+                                 relative_longitude_to_ego=lon_distance_relative_to_ego))
 
-            found_connection, lon_distance_relative_to_ego, road_latitude, lane = self.get_object_road_localization_relative_to_ego(state.map, )
-
-                if found_connection:  # ignoring everything not in our path looking forward
-                    # TODO: get actual length and width, relative to objects's orientation
-                    OBJECT_CONST_WIDTH_IN_METERS = 1.2
-                    OBJECT_CONST_LENGTH_IN_METERS = 1.7
-                    self.static_objects.append(
-                        ObjectOnRoad(obj, road_latitude=object_full_lat, lane=object_lane,
-                                     relative_longitude_to_ego=lon_distance_relative_to_ego))
+        self.dynamic_objects = []
+        for dynamic_obj in state.dynamic_objects:
+            found_connection, lon_distance_relative_to_ego, road_latitude, lane = self.get_object_road_localization_relative_to_ego(
+                state.map, navigation_plan, dynamic_obj)
+            if found_connection:  # ignoring everything not in our path looking forward
+                self.dynamic_objects.append(
+                    ObjectOnRoad(dynamic_obj, road_latitude=object_full_lat, lane=object_lane,
+                                 relative_longitude_to_ego=lon_distance_relative_to_ego))
