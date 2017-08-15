@@ -5,11 +5,10 @@ from rte.python.logger.AV_logger import AV_Logger
 
 def test_init():
     logger = AV_Logger.get_logger("test_cache_map")
-    naive_cache_map = NaiveCacheMap()
-    naive_cache_map.load_map("/home/vlad/dev/python_git/decision_making_sim/test/world_generator/CustomMapPickle.bin")
+    naive_cache_map = NaiveCacheMap("/home/vlad/dev/python_git/decision_making_sim/test/world_generator/CustomMapPickle.bin")
     lanes_num, width, length, points = naive_cache_map.get_road_details(1)
     logger.info("lanes_num=%d, width=%f length=%f", lanes_num, width, length)
-    road_id, lane, full_lat, lane_lat, lon, yaw_in_road = naive_cache_map.convert_world_to_lat_lon(-51, 20, 0, -np.pi / 2)
+    road_id, lane, full_lat, lane_lat, lon, yaw_in_road = naive_cache_map.convert_world_to_lat_lon(-51, 20, 0, -np.pi/2)
     logger.info("road_id=%d lane=%d, full_lat=%f lon=%f yaw=%f", road_id, lane, full_lat, lon, yaw_in_road)
 
     navigation_plan = NavigationPlan([1,2])
