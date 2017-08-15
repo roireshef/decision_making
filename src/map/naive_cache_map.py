@@ -1,4 +1,4 @@
-from decision_making.src.map.cache_map import MapAPI
+from decision_making.src.map.map_api import MapAPI
 import pickle
 
 class NaiveCacheMap(MapAPI):
