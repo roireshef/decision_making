@@ -65,8 +65,7 @@ class BehavioralState:
         self.current_lat = None
         self.current_long = None
         self.ego_off_road = None
-        self.road_data = None  # of type (lanes_num, width, length, points)
-        # each element in this list is of type (object_road_id, object_lane, object_full_lat, lon_distance_relative_to_ego)
+        self.road_data = None
         self.static_objects = None
         self.dynamic_objects = None
 
