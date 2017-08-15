@@ -9,11 +9,13 @@ from decision_making.src.planning.behavioral.behavioral_state import BehavioralS
 from decision_making.src.planning.utils import geometry_utils
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 from decision_making.src.state.enriched_state import EnrichedState
+from rte.python.logger.AV_logger import AV_Logger
 
 
 class Policy(metaclass=ABCMeta):
-    def __init__(self, policy_params: dict):
+    def __init__(self, logger: AV_Logger, policy_params: dict):
         self._policy_params = policy_params
+        self.logger = logger
 
     @abstractmethod
     def plan(self, behavioral_state: BehavioralState) -> (TrajectoryParameters, BehavioralVisualizationMsg):
@@ -21,8 +23,8 @@ class Policy(metaclass=ABCMeta):
 
 
 class DefaultPolicy(Policy):
-    def __init__(self, policy_params: dict):
-        super().__init__(policy_params=policy_params)
+    def __init__(self, logger: AV_Logger, policy_params: dict):
+        super().__init__(logger=logger, policy_params=policy_params)
         self.behavioral_state = None
 
     def __high_level_planning(self, behavioral_state: BehavioralState) -> float:
@@ -144,6 +146,7 @@ class DefaultPolicy(Policy):
         selected_latitude = valid_absolute_latitude_offset_grid[chosen_action]
         return selected_latitude
 
+
     def plan(self, behavioral_state: BehavioralState) -> (TrajectoryParameters, BehavioralVisualizationMsg):
 
         if behavioral_state is None:
@@ -190,29 +193,12 @@ class DefaultPolicy(Policy):
         # Calculating safe speed according to ACDA
         #############################################
         set_safety_lookahead_dist_by_ego_vel = False
-
-        # get min long of static objects in my lane
-        min_static_object_long = CalcForwardSightDistance(behavioral_state.static_objects, behavioral_state.current_lat)
-
-        # compute safe speed for forward line of sight
-        safe_speed_forward_los = self.safe_metric.CalcSafeSpeedForwradLOS(min_static_object_long)
-
-        min_horizontal_distance_in_trajectory_range = CalcHorizontalSightDistance(behavioral_state.static_objects,
-                                                                                  behavioral_state.current_lat,
-                                                                                  behavioral_state.current_velocity,
-                                                                                  set_safety_lookahead_dist_by_ego_vel)  # this is based on the desired lat of ego's route
-        safe_speed_horizontal_los = self.safe_metric.calc_safe_speed_horizontal_distance_original_acda(
-            min_horizontal_distance_in_trajectory_range)
-
-        # get curve radius
-        curve_radius = CalcRoadTurnRadius(lookahead_path)  # TODO - verify input matches.
-        safe_speed_curve_radius = self.safe_metric.CalcSafeSpeedCriticalSpeed(curve_radius)
-
-        safe_speed = min(safe_speed_forward_los, safe_speed_horizontal_los, safe_speed_curve_radius,
-                         global_constants.BEHAVIORAL_PLANNING_CONSTANT_DRIVE_VELOCITY)
+        acda_safe_speed = compute_acda(behavioral_state.static_objects, behavioral_state.dynamic_objects,
+                                       enriched_ego_state, reference_route_xy_in_cars_frame)
+        safe_speed = min(acda_safe_speed, global_constants.BEHAVIORAL_PLANNING_CONSTANT_DRIVE_VELOCITY)
 
         if safe_speed < 0:
-            warnings.warn('safe speed < 0')
+            self.logger.info("safe speed < 0")
 
         safe_speed = max(safe_speed, 0)
 

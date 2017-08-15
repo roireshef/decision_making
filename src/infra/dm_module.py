@@ -4,7 +4,7 @@ from abc import abstractmethod
 
 class DM_Module():
 
-    def __init__(self, DDS : DdsPubSub, logger):
+    def __init__(self, DDS : DdsPubSub, logger: AV_Logger):
         self.DDS = DDS
         self.logger = logger
 

@@ -12,7 +12,7 @@ from decision_making.src.state.enriched_state import State, EnrichedState
 
 
 class BehavioralFacade(DM_Module):
-    def __init__(self, dds : DdsPubSub, logger, policy: Policy, behavioral_state: BehavioralState):
+    def __init__(self, dds : DdsPubSub, logger: AV_Logger, policy: Policy, behavioral_state: BehavioralState):
         """
         :param policy: decision making component
         :param behavioral_state: initial state of the system. Can be empty, i.e. initialized with default values.
