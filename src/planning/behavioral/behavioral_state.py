@@ -5,41 +5,49 @@ from decision_making.src.state.enriched_state import EnrichedState, EnrichedDyna
 import numpy as np
 
 
-class ObjectOnRoad(EnrichedDynamicObject):
-    def __init__(self, enriched_dynamic_object: EnrichedDynamicObject, road_latitude: float, lane: int,
-                 relative_longitude_to_ego: float):
+class ObjectOnRoad():
+    def __init__(self, enriched_object: Union[EnrichedDynamicObject, EnrichedObjectState], road_latitude: float,
+                 lane: int, relative_longitude_to_ego: float):
         """
         This class is an extension of EnrichedDynamicObject. It enriches each object on the road with additional
         parameters relating to the objects location relative to the ego state. It therefore depends on the navigation
         plan.
-        :param enriched_dynamic_object: the original object
+        :param enriched_object: the original object
         :param road_latitude: full latitude on road [m]
         :param lane: lane number on road [integer]
         :param relative_longitude_to_ego: relative longitudinal distance in [m] from ego to object\
                 (according to driving route)
         """
-        v_x = None
-        v_y = None
-        acceleration_x = None
+        v_x = 0.0
+        v_y = 0.0
+        acceleration_x = 0.0
         turn_radius = None
 
-        if isinstance(enriched_dynamic_object, EnrichedDynamicObject):
-            v_x = enriched_dynamic_object.v_x
-            v_y = enriched_dynamic_object.v_y
-            acceleration_x = enriched_dynamic_object.acceleration_x
-            turn_radius = enriched_dynamic_object.turn_radius
+        if isinstance(enriched_object, EnrichedDynamicObject):
+            v_x = enriched_object.v_x
+            v_y = enriched_object.v_y
+            acceleration_x = enriched_object.acceleration_x
+            turn_radius = enriched_object.turn_radius
 
-        EnrichedDynamicObject.__init__(self, enriched_dynamic_object.obj_id, enriched_dynamic_object.timestamp,
-                                       enriched_dynamic_object.x, enriched_dynamic_object.y, enriched_dynamic_object.z,
-                                       enriched_dynamic_object.yaw, enriched_dynamic_object.size,
-                                       enriched_dynamic_object.road_localization, enriched_dynamic_object.confidence,
-                                       enriched_dynamic_object.localization_confidence,
+        EnrichedDynamicObject.__init__(self, enriched_object.obj_id, enriched_object.timestamp,
+                                       enriched_object.x, enriched_object.y, enriched_object.z,
+                                       enriched_object.yaw, enriched_object.size,
+                                       enriched_object.road_localization, enriched_object.confidence,
+                                       enriched_object.localization_confidence,
                                        v_x, v_y,
                                        acceleration_x, turn_radius)
 
         self.road_latitude = road_latitude
         self.lane = lane
         self.relative_longitude_to_ego = relative_longitude_to_ego
+
+    def predict(self, timestamp: int, map: MapAPI, navigation_plan: NavigationPlan):
+        """
+        This prediction will estimate object's location according to map and our navigation plan
+        :param timestamp:
+        :return:
+        """
+        pass
 
 
 class MarginInfo:
@@ -107,7 +115,6 @@ class BehavioralState:
         self.static_objects = None
         self.dynamic_objects = None
 
-
     def get_object_road_localization_relative_to_ego(self, target_object: Union[
         EnrichedDynamicObject, EnrichedObjectState]) -> (
             bool, float, float, int):
@@ -122,7 +129,6 @@ class BehavioralState:
             from_lon_in_road=self.current_long,
             max_lookahead_distance=global_constants.BEHAVIORAL_PLANNING_LOOKAHEAD_DIST)
         return found_connection, lon_distance_relative_to_ego, road_latitude, lane
-
 
     def update_behavioral_state(self, state: EnrichedState, navigation_plan: NavigationPlan) -> None:
         """
@@ -169,7 +175,7 @@ class BehavioralState:
                 state.map, navigation_plan, static_obj)
             if found_connection:  # ignoring everything not in our path looking forward
                 self.static_objects.append(
-                    ObjectOnRoad(static_obj, road_latitude=object_full_lat, lane=object_lane,
+                    ObjectOnRoad(enriched_object=static_obj, road_latitude=object_full_lat, lane=object_lane,
                                  relative_longitude_to_ego=lon_distance_relative_to_ego))
 
         self.dynamic_objects = []
@@ -178,5 +184,5 @@ class BehavioralState:
                 state.map, navigation_plan, dynamic_obj)
             if found_connection:  # ignoring everything not in our path looking forward
                 self.dynamic_objects.append(
-                    ObjectOnRoad(dynamic_obj, road_latitude=object_full_lat, lane=object_lane,
+                    ObjectOnRoad(enriched_object=dynamic_obj, road_latitude=object_full_lat, lane=object_lane,
                                  relative_longitude_to_ego=lon_distance_relative_to_ego))
