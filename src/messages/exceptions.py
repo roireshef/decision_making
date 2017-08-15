@@ -1,0 +1,2 @@
+class MsgDeserializationError(Exception):
+    pass

@@ -1,4 +1,4 @@
-from src.messages.dds_nontyped_message import DDSNonTypedMsg
+from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
 
 
 class Foo(DDSNonTypedMsg):
@@ -11,3 +11,8 @@ class Voo(DDSNonTypedMsg):
     def __init__(self, x, y):
         self.x = x
         self.y = y
+
+
+class Woo(DDSNonTypedMsg):
+    def __init__(self, l):
+        self.l = l

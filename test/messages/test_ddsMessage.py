@@ -1,19 +1,32 @@
 import sys
 import numpy as np
+import py, pytest
+
 
 if sys.version_info > (3, 0):
-    from test.messages.typed_messages_fixture import *
+    from decision_making.test.messages.typed_messages_fixture import *
 else:
-    from test.messages.nontyped_messages_fixture import *
+    from decision_making.test.messages.nontyped_messages_fixture import *
 
 
 def test_serialize_dummyMsg_successful():
     f = Foo(2, 3)
     v = Voo(f, np.array([[.1, .2, 3], [11, 22, 33]]))
-    v_ser = v.serialize()
+    w = Woo(list((v, v)))
+    w_ser = w.serialize()
 
-    v_new = Voo.deserialize(v_ser)
+    w_new = Woo.deserialize(w_ser)
 
-    assert isinstance(v_new, Voo)
-    assert isinstance(v_new.x, Foo)
-    assert isinstance(v_new.y, np.ndarray)
+    assert isinstance(w_new, Woo)
+    assert isinstance(w_new.l, list)
+    assert isinstance(w_new.l[0].y, np.ndarray)
+
+
+def test_serialize_dummyWrongFieldsMsg_throwsError():
+    f = Foo(2, 3)
+    v = Voo(f, np.array([[.1, .2, 3], [11, 22, 33]]))
+    w = Woo(list((f, v)))
+    with pytest.raises(Exception, message="Trying to serialize wrong class-types passed without an exception"):
+        w_ser = w.serialize()
+    with pytest.raises(Exception, message="Trying to deserialize wrong class-types passed without an exception"):
+        w_new = Woo.deserialize(w_ser)

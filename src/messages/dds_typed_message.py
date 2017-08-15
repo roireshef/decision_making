@@ -1,8 +1,11 @@
 import inspect
+from typing import List, TypeVar
+import typing
 
 import numpy as np
 
 from decision_making.src.messages.dds_message import *
+from decision_making.src.messages.exceptions import MsgDeserializationError
 
 
 class DDSTypedMsg(DDSMsg):
@@ -13,16 +16,18 @@ class DDSTypedMsg(DDSMsg):
         """
         self_dict = self.__dict__
         ser_dict = {}
-        for key, val in self_dict.items():
-            if isinstance(val, np.ndarray):
-                ser_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': val.shape}
-            elif inspect.isclass(type(val)) and issubclass(type(val), DDSMsg):
-                ser_dict[key] = val.serialize()
-            else:
-                ser_dict[key] = val
+        for name, tpe in self.__init__.__annotations__.items():
+            if inspect.isclass(tpe):
+                if issubclass(tpe, np.ndarray):
+                    ser_dict[name] = {'array': self_dict[name].flat.__array__().tolist(),
+                                      'shape': list(self_dict[name].shape)}
+                elif issubclass(tpe, list):
+                    ser_dict[name] = list(map(lambda x: x.serialize(), self_dict[name]))
+                elif inspect.isclass(tpe) and issubclass(tpe, DDSTypedMsg):
+                    ser_dict[name] = self_dict[name].serialize()
+                else:
+                    ser_dict[name] = self_dict[name]
         return ser_dict
-
-
 
     @classmethod
     def deserialize(cls, message: dict):
@@ -31,12 +36,20 @@ class DDSTypedMsg(DDSMsg):
         :param message: dict containing all fields of the class
         :return: object of type cls, constructed with the arguments from message
         """
-        message_copy = message.copy()
-        for name, type in cls.__init__.__annotations__.items():
-            if 'numpy.ndarray' in str(type):
-                message_copy[name] = np.array(message_copy[name]['array']).reshape(message_copy[name]['shape'])
-            elif isinstance(type, ABCMeta):
-                real_type = type(type.__name__, '')
-                if isinstance(real_type, DDSTypedMsg):
-                    message_copy[name] = real_type.deserialize(message_copy[name])
-        return cls(**message_copy)
+        try:
+            deser_dict = {}
+            for name, tpe in cls.__init__.__annotations__.items():
+                if inspect.isclass(tpe):
+                    if issubclass(tpe, np.ndarray):
+                        deser_dict[name] = np.array(message[name]['array']).reshape(tuple(message[name]['shape']))
+                    elif issubclass(tpe, DDSTypedMsg):
+                        deser_dict[name] = tpe.deserialize(message[name])
+                    elif issubclass(tpe, List):
+                        deser_dict[name] = list(map(lambda d: tpe.__args__[0].deserialize(d), message[name]))
+                    else:
+                        deser_dict[name] = message[name]
+            return cls(**deser_dict)
+        except:
+            raise MsgDeserializationError("Deserialization error: could not deserialize into " +
+                                          cls.__class__.__name__ + " from " + str(message))
+
