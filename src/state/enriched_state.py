@@ -1,20 +1,20 @@
 from typing import List
 
 import numpy as np
-from src.state.state import *
+from decision_making.src.state.state import *
 
 
 class EnrichedRoadLocalization(RoadLocalization):
-    def __init__(self, road_id: int, lane: int, intra_lane_lat: float, road_lon: float, intra_lane_yaw: float):
+    def __init__(self, road_id: int, lane_num: int, intra_lane_lat: float, road_lon: float, intra_lane_yaw: float):
         """
         location in road coordinates (road_id, lat, lon)
         :param road_id:
-        :param lane: 0 is the leftmost
+        :param lane_num: 0 is the leftmost
         :param intra_lane_lat: in meters, 0 is lane left edge
         :param road_lon: in meters, longitude relatively to the road start
         :param intra_lane_yaw: 0 is along road's local tangent
         """
-        RoadLocalization.__init__(self, road_id, lane, intra_lane_lat, road_lon, intra_lane_yaw)
+        RoadLocalization.__init__(self, road_id, lane_num, intra_lane_lat, road_lon, intra_lane_yaw)
 
 
 class EnrichedOccupancyState(OccupancyState):
@@ -137,11 +137,22 @@ class EnrichedPerceivedRoad(PerceivedRoad):
         """
         PerceivedRoad.__init__(self, timestamp, lanes_structure, confidence)
 
+    def serialize(self):
+        serialized_state = super().serialize()
+        # handle lists of complex types
+        lanes_list = list()
+        for lane in self.lanes_structure:
+            lanes_list.append(lane.serialize())
+
+        serialized_state['lanes_structure'] = lanes_list
+
+        return serialized_state
+
 
 class EnrichedState(State):
     def __init__(self, occupancy_state: EnrichedOccupancyState, static_objects:
-    List[EnrichedObjectState], dynamic_objects: List[EnrichedDynamicObject],
-                 ego_state: EnrichedEgoState, perceived_road: EnrichedPerceivedRoad):
+    List[EnrichedObjectState], dynamic_objects: List[EnrichedDynamicObject], ego_state: EnrichedEgoState,
+                 perceived_road: EnrichedPerceivedRoad):
         """
         main class for the world state
         :param occupancy_state: free space
@@ -151,6 +162,21 @@ class EnrichedState(State):
         :param perceived_road: the road of ego as it viewed by perception, relatively to ego
         """
         State.__init__(self, occupancy_state, static_objects, dynamic_objects, ego_state, perceived_road)
+
+    def serialize(self):
+        serialized_state = super().serialize()
+        # handle lists of complex types
+        static_objects_list = list()
+        for obj in self.static_objects:
+            static_objects_list.append(obj.serialize())
+        dynamic_objects_list = list()
+        for obj in self.dynamic_objects:
+            dynamic_objects_list.append(obj.serialize())
+
+        serialized_state['static_objects'] = static_objects_list
+        serialized_state['dynamic_objects'] = dynamic_objects_list
+
+        return serialized_state
 
     def update_objects(self):
         """

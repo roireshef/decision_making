@@ -1,4 +1,4 @@
-from src.planning.behavioral.behavioral_state import BehavioralState
+from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 
 '''
 Static methods for computing complex features, e.g., ACDA speed.
