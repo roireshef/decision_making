@@ -1,5 +1,5 @@
 from decision_making.src import global_constants
-from decision_making.src.state.enriched_state import EgoState, EnrichedState
+from decision_making.src.state.enriched_state import EnrichedState
 import numpy as np
 
 
@@ -37,23 +37,24 @@ class LaneObjectInfo:
 
 class BehavioralState:
     # TODO add type hint for navigation plan, once implemented
-    def __init__(self, ego_state: EgoState = None, margin_info: MarginInfo = None,
-                 lane_object_information: list = [], navigation_plan=None):
+    def __init__(self, map: MapAPI, navigation_plan: NavigationPlan):
         """
         initialization of behavioral state. default values are None and empty list, because the logic for actual updates
         (coming from messages) is done in the update_behavioral_state method.
-        :param ego_state: state of our ego vehicle, coming from EnrichedState
-        :param margin_info: of type MarginInfo
-        :param lane_object_information: list containing information regarding all the lanes of our current road. Each
-        element is of type LaneObjectInfo
+        :param map: cached map of type MapAPI
         :param navigation_plan:
         """
-        self._ego_state = ego_state  # taken from the enriched state
-        self._margin_info = margin_info
-        self._lane_object_information = lane_object_information  # Array of LaneObjectInfo's
+
+        # initiate behavioral state with cached map and initial navigation plan
+        self.map = map
         self._navigation_plan = navigation_plan
 
-        self.current_yaw = 0.0
+        # private members, will be updated when new state arrives
+        self._margin_info = None
+        self._lane_object_information = None  # Array of LaneObjectInfo's
+
+        # public members defining internal state, will be used by policy to choose action
+        self.current_yaw = None
         self.current_position = None
         self.current_orientation = None
         self.current_velocity = None
@@ -83,22 +84,21 @@ class BehavioralState:
         self.current_orientation = np.array(ego_state.getOrientationQuaternion())
         self.current_velocity = np.sqrt(ego_state.v_x * ego_state.v_x + ego_state.v_y * ego_state.v_y)
 
-        semantic_db = self.state.semantic_db
         ###################
         # getting relevant information about our car from semantic DB
         ###################
-        ego_road_id, ego_lane, ego_full_lat, ego_long, is_on_road = semantic_db.get_point_in_road_coordinates(
+        ego_road_id, ego_lane, ego_full_lat, ego_long, is_on_road = self.map.get_point_in_road_coordinates(
             X=self.current_position[0], Y=self.current_position[1], Z=self.current_position[2])
         ego_off_road = not is_on_road
         if ego_off_road:
-            ego_road_id = self.state.semantic_db.navigation_plan.get_current_road_id()
+            ego_road_id = navigation_plan.get_current_road_id()
 
         self.current_road_id = ego_road_id
         self.current_lane = ego_lane
         self.current_lat = ego_full_lat
         self.current_long = ego_long
         self.ego_off_road = ego_off_road
-        self.road_data = semantic_db.get_road_details(self.current_road_id)
+        self.road_data = self.map.get_road_details(self.current_road_id)
 
         ###################
         # getting relevant information about objects (using semantic DB)
@@ -106,10 +106,10 @@ class BehavioralState:
         self.static_objects = []
         for obj in self.state.perception_state.static_objects:
             obj_state = obj.getState()
-            object_road_id, object_lane, object_full_lat, object_long, object_on_road = semantic_db.get_point_in_road_coordinates(
+            object_road_id, object_lane, object_full_lat, object_long, object_on_road = self.map.get_point_in_road_coordinates(
                 X=obj_state.x, Y=obj_state.y, Z=0.0)
             if object_on_road:
-                lon_distance_relative_to_ego, found_connection = semantic_db.get_point_relative_longitude(
+                lon_distance_relative_to_ego, found_connection = self.map.get_point_relative_longitude(
                     to_road_id=object_road_id, to_lon_in_road=object_long, from_road_id=self.current_road_id,
                     from_lon_in_road=self.current_long, max_lookahead_distance=global_constants.BEHAVIORAL_PLANNING_LOOKAHEAD_DIST)
                 if found_connection:    # ignoring everything not in our path looking forward

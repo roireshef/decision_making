@@ -4,6 +4,7 @@ DIVISION_FLOATING_ACCURACY = 10 ** -10
 
 # [m] high-level behavioral planner lookahead distance
 BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 50.0
+BEHAVIORAL_PLANNING_CONSTANT_DRIVE_VELOCITY = 10.0
 
 # Trajectory Planner #
 

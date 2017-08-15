@@ -8,7 +8,7 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.policy import Policy, DefaultPolicy
 from decision_making.src.planning.navigation.navigation_plan import NavigationPlan
-from decision_making.src.state.enriched_state import State
+from decision_making.src.state.enriched_state import State, EnrichedState
 
 
 class BehavioralFacade(DM_Module):
@@ -36,11 +36,14 @@ class BehavioralFacade(DM_Module):
         self.__publish_results(trajectory_params)
         self.__publish_visualization(behavioral_visualization_message)
 
-    # TODO : implement message passing
-    def __get_current_state(self) -> State:
+    def __get_current_state(self) -> EnrichedState:
         input_state = self.DDS.get_latest_sample(topic='BehavioralPlannerSub::StateReader', timeout=1)
-        print('Received: ' + str(input_state))
-    
+        return EnrichedState.deserialize(input_state)
+
+    def __update_map(self) -> None:
+        # TODO: update cached map when relevant
+        pass
+
     def __get_current_navigation_plan(self) -> NavigationPlan:
         pass
 
