@@ -8,8 +8,9 @@ from decision_making.src.messages.dds_typed_message import DDSTypedMsg
 
 
 class RoadLocalization(DDSTypedMsg):
-    def __init__(self, road_id: int, lane_num: int, intra_lane_lat: float, road_lon: float, intra_lane_yaw: float,
-                 road_confidence: float, lane_confidence: float):
+    def __init__(self, road_id, lane_num, intra_lane_lat, road_lon, intra_lane_yaw,
+                 road_confidence, lane_confidence):
+        # type: (int, int, float, float, float, float, float) -> None
         """
         location in road coordinates (road_id, lat, lon)
         :param road_id:
@@ -30,7 +31,8 @@ class RoadLocalization(DDSTypedMsg):
 
 
 class OccupancyState(DDSTypedMsg):
-    def __init__(self, timestamp: int, free_space: np.ndarray, confidence: np.ndarray):
+    def __init__(self, timestamp, free_space, confidence):
+        # type: (int, np.ndarray, np.ndarray) -> None
         """
         free space description
         :param timestamp of free space
@@ -43,16 +45,17 @@ class OccupancyState(DDSTypedMsg):
 
 
 class ObjectSize(DDSTypedMsg):
-    def __init__(self, length: float, width: float, height: float):
+    def __init__(self, length, width, height):
+        # type: (float, float, float) -> None
         self.length = length
         self.width = width
         self.height = height
 
 
 class DynamicObject(DDSTypedMsg):
-    def __init__(self, obj_id: int, timestamp: int, x: float, y: float, z: float, yaw: float, size: ObjectSize,
-                 road_localization: RoadLocalization, confidence: float, localization_confidence: float,
-                 v_x: float, v_y: float, acceleration_lon: float, turn_radius: float):
+    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
+                 v_x, v_y, acceleration_lon, turn_radius):
+        # type: (int, int, float, float, float, float, ObjectSize, RoadLocalization, float, float, float, float, float, float) -> None
         """
         both ego and other dynamic objects
         :param obj_id: object id
@@ -85,7 +88,8 @@ class DynamicObject(DDSTypedMsg):
         self.acceleration_lon = acceleration_lon
         self.turn_radius = turn_radius
 
-    def predict(self, goal_timestamp: int, lane_width: float) -> None:
+    def predict(self, goal_timestamp, lane_width) -> None:
+        # type: (int, float) -> None
         """
         Predict the object's location for the future timestamp
         !!! This function changes the object's location, velocity and timestamp !!!
@@ -125,9 +129,9 @@ class DynamicObject(DDSTypedMsg):
 
 
 class EgoState(DynamicObject, DDSTypedMsg):
-    def __init__(self, obj_id: int, timestamp: int, x: float, y: float, z: float, yaw: float, size: ObjectSize,
-                 road_localization: RoadLocalization, confidence: float, localization_confidence: float,
-                 v_x: float, v_y: float, acceleration_lon: float, turn_radius: float, steering_angle: float):
+    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
+                 v_x, v_y, acceleration_lon, turn_radius, steering_angle):
+        # type: (int, int, float, float, float, float, ObjectSize, RoadLocalization, float, float, float, float, float, float, float) -> None
         """
         :param obj_id:
         :param timestamp:
@@ -151,7 +155,8 @@ class EgoState(DynamicObject, DDSTypedMsg):
 
 
 class LanesStructure(DDSTypedMsg):
-    def __init__(self, center_of_lane_points: np.ndarray, width_vec: np.ndarray):
+    def __init__(self, center_of_lane_points, width_vec):
+        # type: (np.ndarray, np.ndarray) -> None
         """
         this class is instantiated for each lane
         :param center_of_lane_points:  points array for a given lane
@@ -162,7 +167,8 @@ class LanesStructure(DDSTypedMsg):
 
 
 class PerceivedRoad(DDSTypedMsg):
-    def __init__(self, timestamp: int, lanes_structure: List[LanesStructure], confidence: float):
+    def __init__(self, timestamp, lanes_structure, confidence):
+        # type: (int, List[LanesStructure], float) -> None
         """
         the road of ego as it viewed by perception
         :param timestamp:
@@ -186,8 +192,8 @@ class PerceivedRoad(DDSTypedMsg):
 
 
 class State(DDSTypedMsg):
-    def __init__(self, occupancy_state: OccupancyState, dynamic_objects: List[DynamicObject],
-                 ego_state: EgoState, perceived_road: PerceivedRoad):
+    def __init__(self, occupancy_state, dynamic_objects, ego_state, perceived_road):
+        # type: (OccupancyState, List[DynamicObject], EgoState, PerceivedRoad) -> None
         """
         main class for the world state
         :param occupancy_state: free space
@@ -236,7 +242,8 @@ class State(DDSTypedMsg):
         """
         pass
 
-    def predict(self, goal_timestamp: int):
+    def predict(self, goal_timestamp):
+        # type: (int) -> None
         """
         predict the ego localization, other objects and free space for the future timestamp
         :param goal_timestamp:
