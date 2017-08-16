@@ -327,7 +327,7 @@ class Dynamics:
         cos_yaw = np.cos(yaw)
         start_vel = np.sqrt(v_x * v_x + v_y * v_y)
         # if the object will stop before goal_timestamp, then set dt to be until the stop time
-        if accel_lon < -EPSILON and accel_lon * dt < -start_vel:
+        if accel_lon < -0.01 and accel_lon * dt < -start_vel:
             dt = start_vel / (-accel_lon)
 
         if turn_radius is not None and turn_radius != 0:  # movement by circle arc (not straight)
