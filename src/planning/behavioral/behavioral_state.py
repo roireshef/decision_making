@@ -1,8 +1,12 @@
 from typing import Union
 
 from decision_making.src import global_constants
+from decision_making.src.map.map_api import MapAPI
+from decision_making.src.planning.navigation.navigation_plan import NavigationPlan
 from decision_making.src.state.enriched_state import EnrichedState, EnrichedDynamicObject, EnrichedObjectState
 import numpy as np
+
+from rte.python.logger.AV_logger import AV_Logger
 
 
 class MarginInfo:
@@ -38,17 +42,18 @@ class LaneObjectInfo:
 
 
 class BehavioralState:
-    # TODO add type hint for navigation plan, once implemented
-    def __init__(self, map: MapAPI, navigation_plan: NavigationPlan):
+    def __init__(self, logger: AV_Logger, cached_map: MapAPI, navigation_plan: NavigationPlan):
         """
         initialization of behavioral state. default values are None and empty list, because the logic for actual updates
         (coming from messages) is done in the update_behavioral_state method.
-        :param map: cached map of type MapAPI
+        :param cached_map: cached map of type MapAPI
         :param navigation_plan:
         """
 
+        self.logger = logger
+
         # initiate behavioral state with cached map and initial navigation plan
-        self.map = map
+        self.map = cached_map
         self._navigation_plan = navigation_plan
 
         # private members, will be updated when new state arrives
@@ -70,18 +75,23 @@ class BehavioralState:
         self.dynamic_objects = None
 
     def get_object_road_localization_relative_to_ego(self, target_object: Union[
-        EnrichedDynamicObject, EnrichedObjectState]) -> (
+        EnrichedDynamicObject, EnrichedObjectState], navigation_plan: NavigationPlan) -> (
             bool, float, float, int):
-        object_road_id, lane, road_latitude, object_long, object_on_road = self.map.get_point_in_road_coordinates(
-            X=target_object.x, Y=target_object.y, Z=0.0)
+        object_road_id, lane, road_latitude, _, object_long, _ = self.map.convert_world_to_lat_lon(x=target_object.x,
+                                                                                                   y=target_object.y,
+                                                                                                   z=0.0, yaw=0.0)
 
-        if not object_on_road:
+        if object_road_id is None:
             return False, None, None, None
 
         lon_distance_relative_to_ego, found_connection = self.map.get_point_relative_longitude(
-            to_road_id=object_road_id, to_lon_in_road=object_long, from_road_id=self.current_road_id,
+            from_road_id=self.current_road_id,
             from_lon_in_road=self.current_long,
-            max_lookahead_distance=global_constants.BEHAVIORAL_PLANNING_LOOKAHEAD_DIST)
+            to_road_id=object_road_id,
+            to_lon_in_road=object_long,
+            max_lookahead_distance=global_constants.BEHAVIORAL_PLANNING_LOOKAHEAD_DIST,
+            navigation_plan=navigation_plan)
+
         return found_connection, lon_distance_relative_to_ego, road_latitude, lane
 
     def update_behavioral_state(self, state: EnrichedState, navigation_plan: NavigationPlan) -> None:
@@ -105,18 +115,21 @@ class BehavioralState:
         self.current_velocity = np.sqrt(ego_state.v_x * ego_state.v_x + ego_state.v_y * ego_state.v_y)
 
         # Process map-related localization
-        ego_road_id, ego_lane, ego_full_lat, ego_long, is_on_road = self.map.get_point_in_road_coordinates(
-            X=self.current_position[0], Y=self.current_position[1], Z=self.current_position[2])
-        ego_off_road = not is_on_road
-        if ego_off_road:
-            ego_road_id = navigation_plan.get_current_road_id()
+        ego_road_id, ego_lane, ego_full_lat, _, ego_long, _ = self.map.convert_world_to_lat_lon(
+            x=self.current_position[0], y=self.current_position[1], z=0.0, yaw=0.0)
 
-        self.current_road_id = ego_road_id
-        self.current_lane = ego_lane
-        self.current_lat = ego_full_lat
-        self.current_long = ego_long
-        self.ego_off_road = ego_off_road
-        self.road_data = self.map.get_road_details(self.current_road_id)
+        ego_off_road = ego_road_id is None
+
+        if ego_off_road:
+            self.ego_off_road = True
+            self.logger.info("Car is off road! Keeping previous valid Behavioral state")
+        else:
+            self.current_road_id = ego_road_id
+            self.current_lane = ego_lane
+            self.current_lat = ego_full_lat
+            self.current_long = ego_long
+            self.ego_off_road = False
+            self.road_data = self.map.get_road_details(self.current_road_id)
 
         # TODO: get actual length and width, relative to objects's orientation
         OBJECT_CONST_WIDTH_IN_METERS = 1.2
@@ -126,13 +139,13 @@ class BehavioralState:
         self.static_objects = []
         for static_obj in state.static_objects:
             found_connection, lon_distance_relative_to_ego, road_latitude, lane = self.get_object_road_localization_relative_to_ego(
-                state.map, navigation_plan, static_obj)
+                static_obj, navigation_plan)
             if found_connection:  # ignoring everything not in our path looking forward
                 self.static_objects.append(static_obj)
 
         self.dynamic_objects = []
         for dynamic_obj in state.dynamic_objects:
             found_connection, lon_distance_relative_to_ego, road_latitude, lane = self.get_object_road_localization_relative_to_ego(
-                state.map, navigation_plan, dynamic_obj)
+                dynamic_obj, navigation_plan)
             if found_connection:  # ignoring everything not in our path looking forward
                 self.dynamic_objects.append(dynamic_obj)

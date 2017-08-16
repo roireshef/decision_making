@@ -49,9 +49,9 @@ class DefaultPolicy(Policy):
         # Create a grid in latitude of lane offsets that will define latitude of the target trajectory.
         latitude_offset_grid_relative_to_current_center_lane = np.array([-1, -0.5, -0.25, 0, 0.25, 0.5, 1])
         absolute_latitude_offset_grid = current_lane_latitude + latitude_offset_grid_relative_to_current_center_lane
-        indexes_past_right_road_margin = \
-            np.where(absolute_latitude_offset_grid > lanes_in_current_road - behavior_param_margin_from_road_edge)[0]
         indexes_past_left_road_margin = \
+            np.where(absolute_latitude_offset_grid > lanes_in_current_road - behavior_param_margin_from_road_edge)[0]
+        indexes_past_right_road_margin = \
             np.where(absolute_latitude_offset_grid < behavior_param_margin_from_road_edge)[0]
         valid_absolute_latitude_offset_grid = np.delete(absolute_latitude_offset_grid, np.concatenate(
             (indexes_past_right_road_margin, indexes_past_left_road_margin)))
@@ -73,14 +73,14 @@ class DefaultPolicy(Policy):
                 road_id=blocking_object['road_id'], lat_in_meters=blocking_object['full_lat'])
             object_width_in_lanes = behavioral_state.map.convert_lat_in_meters_to_lat_in_lanes(
                 road_id=blocking_object['road_id'], lat_in_meters=blocking_object['width'])
-            leftmost_edge_in_lanes = object_latitude_in_lanes - 0.5 * object_width_in_lanes
-            leftmost_edge_in_lanes_dilated = leftmost_edge_in_lanes - 0.5 * CAR_WIDTH_DILATION_IN_LANES
+            leftmost_edge_in_lanes = object_latitude_in_lanes + 0.5 * object_width_in_lanes
+            leftmost_edge_in_lanes_dilated = leftmost_edge_in_lanes + 0.5 * CAR_WIDTH_DILATION_IN_LANES
 
-            rightmost_edge_lanes = object_latitude_in_lanes + 0.5 * object_width_in_lanes
-            rightmost_edge_lanes_dilated = rightmost_edge_lanes + 0.5 * CAR_WIDTH_DILATION_IN_LANES
+            rightmost_edge_lanes = object_latitude_in_lanes - 0.5 * object_width_in_lanes
+            rightmost_edge_lanes_dilated = rightmost_edge_lanes - 0.5 * CAR_WIDTH_DILATION_IN_LANES
 
-            affected_lanes = np.where((valid_absolute_latitude_offset_grid > leftmost_edge_in_lanes_dilated) & (
-                valid_absolute_latitude_offset_grid < rightmost_edge_lanes_dilated))[0]
+            affected_lanes = np.where((valid_absolute_latitude_offset_grid < leftmost_edge_in_lanes_dilated) & (
+                valid_absolute_latitude_offset_grid > rightmost_edge_lanes_dilated))[0]
             closest_blocking_object_in_lane[affected_lanes] = np.minimum(
                 closest_blocking_object_in_lane[affected_lanes],
                 relative_lon)
@@ -94,7 +94,6 @@ class DefaultPolicy(Policy):
             np.where((valid_absolute_latitude_offset_grid != current_lane_latitude) & center_of_lane)[
                 0]  # check if integer
 
-        chosen_action = current_center_lane_index_in_grid
         object_distance_in_current_lane = closest_blocking_object_in_lane[current_center_lane_index_in_grid]
         other_lanes_are_available = len(other_center_lane_indexes_in_grid) > 0
         best_center_of_lane_index_in_grid = other_center_lane_indexes_in_grid[
