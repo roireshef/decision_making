@@ -65,12 +65,11 @@ class StateModule(DmModule):
             size = ObjectSize(length, width, height)
             road_localization = self.__get_road_lane_localization(dyn_obj_dict["road_localization"],
                                                                   dyn_obj_dict["lane_localization"])
-            rel_road_localization = RelativeRoadLocalization(0, 0, 0)
             v_x = dyn_obj_dict["velocity"]["v_x"]
             v_y = dyn_obj_dict["velocity"]["v_y"]
 
-            dyn_obj = DynamicObject(id, timestamp, x,y,z, yaw, size, road_localization, rel_road_localization,
-                                    confidence, localization_confidence, v_x, v_y, 0, 0)
+            dyn_obj = DynamicObject(id, timestamp, x, y, z, yaw, size, road_localization, None,
+                                    confidence, localization_confidence, v_x, v_y, None, None)
             dyn_obj_list.append(dyn_obj)
 
     def __self_localization_callback(self, ego_localization: dict):
@@ -85,12 +84,11 @@ class StateModule(DmModule):
         yaw = ego_localization["yaw"]
         v_x = ego_localization["velocity"]["v_x"]
         v_y = ego_localization["velocity"]["v_y"]
-        size = ObjectSize(0,0,0)
+        size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
         road_localization = self.__get_road_lane_localization(ego_localization["road_localization"],
                                                               ego_localization["lane_localization"])
-        rel_road_localization = RelativeRoadLocalization(0, 0, 0)
-        self.state.ego_state = EgoState(0, timestamp, x,y,z, yaw, size, road_localization, rel_road_localization,
-                                        confidence, localization_confidence, v_x, v_y, 0, 0, 0)
+        self.state.ego_state = EgoState(0, timestamp, x, y, z, yaw, size, road_localization, None,
+                                        confidence, localization_confidence, v_x, v_y, None, None, None)
 
     def __occupancy_state_callback(self, occupancy: dict):
         self.logger.debug("got occupancy status %s", occupancy)
@@ -102,11 +100,12 @@ class StateModule(DmModule):
             pnt = [pnt_dict["x"], pnt_dict["y"], pnt_dict["z"]]
             points_list.append(pnt)
             confidence_list.append(pnt_dict["confidence"])
-        self.state.occupancy_state = OccupancyState(timestamp, points_list, confidence_list)
+        self.state.occupancy_state = OccupancyState(timestamp, np.ndarray(points_list), np.ndarray(confidence_list))
 
     def __actuator_status_callback(self, actuator: dict):
         self.logger.debug("got actuator status %s", actuator)
         self.state.ego_state.steering_angle = actuator["steering_angle"]
+
     """
     def __percieved_road_callback(self, percieved_road: dict):
         self.logger.info("got percieved_road status %s", percieved_road)
@@ -118,6 +117,7 @@ class StateModule(DmModule):
         confidence = percieved_road["confidence"]
         self.state.perceived_road = PerceivedRoad(timestamp, lane_structures, confidence)
     """
+
     def __get_road_lane_localization(self, road_loc: dict, lane_loc: dict):
         road_id = road_loc["road_id"]
         road_lon = road_loc["road_longditude"]
@@ -127,6 +127,5 @@ class StateModule(DmModule):
         intra_lane_yaw = lane_loc["intra_lane_yaw"]
         lane_confidence = lane_loc["confidence"]
         road_localization = RoadLocalization(road_id, lane, intra_lane_lat, road_lon, intra_lane_yaw, road_confidence,
-                                                 lane_confidence)
+                                             lane_confidence)
         return road_localization
-
