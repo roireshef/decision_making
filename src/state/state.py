@@ -1,10 +1,10 @@
-from typing import List
-import numpy as np
 import copy
+from typing import List
 
-from decision_making.src.map.map_api import MapAPI
-from decision_making.src.planning.utils.geometry_utils import Dynamics
+import numpy as np
 from decision_making.src.map.constants import *
+from decision_making.src.map.map_api import MapAPI
+
 from decision_making.src.messages.dds_typed_message import DDSTypedMsg
 
 
@@ -70,7 +70,7 @@ class ObjectSize(DDSTypedMsg):
 class DynamicObject(DDSTypedMsg):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, rel_road_localization,
                  confidence, localization_confidence, v_x, v_y, acceleration_lon, turn_radius):
-        # type: (int, int, float, float, float, float, ObjectSize, RoadLocalization, RelativeRoadLocalization, float, float, float, float, float, float) -> None
+        # type: (int, int, float, float, float, float, ObjectSize, Union[RoadLocalization, None], Union[RelativeRoadLocalization, None], float, float, float, float, Union[float, None], Union[float, None]) -> None
         """
         both ego and other dynamic objects
         :param obj_id: object id
@@ -96,14 +96,30 @@ class DynamicObject(DDSTypedMsg):
         self.z = z
         self.yaw = yaw
         self.size = copy.copy(size)
-        self.road_localization = copy.copy(road_localization)
-        self.rel_road_localization = copy.copy(rel_road_localization)
         self.confidence = confidence
         self.localization_confidence = localization_confidence
         self.v_x = v_x
         self.v_y = v_y
-        self.acceleration_lon = acceleration_lon
-        self.turn_radius = turn_radius
+
+        if road_localization is not None:
+            self.road_localization = copy.copy(road_localization)
+        else:
+            raise NotImplementedError()
+
+        if rel_road_localization is not None:
+            self.rel_road_localization = copy.copy(rel_road_localization)
+        else:
+            raise NotImplementedError()
+
+        if acceleration_lon is not None:
+            self.acceleration_lon = acceleration_lon
+        else:
+            raise NotImplementedError()
+
+        if turn_radius is not None:
+            self.turn_radius = turn_radius
+        else:
+            raise NotImplementedError()
 
     def predict(self, goal_timestamp, map_api):
         # type: (int, MapAPI) -> DynamicObject
@@ -119,7 +135,7 @@ class DynamicObject(DDSTypedMsg):
 class EgoState(DynamicObject, DDSTypedMsg):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, rel_road_localization, confidence,
                  localization_confidence, v_x, v_y, acceleration_lon, turn_radius, steering_angle):
-        # type: (int, int, float, float, float, float, ObjectSize, RoadLocalization, RelativeRoadLocalization, float, float, float, float, float, float, float) -> None
+        # type: (int, int, float, float, float, float, ObjectSize, RoadLocalization, Union[RelativeRoadLocalization, None], float, float, float, float, Union[float, None], Union[float, None], Union[float, None]) -> None
         """
         :param obj_id:
         :param timestamp:
@@ -139,7 +155,10 @@ class EgoState(DynamicObject, DDSTypedMsg):
         """
         DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, rel_road_localization,
                                confidence, localization_confidence, v_x, v_y, acceleration_lon, turn_radius)
-        self.steering_angle = steering_angle
+        if steering_angle is not None:
+            self.steering_angle = steering_angle
+        else:
+            raise NotImplementedError()
 
 
 class LanesStructure(DDSTypedMsg):
