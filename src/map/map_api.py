@@ -1,5 +1,7 @@
+import numpy as np
 from abc import ABCMeta, abstractmethod
 from decision_making.src.map.map_model import MapModel
+from typing import List
 
 
 class MapAPI(metaclass=ABCMeta):
@@ -9,6 +11,7 @@ class MapAPI(metaclass=ABCMeta):
         pass
 
     def find_roads_containing_point(self, layer, x, y):
+        # type: (int, float, float) -> List
         """
         shortcut to a cell of the map xy2road_map
         :param layer: 0 ground, 1 on bridge, 2 bridge above bridge, etc
@@ -19,6 +22,7 @@ class MapAPI(metaclass=ABCMeta):
         pass
 
     def get_center_lanes_latitudes(self, road_id):
+        # type: (int) -> List
         """
         get list of latitudes of all lanes in the road
         :param road_id:
@@ -27,6 +31,7 @@ class MapAPI(metaclass=ABCMeta):
         pass
 
     def get_road_details(self, road_id):
+        # type: (int) -> (int, float, float, np.ndarray)
         """
         get details of a given road
         :param road_id:
@@ -35,6 +40,7 @@ class MapAPI(metaclass=ABCMeta):
         pass
 
     def convert_world_to_lat_lon(self, x, y, z, yaw):
+        # type: (float, float, float, float) -> (int, int, float, float, float, float)
         """
         Given 3D world point, calculate:
             1. road_id,
@@ -54,9 +60,22 @@ class MapAPI(metaclass=ABCMeta):
 
     def get_point_relative_longitude(self, from_road_id, from_lon_in_road, to_road_id, to_lon_in_road,
                                      max_lookahead_distance, navigation_plan):
+        # type: (int, float, int, float, float, None) -> float
+        """
+        Find longitude distance between two points in road coordinates.
+        First search forward from the point (from_road_id, from_lon_in_road) to the point (to_road_id, to_lon_in_road);
+        if not found then search backward.
+        :param from_road_id:
+        :param from_lon_in_road: search from this point
+        :param to_road_id:
+        :param to_lon_in_road: search to this point
+        :param max_lookahead_distance: max search distance
+        :return: longitude distance between the given two points, boolean "found connection"
+        """
         pass
 
     def get_path_lookahead(self, road_id, lon, lat, max_lookahead_distance, navigation_plan, direction=1):
+        # type: (int, float, float, float, None, int) -> np.ndarray
         """
         Get path with lookahead distance (starting from certain road, and continuing to the next ones if lookahead distance > road length)
             lat is measured in meters
@@ -71,6 +90,7 @@ class MapAPI(metaclass=ABCMeta):
         pass
 
     def get_uniform_path_lookahead(self, road_id, lat, starting_lon, lon_step, steps_num, navigation_plan):
+        # type: (int, float, float, float, int, None) -> np.ndarray
         """
         Create array of uniformly distanced points along the given road, shifted by lat.
         When some road finishes, it automatically continues to the next road, according to the navigation plan.
@@ -89,6 +109,7 @@ class MapAPI(metaclass=ABCMeta):
 
     @staticmethod
     def _shift_road_vector_in_lat(points, lat_shift):
+        # type: (np.ndarray, float) -> np.ndarray
         """
         Given points list along a road, shift them laterally by lat_shift meters
         :param points (2xN): points list along a given road
@@ -98,6 +119,7 @@ class MapAPI(metaclass=ABCMeta):
         pass
 
     def _convert_lon_to_world(self, road_id, pnt_ind, road_lon, navigation_plan, road_index_in_plan=None):
+        # type: (int, int, float, None, int) -> np.ndarray
         """
         Calculate world point matching to a given longitude of a given road.
         If the given longitude exceeds the current road length, then calculate the point in the next road.
@@ -118,6 +140,7 @@ class MapAPI(metaclass=ABCMeta):
         pass
 
     def _convert_lat_lon_to_world(self, road_id, lat, lon, navigation_plan):
+        # type: (int, float, float, None) -> np.ndarray
         """
         Given road_id, lat & lon, calculate the point in world coordinates.
         Z coordinate is calculated using the OSM data: if road's head and tail are at different layers (height),
@@ -130,9 +153,11 @@ class MapAPI(metaclass=ABCMeta):
         pass
 
     def _get_road_attribute(self, road_id, attribute):
+        # type: (int, None) -> str
         pass
 
     def _convert_world_to_lat_lon_for_given_road(self, x, y, road_id):
+        # type: (float, float, int) -> (int, float, float, np.ndarray)
         """
         calc lat, lon, road dir for point=(x,y) and a given road
         :param x: the point's world x coordinate in meters
@@ -141,4 +166,3 @@ class MapAPI(metaclass=ABCMeta):
         :return: signed lat (relatively to the road center), lon (from road start), road_vec
         """
         pass
-
