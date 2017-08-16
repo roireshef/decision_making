@@ -114,37 +114,6 @@ class DynamicObject(DDSTypedMsg):
         :param lane_width: closest lane_width
         :return: None
         """
-        """
-        (goal_x, goal_y, goal_yaw, goal_v_x, goal_v_y) = \
-            Dynamics.predict_dynamics(self.x, self.y, self.yaw, self.v_x, self.v_y, self.acceleration_lon,
-                                      self.turn_radius, 0.001 * (goal_timestamp - self._timestamp))
-
-        # Predict the object's road_localization in the future goal_timestamp.
-        # Here we assume that the lanes are straight and have the same width.
-        # calc full latitude from the left road's edge
-        full_lat = self.road_localization.lane_num * lane_width + self.road_localization.intra_lane_lat
-
-        # calc velocity relatively to the road
-        vel = np.linalg.norm(np.array([self.v_x, self.v_y]))
-        rel_road_v_x = vel * np.cos(self.road_localization.intra_lane_yaw)
-        rel_road_v_y = vel * np.sin(self.road_localization.intra_lane_yaw)
-
-        (goal_lon, goal_lat, goal_lane_yaw, _, _) = \
-            Dynamics.predict_dynamics(x=self.road_localization.road_lon, y=full_lat,
-                                      yaw=self.road_localization.intra_lane_yaw,
-                                      v_x=rel_road_v_x, v_y=rel_road_v_y,
-                                      accel_lon=self.acceleration_lon, turn_radius=self.turn_radius,
-                                      dt=0.001 * (goal_timestamp - self._timestamp))
-        # update road_localization
-        self.road_localization.road_lon = goal_lon
-        self.road_localization.lane_num = int(goal_lat / lane_width)
-        self.road_localization.intra_lane_lat = goal_lat % lane_width
-        self.road_localization.intra_lane_yaw = goal_lane_yaw
-
-        (self.x, self.y, self.yaw, self.v_x, self.v_y) = (goal_x, goal_y, goal_yaw, goal_v_x, goal_v_y)
-
-        self._timestamp = goal_timestamp
-        """
         pass
 
 class EgoState(DynamicObject, DDSTypedMsg):
@@ -245,48 +214,5 @@ class State(DDSTypedMsg):
         predict the ego localization, other objects and free space for the future timestamp
         :param goal_timestamp:
         :return:
-        """
-        """
-        # backup ego_state
-        prev_ego_state = copy.copy(self.ego_state)
-
-        # get the closest lane width
-        if len(self.perceived_road.lanes_structure) > self.ego_state.road_localization.lane_num:
-            lane_width = self.perceived_road.lanes_structure[self.ego_state.road_localization.lane_num].width_vec[0]
-        else:
-            lane_width = CUSTOM_LANE_WIDTH
-
-        # update ego_state
-        self.ego_state.predict(goal_timestamp, lane_width)
-
-        # update dynamic objects parameters without consideration of the ego accelerations (lon & angular)
-        for dyn_obj in self.dynamic_objects:
-            # convert to global velocity
-            dyn_obj.v_x += prev_ego_state.v_x
-            dyn_obj.v_y += prev_ego_state.v_y
-            # predict dyn_obj for the goal_timestamp
-            dyn_obj.predict(goal_timestamp, lane_width)
-
-        # since all objects are given relatively to ego, update them accordingly to ego change
-        rot_ang = prev_ego_state.yaw - self.ego_state.yaw
-        cosa = np.cos(rot_ang)
-        sina = np.sin(rot_ang)
-        # calc ego change
-        dx = prev_ego_state.x - self.ego_state.x
-        dy = prev_ego_state.y - self.ego_state.y
-        dz = prev_ego_state.z - self.ego_state.z
-        d_yaw = prev_ego_state.yaw - self.ego_state.yaw
-        # compensate on ego motion
-        for dyn_obj in self.dynamic_objects:
-            (dyn_obj.x, dyn_obj.y) = Dynamics.rotate_and_shift_point(dyn_obj.x, dyn_obj.y, cosa, sina, dx, dy)
-            # convert to velocity relative to ego
-            (dyn_obj.v_x, dyn_obj.v_y) = Dynamics.rotate_and_shift_point(dyn_obj.v_x, dyn_obj.v_y, cosa, sina,
-                                                                         -self.ego_state.v_x, -self.ego_state.v_y)
-            dyn_obj.z += dz
-            dyn_obj.yaw += d_yaw
-
-        # update free space vertices according to ego change
-        self.occupancy_state.free_space = \
-            Dynamics.rotate_and_shift_points(self.occupancy_state.free_space, cosa, sina, dx, dy)
         """
         pass
