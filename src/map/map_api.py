@@ -6,19 +6,6 @@ class MapAPI(metaclass=ABCMeta):
         self._cached_map_model = map_model
         pass
 
-    def _get_road_attribute(self, road_id, attribute):
-        pass
-
-    def _convert_world_to_lat_lon_for_given_road(self, x, y, road_id):
-        """
-        calc lat, lon, road dir for point=(x,y) and a given road
-        :param x: the point's world x coordinate in meters
-        :param y: the point's world y coordinate in meters
-        :param road_id:
-        :return: signed lat (relatively to the road center), lon (from road start), road_vec
-        """
-        pass
-
     def find_roads_containing_point(self, layer, x, y):
         """
         shortcut to a cell of the map xy2road_map
@@ -67,6 +54,37 @@ class MapAPI(metaclass=ABCMeta):
                                      max_lookahead_distance, navigation_plan):
         pass
 
+    def get_path_lookahead(self, road_id, lon, lat, max_lookahead_distance, navigation_plan, direction=1):
+        """
+        Get path with lookahead distance (starting from certain road, and continuing to the next ones if lookahead distance > road length)
+            lat is measured in meters
+        The function returns original roads points shifted by lat, rather than uniformly distanced points
+        :param road_id: starting road_id
+        :param lon: starting lon
+        :param lat: lateral shift in meters
+        :param max_lookahead_distance:
+        :param direction: forward (1) or backward (-1)
+        :return: points array
+        """
+        pass
+
+    def get_uniform_path_lookahead(self, road_id, lat, starting_lon, lon_step, steps_num, navigation_plan):
+        """
+        Create array of uniformly distanced points along the given road, shifted by lat.
+        When some road finishes, it automatically continues to the next road, according to the navigation plan.
+        The distance between consecutive points is lon_step.
+        :param road_id: starting road_id
+        :param lat: lateral shift
+        :param starting_lon: starting longitude
+        :param lon_step: distance between consecutive points
+        :param steps_num: output points number
+        :return: uniform points array (2xN)
+        """
+        pass
+
+    def update_perceived_roads(self):
+        pass
+
     @staticmethod
     def _shift_road_vector_in_lat(points, lat_shift):
         """
@@ -109,33 +127,16 @@ class MapAPI(metaclass=ABCMeta):
         """
         pass
 
-    def get_path_lookahead(self, road_id, lon, lat, max_lookahead_distance, navigation_plan, direction=1):
+    def _get_road_attribute(self, road_id, attribute):
+        pass
+
+    def _convert_world_to_lat_lon_for_given_road(self, x, y, road_id):
         """
-        Get path with lookahead distance (starting from certain road, and continuing to the next ones if lookahead distance > road length)
-            lat is measured in meters
-        The function returns original roads points shifted by lat, rather than uniformly distanced points
-        :param road_id: starting road_id
-        :param lon: starting lon
-        :param lat: lateral shift in meters
-        :param max_lookahead_distance:
-        :param direction: forward (1) or backward (-1)
-        :return: points array
+        calc lat, lon, road dir for point=(x,y) and a given road
+        :param x: the point's world x coordinate in meters
+        :param y: the point's world y coordinate in meters
+        :param road_id:
+        :return: signed lat (relatively to the road center), lon (from road start), road_vec
         """
         pass
 
-    def get_uniform_path_lookahead(self, road_id, lat, starting_lon, lon_step, steps_num, navigation_plan):
-        """
-        Create array of uniformly distanced points along the given road, shifted by lat.
-        When some road finishes, it automatically continues to the next road, according to the navigation plan.
-        The distance between consecutive points is lon_step.
-        :param road_id: starting road_id
-        :param lat: lateral shift
-        :param starting_lon: starting longitude
-        :param lon_step: distance between consecutive points
-        :param steps_num: output points number
-        :return: uniform points array (2xN)
-        """
-        pass
-
-    def update_perceived_roads(self):
-        pass
