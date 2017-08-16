@@ -2,6 +2,7 @@ import numpy as np
 from abc import ABCMeta, abstractmethod
 from decision_making.src.map.map_model import MapModel
 from typing import List
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 
 
 class MapAPI(metaclass=ABCMeta):
@@ -11,7 +12,7 @@ class MapAPI(metaclass=ABCMeta):
         pass
 
     def find_roads_containing_point(self, layer, x, y):
-        # type: (int, float, float) -> List
+        # type: (int, float, float) -> List[int]
         """
         shortcut to a cell of the map xy2road_map
         :param layer: 0 ground, 1 on bridge, 2 bridge above bridge, etc
@@ -22,7 +23,7 @@ class MapAPI(metaclass=ABCMeta):
         pass
 
     def get_center_lanes_latitudes(self, road_id):
-        # type: (int) -> List
+        # type: (int) -> np.array
         """
         get list of latitudes of all lanes in the road
         :param road_id:
@@ -60,7 +61,7 @@ class MapAPI(metaclass=ABCMeta):
 
     def get_point_relative_longitude(self, from_road_id, from_lon_in_road, to_road_id, to_lon_in_road,
                                      max_lookahead_distance, navigation_plan):
-        # type: (int, float, int, float, float, None) -> float
+        # type: (int, float, int, float, float, NavigationPlanMsg) -> float
         """
         Find longitude distance between two points in road coordinates.
         First search forward from the point (from_road_id, from_lon_in_road) to the point (to_road_id, to_lon_in_road);
@@ -75,7 +76,7 @@ class MapAPI(metaclass=ABCMeta):
         pass
 
     def get_path_lookahead(self, road_id, lon, lat, max_lookahead_distance, navigation_plan, direction=1):
-        # type: (int, float, float, float, None, int) -> np.ndarray
+        # type: (int, float, float, float, NavigationPlanMsg, int) -> np.ndarray
         """
         Get path with lookahead distance (starting from certain road, and continuing to the next ones if lookahead distance > road length)
             lat is measured in meters
@@ -90,7 +91,7 @@ class MapAPI(metaclass=ABCMeta):
         pass
 
     def get_uniform_path_lookahead(self, road_id, lat, starting_lon, lon_step, steps_num, navigation_plan):
-        # type: (int, float, float, float, int, None) -> np.ndarray
+        # type: (int, float, float, float, int, NavigationPlanMsg) -> np.ndarray
         """
         Create array of uniformly distanced points along the given road, shifted by lat.
         When some road finishes, it automatically continues to the next road, according to the navigation plan.
@@ -119,7 +120,7 @@ class MapAPI(metaclass=ABCMeta):
         pass
 
     def _convert_lon_to_world(self, road_id, pnt_ind, road_lon, navigation_plan, road_index_in_plan=None):
-        # type: (int, int, float, None, int) -> np.ndarray
+        # type: (int, int, float, NavigationPlanMsg, int) -> np.ndarray
         """
         Calculate world point matching to a given longitude of a given road.
         If the given longitude exceeds the current road length, then calculate the point in the next road.
@@ -140,7 +141,7 @@ class MapAPI(metaclass=ABCMeta):
         pass
 
     def _convert_lat_lon_to_world(self, road_id, lat, lon, navigation_plan):
-        # type: (int, float, float, None) -> np.ndarray
+        # type: (int, float, float, NavigationPlanMsg) -> np.ndarray
         """
         Given road_id, lat & lon, calculate the point in world coordinates.
         Z coordinate is calculated using the OSM data: if road's head and tail are at different layers (height),
