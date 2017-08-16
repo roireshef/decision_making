@@ -121,14 +121,14 @@ class DynamicObject(DDSTypedMsg):
         else:
             raise NotImplementedError()
 
-    def predict(self, goal_timestamp, map_api):
+    def predict(self, goal_timestamp, map_api) -> None:
         # type: (int, MapAPI) -> DynamicObject
         """
         Predict the object's location for the future timestamp
         !!! This function changes the object's location, velocity and timestamp !!!
         :param goal_timestamp: the goal timestamp for prediction
         :param lane_width: closest lane_width
-        :return: predicted DynamicObject
+        :return: None
         """
         pass
 
@@ -201,6 +201,18 @@ class State(DDSTypedMsg):
         self.ego_state = copy.deepcopy(ego_state)
         self.perceived_road = copy.deepcopy(perceived_road)
 
+    @classmethod
+    def create_empty(cls):
+        occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+        dynamic_objects = []
+        size = ObjectSize(0, 0, 0)
+        road_localization = RoadLocalization(0, 0, 0, 0, 0, 0, 0)
+        rel_road_localization = RelativeRoadLocalization(0, 0, 0)
+        ego_state = EgoState(0, 0, 0, 0, 0, 0, size, road_localization, rel_road_localization, 0, 0, 0, 0, 0, 0, 0)
+        perceived_road = PerceivedRoad(0, [], 0)
+        state = cls(occupancy_state, dynamic_objects, ego_state, perceived_road)
+        return state
+
     def update_objects(self):
         """
         insert object to state - will be implemented by Ron
@@ -220,6 +232,6 @@ class State(DDSTypedMsg):
         """
         predict the ego localization, other objects and free space for the future timestamp
         :param goal_timestamp:
-        :return: predicted State
+        :return:
         """
         pass
