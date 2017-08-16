@@ -123,36 +123,36 @@ class CartesianFrame:
         return interp_curve, effective_step_size
 
     @staticmethod
-    def calc_point_segment_dist(p: np.ndarray, p1: np.ndarray, p2: np.ndarray) -> (int, float, float):
+    def calc_point_segment_dist(p: np.ndarray, p_start: np.ndarray, p_end: np.ndarray) -> (int, float, float):
         """
         Given point p and directed segment p1->p2, calculate:
             1. from which side p is located relatively to the line p1->p2,
             2. the closest distance from p to the segment,
             3. length of the projection of p on the segment (zero if the projection is outside the segment).
         :param p: 2D Point
-        :param p1: first edge of 2D segment
-        :param p2: second edge of 2D segment
+        :param p_start: first edge of 2D segment
+        :param p_end: second edge of 2D segment
         :return: signed distance between the point p and the segment p1->p2; length of the projection of p on the segment
         """
-        v = p2 - p1
-        v1 = p - p1
-        v2 = p2 - p
-        if v[0] == 0 and v[1] == 0:
-            return 0, np.linalg.norm(v1), 0
-        dot1 = np.dot(v, v1)
-        dot2 = np.dot(v, v2)
-        normal = np.array([-v[1], v[0]])  # normal of v toward left if v looks up
-        dotn = np.dot(normal, v1)
+        segment = p_end - p_start
+        segment_start_to_p = p - p_start
+        segment_p_to_end = p_end - p
+        if segment[0] == 0 and segment[1] == 0:
+            return 0, np.linalg.norm(segment_start_to_p), 0
+        dot1 = np.dot(segment, segment_start_to_p)
+        dot2 = np.dot(segment, segment_p_to_end)
+        normal = np.array([-segment[1], segment[0]])  # normal of v toward left if v looks up
+        dotn = np.dot(normal, segment_start_to_p)
         sign = np.sign(dotn)
         proj = 0
         if dot1 > 0 and dot2 > 0:  # then p is between p1,p2, so calc dist to the line
-            one_over_vnorm = 1. / np.linalg.norm(v)
+            one_over_vnorm = 1. / np.linalg.norm(segment)
             dist = dotn * one_over_vnorm * sign  # always >= 0
             proj = dot1 * one_over_vnorm  # length of projection of v1 on v
         elif dot1 <= 0:
-            dist = np.linalg.norm(v1)
+            dist = np.linalg.norm(segment_start_to_p)
         else:
-            dist = np.linalg.norm(v2)
+            dist = np.linalg.norm(segment_p_to_end)
         return sign, dist, proj
 
 

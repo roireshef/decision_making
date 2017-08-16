@@ -65,11 +65,12 @@ class StateModule(DmModule):
             size = ObjectSize(length, width, height)
             road_localization = self.__get_road_lane_localization(dyn_obj_dict["road_localization"],
                                                                   dyn_obj_dict["lane_localization"])
+            rel_road_localization = RelativeRoadLocalization(0, 0, 0)
             v_x = dyn_obj_dict["velocity"]["v_x"]
             v_y = dyn_obj_dict["velocity"]["v_y"]
 
-            dyn_obj = DynamicObject(id, timestamp, x,y,z, yaw, size, road_localization,
-                                    confidence, localization_confidence, v_x, v_y)
+            dyn_obj = DynamicObject(id, timestamp, x,y,z, yaw, size, road_localization, rel_road_localization,
+                                    confidence, localization_confidence, v_x, v_y, 0, 0)
             dyn_obj_list.append(dyn_obj)
 
     def __self_localization_callback(self, ego_localization: dict):
@@ -87,8 +88,9 @@ class StateModule(DmModule):
         size = ObjectSize(0,0,0)
         road_localization = self.__get_road_lane_localization(ego_localization["road_localization"],
                                                               ego_localization["lane_localization"])
-        self.state.ego_state = EgoState(0, timestamp, x,y,z, yaw, size, road_localization,
-                                        confidence, localization_confidence, v_x, v_y, 0)
+        rel_road_localization = RelativeRoadLocalization(0, 0, 0)
+        self.state.ego_state = EgoState(0, timestamp, x,y,z, yaw, size, road_localization, rel_road_localization,
+                                        confidence, localization_confidence, v_x, v_y, 0, 0, 0)
 
     def __occupancy_state_callback(self, occupancy: dict):
         self.logger.debug("got occupancy status %s", occupancy)

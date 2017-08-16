@@ -2,6 +2,7 @@ from typing import List
 import numpy as np
 import copy
 
+from decision_making.src.map.map_api import MapAPI
 from decision_making.src.planning.utils.geometry_utils import Dynamics
 from decision_making.src.map.constants import *
 from decision_making.src.messages.dds_typed_message import DDSTypedMsg
@@ -9,7 +10,7 @@ from decision_making.src.messages.dds_typed_message import DDSTypedMsg
 
 class RoadLocalization(DDSTypedMsg):
     def __init__(self, road_id, lane_num, intra_lane_lat, road_lon, intra_lane_yaw,
-                 road_confidence, lane_confidence):
+                 lon_confidence, lat_confidence):
         # type: (int, int, float, float, float, float, float) -> None
         """
         location in road coordinates (road_id, lat, lon)
@@ -18,16 +19,30 @@ class RoadLocalization(DDSTypedMsg):
         :param intra_lane_lat: in meters, 0 is lane left edge
         :param road_lon: in meters, longitude relatively to the road start
         :param intra_lane_yaw: 0 is along road's local tangent
-        :param road_confidence: confidence of road_id & road_lon
-        :param lane_confidence: confidence of lane, intra_lane params
+        :param lon_confidence: confidence of road_id & road_lon
+        :param lat_confidence: confidence of lane, intra_lane params
         """
         self.road_id = road_id
         self.lane_num = lane_num
         self.intra_lane_lat = intra_lane_lat
         self.road_lon = road_lon
         self.intra_lane_yaw = intra_lane_yaw
-        self.road_confidence = road_confidence
-        self.lane_confidence = lane_confidence
+        self.lon_confidence = lon_confidence
+        self.lat_confidence = lat_confidence
+
+
+class RelativeRoadLocalization(DDSTypedMsg):
+    def __init__(self, rel_lat, rel_lon, rel_yaw):
+        # type: (float, float, float) -> None
+        """
+        location in road coordinates (road_id, lat, lon)
+        :param rel_lat: in meters, latitude relatively to ego
+        :param rel_lon: in meters, longitude relatively to ego
+        :param rel_yaw: in radians, yaw relatively to ego
+        """
+        self.rel_lat = rel_lat
+        self.rel_lon = rel_lon
+        self.rel_yaw = rel_yaw
 
 
 class OccupancyState(DDSTypedMsg):
@@ -53,9 +68,9 @@ class ObjectSize(DDSTypedMsg):
 
 
 class DynamicObject(DDSTypedMsg):
-    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
-                 v_x, v_y, acceleration_lon, turn_radius):
-        # type: (int, int, float, float, float, float, ObjectSize, RoadLocalization, float, float, float, float, float, float) -> None
+    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, rel_road_localization,
+                 confidence, localization_confidence, v_x, v_y, acceleration_lon, turn_radius):
+        # type: (int, int, float, float, float, float, ObjectSize, RoadLocalization, RelativeRoadLocalization, float, float, float, float, float, float) -> None
         """
         both ego and other dynamic objects
         :param obj_id: object id
@@ -66,6 +81,7 @@ class DynamicObject(DDSTypedMsg):
         :param yaw: for ego 0 means along X axis, for the rest 0 means forward direction relatively to ego
         :param size: class ObjectSize
         :param road_localization: class RoadLocalization
+        :param rel_road_localization: class RelativeRoadLocalization (relative to ego)
         :param confidence: of object's existence
         :param localization_confidence: of location
         :param v_x: in m/sec; for ego in world coordinates, for the rest relatively to ego
@@ -79,8 +95,9 @@ class DynamicObject(DDSTypedMsg):
         self.y = y
         self.z = z
         self.yaw = yaw
-        self.size = copy.deepcopy(size)
-        self.road_localization = copy.deepcopy(road_localization)
+        self.size = copy.copy(size)
+        self.road_localization = copy.copy(road_localization)
+        self.rel_road_localization = copy.copy(rel_road_localization)
         self.confidence = confidence
         self.localization_confidence = localization_confidence
         self.v_x = v_x
@@ -88,14 +105,15 @@ class DynamicObject(DDSTypedMsg):
         self.acceleration_lon = acceleration_lon
         self.turn_radius = turn_radius
 
-    def predict(self, goal_timestamp, lane_width) -> None:
-        # type: (int, float) -> None
+    def predict(self, goal_timestamp, map_api) -> None:
+        # type: (int, MapAPI) -> DynamicObject
         """
         Predict the object's location for the future timestamp
         !!! This function changes the object's location, velocity and timestamp !!!
         :param goal_timestamp: the goal timestamp for prediction
         :param lane_width: closest lane_width
         :return: None
+        """
         """
         (goal_x, goal_y, goal_yaw, goal_v_x, goal_v_y) = \
             Dynamics.predict_dynamics(self.x, self.y, self.yaw, self.v_x, self.v_y, self.acceleration_lon,
@@ -107,7 +125,7 @@ class DynamicObject(DDSTypedMsg):
         full_lat = self.road_localization.lane_num * lane_width + self.road_localization.intra_lane_lat
 
         # calc velocity relatively to the road
-        vel = np.sqrt(self.v_x * self.v_x + self.v_y * self.v_y)
+        vel = np.linalg.norm(np.array([self.v_x, self.v_y]))
         rel_road_v_x = vel * np.cos(self.road_localization.intra_lane_yaw)
         rel_road_v_y = vel * np.sin(self.road_localization.intra_lane_yaw)
 
@@ -126,12 +144,13 @@ class DynamicObject(DDSTypedMsg):
         (self.x, self.y, self.yaw, self.v_x, self.v_y) = (goal_x, goal_y, goal_yaw, goal_v_x, goal_v_y)
 
         self._timestamp = goal_timestamp
-
+        """
+        pass
 
 class EgoState(DynamicObject, DDSTypedMsg):
-    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence, localization_confidence,
-                 v_x, v_y, acceleration_lon, turn_radius, steering_angle):
-        # type: (int, int, float, float, float, float, ObjectSize, RoadLocalization, float, float, float, float, float, float, float) -> None
+    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, rel_road_localization, confidence,
+                 localization_confidence, v_x, v_y, acceleration_lon, turn_radius, steering_angle):
+        # type: (int, int, float, float, float, float, ObjectSize, RoadLocalization, RelativeRoadLocalization, float, float, float, float, float, float, float) -> None
         """
         :param obj_id:
         :param timestamp:
@@ -149,8 +168,8 @@ class EgoState(DynamicObject, DDSTypedMsg):
         :param turn_radius: radius of turning of the ego
         :param steering_angle: equivalent to knowing of turn_radius
         """
-        DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, confidence,
-                               localization_confidence, v_x, v_y, acceleration_lon, turn_radius)
+        DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, road_localization, rel_road_localization,
+                               confidence, localization_confidence, v_x, v_y, acceleration_lon, turn_radius)
         self.steering_angle = steering_angle
 
 
@@ -179,18 +198,6 @@ class PerceivedRoad(DDSTypedMsg):
         self.lanes_structure = copy.deepcopy(lanes_structure)
         self.confidence = confidence
 
-    def serialize(self):
-        serialized_state = super().serialize()
-        # handle lists of complex types
-        lanes_list = list()
-        for lane in self.lanes_structure:
-            lanes_list.append(lane.serialize())
-
-        serialized_state['lanes_structure'] = lanes_list
-
-        return serialized_state
-
-
 class State(DDSTypedMsg):
     def __init__(self, occupancy_state, dynamic_objects, ego_state, perceived_road):
         # type: (OccupancyState, List[DynamicObject], EgoState, PerceivedRoad) -> None
@@ -212,21 +219,11 @@ class State(DDSTypedMsg):
         dynamic_objects = []
         size = ObjectSize(0, 0, 0)
         road_localization = RoadLocalization(0, 0, 0, 0, 0, 0, 0)
-        ego_state = EgoState(0, 0, 0, 0, 0, 0, size, road_localization, 0, 0, 0, 0, 0)
+        rel_road_localization = RelativeRoadLocalization(0, 0, 0)
+        ego_state = EgoState(0, 0, 0, 0, 0, 0, size, road_localization, rel_road_localization, 0, 0, 0, 0, 0, 0, 0)
         perceived_road = PerceivedRoad(0, [], 0)
         state = cls(occupancy_state, dynamic_objects, ego_state, perceived_road)
         return state
-
-    def serialize(self):
-        serialized_state = super().serialize()
-        # handle lists of complex types
-        dynamic_objects_list = list()
-        for obj in self.dynamic_objects:
-            dynamic_objects_list.append(obj.serialize())
-
-        serialized_state['dynamic_objects'] = dynamic_objects_list
-
-        return serialized_state
 
     def update_objects(self):
         """
@@ -242,12 +239,13 @@ class State(DDSTypedMsg):
         """
         pass
 
-    def predict(self, goal_timestamp):
-        # type: (int) -> None
+    def predict(self, goal_timestamp, map_api):
+        # type: (int, MapAPI) -> State
         """
         predict the ego localization, other objects and free space for the future timestamp
         :param goal_timestamp:
         :return:
+        """
         """
         # backup ego_state
         prev_ego_state = copy.copy(self.ego_state)
@@ -290,3 +288,5 @@ class State(DDSTypedMsg):
         # update free space vertices according to ego change
         self.occupancy_state.free_space = \
             Dynamics.rotate_and_shift_points(self.occupancy_state.free_space, cosa, sina, dx, dy)
+        """
+        pass
