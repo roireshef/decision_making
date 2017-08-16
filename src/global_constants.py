@@ -34,6 +34,12 @@ DX_OFFSET_MIN, DX_OFFSET_MAX = -1, 1
 # Linspace number of steps in the constraints parameters grid-search
 SX_STEPS, SV_STEPS, DX_STEPS = 5, 10, 5
 
+# State #
+
+# TODO: set real values
+# [m] Bounding box size around ego vehicle
+EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 0, 0, 0
+
 ### DM Manager configuration ###
 BEHAVIORAL_PLANNING_MODULE_PERIOD = 1
 TRAJECTORY_PLANNING_MODULE_PERIOD = 0.1
