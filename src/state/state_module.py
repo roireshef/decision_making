@@ -10,7 +10,14 @@ from rte.python.logger.AV_logger import AV_Logger
 class StateModule(DmModule):
     def __init__(self, dds: DdsPubSub, logger: AV_Logger):
         super().__init__(dds, logger)
-        self.state = State.create_empty()
+        occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+        dynamic_objects = []
+        size = ObjectSize(0, 0, 0)
+        road_localization = RoadLocalization(0, 0, 0, 0, 0, 0, 0)
+        rel_road_localization = RelativeRoadLocalization(0, 0, 0)
+        ego_state = EgoState(0, 0, 0, 0, 0, 0, size, road_localization, rel_road_localization, 0, 0, 0, 0, 0, 0, 0)
+        perceived_road = PerceivedRoad(0, [], 0)
+        self.state = State(occupancy_state, dynamic_objects, ego_state, perceived_road)
 
     def _start_impl(self):
         self.dds.subscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, self.__dynamic_obj_callback)
@@ -23,26 +30,7 @@ class StateModule(DmModule):
         self.dds.unsubscribe(OCCUPANCY_STATE_SUBSCRIBE_TOPIC)
 
     def _periodic_action_impl(self):
-        state = State.create_empty()
-        state.__class__ = State
-        state.from_state(self.state)
-
-        # # Publish dummy state
-        # road_localization = RoadLocalization(0, 0, 0, 0, 0, 0, 0)
-        # lanes_structure = LanesStructure(np.array([]), np.array([]))
-        # occupancy_state = OccupancyState(0, np.array([0.0]), np.array([0.0]))
-        # dynamic_objects = [DynamicObject(0, 0, 0, 0, 0, 0, ObjectSize(0, 0, 0),
-        #                                          road_localization, 0, 0, 0, 0, 0, 0)]
-        # ego_state = EgoState(0, 0, 0, 0, 0, 0, ObjectSize(0, 0, 0),
-        #                              road_localization, 0, 0, 0, 0, 0, 0, 0)
-        # perceived_road = PerceivedRoad(0, [lanes_structure], 0)
-        #
-        # state = State(occupancy_state=occupancy_state,
-        #                                dynamic_objects=dynamic_objects, ego_state=ego_state,
-        #                                perceived_road=perceived_road)
-
-        state_serialized = state.serialize()
-        self.logger.info(state_serialized)
+        pass
 
     def __dynamic_obj_callback(self, objects: dict):
         self.logger.info("got dynamic objects %s", objects)
