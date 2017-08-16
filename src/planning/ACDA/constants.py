@@ -10,6 +10,7 @@ MU = 0.7  # the friction coefficient (unitless), a function of the tire type and
 ### behavior defining constants
 TIME_GAP = 2.0  # this is the X (usually, 2) second rule. Unit is seconds.
 TPRT = 0.5  # for our agent, it is the perception-reaction time in seconds. For human it is 0.72s.
+LATERAL_MARGIN_FROM_OBJECTS = 0.5 # distance in [m] from objects after which they are considered not in our way
 
 ### car dimentions
 CAR_DILATION_LENGTH = 2  # TODO used by acda as the length of the car. True for simulation needs to change for real car.

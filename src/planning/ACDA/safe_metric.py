@@ -7,11 +7,11 @@ from decision_making.src.state.enriched_state import EnrichedObjectState, Enrich
 from decision_making.src.planning.ACDA.constants import G, SIN_ROAD_INCLINE, HIDDEN_PEDESTRIAN_VEL, TIME_GAP, TPRT, MU, \
     LARGEST_CURVE_RADIUS, FORWARD_LOS_MAX_RANGE, BEHAVIORAL_PLANNING_LOOKAHEAD_DISTANCE, HORIZONTAL_LOS_MAX_RANGE, \
     MODERATE_DECELERATION, SAFETY_MIN_LOOKAHEAD_DIST, SENSOR_OFFSET_FROM_FRONT, TRAJECTORY_PLANNING_LOOKAHEAD_DISTANCE, \
-    CAR_DILATION_WIDTH
+    CAR_DILATION_WIDTH, LATERAL_MARGIN_FROM_OBJECTS
 
 
 def compute_acda(static_objects: List[EnrichedObjectState], dynamic_objects: List[EnrichedDynamicObject],
-                 enriched_ego_state: EnrichedEgoState, lookahead_path:np.ndarray)->float:
+                 enriched_ego_state: EnrichedEgoState, lookahead_path: np.ndarray) -> float:
     set_safety_lookahead_dist_by_ego_vel = False
 
     # get min long of static objects in my lane
@@ -25,7 +25,7 @@ def compute_acda(static_objects: List[EnrichedObjectState], dynamic_objects: Lis
     safe_speed_horizontal_los = calc_safe_speed_horizontal_distance_original_acda(
         min_horizontal_distance_in_trajectory_range)
 
-# TODO - refactor curve radius.
+    # TODO - refactor curve radius.
     # get curve radius
     curve_radius = calc_road_turn_radius(lookahead_path)
     safe_speed_curve_radius = calc_safe_speed_critical_speed(curve_radius)
@@ -38,7 +38,7 @@ def compute_acda(static_objects: List[EnrichedObjectState], dynamic_objects: Lis
 ##############################################################
 # Formulas for computing ACDA given relevant distances
 ##############################################################
-def calc_safe_speed_forward_line_of_sight(forward_sight_distance: float)->float:
+def calc_safe_speed_forward_line_of_sight(forward_sight_distance: float) -> float:
     """
     Calculate safe speed when an obstacle is located on the way of ego, such that ego will brake safely
     :param forward_sight_distance: the forward distance to the obstacle in meters
@@ -51,7 +51,7 @@ def calc_safe_speed_forward_line_of_sight(forward_sight_distance: float)->float:
     return max(0.0, safe_speed_forward_los)
 
 
-def calc_safe_speed_following_distance(following_distance: float)->float:
+def calc_safe_speed_following_distance(following_distance: float) -> float:
     """
     Calculate safe speed while following after another car ("2 seconds law")
     :param following_distance: the current distance from the followed car in meters
@@ -61,7 +61,7 @@ def calc_safe_speed_following_distance(following_distance: float)->float:
     return max(0.0, safe_speed_following_distance)
 
 
-def calc_safe_speed_critical_speed(curve_radius: float)->float:
+def calc_safe_speed_critical_speed(curve_radius: float) -> float:
     """
     Calculate safe speed while going on a curve road, such that the centrifugal acceleration is bounded
     :param curve_radius: current curve radius of the road in meters
@@ -73,7 +73,7 @@ def calc_safe_speed_critical_speed(curve_radius: float)->float:
     return max(0.0, safe_speed_critical_speed)
 
 
-def calc_safe_speed_horizontal_distance_original_acda(min_horizontal_distance: float)->float:
+def calc_safe_speed_horizontal_distance_original_acda(min_horizontal_distance: float) -> float:
     """
     Calculate safe speed when an obstacle is NOT located on the way of ego, but a pedestrian may emerge from
      behind the obstacle. AV has either to brake before the pedestrian arrives to the lane, or to pass before it.
@@ -123,24 +123,26 @@ def calc_safe_speed_horizontal_distance_original_acda(min_horizontal_distance: f
 # Utils for computing the relevant distances given the state
 ##############################################################
 
-def is_in_ego_trajectory(obj_lat: float, obj_lane: int, obj_width: float,
-                         ego_lane: int, ego_width: float) -> bool:
+def is_in_ego_trajectory(obj_lat: float, obj_width: float, ego_width: float, lateral_safety_margin: float) -> (bool):
     """
     query that checks whether an object is in ego's trajectory. Returns true if lane numbers are equal, or
-    if |ego_lane-object_lane|<=1 and obj lat < sum of half object's and ego's width. Does not check whether object is in
+    if |relative_obj_latitude| >= |sum of half object's and ego's width + safety_margin|.
+    Does not check whether object is in
     front of ego. This needs to be done separately.
     :param obj_lat: lat distance w.r.t. ego ignoring road structure
-    :param obj_lane: lane number in road
     :param obj_width: object's width in meters
     :param ego_lane: our car's lane
     :param ego_width: our car's width
     :return: boolean
     """
-    return obj_lane == ego_lane or (math.fabs(obj_lane - ego_lane) <= 1 and obj_lat < (obj_width + ego_width) / 2.0)
+    # return obj_lane == ego_lane or (math.fabs(obj_lane - ego_lane) <= 1 and obj_lat < (obj_width + ego_width) / 2.0)
+
+    object_horizontal_distance = math.fabs(obj_lat) - ((obj_width + ego_width) / 2.0)
+    return object_horizontal_distance >= lateral_safety_margin
 
 
 def calc_forward_sight_distance(static_objects: List[EnrichedObjectState], ego_state: EnrichedEgoState,
-                                dyn_objects=None, min_speed_for_following=1.0)->float:
+                                dyn_objects=None, min_speed_for_following=1.0) -> float:
     """
     Calculating the minimal distance of something that is in my lane
     :param static_objects: list of static objects, each is EnrichedObjectState
@@ -152,11 +154,13 @@ def calc_forward_sight_distance(static_objects: List[EnrichedObjectState], ego_s
     """
     min_static_object_long = FORWARD_LOS_MAX_RANGE
     for static_obj in static_objects:
-        obj_lon = static_obj.x
-        if obj_lon > 0 and is_in_ego_trajectory(static_obj.y, static_obj.road_localization.lane_num,
-                                                static_obj.size.width,
-                                                ego_state.road_localization.lane_num,
-                                                ego_state.size.width):
+        obj_lon = static_obj.relative_road_localization.rel_lon
+        obj_lon = obj_lon - SENSOR_OFFSET_FROM_FRONT
+        obj_lat = static_obj.relative_road_localization.rel_lat
+        if obj_lon > 0 and is_in_ego_trajectory(obj_lat=obj_lat, obj_width=static_obj.size.width,
+                                                ego_width=ego_state.size.width,
+                                                lateral_safety_margin=LATERAL_MARGIN_FROM_OBJECTS):
+
             if obj_lon < min_static_object_long:
                 min_static_object_long = obj_lon
     return min_static_object_long
@@ -174,7 +178,7 @@ def calc_forward_sight_distance(static_objects: List[EnrichedObjectState], ego_s
 
 
 def calc_horizontal_sight_distance(static_objects: List[EnrichedObjectState], ego_state: EnrichedEgoState,
-                                   set_safety_lookahead_dist_by_ego_vel: bool = False)->float:
+                                   set_safety_lookahead_dist_by_ego_vel: bool = False) -> float:
     """
     calculates the minimal horizontal distance of static objects that are within a certain range tbd by
     set_safety_lookahead_dist_by_ego_vel
@@ -189,29 +193,27 @@ def calc_horizontal_sight_distance(static_objects: List[EnrichedObjectState], eg
     min_horizontal_distance = HORIZONTAL_LOS_MAX_RANGE
     if set_safety_lookahead_dist_by_ego_vel:
         lookahead_distance = min(BEHAVIORAL_PLANNING_LOOKAHEAD_DISTANCE,
-                                 (ego_state.v_x * ego_state.v_x / (2.0 * MODERATE_DECELERATION)))
+                                 (ego_state.v_x ** 2 / (2.0 * MODERATE_DECELERATION)))
         lookahead_distance = max(lookahead_distance, SAFETY_MIN_LOOKAHEAD_DIST)
     else:
         lookahead_distance = TRAJECTORY_PLANNING_LOOKAHEAD_DISTANCE
 
     for static_obj in static_objects:
-        obj_lat = static_obj.y
+        obj_lat = static_obj.relative_road_localization.rel_lat
         obj_width = static_obj.size.width
-        obj_lon = static_obj.x
-        obj_long_from_front_of_ego = obj_lon - SENSOR_OFFSET_FROM_FRONT
-        if obj_long_from_front_of_ego <= lookahead_distance and \
-                not is_in_ego_trajectory(static_obj.y,
-                                         static_obj.road_localization.lane_num,
-                                         obj_width,
-                                         ego_state.road_localization.lane_num,
-                                         ego_state.size.width):
-            relative_lat = math.fabs(obj_lat) - (obj_width + ego_state.size.width) / 2.0
-            if relative_lat < min_horizontal_distance:
-                min_horizontal_distance = relative_lat
+        obj_lon = static_obj.relative_road_localization.rel_lon
+        obj_lon = obj_lon - SENSOR_OFFSET_FROM_FRONT
+        if obj_lon <= lookahead_distance and not is_in_ego_trajectory(obj_lat=obj_lat, obj_width=obj_width,
+                                                                      ego_width=ego_state.size.width,
+                                                                      lateral_safety_margin=LATERAL_MARGIN_FROM_OBJECTS):
+
+            horizonal_distance = math.fabs(obj_lat) - (obj_width + ego_state.size.width) / 2.0
+            if horizonal_distance < min_horizontal_distance:
+                min_horizontal_distance = horizonal_distance
     return min_horizontal_distance
 
 
-def calc_road_turn_radius(path_points: np.ndarray)->float:
+def calc_road_turn_radius(path_points: np.ndarray) -> float:
     """
     calculates turn radius given path points.
     This algorithm solves the "circle" fitting problem using a linear least squares method. Based on the paper
