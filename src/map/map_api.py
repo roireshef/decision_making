@@ -1,8 +1,10 @@
 from abc import ABCMeta, abstractmethod
+from decision_making.src.map.map_model import MapModel
 
 
 class MapAPI(metaclass=ABCMeta):
     def __init__(self, map_model):
+        # type: (MapModel) -> None
         self._cached_map_model = map_model
         pass
 
