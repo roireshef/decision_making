@@ -34,5 +34,6 @@ DX_OFFSET_MIN, DX_OFFSET_MAX = -1, 1
 # Linspace number of steps in the constraints parameters grid-search
 SX_STEPS, SV_STEPS, DX_STEPS = 5, 10, 5
 
+
 #### NAMES OF MODULES FOR LOGGING ####
 BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
