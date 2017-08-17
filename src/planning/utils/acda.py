@@ -12,7 +12,7 @@ from rte.python.logger.AV_logger import AV_Logger
 
 class AcdaApi:
 
-    _logger = AV_Logger("ACDA")
+    _logger = AV_Logger.get_logger("ACDA")
 
     @staticmethod
     def set_logger(logger: AV_Logger):
