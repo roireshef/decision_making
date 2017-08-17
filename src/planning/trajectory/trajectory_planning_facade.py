@@ -1,16 +1,18 @@
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
-from decision_making.src.global_constants import TRAJECTORY_STATE_READER_TOPIC, TRAJECTORY_PUBLISH_TOPIC
+from decision_making.src.global_constants import *
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.exceptions import MsgDeserializationError
 from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
+from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.state.state import State
 from rte.python.logger.AV_logger import AV_Logger
 
+
 class TrajectoryPlanningFacade(DmModule):
-    def __init__(self, dds: DdsPubSub, logger: AV_Logger, strategy_handlers: dict):
+    def __init__(self, dds: DdsPubSub, logger: AV_Logger, strategy_handlers: dict[str, TrajectoryPlanner]):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param dds: communication layer (DDS) instance
@@ -23,11 +25,9 @@ class TrajectoryPlanningFacade(DmModule):
         self.__validate_strategy_handlers(strategy_handlers)
         self._strategy_handlers = strategy_handlers
 
-    # TODO: implement
     def _start_impl(self):
         pass
 
-    # TODO: implement
     def _stop_impl(self):
         pass
 
@@ -45,6 +45,7 @@ class TrajectoryPlanningFacade(DmModule):
             trajectory, cost, debug_results = self._strategy_handlers[params.strategy].plan(
                 state, params.reference_route, params.target_state, params.cost_params)
 
+            # TODO: should publish v_x?
             # publish results to the lower DM level
             self.__publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory, reference_route=params.reference_route,
                                                         current_speed=state.ego_state.v_x))
@@ -78,9 +79,9 @@ class TrajectoryPlanningFacade(DmModule):
         return TrajectoryParameters.deserialize(input_params)
 
     # TODO: add type hints
-    def __publish_trajectory(self, results):
+    def __publish_trajectory(self, results: TrajectoryPlanMsg):
         self.dds.publish(TRAJECTORY_PUBLISH_TOPIC, results.serialize())
 
     # TODO: implement message passing
-    def __publish_debug(self, debug_data):
-        pass
+    def __publish_debug(self, debug_msg: TrajectoryVisualizationMsg):
+        self.dds.publish(TRAJECTORY_VISUALIZATION_TOPIC, debug_msg.serialize())
