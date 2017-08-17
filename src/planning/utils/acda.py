@@ -5,6 +5,7 @@ from typing import List
 
 import numpy as np
 
+from decision_making.src.global_constants import ACDA_NAME_FOR_LOGGING
 from decision_making.src.planning.utils.acda_constants import *
 from decision_making.src.state.enriched_state import EnrichedObjectState, EnrichedDynamicObject, EnrichedEgoState
 from rte.python.logger.AV_logger import AV_Logger
@@ -12,7 +13,7 @@ from rte.python.logger.AV_logger import AV_Logger
 
 class AcdaApi:
 
-    _logger = AV_Logger.get_logger("ACDA")
+    _logger = AV_Logger.get_logger(ACDA_NAME_FOR_LOGGING)
 
     @staticmethod
     def set_logger(logger: AV_Logger):
