@@ -34,7 +34,42 @@ DX_OFFSET_MIN, DX_OFFSET_MAX = -1, 1
 # Linspace number of steps in the constraints parameters grid-search
 SX_STEPS, SV_STEPS, DX_STEPS = 5, 10, 5
 
+### DM Manager configuration ###
+BEHAVIORAL_PLANNING_MODULE_PERIOD = 1
+TRAJECTORY_PLANNING_MODULE_PERIOD = 0.1
+
+### DDS Constants ###
+STATE_MODULE_DDS_PARTICIPANT = "DecisionMakingParticipantLibrary::StateModule"
+NAVIGATION_PLANNER_DDS_PARTICIPANT = "DecisionMakingParticipantLibrary::NavigationPlanner"
+BEHAVIORAL_PLANNER_DDS_PARTICIPANT = "DecisionMakingParticipantLibrary::BehavioralPlanner"
+TRAJECTORY_PLANNER_DDS_PARTICIPANT = "DecisionMakingParticipantLibrary::TrajectoryPlanner"
+
+DECISION_MAKING_DDS_FILE = "decisionMakingMain.xml"
+
+# State Module
+DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC = "StateSubscriber::DynamicObjectsReader"
+SELF_LOCALIZATION_SUBSCRIBE_TOPIC = "StateSubscriber::SelfLocalizationReader"
+OCCUPANCY_STATE_SUBSCRIBE_TOPIC = "StateSubscriber::OccupancyStateReader"
+STATE_PUBLISH_TOPIC = "StatePublisher::StateWriter"
+
+# Navigation Planning Module
+NAVIGATION_PLAN_PUBLISH_TOPIC = "NavigationPublisher::NavigationPlanWriter"
+
+# Behavioral Module
+BEHAVIORAL_STATE_READER_TOPIC = "BehavioralSubscriber::StateReader"
+BEHAVIORAL_NAV_PLAN_READER_TOPIC = "BehavioralSubscriber::NavigationPlanReader"
+BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC = "BehavioralPublisher::TrajectoryParametersWriter"
+
+# Trajectory Planning Module
+TRAJECTORY_STATE_READER_TOPIC = "TrajectorySubscriber::StateReader"
+TRAJECTORY_PARAMS_READER_TOPIC = "TrajectorySubscriber::TrajectoryParametersReader"
+TRAJECTORY_PUBLISH_TOPIC = "TrajectoryPublisher::TrajectoryWriter"
 
 #### NAMES OF MODULES FOR LOGGING ####
+DM_MANAGER_NAME_FOR_LOGGING = "DM Manager"
+NAVIGATION_PLANNING_NAME_FOR_LOGGING = "Navigation Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
 ACDA_NAME_FOR_LOGGING = "ACDA Module"
+TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
+STATE_MODULE_NAME_FOR_LOGGING = "State Module"
+

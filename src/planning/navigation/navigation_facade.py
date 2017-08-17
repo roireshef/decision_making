@@ -1,19 +1,25 @@
-from decision_making.src.planning.navigation.constants import ONE_TWO_NAVIGATION_PLAN
-from decision_making.src.planning.navigation.navigation_plan import NavigationPlan
+from common_data.dds.python.Communication.ddspubsub import DdsPubSub
+from decision_making.src.global_constants import NAVIGATION_PLAN_PUBLISH_TOPIC
+from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.planning.navigation.navigation_planner import NavigationPlanner
+from rte.python.logger.AV_logger import AV_Logger
 
 
-class NavigationFacade:
-    def __init__(self, navigation_plan: NavigationPlan):
-        self._navigation_plan = navigation_plan
+# TODO - must think about what the input to the navigation computation is, and where it comes from
+class NavigationFacade(DmModule):
+    def __init__(self, dds: DdsPubSub, logger: AV_Logger, handler: NavigationPlanner):
+        super().__init__(dds, logger)
+        self.handler = handler
 
-    # TODO - must think about what the input to the navigation computation is, and where it comes from
-    def update_navigation_plan(self) -> None:
-        """
-        Recompute navigation plan and update _navigation_plan field. For now, takes a constant plan from configuration.
-        :return: Void
-        """
-        self._navigation_plan = NavigationPlan(ONE_TWO_NAVIGATION_PLAN)
-
-    # TODO implement message passing
-    def __publish_navigation_plan(self):
+    def _stop_impl(self):
         pass
+
+    def _start_impl(self):
+        pass
+
+    def _periodic_action_impl(self):
+        self.__publish_navigation_plan(self.handler.plan())
+
+    def __publish_navigation_plan(self, plan: NavigationPlanMsg):
+        self.dds.publish(NAVIGATION_PLAN_PUBLISH_TOPIC, plan)

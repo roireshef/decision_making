@@ -122,6 +122,39 @@ class CartesianFrame:
 
         return interp_curve, effective_step_size
 
+    @staticmethod
+    def calc_point_segment_dist(p: np.ndarray, p1: np.ndarray, p2: np.ndarray) -> (int, float, float):
+        """
+        Given point p and directed segment p1->p2, calculate:
+            1. from which side p is located relatively to the line p1->p2,
+            2. the closest distance from p to the segment,
+            3. length of the projection of p on the segment (zero if the projection is outside the segment).
+        :param p: 2D Point
+        :param p1: first edge of 2D segment
+        :param p2: second edge of 2D segment
+        :return: signed distance between the point p and the segment p1->p2; length of the projection of p on the segment
+        """
+        v = p2 - p1
+        v1 = p - p1
+        v2 = p2 - p
+        if v[0] == 0 and v[1] == 0:
+            return 0, np.linalg.norm(v1), 0
+        dot1 = np.dot(v, v1)
+        dot2 = np.dot(v, v2)
+        normal = np.array([-v[1], v[0]])  # normal of v toward left if v looks up
+        dotn = np.dot(normal, v1)
+        sign = np.sign(dotn)
+        proj = 0
+        if dot1 > 0 and dot2 > 0:  # then p is between p1,p2, so calc dist to the line
+            one_over_vnorm = 1. / np.linalg.norm(v)
+            dist = dotn * one_over_vnorm * sign  # always >= 0
+            proj = dot1 * one_over_vnorm  # length of projection of v1 on v
+        elif dot1 <= 0:
+            dist = np.linalg.norm(v1)
+        else:
+            dist = np.linalg.norm(v2)
+        return sign, dist, proj
+
 
 class FrenetMovingFrame:
     """
@@ -131,7 +164,7 @@ class FrenetMovingFrame:
 
     def __init__(self, curve_xy: np.ndarray, resolution=TRAJECTORY_ARCLEN_RESOLUTION):
         # TODO: consider moving curve-interpolation outside of this class
-        resampled_curve, self._ds = CartesianFrame.resample_curve(curve=curve_xy, step_size=resolution/4,
+        resampled_curve, self._ds = CartesianFrame.resample_curve(curve=curve_xy, step_size=resolution / 4,
                                                                   interp_type=TRAJECTORY_CURVE_INTERP_TYPE)
         resampled_curve, self._ds = CartesianFrame.resample_curve(curve=resampled_curve, step_size=resolution,
                                                                   interp_type='linear')
@@ -140,13 +173,16 @@ class FrenetMovingFrame:
                                    for s_idx in range(len(self._curve))])
 
     @property
-    def curve(self): return self._curve.copy()
+    def curve(self):
+        return self._curve.copy()
 
     @property
-    def resolution(self): return self._ds
+    def resolution(self):
+        return self._ds
 
     @property
-    def length(self): return len(self.curve)
+    def length(self):
+        return len(self.curve)
 
     def sx_to_s_idx(self, sx: float):
         return int(sx / self._ds)
@@ -243,7 +279,8 @@ class FrenetMovingFrame:
         cos_theta_diff = np.cos(theta_diff)
 
         # compute x, y (position)
-        norm = np.reshape(np.concatenate((d_x.reshape([num_t, num_p, 1]), np.ones([num_t, num_p, 1])), axis=2), [num_t, num_p, 2, 1])
+        norm = np.reshape(np.concatenate((d_x.reshape([num_t, num_p, 1]), np.ones([num_t, num_p, 1])), axis=2),
+                          [num_t, num_p, 2, 1])
         xy_abs = np.einsum('tijk, tikl -> tijl', self._h_tensor[s_idx, 0:2, 1:3], norm)
 
         # compute v (velocity)
@@ -263,5 +300,3 @@ class FrenetMovingFrame:
         return np.concatenate((xy_abs.reshape([num_t, num_p, 2]), theta_x.reshape([num_t, num_p, 1]),
                                v.reshape([num_t, num_p, 1]), a_col.reshape([num_t, num_p, 1]),
                                k.reshape([num_t, num_p, 1])), axis=2)
-
-

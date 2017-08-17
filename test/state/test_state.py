@@ -1,5 +1,5 @@
 
-from src.state.enriched_state import *
+from state.enriched_state import *
 
 
 def test_init():
@@ -21,3 +21,5 @@ def test_init():
     assert isinstance(road, EnrichedPerceivedRoad)
     state = EnrichedState(occ, [stat], [dyn], ego, road)
     assert isinstance(state, EnrichedState)
+
+test_init()
