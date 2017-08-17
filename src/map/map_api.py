@@ -1,8 +1,19 @@
 import numpy as np
 from abc import ABCMeta, abstractmethod
 from decision_making.src.map.map_model import MapModel
-from typing import List
+from typing import List, Union
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.planning.utils.geometry_utils import CartesianFrame
+from enum import Enum
+
+class RoadAttr(Enum):
+    id = "id"
+    points = "points"
+    longitudes = "longitudes"
+    width = "width"
+    lanes_num = "lanes"
+    head_layer = "head_layer"
+    tail_layer = "tail_layer"
 
 
 class MapAPI(metaclass=ABCMeta):
@@ -20,7 +31,11 @@ class MapAPI(metaclass=ABCMeta):
         :param y: world coordinates in meters
         :return: road_ids containing the point x, y
         """
-        pass
+        X = int(round(x / ROADS_MAP_TILE_SIZE))
+        Y = int(round(y / ROADS_MAP_TILE_SIZE))
+        if (layer, X, Y) in self._cached_map_model.xy2road_map:
+            return self._cached_map_model.xy2road_map[(layer, X, Y)]
+        return []
 
     def get_center_lanes_latitudes(self, road_id):
         # type: (int) -> np.array
@@ -29,7 +44,11 @@ class MapAPI(metaclass=ABCMeta):
         :param road_id:
         :return: list of latitudes of all lanes in the road
         """
-        pass
+        lanes_num = self._get_road_attribute(road_id, RoadAttr.lanes_num)
+        road_width = self._get_road_attribute(road_id, RoadAttr.width)
+        lane_width = float(road_width) / lanes_num
+        center_lanes = lane_width / 2 + np.array(range(lanes_num)) * lane_width
+        return center_lanes
 
     def get_road_details(self, road_id):
         # type: (int) -> (int, float, float, np.ndarray)
@@ -38,7 +57,13 @@ class MapAPI(metaclass=ABCMeta):
         :param road_id:
         :return: lanes number, road width, road length, road's points
         """
-        pass
+        if road_id not in self._cached_map_model.roads_data.keys():
+            return None, None, None, None
+        lanes_num = self._get_road_attribute(road_id, RoadAttr.lanes_num)
+        width = self._get_road_attribute(road_id, RoadAttr.width)
+        length = self._get_road_attribute(road_id, RoadAttr.longitudes)[-1]
+        points = self._get_road_attribute(road_id, RoadAttr.points)
+        return lanes_num, width, length, points
 
     def convert_world_to_lat_lon(self, x, y, z, yaw):
         # type: (float, float, float, float) -> (int, int, float, float, float, float)
@@ -57,11 +82,41 @@ class MapAPI(metaclass=ABCMeta):
         :param yaw:
         :return: road_id, lane, full latitude, lane_lat, longitude, yaw_in_road
         """
-        pass
+        # use road_id by navigation if the point is outside the roads
+        if z > 1:
+            road_ids = self.find_roads_containing_point(1, x, y)
+        else:
+            road_ids = self.find_roads_containing_point(0, x, y)
+            if road_ids is None:
+                road_ids = self.find_roads_containing_point(1, x, y)
+        if road_ids is None or len(road_ids) == 0:
+            return None, None, None, None, None, None
+
+        # find the closest road to (x,y)
+        closest_lat = LARGE_NUM
+        closest_id = closest_sign = closest_yaw = closest_lon = None
+        for road_id in road_ids:
+            sign, lat_dist, lon, road_vec = self._convert_world_to_lat_lon_for_given_road(x, y, road_id)
+            if lat_dist < closest_lat:
+                road_yaw = np.arctan2(road_vec[1], road_vec[0])
+                (closest_lat, closest_sign, closest_lon, closest_yaw, closest_id) = \
+                    (lat_dist, sign, lon, road_yaw, road_id)
+        (lat_dist, sign, lon, road_yaw, road_id) = (closest_lat, closest_sign, closest_lon, closest_yaw, closest_id)
+
+        lanes_num = self._get_road_attribute(road_id, RoadAttr.lanes_num)
+        lane_width = self._get_road_attribute(road_id, RoadAttr.width) / float(lanes_num)
+
+        # calc lane number, intra-lane lat and yaw
+        full_lat = lat_dist * sign + 0.5 * lanes_num * lane_width  # latitude relatively to the right road edge
+        lane = float(int(full_lat / lane_width))  # from right to left
+        lane = np.clip(lane, 0, lanes_num - 1)
+        yaw_in_road = (yaw - road_yaw + 2 * np.pi) % (2 * np.pi)
+        lane_lat = full_lat % lane_width
+        return road_id, lane, full_lat, lane_lat, lon, yaw_in_road
 
     def get_point_relative_longitude(self, from_road_id, from_lon_in_road, to_road_id, to_lon_in_road,
                                      max_lookahead_distance, navigation_plan):
-        # type: (int, float, int, float, float, NavigationPlanMsg) -> float
+        # type: (int, float, int, float, float, NavigationPlanMsg) -> (float, bool)
         """
         Find longitude distance between two points in road coordinates.
         First search forward from the point (from_road_id, from_lon_in_road) to the point (to_road_id, to_lon_in_road);
@@ -73,10 +128,45 @@ class MapAPI(metaclass=ABCMeta):
         :param max_lookahead_distance: max search distance
         :return: longitude distance between the given two points, boolean "found connection"
         """
-        pass
+        if to_road_id == from_road_id:  # simple case
+            return to_lon_in_road - from_lon_in_road, True
+
+        road_index_in_plan = navigation_plan.get_road_index_in_plan(from_road_id)
+        if road_index_in_plan is None:  # target road_id not found in the navigation plan
+            return max_lookahead_distance, False
+
+        found_connection = False
+        total_lon_distance = max_lookahead_distance
+
+        # first search forward (direction=1); if not found then search backward (direction=-1)
+        for direction in range(1, -2, -2):
+
+            # 1. First road segment
+            if direction > 0:  # forward
+                total_lon_distance = self._get_road_attribute(from_road_id, RoadAttr.longitudes)[-1] - from_lon_in_road
+            else:  # backward
+                total_lon_distance = from_lon_in_road
+
+            # 2. Middle road segments
+            road_id, road_index_in_plan = navigation_plan.get_next_road(direction, road_index_in_plan)
+            while road_id is not None and road_id != to_road_id and total_lon_distance < max_lookahead_distance:
+                road_length = self._get_road_attribute(road_id, RoadAttr.longitudes)[-1]
+                total_lon_distance += road_length
+                road_id, road_index_in_plan = navigation_plan.get_next_road(direction, road_index_in_plan)
+
+            # 3. Add length of last road segment
+            if road_id == to_road_id:
+                if direction > 0:  # forward
+                    total_lon_distance += to_lon_in_road
+                else:  # backward
+                    total_lon_distance += self._get_road_attribute(to_road_id, RoadAttr.longitudes)[-1] - to_lon_in_road
+                found_connection = True
+                break  # stop the search when the connection is found
+
+        return total_lon_distance, found_connection
 
     def get_path_lookahead(self, road_id, lon, lat, max_lookahead_distance, navigation_plan, direction=1):
-        # type: (int, float, float, float, NavigationPlanMsg, int) -> np.ndarray
+        # type: (int, float, float, float, NavigationPlanMsg, int) -> Union[np.ndarray, None]
         """
         Get path with lookahead distance (starting from certain road, and continuing to the next ones if lookahead distance > road length)
             lat is measured in meters
@@ -88,7 +178,104 @@ class MapAPI(metaclass=ABCMeta):
         :param direction: forward (1) or backward (-1)
         :return: points array
         """
-        pass
+        if road_id is None:
+            road_index_in_plan = navigation_plan.current_road_index
+        else:
+            road_index_in_plan = navigation_plan.get_road_index_in_plan(road_id)
+
+        road_width = self._get_road_attribute(road_id, RoadAttr.width)
+        center_road_lat = road_width / 2.0
+
+        longitudes = self._get_road_attribute(road_id, RoadAttr.longitudes)
+        path = np.zeros(shape=[2, 0])
+
+        road_length = self._get_road_attribute(road_id, RoadAttr.longitudes)[-1]
+        closest_longitude_index = np.argmin(np.abs(longitudes - lon))
+
+        # Init with current road
+        road_starting_longitude = lon
+        residual_lookahead = max_lookahead_distance
+
+        path_points = self._get_road_attribute(road_id, RoadAttr.points)
+        if direction == 1:
+            target_longitude_index = np.argmin(np.abs(longitudes - (residual_lookahead + road_starting_longitude)))
+            first_exact_lon_point = self._convert_lat_lon_to_world(road_id, center_road_lat, lon, navigation_plan)
+            if first_exact_lon_point is None:
+                return None
+            partial_path_points = path_points[:, closest_longitude_index:target_longitude_index + 1]
+            partial_path_points[:, 0] = first_exact_lon_point[0:2]
+            achieved_lookahead = road_length - lon
+        else:
+            target_longitude_index = np.argmin(np.abs((road_length - longitudes) - residual_lookahead))
+            first_exact_lon_point = self._convert_lat_lon_to_world(road_id, center_road_lat, lon, navigation_plan)
+            if first_exact_lon_point is None:
+                return None
+            partial_path_points = path_points[:, target_longitude_index:closest_longitude_index + 1]
+            partial_path_points = np.flip(partial_path_points, axis=1)
+            partial_path_points[:, 0] = first_exact_lon_point[0:2]
+            achieved_lookahead = lon
+
+        path = np.concatenate((path, partial_path_points), axis=1)
+        # Iterate over next road, until we get enough lookahead
+        while achieved_lookahead < max_lookahead_distance and road_id is not None:
+            road_starting_longitude = 0
+            road_id, road_index_in_plan = navigation_plan.get_next_road(direction, road_index_in_plan)
+
+            if road_id is not None:
+                road_length = self._get_road_attribute(road_id, RoadAttr.longitudes)[-1]
+                path_points = self._get_road_attribute(road_id, RoadAttr.points)
+
+                residual_lookahead = max_lookahead_distance - achieved_lookahead
+                if road_length > residual_lookahead:
+                    # Take only the relevant part of the current road
+                    longitudes = self._get_road_attribute(road_id, RoadAttr.longitudes)
+                    if direction == 1:
+                        target_longitude_index = np.argmin(
+                            np.abs(longitudes - (residual_lookahead + road_starting_longitude)))
+                        partial_path_points = path_points[:, :target_longitude_index + 1]
+                    else:
+                        target_longitude_index = np.argmin(np.abs((road_length - longitudes) - residual_lookahead))
+                        partial_path_points = path_points[:, target_longitude_index:]
+                        partial_path_points = np.flip(partial_path_points, axis=1)
+
+                else:
+                    # Take whole road, because there is more ground to cover
+                    partial_path_points = path_points
+
+            from_idx = 0
+            dx = path[0, -1] - partial_path_points[0, 0]
+            dy = path[1, -1] - partial_path_points[1, 0]
+            if dx * dx + dy * dy == 0:  # avoid duplicated start point of the next path
+                from_idx = 1
+            path = np.concatenate((path, partial_path_points[:, from_idx:]), axis=1)
+            achieved_lookahead += road_length
+
+        # Replace the last (closest, but inexact) point, and replace it with a point with the exact lon value
+        if direction == 1:
+            lon = residual_lookahead + road_starting_longitude
+        else:
+            lon = road_length - (road_starting_longitude + residual_lookahead)
+        last_exact_lon_point = self._convert_lat_lon_to_world(road_id, center_road_lat, lon, navigation_plan)
+        if last_exact_lon_point is None:
+            return None
+
+        # if path consists of a single point, add it to the end of route. else, replace last point
+        path_length = path.shape[1]
+        if path_length > 1:
+            path[:, -1] = last_exact_lon_point[0:2]
+        else:
+            dx = path[0, -1] - last_exact_lon_point[0]
+            dy = path[1, -1] - last_exact_lon_point[1]
+            if dx * dx + dy * dy == 0:  # avoid duplicated point of the next path
+                path = np.concatenate((path, last_exact_lon_point[0:2].reshape([2, 1])), axis=1)
+
+        if lat != 0:
+            shift_amount = -road_width / 2.0 + lat
+            lat_shifted_path = self._shift_road_vector_in_lat(points=path, lat_shift=shift_amount)
+        else:
+            lat_shifted_path = path
+
+        return lat_shifted_path
 
     def get_uniform_path_lookahead(self, road_id, lat, starting_lon, lon_step, steps_num, navigation_plan):
         # type: (int, float, float, float, int, NavigationPlanMsg) -> np.ndarray
@@ -103,7 +290,9 @@ class MapAPI(metaclass=ABCMeta):
         :param steps_num: output points number
         :return: uniform points array (2xN)
         """
-        pass
+        shifted_path = self.get_path_lookahead(road_id, starting_lon, lat, lon_step*steps_num, navigation_plan, direction=1)
+        resampled_path, _ = CartesianFrame.resample_curve(shifted_path.transpose(), lon_step)
+        return resampled_path.transpose()
 
     def update_perceived_roads(self):
         pass
@@ -154,7 +343,7 @@ class MapAPI(metaclass=ABCMeta):
         pass
 
     def _get_road_attribute(self, road_id, attribute):
-        # type: (int, None) -> str
+        ## type: (int, RoadAttr) -> str
         pass
 
     def _convert_world_to_lat_lon_for_given_road(self, x, y, road_id):
