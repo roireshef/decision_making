@@ -9,11 +9,11 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.policy import Policy
 from decision_making.src.state.state import State
-from rte.python.logger.AV_logger import AV_Logger
+from logging import Logger
 
 
 class BehavioralFacade(DmModule):
-    def __init__(self, dds: DdsPubSub, logger: AV_Logger, policy: Policy = None,
+    def __init__(self, dds: DdsPubSub, logger: Logger, policy: Policy = None,
                  behavioral_state: BehavioralState = None):
         """
         :param policy: decision making component

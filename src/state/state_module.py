@@ -4,11 +4,11 @@ from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import *
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.state.state import *
-from rte.python.logger.AV_logger import AV_Logger
+from logging import Logger
 
 
 class StateModule(DmModule):
-    def __init__(self, dds: DdsPubSub, logger: AV_Logger):
+    def __init__(self, dds: DdsPubSub, logger: Logger):
         super().__init__(dds, logger)
         occupancy_state = OccupancyState(0, np.array([]), np.array([]))
         dynamic_objects = []
