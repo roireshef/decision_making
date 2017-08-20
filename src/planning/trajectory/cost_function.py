@@ -4,7 +4,7 @@ import numpy as np
 
 from decision_making.src.global_constants import EXP_CLIP_TH
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
-from decision_making.src.state.enriched_state import ObjectState as EnrichedObjectState
+from decision_making.src.state.state import DynamicObject as ObjectState
 
 
 class BoxObstacle:
@@ -77,7 +77,7 @@ class SigmoidStatic2DBoxObstacle(BoxObstacle):
     def margin(self): return self._margin
 
     @classmethod
-    def from_object_state(cls, os: EnrichedObjectState, k, offset):
+    def from_object_state(cls, os: ObjectState, k, offset):
         """
         Additional constructor that takes a ObjectState from the State object and wraps it
         :param os: ObjectState object from State object

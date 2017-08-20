@@ -8,7 +8,7 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParamet
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.policy import Policy
-from decision_making.src.state.enriched_state import EnrichedState
+from decision_making.src.state.state import State
 from rte.python.logger.AV_logger import AV_Logger
 
 
@@ -34,7 +34,7 @@ class BehavioralFacade(DmModule):
     # TODO: implement
     def _periodic_action_impl(self):
         """
-        The main function of the behavioral planner. It read the most up-to-date enriched state and navigation plan,
+        The main function of the behavioral planner. It read the most up-to-date state and navigation plan,
          processes them into the behavioral state, and then performs behavioral planning. The results are then published
           to the trajectory planner and as debug information to the visualizer.
         :return: void
@@ -55,10 +55,10 @@ class BehavioralFacade(DmModule):
             self.logger.warn("MsgDeserializationError was raised. skipping planning. " +
                              "turn on debug logging level for more details.")
 
-    def __get_current_state(self) -> EnrichedState:
+    def __get_current_state(self) -> State:
         input_state = self.dds.get_latest_sample(topic=BEHAVIORAL_STATE_READER_TOPIC, timeout=1)
         self.logger.debug('Received State: ' + str(input_state))
-        return EnrichedState.deserialize(input_state)
+        return State.deserialize(input_state)
 
     def __get_current_navigation_plan(self) -> NavigationPlanMsg:
         input_plan = self.dds.get_latest_sample(topic=BEHAVIORAL_NAV_PLAN_READER_TOPIC, timeout=1)
