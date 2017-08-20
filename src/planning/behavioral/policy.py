@@ -105,14 +105,14 @@ class DefaultPolicy(Policy):
 
         # Choose other lane only if improvement is sufficient
         if other_lanes_are_available and (
-            object_distance_in_current_lane < behavior_param_prefer_other_lanes_where_blocking_object_distance_less_than) and (
+                    object_distance_in_current_lane < behavior_param_prefer_other_lanes_where_blocking_object_distance_less_than) and (
                     best_center_of_lane_distance_from_object > object_distance_in_current_lane + behavior_param_prefer_other_lanes_if_improvement_is_greater_than):
             chosen_action = best_center_of_lane_index_in_grid
 
         # If blocking object is too close: choose any valid lateral offset
         if (
             object_distance_in_current_lane < behavior_param_prefer_any_lane_center_if_blocking_object_distance_greater_than) and (
-                    best_center_of_lane_distance_from_object < behavior_param_prefer_any_lane_center_if_blocking_object_distance_greater_than):
+            best_center_of_lane_distance_from_object < behavior_param_prefer_any_lane_center_if_blocking_object_distance_greater_than):
             chosen_action = np.argmax(closest_blocking_object_in_lane)
 
         # Draw in RViz
@@ -144,7 +144,6 @@ class DefaultPolicy(Policy):
         # return best lane
         selected_latitude = valid_absolute_latitude_offset_grid[chosen_action]
         return selected_latitude
-
 
     def plan(self, behavioral_state: BehavioralState) -> (TrajectoryParameters, BehavioralVisualizationMsg):
 
