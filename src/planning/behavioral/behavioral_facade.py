@@ -1,4 +1,3 @@
-import time
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import BEHAVIORAL_STATE_READER_TOPIC, \
     BEHAVIORAL_NAV_PLAN_READER_TOPIC, BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC
@@ -12,12 +11,12 @@ from decision_making.src.planning.behavioral.policy import Policy, DefaultPolicy
 from decision_making.src.planning.navigation.navigation_plan import NavigationPlan
 from decision_making.src.state.enriched_state import State, EnrichedState
 from decision_making.src.planning.behavioral.policy import Policy
-from decision_making.src.state.enriched_state import EnrichedState
-from rte.python.logger.AV_logger import AV_Logger
+from decision_making.src.state.state import State
+from logging import Logger
 
 
-class BehavioralFacade(DM_Module):
-    def __init__(self, dds : DdsPubSub, logger: AV_Logger, policy: Policy, behavioral_state: BehavioralState):
+class BehavioralFacade(DmModule):
+    def __init__(self, dds: DdsPubSub, logger: AV_Logger, policy: Policy, behavioral_state: BehavioralState):
         """
         :param policy: decision making component
         :param behavioral_state: initial state of the system. Can be empty, i.e. initialized with default values.
@@ -38,7 +37,7 @@ class BehavioralFacade(DM_Module):
     # TODO: implement
     def _periodic_action_impl(self):
         """
-        The main function of the behavioral planner. It read the most up-to-date enriched state and navigation plan,
+        The main function of the behavioral planner. It read the most up-to-date state and navigation plan,
          processes them into the behavioral state, and then performs behavioral planning. The results are then published
           to the trajectory planner and as debug information to the visualizer.
         :return: void
@@ -59,14 +58,10 @@ class BehavioralFacade(DM_Module):
             self.logger.warn("MsgDeserializationError was raised. skipping planning. " +
                              "turn on debug logging level for more details.")
 
-    def __update_map(self) -> None:
-        # TODO: update cached map when relevant
-        pass
-
-    def __get_current_state(self) -> EnrichedState:
+    def __get_current_state(self) -> State:
         input_state = self.dds.get_latest_sample(topic=BEHAVIORAL_STATE_READER_TOPIC, timeout=1)
         self.logger.debug('Received State: ' + str(input_state))
-        return EnrichedState.deserialize(input_state)
+        return State.deserialize(input_state)
 
     def __get_current_navigation_plan(self) -> NavigationPlanMsg:
         input_plan = self.dds.get_latest_sample(topic=BEHAVIORAL_NAV_PLAN_READER_TOPIC, timeout=1)

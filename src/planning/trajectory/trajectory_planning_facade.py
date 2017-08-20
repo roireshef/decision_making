@@ -6,11 +6,12 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParamet
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.state.enriched_state import EnrichedState
-from rte.python.logger.AV_logger import AV_Logger
+from decision_making.src.state.state import State
+from logging import Logger
+
 
 class TrajectoryPlanningFacade(DmModule):
-    def __init__(self, dds: DdsPubSub, logger: AV_Logger, strategy_handlers: dict):
+    def __init__(self, dds: DdsPubSub, logger: Logger, strategy_handlers: dict):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param dds: communication layer (DDS) instance
@@ -67,10 +68,10 @@ class TrajectoryPlanningFacade(DmModule):
             if not isinstance(handlers[elem], TrajectoryPlanner):
                 raise ValueError('strategy_handlers does not contain a TrajectoryPlanner impl. for ' + elem)
 
-    def __get_current_state(self) -> EnrichedState:
+    def __get_current_state(self) -> State:
         input_state = self.dds.get_latest_sample(topic=TRAJECTORY_STATE_READER_TOPIC, timeout=1)
         self.logger.debug('Received state: %s', input_state)
-        return EnrichedState.deserialize(input_state)
+        return State.deserialize(input_state)
 
     def __get_mission_params(self) -> TrajectoryParameters:
         input_params = self.dds.get_latest_sample(topic=TRAJECTORY_STATE_READER_TOPIC, timeout=1)

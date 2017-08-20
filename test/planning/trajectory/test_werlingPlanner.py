@@ -1,7 +1,7 @@
 from src.planning.trajectory.cost_function import CostParams
 from src.planning.trajectory.werling_planner import WerlingPlanner
 from src.planning.utils.geometry_utils import *
-from src.state.enriched_state import State as EnrichedState, ObjectState, ObjectSize, EgoState
+from src.state.state import State, DynamicObject, ObjectSize, EgoState
 from test.planning.trajectory.utils import RouteFixture
 
 
@@ -30,7 +30,7 @@ def test_werlingPlanner_toyScenario_noException(self):
                    localization_confidence=1.0, v_x=v0, v_y=0, acceleration_x=0.0, turn_radius=0.0,
                    steering_angle=0.0)
 
-    state = EnrichedState(occupancy_state=None, static_objects=obs, dynamic_objects=None, ego_state=ego,
+    state = State(occupancy_state=None, static_objects=obs, dynamic_objects=None, ego_state=ego,
                           perceived_road=None)
 
     cost_params = CostParams(time=T, ref_deviation_weight=10.0, lane_deviation_weight=10.0, obstacle_weight=20000.0,

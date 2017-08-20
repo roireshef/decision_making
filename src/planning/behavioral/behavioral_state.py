@@ -1,11 +1,10 @@
 from typing import Union
+import numpy as np
 
+from decision_making.src.state.state import State, EgoState
 from decision_making.src import global_constants
 from decision_making.src.map.map_api import MapAPI
 from decision_making.src.planning.navigation.navigation_plan import NavigationPlan
-from decision_making.src.state.enriched_state import EnrichedState, EnrichedDynamicObject, EnrichedObjectState
-import numpy as np
-
 from rte.python.logger.AV_logger import AV_Logger
 
 
@@ -99,7 +98,7 @@ class BehavioralState:
         updating the behavioral state from the raw input state. This includes only direct processing without complex
         logic. This is implemented separately from initialization in order to potentially use differences for more
         efficient processing.
-        :param state: the enriched state coming as a message from perception via DDS.
+        :param state: the state coming as a message from perception via DDS.
         :param navigation_plan: will be used for processing the behavioral state, as well as for PolicyFeatures
         :return: void
         """

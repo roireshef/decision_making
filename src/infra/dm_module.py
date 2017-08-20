@@ -1,10 +1,11 @@
-from common_data.dds.python.Communication.ddspubsub import DdsPubSub
-from rte.python.logger.AV_logger import AV_Logger
 from abc import abstractmethod
+from logging import Logger
+
+from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 
 
 class DmModule:
-    def __init__(self, dds: DdsPubSub, logger: AV_Logger):
+    def __init__(self, dds: DdsPubSub, logger: Logger):
         self.dds = dds
         self.logger = logger
         self.logger.info("initializing module: " + self.__class__.__name__)

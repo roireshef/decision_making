@@ -124,36 +124,36 @@ class CartesianFrame:
         return interp_curve, effective_step_size
 
     @staticmethod
-    def calc_point_segment_dist(p: np.ndarray, p1: np.ndarray, p2: np.ndarray) -> (int, float, float):
+    def calc_point_segment_dist(p: np.ndarray, p_start: np.ndarray, p_end: np.ndarray) -> (int, float, float):
         """
         Given point p and directed segment p1->p2, calculate:
             1. from which side p is located relatively to the line p1->p2,
             2. the closest distance from p to the segment,
             3. length of the projection of p on the segment (zero if the projection is outside the segment).
         :param p: 2D Point
-        :param p1: first edge of 2D segment
-        :param p2: second edge of 2D segment
+        :param p_start: first edge of 2D segment
+        :param p_end: second edge of 2D segment
         :return: signed distance between the point p and the segment p1->p2; length of the projection of p on the segment
         """
-        v = p2 - p1
-        v1 = p - p1
-        v2 = p2 - p
-        if v[0] == 0 and v[1] == 0:
-            return 0, np.linalg.norm(v1), 0
-        dot1 = np.dot(v, v1)
-        dot2 = np.dot(v, v2)
-        normal = np.array([-v[1], v[0]])  # normal of v toward left if v looks up
-        dotn = np.dot(normal, v1)
+        segment = p_end - p_start
+        segment_start_to_p = p - p_start
+        segment_p_to_end = p_end - p
+        if segment[0] == 0 and segment[1] == 0:
+            return 0, np.linalg.norm(segment_start_to_p), 0
+        dot1 = np.dot(segment, segment_start_to_p)
+        dot2 = np.dot(segment, segment_p_to_end)
+        normal = np.array([-segment[1], segment[0]])  # normal of v toward left if v looks up
+        dotn = np.dot(normal, segment_start_to_p)
         sign = np.sign(dotn)
         proj = 0
         if dot1 > 0 and dot2 > 0:  # then p is between p1,p2, so calc dist to the line
-            one_over_vnorm = 1. / np.linalg.norm(v)
+            one_over_vnorm = 1. / np.linalg.norm(segment)
             dist = dotn * one_over_vnorm * sign  # always >= 0
             proj = dot1 * one_over_vnorm  # length of projection of v1 on v
         elif dot1 <= 0:
-            dist = np.linalg.norm(v1)
+            dist = np.linalg.norm(segment_start_to_p)
         else:
-            dist = np.linalg.norm(v2)
+            dist = np.linalg.norm(segment_p_to_end)
         return sign, dist, proj
 
 
@@ -328,3 +328,90 @@ class FrenetMovingFrame:
         return np.concatenate((xy_abs.reshape([num_t, num_p, 2]), theta_x.reshape([num_t, num_p, 1]),
                                v.reshape([num_t, num_p, 1]), a_col.reshape([num_t, num_p, 1]),
                                k.reshape([num_t, num_p, 1])), axis=2)
+
+
+class Dynamics:
+    """
+    predicting location & velocity for moving objects
+    """
+
+    @staticmethod
+    def predict_dynamics(x: float, y: float, yaw: float, v_x: float, v_y: float, accel_lon: float, turn_radius: float,
+                         dt: float) -> tuple((float, float, float, float, float)):
+        """
+        Predict the object's location, yaw and velocity after a given time period.
+        The object may accelerate and move in circle with given radius.
+        :param x: starting x in meters
+        :param y: starting y in meters
+        :param yaw: starting yaw in radians
+        :param v_x: starting v_x in m/s
+        :param v_y: starting v_y in m/s
+        :param accel_lon: constant longitudinal acceleration in m/s^2
+        :param turn_radius: in meters; positive CW, negative CCW, zero means straight motion
+        :param dt: time period in seconds
+        :return: goal x, y, yaw, v_x, v_y
+        """
+        sin_yaw = np.sin(yaw)
+        cos_yaw = np.cos(yaw)
+        start_vel = np.sqrt(v_x * v_x + v_y * v_y)
+        # if the object will stop before goal_timestamp, then set dt to be until the stop time
+        if accel_lon < -0.01 and accel_lon * dt < -start_vel:
+            dt = start_vel / (-accel_lon)
+
+        if turn_radius is not None and turn_radius != 0:  # movement by circle arc (not straight)
+            # calc distance the object passes until goal_timestamp
+            dist = start_vel * dt + 0.5 * accel_lon * dt * dt
+            # calc yaw change (turn angle) in radians
+            d_yaw = dist / turn_radius
+            goal_yaw = yaw + d_yaw
+            sin_next_yaw = np.sin(goal_yaw)
+            cos_next_yaw = np.cos(goal_yaw)
+            # calc the circle center
+            circle_center = [x - turn_radius * sin_yaw, y + turn_radius * cos_yaw]
+            # calc the end location
+            goal_x = circle_center[0] + turn_radius * sin_next_yaw
+            goal_y = circle_center[1] - turn_radius * cos_next_yaw
+            # calc the end velocity
+            end_vel = start_vel + accel_lon * dt
+            goal_v_x = end_vel * cos_next_yaw
+            goal_v_y = end_vel * sin_next_yaw
+        else:  # straight movement
+            acc_x = accel_lon * cos_yaw
+            acc_y = accel_lon * sin_yaw
+            goal_x = x + v_x * dt + 0.5 * acc_x * dt * dt
+            goal_y = y + v_y * dt + 0.5 * acc_y * dt * dt
+            goal_v_x = v_x + dt * acc_x
+            goal_v_y = v_y + dt * acc_y
+            goal_yaw = yaw
+
+        return tuple((goal_x, goal_y, goal_yaw, goal_v_x, goal_v_y))
+
+    @staticmethod
+    def rotate_and_shift_point(x: float, y: float, cosa: float, sina: float, dx: float, dy: float) \
+            -> tuple((float, float)):
+        """
+        calculate new point location after rotation & shift
+        :param x: original point location
+        :param y:
+        :param cosa: cos of rotation angle
+        :param sina: sin of rotation angle
+        :param dx: shift
+        :param dy:
+        :return: new point location
+        """
+        return tuple((x * cosa - y * sina + dx, x * sina + y * cosa + dy))
+
+    @staticmethod
+    def rotate_and_shift_points(points: np.ndarray, cosa: float, sina: float, dx: float, dy: float) -> np.ndarray:
+        """
+        calculate new point location after rotation & shift
+        :param points: Nx3 matrix of the original points
+        :param cosa: cos of rotation angle
+        :param sina: sin of rotation angle
+        :param dx: shift
+        :param dy:
+        :return: Nx3 matrix: new points location
+        """
+        return np.c_[points[:, 0] * cosa - points[:, 1] * sina + dx,
+                     points[:, 0] * sina + points[:, 1] * cosa + dy,
+                     points[:, 2]]

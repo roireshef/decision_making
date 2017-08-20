@@ -4,13 +4,13 @@ from typing import Tuple
 import numpy as np
 
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
-from decision_making.src.state.enriched_state import State as EnrichedState
+from decision_making.src.state.state import State
 
 
 class TrajectoryPlanner(metaclass=ABCMeta):
     # TODO: object type-hint should be changed to DDSMessage type once commited
     @abstractmethod
-    def plan(self, state: EnrichedState, reference_route: np.ndarray, goal: np.ndarray,
+    def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray,
              cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, object]:
         """
         Plans a trajectory according to the specifications in the arguments
