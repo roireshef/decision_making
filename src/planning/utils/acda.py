@@ -7,7 +7,8 @@ import numpy as np
 
 from decision_making.src.global_constants import ACDA_NAME_FOR_LOGGING
 from decision_making.src.planning.utils.acda_constants import *
-from decision_making.src.state.enriched_state import EnrichedObjectState, EnrichedDynamicObject, EnrichedEgoState
+
+from decision_making.src.state.state import DynamicObject, EgoState
 from rte.python.logger.AV_logger import AV_Logger
 
 
@@ -19,17 +20,17 @@ class AcdaApi:
         AcdaApi._logger = logger
 
     @staticmethod
-    def compute_acda(static_objects: List[EnrichedObjectState], dynamic_objects: List[EnrichedDynamicObject],
-                     enriched_ego_state: EnrichedEgoState, lookahead_path: np.ndarray) -> float:
+    def compute_acda(objects_on_road: List[DynamicObject], ego_state: EgoState,
+                     lookahead_path: np.ndarray) -> float:
         set_safety_lookahead_dist_by_ego_vel = False
 
         # get min long of static objects in my lane
-        min_static_object_long = AcdaApi.calc_forward_sight_distance(static_objects, enriched_ego_state)
+        min_static_object_long = AcdaApi.calc_forward_sight_distance(objects_on_road, ego_state)
         # compute safe speed for forward line of sight
         safe_speed_forward_los = AcdaApi.calc_safe_speed_forward_line_of_sight(min_static_object_long)
 
-        min_horizontal_distance_in_trajectory_range = AcdaApi.calc_horizontal_sight_distance(static_objects,
-                                                                                             enriched_ego_state,
+        min_horizontal_distance_in_trajectory_range = AcdaApi.calc_horizontal_sight_distance(objects_on_road,
+                                                                                             ego_state,
                                                                                              set_safety_lookahead_dist_by_ego_vel)
         safe_speed_horizontal_los = AcdaApi.calc_safe_speed_horizontal_distance_original_acda(
             min_horizontal_distance_in_trajectory_range)
@@ -127,8 +128,8 @@ class AcdaApi:
         return object_horizontal_distance >= lateral_safety_margin
 
     @staticmethod
-    def calc_forward_sight_distance(static_objects: List[EnrichedObjectState], ego_state: EnrichedEgoState,
-                                    dyn_objects: List[EnrichedDynamicObject] = None) -> float:
+    def calc_forward_sight_distance(static_objects: List[DynamicObject], ego_state: EgoState,
+                                    dyn_objects: List[DynamicObject] = None) -> float:
         """
         Calculating the minimal distance of something that is in my lane
         :param static_objects: list of static objects, each is EnrichedObjectState
@@ -152,7 +153,7 @@ class AcdaApi:
         return min_static_object_long
 
     @staticmethod
-    def calc_horizontal_sight_distance(static_objects: List[EnrichedObjectState], ego_state: EnrichedEgoState,
+    def calc_horizontal_sight_distance(static_objects: List[DynamicObject], ego_state: EgoState,
                                        set_safety_lookahead_dist_by_ego_vel: bool = False) -> float:
         """
         calculates the minimal horizontal distance of static objects that are within a certain range tbd by
