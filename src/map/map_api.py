@@ -61,6 +61,8 @@ class RoadDetails:
         self.side_walk = side_walk
         self.ext_head_yaw = ext_head_yaw
         self.ext_tail_yaw = ext_tail_yaw
+        self.ext_head_lanes = ext_head_lanes
+        self.ext_tail_lanes = ext_tail_lanes
         self.turn_lanes = turn_lanes
 
 
