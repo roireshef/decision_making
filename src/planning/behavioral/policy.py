@@ -7,6 +7,7 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParamet
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.utils import geometry_utils
+from decision_making.src.planning.utils.acda import AcdaApi
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 from decision_making.src.state.enriched_state import EnrichedState
 from rte.python.logger.AV_logger import AV_Logger
@@ -111,8 +112,8 @@ class DefaultPolicy(Policy):
 
         # If blocking object is too close: choose any valid lateral offset
         if (
-            object_distance_in_current_lane < behavior_param_prefer_any_lane_center_if_blocking_object_distance_greater_than) and (
-            best_center_of_lane_distance_from_object < behavior_param_prefer_any_lane_center_if_blocking_object_distance_greater_than):
+                    object_distance_in_current_lane < behavior_param_prefer_any_lane_center_if_blocking_object_distance_greater_than) and (
+                    best_center_of_lane_distance_from_object < behavior_param_prefer_any_lane_center_if_blocking_object_distance_greater_than):
             chosen_action = np.argmax(closest_blocking_object_in_lane)
 
         # Draw in RViz
@@ -191,8 +192,9 @@ class DefaultPolicy(Policy):
         # Calculating safe speed according to ACDA
         #############################################
         set_safety_lookahead_dist_by_ego_vel = False
-        acda_safe_speed = compute_acda(behavioral_state.static_objects, behavioral_state.dynamic_objects,
-                                       enriched_ego_state, reference_route_xy_in_cars_frame)
+        acda_safe_speed = AcdaApi.compute_acda(objects_on_road=behavioral_state.dynamic_objects,
+                                               ego_state=behavioral_state.ego_state,
+                                               lookahead_path=reference_route_xy_in_cars_frame)
         safe_speed = min(acda_safe_speed, global_constants.BEHAVIORAL_PLANNING_CONSTANT_DRIVE_VELOCITY)
 
         if safe_speed < 0:
@@ -200,23 +202,41 @@ class DefaultPolicy(Policy):
 
         safe_speed = max(safe_speed, 0)
 
-        lanes_num, road_width, _, _ = behavioral_state.map.get_road_details(behavioral_state.current_road_id)
-
         ###################################################
         # Generate specs for trajectory planner
         ###################################################
-        target_state_xytheta = reference_route_xytheta_in_cars_frame[-1, :]
-        target_state_velocity = safe_speed
-        target_state = np.array(
-            [target_state_xytheta[0], target_state_xytheta[1], target_state_xytheta[2], target_state_velocity])
-        left_lane_offset = target_lane_latitude
-        right_lane_offset = road_width - target_lane_latitude
-
-        cost_params = TrajectoryCostParams(0, 0, 0, 0, 0, left_lane_offset,
-                                           right_lane_offset, 0, 0, 0, 0, 0, 0, 0)
-        trajectory_parameters = TrajectoryParameters(reference_route=reference_route_xytheta_in_cars_frame,
-                                                     target_state=target_state,
-                                                     cost_params=cost_params)
+        trajectory_parameters = self.__generate_trajectory_specs(behavioral_state=behavioral_state,
+                                                                 safe_speed=safe_speed,
+                                                                 target_lane_latitude=target_lane_latitude,
+                                                                 reference_route=reference_route_xytheta_in_cars_frame)
 
         visualization_message = BehavioralVisualizationMsg(reference_route=reference_route)
         return trajectory_parameters, visualization_message
+
+    def __generate_trajectory_specs(self, behavioral_state: BehavioralState, target_lane_latitude: np.array,
+                                    safe_speed: float, reference_route: np.ndarray) -> TrajectoryParameters:
+        """
+        Generate trajectory specification (cost) for trajectory planner
+        :param behavioral_state: processed behavioral state
+        :param target_lane_latitude: vector of road latitude of reference route in [m]
+        :param safe_speed: safe speed in [m/s] (ACDA)
+        :param reference_route: [nx3] numpy array of (x, y, z, yaw) states
+        :return:
+        """
+
+        lanes_num, road_width, _, _ = behavioral_state.map.get_road_details(behavioral_state.current_road_id)
+
+        target_state_xytheta = reference_route[-1, :]
+        target_state_velocity = safe_speed
+        target_state = np.array(
+            [target_state_xytheta[0], target_state_xytheta[1], target_state_xytheta[2], target_state_velocity])
+        left_lane_offset = road_width - target_lane_latitude
+        right_lane_offset = target_lane_latitude
+
+        cost_params = TrajectoryCostParams(0, 0, 0, 0, 0, left_lane_offset,
+                                           right_lane_offset, 0, 0, 0, 0, 0, 0, 0)
+        trajectory_parameters = TrajectoryParameters(reference_route=reference_route,
+                                                     target_state=target_state,
+                                                     cost_params=cost_params)
+
+        return trajectory_parameters
