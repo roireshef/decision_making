@@ -234,6 +234,9 @@ class MapAPI(metaclass=ABCMeta):
         closest_pnt_ind = np.argmin(dist_2)  # index of the closest road point to (x,y)
         # find the closest segment and the distance (latitude)
         # given the closest road point, take two adjacent road segments around it and pick the closest segment to (x,y)
+        # proj1, proj2 are projection points of p onto two above segments
+        # lat_dist1, lat_dist2 are latitude distances from p to the segments
+        # sign1, sign2 are the sign of the above two latitudes
         p = proj1 = proj2 = np.array([x, y])
         lat_dist1 = lat_dist2 = LARGE_NUM
         sign1 = sign2 = 0
