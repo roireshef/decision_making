@@ -66,7 +66,7 @@ class RoadDetails:
         self.turn_lanes = turn_lanes
 
 
-class MapAPI(metaclass=ABCMeta):
+class MapAPI:
     def __init__(self, map_model):
         # type: (MapModel) -> None
         self._cached_map_model = map_model
