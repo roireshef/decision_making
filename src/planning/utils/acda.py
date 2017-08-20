@@ -125,7 +125,7 @@ class AcdaApi:
         # return obj_lane == ego_lane or (math.fabs(obj_lane - ego_lane) <= 1 and obj_lat < (obj_width + ego_width) / 2.0)
 
         object_horizontal_distance = math.fabs(obj_lat) - ((obj_width + ego_width) / 2.0)
-        return object_horizontal_distance >= lateral_safety_margin
+        return object_horizontal_distance <= lateral_safety_margin
 
     @staticmethod
     def calc_forward_sight_distance(static_objects: List[DynamicObject], ego_state: EgoState,
@@ -141,9 +141,9 @@ class AcdaApi:
         """
         min_static_object_long = FORWARD_LOS_MAX_RANGE
         for static_obj in static_objects:
-            obj_lon = static_obj.relative_road_localization.rel_lon
+            obj_lon = static_obj.rel_road_localization.rel_lon
             obj_lon = obj_lon - SENSOR_OFFSET_FROM_FRONT
-            obj_lat = static_obj.relative_road_localization.rel_lat
+            obj_lat = static_obj.rel_road_localization.rel_lat
             if obj_lon > 0 and AcdaApi.is_in_ego_trajectory(obj_lat=obj_lat, obj_width=static_obj.size.width,
                                                             ego_width=ego_state.size.width,
                                                             lateral_safety_margin=LATERAL_MARGIN_FROM_OBJECTS):
@@ -176,9 +176,9 @@ class AcdaApi:
             lookahead_distance = TRAJECTORY_PLANNING_LOOKAHEAD_DISTANCE
 
         for static_obj in static_objects:
-            obj_lat = static_obj.relative_road_localization.rel_lat
+            obj_lat = static_obj.rel_road_localization.rel_lat
             obj_width = static_obj.size.width
-            obj_lon = static_obj.relative_road_localization.rel_lon
+            obj_lon = static_obj.rel_road_localization.rel_lon
             obj_lon = obj_lon - SENSOR_OFFSET_FROM_FRONT
             if obj_lon <= lookahead_distance and not AcdaApi.is_in_ego_trajectory(obj_lat=obj_lat, obj_width=obj_width,
                                                                                   ego_width=ego_state.size.width,
