@@ -13,7 +13,7 @@ class MapMock(MapAPI):
         pass
 
 
-def test_turn_radius():
+def test_calc_road_turn_radius_TurnOnCircle_successful():
     # simulate curved road structure
     road_turn_radians = np.pi
     road_points_num = 30
@@ -23,10 +23,20 @@ def test_turn_radius():
     road_points[1, :] = turn_amp * np.cos(np.linspace(0, road_turn_radians, road_points_num))
     turn_radius = AcdaApi.calc_road_turn_radius(road_points)
     assert np.abs(turn_radius - turn_amp) < 0.001
-    a = 2
 
+def test_calc_safe_speed_critical_speed_CheckSpeed_successful():
+    # test calc_safe_speed_critical_speed
+    assert AcdaApi.calc_safe_speed_critical_speed(curve_radius=5.0) > 0
 
-def test_acda():
+def test_calc_safe_speed_following_distance_CheckSpeed_successful():
+    # test calc_safe_speed_following_distance
+    assert AcdaApi.calc_safe_speed_following_distance(following_distance=10.0) > 0
+
+def test_calc_safe_speed_forward_line_of_sight_CheckSpeed_successful():
+    # test calc_safe_speed_forward_line_of_sight
+    assert AcdaApi.calc_safe_speed_forward_line_of_sight(forward_sight_distance=10.0) > 0
+
+def test_AcdaFeaturesInComplexScenraio_successful():
     # Prepare scenario for test
 
     # Prepare cached map
@@ -70,18 +80,6 @@ def test_acda():
 
     # Test ACDA functions
 
-    # test calc_safe_speed_critical_speed
-    assert AcdaApi.calc_safe_speed_critical_speed(curve_radius=5.0) > 0
-
-    # test calc_safe_speed_following_distance
-    assert AcdaApi.calc_safe_speed_following_distance(following_distance=10.0) > 0
-
-    # test calc_safe_speed_forward_line_of_sight
-    assert AcdaApi.calc_safe_speed_forward_line_of_sight(forward_sight_distance=10.0) > 0
-
-    # test test_turn_radius
-    test_turn_radius()
-
     # test calc_forward_sight_distance
     forward_distance = 10.0
     assert np.abs(AcdaApi.calc_forward_sight_distance(static_objects=objects_on_road,
@@ -97,5 +95,3 @@ def test_acda():
     lookahead_path[0, :] = np.linspace(0, 10, 20)
     AcdaApi.compute_acda(objects_on_road=objects_on_road, ego_state=ego_state, lookahead_path=lookahead_path)
 
-
-test_acda()
