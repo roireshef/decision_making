@@ -177,15 +177,6 @@ class State(DDSTypedMsg):
         self.dynamic_objects = copy.deepcopy(dynamic_objects)
         self.ego_state = copy.deepcopy(ego_state)
 
-    @classmethod
-    def create_empty(cls):
-        occupancy_state = OccupancyState(0, np.array([]), np.array([]))
-        dynamic_objects = []
-        size = ObjectSize(0, 0, 0)
-        ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 0, 0, 0, 0, 0)
-        state = cls(occupancy_state, dynamic_objects, ego_state)
-        return state
-
     def update_objects(self):
         """
         insert object to state - will be implemented by Ron
@@ -205,6 +196,6 @@ class State(DDSTypedMsg):
         """
         predict the ego localization, other objects and free space for the future timestamp
         :param goal_timestamp:
-        :return:
+        :return: predicted State
         """
         pass
