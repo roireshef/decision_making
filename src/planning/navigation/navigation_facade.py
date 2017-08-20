@@ -3,12 +3,12 @@ from decision_making.src.global_constants import NAVIGATION_PLAN_PUBLISH_TOPIC
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.navigation.navigation_planner import NavigationPlanner
-from rte.python.logger.AV_logger import AV_Logger
+from logging import Logger
 
 
 # TODO - must think about what the input to the navigation computation is, and where it comes from
 class NavigationFacade(DmModule):
-    def __init__(self, dds: DdsPubSub, logger: AV_Logger, handler: NavigationPlanner):
+    def __init__(self, dds: DdsPubSub, logger: Logger, handler: NavigationPlanner):
         super().__init__(dds, logger)
         self.handler = handler
 

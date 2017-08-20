@@ -7,10 +7,11 @@ from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanM
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.state.state import State
-from rte.python.logger.AV_logger import AV_Logger
+from logging import Logger
+
 
 class TrajectoryPlanningFacade(DmModule):
-    def __init__(self, dds: DdsPubSub, logger: AV_Logger, strategy_handlers: dict):
+    def __init__(self, dds: DdsPubSub, logger: Logger, strategy_handlers: dict):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param dds: communication layer (DDS) instance
