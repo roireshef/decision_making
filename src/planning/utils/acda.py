@@ -12,7 +12,6 @@ from rte.python.logger.AV_logger import AV_Logger
 
 
 class AcdaApi:
-
     _logger = AV_Logger.get_logger(ACDA_NAME_FOR_LOGGING)
 
     @staticmethod
@@ -41,6 +40,8 @@ class AcdaApi:
         safe_speed_curve_radius = AcdaApi.calc_safe_speed_critical_speed(curve_radius)
 
         safe_speed = min(safe_speed_forward_los, safe_speed_horizontal_los, safe_speed_curve_radius)
+        if safe_speed < 0:
+            AcdaApi._logger.warn("safe_speed < 0")
         safe_speed = max(safe_speed, 0)
         return safe_speed
 
@@ -70,6 +71,8 @@ class AcdaApi:
         :return: the maximal safe speed in meters/sec
         """
         safe_speed_following_distance = following_distance / TIME_GAP
+        if safe_speed_following_distance < 0:
+            AcdaApi._logger.warn("safe_speed_following_distance < 0")
         return max(0.0, safe_speed_following_distance)
 
     @staticmethod
@@ -80,8 +83,10 @@ class AcdaApi:
         :return: the maximal safe speed in meters/sec
         """
         mu_e_times_g = (MU + SIN_ROAD_INCLINE) * G
-        safe_speed_critical_speed = math.sqrt(
-            mu_e_times_g * curve_radius / (1.0 - (MU * SIN_ROAD_INCLINE)))
+        safe_speed_critical_speed_arg = mu_e_times_g * curve_radius / (1.0 - (MU * SIN_ROAD_INCLINE))
+        if safe_speed_critical_speed_arg < 0:
+            AcdaApi._logger.warn("safe_speed_critical_speed argument < 0")
+        safe_speed_critical_speed = math.sqrt(safe_speed_critical_speed_arg)
         return max(0.0, safe_speed_critical_speed)
 
     @staticmethod
@@ -95,6 +100,8 @@ class AcdaApi:
         :return: the maximal safe speed in meters/sec
         """
         safe_speed = 2.0 * G * (MU + SIN_ROAD_INCLINE) * (min_horizontal_distance / HIDDEN_PEDESTRIAN_VEL - TPRT)
+        if safe_speed < 0:
+            AcdaApi._logger.warn("horizontal distance safe speed < 0")
         return max(2.0, safe_speed)
 
     ##############################################################
@@ -102,7 +109,7 @@ class AcdaApi:
     ##############################################################
     @staticmethod
     def is_in_ego_trajectory(obj_lat: float, obj_width: float, ego_width: float, lateral_safety_margin: float) -> (
-    bool):
+            bool):
         """
         query that checks whether an object is in ego's trajectory. Returns true if lane numbers are equal, or
         if |relative_obj_latitude| >= |sum of half object's and ego's width + safety_margin|.
@@ -121,7 +128,7 @@ class AcdaApi:
 
     @staticmethod
     def calc_forward_sight_distance(static_objects: List[EnrichedObjectState], ego_state: EnrichedEgoState,
-                                    dyn_objects: List[EnrichedDynamicObject]=None) -> float:
+                                    dyn_objects: List[EnrichedDynamicObject] = None) -> float:
         """
         Calculating the minimal distance of something that is in my lane
         :param static_objects: list of static objects, each is EnrichedObjectState
@@ -160,6 +167,7 @@ class AcdaApi:
 
         min_horizontal_distance = HORIZONTAL_LOS_MAX_RANGE
         if set_safety_lookahead_dist_by_ego_vel:
+            # TODO: explain 2.0 factor & add to constants
             lookahead_distance = min(BEHAVIORAL_PLANNING_LOOKAHEAD_DISTANCE,
                                      (ego_state.v_x ** 2 / (2.0 * MODERATE_DECELERATION)))
             lookahead_distance = max(lookahead_distance, SAFETY_MIN_LOOKAHEAD_DIST)
