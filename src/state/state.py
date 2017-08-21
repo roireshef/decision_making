@@ -2,7 +2,7 @@ import copy
 from typing import List, Union
 
 import numpy as np
-from decision_making.src.map.constants import *
+#from decision_making.src.map.constants import *
 from decision_making.src.map.map_api import MapAPI
 
 from decision_making.src.messages.dds_typed_message import DDSTypedMsg
