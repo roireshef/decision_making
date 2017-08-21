@@ -101,9 +101,18 @@ class DynamicObject(DDSTypedMsg):
             self.road_localization = road_localization
             self.rel_road_localization = rel_road_localization
         else:  # calculate self.rel_road_localization & self.rel_road_localization
+            if ego_state is not None:  # if the object is not ego
+                (glob_x, glob_y, glob_z, glob_yaw) = \
+                    (ego_state.x + self.x, ego_state.y + self.y, ego_state.z + self.z, ego_state.yaw + self.yaw)
+            else:  # if the object itself is ego, then global & local coordinates are the same
+                (glob_x, glob_y, glob_z, glob_yaw) = (self.x, self.y, self.z, self.yaw)
+            # calculate road coordinates for global coordinates
             road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw = \
-                map_api.convert_world_to_lat_lon(self.x, self.y, self.z, self.yaw)
+                map_api.convert_world_to_lat_lon(glob_x, glob_y, glob_z, glob_yaw)
+            # fill road_localization
             self.road_localization = RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
+
+            # calculate relative road localization
             if ego_state is not None:  # if the object itself is ego, then rel_road_localization is irrelevant
                 self.rel_road_localization = \
                     RelativeRoadLocalization(full_lat - ego_state.road_localization.full_lat,
