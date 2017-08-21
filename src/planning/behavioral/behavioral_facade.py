@@ -7,16 +7,12 @@ from decision_making.src.messages.navigation_plan_message import NavigationPlanM
 from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.behavioral.policy import Policy, DefaultPolicy
-from decision_making.src.planning.navigation.navigation_plan import NavigationPlan
-from decision_making.src.state.enriched_state import State, EnrichedState
 from decision_making.src.planning.behavioral.policy import Policy
 from decision_making.src.state.state import State
 from logging import Logger
 
-
 class BehavioralFacade(DmModule):
-    def __init__(self, dds: DdsPubSub, logger: AV_Logger, policy: Policy, behavioral_state: BehavioralState):
+    def __init__(self, dds: DdsPubSub, logger: Logger, policy: Policy, behavioral_state: BehavioralState):
         """
         :param policy: decision making component
         :param behavioral_state: initial state of the system. Can be empty, i.e. initialized with default values.
