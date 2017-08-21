@@ -3,13 +3,12 @@ from logging import Logger
 import numpy as np
 
 from decision_making.src import global_constants
-from decision_making.src.messages.dds_typed_message import DDSTypedMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.policy import Policy, PolicyConfig
-from decision_making.src.planning.behavioral.policy_features import get_closest_object_on_lane
+from decision_making.src.planning.behavioral.policy_features import PolicyFeatures
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils import geometry_utils
 from decision_making.src.planning.utils.acda import AcdaApi
@@ -32,8 +31,7 @@ class DefaultPolicyConfig(PolicyConfig):
 
 class DefaultPolicy(Policy):
     def __init__(self, logger: Logger, policy_config: DefaultPolicyConfig):
-        self._policy_config = policy_config
-        self.logger = logger
+        super().__init__(logger=logger, policy_config=policy_config)
 
     def plan(self, behavioral_state: BehavioralState) -> (TrajectoryParameters, BehavioralVisualizationMsg):
         if behavioral_state.current_timestamp is None:
@@ -58,7 +56,7 @@ class DefaultPolicy(Policy):
         safe_speed = min(acda_safe_speed, global_constants.BEHAVIORAL_PLANNING_CONSTANT_DRIVE_VELOCITY)
 
         if safe_speed < 0:
-            self.logger.warn("safe speed < 0")
+            self.logger.warning("safe speed < 0")
 
         safe_speed = max(safe_speed, 0)
 
@@ -78,17 +76,24 @@ class DefaultPolicy(Policy):
         selected_latitude: target latitude for driving, measured in [lanes]
         """
 
-        lanes_in_current_road, _, _, _ = behavioral_state.map.get_road_details(behavioral_state.current_road_id)
+        lanes_in_current_road, road_width, _, _ = behavioral_state.map.get_road_details(
+            behavioral_state.current_road_id)
+        lane_width_in_meters = float(road_width) / lanes_in_current_road
         # remain in right most lane
         # return lanes_in_current_road
 
         current_lane_latitude = behavioral_state.current_lane + 0.5
 
+        # Load policy parameters config
         behavior_param_margin_from_road_edge = self._policy_config.margin_from_road_edge
-        behavior_param_prefer_other_lanes_where_blocking_object_distance_less_than = self._policy_config.prefer_other_lanes_where_blocking_object_distance_less_than
-        behavior_param_prefer_other_lanes_if_improvement_is_greater_than = self._policy_config.prefer_other_lanes_if_improvement_is_greater_than
-        behavior_param_prefer_any_lane_center_if_blocking_object_distance_greater_than = self._policy_config.prefer_any_lane_center_if_blocking_object_distance_greater_than
-        behavior_param_assume_blocking_object_at_rear_if_distance_less_than = self._policy_config.assume_blocking_object_at_rear_if_distance_less_than
+        behavior_param_prefer_other_lanes_where_blocking_object_distance_less_than = \
+            self._policy_config.prefer_other_lanes_where_blocking_object_distance_less_than
+        behavior_param_prefer_other_lanes_if_improvement_is_greater_than = \
+            self._policy_config.prefer_other_lanes_if_improvement_is_greater_than
+        behavior_param_prefer_any_lane_center_if_blocking_object_distance_greater_than = \
+            self._policy_config.prefer_any_lane_center_if_blocking_object_distance_greater_than
+        behavior_param_assume_blocking_object_at_rear_if_distance_less_than = \
+            self._policy_config.assume_blocking_object_at_rear_if_distance_less_than
 
         # Create a grid in latitude of lane offsets that will define latitude of the target trajectory.
         latitude_offset_grid_relative_to_current_center_lane = np.array([-1, -0.5, -0.25, 0, 0.25, 0.5, 1])
@@ -98,29 +103,30 @@ class DefaultPolicy(Policy):
                 0]
         indexes_past_right_road_margin = \
             np.where(absolute_latitude_offset_grid < behavior_param_margin_from_road_edge)[0]
-        valid_absolute_latitude_offset_grid = np.delete(absolute_latitude_offset_grid, np.concatenate(
+        absolute_latitude_grid_in_lanes = np.delete(absolute_latitude_offset_grid, np.concatenate(
             (indexes_past_right_road_margin, indexes_past_left_road_margin)))
+        absolute_latitude_grid_in_meters = lane_width_in_meters * absolute_latitude_grid_in_lanes
 
-
-        # For each lateral offset, find closst blocking object on lane
-        closest_blocking_object_in_lane = get_closest_object_on_lane(policy_config=self._policy_config,
-                                                                     behavioral_state=behavioral_state,
-                                                                     lat_options=valid_absolute_latitude_offset_grid)
+        # For each lateral offset, find closest blocking object on lane
+        closest_blocking_object_in_lane = \
+            PolicyFeatures.get_closest_object_on_lane(policy_config=self._policy_config,
+                                                      behavioral_state=behavioral_state,
+                                                      lat_options=absolute_latitude_grid_in_meters)
 
         # High-level policy:
         # Choose a proper action (latitude offset from current center lane)
         current_center_lane_index_in_grid = \
-            np.where(valid_absolute_latitude_offset_grid == current_lane_latitude)[0][0]
+            np.where(absolute_latitude_grid_in_lanes == current_lane_latitude)[0][0]
         center_of_lane = (
-            np.round(valid_absolute_latitude_offset_grid - 0.5) == valid_absolute_latitude_offset_grid - 0.5)
+            np.round(absolute_latitude_grid_in_lanes - 0.5) == absolute_latitude_grid_in_lanes - 0.5)
         other_center_lane_indexes_in_grid = \
-            np.where((valid_absolute_latitude_offset_grid != current_lane_latitude) & center_of_lane)[
+            np.where((absolute_latitude_grid_in_lanes != current_lane_latitude) & center_of_lane)[
                 0]  # check if integer
 
         object_distance_in_current_lane = closest_blocking_object_in_lane[current_center_lane_index_in_grid]
         other_lanes_are_available = len(other_center_lane_indexes_in_grid) > 0
         best_center_of_lane_index_in_grid = other_center_lane_indexes_in_grid[
-            np.argmax(valid_absolute_latitude_offset_grid[other_center_lane_indexes_in_grid])]
+            np.argmax(absolute_latitude_grid_in_lanes[other_center_lane_indexes_in_grid])]
         best_center_of_lane_distance_from_object = closest_blocking_object_in_lane[
             best_center_of_lane_index_in_grid]
 
@@ -128,9 +134,14 @@ class DefaultPolicy(Policy):
         chosen_action = current_center_lane_index_in_grid
 
         # Choose other lane only if improvement is sufficient
-        if other_lanes_are_available and (
-                    object_distance_in_current_lane < behavior_param_prefer_other_lanes_where_blocking_object_distance_less_than) and (
-                    best_center_of_lane_distance_from_object > object_distance_in_current_lane + behavior_param_prefer_other_lanes_if_improvement_is_greater_than):
+        if other_lanes_are_available \
+                and (
+                            object_distance_in_current_lane <
+                            behavior_param_prefer_other_lanes_where_blocking_object_distance_less_than) \
+                and (
+                            best_center_of_lane_distance_from_object >
+                            object_distance_in_current_lane +
+                            behavior_param_prefer_other_lanes_if_improvement_is_greater_than):
             chosen_action = best_center_of_lane_index_in_grid
 
         # If blocking object is too close: choose any valid lateral offset
@@ -139,10 +150,10 @@ class DefaultPolicy(Policy):
                     best_center_of_lane_distance_from_object < behavior_param_prefer_any_lane_center_if_blocking_object_distance_greater_than):
             chosen_action = np.argmax(closest_blocking_object_in_lane)
 
-        # Draw in RViz
+        # Debug objects
         relevant_options_array = list()
         selected_option = list()
-        for lat_option in valid_absolute_latitude_offset_grid:
+        for lat_option in absolute_latitude_grid_in_lanes:
             lat_option_in_lanes = lat_option
             lat_option_in_meters = behavioral_state.map.convert_lat_in_lanes_to_lat_in_meters(
                 behavioral_state.current_road_id,
@@ -157,16 +168,13 @@ class DefaultPolicy(Policy):
             lookahead_path_len = lookahead_path.shape[0]
             reference_route_xyz = np.concatenate((lookahead_path, np.zeros(shape=[lookahead_path_len, 1])), axis=1)
 
-            if lat_option == valid_absolute_latitude_offset_grid[chosen_action]:
+            if lat_option == absolute_latitude_grid_in_lanes[chosen_action]:
                 selected_option.append(reference_route_xyz)
             else:
                 relevant_options_array.append(reference_route_xyz)
 
-        # self.rviz_object.updateSelectedOption(trajArr=selected_option)
-        # self.rviz_object.updateLookaheadOptions(trajArr=relevant_options_array)
-
         # return best lane
-        selected_latitude = valid_absolute_latitude_offset_grid[chosen_action]
+        selected_latitude = absolute_latitude_grid_in_lanes[chosen_action]
         return selected_latitude
 
     def __generate_reference_route(self, behavioral_state: BehavioralState, target_lane_latitude: float) -> (
@@ -225,6 +233,7 @@ class DefaultPolicy(Policy):
         left_lane_offset = road_width - target_lane_latitude
         right_lane_offset = target_lane_latitude
 
+        # TODO: assign proper cost parameters
         cost_params = TrajectoryCostParams(0, 0, 0, 0, 0, left_lane_offset,
                                            right_lane_offset, 0, 0, 0, 0, 0, 0, 0)
         trajectory_parameters = TrajectoryParameters(reference_route=reference_route,

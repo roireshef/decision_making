@@ -183,6 +183,14 @@ class CartesianFrame:
 
         return target_pos_in_obj_frame
 
+    @staticmethod
+    def convert_yaw_to_quaternion(yaw: float):
+        """
+        :param yaw: angle in [rad]
+        :return: quaternion
+        """
+        return tf_transformations.quaternion_from_euler(0, 0, yaw, 'ryxz')
+
 
 class FrenetMovingFrame:
     """

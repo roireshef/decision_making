@@ -8,8 +8,7 @@ from decision_making.src.planning.behavioral.behavioral_state import BehavioralS
 
 
 class PolicyConfig(metaclass=ABCMeta, DDSTypedMsg):
-    def __init__(self, logger: Logger):
-        self.logger = logger
+    pass
 
 
 class Policy(metaclass=ABCMeta):
