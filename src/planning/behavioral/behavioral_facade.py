@@ -12,7 +12,7 @@ from decision_making.src.state.state import State
 from logging import Logger
 
 class BehavioralFacade(DmModule):
-    def __init__(self, dds: DdsPubSub, logger: Logger, policy: Policy, behavioral_state: BehavioralState):
+    def __init__(self, dds: DdsPubSub, logger: Logger, policy: Policy, behavioral_state: BehavioralState) -> None:
         """
         :param policy: decision making component
         :param behavioral_state: initial state of the system. Can be empty, i.e. initialized with default values.
@@ -31,7 +31,7 @@ class BehavioralFacade(DmModule):
         pass
 
     # TODO: implement
-    def _periodic_action_impl(self):
+    def _periodic_action_impl(self) -> None:
         """
         The main function of the behavioral planner. It read the most up-to-date state and navigation plan,
          processes them into the behavioral state, and then performs behavioral planning. The results are then published

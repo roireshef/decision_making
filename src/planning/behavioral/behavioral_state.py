@@ -12,7 +12,7 @@ from rte.python.logger.AV_logger import AV_Logger
 
 
 class MarginInfo:
-    def __init__(self, right_width: float, right_clear: bool, left_width: float, left_clear: bool):
+    def __init__(self, right_width: float, right_clear: bool, left_width: float, left_clear: bool) -> None:
         """
         All information regarding the margins of the road. used to differentiate between the shoulder and the end of the
          road.
@@ -29,7 +29,7 @@ class MarginInfo:
 
 class LaneObjectInfo:
     def __init__(self, relative_velocity_of_closest_object: float, time_distance_of_closest_object: float,
-                 confidence: float = None):
+                 confidence: float = None) -> None:
         """
         object describing the relevant information for a drivable lane.
         :param relative_velocity_of_closest_object: looking forward, what is the relative velocity of the closest object
@@ -44,7 +44,7 @@ class LaneObjectInfo:
 
 
 class BehavioralState:
-    def __init__(self, logger: Logger, cached_map: MapAPI, navigation_plan: NavigationPlanMsg):
+    def __init__(self, logger: Logger, cached_map: MapAPI, navigation_plan: NavigationPlanMsg) -> None:
         """
         initialization of behavioral state. default values are None and empty list, because the logic for actual updates
         (coming from messages) is done in the update_behavioral_state method.
@@ -81,26 +81,6 @@ class BehavioralState:
         self.dynamic_objects = [DynamicObject(obj_id=0, timestamp=0, x=0.0, y=0.0, z=0.0, yaw=0.0,
                                               size=ObjectSize(length=0.0, width=0.0, height=0.0), confidence=0.0, v_x=0,
                                               v_y=0, acceleration_lon=0.0, yaw_deriv=0.0, map_api=cached_map)]
-
-    def get_object_road_localization_relative_to_ego(self, target_object: DynamicObject,
-                                                     navigation_plan: NavigationPlanMsg) -> (
-            bool, float, float, int):
-        object_road_id, lane, road_latitude, _, object_long, _ = self.map.convert_world_to_lat_lon(x=target_object.x,
-                                                                                                   y=target_object.y,
-                                                                                                   z=0.0, yaw=0.0)
-
-        if object_road_id is None:
-            return False, None, None, None
-
-        lon_distance_relative_to_ego, found_connection = self.map.get_point_relative_longitude(
-            from_road_id=self.current_road_id,
-            from_lon_in_road=self.current_long,
-            to_road_id=object_road_id,
-            to_lon_in_road=object_long,
-            max_lookahead_distance=global_constants.BEHAVIORAL_PLANNING_LOOKAHEAD_DIST,
-            navigation_plan=navigation_plan)
-
-        return found_connection, lon_distance_relative_to_ego, road_latitude, lane
 
     def update_behavioral_state(self, state: State, navigation_plan: NavigationPlanMsg) -> None:
         """
@@ -147,7 +127,6 @@ class BehavioralState:
         # Filter static & dynamic objects that are relevant to car's navigation
         self.dynamic_objects = []
         for dynamic_obj in state.dynamic_objects:
-            found_connection, lon_distance_relative_to_ego, road_latitude, lane = self.get_object_road_localization_relative_to_ego(
-                dynamic_obj, navigation_plan)
-            if found_connection:  # ignoring everything not in our path looking forward
-                self.dynamic_objects.append(dynamic_obj)
+            if dynamic_obj.rel_road_localization.rel_lon is not None:  # ignoring everything not in our path looking forward
+                if dynamic_obj.rel_road_localization.rel_lon > 0:
+                    self.dynamic_objects.append(dynamic_obj)
