@@ -3,20 +3,21 @@ from abc import ABCMeta, abstractmethod
 import numpy as np
 
 from decision_making.src import global_constants
+from decision_making.src.global_constants import BEHAVIORAL_POLICY_NAME_FOR_LOGGING
 from decision_making.src.messages.trajectory_parameters import TrajectoryParameters, TrajectoryCostParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
+from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils import geometry_utils
 from decision_making.src.planning.utils.acda import AcdaApi
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
-from decision_making.src.state.enriched_state import EnrichedState
 from rte.python.logger.AV_logger import AV_Logger
 
 
 class Policy(metaclass=ABCMeta):
     def __init__(self, logger: AV_Logger, policy_params: dict):
         self._policy_params = policy_params
-        self.logger = logger
+        self.logger = logger.get_logger(BEHAVIORAL_POLICY_NAME_FOR_LOGGING)
 
     @abstractmethod
     def plan(self, behavioral_state: BehavioralState) -> (TrajectoryParameters, BehavioralVisualizationMsg):
@@ -28,10 +29,46 @@ class DefaultPolicy(Policy):
         super().__init__(logger=logger, policy_params=policy_params)
         self.behavioral_state = None
 
+    def plan(self, behavioral_state: BehavioralState) -> (TrajectoryParameters, BehavioralVisualizationMsg):
+        if behavioral_state.current_timestamp is None:
+            # Only happens on init
+            return None, None
+
+        # High-level planning
+        target_lat_in_lanes = self.__high_level_planning(behavioral_state)
+        target_lane_latitude = behavioral_state.map.convert_lat_in_lanes_to_lat_in_meters(
+            road_id=behavioral_state.current_road_id,
+            lat_in_lanes=target_lat_in_lanes)
+
+        # Calculate reference route for driving
+        reference_route_x_y_z, reference_route_in_cars_frame_x_y_yaw = self.__generate_reference_route(behavioral_state,
+                                                                                                       target_lane_latitude)
+
+        # Calculate safe speed according to ACDA
+        acda_safe_speed = AcdaApi.compute_acda(objects_on_road=behavioral_state.dynamic_objects,
+                                               ego_state=behavioral_state.ego_state,
+                                               lookahead_path=reference_route_in_cars_frame_x_y_yaw[:, 0:2])
+        safe_speed = min(acda_safe_speed, global_constants.BEHAVIORAL_PLANNING_CONSTANT_DRIVE_VELOCITY)
+
+        if safe_speed < 0:
+            self.logger.warn("safe speed < 0")
+
+        safe_speed = max(safe_speed, 0)
+
+        # Generate specs for trajectory planner
+        trajectory_parameters = self.__generate_trajectory_specs(behavioral_state=behavioral_state,
+                                                                 safe_speed=safe_speed,
+                                                                 target_lane_latitude=target_lane_latitude,
+                                                                 reference_route=reference_route_in_cars_frame_x_y_yaw)
+
+        visualization_message = BehavioralVisualizationMsg(reference_route=reference_route_x_y_z)
+        return trajectory_parameters, visualization_message
+
+
     def __high_level_planning(self, behavioral_state: BehavioralState) -> float:
         """
         Generates a high-level plan
-        :return:
+        :param behavioral_state: processed behavioral state
         selected_latitude: target latitude for driving, measured in [lanes]
         """
 
@@ -65,15 +102,16 @@ class DefaultPolicy(Policy):
         # TODO: set actual dilation
         CAR_WIDTH_DILATION_IN_LANES = 0.4
         CAR_LENGTH_DILATION_IN_METERS = 2
-        for blocking_object in behavioral_state.static_objects:
-            relative_lon = blocking_object['relative_lon']
+        for blocking_object in behavioral_state.dynamic_objects:
+            relative_lon = blocking_object.rel_road_localization.rel_lon
             if relative_lon < behavior_param_assume_blocking_object_at_rear_if_distance_less_than:
                 # If we passed an obstacle, treat it as at inf
                 relative_lon = np.inf
             object_latitude_in_lanes = behavioral_state.map.convert_lat_in_meters_to_lat_in_lanes(
-                road_id=blocking_object['road_id'], lat_in_meters=blocking_object['full_lat'])
+                road_id=blocking_object.road_localization.road_id,
+                lat_in_meters=blocking_object.road_localization.full_lat)
             object_width_in_lanes = behavioral_state.map.convert_lat_in_meters_to_lat_in_lanes(
-                road_id=blocking_object['road_id'], lat_in_meters=blocking_object['width'])
+                road_id=blocking_object.road_localization.road_id, lat_in_meters=blocking_object.size.width)
             leftmost_edge_in_lanes = object_latitude_in_lanes + 0.5 * object_width_in_lanes
             leftmost_edge_in_lanes_dilated = leftmost_edge_in_lanes + 0.5 * CAR_WIDTH_DILATION_IN_LANES
 
@@ -146,35 +184,27 @@ class DefaultPolicy(Policy):
         selected_latitude = valid_absolute_latitude_offset_grid[chosen_action]
         return selected_latitude
 
-    def plan(self, behavioral_state: BehavioralState) -> (TrajectoryParameters, BehavioralVisualizationMsg):
 
-        if behavioral_state is None:
-            # Only happens on init
-            return None, None
-
-        ###################################################
-        # High-level planning
-        ###################################################
-        target_lat_in_lanes = self.__high_level_planning()
-        target_lane_latitude = behavioral_state.map.convert_lat_in_lanes_to_lat_in_meters(
-            road_id=behavioral_state.current_road_id,
-            lat_in_lanes=target_lat_in_lanes)
-
-        ###################################################
-        # Calculate reference route for driving
-        ###################################################
+    def __generate_reference_route(self, behavioral_state: BehavioralState, target_lane_latitude: float) -> (
+            np.array, np.array):
+        """
+        :param behavioral_state: processed behavioral state
+        :param target_lane_latitude: road latitude of reference route in [m]
+        :return: [nx3] array of reference_route (x,y,z) [m,m,m] in world coordinates,
+         [nx3] array of reference_route (x,y,yaw) [m,m,rad] in cars coordinates
+        """
         lookahead_path = behavioral_state.map.get_path_lookahead(road_id=behavioral_state.current_road_id,
                                                                  lon=behavioral_state.current_long,
                                                                  lat=target_lane_latitude,
                                                                  max_lookahead_distance=global_constants.REFERENCE_TRAJECTORY_LENGTH,
                                                                  direction=1)
-        reference_route = lookahead_path.transpose()
-        reference_route_len = reference_route.shape[0]
+        reference_route_xy = lookahead_path.transpose()
+        reference_route_len = reference_route_xy.shape[0]
 
         # Transform into car's frame
-        reference_route_xyz = np.concatenate((reference_route, np.zeros(shape=[reference_route_len, 1])), axis=1)
+        reference_route_x_y_z = np.concatenate((reference_route_xy, np.zeros(shape=[reference_route_len, 1])), axis=1)
         reference_route_xyz_in_cars_frame = geometry_utils.CartesianFrame.get_vector_in_objective_frame(
-            target_vector=reference_route_xyz.transpose(),
+            target_vector=reference_route_x_y_z.transpose(),
             ego_position=behavioral_state.current_position,
             ego_orientation=behavioral_state.current_orientation)
         reference_route_xy_in_cars_frame = reference_route_xyz_in_cars_frame[0:2, :].transpose()
@@ -185,51 +215,28 @@ class DefaultPolicy(Policy):
                                                                          desired_curve_len=global_constants.REFERENCE_TRAJECTORY_LENGTH,
                                                                          preserve_step_size=False)
 
-        reference_route_xytheta_in_cars_frame = CartesianFrame.add_yaw_and_derivatives(
+        reference_route_in_cars_frame_x_y_yaw = CartesianFrame.add_yaw_and_derivatives(
             reference_route_xy_in_cars_frame)[:, 0:3]
 
-        #############################################
-        # Calculating safe speed according to ACDA
-        #############################################
-        set_safety_lookahead_dist_by_ego_vel = False
-        acda_safe_speed = AcdaApi.compute_acda(objects_on_road=behavioral_state.dynamic_objects,
-                                               ego_state=behavioral_state.ego_state,
-                                               lookahead_path=reference_route_xy_in_cars_frame)
-        safe_speed = min(acda_safe_speed, global_constants.BEHAVIORAL_PLANNING_CONSTANT_DRIVE_VELOCITY)
+        return reference_route_x_y_z, reference_route_in_cars_frame_x_y_yaw
 
-        if safe_speed < 0:
-            self.logger.info("safe speed < 0")
-
-        safe_speed = max(safe_speed, 0)
-
-        ###################################################
-        # Generate specs for trajectory planner
-        ###################################################
-        trajectory_parameters = self.__generate_trajectory_specs(behavioral_state=behavioral_state,
-                                                                 safe_speed=safe_speed,
-                                                                 target_lane_latitude=target_lane_latitude,
-                                                                 reference_route=reference_route_xytheta_in_cars_frame)
-
-        visualization_message = BehavioralVisualizationMsg(reference_route=reference_route)
-        return trajectory_parameters, visualization_message
-
-    def __generate_trajectory_specs(self, behavioral_state: BehavioralState, target_lane_latitude: np.array,
+    def __generate_trajectory_specs(self, behavioral_state: BehavioralState, target_lane_latitude: float,
                                     safe_speed: float, reference_route: np.ndarray) -> TrajectoryParameters:
         """
         Generate trajectory specification (cost) for trajectory planner
         :param behavioral_state: processed behavioral state
-        :param target_lane_latitude: vector of road latitude of reference route in [m]
+        :param target_lane_latitude: road latitude of reference route in [m]
         :param safe_speed: safe speed in [m/s] (ACDA)
         :param reference_route: [nx3] numpy array of (x, y, z, yaw) states
-        :return:
+        :return: Trajectory cost specifications [TrajectoryParameters]
         """
 
         lanes_num, road_width, _, _ = behavioral_state.map.get_road_details(behavioral_state.current_road_id)
 
-        target_state_xytheta = reference_route[-1, :]
+        target_state_x_y_yaw = reference_route[-1, :]
         target_state_velocity = safe_speed
         target_state = np.array(
-            [target_state_xytheta[0], target_state_xytheta[1], target_state_xytheta[2], target_state_velocity])
+            [target_state_x_y_yaw[0], target_state_x_y_yaw[1], target_state_x_y_yaw[2], target_state_velocity])
         left_lane_offset = road_width - target_lane_latitude
         right_lane_offset = target_lane_latitude
 
@@ -237,6 +244,7 @@ class DefaultPolicy(Policy):
                                            right_lane_offset, 0, 0, 0, 0, 0, 0, 0)
         trajectory_parameters = TrajectoryParameters(reference_route=reference_route,
                                                      target_state=target_state,
-                                                     cost_params=cost_params)
+                                                     cost_params=cost_params,
+                                                     strategy=TrajectoryPlanningStrategy.HIGHWAY)
 
         return trajectory_parameters

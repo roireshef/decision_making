@@ -1,11 +1,11 @@
-from typing import Union
+from typing import Union, List
 import numpy as np
 
 from decision_making.src.global_constants import BEHAVIORAL_STATE_NAME_FOR_LOGGING
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.state.state import State, EgoState, DynamicObject, ObjectSize
 from decision_making.src import global_constants
 from decision_making.src.map.map_api import MapAPI
-from decision_making.src.planning.navigation.navigation_plan import NavigationPlan
 from rte.python.logger.AV_logger import AV_Logger
 
 
@@ -42,7 +42,7 @@ class LaneObjectInfo:
 
 
 class BehavioralState:
-    def __init__(self, logger: AV_Logger, cached_map: MapAPI, navigation_plan: NavigationPlan):
+    def __init__(self, logger: AV_Logger, cached_map: MapAPI, navigation_plan: NavigationPlanMsg):
         """
         initialization of behavioral state. default values are None and empty list, because the logic for actual updates
         (coming from messages) is done in the update_behavioral_state method.
@@ -63,8 +63,9 @@ class BehavioralState:
         # public members defining internal state, will be used by policy to choose action
         self.ego_state = EgoState(obj_id=0, timestamp=0, x=0.0, y=0.0, z=0.0, yaw=0.0,
                                   size=ObjectSize(length=0.0, width=0.0, height=0.0), confidence=0.0, v_x=0, v_y=0,
-                                  acceleration_lon=0.0, yaw=0.0, steering_angle=0.0, map_api=cached_map)
+                                  acceleration_lon=0.0, yaw_deriv=0.0, steering_angle=0.0, map_api=cached_map)
 
+        self.current_timestamp = None
         self.current_yaw = None
         self.current_position = None
         self.current_orientation = None
@@ -75,10 +76,12 @@ class BehavioralState:
         self.current_long = None
         self.ego_off_road = None
         self.road_data = None
-        self.dynamic_objects = None
+        self.dynamic_objects = [DynamicObject(obj_id=0, timestamp=0, x=0.0, y=0.0, z=0.0, yaw=0.0,
+                                              size=ObjectSize(length=0.0, width=0.0, height=0.0), confidence=0.0, v_x=0,
+                                              v_y=0, acceleration_lon=0.0, yaw_deriv=0.0, map_api=cached_map)]
 
     def get_object_road_localization_relative_to_ego(self, target_object: DynamicObject,
-                                                     navigation_plan: NavigationPlan) -> (
+                                                     navigation_plan: NavigationPlanMsg) -> (
             bool, float, float, int):
         object_road_id, lane, road_latitude, _, object_long, _ = self.map.convert_world_to_lat_lon(x=target_object.x,
                                                                                                    y=target_object.y,
@@ -97,7 +100,7 @@ class BehavioralState:
 
         return found_connection, lon_distance_relative_to_ego, road_latitude, lane
 
-    def update_behavioral_state(self, state: State, navigation_plan: NavigationPlan) -> None:
+    def update_behavioral_state(self, state: State, navigation_plan: NavigationPlanMsg) -> None:
         """
         updating the behavioral state from the raw input state. This includes only direct processing without complex
         logic. This is implemented separately from initialization in order to potentially use differences for more
@@ -112,6 +115,7 @@ class BehavioralState:
 
         # Process ego_state
         self.ego_state = state.ego_state
+        self.current_timestamp = self.ego_state._timestamp
         self.current_yaw = self.ego_state.yaw
         self.current_position = np.array([self.ego_state.x, self.ego_state.y, self.ego_state.z])
         self.current_orientation = np.array(self.ego_state.getOrientationQuaternion())
