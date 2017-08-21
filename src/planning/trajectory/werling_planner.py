@@ -27,6 +27,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # create road coordinate-frame
         frenet = FrenetMovingFrame(reference_route)
 
+        # TODO: change this to allow a state where the vehicle is positioned outside the origin
         # the convention is that the reference_route is given in the vehicle's coordinate-frame, so that the vehicle
         # is always at the origin. Nonetheless, the vehicle doesn't need to lay parallel to the road
         ego_in_frenet = frenet.cpoint_to_fpoint(np.array([0, 0]))
