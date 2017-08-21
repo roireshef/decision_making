@@ -101,7 +101,7 @@ class DynamicObject(DDSTypedMsg):
             self.road_localization = road_localization
             self.rel_road_localization = rel_road_localization
         else:  # calculate self.rel_road_localization & self.rel_road_localization
-            self.__fill_road_localization(map_api, ego_state)
+            self.fill_road_localization(map_api, ego_state)
 
         if acceleration_lon is not None:
             self.acceleration_lon = acceleration_lon
@@ -113,7 +113,7 @@ class DynamicObject(DDSTypedMsg):
         else:
             raise NotImplementedError()
 
-    def __fill_road_localization(self, map_api, ego_state=None):
+    def fill_road_localization(self, map_api, ego_state=None):
         # type: (MapAPI, Union[EgoState, None]) -> None
         """
         given ego_state fill self.road_localization & self.rel_road_localization
