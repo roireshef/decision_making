@@ -8,6 +8,7 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryCostPar
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.cost_function import SigmoidStatic2DBoxObstacle
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
+from decision_making.src.planning.trajectory.utils.optimal_control import OptimalControl as OC
 from decision_making.src.planning.utils.columns import *
 from decision_making.src.planning.utils.geometry_utils import FrenetMovingFrame
 from decision_making.src.state.state import State
@@ -27,7 +28,6 @@ class WerlingPlanner(TrajectoryPlanner):
         # create road coordinate-frame
         frenet = FrenetMovingFrame(reference_route)
 
-        # TODO: change this to allow a state where the vehicle is positioned outside the origin
         # the convention is that the reference_route is given in the vehicle's coordinate-frame, so that the vehicle
         # is always at the origin. Nonetheless, the vehicle doesn't need to lay parallel to the road
         ego_in_frenet = frenet.cpoint_to_fpoint(np.array([0, 0]))
@@ -62,7 +62,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                             dx_range, np.sin(goal_theta_diff) * goal[EGO_V], 0)
 
         # solve problem in frenet-frame
-        ftrajectories = self._solve_quintic_poly_frenet(fconstraints_t0, fconstraints_tT, cost_params.time)
+        ftrajectories = self._solve_optimization(fconstraints_t0, fconstraints_tT, cost_params.time)
 
         # filter resulting trajectories by velocity and acceleration
         ftrajectories_filtered = self._filter_limits(ftrajectories, cost_params)
@@ -136,7 +136,7 @@ class WerlingPlanner(TrajectoryPlanner):
                params.ref_deviation_weight * ref_deviation_costs + \
                params.obstacle_weight * obstacles_costs
 
-    def _solve_quintic_poly_frenet(self, fconst_0, fconst_t, T):
+    def _solve_optimization(self, fconst_0, fconst_t, T):
         """
         Solves the two-point boundary value problem, given a set of constraints over the initial state
         and a set of constraints over the terminal state. The solution is a cartesian product of the solutions returned
@@ -159,11 +159,11 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # solve for dimesion d
         constraints_d = self._cartesian_product_rows(fconst_0.get_grid_d(), fconst_t.get_grid_d())
-        poly_all_coefs_d = self._solve_quintic_poly_1d(A_inv, constraints_d)
+        poly_all_coefs_d = OC.QuinticPoly1D.solve(A_inv, constraints_d)
 
         # solve for dimesion s
         constraints_s = self._cartesian_product_rows(fconst_0.get_grid_s(), fconst_t.get_grid_s())
-        poly_all_coefs_s = self._solve_quintic_poly_1d(A_inv, constraints_s)
+        poly_all_coefs_s = OC.QuinticPoly1D.solve(A_inv, constraints_s)
 
         # concatenate all polynomial coefficients (both dimensions, up to 2nd derivative)
         # [6 poly_coef_d, 5 poly_dot_coef_d, 4 poly_dotodot_coef_d, ...
@@ -181,15 +181,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return trajectories
 
     @staticmethod
-    def _solve_quintic_poly_1d(A_inv, constraints):
-        poly_coefs = np.fliplr(np.dot(constraints, A_inv.transpose()))
-        poly_dot_coefs = np.apply_along_axis(np.polyder, 1, poly_coefs, 1)
-        poly_dotdot_coefs = np.apply_along_axis(np.polyder, 1, poly_coefs, 2)
-
-        return np.concatenate((poly_coefs, poly_dot_coefs, poly_dotdot_coefs), axis=1)
-
-    @staticmethod
-    def _cartesian_product_rows(mat1, mat2):
+    def _cartesian_product_rows(mat1: np.ndarray, mat2: np.ndarray):
         return np.array([np.concatenate((mat1[idx1, :], mat2[idx2, :]))
                          for idx1 in range(mat1.shape[0])
                          for idx2 in range(mat2.shape[0])])
@@ -209,9 +201,13 @@ class FrenetConstraints:
     def get_grid_s(self) -> np.ndarray:
         """
         Generates a grid (cartesian product) of all (position, velocity and acceleration) on dimension S
-        :return:
+        :return: numpy array of shape [n, 3] where n is the resulting number of constraints
         """
         return np.array(np.meshgrid(self._sx, self._sv, self._sa)).T.reshape(-1, 3)
 
-    def get_grid_d(self):
+    def get_grid_d(self) -> np.ndarray:
+        """
+        Generates a grid (cartesian product) of all (position, velocity and acceleration) on dimension D
+        :return: numpy array of shape [n, 3] where n is the resulting number of constraints
+        """
         return np.array(np.meshgrid(self._dx, self._dv, self._da)).T.reshape(-1, 3)
