@@ -11,11 +11,11 @@ from decision_making.src.planning.trajectory.trajectory_planner import Trajector
 from decision_making.src.planning.utils.columns import *
 from decision_making.src.planning.utils.geometry_utils import FrenetMovingFrame
 from decision_making.src.state.state import State
-from rte.python.logger.AV_logger import AV_Logger
+from logging import Logger
 
 
 class WerlingPlanner(TrajectoryPlanner):
-    def __init__(self, logger: AV_Logger, dt=WERLING_TIME_RESOLUTION):
+    def __init__(self, logger: Logger, dt=WERLING_TIME_RESOLUTION):
         super().__init__(logger)
         self._dt = dt
 

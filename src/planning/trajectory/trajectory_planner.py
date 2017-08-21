@@ -6,11 +6,11 @@ import numpy as np
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.state.state import State
-from rte.python.logger.AV_logger import AV_Logger
+from logging import Logger
 
 
 class TrajectoryPlanner(metaclass=ABCMeta):
-    def __init__(self, logger: AV_Logger):
+    def __init__(self, logger: Logger):
         self._logger = logger
 
     @abstractmethod
