@@ -4,8 +4,8 @@ from typing import List, Union
 import numpy as np
 #from decision_making.src.map.constants import *
 from decision_making.src.map.map_api import MapAPI
-
 from decision_making.src.messages.dds_typed_message import DDSTypedMsg
+from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 
 
 class RoadLocalization(DDSTypedMsg):
@@ -101,23 +101,7 @@ class DynamicObject(DDSTypedMsg):
             self.road_localization = road_localization
             self.rel_road_localization = rel_road_localization
         else:  # calculate self.rel_road_localization & self.rel_road_localization
-            if ego_state is not None:  # if the object is not ego
-                (glob_x, glob_y, glob_z, glob_yaw) = \
-                    (ego_state.x + self.x, ego_state.y + self.y, ego_state.z + self.z, ego_state.yaw + self.yaw)
-            else:  # if the object itself is ego, then global & local coordinates are the same
-                (glob_x, glob_y, glob_z, glob_yaw) = (self.x, self.y, self.z, self.yaw)
-            # calculate road coordinates for global coordinates
-            road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw = \
-                map_api.convert_world_to_lat_lon(glob_x, glob_y, glob_z, glob_yaw)
-            # fill road_localization
-            self.road_localization = RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
-
-            # calculate relative road localization
-            if ego_state is not None:  # if the object itself is ego, then rel_road_localization is irrelevant
-                self.rel_road_localization = \
-                    RelativeRoadLocalization(full_lat - ego_state.road_localization.full_lat,
-                                             lon - ego_state.road_localization.road_lon,
-                                             intra_lane_yaw - ego_state.road_localization.intra_lane_yaw)
+            self.__fill_road_localization(map_api, ego_state)
 
         if acceleration_lon is not None:
             self.acceleration_lon = acceleration_lon
@@ -128,6 +112,38 @@ class DynamicObject(DDSTypedMsg):
             self.yaw_deriv = yaw_deriv
         else:
             raise NotImplementedError()
+
+    def __fill_road_localization(self, map_api, ego_state=None):
+        # type: (MapAPI, Union[EgoState, None]) -> None
+        """
+        given ego_state fill self.road_localization & self.rel_road_localization
+        :param map_api: the map
+        :param ego_state: None if self is ego
+        :return: None
+        """
+        if ego_state is not None:  # if the object is not ego
+            rel_pos = np.array([self.x, self.y, self.z])
+            inv_ego_position = np.array([-ego_state.x, -ego_state.y, -ego_state.z])
+            glob_pos = CartesianFrame.get_vector_in_objective_frame(rel_pos, inv_ego_position, -ego_state.yaw)
+            glob_yaw = self.yaw + ego_state.yaw
+        else:  # if self is ego, then global & local coordinates are the same
+            glob_pos = np.array([self.x, self.y, self.z])
+            glob_yaw = self.yaw
+
+        # calculate road coordinates for global coordinates
+        road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw = \
+            map_api.convert_world_to_lat_lon(glob_pos[0], glob_pos[1], glob_pos[2], glob_yaw)
+        # fill road_localization
+        self.road_localization = RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
+
+        # calculate relative road localization
+        if ego_state is not None:  # if self is not ego
+            self.rel_road_localization = \
+                RelativeRoadLocalization(self.road_localization.full_lat - ego_state.road_localization.full_lat,
+                                         self.road_localization.road_lon - ego_state.road_localization.road_lon,
+                                         self.road_localization.intra_lane_yaw - ego_state.road_localization.intra_lane_yaw)
+        else:  # if the object itself is ego, then rel_road_localization is irrelevant
+            self.rel_road_localization = None
 
     def predict(self, goal_timestamp, map_api):
         # type: (int, MapAPI) -> DynamicObject
