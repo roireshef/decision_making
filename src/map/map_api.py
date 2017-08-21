@@ -1,5 +1,4 @@
 import numpy as np
-from abc import ABCMeta, abstractmethod
 
 from decision_making.src.map.constants import *
 from decision_making.src.map.map_model import MapModel
@@ -57,7 +56,7 @@ class RoadDetails:
         self.lanes_num = lanes_num
         self.one_way = one_way
         self.lane_width = lane_width
-        self.width = lane_width*lanes_num
+        self.width = lane_width * lanes_num
         self.side_walk = side_walk
         self.ext_head_yaw = ext_head_yaw
         self.ext_tail_yaw = ext_tail_yaw
@@ -286,9 +285,11 @@ class MapAPI:
         lat_dist1 = lat_dist2 = LARGE_NUM
         sign1 = sign2 = 0
         if closest_pnt_ind > 0:
-            sign1, lat_dist1, proj1 = CartesianFrame.calc_point_segment_dist(p, points[closest_pnt_ind - 1], points[closest_pnt_ind])
+            sign1, lat_dist1, proj1 = CartesianFrame.calc_point_segment_dist(p, points[closest_pnt_ind - 1],
+                                                                             points[closest_pnt_ind])
         if closest_pnt_ind < len(points) - 1:
-            sign2, lat_dist2, proj2 = CartesianFrame.calc_point_segment_dist(p, points[closest_pnt_ind], points[closest_pnt_ind + 1])
+            sign2, lat_dist2, proj2 = CartesianFrame.calc_point_segment_dist(p, points[closest_pnt_ind],
+                                                                             points[closest_pnt_ind + 1])
         if lat_dist1 < lat_dist2:
             lat_dist = lat_dist1
             sign = sign1
