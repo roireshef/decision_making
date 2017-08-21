@@ -4,14 +4,18 @@ from typing import Tuple
 import numpy as np
 
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
+from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.state.state import State
+from logging import Logger
 
 
 class TrajectoryPlanner(metaclass=ABCMeta):
-    # TODO: object type-hint should be changed to DDSMessage type once commited
+    def __init__(self, logger: Logger):
+        self._logger = logger
+
     @abstractmethod
     def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray,
-             cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, object]:
+             cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
         """
         Plans a trajectory according to the specifications in the arguments
         :param state: environment & ego state object
@@ -19,6 +23,6 @@ class TrajectoryPlanner(metaclass=ABCMeta):
         :param goal: A numpy array of the desired ego-state to plan towards, from utils.columns (ego coord-frame)
         :param cost_params: a dictionary of parameters that specify how to build the planning's cost function
         :return: a tuple of: (numpy array: trajectory - each row is [x, y, yaw, velocity], trajectory cost,
-        debug results dictionary)
+        debug results)
         """
         pass
