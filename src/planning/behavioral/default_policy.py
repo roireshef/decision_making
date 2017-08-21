@@ -7,7 +7,6 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParamet
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.policy import Policy, PolicyConfig
-from decision_making.src.planning.behavioral.policy_features import PolicyFeatures
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils import geometry_utils
 from decision_making.src.planning.utils.acda import AcdaApi
@@ -29,6 +28,8 @@ class DefaultPolicyConfig(PolicyConfig):
 
 
 class DefaultPolicy(Policy):
+    from decision_making.src.planning.behavioral.policy_features import PolicyFeatures
+
     def __init__(self, logger: Logger, policy_config: DefaultPolicyConfig):
         super().__init__(logger=logger, policy_config=policy_config)
 

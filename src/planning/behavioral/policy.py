@@ -7,7 +7,7 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 
 
-class PolicyConfig(metaclass=ABCMeta, DDSTypedMsg):
+class PolicyConfig(DDSTypedMsg):
     pass
 
 
