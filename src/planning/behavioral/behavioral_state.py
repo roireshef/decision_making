@@ -1,5 +1,7 @@
+from logging import Logger
 from typing import Union, List
 import numpy as np
+from pygments.unistring import Lo
 
 from decision_making.src.global_constants import BEHAVIORAL_STATE_NAME_FOR_LOGGING
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -42,7 +44,7 @@ class LaneObjectInfo:
 
 
 class BehavioralState:
-    def __init__(self, logger: AV_Logger, cached_map: MapAPI, navigation_plan: NavigationPlanMsg):
+    def __init__(self, logger: Logger, cached_map: MapAPI, navigation_plan: NavigationPlanMsg):
         """
         initialization of behavioral state. default values are None and empty list, because the logic for actual updates
         (coming from messages) is done in the update_behavioral_state method.
@@ -50,7 +52,7 @@ class BehavioralState:
         :param navigation_plan:
         """
 
-        self.logger = logger.get_logger(BEHAVIORAL_STATE_NAME_FOR_LOGGING)
+        self.logger = logger
 
         # initiate behavioral state with cached map and initial navigation plan
         self.map = cached_map
