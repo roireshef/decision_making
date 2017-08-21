@@ -1,5 +1,6 @@
 import numpy as np
-from abc import ABCMeta, abstractmethod
+
+from decision_making.src.map.constants import *
 from decision_making.src.map.map_model import MapModel
 from typing import List, Union
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -63,7 +64,7 @@ class RoadDetails:
         self.turn_lanes = turn_lanes
 
 
-class MapAPI(metaclass=ABCMeta):
+class MapAPI:
     def __init__(self, map_model):
         # type: (MapModel) -> None
         self._cached_map_model = map_model
