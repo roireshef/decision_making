@@ -39,8 +39,8 @@ class TrajectoryPlanningFacade(DmModule):
         :return: no return value. results are published in self.__publish_results()
         """
         try:
-            state = self.__get_current_state()
-            params = self.__get_mission_params()
+            state = self._get_current_state()
+            params = self._get_mission_params()
 
             # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
             trajectory, cost, debug_results = self._strategy_handlers[params.strategy].plan(
@@ -69,12 +69,12 @@ class TrajectoryPlanningFacade(DmModule):
             if not isinstance(handlers[elem], TrajectoryPlanner):
                 raise ValueError('strategy_handlers does not contain a TrajectoryPlanner impl. for ' + elem)
 
-    def __get_current_state(self) -> State:
+    def _get_current_state(self) -> State:
         input_state = self.dds.get_latest_sample(topic=TRAJECTORY_STATE_READER_TOPIC, timeout=1)
         self.logger.debug('Received state: %s', input_state)
         return State.deserialize(input_state)
 
-    def __get_mission_params(self) -> TrajectoryParameters:
+    def _get_mission_params(self) -> TrajectoryParameters:
         input_params = self.dds.get_latest_sample(topic=TRAJECTORY_STATE_READER_TOPIC, timeout=1)
         self.logger.debug('Received state: %s', input_params)
         return TrajectoryParameters.deserialize(input_params)
