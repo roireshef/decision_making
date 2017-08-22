@@ -24,8 +24,8 @@ class DefaultPolicyConfig(PolicyConfig):
 
         self.prefer_other_lanes_where_blocking_object_distance_less_than = \
             prefer_other_lanes_where_blocking_object_distance_less_than
-        self.prefer_other_lanes_if_improvement_is_greater_than = prefer_other_
-        lanes_if_improvement_is_greater_than
+        self.prefer_other_lanes_if_improvement_is_greater_than = \
+            prefer_other_lanes_if_improvement_is_greater_than
         self.prefer_any_lane_center_if_blocking_object_distance_greater_than = \
             prefer_any_lane_center_if_blocking_object_distance_greater_than
         self.assume_blocking_object_at_rear_if_distance_less_than = \
@@ -33,7 +33,6 @@ class DefaultPolicyConfig(PolicyConfig):
 
 
 class DefaultPolicy(Policy):
-    from decision_making.src.planning.behavioral.policy_features import PolicyFeatures
 
     def __init__(self, logger: Logger, policy_config: DefaultPolicyConfig):
         super().__init__(logger=logger, policy_config=policy_config)
@@ -81,6 +80,8 @@ class DefaultPolicy(Policy):
         :param behavioral_state: processed behavioral state
         selected_latitude: target latitude for driving, measured in [lanes]
         """
+
+        from decision_making.src.planning.behavioral.policy_features import PolicyFeatures
 
         lanes_in_current_road, road_width, _, _ = behavioral_state.map.get_road_details(
             behavioral_state.ego_state.road_localization.road_id)
