@@ -125,10 +125,6 @@ class DefaultPolicy(Policy):
                 latitude_options_in_lanes=latitude_options_in_lanes, current_lane_latitude=current_lane_latitude,
                 closest_object_in_lane=closest_blocking_object_in_lane, policy_config=pc)
 
-        # Debug objects
-        DefaultPolicy.__visualize_high_level_policy(latitude_options_in_meters=latitude_options_in_meters,
-                                                    behavioral_state=behavioral_state, selected_action=selected_action)
-
         return selected_latitude
 
     @staticmethod
