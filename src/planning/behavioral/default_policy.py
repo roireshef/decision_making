@@ -108,14 +108,15 @@ class DefaultPolicy(Policy):
             absolute_latitude_offset_grid_in_lanes = current_lane_latitude + \
                                                      latitude_offset_grid_relative_to_current_center_lane
             num_of_latitude_options = len(latitude_offset_grid_relative_to_current_center_lane)
-            rightmost_edge_of_road = 0.0 # in lanes
-            leftmost_edge_of_road = num_of_lanes   # in lanes
+            rightmost_edge_of_road = 0.0  # in lanes
+            leftmost_edge_of_road = num_of_lanes  # in lanes
             latitude_options_in_lanes = [absolute_latitude_offset_grid_in_lanes[ind] for ind in
                                          range(num_of_latitude_options)
                                          if ((absolute_latitude_offset_grid_in_lanes[ind] >
                                               leftmost_edge_of_road - pc.margin_from_road_edge)
                                              and (absolute_latitude_offset_grid_in_lanes[ind]
                                                   < rightmost_edge_of_road + pc.margin_from_road_edge))]
+            latitude_options_in_lanes = np.array(latitude_options_in_lanes)
             latitude_options_in_meters = lane_width * latitude_options_in_lanes
 
             # For each lateral offset, find closest blocking object on lane
@@ -128,8 +129,7 @@ class DefaultPolicy(Policy):
             # Choose a proper action (latitude offset from current center lane)
             current_center_lane_index_in_grid = \
                 np.where(latitude_options_in_lanes == current_lane_latitude)[0][0]
-            center_of_lane = (
-                np.round(latitude_options_in_lanes - 0.5) == latitude_options_in_lanes - 0.5)
+            center_of_lane = latitude_options_in_lanes % 0.5 == 0.0 # check which options are in the center of lane
             other_center_lane_indexes_in_grid = \
                 np.where((latitude_options_in_lanes != current_lane_latitude) & center_of_lane)[
                     0]  # check if integer
