@@ -65,9 +65,8 @@ class ObjectSize(DDSTypedMsg):
 
 
 class DynamicObject(DDSTypedMsg):
-    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, acceleration_lon, yaw_deriv,
-                 map_api, ego_state=None, road_localization=None, rel_road_localization=None):
-        # type: (int, int, float, float, float, float, ObjectSize, float, float, float, Union[float, None], Union[float, None], MapAPI, Union[EgoState, None], Union[RoadLocalization, None], Union[RelativeRoadLocalization, None]) -> None
+    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, acceleration_lon, yaw_deriv):
+        # type: (int, int, float, float, float, float, ObjectSize, float, float, float, Union[float, None], Union[float, None]) -> None
         """
         both ego and other dynamic objects
         :param obj_id: object id
@@ -82,9 +81,6 @@ class DynamicObject(DDSTypedMsg):
         :param v_y: in m/sec
         :param acceleration_lon: acceleration in longitude axis
         :param yaw_deriv: 0 for straight motion, positive for CCW (yaw increases), negative for CW
-        :param ego_state: EgoState
-        :param road_localization: absolute; is calculated once the state arrives from perception
-        :param rel_road_localization: relatively to ego; is calculated once the state arrives from perception
         """
         self.id = obj_id
         self._timestamp = timestamp
@@ -96,12 +92,8 @@ class DynamicObject(DDSTypedMsg):
         self.confidence = confidence
         self.v_x = v_x
         self.v_y = v_y
-
-        if road_localization is not None:
-            self.road_localization = road_localization
-            self.rel_road_localization = rel_road_localization
-        else:  # calculate self.rel_road_localization & self.rel_road_localization
-            self.fill_road_localization(map_api, ego_state)
+        self.road_localization = None
+        self.rel_road_localization = None
 
         if acceleration_lon is not None:
             self.acceleration_lon = acceleration_lon
@@ -112,38 +104,6 @@ class DynamicObject(DDSTypedMsg):
             self.yaw_deriv = yaw_deriv
         else:
             raise NotImplementedError()
-
-    def fill_road_localization(self, map_api, ego_state=None):
-        # type: (MapAPI, Union[EgoState, None]) -> None
-        """
-        given ego_state fill self.road_localization & self.rel_road_localization
-        :param map_api: the map
-        :param ego_state: None if self is ego
-        :return: None
-        """
-        if ego_state is not None:  # if the object is not ego
-            rel_pos = np.array([self.x, self.y, self.z])
-            inv_ego_position = np.array([-ego_state.x, -ego_state.y, -ego_state.z])
-            glob_pos = CartesianFrame.get_vector_in_objective_frame(rel_pos, inv_ego_position, -ego_state.yaw)
-            glob_yaw = self.yaw + ego_state.yaw
-        else:  # if self is ego, then global & local coordinates are the same
-            glob_pos = np.array([self.x, self.y, self.z])
-            glob_yaw = self.yaw
-
-        # calculate road coordinates for global coordinates
-        road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw = \
-            map_api.convert_world_to_lat_lon(glob_pos[0], glob_pos[1], glob_pos[2], glob_yaw)
-        # fill road_localization
-        self.road_localization = RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
-
-        # calculate relative road localization
-        if ego_state is not None:  # if self is not ego
-            self.rel_road_localization = \
-                RelativeRoadLocalization(self.road_localization.full_lat - ego_state.road_localization.full_lat,
-                                         self.road_localization.road_lon - ego_state.road_localization.road_lon,
-                                         self.road_localization.intra_lane_yaw - ego_state.road_localization.intra_lane_yaw)
-        else:  # if the object itself is ego, then rel_road_localization is irrelevant
-            self.rel_road_localization = None
 
     def predict(self, goal_timestamp, map_api):
         # type: (int, MapAPI) -> DynamicObject
@@ -159,9 +119,8 @@ class DynamicObject(DDSTypedMsg):
 
 class EgoState(DynamicObject, DDSTypedMsg):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence,
-                 v_x, v_y, acceleration_lon, yaw_deriv, steering_angle,
-                 map_api, road_localization=None, rel_road_localization=None):
-        # type: (int, int, float, float, float, float, ObjectSize, float, float, float, Union[float, None], Union[float, None], Union[float, None], MapAPI, RoadLocalization, RelativeRoadLocalization) -> None
+                 v_x, v_y, acceleration_lon, yaw_deriv, steering_angle):
+        # type: (int, int, float, float, float, float, ObjectSize, float, float, float, Union[float, None], Union[float, None], Union[float, None]) -> None
         """
         :param obj_id:
         :param timestamp:
@@ -176,12 +135,9 @@ class EgoState(DynamicObject, DDSTypedMsg):
         :param acceleration_lon: in m/s^2
         :param yaw_deriv: radius of turning of the ego
         :param steering_angle: equivalent to knowing of turn_radius
-        :param map_api
-        :param road_localization: absolute; is calculated once the state arrives from perception
-        :param rel_road_localization: relatively to ego; is calculated once the state arrives from perception
         """
-        DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence,
-                               v_x, v_y, acceleration_lon, yaw_deriv, map_api, None, road_localization, rel_road_localization)
+        DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
+                               acceleration_lon, yaw_deriv)
         if steering_angle is not None:
             self.steering_angle = steering_angle
         else:

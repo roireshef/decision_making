@@ -57,6 +57,7 @@ DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC = "StateSubscriber::DynamicObjectsReader"
 SELF_LOCALIZATION_SUBSCRIBE_TOPIC = "StateSubscriber::SelfLocalizationReader"
 OCCUPANCY_STATE_SUBSCRIBE_TOPIC = "StateSubscriber::OccupancyStateReader"
 STATE_PUBLISH_TOPIC = "StatePublisher::StateWriter"
+MAP_FILE_NAME = "c:/temp/map.p"
 
 # Navigation Planning Module
 NAVIGATION_PLAN_PUBLISH_TOPIC = "NavigationPublisher::NavigationPlanWriter"
@@ -78,4 +79,3 @@ BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
 ACDA_NAME_FOR_LOGGING = "ACDA Module"
 TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 STATE_MODULE_NAME_FOR_LOGGING = "State Module"
-
