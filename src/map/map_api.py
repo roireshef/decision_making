@@ -231,9 +231,7 @@ class MapAPI:
         # calc lat_vec, right_point, road_lon of the target longitude.
         # the resulted road_id may differ from the input road_id because the target point may belong to another road.
         # for the same reason the resulted road_lon may differ from the input road_lon.
-        lane_vec = points[pnt_ind] - points[pnt_ind - 1]
-        lane_vec_len = np.linalg.norm(lane_vec)
-        lane_vec = lane_vec / lane_vec_len
+        lane_vec = self.normalize_vec(points[pnt_ind] - points[pnt_ind - 1])
         lat_vec = np.array([-lane_vec[1], lane_vec[0]])  # from right to left
         center_point = (points[pnt_ind] - lane_vec) * (longitudes[pnt_ind] - road_lon)
         right_point = center_point - lat_vec * (width / 2.)
@@ -301,3 +299,11 @@ class MapAPI:
             lon = proj2 + longitudes[closest_pnt_ind]
             road_vec = points[closest_pnt_ind + 1] - points[closest_pnt_ind]
         return sign, lat_dist, lon, road_vec
+
+    @staticmethod
+    def normalize_vec(vec):
+        vec_norm = np.linalg.norm(vec)
+        if vec_norm != 0:
+            return vec / vec_norm
+        else:
+            return vec
