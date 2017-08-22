@@ -167,7 +167,7 @@ class MapAPI:
         total_lon_distance = max_lookahead_distance
 
         # first search forward (direction=1); if not found then search backward (direction=-1)
-        for direction in range(1, -2, -2):
+        for direction in [1, -1]:
 
             # 1. First road segment
             if direction > 0:  # forward
