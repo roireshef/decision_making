@@ -110,12 +110,17 @@ class DefaultPolicy(Policy):
             num_of_latitude_options = len(latitude_offset_grid_relative_to_current_center_lane)
             rightmost_edge_of_road = 0.0  # in lanes
             leftmost_edge_of_road = num_of_lanes  # in lanes
+
+            # The actions is a grid of different lateral offsets that will be used
+            # as reference route for the trajectory planner. the different options of actions
+            # is stored in 'latitude_options_in_lanes'
             latitude_options_in_lanes = [absolute_latitude_offset_grid_in_lanes[ind] for ind in
                                          range(num_of_latitude_options)
                                          if ((absolute_latitude_offset_grid_in_lanes[ind] >
                                               leftmost_edge_of_road - pc.margin_from_road_edge)
                                              and (absolute_latitude_offset_grid_in_lanes[ind]
                                                   < rightmost_edge_of_road + pc.margin_from_road_edge))]
+            num_of_valid_latitude_options = len(latitude_options_in_lanes)
             latitude_options_in_lanes = np.array(latitude_options_in_lanes)
             latitude_options_in_meters = lane_width * latitude_options_in_lanes
 
@@ -130,15 +135,18 @@ class DefaultPolicy(Policy):
             current_center_lane_index_in_grid = \
                 np.where(latitude_options_in_lanes == current_lane_latitude)[0][0]
             # check which options are in the center of lane
-            center_of_lane = latitude_options_in_lanes - 0.5 % 1.0 == 0.0
+            center_of_lane = np.isclose(latitude_options_in_lanes - 0.5 % 1.0,
+                                        np.zeros(shape=[num_of_valid_latitude_options]))
             other_center_lane_indexes_in_grid = \
                 np.where((latitude_options_in_lanes != current_lane_latitude) & center_of_lane)[
                     0]  # check if integer
 
             object_distance_in_current_lane = closest_blocking_object_in_lane[current_center_lane_index_in_grid]
             other_lanes_are_available = len(other_center_lane_indexes_in_grid) > 0
+
+            # the best center of lane is where the blocking object is most far
             best_center_of_lane_index_in_grid = other_center_lane_indexes_in_grid[
-                np.argmax(latitude_options_in_lanes[other_center_lane_indexes_in_grid])]
+                np.argmax(closest_blocking_object_in_lane[other_center_lane_indexes_in_grid])]
             best_center_of_lane_distance_from_object = closest_blocking_object_in_lane[
                 best_center_of_lane_index_in_grid]
 
