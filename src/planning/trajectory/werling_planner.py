@@ -108,7 +108,7 @@ class WerlingPlanner(TrajectoryPlanner):
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
 
         static_obstacles = [
-            SigmoidStatic2DBoxObstacle.from_object_state(obs, params.obstacle_exp, params.obstacle_offset)
+            SigmoidStatic2DBoxObstacle.from_object_state(obs, params.obstacle_cost.k, params.obstacle_cost.offset)
             for obs in state.static_objects]
 
         # TODO: consider max over trajectory points?
@@ -119,9 +119,17 @@ class WerlingPlanner(TrajectoryPlanner):
 
         ''' DISTANCE FROM REFERENCE ROUTE ( DX ^ 2 ) '''
 
-        ref_deviation_costs = np.sum(ftrajectories[:, :, F_DX] ** 2, axis=1)
+        ref_deviation_costs = params.dist_from_ref_sq_coef * np.sum(ftrajectories[:, :, F_DX] ** 2, axis=1)
 
-        ''' DEVIATION FROM ROAD/LANE '''
+        ''' DEVIATION FROM LANE '''
+
+        # TODO: fill this
+
+        ''' DEVIATION FROM SHOULDER '''
+
+        # TODO: fill this
+
+        ''' DEVIATION FROM ROAD '''
 
         left_offsets = ftrajectories[:, :, F_DX] - params.left_lane_offset
         left_deviations_costs = np.sum(np.exp(np.clip(params.left_deviation_exp * left_offsets, 0, EXP_CLIP_TH)),
@@ -134,6 +142,8 @@ class WerlingPlanner(TrajectoryPlanner):
         return params.lane_deviation_weight * (left_deviations_costs + right_deviations_costs) + \
                params.ref_deviation_weight * ref_deviation_costs + \
                params.obstacle_weight * obstacles_costs
+
+    def _compute_exponential_cost(self, x: float, ):
 
     def _solve_quintic_poly_frenet(self, fconst_0, fconst_t, T):
         """
