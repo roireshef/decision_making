@@ -129,7 +129,8 @@ class DefaultPolicy(Policy):
             # Choose a proper action (latitude offset from current center lane)
             current_center_lane_index_in_grid = \
                 np.where(latitude_options_in_lanes == current_lane_latitude)[0][0]
-            center_of_lane = latitude_options_in_lanes % 0.5 == 0.0 # check which options are in the center of lane
+            # check which options are in the center of lane
+            center_of_lane = latitude_options_in_lanes - 0.5 % 1.0 == 0.0
             other_center_lane_indexes_in_grid = \
                 np.where((latitude_options_in_lanes != current_lane_latitude) & center_of_lane)[
                     0]  # check if integer
