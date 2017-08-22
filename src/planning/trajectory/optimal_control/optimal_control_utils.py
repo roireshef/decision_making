@@ -16,7 +16,7 @@ class OptimalControlUtils:
             this is the A ^ -1
             :param constraints: given that the constraints are Ax = B, and x are the polynom coeficients to seek,
             every row in here is a B (so that this variable can hold a set of B's that results in a set of solutions)
-            :return: the x(t) polynom's coeficients after optimization
+            :return: x(t) coeficients, x_dot(t) coeficients, x_dot_dot coeficients - all concatenated in a numpy array
             """
             poly_coefs = np.fliplr(np.dot(constraints, A_inv.transpose()))
             poly_dot_coefs = np.apply_along_axis(np.polyder, 1, poly_coefs, 1)
