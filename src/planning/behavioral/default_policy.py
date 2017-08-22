@@ -15,16 +15,21 @@ from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 
 class DefaultPolicyConfig(PolicyConfig):
     def __init__(self, margin_from_road_edge: float = 0.2,
-                 prefer_other_lanes_where_blocking_object_distance_less_than: float = 40,
-                 prefer_other_lanes_if_improvement_is_greater_than: float = 5,
-                 prefer_any_lane_center_if_blocking_object_distance_greater_than: float = 25,
-                 assume_blocking_object_at_rear_if_distance_less_than: float = 0):
+                 prefer_other_lanes_where_blocking_object_distance_less_than: float = 40.0,
+                 prefer_other_lanes_if_improvement_is_greater_than: float = 5.0,
+                 prefer_any_lane_center_if_blocking_object_distance_greater_than: float = 25.0,
+                 assume_blocking_object_at_rear_if_distance_less_than: float = 0.0):
         self.margin_from_road_edge = margin_from_road_edge
+        super().__init__()
 
-        self.prefer_other_lanes_where_blocking_object_distance_less_than = prefer_other_lanes_where_blocking_object_distance_less_than
-        self.prefer_other_lanes_if_improvement_is_greater_than = prefer_other_lanes_if_improvement_is_greater_than
-        self.prefer_any_lane_center_if_blocking_object_distance_greater_than = prefer_any_lane_center_if_blocking_object_distance_greater_than
-        self.assume_blocking_object_at_rear_if_distance_less_than = assume_blocking_object_at_rear_if_distance_less_than
+        self.prefer_other_lanes_where_blocking_object_distance_less_than = \
+            prefer_other_lanes_where_blocking_object_distance_less_than
+        self.prefer_other_lanes_if_improvement_is_greater_than = prefer_other_
+        lanes_if_improvement_is_greater_than
+        self.prefer_any_lane_center_if_blocking_object_distance_greater_than = \
+            prefer_any_lane_center_if_blocking_object_distance_greater_than
+        self.assume_blocking_object_at_rear_if_distance_less_than = \
+            assume_blocking_object_at_rear_if_distance_less_than
 
 
 class DefaultPolicy(Policy):
@@ -61,10 +66,11 @@ class DefaultPolicy(Policy):
         safe_speed = max(safe_speed, 0)
 
         # Generate specs for trajectory planner
-        trajectory_parameters = DefaultPolicy.__generate_trajectory_specs(behavioral_state=behavioral_state,
-                                                                          safe_speed=safe_speed,
-                                                                          target_lane_latitude=target_lane_latitude,
-                                                                          reference_route=reference_route_in_cars_frame_x_y_yaw)
+        trajectory_parameters = \
+            DefaultPolicy.__generate_trajectory_specs(behavioral_state=behavioral_state,
+                                                      safe_speed=safe_speed,
+                                                      target_lane_latitude=target_lane_latitude,
+                                                      reference_route=reference_route_in_cars_frame_x_y_yaw)
 
         visualization_message = BehavioralVisualizationMsg(reference_route=reference_route_x_y_z)
         return trajectory_parameters, visualization_message
@@ -89,7 +95,8 @@ class DefaultPolicy(Policy):
 
             # Create a grid in latitude of lane offsets that will define latitude of the target trajectory.
             latitude_offset_grid_relative_to_current_center_lane = np.array([-1, -0.5, -0.25, 0, 0.25, 0.5, 1])
-            absolute_latitude_offset_grid_in_lanes = current_lane_latitude + latitude_offset_grid_relative_to_current_center_lane
+            absolute_latitude_offset_grid_in_lanes = current_lane_latitude + \
+                                                     latitude_offset_grid_relative_to_current_center_lane
             num_of_latitude_options = len(latitude_offset_grid_relative_to_current_center_lane)
             latitude_options_in_lanes = [absolute_latitude_offset_grid_in_lanes[ind] for ind in
                                          range(num_of_latitude_options)
@@ -192,10 +199,11 @@ class DefaultPolicy(Policy):
         reference_route_xy_in_cars_frame = reference_route_xyz_in_cars_frame[0:2, :].transpose()
 
         # interpolate and create uniformly spaced path
-        reference_route_xy_in_cars_frame = CartesianFrame.resample_curve(curve=reference_route_xy_in_cars_frame,
-                                                                         step_size=global_constants.TRAJECTORY_ARCLEN_RESOLUTION,
-                                                                         desired_curve_len=global_constants.REFERENCE_TRAJECTORY_LENGTH,
-                                                                         preserve_step_size=False)
+        reference_route_xy_in_cars_frame = \
+            CartesianFrame.resample_curve(curve=reference_route_xy_in_cars_frame,
+                                          step_size=global_constants.TRAJECTORY_ARCLEN_RESOLUTION,
+                                          desired_curve_len=global_constants.REFERENCE_TRAJECTORY_LENGTH,
+                                          preserve_step_size=False)
 
         reference_route_in_cars_frame_x_y_yaw = CartesianFrame.add_yaw_and_derivatives(
             reference_route_xy_in_cars_frame)[:, 0:3]

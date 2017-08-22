@@ -40,12 +40,12 @@ class LaneObjectInfo:
 
 
 class BehavioralState:
-    def __init__(self, logger: Logger, cached_map: MapAPI, navigation_plan: NavigationPlanMsg, ego_state: EgoState=None,
+    def __init__(self, logger: Logger, map_api: MapAPI, navigation_plan: NavigationPlanMsg, ego_state: EgoState=None,
                  dynamic_objects: List[DynamicObject]=None) -> None:
         """
         initialization of behavioral state. default values are None and empty list, because the logic for actual updates
         (coming from messages) is done in the update_behavioral_state method.
-        :param cached_map: cached map of type MapAPI
+        :param map_api: cached map of type MapAPI
         :param navigation_plan:
         :param ego_state: ego_state of car
         :param dynamic_objects: list of dynamic objects from state
@@ -54,7 +54,7 @@ class BehavioralState:
         self.logger = logger
 
         # initiate behavioral state with cached map and initial navigation plan
-        self.map = cached_map
+        self.map = map_api
         self._navigation_plan = navigation_plan
 
         # private members, will be updated when new state arrives
@@ -63,7 +63,7 @@ class BehavioralState:
 
         # public members defining internal state, will be used by policy to choose action
         self.ego_state = ego_state
-        self.last_known_ego_state = ego_state
+        self.last_ego_state_on_road = ego_state
         self.dynamic_objects = dynamic_objects
 
         self.current_timestamp = None
@@ -96,14 +96,12 @@ class BehavioralState:
         self.current_velocity = np.linalg.norm([self.ego_state.v_x, self.ego_state.v_y])
 
         # Save last known road localization if car is off road
-        ego_off_road = self.ego_state.road_localization.road_id is None
+        self.ego_off_road = self.ego_state.road_localization.road_id is None
 
-        if ego_off_road:
-            self.ego_off_road = True
+        if self.ego_off_road:
             self.logger.warning("Car is off road! Keeping previous valid Behavioral state")
         else:
-            self.ego_off_road = False
-            self.last_known_ego_state = self.ego_state
+            self.last_ego_state_on_road = self.ego_state
 
         # Filter static & dynamic objects that are relevant to car's navigation
         self.dynamic_objects = []

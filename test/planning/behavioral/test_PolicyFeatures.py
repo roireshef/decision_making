@@ -47,7 +47,7 @@ def test_get_closest_object_on_lane_ComplexScenraio_success():
 
         objects_list.append(static_object)
 
-    behavioral_state = BehavioralState(logger=logger, cached_map=map_api, navigation_plan=navigation_plan,
+    behavioral_state = BehavioralState(logger=logger, map_api=map_api, navigation_plan=navigation_plan,
                                        ego_state=ego_state, dynamic_objects=objects_list)
 
     lat_options_in_meters = np.array(range(20)) * 0.5 - 0.5
