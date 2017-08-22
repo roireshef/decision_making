@@ -4,9 +4,10 @@ import numpy as np
 from scipy import interpolate as interp
 
 from decision_making.src.global_constants import *
-from decision_making.src.planning.utils import math as robust_math
+from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils import tf_transformations
 from decision_making.src.planning.utils.columns import *
+
 
 class CartesianFrame:
     @staticmethod
@@ -43,10 +44,21 @@ class CartesianFrame:
         :param translation: a [x, y, z] translation vector
         :return: a 3x3 numpy matrix for projection (translation+rotation)
         """
-        # TODO: reimplement without tf (ROS) dependency, if needed
-        # rotation_matrix = tf.transformations.quaternion_matrix(quaternion)     #rotation matrix
-        # return CartesianFrame.homo_matrix_3d(rotation_matrix, translation)
-        pass
+        rotation_matrix = tf_transformations.quaternion_matrix(quaternion)
+        return CartesianFrame.homo_matrix_3d(rotation_matrix, translation)
+
+    @staticmethod
+    def homo_matrix_3d_from_euler(x_rot: float, y_rot: float, z_rot: float, translation: np.ndarray) -> np.ndarray:
+        """
+        Generates a 3D homogeneous matrix for cartesian frame projections
+        :param x_rot: euler rotation around x-axis (0 for no rotation)
+        :param y_rot: euler rotation around y-axis (0 for no rotation)
+        :param z_rot: euler rotation around z-axis (0 for no rotation)
+        :param translation: a [x, y, z] translation vector
+        :return: a 3x3 numpy matrix for projection (translation+rotation)
+        """
+        quaternion = tf_transformations.quaternion_from_euler(x_rot, y_rot, z_rot, 'ryxz')
+        return CartesianFrame.homo_matrix_3d_from_quaternion(quaternion, translation)
 
     @staticmethod
     def add_yaw_and_derivatives(xy_points: np.ndarray) -> np.ndarray:
@@ -103,10 +115,10 @@ class CartesianFrame:
                              'actual arc length (' + org_s + ')')
 
         # handles cases where we suffer from floating point division inaccuracies
-        num_samples = robust_math.div(desired_curve_len, step_size) + 1
+        num_samples = Math.div(desired_curve_len, step_size) + 1
 
         # if step_size must be preserved but desired_curve_len is not a multiply of step_size - trim desired_curve_len
-        if robust_math.mod(desired_curve_len, step_size) > 0 and preserve_step_size:
+        if Math.mod(desired_curve_len, step_size) > 0 and preserve_step_size:
             desired_curve_len = (num_samples - 1) * step_size
             effective_step_size = step_size
         else:
@@ -122,75 +134,6 @@ class CartesianFrame:
             interp_curve[:, col] = curve_func(s)
 
         return interp_curve, effective_step_size
-
-    @staticmethod
-    def calc_point_segment_dist(p: np.ndarray, p_start: np.ndarray, p_end: np.ndarray) -> (int, float, float):
-        """
-        Given point p and directed segment p1->p2, calculate:
-            1. from which side p is located relatively to the line p1->p2,
-            2. the closest distance from p to the segment,
-            3. length of the projection of p on the segment (zero if the projection is outside the segment).
-        :param p: 2D Point
-        :param p_start: first edge of 2D segment
-        :param p_end: second edge of 2D segment
-        :return: signed distance between the point p and the segment p1->p2; length of the projection of p on the segment
-        """
-        segment = p_end - p_start
-        segment_start_to_p = p - p_start
-        segment_p_to_end = p_end - p
-        if segment[0] == 0 and segment[1] == 0:
-            return 0, np.linalg.norm(segment_start_to_p), 0
-        dot1 = np.dot(segment, segment_start_to_p)
-        dot2 = np.dot(segment, segment_p_to_end)
-        normal = np.array([-segment[1], segment[0]])  # normal of v toward left if v looks up
-        dotn = np.dot(normal, segment_start_to_p)
-        sign = np.sign(dotn)
-        proj = 0
-        if dot1 > 0 and dot2 > 0:  # then p is between p1,p2, so calc dist to the line
-            one_over_vnorm = 1. / np.linalg.norm(segment)
-            dist = dotn * one_over_vnorm * sign  # always >= 0
-            proj = dot1 * one_over_vnorm  # length of projection of v1 on v
-        elif dot1 <= 0:
-            dist = np.linalg.norm(segment_start_to_p)
-        else:
-            dist = np.linalg.norm(segment_p_to_end)
-        return sign, dist, proj
-
-
-
-    @staticmethod
-    def get_vector_in_objective_frame(target_vector: np.array, ego_position: np.array,
-                                      ego_orientation: Union[float, np.array]):
-        """
-        :param target_vector: (x,y,z) array of size [3,]
-        :param ego_position: translation of ego frame: (x,y,z) array of size [3,]
-        :param ego_orientation: orientation of ego frame. Can be either yaw scalar, or quaternion vector
-        :return:
-        """
-        if hasattr(ego_orientation, "__len__"):
-            # Orientation is quaternion numpy array
-            quaternion = ego_orientation
-        else:
-            # Orientation contains yaw
-            quaternion = tf_transformations.quaternion_from_euler(0, 0, ego_orientation, 'ryxz')
-
-        car_rotation = tf_transformations.quaternion_matrix(quaternion)
-        car_position = np.array(ego_position).reshape([3, -1])
-        if len(target_vector.shape) == 1:
-            target_vector = target_vector.reshape([3, -1])
-        elif target_vector.shape[0] != 3:
-            target_vector = target_vector.transpose()
-        target_pos_in_obj_frame = np.dot(np.linalg.pinv(car_rotation[0:3, 0:3]), target_vector - car_position)
-
-        return target_pos_in_obj_frame
-
-    @staticmethod
-    def convert_yaw_to_quaternion(yaw: float):
-        """
-        :param yaw: angle in [rad]
-        :return: quaternion
-        """
-        return tf_transformations.quaternion_from_euler(0, 0, yaw, 'ryxz')
 
 
 class FrenetMovingFrame:
@@ -339,6 +282,7 @@ class FrenetMovingFrame:
                                k.reshape([num_t, num_p, 1])), axis=2)
 
 
+# TODO: change to matrix operations, use numpy arrays instead of individual values or tuples
 class Dynamics:
     """
     predicting location & velocity for moving objects
