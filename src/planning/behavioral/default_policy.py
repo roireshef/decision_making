@@ -35,6 +35,12 @@ class DefaultPolicyConfig(PolicyConfig):
 
 
 class DefaultPolicy(Policy):
+    """
+    The policy chooses a lateral offset according to a logical process that
+    takes into account the distance to the closest object on each lane.
+    The selected lateral offset then defines the reference route that is
+    forwarded to the trajectory planner.
+    """
     def __init__(self, logger: Logger, policy_config: DefaultPolicyConfig):
         super().__init__(logger=logger, policy_config=policy_config)
 
