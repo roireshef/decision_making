@@ -1,11 +1,11 @@
 import inspect
-from typing import List, TypeVar
-import typing
+from enum import Enum
+from typing import List, Generic
 
 import numpy as np
 
 from decision_making.src.messages.dds_message import *
-from decision_making.src.messages.exceptions import MsgDeserializationError
+from decision_making.src.messages.exceptions import MsgDeserializationError, MsgSerializationError
 
 
 class DDSTypedMsg(DDSMsg):
@@ -14,20 +14,34 @@ class DDSTypedMsg(DDSMsg):
         used to create the dds message
         :return: dict containing all the fields of the class
         """
-        self_dict = self.__dict__
-        ser_dict = {}
-        for name, tpe in self.__init__.__annotations__.items():
-            if inspect.isclass(tpe):
-                if issubclass(tpe, np.ndarray):
-                    ser_dict[name] = {'array': self_dict[name].flat.__array__().tolist(),
-                                      'shape': list(self_dict[name].shape)}
-                elif issubclass(tpe, list):
-                    ser_dict[name] = list(map(lambda x: x.serialize(), self_dict[name]))
-                elif inspect.isclass(tpe) and issubclass(tpe, DDSTypedMsg):
-                    ser_dict[name] = self_dict[name].serialize()
+        try:
+            self_dict = self.__dict__
+            ser_dict = {}
+
+            # enumerate all fields (and their types) in the constructor
+            for name, tpe in self.__init__.__annotations__.items():
+                # if the member type (in the constructor) is a class - serialize it
+                if inspect.isclass(tpe):
+                    # validate this is the right class
+                    if not issubclass(self_dict[name], tpe):
+                        raise ValueError("member " + name + " with value " + str(self_dict[name]) +
+                                         " is not " + str(tpe))
+                    if issubclass(tpe, np.ndarray):
+                        ser_dict[name] = {'array': self_dict[name].flat.__array__().tolist(),
+                                          'shape': list(self_dict[name].shape)}
+                    elif issubclass(tpe, list):
+                        ser_dict[name] = list(map(lambda x: x.serialize(), self_dict[name]))
+                    elif issubclass(tpe, Enum):
+                        ser_dict[name] = self_dict[name].name   # save the name of the Enum's value (string)
+                    elif inspect.isclass(tpe) and issubclass(tpe, DDSTypedMsg):
+                        ser_dict[name] = self_dict[name].serialize()
+                # if the member type in the constructor is a primitive - copy as is
                 else:
                     ser_dict[name] = self_dict[name]
-        return ser_dict
+            return ser_dict
+        except e:
+            raise MsgSerializationError("Serialization error: could not serialize " +
+                                        str(self_dict[name]) + " into " + str(tpe))
 
     @classmethod
     def deserialize(cls, message: dict):
@@ -46,10 +60,12 @@ class DDSTypedMsg(DDSMsg):
                         deser_dict[name] = tpe.deserialize(message[name])
                     elif issubclass(tpe, List):
                         deser_dict[name] = list(map(lambda d: tpe.__args__[0].deserialize(d), message[name]))
+                    elif issubclass(tpe, Enum):
+                        deser_dict[name] = tpe[message[name]]
                     else:
                         deser_dict[name] = message[name]
             return cls(**deser_dict)
-        except:
+        except e:
             raise MsgDeserializationError("Deserialization error: could not deserialize into " +
-                                          cls.__class__.__name__ + " from " + str(message))
+                                          cls.__class__.__name__ + " from " + str(message) + ".\n" + str(e))
 
