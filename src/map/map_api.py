@@ -122,9 +122,9 @@ class MapAPI:
             road_ids = self.find_roads_containing_point(1, x, y)
         else:
             road_ids = self.find_roads_containing_point(0, x, y)
-            if road_ids is None:
+            if len(road_ids) == 0:
                 road_ids = self.find_roads_containing_point(1, x, y)
-        if road_ids is None or len(road_ids) == 0:
+        if len(road_ids) == 0:
             return None, None, None, None, None, None
 
         # find the closest road to (x,y) among the road_ids list
