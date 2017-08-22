@@ -6,15 +6,18 @@ import numpy as np
 
 class Math:
     @staticmethod
-    def clipped_exponent(x: np.ndarray, w: float, k: float) -> np.ndarray:
+    def clipped_exponent(x: np.ndarray, w: float, k: float,
+                         min_clip: float=0, max_clip: float=EXP_CLIP_TH) -> np.ndarray:
         """
         compute sigmoid with clipping the exponent between [0, EXP_CLIP_TH]
         :param x: sigmoid function is f(x) = w / (1 + exp(k * x))
         :param w: sigmoid function is f(x) = w / (1 + exp(k * x))
         :param k: sigmoid function is f(x) = w / (1 + exp(k * x))
+        :param min_clip: clips the (k * x) part for too low values. default threshold is 0
+        :param max_clip: clips the (k * x) part for too high values. default threshold is EXP_CLIP_TH
         :return: numpy array of exponentiated values
         """
-        return w * np.sum(np.exp(np.clip(k * x, 0, EXP_CLIP_TH)), axis=1)
+        return w * np.sum(np.exp(np.clip(k * x, min_clip, max_clip)), axis=1)
 
     @staticmethod
     def div(a: float,  b: float, precision: float = DIVISION_FLOATING_ACCURACY):

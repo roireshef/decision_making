@@ -6,10 +6,11 @@ import numpy as np
 from decision_making.src.global_constants import *
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
-from decision_making.src.planning.trajectory.cost_function import SigmoidStatic2DBoxObstacle, CostUtils
+from decision_making.src.planning.trajectory.cost_function import SigmoidStatic2DBoxObstacle
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.planning.utils.columns import *
 from decision_making.src.planning.utils.geometry_utils import FrenetMovingFrame
+from decision_making.src.planning.utils.math import Math
 from decision_making.src.state.state import State
 from logging import Logger
 
@@ -128,12 +129,12 @@ class WerlingPlanner(TrajectoryPlanner):
         # add to deviations_costs the costs of deviations from the left [lane, shoulder, road]
         for exp in [params.left_lane_cost, params.left_shoulder_cost, params.left_road_cost]:
             left_offsets = ftrajectories[:, :, F_DX] - exp.offset
-            deviations_costs += CostUtils.compute_clipped_exponent(left_offsets, exp.k, exp.w)
+            deviations_costs += Math.clipped_exponent(left_offsets, exp.k, exp.w)
 
         # add to deviations_costs the costs of deviations from the right [lane, shoulder, road]
         for exp in [params.right_lane_cost, params.right_shoulder_cost, params.right_road_cost]:
             right_offsets = np.negative(ftrajectories[:, :, F_DX]) - exp.offset
-            deviations_costs += CostUtils.compute_clipped_exponent(right_offsets, exp.k, exp.w)
+            deviations_costs += Math.clipped_exponent(right_offsets, exp.k, exp.w)
 
         ''' TOTAL '''
         return obstacles_costs + dist_from_ref_costs + deviations_costs
