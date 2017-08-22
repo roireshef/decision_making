@@ -9,15 +9,10 @@ from logging import Logger
 
 
 class StateModule(DmModule):
-    def __init__(self, dds: DdsPubSub, logger: Logger):
+    def __init__(self, dds: DdsPubSub, logger: Logger, map_api: MapAPI, occupancy_state: Union[OccupancyState, None],
+                 dynamic_objects: Union[List[DynamicObject], None], ego_state: Union[EgoState, None]):
         super().__init__(dds, logger)
-
-        self.map_api = NaiveCacheMap(MAP_FILE_NAME)
-
-        occupancy_state = OccupancyState(0, np.array([]), np.array([]))
-        dynamic_objects = []
-        size = ObjectSize(0, 0, 0)
-        ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 0, 0, 0, 0, 0, 0)
+        self.map_api = map_api
         self.state = State(occupancy_state, dynamic_objects, ego_state)
 
     def _start_impl(self):
