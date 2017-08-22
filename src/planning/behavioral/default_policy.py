@@ -135,7 +135,7 @@ class DefaultPolicy(Policy):
             current_center_lane_index_in_grid = \
                 np.where(latitude_options_in_lanes == current_lane_latitude)[0][0]
             # check which options are in the center of lane
-            center_of_lane = np.isclose(latitude_options_in_lanes - 0.5 % 1.0,
+            center_of_lane = np.isclose(np.mod(latitude_options_in_lanes - 0.5, 1.0),
                                         np.zeros(shape=[num_of_valid_latitude_options]))
             other_center_lane_indexes_in_grid = \
                 np.where((latitude_options_in_lanes != current_lane_latitude) & center_of_lane)[
