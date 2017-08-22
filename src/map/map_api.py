@@ -138,16 +138,8 @@ class MapAPI:
         if road_ids is None or len(road_ids) == 0:
             return None, None, None, None, None, None
 
-        # find the closest road to (x,y)
-        closest_lat = LARGE_NUM
-        closest_id = closest_sign = closest_yaw = closest_lon = None
-        for road_id in road_ids:
-            sign, lat_dist, lon, road_vec = self._convert_world_to_lat_lon_for_given_road(x, y, road_id)
-            if lat_dist < closest_lat:
-                road_yaw = np.arctan2(road_vec[1], road_vec[0])
-                (closest_lat, closest_sign, closest_lon, closest_yaw, closest_id) = \
-                    (lat_dist, sign, lon, road_yaw, road_id)
-        (lat_dist, sign, lon, road_yaw, road_id) = (closest_lat, closest_sign, closest_lon, closest_yaw, closest_id)
+        # find the closest road to (x,y) among the road_ids list
+        (lat_dist, sign, lon, road_yaw, road_id) = self.__find_closest_road(x, y, road_ids)
 
         road_details = self._cached_map_model.roads_data[road_id]
         lanes_num = road_details.lanes_num
@@ -292,9 +284,8 @@ class MapAPI:
                     partial_path_points = path_points
 
             from_idx = 0
-            dx = path[0, -1] - partial_path_points[0, 0]
-            dy = path[1, -1] - partial_path_points[1, 0]
-            if dx * dx + dy * dy == 0:  # avoid duplicated start point of the next path
+            d_xy = path[:, -1] - partial_path_points[:, 0]
+            if np.sum(d_xy ** 2) == 0:  # avoid duplicated start point of the next path
                 from_idx = 1
             path = np.concatenate((path, partial_path_points[:, from_idx:]), axis=1)
             achieved_lookahead += road_length
@@ -313,9 +304,8 @@ class MapAPI:
         if path_length > 1:
             path[:, -1] = last_exact_lon_point[0:2]
         else:
-            dx = path[0, -1] - last_exact_lon_point[0]
-            dy = path[1, -1] - last_exact_lon_point[1]
-            if dx * dx + dy * dy == 0:  # avoid duplicated point of the next path
+            d_xy = path[:, -1] - last_exact_lon_point
+            if np.sum(d_xy ** 2) == 0:  # avoid duplicated point of the next path
                 path = np.concatenate((path, last_exact_lon_point[0:2].reshape([2, 1])), axis=1)
 
         if lat != 0:
@@ -345,6 +335,19 @@ class MapAPI:
 
     def update_perceived_roads(self):
         pass
+
+    def __find_closest_road(self, x, y, road_ids):
+        # type: (float, float, List[int]) -> (float, float, float, float, float)
+        # find the closest road to (x,y)
+        closest_lat = LARGE_NUM
+        closest_id = closest_sign = closest_yaw = closest_lon = None
+        for road_id in road_ids:
+            sign, lat_dist, lon, road_vec = self._convert_world_to_lat_lon_for_given_road(x, y, road_id)
+            if lat_dist < closest_lat:
+                road_yaw = np.arctan2(road_vec[1], road_vec[0])
+                (closest_lat, closest_sign, closest_lon, closest_yaw, closest_id) = \
+                    (lat_dist, sign, lon, road_yaw, road_id)
+        return (closest_lat, closest_sign, closest_lon, closest_yaw, closest_id)
 
     @staticmethod
     def _shift_road_vector_in_lat(points, lat_shift):
