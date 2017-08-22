@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class OptimalControl:
+class OptimalControlUtils:
     class QuinticPoly1D:
         @staticmethod
         def solve(A_inv: np.ndarray, constraints: np.ndarray) -> np.ndarray:
