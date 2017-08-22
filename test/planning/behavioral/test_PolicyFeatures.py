@@ -3,7 +3,7 @@ from decision_making.src.map.map_api import MapAPI
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.default_policy import DefaultPolicyConfig
-from decision_making.src.planning.behavioral.policy_features import PolicyFeatures
+from decision_making.src.planning.behavioral.policy_features import DefaultPolicyFeatures
 from decision_making.src.state.state import EgoState, RoadLocalization, RelativeRoadLocalization, DynamicObject, \
     ObjectSize
 from rte.python.logger.AV_logger import AV_Logger
@@ -51,9 +51,9 @@ def test_get_closest_object_on_lane_ComplexScenraio_success():
                                        ego_state=ego_state, dynamic_objects=objects_list)
 
     lat_options_in_meters = np.array(range(20)) * 0.5 - 0.5
-    closest_objects_per_lat_options = PolicyFeatures.get_closest_object_on_lane(policy_config=policy_config,
-                                                                                behavioral_state=behavioral_state,
-                                                                                lat_options=lat_options_in_meters)
+    closest_objects_per_lat_options = DefaultPolicyFeatures.get_closest_object_on_lane(policy_config=policy_config,
+                                                                                       behavioral_state=behavioral_state,
+                                                                                       lat_options=lat_options_in_meters)
 
     assert np.all(np.isinf(closest_objects_per_lat_options[-1:-4:-1]))
     assert np.isinf(closest_objects_per_lat_options[0])

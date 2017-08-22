@@ -9,7 +9,7 @@ Static methods for computing complex features, e.g., ACDA speed.
 '''
 
 
-class PolicyFeatures:
+class DefaultPolicyFeatures:
     @staticmethod
     def compute_acda_speed(behavioral_state: BehavioralState):
         pass

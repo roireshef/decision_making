@@ -8,6 +8,7 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.constants import POLICY_ACTION_SPACE_ADDITIVE_LATERAL_OFFSETS_IN_LANES
 from decision_making.src.planning.behavioral.policy import Policy, PolicyConfig
+from decision_making.src.planning.behavioral.policy_features import DefaultPolicyFeatures
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils import geometry_utils
 from decision_making.src.planning.utils.acda import AcdaApi
@@ -89,8 +90,6 @@ class DefaultPolicy(Policy):
         :return target latitude for driving, measured in [lanes]
         """
 
-        from decision_making.src.planning.behavioral.policy_features import PolicyFeatures
-
         num_of_lanes, road_width, _, _ = behavioral_state.map.get_road_details(
             behavioral_state.ego_state.road_localization.road_id)
         lane_width = float(road_width) / num_of_lanes
@@ -101,97 +100,120 @@ class DefaultPolicy(Policy):
 
         # Load policy parameters config
         with self._policy_config as pc:
-
-            # Create a grid in latitude of lane offsets that will define latitude of the target trajectory.
-            latitude_offset_grid_relative_to_current_center_lane = np.array(
-                POLICY_ACTION_SPACE_ADDITIVE_LATERAL_OFFSETS_IN_LANES)
-            absolute_latitude_offset_grid_in_lanes = current_lane_latitude + \
-                                                     latitude_offset_grid_relative_to_current_center_lane
-            num_of_latitude_options = len(latitude_offset_grid_relative_to_current_center_lane)
-            rightmost_edge_of_road = 0.0  # in lanes
-            leftmost_edge_of_road = num_of_lanes  # in lanes
-
-            # The actions is a grid of different lateral offsets that will be used
-            # as reference route for the trajectory planner. the different options of actions
-            # is stored in 'latitude_options_in_lanes'
-            latitude_options_in_lanes = [absolute_latitude_offset_grid_in_lanes[ind] for ind in
-                                         range(num_of_latitude_options)
-                                         if ((absolute_latitude_offset_grid_in_lanes[ind] >
-                                              leftmost_edge_of_road - pc.margin_from_road_edge)
-                                             and (absolute_latitude_offset_grid_in_lanes[ind]
-                                                  < rightmost_edge_of_road + pc.margin_from_road_edge))]
-            num_of_valid_latitude_options = len(latitude_options_in_lanes)
-            latitude_options_in_lanes = np.array(latitude_options_in_lanes)
+            # Creates a grid of latitude locations on road, which will be used to determine
+            # the target latitude of the driving trajectory
+            latitude_options_in_lanes = \
+                DefaultPolicy.__generate_lateral_offsets_action_grid(num_of_lanes=num_of_lanes,
+                                                                     current_lane_latitude=current_lane_latitude,
+                                                                     policy_config=pc)
             latitude_options_in_meters = lane_width * latitude_options_in_lanes
 
             # For each lateral offset, find closest blocking object on lane
             closest_blocking_object_in_lane = \
-                PolicyFeatures.get_closest_object_on_lane(policy_config=self._policy_config,
-                                                          behavioral_state=behavioral_state,
-                                                          lat_options=latitude_options_in_meters)
+                DefaultPolicyFeatures.get_closest_object_on_lane(policy_config=pc,
+                                                                 behavioral_state=behavioral_state,
+                                                                 lat_options=latitude_options_in_meters)
 
-            # High-level policy:
             # Choose a proper action (latitude offset from current center lane)
-            current_center_lane_index_in_grid = \
-                np.where(latitude_options_in_lanes == current_lane_latitude)[0][0]
-            # check which options are in the center of lane
-            center_of_lane = np.isclose(np.mod(latitude_options_in_lanes - 0.5, 1.0),
-                                        np.zeros(shape=[num_of_valid_latitude_options]))
-            other_center_lane_indexes_in_grid = \
-                np.where((latitude_options_in_lanes != current_lane_latitude) & center_of_lane)[
-                    0]  # check if integer
-
-            object_distance_in_current_lane = closest_blocking_object_in_lane[current_center_lane_index_in_grid]
-            other_lanes_are_available = len(other_center_lane_indexes_in_grid) > 0
-
-            # the best center of lane is where the blocking object is most far
-            best_center_of_lane_index_in_grid = other_center_lane_indexes_in_grid[
-                np.argmax(closest_blocking_object_in_lane[other_center_lane_indexes_in_grid])]
-            best_center_of_lane_distance_from_object = closest_blocking_object_in_lane[
-                best_center_of_lane_index_in_grid]
-
-            # Prefer current center lane if nearest object is far enough
-            chosen_action = current_center_lane_index_in_grid
-
-            # Choose other lane only if improvement is sufficient
-            if other_lanes_are_available \
-                    and (
-                                object_distance_in_current_lane <
-                                pc.prefer_other_lanes_where_blocking_object_distance_less_than) \
-                    and (
-                                best_center_of_lane_distance_from_object >
-                                    object_distance_in_current_lane +
-                                    pc.prefer_other_lanes_if_improvement_is_greater_than):
-                chosen_action = best_center_of_lane_index_in_grid
-
-            # If blocking object is too close: choose any valid lateral offset
-            if (object_distance_in_current_lane < pc.prefer_any_lane_center_if_blocking_object_distance_greater_than) \
-                    and (best_center_of_lane_distance_from_object <
-                             pc.prefer_any_lane_center_if_blocking_object_distance_greater_than):
-                chosen_action = np.argmax(closest_blocking_object_in_lane)
+            selected_action, selected_latitude = DefaultPolicy.__select_lateral_offset_from_grid(
+                latitude_options_in_lanes=latitude_options_in_lanes, current_lane_latitude=current_lane_latitude,
+                closest_object_in_lane=closest_blocking_object_in_lane, policy_config=pc)
 
         # Debug objects
-        relevant_options_array = list()
-        selected_option = list()
-        for lat_option_in_meters in latitude_options_in_meters:
-            # Generate lookahead path per each lateral option for debugging and visualization purposes
-            lookahead_path = behavioral_state.map.get_path_lookahead(
-                road_id=behavioral_state.ego_state.road_localization.road_id,
-                lon=behavioral_state.ego_state.road_localization.road_lon, lat=lat_option_in_meters,
-                max_lookahead_distance=global_constants.BEHAVIORAL_PLANNING_LOOKAHEAD_DIST, direction=1)
+        DefaultPolicy.__visualize_high_level_policy(latitude_options_in_meters=latitude_options_in_meters,
+                                                    behavioral_state=behavioral_state, selected_action=selected_action)
 
-            lookahead_path = lookahead_path.transpose()
-            lookahead_path_len = lookahead_path.shape[0]
-            reference_route_xyz = np.concatenate((lookahead_path, np.zeros(shape=[lookahead_path_len, 1])), axis=1)
+        return selected_latitude
 
-            if lat_option_in_meters == latitude_options_in_meters[chosen_action]:
-                selected_option.append(reference_route_xyz)
-            else:
-                relevant_options_array.append(reference_route_xyz)
+    @staticmethod
+    def __select_lateral_offset_from_grid(latitude_options_in_lanes: np.array, current_lane_latitude: float,
+                                          closest_object_in_lane: np.float, policy_config: PolicyConfig) -> (
+            float, float):
+        """
+        Select the best lateral offset to be taken, according to policy
+        :param latitude_options_in_lanes: grid of lateral offsets [lanes]
+        :param current_lane_latitude: current lateral location [m]
+        :param closest_object_in_lane: array of distance to closest object per lane [m]
+        :param policy_config: policy parameters
+        :return: bets action index, best lateral offset [m]
+        """
+        num_of_valid_latitude_options = len(latitude_options_in_lanes)
+
+        current_center_lane_index_in_grid = \
+            np.where(latitude_options_in_lanes == current_lane_latitude)[0][0]
+        # check which options are in the center of lane
+        center_of_lane = np.isclose(np.mod(latitude_options_in_lanes - 0.5, 1.0),
+                                    np.zeros(shape=[num_of_valid_latitude_options]))
+        other_center_lane_indexes_in_grid = \
+            np.where((latitude_options_in_lanes != current_lane_latitude) & center_of_lane)[
+                0]  # check if integer
+
+        object_distance_in_current_lane = closest_object_in_lane[current_center_lane_index_in_grid]
+        other_lanes_are_available = len(other_center_lane_indexes_in_grid) > 0
+
+        # the best center of lane is where the blocking object is most far
+        best_center_of_lane_index_in_grid = other_center_lane_indexes_in_grid[
+            np.argmax(closest_object_in_lane[other_center_lane_indexes_in_grid])]
+        best_center_of_lane_distance_from_object = closest_object_in_lane[
+            best_center_of_lane_index_in_grid]
+
+        # Prefer current center lane if nearest object is far enough
+        selected_action = current_center_lane_index_in_grid
+
+        # Choose other lane only if improvement is sufficient
+        if other_lanes_are_available \
+                and (
+                            object_distance_in_current_lane <
+                            policy_config.prefer_other_lanes_where_blocking_object_distance_less_than) \
+                and (
+                            best_center_of_lane_distance_from_object >
+                                object_distance_in_current_lane +
+                                policy_config.prefer_other_lanes_if_improvement_is_greater_than):
+            selected_action = best_center_of_lane_index_in_grid
+
+        # If blocking object is too close: choose any valid lateral offset
+        if (
+                    object_distance_in_current_lane < policy_config.prefer_any_lane_center_if_blocking_object_distance_greater_than) \
+                and (best_center_of_lane_distance_from_object <
+                         policy_config.prefer_any_lane_center_if_blocking_object_distance_greater_than):
+            selected_action = np.argmax(closest_object_in_lane)
 
         # return best lane
-        selected_latitude = latitude_options_in_lanes[chosen_action]
-        return selected_latitude
+        selected_latitude = latitude_options_in_lanes[selected_action]
+
+        return selected_action, selected_latitude
+
+    @staticmethod
+    def __generate_lateral_offsets_action_grid(num_of_lanes: float, current_lane_latitude: float,
+                                               policy_config: PolicyConfig) -> np.array:
+        """
+        This function creates a grid of latitude locations on road, which will be used as
+        a discrete action space that determines the target latitude of the driving trajectory.
+        :param num_of_lanes: number of lanes on road
+        :param current_lane_latitude: current road localization
+        :param policy_config: policy parameters
+        :return:
+        """
+        latitude_offset_grid_relative_to_current_center_lane = np.array(
+            POLICY_ACTION_SPACE_ADDITIVE_LATERAL_OFFSETS_IN_LANES)
+        absolute_latitude_offset_grid_in_lanes = current_lane_latitude + \
+                                                 latitude_offset_grid_relative_to_current_center_lane
+        num_of_latitude_options = len(latitude_offset_grid_relative_to_current_center_lane)
+        rightmost_edge_of_road = 0.0  # in lanes
+        leftmost_edge_of_road = num_of_lanes  # in lanes
+
+        # The actions is a grid of different lateral offsets that will be used
+        # as reference route for the trajectory planner. the different options of actions
+        # is stored in 'latitude_options_in_lanes'
+        latitude_options_in_lanes = [absolute_latitude_offset_grid_in_lanes[ind] for ind in
+                                     range(num_of_latitude_options)
+                                     if ((absolute_latitude_offset_grid_in_lanes[ind] >
+                                          leftmost_edge_of_road - policy_config.margin_from_road_edge)
+                                         and (absolute_latitude_offset_grid_in_lanes[ind]
+                                              < rightmost_edge_of_road + policy_config.margin_from_road_edge))]
+        latitude_options_in_lanes = np.array(latitude_options_in_lanes)
+
+        return latitude_options_in_lanes
 
     @staticmethod
     def __generate_reference_route(behavioral_state: BehavioralState, target_lane_latitude: float) -> (
@@ -261,3 +283,26 @@ class DefaultPolicy(Policy):
                                                      strategy=TrajectoryPlanningStrategy.HIGHWAY)
 
         return trajectory_parameters
+
+
+    @staticmethod
+    def __visualize_high_level_policy(latitude_options_in_meters: np.array, behavioral_state: BehavioralState,
+                                      selected_action: float) -> None:
+        # TODO: implement visualization
+        relevant_options_array = list()
+        selected_option = list()
+        for lat_option_in_meters in latitude_options_in_meters:
+            # Generate lookahead path per each lateral option for debugging and visualization purposes
+            lookahead_path = behavioral_state.map.get_path_lookahead(
+                road_id=behavioral_state.ego_state.road_localization.road_id,
+                lon=behavioral_state.ego_state.road_localization.road_lon, lat=lat_option_in_meters,
+                max_lookahead_distance=global_constants.BEHAVIORAL_PLANNING_LOOKAHEAD_DIST, direction=1)
+
+            lookahead_path = lookahead_path.transpose()
+            lookahead_path_len = lookahead_path.shape[0]
+            reference_route_xyz = np.concatenate((lookahead_path, np.zeros(shape=[lookahead_path_len, 1])), axis=1)
+
+            if lat_option_in_meters == latitude_options_in_meters[selected_action]:
+                selected_option.append(reference_route_xyz)
+            else:
+                relevant_options_array.append(reference_route_xyz)
