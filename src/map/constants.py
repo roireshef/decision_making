@@ -37,7 +37,7 @@ OSM_SERVICE_ROAD_WIDTH = 2.5
 OSM_STEPS_ROAD_WIDTH = 0.8
 
 class Sidewalk(Enum):
-    none = 0
-    left = 1
-    right = 2
-    both = 3
+    none = "none"
+    left = "left"
+    right = "right"
+    both = "both"
