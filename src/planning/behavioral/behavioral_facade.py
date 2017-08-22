@@ -43,11 +43,19 @@ class BehavioralFacade(DmModule):
             navigation_plan = self._get_current_navigation_plan()
 
             self._behavioral_state.update_behavioral_state(state, navigation_plan)
-            trajectory_params, behavioral_visualization_message = self._policy.plan(
-                behavioral_state=self._behavioral_state)
 
-            self._publish_results(trajectory_params)
-            self._publish_visualization(behavioral_visualization_message)
+            if self._behavioral_state.current_timestamp is not None:
+                # Plan if we behavioral state has valid timestamp
+                trajectory_params, behavioral_visualization_message = self._policy.plan(
+                    behavioral_state=self._behavioral_state)
+
+            if trajectory_params is not None:
+                # Send plan to trajectory if valid
+                self._publish_results(trajectory_params)
+
+            if behavioral_visualization_message is not None:
+                # Send visualization data if valid
+                self._publish_visualization(behavioral_visualization_message)
 
         except MsgDeserializationError as e:
             self.logger.debug(str(e))
