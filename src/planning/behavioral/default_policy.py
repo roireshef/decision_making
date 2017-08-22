@@ -6,6 +6,7 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryCostPar
 from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
+from decision_making.src.planning.behavioral.constants import POLICY_ACTION_SPACE_ADDITIVE_LATERAL_OFFSETS_IN_LANES
 from decision_making.src.planning.behavioral.policy import Policy, PolicyConfig
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils import geometry_utils
@@ -33,20 +34,26 @@ class DefaultPolicyConfig(PolicyConfig):
 
 
 class DefaultPolicy(Policy):
-
     def __init__(self, logger: Logger, policy_config: DefaultPolicyConfig):
         super().__init__(logger=logger, policy_config=policy_config)
 
     def plan(self, behavioral_state: BehavioralState) -> (TrajectoryParameters, BehavioralVisualizationMsg):
+        """
+        This policy first calls to __high_level_planning that returns a desired lateral offset for driving.
+        On the basis of the desired lateral offset, the policy defines a target state and cost parameters
+          that will be forwarded to the trajectory planner.
+        :param behavioral_state:
+        :return: trajectory parameters for trajectories evaluation, visualization object
+        """
         if behavioral_state.current_timestamp is None:
             # supposed to be prevented in the facade
-            self.logger.warning("Invalid behvioral state: behavioral_state.current_timestamp is None")
+            self.logger.warning("Invalid behavioral state: behavioral_state.current_timestamp is None")
             return None, None
 
         # High-level planning
         target_lat_in_lanes = self.__high_level_planning(behavioral_state)
         target_lane_latitude = behavioral_state.map.convert_lat_in_lanes_to_lat_in_meters(
-            road_id=behavioral_state.current_road_id,
+            road_id=behavioral_state.ego_state.road_localization.road_id,
             lat_in_lanes=target_lat_in_lanes)
 
         # Calculate reference route for driving
@@ -79,14 +86,14 @@ class DefaultPolicy(Policy):
         """
         Generates a high-level plan
         :param behavioral_state: processed behavioral state
-        selected_latitude: target latitude for driving, measured in [lanes]
+        :return target latitude for driving, measured in [lanes]
         """
 
         from decision_making.src.planning.behavioral.policy_features import PolicyFeatures
 
-        lanes_in_current_road, road_width, _, _ = behavioral_state.map.get_road_details(
+        num_of_lanes, road_width, _, _ = behavioral_state.map.get_road_details(
             behavioral_state.ego_state.road_localization.road_id)
-        lane_width_in_meters = float(road_width) / lanes_in_current_road
+        lane_width = float(road_width) / num_of_lanes
         # remain in right most lane
         # return lanes_in_current_road
 
@@ -96,17 +103,20 @@ class DefaultPolicy(Policy):
         with self._policy_config as pc:
 
             # Create a grid in latitude of lane offsets that will define latitude of the target trajectory.
-            latitude_offset_grid_relative_to_current_center_lane = np.array([-1, -0.5, -0.25, 0, 0.25, 0.5, 1])
+            latitude_offset_grid_relative_to_current_center_lane = np.array(
+                POLICY_ACTION_SPACE_ADDITIVE_LATERAL_OFFSETS_IN_LANES)
             absolute_latitude_offset_grid_in_lanes = current_lane_latitude + \
                                                      latitude_offset_grid_relative_to_current_center_lane
             num_of_latitude_options = len(latitude_offset_grid_relative_to_current_center_lane)
+            rightmost_edge_of_road = 0.0 # in lanes
+            leftmost_edge_of_road = num_of_lanes   # in lanes
             latitude_options_in_lanes = [absolute_latitude_offset_grid_in_lanes[ind] for ind in
                                          range(num_of_latitude_options)
                                          if ((absolute_latitude_offset_grid_in_lanes[ind] >
-                                              lanes_in_current_road - pc.margin_from_road_edge)
+                                              leftmost_edge_of_road - pc.margin_from_road_edge)
                                              and (absolute_latitude_offset_grid_in_lanes[ind]
-                                                  < 0.0 + pc.margin_from_road_edge))]
-            latitude_options_in_meters = lane_width_in_meters * latitude_options_in_lanes
+                                                  < rightmost_edge_of_road + pc.margin_from_road_edge))]
+            latitude_options_in_meters = lane_width * latitude_options_in_lanes
 
             # For each lateral offset, find closest blocking object on lane
             closest_blocking_object_in_lane = \

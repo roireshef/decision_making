@@ -1,6 +1,6 @@
 import numpy as np
 
-from decision_making.src.planning.behavioral.behavioral_constants import LATERAL_MARGIN_FROM_OBJECT_TO_ASSUME_OUT_OF_WAY
+from decision_making.src.planning.behavioral.constants import LATERAL_MARGIN_FROM_OBJECT_TO_ASSUME_OUT_OF_WAY
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.default_policy import DefaultPolicyConfig
 
