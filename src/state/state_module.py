@@ -50,7 +50,7 @@ class StateModule(DmModule):
             v_y = dyn_obj_dict["velocity"]["v_y"]
 
             dyn_obj = DynamicObject(id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, None, None)
-            self.fill_road_localization(dyn_obj)
+            self.fill_road_localization(dyn_obj, self.state.ego_state, self.map_api)
             dyn_obj_list.append(dyn_obj)
 
     def __self_localization_callback(self, ego_localization: dict):
@@ -66,7 +66,7 @@ class StateModule(DmModule):
         v_y = ego_localization["velocity"]["v_y"]
         size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
         self.state.ego_state = EgoState(0, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, None, None, None)
-        self.fill_road_localization(self.state.ego_state)
+        self.fill_road_localization(self.state.ego_state, None, self.map_api)
 
     def __occupancy_state_callback(self, occupancy: dict):
         self.logger.debug("got occupancy status %s", occupancy)
@@ -84,15 +84,15 @@ class StateModule(DmModule):
         self.logger.debug("got actuator status %s", actuator)
         self.state.ego_state.steering_angle = actuator["steering_angle"]
 
-    def fill_road_localization(self, obj):
-        # type: (DynamicObject) -> None
+    @staticmethod
+    def fill_road_localization(obj, ego, map):
+        # type: (DynamicObject, Union[EgoState, None], MapAPI) -> None
         """
         given ego_state fill dyn_obj.road_localization & dyn_obj.rel_road_localization
         :param obj: dynamic object whose road_localization should be filled (may be ego)
         :return: None
         """
-        ego = self.state.ego_state
-        if type(obj) is not EgoState:  # if the object is not ego
+        if ego is not None:  # if the object is not ego
             rel_pos = np.array([obj.x, obj.y, obj.z])
             inv_ego_position = np.array([-ego.x, -ego.y, -ego.z])
             glob_pos = CartesianFrame.get_vector_in_objective_frame(rel_pos, inv_ego_position, -ego.yaw)
@@ -103,12 +103,12 @@ class StateModule(DmModule):
 
         # calculate road coordinates for global coordinates
         road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw = \
-            self.map_api.convert_world_to_lat_lon(glob_pos[0], glob_pos[1], glob_pos[2], glob_yaw)
+            map.convert_world_to_lat_lon(glob_pos[0], glob_pos[1], glob_pos[2], glob_yaw)
         # fill road_localization
         obj.road_localization = RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
 
         # calculate relative road localization
-        if type(obj) is not EgoState:  # if obj is not ego
+        if ego is not None:  # if obj is not ego
             obj.rel_road_localization = \
                 RelativeRoadLocalization(obj.road_localization.full_lat - ego.road_localization.full_lat,
                                          obj.road_localization.road_lon - ego.road_localization.road_lon,
