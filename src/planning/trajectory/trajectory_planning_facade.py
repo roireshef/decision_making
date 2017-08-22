@@ -78,10 +78,8 @@ class TrajectoryPlanningFacade(DmModule):
         self.logger.debug('Received state: %s', input_params)
         return TrajectoryParams.deserialize(input_params)
 
-    # TODO: add type hints
-    def __publish_trajectory(self, results: TrajectoryPlanMsg):
+    def __publish_trajectory(self, results: TrajectoryPlanMsg) -> None:
         self.dds.publish(TRAJECTORY_PUBLISH_TOPIC, results.serialize())
 
-    # TODO: implement message passing
-    def __publish_debug(self, debug_msg: TrajectoryVisualizationMsg):
+    def __publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
         self.dds.publish(TRAJECTORY_VISUALIZATION_TOPIC, debug_msg.serialize())
