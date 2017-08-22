@@ -8,10 +8,11 @@ from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 
 
 class RoadDetails:
-    def __init__(self, id: int, name: str, points: np.ndarray, longitudes: np.ndarray, head_node: int, tail_node: int,
-                 head_layer: int, tail_layer: int, max_layer: int, lanes_num: int, one_way: bool, lane_width: float,
-                 side_walk: Sidewalk, ext_head_yaw: float, ext_tail_yaw: float,
-                 ext_head_lanes: int, ext_tail_lanes: int, turn_lanes: List[str]):
+    def __init__(self, id, name, points, longitudes, head_node, tail_node,
+                 head_layer, tail_layer, max_layer, lanes_num, one_way, lane_width,
+                 side_walk: Sidewalk, ext_head_yaw, ext_tail_yaw,
+                 ext_head_lanes, ext_tail_lanes, turn_lanes):
+        # type: (int, str, np.ndarray, np.ndarray, int, int, int, int, int, int, bool, float, Sidewalk, float, float, int, int, List[str]) -> None
         """
         Road details class
         :param id: road's id
