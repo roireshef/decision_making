@@ -64,7 +64,7 @@ class BehavioralFacade(DmModule):
 
     def _get_current_state(self) -> State:
         input_state = self.dds.get_latest_sample(topic=BEHAVIORAL_STATE_READER_TOPIC, timeout=1)
-        self.logger.debug('Received State: ' + str(input_state))
+        self.logger.debug('Received State:  %s', input_state)
         return State.deserialize(input_state)
 
     def _get_current_navigation_plan(self) -> NavigationPlanMsg:

@@ -39,7 +39,8 @@ class DefaultPolicy(Policy):
 
     def plan(self, behavioral_state: BehavioralState) -> (TrajectoryParameters, BehavioralVisualizationMsg):
         if behavioral_state.current_timestamp is None:
-            # Only happens on init
+            # supposed to be prevented in the facade
+            self.logger.warning("Invalid behvioral state: behavioral_state.current_timestamp is None")
             return None, None
 
         # High-level planning

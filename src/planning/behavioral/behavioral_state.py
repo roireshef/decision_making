@@ -40,8 +40,8 @@ class LaneObjectInfo:
 
 
 class BehavioralState:
-    def __init__(self, logger: Logger, map_api: MapAPI, navigation_plan: NavigationPlanMsg, ego_state: EgoState=None,
-                 dynamic_objects: List[DynamicObject]=None) -> None:
+    def __init__(self, logger: Logger, map_api: MapAPI, navigation_plan: NavigationPlanMsg, ego_state: EgoState = None,
+                 dynamic_objects: List[DynamicObject] = None) -> None:
         """
         initialization of behavioral state. default values are None and empty list, because the logic for actual updates
         (coming from messages) is done in the update_behavioral_state method.
@@ -72,7 +72,6 @@ class BehavioralState:
         self.current_velocity = None
         self.ego_off_road = None
         self.road_data = None
-
 
     def update_behavioral_state(self, state: State, navigation_plan: NavigationPlanMsg) -> None:
         """
@@ -106,7 +105,6 @@ class BehavioralState:
         # Filter static & dynamic objects that are relevant to car's navigation
         self.dynamic_objects = []
         for dynamic_obj in state.dynamic_objects:
-            if dynamic_obj.rel_road_localization.rel_lon is not None:
-                # ignoring everything not in our path looking forward
-                if dynamic_obj.rel_road_localization.rel_lon > 0:
-                    self.dynamic_objects.append(dynamic_obj)
+            # ignoring everything not in our path looking forward
+            if dynamic_obj.rel_road_localization.rel_lon > 0:
+                self.dynamic_objects.append(dynamic_obj)
