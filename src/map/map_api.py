@@ -70,19 +70,19 @@ class MapAPI:
         self._cached_map_model = map_model
         pass
 
-    def find_roads_containing_point(self, layer, x, y):
+    def find_roads_containing_point(self, layer, world_x, world_y):
         # type: (int, float, float) -> List[int]
         """
         shortcut to a cell of the map xy2road_map
         :param layer: 0 ground, 1 on bridge, 2 bridge above bridge, etc
-        :param x: world coordinates in meters
-        :param y: world coordinates in meters
-        :return: road_ids containing the point x, y
+        :param world_x: world coordinates in meters
+        :param world_y: world coordinates in meters
+        :return: road_ids containing the point (world_x, world_y)
         """
-        X = int(round(x / ROADS_MAP_TILE_SIZE))
-        Y = int(round(y / ROADS_MAP_TILE_SIZE))
-        if (layer, X, Y) in self._cached_map_model.xy2road_map:
-            return self._cached_map_model.xy2road_map[(layer, X, Y)]
+        cell_x = int(round(world_x / ROADS_MAP_TILE_SIZE))
+        cell_y = int(round(world_y / ROADS_MAP_TILE_SIZE))
+        if (layer, cell_x, cell_y) in self._cached_map_model.xy2road_map:
+            return self._cached_map_model.xy2road_map[(layer, cell_x, cell_y)]
         return []
 
     def get_center_lanes_latitudes(self, road_id):
