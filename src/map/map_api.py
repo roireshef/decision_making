@@ -5,22 +5,12 @@ from decision_making.src.map.map_model import MapModel
 from typing import List, Union
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
-from enum import Enum
-
-class RoadAttr(Enum):
-    id = "id"
-    points = "points"
-    longitudes = "longitudes"
-    width = "width"
-    lanes_num = "lanes"
-    head_layer = "head_layer"
-    tail_layer = "tail_layer"
 
 
 class RoadDetails:
     def __init__(self, id: int, name: str, points: np.ndarray, longitudes: np.ndarray, head_node: int, tail_node: int,
                  head_layer: int, tail_layer: int, max_layer: int, lanes_num: int, one_way: bool, lane_width: float,
-                 side_walk: str, ext_head_yaw: float, ext_tail_yaw: float,
+                 side_walk: Sidewalk, ext_head_yaw: float, ext_tail_yaw: float,
                  ext_head_lanes: int, ext_tail_lanes: int, turn_lanes: List[str]):
         """
         Road details class
@@ -81,9 +71,7 @@ class MapAPI:
         """
         cell_x = int(round(world_x / ROADS_MAP_TILE_SIZE))
         cell_y = int(round(world_y / ROADS_MAP_TILE_SIZE))
-        if (layer, cell_x, cell_y) in self._cached_map_model.xy2road_map:
-            return self._cached_map_model.xy2road_map[(layer, cell_x, cell_y)]
-        return []
+        return self._cached_map_model.xy2road_map.get((layer, cell_x, cell_y), default=[])
 
     def get_center_lanes_latitudes(self, road_id):
         # type: (int) -> np.array
@@ -99,7 +87,7 @@ class MapAPI:
         center_lanes = lane_width / 2 + np.array(range(lanes_num)) * lane_width
         return center_lanes
 
-    def get_main_road_details(self, road_id):
+    def get_road_main_details(self, road_id):
         # type: (int) -> (int, float, float, np.ndarray)
         """
         get details of a given road

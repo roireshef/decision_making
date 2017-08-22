@@ -1,3 +1,4 @@
+from enum import Enum
 
 EPSILON = 0.001
 LARGE_NUM = 1000000
@@ -34,3 +35,9 @@ OSM_TERTIARY_LINK_ROAD_WIDTH = 3.0
 OSM_RESIDENTIAL_ROAD_WIDTH = 2.7
 OSM_SERVICE_ROAD_WIDTH = 2.5
 OSM_STEPS_ROAD_WIDTH = 0.8
+
+class Sidewalk(Enum):
+    none = 0
+    left = 1
+    right = 2
+    both = 3
