@@ -49,7 +49,7 @@ class TrajectoryCostParams(DDSTypedMsg):
         self.acceleration_limits = acceleration_limits
 
 
-class TrajectoryParameters(DDSTypedMsg):
+class TrajectoryParams(DDSTypedMsg):
     def __init__(self, strategy: TrajectoryPlanningStrategy, reference_route: np.ndarray,
                  target_state: np.ndarray, cost_params: TrajectoryCostParams, time: float):
         """

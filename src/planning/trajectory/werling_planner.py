@@ -6,7 +6,7 @@ import numpy as np
 from decision_making.src.global_constants import *
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
-from decision_making.src.planning.trajectory.cost_function import SigmoidStatic2DBoxObstacle
+from decision_making.src.planning.trajectory.cost_function import SigmoidStatic2DBoxObstacle, CostUtils
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.planning.utils.columns import *
 from decision_making.src.planning.utils.geometry_utils import FrenetMovingFrame
@@ -95,7 +95,8 @@ class WerlingPlanner(TrajectoryPlanner):
         return ftrajectories[conforms]
 
     @staticmethod
-    def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: State, params: TrajectoryCostParams):
+    def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: State,
+                      params: TrajectoryCostParams):
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
@@ -105,45 +106,37 @@ class WerlingPlanner(TrajectoryPlanner):
         :return:
         """
         # TODO: add jerk cost
+        # TODO: handle dynamic objects?
+
+        # TODO: max instead of sum? what if close_obstacles is empty?
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
+        # TODO: validate that both obstacles and ego are in world coordinates. if not, change the filter cond.
+        with state.ego_state as ego, params.obstacle_cost as exp:
+            close_obstacles = [SigmoidStatic2DBoxObstacle.from_object_state(obs, exp.k, exp.offset)
+                               for obs in state.dynamic_objects
+                               if np.linalg.norm([obs.x - ego.x, obs.y - ego.y]) < MAXIMAL_OBSTACLE_PROXIMITY]
 
-        static_obstacles = [
-            SigmoidStatic2DBoxObstacle.from_object_state(obs, params.obstacle_cost.k, params.obstacle_cost.offset)
-            for obs in state.static_objects]
-
-        # TODO: consider max over trajectory points?
-        # TODO: what if there's no static obstacles? what if close_obstacles is empty?
-        close_obstacles = filter(lambda o: np.linalg.norm([o.x, o.y]) < MAXIMAL_OBSTACLE_PROXIMITY, static_obstacles)
-
-        obstacles_costs = np.sum([obs.compute_cost(ctrajectories[:, :, 0:2]) for obs in close_obstacles], axis=0)
+            cost_per_obstacle = [obs.compute_cost(ctrajectories[:, :, 0:2]) for obs in close_obstacles]
+            obstacles_costs = exp.w * np.sum(cost_per_obstacle, axis=0)
 
         ''' DISTANCE FROM REFERENCE ROUTE ( DX ^ 2 ) '''
+        dist_from_ref_costs = params.dist_from_ref_sq_coef * np.sum(np.power(ftrajectories[:, :, F_DX], 2), axis=1)
 
-        ref_deviation_costs = params.dist_from_ref_sq_coef * np.sum(ftrajectories[:, :, F_DX] ** 2, axis=1)
+        ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
+        deviations_costs = np.zeros(ftrajectories.shape[0])
 
-        ''' DEVIATION FROM LANE '''
+        # add to deviations_costs the costs of deviations from the left [lane, shoulder, road]
+        for exp in [params.left_lane_cost, params.left_shoulder_cost, params.left_road_cost]:
+            left_offsets = ftrajectories[:, :, F_DX] - exp.offset
+            deviations_costs += CostUtils.compute_clipped_exponent(left_offsets, exp.k, exp.w)
 
-        # TODO: fill this
+        # add to deviations_costs the costs of deviations from the right [lane, shoulder, road]
+        for exp in [params.right_lane_cost, params.right_shoulder_cost, params.right_road_cost]:
+            right_offsets = np.negative(ftrajectories[:, :, F_DX]) - exp.offset
+            deviations_costs += CostUtils.compute_clipped_exponent(right_offsets, exp.k, exp.w)
 
-        ''' DEVIATION FROM SHOULDER '''
-
-        # TODO: fill this
-
-        ''' DEVIATION FROM ROAD '''
-
-        left_offsets = ftrajectories[:, :, F_DX] - params.left_lane_offset
-        left_deviations_costs = np.sum(np.exp(np.clip(params.left_deviation_exp * left_offsets, 0, EXP_CLIP_TH)),
-                                       axis=1)
-
-        right_offsets = np.negative(ftrajectories[:, :, F_DX]) - params.right_lane_offset
-        right_deviations_costs = np.sum(np.exp(np.clip(params.right_deviation_exp * right_offsets, 0, EXP_CLIP_TH)),
-                                        axis=1)
-
-        return params.lane_deviation_weight * (left_deviations_costs + right_deviations_costs) + \
-               params.ref_deviation_weight * ref_deviation_costs + \
-               params.obstacle_weight * obstacles_costs
-
-    def _compute_exponential_cost(self, x: float, ):
+        ''' TOTAL '''
+        return obstacles_costs + dist_from_ref_costs + deviations_costs
 
     def _solve_quintic_poly_frenet(self, fconst_0, fconst_t, T):
         """
