@@ -72,9 +72,9 @@ class BehavioralFacade(DmModule):
         self.logger.debug('Received navigation plan: %s', input_plan)
         return NavigationPlanMsg.deserialize(input_plan)
 
-    def _publish_results(self, trajectory_parameters: TrajectoryParameters) -> None:
+    def __publish_results(self, trajectory_parameters: TrajectoryParameters) -> None:
         self.dds.publish(BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC, trajectory_parameters.serialize())
 
-    # TODO: add to DDS XML first
-    def _publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
-        pass
+    def __publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
+        self.dds.publish(BEHAVIORAL_VISUALIZATION_TOPIC, visualization_message.serialize())
+
