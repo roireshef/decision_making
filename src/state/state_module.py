@@ -1,10 +1,10 @@
 import time
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
-from spav.decision_making.src.map.naive_cache_map import NaiveCacheMap
-from spav.decision_making.src.global_constants import *
-from spav.decision_making.src.infra.dm_module import DmModule
-from spav.decision_making.src.state.state import *
+from decision_making.src.map.naive_cache_map import NaiveCacheMap
+from decision_making.src.global_constants import *
+from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.state.state import *
 from logging import Logger
 
 
