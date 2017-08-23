@@ -5,7 +5,7 @@ from rte.python.logger.AV_logger import AV_Logger
 
 def test_map():
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
-    map = NaiveCacheMap("../../../../spcog/decision_making_sim/test/world_generator/CustomMapPickle.bin", logger)
+    map = NaiveCacheMap("../../resources/maps/CustomMapPickle.bin", logger)
     road_ids = map.find_roads_containing_point(0, -30, 50)
     lanes_lat = map.get_center_lanes_latitudes(1)
     lanes_num, width, length, points = map.get_road_main_details(1)
