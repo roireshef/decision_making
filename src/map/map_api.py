@@ -146,7 +146,7 @@ class MapAPI:
         return shifted_points
 
     def _convert_lon_to_world(self, road_id, pnt_ind, road_lon, navigation_plan):
-        # type: (int, int, float, NavigationPlanMsg, int) -> (int, float, np.ndarray, np.ndarray, int, float, int)
+        # type: (int, int, float, NavigationPlanMsg, int) -> (int, float, np.ndarray, np.ndarray, int, float)
         """
         Calculate world point matching to a given longitude of a given road.
         If the given longitude exceeds the current road length, then calculate the point in the next road.
@@ -159,7 +159,6 @@ class MapAPI:
             right-most road point at the given longitude with latitude vector (perpendicular to the local road's tangent),
             the first point index with longitude > the given longitude (for the next search)
             the longitude relatively to the next road (in case if the road_id has changed)
-            the navigation plan index.
             the resulted road_id may differ from the input road_id because the target point may belong to another road.
             for the same reason the resulted road_lon may differ from the input road_lon.
         """
@@ -202,7 +201,7 @@ class MapAPI:
         :param lon:
         :return: point in 3D world coordinates
         """
-        id, length, right_point, lat_vec, _, _, _ = self._convert_lon_to_world(road_id, 0, lon, navigation_plan)
+        id, length, right_point, lat_vec, _, _ = self._convert_lon_to_world(road_id, 0, lon, navigation_plan)
         if id != road_id:
             return None
         road_details = self._cached_map_model.roads_data[road_id]
