@@ -94,8 +94,7 @@ class StateModule(DmModule):
         """
         if ego is not None:  # if the object is not ego
             rel_pos = np.array([obj.x, obj.y, obj.z])
-            inv_ego_position = np.array([-ego.x, -ego.y, -ego.z])
-            glob_pos = CartesianFrame.get_vector_in_objective_frame(rel_pos, inv_ego_position, -ego.yaw)
+            glob_pos = CartesianFrame.convert_relative_to_absolute_frame(rel_pos, ego, ego.yaw)
             glob_yaw = obj.yaw + ego.yaw
         else:  # if obj is ego, then global & local coordinates are the same
             glob_pos = np.array([obj.x, obj.y, obj.z])
