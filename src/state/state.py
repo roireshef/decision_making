@@ -2,9 +2,10 @@ import copy
 from typing import List, Union
 
 import numpy as np
-#from decision_making.src.map.constants import *
+# from decision_making.src.map.constants import *
 from decision_making.src.map.map_api import MapAPI
 from decision_making.src.messages.dds_typed_message import DDSTypedMsg
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 
 
@@ -65,8 +66,9 @@ class ObjectSize(DDSTypedMsg):
 
 
 class DynamicObject(DDSTypedMsg):
-    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, acceleration_lon, yaw_deriv):
-        # type: (int, int, float, float, float, float, ObjectSize, float, float, float, Union[float, None], Union[float, None]) -> None
+    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, acceleration_lon, yaw_deriv,
+                 road_localization):
+        # type: (int, int, float, float, float, float, ObjectSize, float, float, float, Union[float, None], Union[float, None], RoadLocalization) -> None
         """
         both ego and other dynamic objects
         :param obj_id: object id
@@ -92,8 +94,7 @@ class DynamicObject(DDSTypedMsg):
         self.confidence = confidence
         self.v_x = v_x
         self.v_y = v_y
-        self.road_localization = None
-        self.rel_road_localization = None
+        self.road_localization = road_localization
 
         if acceleration_lon is not None:
             self.acceleration_lon = acceleration_lon
@@ -116,11 +117,35 @@ class DynamicObject(DDSTypedMsg):
         """
         pass
 
+    def get_relative_road_localization(self, ego_road_localization, ego_navigation_plan, map_api, max_lookahead_dist):
+        # type: (RoadLocalization, NavigationPlanMsg, MapAPI, float) -> RelativeRoadLocalization
+        """
+        Returns a relative road localization (to given ego state)
+        :param ego_road_localization: base road location
+        :param ego_navigation_plan: the ego vehicle navigation plan
+        :param map_api: the map which will be used to calculate the road localization
+        :param max_lookahead_dist: lookahead in [m] to search from ego towards dynamic object on map
+        :return: a RelativeRoadLocalization object
+        """
+        relative_lon = map_api.get_point_relative_longitude(from_road_id=ego_road_localization.road_id,
+                                                            from_lon_in_road=ego_road_localization.road_lon,
+                                                            to_road_id=self.road_localization.road_id,
+                                                            to_lon_in_road=self.road_localization.road_lon,
+                                                            max_lookahead_distance=max_lookahead_dist,
+                                                            navigation_plan=ego_navigation_plan)
+
+        if relative_lon is None:
+            return None
+        else:
+            relative_lat = self.road_localization.full_lat - ego_road_localization.full_lat
+            relative_yaw = self.road_localization.intra_lane_yaw - ego_road_localization.intra_lane_yaw
+            return RelativeRoadLocalization(rel_lat=relative_lat, rel_lon=relative_lon, rel_yaw=relative_yaw)
+
 
 class EgoState(DynamicObject, DDSTypedMsg):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence,
-                 v_x, v_y, acceleration_lon, yaw_deriv, steering_angle):
-        # type: (int, int, float, float, float, float, ObjectSize, float, float, float, Union[float, None], Union[float, None], Union[float, None]) -> None
+                 v_x, v_y, acceleration_lon, yaw_deriv, steering_angle, road_localization):
+        # type: (int, int, float, float, float, float, ObjectSize, float, float, float, Union[float, None], Union[float, None], Union[float, None], RoadLocalization) -> None
         """
         :param obj_id:
         :param timestamp:
@@ -137,7 +162,7 @@ class EgoState(DynamicObject, DDSTypedMsg):
         :param steering_angle: equivalent to knowing of turn_radius
         """
         DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
-                               acceleration_lon, yaw_deriv)
+                               acceleration_lon, yaw_deriv, road_localization)
         if steering_angle is not None:
             self.steering_angle = steering_angle
         else:

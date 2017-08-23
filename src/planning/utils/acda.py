@@ -141,9 +141,15 @@ class AcdaApi:
         """
         min_static_object_long = FORWARD_LOS_MAX_RANGE
         for static_obj in static_objects:
-            obj_lon = static_obj.rel_road_localization.rel_lon
+
+            relative_road_localization = static_obj.get_relative_road_localization(ego_road_localization=ego_state.road_localization, ego_navigation_plan=ego_navigation_plan,
+                map_api=map_api, max_lookahead_dist=BEHAVIORAL_PLANNING_LOOKAHEAD_DISTANCE)
+
+            obj_lon = relative_road_localization.
+            , obj_lat
+
             obj_lon = obj_lon - SENSOR_OFFSET_FROM_FRONT
-            obj_lat = static_obj.rel_road_localization.rel_lat
+
             if obj_lon > 0 and AcdaApi.is_in_ego_trajectory(obj_lat=obj_lat, obj_width=static_obj.size.width,
                                                             ego_width=ego_state.size.width,
                                                             lateral_safety_margin=LATERAL_MARGIN_FROM_OBJECTS):
