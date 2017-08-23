@@ -127,7 +127,7 @@ class StateModule(DmModule):
 
         :return:
         """
-        global_obj_pos = CartesianFrame.convert_relative_to_absolute_frame(obj_pos, ego_pos, ego_yaw)
+        global_obj_pos = CartesianFrame.convert_relative_to_global_frame(obj_pos, ego_pos, ego_yaw)
         global_obj_yaw = obj_yaw + ego_yaw
 
         road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw = \

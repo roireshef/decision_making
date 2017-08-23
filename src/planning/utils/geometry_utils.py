@@ -33,8 +33,8 @@ class CartesianFrame:
         :param translation: a [x, y, z] translation vector
         :return: a 3x3 numpy matrix for projection (translation+rotation)
         """
-        t = translation.reshape([-1, 1])  # translation vector
-        return np.vstack((np.hstack((rotation_matrix, t[:3, 1])), [0, 0, 0, 1]))
+        t = translation.reshape([3, 1])  # translation vector
+        return np.vstack((np.hstack((rotation_matrix, t)), [0, 0, 0, 1]))
 
     @staticmethod
     def homo_matrix_3d_from_quaternion(quaternion: np.ndarray, translation: np.ndarray) -> np.ndarray:
@@ -45,7 +45,7 @@ class CartesianFrame:
         :return: a 3x3 numpy matrix for projection (translation+rotation)
         """
         rotation_matrix = tf_transformations.quaternion_matrix(quaternion)
-        return CartesianFrame.homo_matrix_3d(rotation_matrix, translation)
+        return CartesianFrame.homo_matrix_3d(rotation_matrix[:3, :3], translation)
 
     @staticmethod
     def homo_matrix_3d_from_euler(x_rot: float, y_rot: float, z_rot: float, translation: np.ndarray) -> np.ndarray:
@@ -169,10 +169,10 @@ class CartesianFrame:
         return sign, dist, proj
 
     @staticmethod
-    def get_vector_in_objective_frame(target_vector: np.array, ego_position: np.array,
-                                      ego_orientation: Union[float, np.array]) -> np.ndarray:
+    def convert_global_to_relative_frame(target_vector: np.array, ego_position: np.array,
+                                         ego_orientation: Union[float, np.array]) -> np.ndarray:
         """
-        convert point in absolute frame to relative to ego frame
+        convert point in global-frame to a point in ego-frame
         :param target_vector: (x,y,z) array of size [3,]
         :param ego_position: translation of ego frame: (x,y,z) array of size [3,]
         :param ego_orientation: orientation of ego frame. Can be either yaw scalar, or quaternion vector
@@ -193,10 +193,10 @@ class CartesianFrame:
         return np.dot(H_e_g, np.append(target_vector, [1]))[:3]
 
     @staticmethod
-    def convert_relative_to_absolute_frame(relative_vector: np.array, ego_position: np.array, ego_yaw: float) \
+    def convert_relative_to_global_frame(relative_vector: np.array, ego_position: np.array, ego_yaw: float) \
             -> np.ndarray:
         """
-        convert point in relative ego frame to absolute frame
+        convert point in relative ego-frame to global frame
         :param relative_vector: (x,y,z) array in ego frame
         :param ego_position: translation of ego frame: (x,y,z) array of size [3,]
         :param ego_yaw: yaw scalar - orientation of ego frame
