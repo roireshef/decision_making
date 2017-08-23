@@ -1,34 +1,36 @@
+import os
 from multiprocessing import Queue, Process
 
-from decision_making.src.infra.dm_factory import DmModulesEnum, DmModuleFactory
+from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTimerTrigger, DmNullTrigger
 
 
-class DmProcess():
-    def __init__(self, module_type: DmModulesEnum, trigger_type: DmTriggerType, trigger_args: dict) -> None:
+class DmProcess:
+
+    # TODO: Get external trigger (requires changes to the PeriodTimer in rte repo)
+    def __init__(self, module_instance: DmModule, trigger_type: DmTriggerType, trigger_args: dict) -> None:
         """
         Manager for a single DM module running in a separate process
         :param module_type: the type of the DM module to be instantiated
         :param trigger_type: the type of trigger to use
         :param trigger_args: dictionary containing keyword arguments for initializing the trigger
         """
-        self.module_type = module_type
+        self.module_instance = module_instance
         self.trigger_type = trigger_type
         self.trigger_args = trigger_args
         self.queue = Queue()
         self.process = None
-        self.module_instance = None
         self.trigger = None
 
     def get_name(self):
-        return str(self.module_type)
+        return self.module_instance.__class__.__name__
 
     def start_process(self):
         """
         Create and start a process for the DM module
-        :return: 
+        :return:
         """
-        process_name = "DM_process_{}".format(self.module_type)
+        process_name = "DM_process_{}".format(self.get_name())
         self.process = Process(target=self.__module_process_entry, name=process_name)
         self.process.start()
 
@@ -46,9 +48,8 @@ class DmProcess():
         :return: None
         """
         # create the sub module
-        self.module_instance = DmModuleFactory.create_dm_module(self.module_type)
         self.module_instance.start()
-
+        print ("pid ", os.getpid(), self.get_name())
         # create the trigger and activate it.
         # It is important to create the trigger inside the new process!!
         if self.trigger_type == DmTriggerType.DM_TRIGGER_PERIODIC:
