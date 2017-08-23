@@ -9,8 +9,8 @@ from logging import Logger
 
 
 class MapAPI:
-    def __init__(self, map_model, logger: Logger):
-        # type: (MapModel) -> None
+    def __init__(self, map_model, logger):
+        # type: (MapModel, Logger) -> None
         self._cached_map_model = map_model
         self.logger = logger
         pass
