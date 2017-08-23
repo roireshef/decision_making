@@ -5,7 +5,7 @@ from rte.python.logger.AV_logger import AV_Logger
 
 def test_map():
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
-    map = NaiveCacheMap("../../../../spcog/decision_making_sim/test/world_generator/CustomMapPickle.bin", logger)
+    map = NaiveCacheMap("../../resources/maps/CustomMapPickle.bin", logger)
     points = np.array([[0, 51], [2, 51]]).transpose()
     shifted_points = map._shift_road_vector_in_lat(points, 1)
     road_id = 1
