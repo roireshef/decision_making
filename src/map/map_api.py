@@ -1,58 +1,11 @@
 import numpy as np
 
-from decision_making.src.map.constants import *
-from decision_making.src.map.map_model import MapModel
+from spav.decision_making.src.map.constants import *
+from spav.decision_making.src.map.map_model import MapModel
 from typing import List, Union
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.utils.geometry_utils import CartesianFrame
+from spav.decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from spav.decision_making.src.planning.utils.geometry_utils import CartesianFrame
 from logging import Logger
-
-class RoadDetails:
-    def __init__(self, id, name, points, longitudes, head_node, tail_node,
-                 head_layer, tail_layer, max_layer, lanes_num, one_way, lane_width,
-                 side_walk: Sidewalk, ext_head_yaw, ext_tail_yaw,
-                 ext_head_lanes, ext_tail_lanes, turn_lanes):
-        # type: (int, str, np.ndarray, np.ndarray, int, int, int, int, int, int, bool, float, Sidewalk, float, float, int, int, List[str]) -> None
-        """
-        Road details class
-        :param id: road's id
-        :param name: road's name
-        :param points: road's points array. numpy array of size 2xN (2 rows, N columns)
-        :param longitudes: list of longitudes of the road's points starting from 0
-        :param head_node: node id of the road's head
-        :param tail_node:
-        :param head_layer: int layer of the road's head (0 means ground layer)
-        :param tail_layer:
-        :param max_layer: may be greater than head_layer & tail_layer, if the road's middle is a bridge
-        :param lanes_num:
-        :param one_way: true if the road is one-way
-        :param lane_width: in meters
-        :param side_walk: may be 'left', 'right', 'both', 'none'
-        :param ext_head_yaw: yaw of the incoming road
-        :param ext_tail_yaw: yaw of the outgoing road
-        :param ext_head_lanes: lanes number in the incoming road
-        :param ext_tail_lanes: lanes number in the outgoing road
-        :param turn_lanes: list of strings describing where each lane turns
-        """
-        self.id = id
-        self.name = name
-        self.points = points
-        self.longitudes = longitudes
-        self.head_node = head_node
-        self.tail_node = tail_node
-        self.head_layer = head_layer
-        self.tail_layer = tail_layer
-        self.max_layer = max_layer
-        self.lanes_num = lanes_num
-        self.one_way = one_way
-        self.lane_width = lane_width
-        self.width = lane_width*lanes_num
-        self.side_walk = side_walk
-        self.ext_head_yaw = ext_head_yaw
-        self.ext_tail_yaw = ext_tail_yaw
-        self.ext_head_lanes = ext_head_lanes
-        self.ext_tail_lanes = ext_tail_lanes
-        self.turn_lanes = turn_lanes
 
 
 class MapAPI:
