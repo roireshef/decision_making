@@ -1,3 +1,5 @@
+import os
+
 DIVISION_FLOATING_ACCURACY = 10 ** -10
 
 # Trajectory Planner #
@@ -57,7 +59,10 @@ DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC = "StateSubscriber::DynamicObjectsReader"
 SELF_LOCALIZATION_SUBSCRIBE_TOPIC = "StateSubscriber::SelfLocalizationReader"
 OCCUPANCY_STATE_SUBSCRIBE_TOPIC = "StateSubscriber::OccupancyStateReader"
 STATE_PUBLISH_TOPIC = "StatePublisher::StateWriter"
-MAP_FILE_NAME = "c:/temp/map.p"
+
+# Maps
+MAPS_DIR = os.path.join(os.path.dirname(__file__), '../resources/maps/')
+MAP_FILE_NAME = os.path.join(MAPS_DIR, 'map.p')
 
 # Navigation Planning Module
 NAVIGATION_PLAN_PUBLISH_TOPIC = "NavigationPublisher::NavigationPlanWriter"
