@@ -101,16 +101,20 @@ class StateModule(DmModule):
             glob_yaw = obj.yaw
 
         # calculate road coordinates for global coordinates
-        road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw = \
-            map.convert_world_to_lat_lon(glob_pos[0], glob_pos[1], glob_pos[2], glob_yaw)
-        # fill road_localization
-        obj.road_localization = RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
+        try:
+            road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw = \
+                map.convert_world_to_lat_lon(glob_pos[0], glob_pos[1], glob_pos[2], glob_yaw)
+            # fill road_localization
+            obj.road_localization = RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
 
-        # calculate relative road localization
-        if ego is not None:  # if obj is not ego
-            obj.rel_road_localization = \
-                RelativeRoadLocalization(obj.road_localization.full_lat - ego.road_localization.full_lat,
-                                         obj.road_localization.road_lon - ego.road_localization.road_lon,
-                                         obj.road_localization.intra_lane_yaw - ego.road_localization.intra_lane_yaw)
-        else:  # if the object is ego, then rel_road_localization is irrelevant
-            obj.rel_road_localization = None
+            # calculate relative road localization
+            if ego is not None:  # if obj is not ego
+                obj.rel_road_localization = \
+                    RelativeRoadLocalization(obj.road_localization.full_lat - ego.road_localization.full_lat,
+                                             obj.road_localization.road_lon - ego.road_localization.road_lon,
+                                             obj.road_localization.intra_lane_yaw - ego.road_localization.intra_lane_yaw)
+            else:  # if the object is ego, then rel_road_localization is irrelevant
+                obj.rel_road_localization = None
+        except:  # glob_pos is outside any road
+            #self.logger("glob_pos (%f, %f) is outside any road", glob_pos[0], glob_pos[1])
+            pass
