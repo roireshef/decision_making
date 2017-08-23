@@ -74,7 +74,7 @@ class MapAPI:
         """
         cell_x = int(round(world_x / ROADS_MAP_TILE_SIZE))
         cell_y = int(round(world_y / ROADS_MAP_TILE_SIZE))
-        return self._cached_map_model.xy2road_map.get((layer, cell_x, cell_y), default=[])
+        return self._cached_map_model.xy2road_map.get((layer, cell_x, cell_y), [])
 
     def get_center_lanes_latitudes(self, road_id):
         # type: (int) -> np.array
