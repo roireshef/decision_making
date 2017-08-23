@@ -65,16 +65,19 @@ NAVIGATION_PLAN_PUBLISH_TOPIC = "NavigationPublisher::NavigationPlanWriter"
 BEHAVIORAL_STATE_READER_TOPIC = "BehavioralSubscriber::StateReader"
 BEHAVIORAL_NAV_PLAN_READER_TOPIC = "BehavioralSubscriber::NavigationPlanReader"
 BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC = "BehavioralPublisher::TrajectoryParametersWriter"
+BEHAVIORAL_VISUALIZATION_TOPIC = ""  # TODO: update XML in common-data and fill this
 
 # Trajectory Planning Module
 TRAJECTORY_STATE_READER_TOPIC = "TrajectorySubscriber::StateReader"
 TRAJECTORY_PARAMS_READER_TOPIC = "TrajectorySubscriber::TrajectoryParametersReader"
 TRAJECTORY_PUBLISH_TOPIC = "TrajectoryPublisher::TrajectoryWriter"
+TRAJECTORY_VISUALIZATION_TOPIC = ""  # TODO: update XML in common-data and fill this
 
 #### NAMES OF MODULES FOR LOGGING ####
 DM_MANAGER_NAME_FOR_LOGGING = "DM Manager"
 NAVIGATION_PLANNING_NAME_FOR_LOGGING = "Navigation Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
+ACDA_NAME_FOR_LOGGING = "ACDA Module"
 TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 STATE_MODULE_NAME_FOR_LOGGING = "State Module"
 

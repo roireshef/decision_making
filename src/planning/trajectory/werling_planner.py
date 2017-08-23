@@ -11,19 +11,19 @@ from decision_making.src.planning.trajectory.trajectory_planner import Trajector
 from decision_making.src.planning.utils.columns import *
 from decision_making.src.planning.utils.geometry_utils import FrenetMovingFrame
 from decision_making.src.state.state import State
+from logging import Logger
 
 
 class WerlingPlanner(TrajectoryPlanner):
-    def __init__(self, dt=WERLING_TIME_RESOLUTION):
+    def __init__(self, logger: Logger, dt=WERLING_TIME_RESOLUTION):
+        super().__init__(logger)
         self._dt = dt
 
     @property
     def dt(self): return self._dt
 
-    # TODO: object type-hint should be changed to DDSMessage type once commited
     def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray,
-             cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, object]:
-
+             cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
         # create road coordinate-frame
         frenet = FrenetMovingFrame(reference_route)
 
@@ -35,6 +35,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # TODO: fix velocity jitters at the State level
         ego_v_x = np.max((state.ego_state.v_x, 0))
 
+        # TODO: translate velocity (better) and acceleration of initial state
         # define constraints for the initial state
         fconstraints_t0 = FrenetConstraints(0, np.cos(ego_theta_diff) * ego_v_x, 0,
                                             ego_in_frenet[1], np.sin(ego_theta_diff) * ego_v_x, 0)
@@ -48,9 +49,10 @@ class WerlingPlanner(TrajectoryPlanner):
         sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_sx, 0)),
                                np.min((SX_OFFSET_MAX + goal_sx, frenet.length * frenet.resolution)),
                                SX_STEPS)
-        sv_range = np.linspace(np.max((SV_OFFSET_MIN + np.cos(goal_theta_diff) * goal[EGO_V], cost_params.v_x_min_limit)),
-                               np.min((SV_OFFSET_MAX + np.cos(goal_theta_diff) * goal[EGO_V], cost_params.v_x_max_limit)),
-                               SV_STEPS)
+        sv_range = np.linspace(
+            np.max((SV_OFFSET_MIN + np.cos(goal_theta_diff) * goal[EGO_V], cost_params.v_x_min_limit)),
+            np.min((SV_OFFSET_MAX + np.cos(goal_theta_diff) * goal[EGO_V], cost_params.v_x_max_limit)),
+            SV_STEPS)
         dx_range = np.linspace(DX_OFFSET_MIN + goal_dx,
                                DX_OFFSET_MAX + goal_dx,
                                DX_STEPS)
@@ -102,12 +104,12 @@ class WerlingPlanner(TrajectoryPlanner):
         :param params: parameters for the cost function (from behavioral layer)
         :return:
         """
-        # TODO: bom!
         # TODO: add jerk cost
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
 
-        static_obstacles = [SigmoidStatic2DBoxObstacle.from_object_state(obs, params.obstacle_exp, params.obstacle_offset)
-                            for obs in state.static_objects]
+        static_obstacles = [
+            SigmoidStatic2DBoxObstacle.from_object_state(obs, params.obstacle_exp, params.obstacle_offset)
+            for obs in state.static_objects]
 
         # TODO: consider max over trajectory points?
         # TODO: what if there's no static obstacles? what if close_obstacles is empty?
@@ -141,7 +143,6 @@ class WerlingPlanner(TrajectoryPlanner):
         :param fconst_0: a set of constraints over the initial state
         :param fconst_t: a set of constraints over the terminal state
         :param T: trajectory duration (sec.)
-        :param dt: trajectory time-resolution (sec.)
         :return: a matrix of rows of the form [sx, sv, sa, dx, dv, da]
         """
         A = np.array([[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],  # dx0/sx0
