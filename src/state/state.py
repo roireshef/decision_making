@@ -4,11 +4,11 @@ from typing import List, Union
 import numpy as np
 #from decision_making.src.map.constants import *
 from decision_making.src.map.map_api import MapAPI
-from decision_making.src.messages.dds_typed_message import DDSTypedMsg
+from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 
 
-class RoadLocalization(DDSTypedMsg):
+class RoadLocalization(DDSNonTypedMsg):
     def __init__(self, road_id, lane_num, full_lat, intra_lane_lat, road_lon, intra_lane_yaw):
         # type: (int, int, float, float, float, float, float, float) -> None
         """
@@ -28,7 +28,7 @@ class RoadLocalization(DDSTypedMsg):
         self.intra_lane_yaw = intra_lane_yaw
 
 
-class RelativeRoadLocalization(DDSTypedMsg):
+class RelativeRoadLocalization(DDSNonTypedMsg):
     def __init__(self, rel_lat, rel_lon, rel_yaw):
         # type: (float, float, float) -> None
         """
@@ -42,7 +42,7 @@ class RelativeRoadLocalization(DDSTypedMsg):
         self.rel_yaw = rel_yaw
 
 
-class OccupancyState(DDSTypedMsg):
+class OccupancyState(DDSNonTypedMsg):
     def __init__(self, timestamp, free_space, confidence):
         # type: (int, np.ndarray, np.ndarray) -> None
         """
@@ -56,7 +56,7 @@ class OccupancyState(DDSTypedMsg):
         self.confidence = np.copy(confidence)
 
 
-class ObjectSize(DDSTypedMsg):
+class ObjectSize(DDSNonTypedMsg):
     def __init__(self, length, width, height):
         # type: (float, float, float) -> None
         self.length = length
@@ -64,7 +64,7 @@ class ObjectSize(DDSTypedMsg):
         self.height = height
 
 
-class DynamicObject(DDSTypedMsg):
+class DynamicObject(DDSNonTypedMsg):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, acceleration_lon, yaw_deriv):
         # type: (int, int, float, float, float, float, ObjectSize, float, float, float, Union[float, None], Union[float, None]) -> None
         """
@@ -117,7 +117,7 @@ class DynamicObject(DDSTypedMsg):
         pass
 
 
-class EgoState(DynamicObject, DDSTypedMsg):
+class EgoState(DynamicObject, DDSNonTypedMsg):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence,
                  v_x, v_y, acceleration_lon, yaw_deriv, steering_angle):
         # type: (int, int, float, float, float, float, ObjectSize, float, float, float, Union[float, None], Union[float, None], Union[float, None]) -> None
@@ -144,7 +144,7 @@ class EgoState(DynamicObject, DDSTypedMsg):
             raise NotImplementedError()
 
 
-class State(DDSTypedMsg):
+class State(DDSNonTypedMsg):
     def __init__(self, occupancy_state, dynamic_objects, ego_state):
         # type: (OccupancyState, List[DynamicObject], EgoState) -> None
         """
