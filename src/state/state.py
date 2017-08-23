@@ -135,7 +135,8 @@ class DynamicObject(DDSTypedMsg):
                                                             navigation_plan=ego_navigation_plan)
 
         if relative_lon is None:
-            return None
+            # set object at infinity
+            RelativeRoadLocalization(rel_lat=0, rel_lon=np.inf, rel_yaw=0)
         else:
             relative_lat = self.road_localization.full_lat - ego_road_localization.full_lat
             relative_yaw = self.road_localization.intra_lane_yaw - ego_road_localization.intra_lane_yaw
