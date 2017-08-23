@@ -113,7 +113,7 @@ class MapAPI:
     def update_perceived_roads(self):
         pass
 
-    def __find_closest_road(self, x, y, road_ids):
+    def _find_closest_road(self, x, y, road_ids):
         # type: (float, float, List[int]) -> (float, float, float, float, float)
         # find the closest road to (x,y)
         closest_lat = LARGE_NUM
