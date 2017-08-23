@@ -1,93 +1,37 @@
 import numpy as np
 
-from decision_making.src.map.constants import *
-from decision_making.src.map.map_model import MapModel
+from spav.decision_making.src.map.constants import *
+from spav.decision_making.src.map.map_model import MapModel
 from typing import List, Union
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from enum import Enum
-from decision_making.src.planning.utils.geometry_utils import CartesianFrame
-
-
-class RoadAttr(Enum):
-    id = "id"
-    points = "points"
-    longitudes = "longitudes"
-    width = "width"
-    lanes_num = "lanes"
-    head_layer = "head_layer"
-    tail_layer = "tail_layer"
-
-
-class RoadDetails:
-    def __init__(self, id: int, name: str, points: np.ndarray, longitudes: np.ndarray, head_node: int, tail_node: int,
-                 head_layer: int, tail_layer: int, max_layer: int, lanes_num: int, one_way: bool, lane_width: float,
-                 side_walk: str, ext_head_yaw: float, ext_tail_yaw: float,
-                 ext_head_lanes: int, ext_tail_lanes: int, turn_lanes: List[str]):
-        """
-        Road details class
-        :param id: road's id
-        :param name: road's name
-        :param points: road's points array. numpy array of size 2xN (2 rows, N columns)
-        :param longitudes: list of longitudes of the road's points starting from 0
-        :param head_node: node id of the road's head
-        :param tail_node:
-        :param head_layer: int layer of the road's head (0 means ground layer)
-        :param tail_layer:
-        :param max_layer: may be greater than head_layer & tail_layer, if the road's middle is a bridge
-        :param lanes_num:
-        :param one_way: true if the road is one-way
-        :param lane_width: in meters
-        :param side_walk: may be 'left', 'right', 'both', 'none'
-        :param ext_head_yaw: yaw of the incoming road
-        :param ext_tail_yaw: yaw of the outgoing road
-        :param ext_head_lanes: lanes number in the incoming road
-        :param ext_tail_lanes: lanes number in the outgoing road
-        :param turn_lanes: list of strings describing where each lane turns
-        """
-        self.id = id
-        self.name = name
-        self.points = points
-        self.longitudes = longitudes
-        self.head_node = head_node
-        self.tail_node = tail_node
-        self.head_layer = head_layer
-        self.tail_layer = tail_layer
-        self.max_layer = max_layer
-        self.lanes_num = lanes_num
-        self.one_way = one_way
-        self.lane_width = lane_width
-        self.width = lane_width * lanes_num
-        self.side_walk = side_walk
-        self.ext_head_yaw = ext_head_yaw
-        self.ext_tail_yaw = ext_tail_yaw
-        self.ext_head_lanes = ext_head_lanes
-        self.ext_tail_lanes = ext_tail_lanes
-        self.turn_lanes = turn_lanes
+from spav.decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from spav.decision_making.src.planning.utils.geometry_utils import CartesianFrame
+from logging import Logger
 
 
 class MapAPI:
-    def __init__(self, map_model):
-        # type: (MapModel) -> None
+    def __init__(self, map_model, logger):
+        # type: (MapModel, Logger) -> None
         self._cached_map_model = map_model
+        self.logger = logger
         pass
 
-    def find_roads_containing_point(self, layer, x, y):
+    def find_roads_containing_point(self, layer, world_x, world_y):
         # type: (int, float, float) -> List[int]
         """
         shortcut to a cell of the map xy2road_map
         :param layer: 0 ground, 1 on bridge, 2 bridge above bridge, etc
-        :param x: world coordinates in meters
-        :param y: world coordinates in meters
-        :return: road_ids containing the point x, y
+        :param world_x: world coordinates in meters
+        :param world_y: world coordinates in meters
+        :return: road_ids containing the point (world_x, world_y)
         """
         pass
 
     def get_center_lanes_latitudes(self, road_id):
         # type: (int) -> np.array
         """
-        get list of latitudes of all lanes in the road
+        get list of latitudes of all centers of lanes in the road
         :param road_id:
-        :return: list of latitudes of all lanes in the road
+        :return: list of latitudes of all centers of lanes in the road relative to the right side of the road
         """
         pass
 
@@ -121,7 +65,7 @@ class MapAPI:
 
     def get_point_relative_longitude(self, from_road_id, from_lon_in_road, to_road_id, to_lon_in_road,
                                      max_lookahead_distance, navigation_plan):
-        # type: (int, float, int, float, float, NavigationPlanMsg) -> float
+        # type: (int, float, int, float, float, NavigationPlanMsg) -> (float, bool)
         """
         Find longitude distance between two points in road coordinates.
         First search forward from the point (from_road_id, from_lon_in_road) to the point (to_road_id, to_lon_in_road);
@@ -136,7 +80,7 @@ class MapAPI:
         pass
 
     def get_path_lookahead(self, road_id, lon, lat, max_lookahead_distance, navigation_plan, direction=1):
-        # type: (int, float, float, float, NavigationPlanMsg, int) -> np.ndarray
+        # type: (int, float, float, float, NavigationPlanMsg, int) -> Union[np.ndarray, None]
         """
         Get path with lookahead distance (starting from certain road, and continuing to the next ones if lookahead distance > road length)
             lat is measured in meters
@@ -206,14 +150,11 @@ class MapAPI:
             the resulted road_id may differ from the input road_id because the target point may belong to another road.
             for the same reason the resulted road_lon may differ from the input road_lon.
         """
-        if road_index_in_plan is None:
-            road_index_in_plan = navigation_plan.get_road_index_in_plan(road_id)
-
         # find road_id containing the target road_lon
         longitudes = self._cached_map_model.roads_data[road_id].longitudes
         while road_lon > longitudes[-1]:  # then advance to the next road
             road_lon -= longitudes[-1]
-            road_id, road_index_in_plan = navigation_plan.get_next_road(1, road_index_in_plan)
+            road_id = navigation_plan.get_next_road(road_id, self.logger)
             if road_id is None:
                 return None, None, None, None, None, None, None
             pnt_ind = 1
@@ -233,7 +174,7 @@ class MapAPI:
         # for the same reason the resulted road_lon may differ from the input road_lon.
         lane_vec = self.normalize_vec(points[pnt_ind] - points[pnt_ind - 1])
         lat_vec = np.array([-lane_vec[1], lane_vec[0]])  # from right to left
-        center_point = (points[pnt_ind] - lane_vec) * (longitudes[pnt_ind] - road_lon)
+        center_point = points[pnt_ind] - lane_vec * (longitudes[pnt_ind] - road_lon)
         right_point = center_point - lat_vec * (width / 2.)
         return road_id, length, right_point, lat_vec, pnt_ind, road_lon, road_index_in_plan
 
@@ -248,7 +189,7 @@ class MapAPI:
         :param lon:
         :return: point in 3D world coordinates
         """
-        id, length, left_point, lat_vec, _, _, _ = self._convert_lon_to_world(road_id, 0, lon, navigation_plan)
+        id, length, right_point, lat_vec, _, _, _ = self._convert_lon_to_world(road_id, 0, lon, navigation_plan)
         if id != road_id:
             return None
         road_details = self._cached_map_model.roads_data[road_id]
@@ -256,7 +197,7 @@ class MapAPI:
         tail_layer = road_details.tail_layer
         tail_wgt = lon / length
         z = head_layer * (1 - tail_wgt) + tail_layer * tail_wgt
-        world_pnt = np.concatenate((left_point + lat_vec * lat, z))  # 3D point
+        world_pnt = np.append(right_point + lat_vec * lat, [z])  # 3D point
         return world_pnt
 
     def _convert_world_to_lat_lon_for_given_road(self, x, y, road_id):
