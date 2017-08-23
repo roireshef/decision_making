@@ -9,7 +9,10 @@ def test_map():
     road_ids = map.find_roads_containing_point(0, -30, 50)
     lanes_lat = map.get_center_lanes_latitudes(1)
     lanes_num, width, length, points = map.get_road_main_details(1)
-    road_id, lane, full_lat, lane_lat, lon, yaw_in_road = map.convert_world_to_lat_lon(20, 51, 0, 0)
+    try:
+        road_id, lane, full_lat, lane_lat, lon, yaw_in_road = map.convert_world_to_lat_lon(20, 71, 0, 0)
+    except:
+        print("the point is outside any road")
     navigation_plan = NavigationPlanMsg([1,2])
     max_lookahead_distance = 500
     road_id = 1

@@ -83,7 +83,7 @@ class MapAPI:
             raise Exception("convert_world_to_lat_lon failed to find the road")
 
         # find the closest road to (x,y) among the road_ids list
-        (lat_dist, sign, lon, road_yaw, road_id) = self.__find_closest_road(x, y, road_ids)
+        (lat_dist, sign, lon, road_yaw, road_id) = self._find_closest_road(x, y, road_ids)
 
         road_details = self._cached_map_model.roads_data[road_id]
         lanes_num = road_details.lanes_num
