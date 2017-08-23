@@ -168,11 +168,9 @@ class CartesianFrame:
             dist = np.linalg.norm(segment_p_to_end)
         return sign, dist, proj
 
-
-
     @staticmethod
     def get_vector_in_objective_frame(target_vector: np.array, ego_position: np.array,
-                                      ego_orientation: Union[float, np.array]):
+                                      ego_orientation: Union[float, np.array]) -> np.ndarray:
         """
         convert point in absolute frame to relative to ego frame
         :param target_vector: (x,y,z) array of size [3,]
@@ -187,18 +185,13 @@ class CartesianFrame:
             # Orientation contains yaw
             quaternion = tf_transformations.quaternion_from_euler(0, 0, ego_orientation, 'ryxz')
 
-        car_rotation = tf_transformations.quaternion_matrix(quaternion)
-        car_position = np.array(ego_position).reshape([3, -1])
-        if len(target_vector.shape) == 1:
-            target_vector = target_vector.reshape([3, -1])
-        elif target_vector.shape[0] != 3:
-            target_vector = target_vector.transpose()
-        target_pos_in_obj_frame = np.dot(np.linalg.pinv(car_rotation[0:3, 0:3]), target_vector - car_position)
-
-        return target_pos_in_obj_frame
+        # operator that projects from global coordinate frame to ego coordinate frame
+        H_e_g = np.linalg.inv(CartesianFrame.homo_matrix_3d_from_quaternion(quaternion, ego_position))
+        return np.dot(H_e_g, target_vector)
 
     @staticmethod
-    def convert_relative_to_absolute_frame(relative_vector: np.array, ego_position: np.array, ego_yaw: float):
+    def convert_relative_to_absolute_frame(relative_vector: np.array, ego_position: np.array, ego_yaw: float) \
+            -> np.ndarray:
         """
         convert point in relative ego frame to absolute frame
         :param relative_vector: (x,y,z) array in ego frame
@@ -206,19 +199,9 @@ class CartesianFrame:
         :param ego_yaw: yaw scalar - orientation of ego frame
         :return: point in absolute frame
         """
-        #quaternion = tf_transformations.quaternion_from_euler(0, 0, ego_yaw, 'ryxz')
-        #car_rotation = tf_transformations.quaternion_matrix(quaternion)
-
-        car_position = np.array(ego_position).reshape([3, -1])
-        if len(relative_vector.shape) == 1:
-            relative_vector = relative_vector.reshape([3, -1])
-        elif relative_vector.shape[0] != 3:
-            relative_vector = relative_vector.transpose()
-        cos = np.cos(ego_yaw)
-        sin = np.sin(ego_yaw)
-        car_rotation = np.array([[cos, -sin, 0], [sin, cos, 0], [0, 0, 1]])
-        target_pos_in_abs_frame = np.dot(car_rotation[0:3, 0:3], relative_vector) + car_position
-        return target_pos_in_abs_frame
+        # operator that projects from ego coordinate frame to global coordinate frame
+        H_g_e = CartesianFrame.homo_matrix_3d_from_euler(0, 0, ego_yaw, ego_position)
+        return np.dot(H_g_e, relative_vector)
 
     @staticmethod
     def convert_yaw_to_quaternion(yaw: float):
@@ -431,33 +414,3 @@ class Dynamics:
             goal_yaw = yaw
 
         return tuple((goal_x, goal_y, goal_yaw, goal_v_x, goal_v_y))
-
-    @staticmethod
-    def rotate_and_shift_point(x: float, y: float, cosa: float, sina: float, dx: float, dy: float) \
-            -> tuple((float, float)):
-        """
-        calculate new point location after rotation & shift
-        :param x: original point location
-        :param y:
-        :param cosa: cos of rotation angle
-        :param sina: sin of rotation angle
-        :param dx: shift
-        :param dy:
-        :return: new point location
-        """
-        return tuple((x * cosa - y * sina + dx, x * sina + y * cosa + dy))
-
-    @staticmethod
-    def rotate_and_shift_points(points: np.ndarray, cosa: float, sina: float, dx: float, dy: float) -> np.ndarray:
-        """
-        calculate new point location after rotation & shift
-        :param points: Nx3 matrix of the original points
-        :param cosa: cos of rotation angle
-        :param sina: sin of rotation angle
-        :param dx: shift
-        :param dy:
-        :return: Nx3 matrix: new points location
-        """
-        return np.c_[points[:, 0] * cosa - points[:, 1] * sina + dx,
-                     points[:, 0] * sina + points[:, 1] * cosa + dy,
-                     points[:, 2]]
