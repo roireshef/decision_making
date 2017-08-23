@@ -1,4 +1,4 @@
-import re
+from enum import Enum
 from pydoc import locate
 
 import numpy as np
@@ -18,6 +18,8 @@ class DDSNonTypedMsg(DDSMsg):
                 ser_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': list(val.shape), 'type': 'numpy.ndarray'}
             elif issubclass(type(val), list):
                 ser_dict[key] = {'iterable': list(map(lambda x: x.serialize(), val)), 'type': type(val).__name__}
+            elif issubclass(type(val), Enum):
+                ser_dict[key] = {'name': val.name, 'type': type(val).__module__ + '.' + type(val).__name__}
             elif issubclass(type(val), DDSMsg):
                 ser_dict[key] = val.serialize()
             else:
@@ -41,6 +43,8 @@ class DDSNonTypedMsg(DDSMsg):
                     message_copy[key] = np.array(val['array']).reshape(tuple(val['shape']))
                 elif issubclass(real_type, list):
                     message_copy[key] = list(map(lambda d: locate(d['type']).deserialize(d), val['iterable']))
+                elif issubclass(real_type, Enum):
+                    message_copy[key] = real_type[val['name']]
                 elif issubclass(real_type, DDSMsg):
                     message_copy[key] = real_type.deserialize(val)
         return cls(**message_copy)
