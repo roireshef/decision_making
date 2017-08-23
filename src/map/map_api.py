@@ -5,7 +5,7 @@ from decision_making.src.map.map_model import MapModel
 from typing import List, Union
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
-
+from logging import Logger
 
 class RoadDetails:
     def __init__(self, id, name, points, longitudes, head_node, tail_node,
@@ -56,9 +56,10 @@ class RoadDetails:
 
 
 class MapAPI:
-    def __init__(self, map_model):
+    def __init__(self, map_model, logger: Logger):
         # type: (MapModel) -> None
         self._cached_map_model = map_model
+        self.logger = logger
         pass
 
     def find_roads_containing_point(self, layer, world_x, world_y):
@@ -77,9 +78,9 @@ class MapAPI:
     def get_center_lanes_latitudes(self, road_id):
         # type: (int) -> np.array
         """
-        get list of latitudes of all lanes in the road
+        get list of latitudes of all centers of lanes in the road
         :param road_id:
-        :return: list of latitudes of all lanes in the road
+        :return: list of latitudes of all centers of lanes in the road relative to the right side of the road
         """
         road_details = self._cached_map_model.roads_data[road_id]
         lanes_num = road_details.lanes_num
@@ -124,8 +125,9 @@ class MapAPI:
             road_ids = self.find_roads_containing_point(0, x, y)
             if len(road_ids) == 0:
                 road_ids = self.find_roads_containing_point(1, x, y)
+
         if len(road_ids) == 0:
-            return None, None, None, None, None, None
+            raise Exception("convert_world_to_lat_lon failed to find the road")
 
         # find the closest road to (x,y) among the road_ids list
         (lat_dist, sign, lon, road_yaw, road_id) = self.__find_closest_road(x, y, road_ids)
@@ -281,10 +283,10 @@ class MapAPI:
 
         # Replace the last (closest, but inexact) point, and replace it with a point with the exact lon value
         if direction == 1:
-            lon = residual_lookahead + road_starting_longitude
+            last_lon = residual_lookahead + road_starting_longitude
         else:
-            lon = road_length - (road_starting_longitude + residual_lookahead)
-        last_exact_lon_point = self._convert_lat_lon_to_world(road_id, center_road_lat, lon, navigation_plan)
+            last_lon = road_length - (road_starting_longitude + residual_lookahead)
+        last_exact_lon_point = self._convert_lat_lon_to_world(road_id, center_road_lat, last_lon, navigation_plan)
         if last_exact_lon_point is None:
             return None
 
