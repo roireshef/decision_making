@@ -1,4 +1,5 @@
 import copy
+from logging import Logger
 from typing import List, Union
 
 import numpy as np
@@ -116,12 +117,13 @@ class DynamicObject(DDSNonTypedMsg):
         """
         pass
 
-    def get_relative_road_localization(self, ego_road_localization, ego_navigation_plan, map_api, max_lookahead_dist):
-        # type: (RoadLocalization, NavigationPlanMsg, MapAPI, float) -> RelativeRoadLocalization
+    def get_relative_road_localization(self, ego_road_localization, ego_nav_plan, map_api, max_lookahead_dist, logger):
+        # type: (RoadLocalization, NavigationPlanMsg, MapAPI, float, Logger) -> Union[RelativeRoadLocalization, None]
         """
         Returns a relative road localization (to given ego state)
+        :param logger: logger for debug purposes
         :param ego_road_localization: base road location
-        :param ego_navigation_plan: the ego vehicle navigation plan
+        :param ego_nav_plan: the ego vehicle navigation plan
         :param map_api: the map which will be used to calculate the road localization
         :param max_lookahead_dist: lookahead in [m] to search from ego towards dynamic object on map
         :return: a RelativeRoadLocalization object
@@ -131,11 +133,12 @@ class DynamicObject(DDSNonTypedMsg):
                                                             to_road_id=self.road_localization.road_id,
                                                             to_lon_in_road=self.road_localization.road_lon,
                                                             max_lookahead_distance=max_lookahead_dist,
-                                                            navigation_plan=ego_navigation_plan)
+                                                            navigation_plan=ego_nav_plan)
 
         if relative_lon is None:
-            # set object at infinity
-            RelativeRoadLocalization(rel_lat=0, rel_lon=np.inf, rel_yaw=0)
+            logger.debug("get_point_relative_longitude returned None at DynamicObject.get_relative_road_localization "
+                         "for object " + str(self.__dict__))
+            return None
         else:
             relative_lat = self.road_localization.full_lat - ego_road_localization.full_lat
             relative_yaw = self.road_localization.intra_lane_yaw - ego_road_localization.intra_lane_yaw

@@ -187,7 +187,10 @@ class CartesianFrame:
 
         # operator that projects from global coordinate frame to ego coordinate frame
         H_e_g = np.linalg.inv(CartesianFrame.homo_matrix_3d_from_quaternion(quaternion, ego_position))
-        return np.dot(H_e_g, target_vector)
+
+        # add a trailing [1] element to the position vector, for proper multiplication with the 4x4 projection operator
+        # then throw it (the result from multiplication is [x, y, z, 1])
+        return np.dot(H_e_g, np.append(target_vector, [1]))[:3]
 
     @staticmethod
     def convert_relative_to_absolute_frame(relative_vector: np.array, ego_position: np.array, ego_yaw: float) \
@@ -201,7 +204,10 @@ class CartesianFrame:
         """
         # operator that projects from ego coordinate frame to global coordinate frame
         H_g_e = CartesianFrame.homo_matrix_3d_from_euler(0, 0, ego_yaw, ego_position)
-        return np.dot(H_g_e, relative_vector)
+
+        # add a trailing [1] element to the position vector, for proper multiplication with the 4x4 projection operator
+        # then throw it (the result from multiplication is [x, y, z, 1])
+        return np.dot(H_g_e, np.append(relative_vector, [1]))[:3]
 
     @staticmethod
     def convert_yaw_to_quaternion(yaw: float):
