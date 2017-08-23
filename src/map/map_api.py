@@ -1,10 +1,10 @@
 import numpy as np
 
-from spav.decision_making.src.map.constants import *
-from spav.decision_making.src.map.map_model import MapModel
+from decision_making.src.map.constants import *
+from decision_making.src.map.map_model import MapModel
 from typing import List, Union
-from spav.decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from spav.decision_making.src.planning.utils.geometry_utils import CartesianFrame
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 from logging import Logger
 
 

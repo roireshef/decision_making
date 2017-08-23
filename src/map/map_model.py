@@ -1,7 +1,7 @@
 import numpy as np
 import copy
 from typing import List, Dict
-from spav.decision_making.src.map.constants import Sidewalk
+from decision_making.src.map.constants import Sidewalk
 
 
 class RoadDetails:
