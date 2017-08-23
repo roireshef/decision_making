@@ -5,6 +5,7 @@ from scipy import interpolate as interp
 
 from decision_making.src.global_constants import *
 from decision_making.src.planning.utils import math as robust_math
+from decision_making.src.planning.utils import tf_transformations
 from decision_making.src.planning.utils.columns import *
 
 class CartesianFrame:
@@ -154,6 +155,42 @@ class CartesianFrame:
         else:
             dist = np.linalg.norm(segment_p_to_end)
         return sign, dist, proj
+
+
+
+    @staticmethod
+    def get_vector_in_objective_frame(target_vector: np.array, ego_position: np.array,
+                                      ego_orientation: Union[float, np.array]):
+        """
+        :param target_vector: (x,y,z) array of size [3,]
+        :param ego_position: translation of ego frame: (x,y,z) array of size [3,]
+        :param ego_orientation: orientation of ego frame. Can be either yaw scalar, or quaternion vector
+        :return:
+        """
+        if hasattr(ego_orientation, "__len__"):
+            # Orientation is quaternion numpy array
+            quaternion = ego_orientation
+        else:
+            # Orientation contains yaw
+            quaternion = tf_transformations.quaternion_from_euler(0, 0, ego_orientation, 'ryxz')
+
+        car_rotation = tf_transformations.quaternion_matrix(quaternion)
+        car_position = np.array(ego_position).reshape([3, -1])
+        if len(target_vector.shape) == 1:
+            target_vector = target_vector.reshape([3, -1])
+        elif target_vector.shape[0] != 3:
+            target_vector = target_vector.transpose()
+        target_pos_in_obj_frame = np.dot(np.linalg.pinv(car_rotation[0:3, 0:3]), target_vector - car_position)
+
+        return target_pos_in_obj_frame
+
+    @staticmethod
+    def convert_yaw_to_quaternion(yaw: float):
+        """
+        :param yaw: angle in [rad]
+        :return: quaternion
+        """
+        return tf_transformations.quaternion_from_euler(0, 0, yaw, 'ryxz')
 
 
 class FrenetMovingFrame:

@@ -1,6 +1,6 @@
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import BEHAVIORAL_STATE_READER_TOPIC, \
-    BEHAVIORAL_NAV_PLAN_READER_TOPIC, BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC
+    BEHAVIORAL_NAV_PLAN_READER_TOPIC, BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC, BEHAVIORAL_VISUALIZATION_TOPIC
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.exceptions import MsgDeserializationError
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -40,8 +40,8 @@ class BehavioralFacade(DmModule):
         :return: void
         """
         try:
-            state = self.__get_current_state()
-            navigation_plan = self.__get_current_navigation_plan()
+            state = self._get_current_state()
+            navigation_plan = self._get_current_navigation_plan()
 
             self._behavioral_state.update_behavioral_state(state, navigation_plan)
             trajectory_params, behavioral_visualization_message = self._policy.plan(
@@ -55,12 +55,12 @@ class BehavioralFacade(DmModule):
             self.logger.warn("MsgDeserializationError was raised. skipping planning. " +
                              "turn on debug logging level for more details.")
 
-    def __get_current_state(self) -> State:
+    def _get_current_state(self) -> State:
         input_state = self.dds.get_latest_sample(topic=BEHAVIORAL_STATE_READER_TOPIC, timeout=1)
         self.logger.debug('Received State: ' + str(input_state))
         return State.deserialize(input_state)
 
-    def __get_current_navigation_plan(self) -> NavigationPlanMsg:
+    def _get_current_navigation_plan(self) -> NavigationPlanMsg:
         input_plan = self.dds.get_latest_sample(topic=BEHAVIORAL_NAV_PLAN_READER_TOPIC, timeout=1)
         self.logger.debug('Received navigation plan: %s', input_plan)
         return NavigationPlanMsg.deserialize(input_plan)
@@ -68,6 +68,6 @@ class BehavioralFacade(DmModule):
     def __publish_results(self, trajectory_parameters: TrajectoryParameters) -> None:
         self.dds.publish(BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC, trajectory_parameters.serialize())
 
-    # TODO: add to DDS XML first
     def __publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
-        pass
+        self.dds.publish(BEHAVIORAL_VISUALIZATION_TOPIC, visualization_message.serialize())
+
