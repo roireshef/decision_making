@@ -49,7 +49,7 @@ class DmProcess:
         """
         # create the sub module
         self.module_instance.start()
-        print ("pid ", os.getpid(), self.get_name())
+
         # create the trigger and activate it.
         # It is important to create the trigger inside the new process!!
         if self.trigger_type == DmTriggerType.DM_TRIGGER_PERIODIC:
