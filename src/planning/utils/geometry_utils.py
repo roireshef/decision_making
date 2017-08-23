@@ -169,6 +169,66 @@ class CartesianFrame:
         return sign, dist, proj
 
 
+
+    @staticmethod
+    def get_vector_in_objective_frame(target_vector: np.array, ego_position: np.array,
+                                      ego_orientation: Union[float, np.array]):
+        """
+        convert point in absolute frame to relative to ego frame
+        :param target_vector: (x,y,z) array of size [3,]
+        :param ego_position: translation of ego frame: (x,y,z) array of size [3,]
+        :param ego_orientation: orientation of ego frame. Can be either yaw scalar, or quaternion vector
+        :return: point in relative to ego frame
+        """
+        if hasattr(ego_orientation, "__len__"):
+            # Orientation is quaternion numpy array
+            quaternion = ego_orientation
+        else:
+            # Orientation contains yaw
+            quaternion = tf_transformations.quaternion_from_euler(0, 0, ego_orientation, 'ryxz')
+
+        car_rotation = tf_transformations.quaternion_matrix(quaternion)
+        car_position = np.array(ego_position).reshape([3, -1])
+        if len(target_vector.shape) == 1:
+            target_vector = target_vector.reshape([3, -1])
+        elif target_vector.shape[0] != 3:
+            target_vector = target_vector.transpose()
+        target_pos_in_obj_frame = np.dot(np.linalg.pinv(car_rotation[0:3, 0:3]), target_vector - car_position)
+
+        return target_pos_in_obj_frame
+
+    @staticmethod
+    def convert_relative_to_absolute_frame(relative_vector: np.array, ego_position: np.array, ego_yaw: float):
+        """
+        convert point in relative ego frame to absolute frame
+        :param relative_vector: (x,y,z) array in ego frame
+        :param ego_position: translation of ego frame: (x,y,z) array of size [3,]
+        :param ego_yaw: yaw scalar - orientation of ego frame
+        :return: point in absolute frame
+        """
+        #quaternion = tf_transformations.quaternion_from_euler(0, 0, ego_yaw, 'ryxz')
+        #car_rotation = tf_transformations.quaternion_matrix(quaternion)
+
+        car_position = np.array(ego_position).reshape([3, -1])
+        if len(relative_vector.shape) == 1:
+            relative_vector = relative_vector.reshape([3, -1])
+        elif relative_vector.shape[0] != 3:
+            relative_vector = relative_vector.transpose()
+        cos = np.cos(ego_yaw)
+        sin = np.sin(ego_yaw)
+        car_rotation = np.array([[cos, -sin, 0], [sin, cos, 0], [0, 0, 1]])
+        target_pos_in_abs_frame = np.dot(car_rotation[0:3, 0:3], relative_vector) + car_position
+        return target_pos_in_abs_frame
+
+    @staticmethod
+    def convert_yaw_to_quaternion(yaw: float):
+        """
+        :param yaw: angle in [rad]
+        :return: quaternion
+        """
+        return tf_transformations.quaternion_from_euler(0, 0, yaw, 'ryxz')
+
+
 class FrenetMovingFrame:
     """
     A 2D Frenet moving coordinate frame. Within this class: fpoint, fstate and ftrajectory are in frenet frame;
