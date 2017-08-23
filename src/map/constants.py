@@ -1,3 +1,4 @@
+from enum import Enum
 
 # a small number
 EPSILON = 0.001
@@ -50,3 +51,11 @@ OSM_TERTIARY_LINK_ROAD_WIDTH = 3.0
 OSM_RESIDENTIAL_ROAD_WIDTH = 2.7
 OSM_SERVICE_ROAD_WIDTH = 2.5
 OSM_STEPS_ROAD_WIDTH = 0.8
+
+# sidewalk types in OSM
+class Sidewalk(Enum):
+    no = 'no'
+    none = 'none'
+    left = 'left'
+    right = 'right'
+    both = 'both'

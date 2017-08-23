@@ -6,7 +6,6 @@ from typing import List, Union
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 from logging import Logger
-from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 
 class RoadDetails:
     def __init__(self, id, name, points, longitudes, head_node, tail_node,
