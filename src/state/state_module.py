@@ -3,6 +3,7 @@ import time
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import *
 from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.map.map_model import MapModel
 from decision_making.src.state.state import *
 from logging import Logger
 
@@ -13,7 +14,12 @@ class StateModule(DmModule):
         occupancy_state = OccupancyState(0, np.array([]), np.array([]))
         dynamic_objects = []
         size = ObjectSize(0, 0, 0)
-        ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 0, 0, 0, 0, 0, 0)
+        map_model = MapModel()
+        map_api = MapAPI(map_model)
+        road_localization = RoadLocalization(0, 0, 0, 0, 0, 0)
+        rel_road_localization = RelativeRoadLocalization(0, 0, 0)
+        ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 0, 0, 0, 0, 0, map_api, road_localization,
+                             rel_road_localization)
         self.state = State(occupancy_state, dynamic_objects, ego_state)
 
     def _start_impl(self):
