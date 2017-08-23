@@ -1,10 +1,10 @@
 from logging import Logger
 from typing import Union
 import numpy as np
-from decision_making.src.messages.dds_typed_message import DDSTypedMsg
+from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
 
 
-class NavigationPlanMsg(DDSTypedMsg):
+class NavigationPlanMsg(DDSNonTypedMsg):
     """
         This class hold the navigation plan.
         It also implements function (required by MapAPI) that iterate over the roads list in the navigation plan.
