@@ -5,8 +5,9 @@ from typing import Callable
 from rte.python.periodic_timer.periodic_timer import PeriodicTimer
 from decision_making.src.manager.trigger_exceptions import DmTriggerActivationException
 
+
 class DmTriggerType(Enum):
-    DM_TRIGGER_NONE = 0 # for modules without a trigger
+    DM_TRIGGER_NONE = 0  # for modules without a trigger
     DM_TRIGGER_PERIODIC = 1
 
 
@@ -50,7 +51,7 @@ class DmPeriodicTimerTrigger(DmTrigger):
     This trigger will call the given callback according to the given period
     """
 
-    def __init__(self, callback: Callable[[None], None], period: float):
+    def __init__(self, callback: Callable[[], None], period: float):
         super().__init__(callback)
         self.is_active = False
         self.period = period
@@ -65,7 +66,7 @@ class DmPeriodicTimerTrigger(DmTrigger):
     def activate(self):
         if not self.is_active:
             self.is_active = True
-            self.timer.start(run_in_thread=False)
+            self.timer.start()
         else:
             raise DmTriggerActivationException('trying to activate an already active DmPeriodicTimerTrigger')
 
