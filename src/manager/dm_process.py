@@ -11,7 +11,7 @@ class DmProcess:
     def __init__(self, module_instance: DmModule, trigger_type: DmTriggerType, trigger_args: dict) -> None:
         """
         Manager for a single DM module running in a separate process
-        :param module_type: the type of the DM module to be instantiated
+        :param module_instance: the instance of the DM module to run in a separate process
         :param trigger_type: the type of trigger to use
         :param trigger_args: dictionary containing keyword arguments for initializing the trigger
         """
