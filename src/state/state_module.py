@@ -1,25 +1,18 @@
 import time
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
+from decision_making.src.map.naive_cache_map import NaiveCacheMap
 from decision_making.src.global_constants import *
 from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.map.map_model import MapModel
 from decision_making.src.state.state import *
 from logging import Logger
 
 
 class StateModule(DmModule):
-    def __init__(self, dds: DdsPubSub, logger: Logger):
+    def __init__(self, dds: DdsPubSub, logger: Logger, map_api: MapAPI, occupancy_state: Union[OccupancyState, None],
+                 dynamic_objects: Union[List[DynamicObject], None], ego_state: Union[EgoState, None]):
         super().__init__(dds, logger)
-        occupancy_state = OccupancyState(0, np.array([]), np.array([]))
-        dynamic_objects = []
-        size = ObjectSize(0, 0, 0)
-        map_model = MapModel()
-        map_api = MapAPI(map_model)
-        road_localization = RoadLocalization(0, 0, 0, 0, 0, 0)
-        rel_road_localization = RelativeRoadLocalization(0, 0, 0)
-        ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 0, 0, 0, 0, 0, map_api, road_localization,
-                             rel_road_localization)
+        self.map_api = map_api
         self.state = State(occupancy_state, dynamic_objects, ego_state)
 
     def _start_impl(self):
@@ -57,6 +50,7 @@ class StateModule(DmModule):
             v_y = dyn_obj_dict["velocity"]["v_y"]
 
             dyn_obj = DynamicObject(id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, None, None)
+            self.fill_road_localization(dyn_obj, self.state.ego_state, self.map_api)
             dyn_obj_list.append(dyn_obj)
 
     def __self_localization_callback(self, ego_localization: dict):
@@ -72,6 +66,7 @@ class StateModule(DmModule):
         v_y = ego_localization["velocity"]["v_y"]
         size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
         self.state.ego_state = EgoState(0, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, None, None, None)
+        self.fill_road_localization(self.state.ego_state, None, self.map_api)
 
     def __occupancy_state_callback(self, occupancy: dict):
         self.logger.debug("got occupancy status %s", occupancy)
@@ -88,3 +83,34 @@ class StateModule(DmModule):
     def __actuator_status_callback(self, actuator: dict):
         self.logger.debug("got actuator status %s", actuator)
         self.state.ego_state.steering_angle = actuator["steering_angle"]
+
+    @staticmethod
+    def fill_road_localization(obj, ego, map):
+        # type: (DynamicObject, Union[EgoState, None], MapAPI) -> None
+        """
+        given ego_state fill dyn_obj.road_localization & dyn_obj.rel_road_localization
+        :param obj: dynamic object whose road_localization should be filled (may be ego)
+        :return: None
+        """
+        if ego is not None:  # if the object is not ego
+            rel_pos = np.array([obj.x, obj.y, obj.z])
+            glob_pos = CartesianFrame.convert_relative_to_absolute_frame(rel_pos, ego, ego.yaw)
+            glob_yaw = obj.yaw + ego.yaw
+        else:  # if obj is ego, then global & local coordinates are the same
+            glob_pos = np.array([obj.x, obj.y, obj.z])
+            glob_yaw = obj.yaw
+
+        # calculate road coordinates for global coordinates
+        road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw = \
+            map.convert_world_to_lat_lon(glob_pos[0], glob_pos[1], glob_pos[2], glob_yaw)
+        # fill road_localization
+        obj.road_localization = RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
+
+        # calculate relative road localization
+        if ego is not None:  # if obj is not ego
+            obj.rel_road_localization = \
+                RelativeRoadLocalization(obj.road_localization.full_lat - ego.road_localization.full_lat,
+                                         obj.road_localization.road_lon - ego.road_localization.road_lon,
+                                         obj.road_localization.intra_lane_yaw - ego.road_localization.intra_lane_yaw)
+        else:  # if the object is ego, then rel_road_localization is irrelevant
+            obj.rel_road_localization = None

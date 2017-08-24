@@ -1,11 +1,9 @@
 import numpy as np
 from abc import ABCMeta, abstractmethod
 from decision_making.src.map.map_model import MapModel
-from typing import List
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 
 
-class MapAPI(metaclass=ABCMeta):
+class MapAPI:
     def __init__(self, map_model):
         # type: (MapModel) -> None
         self._cached_map_model = map_model
@@ -91,7 +89,7 @@ class MapAPI(metaclass=ABCMeta):
         pass
 
     def get_uniform_path_lookahead(self, road_id, lat, starting_lon, lon_step, steps_num, navigation_plan):
-        # type: (int, float, float, float, int, NavigationPlanMsg) -> np.ndarray
+        # type: (int, float, float, float, int, int) -> np.ndarray
         """
         Create array of uniformly distanced points along the given road, shifted by lat.
         When some road finishes, it automatically continues to the next road, according to the navigation plan.
