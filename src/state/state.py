@@ -52,7 +52,7 @@ class OccupancyState(DDSNonTypedMsg):
         :param free_space: array of directed segments defines a free space border
         :param confidence: array per segment
         """
-        self._timestamp = timestamp
+        self.timestamp = timestamp
         self.free_space = np.copy(free_space)
         self.confidence = np.copy(confidence)
 
@@ -68,7 +68,7 @@ class ObjectSize(DDSNonTypedMsg):
 class DynamicObject(DDSNonTypedMsg):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, acceleration_lon, yaw_deriv,
                  road_localization):
-        # type: (int, int, float, float, float, float, ObjectSize, float, float, float, Union[float, None], Union[float, None], RoadLocalization) -> None
+        # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float, RoadLocalization) -> None
         """
         both ego and other dynamic objects
         :param obj_id: object id
@@ -85,7 +85,7 @@ class DynamicObject(DDSNonTypedMsg):
         :param yaw_deriv: 0 for straight motion, positive for CCW (yaw increases), negative for CW
         """
         self.id = obj_id
-        self._timestamp = timestamp
+        self.timestamp = timestamp
         self.x = x
         self.y = y
         self.z = z
@@ -95,16 +95,8 @@ class DynamicObject(DDSNonTypedMsg):
         self.v_x = v_x
         self.v_y = v_y
         self.road_localization = road_localization
-
-        if acceleration_lon is not None:
-            self.acceleration_lon = acceleration_lon
-        else:
-            raise NotImplementedError()
-
-        if yaw_deriv is not None:
-            self.yaw_deriv = yaw_deriv
-        else:
-            raise NotImplementedError()
+        self.acceleration_lon = acceleration_lon
+        self.yaw_deriv = yaw_deriv
 
     def predict(self, goal_timestamp, map_api):
         # type: (int, MapAPI) -> DynamicObject
@@ -146,7 +138,7 @@ class DynamicObject(DDSNonTypedMsg):
 class EgoState(DynamicObject, DDSNonTypedMsg):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence,
                  v_x, v_y, acceleration_lon, yaw_deriv, steering_angle, road_localization):
-        # type: (int, int, float, float, float, float, ObjectSize, float, float, float, Union[float, None], Union[float, None], Union[float, None], RoadLocalization) -> None
+        # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float, float, RoadLocalization) -> None
         """
         :param obj_id:
         :param timestamp:
@@ -164,10 +156,8 @@ class EgoState(DynamicObject, DDSNonTypedMsg):
         """
         DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
                                acceleration_lon, yaw_deriv, road_localization)
-        if steering_angle is not None:
-            self.steering_angle = steering_angle
-        else:
-            raise NotImplementedError()
+        self.steering_angle = steering_angle
+
 
 
 class State(DDSNonTypedMsg):

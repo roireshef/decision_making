@@ -2,7 +2,7 @@ from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import *
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.exceptions import MsgDeserializationError
-from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
+from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
@@ -73,10 +73,10 @@ class TrajectoryPlanningFacade(DmModule):
         self.logger.debug('Received state: %s', input_state)
         return State.deserialize(input_state)
 
-    def _get_mission_params(self) -> TrajectoryParameters:
-        input_params = self.dds.get_latest_sample(topic=TRAJECTORY_PARAMS_READER_TOPIC, timeout=1)
+    def _get_mission_params(self) -> TrajectoryParams:
+        input_params = self.dds.get_latest_sample(topic=TRAJECTORY_STATE_READER_TOPIC, timeout=1)
         self.logger.debug('Received state: %s', input_params)
-        return TrajectoryParameters.deserialize(input_params)
+        return TrajectoryParams.deserialize(input_params)
 
     def __publish_trajectory(self, results: TrajectoryPlanMsg) -> None:
         self.dds.publish(TRAJECTORY_PUBLISH_TOPIC, results.serialize())

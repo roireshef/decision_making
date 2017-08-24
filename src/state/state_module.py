@@ -1,4 +1,4 @@
-import threading
+from threading import Lock
 from logging import Logger
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
@@ -8,6 +8,9 @@ from decision_making.src.state.state import *
 
 
 class StateModule(DmModule):
+    # TODO: temporary solution for unknown class members on initialization
+    UNKNWON_DEFAULT_VAL = 0.0
+
     # TODO: implement double-buffer mechanism for locks wherever needed
     def __init__(self, dds: DdsPubSub, logger: Logger, map_api: MapAPI, occupancy_state: Union[OccupancyState, None],
                  dynamic_objects: Union[List[DynamicObject], None], ego_state: Union[EgoState, None]):
@@ -15,13 +18,13 @@ class StateModule(DmModule):
         self._map_api = map_api
 
         self._occupancy_state = occupancy_state
-        self._occupancy_state_lock = threading.Lock()
+        self._occupancy_state_lock = Lock()
 
         self._dynamic_objects = dynamic_objects
-        self._dynamic_objects_lock = threading.Lock()
+        self._dynamic_objects_lock = Lock()
 
         self._ego_state = ego_state
-        self._ego_state_lock = threading.Lock()
+        self._ego_state_lock = Lock()
 
     def _start_impl(self):
         self.dds.subscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, self.__dynamic_obj_callback)
@@ -72,8 +75,9 @@ class StateModule(DmModule):
             road_localtization = StateModule.compute_obj_road_localization(obj_pos, yaw, ego_pos, ego_yaw,
                                                                            self._map_api)
 
-            dyn_obj = DynamicObject(id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, None, None,
-                                    road_localtization)
+            # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
+            dyn_obj = DynamicObject(id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
+                                    self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localtization)
             dyn_obj_list.append(dyn_obj)
 
         with self._dynamic_objects_lock:
@@ -97,8 +101,9 @@ class StateModule(DmModule):
         road_localization = StateModule.compute_ego_road_localization(np.ndarray([x, y, z]), yaw)
 
         with self._ego_state_lock:
-            self._ego_state = EgoState(0, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
-                                       None, None, None, road_localization)
+            # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
+            self._ego_state = EgoState(0, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, self.UNKNWON_DEFAULT_VAL,
+                                       self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localization)
 
         self.__publish_state()
 
@@ -128,8 +133,7 @@ class StateModule(DmModule):
     # TODO: solve the fact that actuator status can be outdated and no one will ever know
     def __actuator_status_callback(self, actuator: dict):
         self.logger.debug("got actuator status %s", actuator)
-        # TODO: update self._ego_state.steering_angle. Don't forget to lock self._ego_state!
-        pass
+        pass # TODO: update self._ego_state.steering_angle. Don't forget to lock self._ego_state!
 
     @staticmethod
     def compute_ego_road_localization(pos, yaw, map_api):
