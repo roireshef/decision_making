@@ -53,7 +53,7 @@ class BehavioralState:
          It fetches relevant features that will be used for the decision-making process.
         :param navigation_plan: new navigation plan of vehicle
         :param state: new world state
-        :return:
+        :return: a new and updated BehavioralState
         """
         ego_state = state.ego_state
         timestamp = ego_state._timestamp

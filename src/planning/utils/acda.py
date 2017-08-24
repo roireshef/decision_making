@@ -1,6 +1,7 @@
 # This code is based on https://en.wikipedia.org/wiki/Assured_Clear_Distance_Ahead
 import math
 from abc import ABCMeta
+from logging import Logger
 from typing import List
 
 import numpy as np
@@ -18,7 +19,7 @@ class AcdaApi:
     _logger = AV_Logger.get_logger(ACDA_NAME_FOR_LOGGING)
 
     @staticmethod
-    def set_logger(logger: AV_Logger):
+    def set_logger(logger: Logger):
         AcdaApi._logger = logger
 
     @staticmethod
