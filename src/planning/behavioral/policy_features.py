@@ -25,8 +25,8 @@ class DefaultPolicyFeatures:
         pass
 
     @staticmethod
-    def get_closest_object_on_path_within_lane(policy_config: DefaultPolicyConfig, behavioral_state: BehavioralState,
-                                               lat_options: np.array) -> np.array:
+    def get_closest_object_on_path(policy_config: DefaultPolicyConfig, behavioral_state: BehavioralState,
+                                   lat_options: np.array) -> np.array:
         """
         Gets the closest object on lane per each lateral offset in lat_options
         :param policy_config: policy parameters configuration

@@ -59,7 +59,7 @@ class DefaultPolicy(Policy):
             return None, None
 
         # High-level planning
-        target_lane_offset, target_latitude = self.__high_level_planning(behavioral_state)
+        target_lane_offset, target_latitude = self._high_level_planning(behavioral_state)
 
         # Calculate reference route for driving
         reference_route_x_y_z, reference_route_in_cars_frame_x_y_yaw = DefaultPolicy.__generate_reference_route(
@@ -87,7 +87,7 @@ class DefaultPolicy(Policy):
         visualization_message = BehavioralVisualizationMsg(reference_route=reference_route_x_y_z)
         return trajectory_parameters, visualization_message
 
-    def __high_level_planning(self, behavioral_state: BehavioralState) -> (float, float):
+    def _high_level_planning(self, behavioral_state: BehavioralState) -> (float, float):
         """
         Generates a high-level plan
         :param behavioral_state: processed behavioral state
@@ -107,23 +107,23 @@ class DefaultPolicy(Policy):
             # Creates a grid of latitude locations on road, which will be used to determine
             # the target latitude of the driving trajectory
 
-            # path_absolute_offsets is a grid of optional lateral offsets in [lanes]
-            path_absolute_offsets = \
+            # generated_path_offsets_grid is a grid of optional lateral offsets in [lanes]
+            generated_path_offsets_grid = \
                 DefaultPolicy.__generate_latitudes_grid(num_of_lanes=num_lanes,
                                                         current_lane_latitude=current_center_lane_offset,
                                                         policy_config=pc)
-            path_absolute_latitudes = lane_width * path_absolute_offsets
+            path_absolute_latitudes = lane_width * generated_path_offsets_grid
 
             # For each latitude, find closest blocking object on lane
-            closest_blocking_object_within_lane = \
-                DefaultPolicyFeatures.get_closest_object_on_path_within_lane(policy_config=pc,
-                                                                             behavioral_state=behavioral_state,
-                                                                             lat_options=path_absolute_latitudes)
+            closest_blocking_object_on_path = \
+                DefaultPolicyFeatures.get_closest_object_on_path(policy_config=pc,
+                                                                 behavioral_state=behavioral_state,
+                                                                 lat_options=path_absolute_latitudes)
 
             # Choose a proper action (latitude offset from current center lane)
             selected_action, selected_offset = DefaultPolicy.__select_latitude_from_grid(
-                path_absolute_offsets=path_absolute_offsets, current_lane_offset=current_center_lane_offset,
-                closest_object_in_lane=closest_blocking_object_within_lane, policy_config=pc)
+                path_absolute_offsets=generated_path_offsets_grid, current_lane_offset=current_center_lane_offset,
+                closest_object_in_lane=closest_blocking_object_on_path, policy_config=pc)
             selected_latitude = selected_offset * lane_width
 
         return selected_offset, selected_latitude
