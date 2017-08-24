@@ -4,9 +4,10 @@ import numpy as np
 from scipy import interpolate as interp
 
 from decision_making.src.global_constants import *
-from decision_making.src.planning.utils import math as robust_math
 from decision_making.src.planning.utils import tf_transformations
 from decision_making.src.planning.utils.columns import *
+from decision_making.src.planning.utils.math import Math
+
 
 class CartesianFrame:
     @staticmethod
@@ -103,10 +104,10 @@ class CartesianFrame:
                              'actual arc length (' + org_s + ')')
 
         # handles cases where we suffer from floating point division inaccuracies
-        num_samples = robust_math.div(desired_curve_len, step_size) + 1
+        num_samples = Math.div(desired_curve_len, step_size) + 1
 
         # if step_size must be preserved but desired_curve_len is not a multiply of step_size - trim desired_curve_len
-        if robust_math.mod(desired_curve_len, step_size) > 0 and preserve_step_size:
+        if Math.mod(desired_curve_len, step_size) > 0 and preserve_step_size:
             desired_curve_len = (num_samples - 1) * step_size
             effective_step_size = step_size
         else:
@@ -156,16 +157,15 @@ class CartesianFrame:
             dist = np.linalg.norm(segment_p_to_end)
         return sign, dist, proj
 
-
-
     @staticmethod
     def get_vector_in_objective_frame(target_vector: np.array, ego_position: np.array,
                                       ego_orientation: Union[float, np.array]):
         """
+        convert point in absolute frame to relative to ego frame
         :param target_vector: (x,y,z) array of size [3,]
         :param ego_position: translation of ego frame: (x,y,z) array of size [3,]
         :param ego_orientation: orientation of ego frame. Can be either yaw scalar, or quaternion vector
-        :return:
+        :return: point in relative to ego frame
         """
         if hasattr(ego_orientation, "__len__"):
             # Orientation is quaternion numpy array
@@ -183,6 +183,29 @@ class CartesianFrame:
         target_pos_in_obj_frame = np.dot(np.linalg.pinv(car_rotation[0:3, 0:3]), target_vector - car_position)
 
         return target_pos_in_obj_frame
+
+    @staticmethod
+    def convert_relative_to_absolute_frame(relative_vector: np.array, ego_position: np.array, ego_yaw: float):
+        """
+        convert point in relative ego frame to absolute frame
+        :param relative_vector: (x,y,z) array in ego frame
+        :param ego_position: translation of ego frame: (x,y,z) array of size [3,]
+        :param ego_yaw: yaw scalar - orientation of ego frame
+        :return: point in absolute frame
+        """
+        #quaternion = tf_transformations.quaternion_from_euler(0, 0, ego_yaw, 'ryxz')
+        #car_rotation = tf_transformations.quaternion_matrix(quaternion)
+
+        car_position = np.array(ego_position).reshape([3, -1])
+        if len(relative_vector.shape) == 1:
+            relative_vector = relative_vector.reshape([3, -1])
+        elif relative_vector.shape[0] != 3:
+            relative_vector = relative_vector.transpose()
+        cos = np.cos(ego_yaw)
+        sin = np.sin(ego_yaw)
+        car_rotation = np.array([[cos, -sin, 0], [sin, cos, 0], [0, 0, 1]])
+        target_pos_in_abs_frame = np.dot(car_rotation[0:3, 0:3], relative_vector) + car_position
+        return target_pos_in_abs_frame
 
     @staticmethod
     def convert_yaw_to_quaternion(yaw: float):

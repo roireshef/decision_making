@@ -6,6 +6,8 @@ from typing import List
 import numpy as np
 
 from decision_making.src.global_constants import ACDA_NAME_FOR_LOGGING
+from decision_making.src.map.map_api import MapAPI
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.acda_constants import *
 
 from decision_making.src.state.state import DynamicObject, EgoState
@@ -21,11 +23,15 @@ class AcdaApi:
 
     @staticmethod
     def compute_acda(objects_on_road: List[DynamicObject], ego_state: EgoState,
+                     navigation_plan: NavigationPlanMsg, map_api: MapAPI,
                      lookahead_path: np.ndarray) -> float:
         set_safety_lookahead_dist_by_ego_vel = False
 
         # get min long of static objects in my lane
-        min_static_object_long = AcdaApi.calc_forward_sight_distance(objects_on_road, ego_state)
+        min_static_object_long = AcdaApi.calc_forward_sight_distance(static_objects=objects_on_road,
+                                                                     ego_state=ego_state,
+                                                                     navigation_plan=navigation_plan,
+                                                                     map_api=map_api)
         # compute safe speed for forward line of sight
         safe_speed_forward_los = AcdaApi.calc_safe_speed_forward_line_of_sight(min_static_object_long)
 
@@ -129,9 +135,12 @@ class AcdaApi:
 
     @staticmethod
     def calc_forward_sight_distance(static_objects: List[DynamicObject], ego_state: EgoState,
+                                    navigation_plan: NavigationPlanMsg, map_api: MapAPI,
                                     dyn_objects: List[DynamicObject] = None) -> float:
         """
         Calculating the minimal distance of something that is in my lane
+        :param map_api: map API
+        :param navigation_plan: navigation plan of ego, to search relation to other objects on map
         :param static_objects: list of static objects, each is EnrichedObjectState
         :param ego_state: our car's state. Type EnrichedEgoState
         :param dyn_objects: TODO not used in July Milestone
@@ -141,9 +150,16 @@ class AcdaApi:
         """
         min_static_object_long = FORWARD_LOS_MAX_RANGE
         for static_obj in static_objects:
-            obj_lon = static_obj.rel_road_localization.rel_lon
+
+            relative_road_localization = static_obj.get_relative_road_localization(
+                ego_road_localization=ego_state.road_localization, ego_navigation_plan=navigation_plan,
+                map_api=map_api, max_lookahead_dist=BEHAVIORAL_PLANNING_LOOKAHEAD_DISTANCE)
+
+            obj_lon = relative_road_localization.rel_lon
+            obj_lat = relative_road_localization.rel_lat
+
             obj_lon = obj_lon - SENSOR_OFFSET_FROM_FRONT
-            obj_lat = static_obj.rel_road_localization.rel_lat
+
             if obj_lon > 0 and AcdaApi.is_in_ego_trajectory(obj_lat=obj_lat, obj_width=static_obj.size.width,
                                                             ego_width=ego_state.size.width,
                                                             lateral_safety_margin=LATERAL_MARGIN_FROM_OBJECTS):
