@@ -1,10 +1,13 @@
 import math
+from typing import Union, TypeVar
 
 from decision_making.src.global_constants import DIVISION_FLOATING_ACCURACY, EXP_CLIP_TH
 import numpy as np
 
 
 class Math:
+    T = TypeVar('T', bound=Union[float, np.ndarray])
+
     @staticmethod
     def clipped_exponent(x: np.ndarray, w: float, k: float,
                          min_clip: float=0, max_clip: float=EXP_CLIP_TH) -> np.ndarray:
@@ -20,23 +23,25 @@ class Math:
         return w * np.sum(np.exp(np.clip(k * x, min_clip, max_clip)), axis=1)
 
     @staticmethod
-    def div(a: float,  b: float, precision: float = DIVISION_FLOATING_ACCURACY):
+    def div(a: T,  b: T, precision: float = DIVISION_FLOATING_ACCURACY) -> T:
         """
         divides a/b with desired floating-point precision
         """
-        div, mod = divmod(a, b)
-        if math.fabs(mod - b) < precision:
-            return int(div + 1)
+        div = np.divide(a, b).astype(np.int_)
+        mod = np.subtract(a, np.multiply(div, b))
+        add_ones = 1 * (np.fabs(mod - b) < precision)
+
+        if isinstance(div, np.ndarray):
+            return (div + add_ones).astype(np.int_)
         else:
-            return int(div)
+            return int(div + add_ones)
 
     @staticmethod
-    def mod(a,  b, precision: float = DIVISION_FLOATING_ACCURACY):
+    def mod(a: T,  b: T, precision: float = DIVISION_FLOATING_ACCURACY) -> T:
         """
         modulo a % b with desired floating-point precision
         """
-        div, mod = divmod(a, b)
-        if math.fabs(mod - b) < precision:
-            return 0
-        else:
-            return mod
+        div = np.divide(a, b).astype(np.int_)
+        mod = np.subtract(a, np.multiply(div, b))
+
+        return b * (np.fabs(mod - b) < precision) + mod * (np.fabs(mod - b) > precision) * (np.fabs(mod) > precision)
