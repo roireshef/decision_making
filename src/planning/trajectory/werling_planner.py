@@ -113,7 +113,7 @@ class WerlingPlanner(TrajectoryPlanner):
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
         # TODO: validate that both obstacles and ego are in world coordinates. if not, change the filter cond.
         with state.ego_state as ego, params.obstacle_cost as exp:
-            close_obstacles = [SigmoidStatic2DBoxObstacle.from_object_state(obs, exp.k, exp.offset)
+            close_obstacles = [SigmoidStatic2DBoxObstacle.from_object(obs, exp.k, exp.offset)
                                for obs in state.dynamic_objects
                                if np.linalg.norm([obs.x - ego.x, obs.y - ego.y]) < MAXIMAL_OBSTACLE_PROXIMITY]
 
