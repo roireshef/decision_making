@@ -4,7 +4,7 @@ from decision_making.src.global_constants import BEHAVIORAL_STATE_READER_TOPIC, 
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.exceptions import MsgDeserializationError
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
+from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.policy import Policy
@@ -65,7 +65,7 @@ class BehavioralFacade(DmModule):
         self.logger.debug('Received navigation plan: %s', input_plan)
         return NavigationPlanMsg.deserialize(input_plan)
 
-    def __publish_results(self, trajectory_parameters: TrajectoryParameters) -> None:
+    def __publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
         self.dds.publish(BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC, trajectory_parameters.serialize())
 
     def __publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
