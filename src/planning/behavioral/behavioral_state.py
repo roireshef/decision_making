@@ -72,8 +72,10 @@ class BehavioralState:
         dynamic_objects_relative_localization = []
         for dynamic_obj in state.dynamic_objects:
             # Get object's relative road localization
-            relative_road_localization = dynamic_obj.get_relative_road_localization(self.map, navigation_plan,
-                                                                                    ego_state)
+            relative_road_localization = dynamic_obj.get_relative_road_localization(
+                ego_road_localization=ego_state.road_localization, ego_navigation_plan=navigation_plan,
+                map_api=self.map, max_lookahead_dist=MAX_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING)
+
             # filter objects with out of decision-making range
             if MAX_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING > \
                     relative_road_localization.rel_lon > \
