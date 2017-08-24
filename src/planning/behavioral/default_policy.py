@@ -53,9 +53,9 @@ class DefaultPolicy(Policy):
         :param behavioral_state:
         :return: trajectory parameters for trajectories evaluation, visualization object
         """
-        if behavioral_state.current_timestamp is None:
+        if behavioral_state.ego_timestamp is None:
             # supposed to be prevented in the facade
-            self.logger.warning("Invalid behavioral state: behavioral_state.current_timestamp is None")
+            self.logger.warning("Invalid behavioral state: behavioral_state.ego_timestamp is None")
             return None, None
 
         # High-level planning
@@ -238,8 +238,8 @@ class DefaultPolicy(Policy):
                                                axis=1)
         reference_route_xyz_in_cars_frame = geometry_utils.CartesianFrame.get_vector_in_objective_frame(
             target_vector=reference_route_x_y_z.transpose(),
-            ego_position=behavioral_state.current_position,
-            ego_orientation=behavioral_state.current_orientation)
+            ego_position=behavioral_state.ego_position,
+            ego_orientation=behavioral_state.ego_orientation)
         reference_route_xy_in_cars_frame = reference_route_xyz_in_cars_frame[0:2, :].transpose()
 
         # interpolate and create uniformly spaced path
