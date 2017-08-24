@@ -1,6 +1,6 @@
 import numpy as np
 
-from test.planning.trajectory.utils import RouteFixture, PlottableSigmoidStatic2DBoxObstacle
+from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidStatic2DBoxObstacle
 
 
 def test_computeCost_threeSRoutesOneObstacle_validScore():

@@ -108,8 +108,8 @@ class WerlingPlanner(TrajectoryPlanner):
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
 
         static_obstacles = [
-            SigmoidStatic2DBoxObstacle.from_object_state(obs, params.obstacle_exp, params.obstacle_offset)
-            for obs in state.static_objects]
+            SigmoidStatic2DBoxObstacle.from_object(obs, params.obstacle_exp, params.obstacle_offset)
+            for obs in state.dynamic_objects]
 
         # TODO: consider max over trajectory points?
         # TODO: what if there's no static obstacles? what if close_obstacles is empty?
