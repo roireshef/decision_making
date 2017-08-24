@@ -1,3 +1,5 @@
+import os
+
 DIVISION_FLOATING_ACCURACY = 10 ** -10
 
 # Trajectory Planner #
@@ -58,6 +60,10 @@ SELF_LOCALIZATION_SUBSCRIBE_TOPIC = "StateSubscriber::SelfLocalizationReader"
 OCCUPANCY_STATE_SUBSCRIBE_TOPIC = "StateSubscriber::OccupancyStateReader"
 STATE_PUBLISH_TOPIC = "StatePublisher::StateWriter"
 
+# Maps
+MAPS_DIR = os.path.join(os.path.dirname(__file__), '../resources/maps/')
+MAP_FILE_NAME = os.path.join(MAPS_DIR, 'map.p')
+
 # Navigation Planning Module
 NAVIGATION_PLAN_PUBLISH_TOPIC = "NavigationPublisher::NavigationPlanWriter"
 
@@ -65,11 +71,13 @@ NAVIGATION_PLAN_PUBLISH_TOPIC = "NavigationPublisher::NavigationPlanWriter"
 BEHAVIORAL_STATE_READER_TOPIC = "BehavioralSubscriber::StateReader"
 BEHAVIORAL_NAV_PLAN_READER_TOPIC = "BehavioralSubscriber::NavigationPlanReader"
 BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC = "BehavioralPublisher::TrajectoryParametersWriter"
+BEHAVIORAL_VISUALIZATION_TOPIC = ""  # TODO: update XML in common-data and fill this
 
 # Trajectory Planning Module
 TRAJECTORY_STATE_READER_TOPIC = "TrajectorySubscriber::StateReader"
 TRAJECTORY_PARAMS_READER_TOPIC = "TrajectorySubscriber::TrajectoryParametersReader"
 TRAJECTORY_PUBLISH_TOPIC = "TrajectoryPublisher::TrajectoryWriter"
+TRAJECTORY_VISUALIZATION_TOPIC = ""  # TODO: update XML in common-data and fill this
 
 #### NAMES OF MODULES FOR LOGGING ####
 DM_MANAGER_NAME_FOR_LOGGING = "DM Manager"
@@ -78,4 +86,3 @@ BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
 ACDA_NAME_FOR_LOGGING = "ACDA Module"
 TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 STATE_MODULE_NAME_FOR_LOGGING = "State Module"
-

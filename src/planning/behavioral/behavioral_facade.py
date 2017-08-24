@@ -1,6 +1,6 @@
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import BEHAVIORAL_STATE_READER_TOPIC, \
-    BEHAVIORAL_NAV_PLAN_READER_TOPIC, BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC
+    BEHAVIORAL_NAV_PLAN_READER_TOPIC, BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC, BEHAVIORAL_VISUALIZATION_TOPIC
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.exceptions import MsgDeserializationError
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -68,6 +68,6 @@ class BehavioralFacade(DmModule):
     def __publish_results(self, trajectory_parameters: TrajectoryParameters) -> None:
         self.dds.publish(BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC, trajectory_parameters.serialize())
 
-    # TODO: add to DDS XML first
     def __publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
-        pass
+        self.dds.publish(BEHAVIORAL_VISUALIZATION_TOPIC, visualization_message.serialize())
+
