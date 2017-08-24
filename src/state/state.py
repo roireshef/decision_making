@@ -1,11 +1,9 @@
 import copy
-from typing import List, Union
 
 import numpy as np
 from decision_making.src.map.map_api import MapAPI
 from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 
 
 class RoadLocalization(DDSNonTypedMsg):
@@ -171,7 +169,7 @@ class EgoState(DynamicObject, DDSNonTypedMsg):
 
 class State(DDSNonTypedMsg):
     def __init__(self, occupancy_state, dynamic_objects, ego_state):
-        # type: (OccupancyState, List[DynamicObject], EgoState) -> None
+        # type: (OccupancyState, list[DynamicObject], EgoState) -> None
         """
         main class for the world state
         :param occupancy_state: free space

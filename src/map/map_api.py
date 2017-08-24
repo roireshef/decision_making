@@ -1,18 +1,19 @@
 import numpy as np
 from abc import ABCMeta, abstractmethod
 from decision_making.src.map.map_model import MapModel
-from typing import List
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 
 
-class MapAPI(metaclass=ABCMeta):
+class MapAPI(object):
+    __metaclass__ = ABCMeta
+
     def __init__(self, map_model):
         # type: (MapModel) -> None
         self._cached_map_model = map_model
         pass
 
     def find_roads_containing_point(self, layer, x, y):
-        # type: (int, float, float) -> List[int]
+        # type: (int, float, float) -> list[int]
         """
         shortcut to a cell of the map xy2road_map
         :param layer: 0 ground, 1 on bridge, 2 bridge above bridge, etc
