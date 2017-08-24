@@ -3,7 +3,6 @@ import numpy as np
 
 from decision_making.src import global_constants
 from decision_making.src.global_constants import ROAD_SHOULDERS_WIDTH
-from decision_making.src.map.map_api import MapAPI
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
@@ -281,7 +280,8 @@ class DefaultPolicy(Policy):
 
         # TODO: assign proper cost parameters
         infinite_sigmoid_cost = 1000.0  # not a constant because it might be learned. TBD
-        zero_sogmoid_cost = 0.0  # not a constant because it might be learned. TBD
+        zero_sigmoid_cost = 0.0  # not a constant because it might be learned. TBD
+        sigmoid_k_param = 20.0
 
         # lateral distance in [m] from ref. path to rightmost edge of lane
         left_margin = right_margin = behavioral_state.ego_state.size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
@@ -298,23 +298,23 @@ class DefaultPolicy(Policy):
         left_road_offset = left_shoulder_offset + ROAD_SHOULDERS_WIDTH
 
         # Set road-structure-based cost parameters
-        right_lane_cost = SigmoidFunctionParams(w=zero_sogmoid_cost, k=20.0,
+        right_lane_cost = SigmoidFunctionParams(w=zero_sigmoid_cost, k=sigmoid_k_param,
                                                 offset=right_lane_offset)  # Zero cost
-        left_lane_cost = SigmoidFunctionParams(w=zero_sogmoid_cost, k=20.0,
+        left_lane_cost = SigmoidFunctionParams(w=zero_sigmoid_cost, k=sigmoid_k_param,
                                                offset=left_lane_offset)  # Zero cost
-        right_shoulder_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=20.0,
+        right_shoulder_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
                                                     offset=right_shoulder_offset)  # Very high (inf) cost
-        left_shoulder_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=20.0,
+        left_shoulder_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
                                                    offset=left_shoulder_offset)  # Very high (inf) cost
-        right_road_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=20.0,
+        right_road_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
                                                 offset=right_road_offset)  # Very high (inf) cost
-        left_road_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=20.0,
+        left_road_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
                                                offset=left_road_offset)  # Very high (inf) cost
 
         # Set objects parameters
         # dilate each object by cars length + safety margin
         objects_dilation_size = behavioral_state.ego_state.size.length + LATERAL_SAFETY_MARGIN_FROM_OBJECT
-        objects_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=20.0,
+        objects_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
                                              offset=objects_dilation_size)  # Very high (inf) cost
 
         distance_from_reference_route_sq_factor = 1.0
