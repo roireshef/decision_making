@@ -1,5 +1,6 @@
 from enum import Enum
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
+from decision_making.src.map.naive_cache_map import NaiveCacheMap
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.src.global_constants import *
@@ -38,7 +39,8 @@ class DmModuleFactory:
     def __create_state_module() -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         dds = DdsPubSub(STATE_MODULE_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
-        state_module = StateModule(dds, logger)
+        map_api = NaiveCacheMap(MAP_FILE_NAME)
+        state_module = StateModule(dds, logger, map_api, None, None, None)
         return state_module
 
     @staticmethod
