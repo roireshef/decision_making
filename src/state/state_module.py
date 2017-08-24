@@ -7,6 +7,9 @@ from decision_making.src.state.state import *
 
 
 class StateModule(DmModule):
+    # TODO: temporary solution for unknown class members on initialization
+    UNKNWON_DEFAULT_VAL = 0.0
+
     def __init__(self, dds: DdsPubSub, logger: Logger, map_api: MapAPI, occupancy_state: Union[OccupancyState, None],
                  dynamic_objects: Union[List[DynamicObject], None], ego_state: Union[EgoState, None]):
         super().__init__(dds, logger)
@@ -64,8 +67,8 @@ class StateModule(DmModule):
             road_localtization = StateModule.compute_obj_road_localization(obj_pos, yaw, ego_pos, ego_yaw,
                                                                            self._map_api)
 
-            dyn_obj = DynamicObject(id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, None, None,
-                                    road_localtization)
+            dyn_obj = DynamicObject(id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
+                                    self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localtization)
             dyn_obj_list.append(dyn_obj)
 
         self._dynamic_objects = dyn_obj_list
@@ -85,8 +88,8 @@ class StateModule(DmModule):
 
         road_localization = StateModule.compute_ego_road_localization(np.ndarray([x, y, z]), yaw)
 
-        self._ego_state = EgoState(0, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
-                                   None, None, None, road_localization)
+        self._ego_state = EgoState(0, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, self.UNKNWON_DEFAULT_VAL,
+                                   self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localization)
 
     def __occupancy_state_callback(self, occupancy: dict):
         self.logger.debug("got occupancy status %s", occupancy)
