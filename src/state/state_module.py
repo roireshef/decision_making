@@ -67,6 +67,7 @@ class StateModule(DmModule):
             road_localtization = StateModule.compute_obj_road_localization(obj_pos, yaw, ego_pos, ego_yaw,
                                                                            self._map_api)
 
+            # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
             dyn_obj = DynamicObject(id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
                                     self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localtization)
             dyn_obj_list.append(dyn_obj)
@@ -88,6 +89,7 @@ class StateModule(DmModule):
 
         road_localization = StateModule.compute_ego_road_localization(np.ndarray([x, y, z]), yaw)
 
+        # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
         self._ego_state = EgoState(0, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, self.UNKNWON_DEFAULT_VAL,
                                    self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localization)
 
