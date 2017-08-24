@@ -175,8 +175,8 @@ class CartesianFrame:
         Convert point in global-frame to a point in relative-frame
         :param global_pos: (x,y,z) array of size [3,] in global coordinate system
         :param frame_position: translation (shift) of coordinate system to project on: (x,y,z) array of size [3,]
-        :param frame_orientation: orientation of the coordinate system to project on: yaw scalar, or quaternion vector.
-        :return: thee point relative to coordinate system specified by <frame_position> and <frame_orientation>
+        :param frame_orientation: orientation of the coordinate system to project on: yaw scalar, or quaternion vector
+        :return: the point relative to coordinate system specified by <frame_position> and <frame_orientation>
         """
         if hasattr(frame_orientation, "__len__"):
             # Orientation is quaternion numpy array
@@ -197,10 +197,10 @@ class CartesianFrame:
                                          frame_orientation: Union[float, np.array]) -> np.ndarray:
         """
         Convert point in relative coordinate-system to a global coordinate-system
-        :param relative_pos: (x,y,z) array in ego coordinate system
-        :param frame_position: translation of ego coordinate system: (x,y,z) array of size [3,]
-        :param frame_orientation: yaw scalar - orientation of ego frame
-        :return: point in absolute frame
+        :param relative_pos: (x,y,z) array in relative coordinate system
+        :param frame_position: translation (shift) of coordinate system to project from: (x,y,z) array of size [3,]
+        :param frame_orientation: orientation of the coordinate system to project from: yaw scalar, or quaternion vector
+        :return: the point in the global coordinate system
         """
         if hasattr(frame_orientation, "__len__"):
             # Orientation is quaternion numpy array
