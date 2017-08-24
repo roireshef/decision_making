@@ -110,9 +110,7 @@ class DynamicObject(DDSNonTypedMsg):
         # type: (int, MapAPI) -> DynamicObject
         """
         Predict the object's location for the future timestamp
-        !!! This function changes the object's location, velocity and timestamp !!!
         :param goal_timestamp: the goal timestamp for prediction
-        :param lane_width: closest lane_width
         :return: predicted DynamicObject
         """
         pass

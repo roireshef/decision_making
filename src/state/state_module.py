@@ -100,6 +100,11 @@ class StateModule(DmModule):
             confidence_list.append(pnt_dict["confidence"])
         self._occupancy_state = OccupancyState(timestamp, np.ndarray(points_list), np.ndarray(confidence_list))
 
+    # TODO: integrate compensation for time differences (aka short-time predict)
+    def __publish_state(self):
+        state = State(self._occupancy_state, self._dynamic_objects, self._ego_state)
+        self.dds.publish(STATE_PUBLISH_TOPIC, state.serialize())
+
     # TODO: solve the fact that actuator status can be outdated and no one will ever know
     def __actuator_status_callback(self, actuator: dict):
         self.logger.debug("got actuator status %s", actuator)
