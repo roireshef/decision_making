@@ -2,6 +2,8 @@ from logging import Logger
 from typing import List, Union
 import numpy as np
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.planning.behavioral.constants import MIN_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING, \
+    MAX_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 from decision_making.src.state.state import State, EgoState, DynamicObject, RelativeRoadLocalization
 from decision_making.src.map.map_api import MapAPI
@@ -72,8 +74,10 @@ class BehavioralState:
             # Get object's relative road localization
             relative_road_localization = dynamic_obj.get_relative_road_localization(self.map, navigation_plan,
                                                                                     ego_state)
-            # ignoring everything not in our path looking forward
-            if relative_road_localization.rel_lon > 0:
+            # filter objects with out of decision-making range
+            if MAX_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING > \
+                    relative_road_localization.rel_lon > \
+                    MIN_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING:
                 dynamic_objects.append(dynamic_obj)
                 dynamic_objects_relative_localization.append(relative_road_localization)
 
@@ -82,9 +86,6 @@ class BehavioralState:
                                ego_orientation=ego_orientation, ego_yaw=ego_yaw, ego_velocity=ego_velocity,
                                ego_on_road=ego_on_road, dynamic_objects=dynamic_objects,
                                dynamic_objects_relative_localization=dynamic_objects_relative_localization)
-
-
-
 
 
 class MarginInfo:
