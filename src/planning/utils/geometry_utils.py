@@ -57,7 +57,7 @@ class CartesianFrame:
         :param translation: a [x, y, z] translation vector
         :return: a 3x3 numpy matrix for projection (translation+rotation)
         """
-        quaternion = tf_transformations.quaternion_from_euler(x_rot, y_rot, z_rot, 'ryxz')
+        quaternion = tf_transformations.quaternion_from_euler(x_rot, y_rot, z_rot)
         return CartesianFrame.homo_matrix_3d_from_quaternion(quaternion, translation)
 
     @staticmethod
@@ -218,7 +218,7 @@ class CartesianFrame:
         :param yaw: angle in [rad]
         :return: quaternion
         """
-        return tf_transformations.quaternion_from_euler(0, 0, yaw, 'ryxz')
+        return tf_transformations.quaternion_from_euler(0, 0, yaw)
 
 
 class FrenetMovingFrame:
