@@ -52,7 +52,7 @@ class OccupancyState(DDSNonTypedMsg):
         :param free_space: array of directed segments defines a free space border
         :param confidence: array per segment
         """
-        self._timestamp = timestamp
+        self.timestamp = timestamp
         self.free_space = np.copy(free_space)
         self.confidence = np.copy(confidence)
 
@@ -85,7 +85,7 @@ class DynamicObject(DDSNonTypedMsg):
         :param yaw_deriv: 0 for straight motion, positive for CCW (yaw increases), negative for CW
         """
         self.id = obj_id
-        self._timestamp = timestamp
+        self.timestamp = timestamp
         self.x = x
         self.y = y
         self.z = z
