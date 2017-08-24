@@ -6,31 +6,34 @@ from rte.python.logger.AV_logger import AV_Logger
 
 
 class DmManager:
-    def __init__(self, modules_list: List[DmProcess]):
-        self.logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
-        self.modules_list = modules_list
+    """
+    DmManager is in charge to start all dm modules and wait for them to finish
+    """
+    def __init__(self, logger, dm_process_list: List[DmProcess]) -> None:
+        self._logger = logger
+        self._dm_process_list = dm_process_list
 
-    def start_modules(self):
+    def start_modules(self) -> None:
         """
         start all the configured modules one by one in new processes
         :return: None
         """
-        for dm_module in self.modules_list:
-            self.logger.debug('starting DM module %s', dm_module.get_name())
-            dm_module.start_process()
+        for dm_process in self._dm_process_list:
+            self._logger.debug('starting DM module %s', dm_process.name)
+            dm_process.start_process()
 
-    def stop_modules(self):
+    def stop_modules(self) -> None:
         """
         signal to all the configured modules to stop their processes
         :return: 
         """
-        for dm_module in self.modules_list:
-            self.logger.debug('stopping DM module %s', dm_module.get_name())
-            dm_module.stop_process()
+        for dm_process in self._dm_process_list:
+            self._logger.debug('stopping DM module %s', dm_process.name)
+            dm_process.stop_process()
 
-        for dm_module in self.modules_list:
-            dm_module.process.join(1)
-            if dm_module.process.is_alive():
-                self.logger.error('module %s has not stopped', dm_module.get_name())
+        for dm_process in self._dm_process_list:
+            dm_process.process.join(1)
+            if dm_process.process.is_alive():
+                self._logger.error('module %s has not stopped', dm_process.name)
 
-        self.logger.debug('stopping all DM modules complete')
+        self._logger.debug('stopping all DM modules complete')

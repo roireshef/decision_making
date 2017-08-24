@@ -12,8 +12,11 @@ class DmTriggerType(Enum):
 
 
 class DmTrigger(ABC):
+    """
+    The abstract class for triggers
+    """
     def __init__(self, callback):
-        self.callback = callback
+        self._callback = callback
 
     @abstractmethod
     def is_active(self) -> bool:
@@ -53,27 +56,27 @@ class DmPeriodicTimerTrigger(DmTrigger):
 
     def __init__(self, callback: Callable[[], None], period: float):
         super().__init__(callback)
-        self.is_active = False
-        self.period = period
-        if self.period > 0:
-            self.timer = PeriodicTimer(self.period, self.callback)
+        self._is_active = False
+        self._period = period
+        if self._period > 0:
+            self._timer = PeriodicTimer(self._period, self._callback)
         else:
             raise ValueError('invalid period ({}) set for DmPeriodicTimerTrigger'.format(period))
 
     def is_active(self) -> bool:
-        return self.is_active
+        return self._is_active
 
     def activate(self):
-        if not self.is_active:
-            self.is_active = True
-            self.timer.start()
+        if not self._is_active:
+            self._is_active = True
+            self._timer.start()
         else:
             raise DmTriggerActivationException('trying to activate an already active DmPeriodicTimerTrigger')
 
     def deactivate(self):
-        if self.is_active:
-            self.timer.stop()
-            self.is_active = False
+        if self._is_active:
+            self._timer.stop()
+            self._is_active = False
         else:
             raise DmTriggerActivationException('trying to deactivate an already inactive DmPeriodicTimerTrigger')
 
