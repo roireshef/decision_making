@@ -169,45 +169,52 @@ class CartesianFrame:
         return sign, dist, proj
 
     @staticmethod
-    def convert_global_to_relative_frame(target_vector: np.array, ego_position: np.array,
-                                         ego_orientation: Union[float, np.array]) -> np.ndarray:
+    def convert_global_to_relative_frame(global_pos: np.array, frame_position: np.array,
+                                         frame_orientation: Union[float, np.array]) -> np.ndarray:
         """
-        convert point in global-frame to a point in ego-frame
-        :param target_vector: (x,y,z) array of size [3,]
-        :param ego_position: translation of ego frame: (x,y,z) array of size [3,]
-        :param ego_orientation: orientation of ego frame. Can be either yaw scalar, or quaternion vector
-        :return: point in relative to ego frame
+        Convert point in global-frame to a point in relative-frame
+        :param global_pos: (x,y,z) array of size [3,] in global coordinate system
+        :param frame_position: translation (shift) of coordinate system to project on: (x,y,z) array of size [3,]
+        :param frame_orientation: orientation of the coordinate system to project on: yaw scalar, or quaternion vector.
+        :return: thee point relative to coordinate system specified by <frame_position> and <frame_orientation>
         """
-        if hasattr(ego_orientation, "__len__"):
+        if hasattr(frame_orientation, "__len__"):
             # Orientation is quaternion numpy array
-            quaternion = ego_orientation
+            quaternion = frame_orientation
         else:
             # Orientation contains yaw
-            quaternion = tf_transformations.quaternion_from_euler(0, 0, ego_orientation, 'ryxz')
+            quaternion = tf_transformations.quaternion_from_euler(0, 0, frame_orientation, 'ryxz')
 
-        # operator that projects from global coordinate frame to ego coordinate frame
-        H_e_g = np.linalg.inv(CartesianFrame.homo_matrix_3d_from_quaternion(quaternion, ego_position))
+        # operator that projects from global coordinate system to relative coordinate system
+        H_r_g = np.linalg.inv(CartesianFrame.homo_matrix_3d_from_quaternion(quaternion, frame_position))
 
         # add a trailing [1] element to the position vector, for proper multiplication with the 4x4 projection operator
         # then throw it (the result from multiplication is [x, y, z, 1])
-        return np.dot(H_e_g, np.append(target_vector, [1]))[:3]
+        return np.dot(H_r_g, np.append(global_pos, [1]))[:3]
 
     @staticmethod
-    def convert_relative_to_global_frame(relative_vector: np.array, ego_position: np.array, ego_yaw: float) \
-            -> np.ndarray:
+    def convert_relative_to_global_frame(relative_pos: np.array, frame_position: np.array,
+                                         frame_orientation: Union[float, np.array]) -> np.ndarray:
         """
-        convert point in relative ego-frame to global frame
-        :param relative_vector: (x,y,z) array in ego frame
-        :param ego_position: translation of ego frame: (x,y,z) array of size [3,]
-        :param ego_yaw: yaw scalar - orientation of ego frame
+        Convert point in relative coordinate-system to a global coordinate-system
+        :param relative_pos: (x,y,z) array in ego coordinate system
+        :param frame_position: translation of ego coordinate system: (x,y,z) array of size [3,]
+        :param frame_orientation: yaw scalar - orientation of ego frame
         :return: point in absolute frame
         """
-        # operator that projects from ego coordinate frame to global coordinate frame
-        H_g_e = CartesianFrame.homo_matrix_3d_from_euler(0, 0, ego_yaw, ego_position)
+        if hasattr(frame_orientation, "__len__"):
+            # Orientation is quaternion numpy array
+            quaternion = frame_orientation
+        else:
+            # Orientation contains yaw
+            quaternion = tf_transformations.quaternion_from_euler(0, 0, frame_orientation, 'ryxz')
+
+        # operator that projects from relative coordinate system to global coordinate system
+        H_g_r = CartesianFrame.homo_matrix_3d_from_quaternion(quaternion, frame_position)
 
         # add a trailing [1] element to the position vector, for proper multiplication with the 4x4 projection operator
         # then throw it (the result from multiplication is [x, y, z, 1])
-        return np.dot(H_g_e, np.append(relative_vector, [1]))[:3]
+        return np.dot(H_g_r, np.append(relative_pos, [1]))[:3]
 
     @staticmethod
     def convert_yaw_to_quaternion(yaw: float):
