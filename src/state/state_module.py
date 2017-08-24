@@ -1,4 +1,4 @@
-import threading
+from threading import Lock
 from logging import Logger
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
@@ -18,13 +18,13 @@ class StateModule(DmModule):
         self._map_api = map_api
 
         self._occupancy_state = occupancy_state
-        self._occupancy_state_lock = threading.Lock()
+        self._occupancy_state_lock = Lock()
 
         self._dynamic_objects = dynamic_objects
-        self._dynamic_objects_lock = threading.Lock()
+        self._dynamic_objects_lock = Lock()
 
         self._ego_state = ego_state
-        self._ego_state_lock = threading.Lock()
+        self._ego_state_lock = Lock()
 
     def _start_impl(self):
         self.dds.subscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, self.__dynamic_obj_callback)
