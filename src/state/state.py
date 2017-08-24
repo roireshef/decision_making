@@ -1,12 +1,12 @@
 import copy
 from logging import Logger
-from typing import List, Union
 
 import numpy as np
+from typing import List, Union
+
 from decision_making.src.map.map_api import MapAPI
 from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 
 
 class RoadLocalization(DDSNonTypedMsg):
@@ -157,7 +157,6 @@ class EgoState(DynamicObject, DDSNonTypedMsg):
         DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
                                acceleration_lon, yaw_deriv, road_localization)
         self.steering_angle = steering_angle
-
 
 
 class State(DDSNonTypedMsg):
