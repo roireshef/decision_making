@@ -20,5 +20,5 @@ class Woo(DDSNonTypedMsg):
 
 
 class Moo(DDSNonTypedMsg):
-    def __init__(self, strategy: TrajectoryPlanningStrategy):
+    def __init__(self, strategy):
         self.strategy = strategy
