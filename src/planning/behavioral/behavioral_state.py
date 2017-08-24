@@ -12,7 +12,7 @@ from decision_making.src.map.map_api import MapAPI
 class BehavioralState:
     def __init__(self, logger: Logger, map_api: MapAPI, navigation_plan: NavigationPlanMsg, ego_state: EgoState,
                  timestamp: int, ego_position: np.array, ego_orientation: np.array, ego_yaw: float, ego_velocity: float,
-                 ego_on_road: bool, dynamic_objects: List[DynamicObject],
+                 ego_road_id: int, ego_on_road: bool, dynamic_objects: List[DynamicObject],
                  dynamic_objects_relative_localization: List[RelativeRoadLocalization]) -> None:
         """
         Behavioral state generates and stores relevant state features that will be used for planning
@@ -24,6 +24,7 @@ class BehavioralState:
         :param ego_position: np.array of (x,y,z) location of ego in [m]
         :param ego_orientation: np.array of (x,y,z,w) quaternion orientation og ego
         :param ego_yaw: yaw of ego in [rad]
+        :param ego_road_id: ego road_id
         :param ego_velocity: velocity of ego in [m/s]
         :param ego_on_road: boolean flat that states whether car is located on road
         """
@@ -41,7 +42,8 @@ class BehavioralState:
         self.ego_orientation = ego_orientation
         self.ego_yaw = ego_yaw
         self.ego_velocity = ego_velocity
-        self.ego_off_road = ego_on_road
+        self.ego_road_id = ego_road_id
+        self.ego_on_road = ego_on_road
 
         # Dynamic objects and their relative locations
         self.dynamic_objects = dynamic_objects
@@ -61,6 +63,7 @@ class BehavioralState:
         ego_position = np.array([ego_state.x, ego_state.y, ego_state.z])
         ego_orientation = np.array(CartesianFrame.convert_yaw_to_quaternion(ego_state.yaw))
         ego_velocity = np.linalg.norm([ego_state.v_x, ego_state.v_y])
+        ego_road_id = ego_state.road_localization.road_id
 
         # Save last known road localization if car is off road
         ego_on_road = ego_state.road_localization.road_id is not None
@@ -86,7 +89,7 @@ class BehavioralState:
         return BehavioralState(logger=self.logger, map_api=self.map, navigation_plan=navigation_plan,
                                ego_state=ego_state, timestamp=timestamp, ego_position=ego_position,
                                ego_orientation=ego_orientation, ego_yaw=ego_yaw, ego_velocity=ego_velocity,
-                               ego_on_road=ego_on_road, dynamic_objects=dynamic_objects,
+                               ego_road_id=ego_road_id, ego_on_road=ego_on_road, dynamic_objects=dynamic_objects,
                                dynamic_objects_relative_localization=dynamic_objects_relative_localization)
 
 

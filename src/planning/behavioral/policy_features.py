@@ -1,6 +1,6 @@
 import numpy as np
 
-from decision_making.src.planning.behavioral.constants import LATERAL_MARGIN_FROM_OBJECT_TO_ASSUME_OUT_OF_WAY
+from decision_making.src.planning.behavioral.constants import LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.default_policy import DefaultPolicyConfig
 
@@ -49,11 +49,11 @@ class DefaultPolicyFeatures:
             # get leftmost and rightmost edge of object
             object_leftmost_edge = blocking_object.road_localization.full_lat + 0.5 * blocking_object.size.width
             object_leftmost_edge_dilated = object_leftmost_edge + (
-                LATERAL_MARGIN_FROM_OBJECT_TO_ASSUME_OUT_OF_WAY + 0.5 * behavioral_state.ego_state.size.width)
+                LATERAL_SAFETY_MARGIN_FROM_OBJECT + 0.5 * behavioral_state.ego_state.size.width)
 
             object_rightmost_edge = blocking_object.road_localization.full_lat - 0.5 * blocking_object.size.width
             object_rightmost_edge_dilated = object_rightmost_edge - (
-                LATERAL_MARGIN_FROM_OBJECT_TO_ASSUME_OUT_OF_WAY + 0.5 * behavioral_state.ego_state.size.width)
+                LATERAL_SAFETY_MARGIN_FROM_OBJECT + 0.5 * behavioral_state.ego_state.size.width)
 
             # check which lateral offsets are affected
             affected_lanes = np.where((lat_options < object_leftmost_edge_dilated) & (

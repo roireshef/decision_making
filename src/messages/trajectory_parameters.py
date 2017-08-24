@@ -26,6 +26,14 @@ class TrajectoryCostParams(DDSTypedMsg):
         """
         This class holds all the parameters used to build the cost function of the trajectory planner.
         It is dynamically set and sent by the behavioral planner.
+        Important: there is an AMBIGUITY in the offset parameter of the SIGMOID function.
+            - In the lane/shoulder/road case: the offset parameter defines the (fixed) lateral distance
+                in [m] between the reference trajectory and the lane/shoulder/road
+            - In the objects case: the offset parameter defines a (fixed) dilation in [m] of an object
+                (i.e. the offset of the sigmoid border from the objects's bounding box, both in the
+                length and width).
+                This can be used to keep a certain margin from any object, specifically useful when
+                treating the ego vehicle as a point in space, and dilating the other objects by it's width.
         :param left_lane_cost: defines the sigmoid cost of the left-side of the current lane
         :param right_lane_cost: defines the sigmoid cost of the right-side of the current lane
         :param left_road_cost: defines the sigmoid cost of the left-side of the road

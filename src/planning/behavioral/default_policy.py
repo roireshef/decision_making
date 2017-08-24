@@ -2,11 +2,14 @@ from logging import Logger
 import numpy as np
 
 from decision_making.src import global_constants
+from decision_making.src.global_constants import ROAD_SHOULDERS_WIDTH
+from decision_making.src.map.map_api import MapAPI
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.behavioral.constants import POLICY_ACTION_SPACE_ADDITIVE_LATERAL_OFFSETS_IN_LANES
+from decision_making.src.planning.behavioral.constants import POLICY_ACTION_SPACE_ADDITIVE_LATERAL_OFFSETS_IN_LANES, \
+    LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.policy import Policy, PolicyConfig
 from decision_making.src.planning.behavioral.policy_features import DefaultPolicyFeatures
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -59,12 +62,12 @@ class DefaultPolicy(Policy):
             return None, None
 
         # High-level planning
-        target_lane_offset, target_latitude = self._high_level_planning(behavioral_state)
+        target_path_offset, target_path_latitude = self._high_level_planning(behavioral_state)
 
         # Calculate reference route for driving
         reference_route_x_y_z, reference_route_in_cars_frame_x_y_yaw = DefaultPolicy.__generate_reference_route(
             behavioral_state,
-            target_lane_offset)
+            target_path_offset)
 
         # Calculate safe speed according to ACDA
         acda_safe_speed = AcdaApi.compute_acda(objects_on_road=behavioral_state.dynamic_objects,
@@ -79,10 +82,10 @@ class DefaultPolicy(Policy):
 
         # Generate specs for trajectory planner
         trajectory_parameters = \
-            DefaultPolicy.__generate_trajectory_specs(behavioral_state=behavioral_state,
-                                                      safe_speed=safe_speed,
-                                                      target_lane_latitude=target_lane_offset,
-                                                      reference_route=reference_route_in_cars_frame_x_y_yaw)
+            DefaultPolicy._generate_trajectory_specs(behavioral_state=behavioral_state,
+                                                     safe_speed=safe_speed,
+                                                     target_path_latitude=target_path_latitude,
+                                                     reference_route=reference_route_in_cars_frame_x_y_yaw)
 
         visualization_message = BehavioralVisualizationMsg(reference_route=reference_route_x_y_z)
         return trajectory_parameters, visualization_message
@@ -94,8 +97,7 @@ class DefaultPolicy(Policy):
         :return target latitude for driving in [lanes], target latitude for driving in [m]
         """
 
-        num_lanes, road_width, _, _ = behavioral_state.map.get_road_details(
-            behavioral_state.ego_state.road_localization.road_id)
+        num_lanes, road_width, _, _ = behavioral_state.map.get_road_details(behavioral_state.ego_road_id)
         lane_width = float(road_width) / num_lanes
         # remain in right most lane
         # return lanes_in_current_road
@@ -226,7 +228,7 @@ class DefaultPolicy(Policy):
          [nx3] array of reference_route (x,y,yaw) [m,m,rad] in cars coordinates
         """
         lookahead_path = behavioral_state.map.get_path_lookahead(
-            road_id=behavioral_state.ego_state.road_localization.road_id,
+            road_id=behavioral_state.ego_road_id,
             lon=behavioral_state.ego_state.road_localization.road_lon,
             lat=target_lane_latitude,
             max_lookahead_distance=global_constants.REFERENCE_TRAJECTORY_LENGTH,
@@ -256,40 +258,76 @@ class DefaultPolicy(Policy):
         return reference_route_x_y_z, reference_route_in_cars_frame_x_y_yaw
 
     @staticmethod
-    def __generate_trajectory_specs(behavioral_state: BehavioralState, target_lane_latitude: float,
-                                    safe_speed: float, reference_route: np.ndarray) -> TrajectoryParams:
+    def _generate_trajectory_specs(behavioral_state: BehavioralState, target_path_latitude: float,
+                                   safe_speed: float, reference_route: np.ndarray) -> TrajectoryParams:
         """
         Generate trajectory specification (cost) for trajectory planner
         :param behavioral_state: processed behavioral state
-        :param target_lane_latitude: road latitude of reference route in [m]
+        :param target_path_latitude: road latitude of reference route in [m]
         :param safe_speed: safe speed in [m/s] (ACDA)
         :param reference_route: [nx3] numpy array of (x, y, z, yaw) states
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
 
-        lanes_num, road_width, _, _ = behavioral_state.map.get_road_details(
-            behavioral_state.ego_state.road_localization.road_id)
+        # Get road details
+        num_lanes, road_width, _, _ = behavioral_state.map.get_road_details(behavioral_state.ego_road_id)
+        lane_width = road_width / num_lanes
 
+        # Create target state
         target_state_x_y_yaw = reference_route[-1, :]
         target_state_velocity = safe_speed
         target_state = np.array(
             [target_state_x_y_yaw[0], target_state_x_y_yaw[1], target_state_x_y_yaw[2], target_state_velocity])
-        left_lane_offset = road_width - target_lane_latitude
-        right_lane_offset = target_lane_latitude
 
         # TODO: assign proper cost parameters
-        infinite_sigmoid_cost = SigmoidFunctionParams(w=10000.0, k=20.0, offset=0.0)  # Very high (inf) cost
-        zero_sigmoid_cost = SigmoidFunctionParams(w=0.0, k=20.0, offset=0.0)  # Zero cost
+        infinite_sigmoid_cost = 1000.0  # not a constant because it might be learned. TBD
+        zero_sogmoid_cost = 0.0  # not a constant because it might be learned. TBD
+
+        # lateral distance in [m] from ref. path to rightmost edge of lane
+        left_margin = right_margin = behavioral_state.ego_state.size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
+        right_lane_offset = target_path_latitude - right_margin
+        # lateral distance in [m] from ref. path to rightmost edge of lane
+        left_lane_offset = (road_width - target_path_latitude) - left_margin
+        # as stated above, for shoulders
+        right_shoulder_offset = target_path_latitude - right_margin
+        # as stated above, for shoulders
+        left_shoulder_offset = (road_width - target_path_latitude) - left_margin
+        # as stated above, for whole road including shoulders
+        right_road_offset = right_shoulder_offset + ROAD_SHOULDERS_WIDTH
+        # as stated above, for whole road including shoulders
+        left_road_offset = left_shoulder_offset + ROAD_SHOULDERS_WIDTH
+
+        # Set road-structure-based cost parameters
+        right_lane_cost = SigmoidFunctionParams(w=zero_sogmoid_cost, k=20.0,
+                                                offset=right_lane_offset)  # Zero cost
+        left_lane_cost = SigmoidFunctionParams(w=zero_sogmoid_cost, k=20.0,
+                                               offset=left_lane_offset)  # Zero cost
+        right_shoulder_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=20.0,
+                                                    offset=right_shoulder_offset)  # Very high (inf) cost
+        left_shoulder_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=20.0,
+                                                   offset=left_shoulder_offset)  # Very high (inf) cost
+        right_road_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=20.0,
+                                                offset=right_road_offset)  # Very high (inf) cost
+        left_road_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=20.0,
+                                               offset=left_road_offset)  # Very high (inf) cost
+
+        # Set objects parameters
+        # dilate each object by cars length + safety margin
+        objects_dilation_size = behavioral_state.ego_state.size.length + LATERAL_SAFETY_MARGIN_FROM_OBJECT
+        objects_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=20.0,
+                                             offset=objects_dilation_size)  # Very high (inf) cost
+
         distance_from_reference_route_sq_factor = 1.0
-        velocity_limits = np.array([0.0, 100.0])  # [m/s]
-        acceleration_limits = np.array([-10.0, 10.0])  # [m/s^2]
-        cost_params = TrajectoryCostParams(left_lane_cost=zero_sigmoid_cost,
-                                           right_lane_cost=zero_sigmoid_cost,
-                                           left_road_cost=infinite_sigmoid_cost,
-                                           right_road_cost=infinite_sigmoid_cost,
-                                           left_shoulder_cost=infinite_sigmoid_cost,
-                                           right_shoulder_cost=infinite_sigmoid_cost,
-                                           obstacle_cost=infinite_sigmoid_cost,
+        # TODO: set velocity and acceleration limits properly
+        velocity_limits = np.array([0.0, 100.0])  # [m/s]. not a constant because it might be learned. TBD
+        acceleration_limits = np.array([-10.0, 10.0])  # [m/s^2]. not a constant because it might be learned. TBD
+        cost_params = TrajectoryCostParams(left_lane_cost=left_lane_cost,
+                                           right_lane_cost=right_lane_cost,
+                                           left_road_cost=left_road_cost,
+                                           right_road_cost=right_road_cost,
+                                           left_shoulder_cost=left_shoulder_cost,
+                                           right_shoulder_cost=right_shoulder_cost,
+                                           obstacle_cost=objects_cost,
                                            dist_from_ref_sq_cost_coef=distance_from_reference_route_sq_factor,
                                            velocity_limits=velocity_limits,
                                            acceleration_limits=acceleration_limits)
@@ -311,7 +349,7 @@ class DefaultPolicy(Policy):
         for lat_option_in_meters in path_absolute_latitudes:
             # Generate lookahead path per each lateral option for debugging and visualization purposes
             lookahead_path = behavioral_state.map.get_path_lookahead(
-                road_id=behavioral_state.ego_state.road_localization.road_id,
+                road_id=behavioral_state.ego_road_id,
                 lon=behavioral_state.ego_state.road_localization.road_lon, lat=lat_option_in_meters,
                 max_lookahead_distance=global_constants.BEHAVIORAL_PLANNING_LOOKAHEAD_DIST, direction=1)
 
