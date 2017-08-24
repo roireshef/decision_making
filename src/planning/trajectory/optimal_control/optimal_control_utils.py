@@ -19,8 +19,8 @@ class OptimalControlUtils:
             :return: x(t) coeficients, x_dot(t) coeficients, x_dot_dot coeficients - all concatenated in a numpy array
             """
             poly_coefs = np.fliplr(np.dot(constraints, A_inv.transpose()))
-            poly_dot_coefs = np.apply_along_axis(np.polyder, 1, poly_coefs, 1)
-            poly_dotdot_coefs = np.apply_along_axis(np.polyder, 1, poly_coefs, 2)
+            poly_dot_coefs = np.apply_along_axis(func1d=np.polyder, axis=1, arr=poly_coefs, m=1)
+            poly_dotdot_coefs = np.apply_along_axis(func1d=np.polyder, axis=1, arr=poly_coefs, m=2)
 
             return np.concatenate((poly_coefs, poly_dot_coefs, poly_dotdot_coefs), axis=1)
 
