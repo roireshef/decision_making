@@ -2,8 +2,8 @@ from logging import Logger
 import numpy as np
 
 from decision_making.src import global_constants
-from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
-from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
+from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
+from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.constants import POLICY_ACTION_SPACE_ADDITIVE_LATERAL_OFFSETS_IN_LANES
@@ -45,7 +45,7 @@ class DefaultPolicy(Policy):
     def __init__(self, logger: Logger, policy_config: DefaultPolicyConfig):
         super().__init__(logger=logger, policy_config=policy_config)
 
-    def plan(self, behavioral_state: BehavioralState) -> (TrajectoryParameters, BehavioralVisualizationMsg):
+    def plan(self, behavioral_state: BehavioralState) -> (TrajectoryParams, BehavioralVisualizationMsg):
         """
         This policy first calls to __high_level_planning that returns a desired lateral offset for driving.
         On the basis of the desired lateral offset, the policy defines a target state and cost parameters
@@ -225,11 +225,12 @@ class DefaultPolicy(Policy):
         :return: [nx3] array of reference_route (x,y,z) [m,m,m] in world coordinates,
          [nx3] array of reference_route (x,y,yaw) [m,m,rad] in cars coordinates
         """
-        lookahead_path = behavioral_state.map.get_path_lookahead(road_id=behavioral_state.ego_state.road_localization.road_id,
-                                                                 lon=behavioral_state.ego_state.road_localization.road_lon,
-                                                                 lat=target_lane_latitude,
-                                                                 max_lookahead_distance=global_constants.REFERENCE_TRAJECTORY_LENGTH,
-                                                                 direction=1)
+        lookahead_path = behavioral_state.map.get_path_lookahead(
+            road_id=behavioral_state.ego_state.road_localization.road_id,
+            lon=behavioral_state.ego_state.road_localization.road_lon,
+            lat=target_lane_latitude,
+            max_lookahead_distance=global_constants.REFERENCE_TRAJECTORY_LENGTH,
+            direction=1)
         reference_route_xy = lookahead_path.transpose()
         reference_route_len = reference_route_xy.shape[0]
 
@@ -256,7 +257,7 @@ class DefaultPolicy(Policy):
 
     @staticmethod
     def __generate_trajectory_specs(behavioral_state: BehavioralState, target_lane_latitude: float,
-                                    safe_speed: float, reference_route: np.ndarray) -> TrajectoryParameters:
+                                    safe_speed: float, reference_route: np.ndarray) -> TrajectoryParams:
         """
         Generate trajectory specification (cost) for trajectory planner
         :param behavioral_state: processed behavioral state
@@ -277,12 +278,27 @@ class DefaultPolicy(Policy):
         right_lane_offset = target_lane_latitude
 
         # TODO: assign proper cost parameters
-        cost_params = TrajectoryCostParams(0, 0, 0, 0, 0, left_lane_offset,
-                                           right_lane_offset, 0, 0, 0, 0, 0, 0, 0)
-        trajectory_parameters = TrajectoryParameters(reference_route=reference_route,
-                                                     target_state=target_state,
-                                                     cost_params=cost_params,
-                                                     strategy=TrajectoryPlanningStrategy.HIGHWAY)
+        infinite_sigmoid_cost = SigmoidFunctionParams(w=10000.0, k=20.0, offset=0.0)  # Very high (inf) cost
+        zero_sigmoid_cost = SigmoidFunctionParams(w=0.0, k=20.0, offset=0.0)  # Zero cost
+        distance_from_reference_route_sq_factor = 1.0
+        velocity_limits = np.array([0.0, 100.0])  # [m/s]
+        acceleration_limits = np.array([-10.0, 10.0])  # [m/s^2]
+        cost_params = TrajectoryCostParams(left_lane_cost=zero_sigmoid_cost,
+                                           right_lane_cost=zero_sigmoid_cost,
+                                           left_road_cost=infinite_sigmoid_cost,
+                                           right_road_cost=infinite_sigmoid_cost,
+                                           left_shoulder_cost=infinite_sigmoid_cost,
+                                           right_shoulder_cost=infinite_sigmoid_cost,
+                                           obstacle_cost=infinite_sigmoid_cost,
+                                           dist_from_ref_sq_cost_coef=distance_from_reference_route_sq_factor,
+                                           velocity_limits=velocity_limits,
+                                           acceleration_limits=acceleration_limits)
+
+        trajectory_parameters = TrajectoryParams(reference_route=reference_route,
+                                                 time=1.0,
+                                                 target_state=target_state,
+                                                 cost_params=cost_params,
+                                                 strategy=TrajectoryPlanningStrategy.HIGHWAY)
 
         return trajectory_parameters
 
