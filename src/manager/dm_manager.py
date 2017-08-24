@@ -1,15 +1,14 @@
 from typing import List
 
-from decision_making.src.global_constants import *
 from decision_making.src.manager.dm_process import DmProcess
-from rte.python.logger.AV_logger import AV_Logger
+from logging import Logger
 
 
 class DmManager:
     """
     DmManager is in charge to start all dm modules and wait for them to finish
     """
-    def __init__(self, logger, dm_process_list: List[DmProcess]) -> None:
+    def __init__(self, logger: Logger, dm_process_list: List[DmProcess]) -> None:
         self._logger = logger
         self._dm_process_list = dm_process_list
 

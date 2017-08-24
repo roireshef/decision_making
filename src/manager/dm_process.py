@@ -66,7 +66,7 @@ class DmProcess:
         # after a stop signal was received we should perform the exit flow
         self._module_process_exit()
 
-    def _module_process_wait_for_signal(self):
+    def _module_process_wait_for_signal(self) -> None:
         self._queue.get()
 
     def _module_process_exit(self) -> None:

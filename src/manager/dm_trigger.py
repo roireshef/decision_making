@@ -15,8 +15,8 @@ class DmTrigger(ABC):
     """
     The abstract class for triggers
     """
-    def __init__(self, callback):
-        self._callback = callback
+    def __init__(self):
+        pass
 
     @abstractmethod
     def is_active(self) -> bool:
@@ -37,7 +37,7 @@ class DmNullTrigger(DmTrigger):
     """
 
     def __init__(self):
-        pass
+        super().__init__()
 
     def is_active(self) -> bool:
         return False
@@ -55,7 +55,8 @@ class DmPeriodicTimerTrigger(DmTrigger):
     """
 
     def __init__(self, callback: Callable[[], None], period: float):
-        super().__init__(callback)
+        super().__init__()
+        self._callback = callback
         self._is_active = False
         self._period = period
         if self._period > 0:
