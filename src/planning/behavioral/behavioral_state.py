@@ -45,7 +45,7 @@ class BehavioralState:
         self.dynamic_objects = dynamic_objects
         self.dynamic_objects_relative_localization = dynamic_objects_relative_localization
 
-    def update_behavioral_state(self, navigation_plan: NavigationPlanMsg, state: State):
+    def update_behavioral_state(self, state: State, navigation_plan: NavigationPlanMsg):
         """
         This method updates the behavioral state according to the new world state and navigation plan.
          It fetches relevant features that will be used for the decision-making process.
