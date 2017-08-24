@@ -1,6 +1,6 @@
 from logging import Logger
 import numpy as np
-
+from typing import Union
 from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
 
 

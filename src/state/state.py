@@ -1,5 +1,5 @@
 import copy
-
+from typing import List, Union
 import numpy as np
 from decision_making.src.map.map_api import MapAPI
 from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
@@ -169,7 +169,7 @@ class EgoState(DynamicObject, DDSNonTypedMsg):
 
 class State(DDSNonTypedMsg):
     def __init__(self, occupancy_state, dynamic_objects, ego_state):
-        # type: (OccupancyState, list[DynamicObject], EgoState) -> None
+        # type: (OccupancyState, List[DynamicObject], EgoState) -> None
         """
         main class for the world state
         :param occupancy_state: free space
