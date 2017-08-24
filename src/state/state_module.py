@@ -1,3 +1,4 @@
+import threading
 from logging import Logger
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
@@ -7,13 +8,20 @@ from decision_making.src.state.state import *
 
 
 class StateModule(DmModule):
+    # TODO: implement double-buffer mechanism for locks wherever needed
     def __init__(self, dds: DdsPubSub, logger: Logger, map_api: MapAPI, occupancy_state: Union[OccupancyState, None],
                  dynamic_objects: Union[List[DynamicObject], None], ego_state: Union[EgoState, None]):
         super().__init__(dds, logger)
         self._map_api = map_api
+
         self._occupancy_state = occupancy_state
+        self._occupancy_state_lock = threading.Lock()
+
         self._dynamic_objects = dynamic_objects
+        self._dynamic_objects_lock = threading.Lock()
+
         self._ego_state = ego_state
+        self._ego_state_lock = threading.Lock()
 
     def _start_impl(self):
         self.dds.subscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, self.__dynamic_obj_callback)
@@ -68,7 +76,10 @@ class StateModule(DmModule):
                                     road_localtization)
             dyn_obj_list.append(dyn_obj)
 
-        self._dynamic_objects = dyn_obj_list
+        with self._dynamic_objects_lock:
+            self._dynamic_objects = dyn_obj_list
+
+        self.__publish_state()
 
     def __self_localization_callback(self, ego_localization: dict):
         self.logger.debug("got self localization %s", ego_localization)
@@ -85,8 +96,11 @@ class StateModule(DmModule):
 
         road_localization = StateModule.compute_ego_road_localization(np.ndarray([x, y, z]), yaw)
 
-        self._ego_state = EgoState(0, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
-                                   None, None, None, road_localization)
+        with self._ego_state_lock:
+            self._ego_state = EgoState(0, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
+                                       None, None, None, road_localization)
+
+        self.__publish_state()
 
     def __occupancy_state_callback(self, occupancy: dict):
         self.logger.debug("got occupancy status %s", occupancy)
@@ -98,17 +112,24 @@ class StateModule(DmModule):
             pnt = [pnt_dict["x"], pnt_dict["y"], pnt_dict["z"]]
             points_list.append(pnt)
             confidence_list.append(pnt_dict["confidence"])
-        self._occupancy_state = OccupancyState(timestamp, np.ndarray(points_list), np.ndarray(confidence_list))
+
+        with self._occupancy_state_lock:
+            self._occupancy_state = OccupancyState(timestamp, np.ndarray(points_list), np.ndarray(confidence_list))
+
+        self.__publish_state()
 
     # TODO: integrate compensation for time differences (aka short-time predict)
     def __publish_state(self):
-        state = State(self._occupancy_state, self._dynamic_objects, self._ego_state)
+        with self._occupancy_state_lock, self._ego_state_lock, self._dynamic_objects_lock:
+            state = State(self._occupancy_state, self._dynamic_objects, self._ego_state)
+
         self.dds.publish(STATE_PUBLISH_TOPIC, state.serialize())
 
     # TODO: solve the fact that actuator status can be outdated and no one will ever know
     def __actuator_status_callback(self, actuator: dict):
         self.logger.debug("got actuator status %s", actuator)
-        self._ego_state.steering_angle = actuator["steering_angle"]
+        # TODO: update self._ego_state.steering_angle. Don't forget to lock self._ego_state!
+        pass
 
     @staticmethod
     def compute_ego_road_localization(pos, yaw, map_api):

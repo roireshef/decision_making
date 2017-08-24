@@ -178,12 +178,10 @@ class CartesianFrame:
         :param frame_orientation: orientation of the coordinate system to project on: yaw scalar, or quaternion vector
         :return: the point relative to coordinate system specified by <frame_position> and <frame_orientation>
         """
-        if hasattr(frame_orientation, "__len__"):
-            # Orientation is quaternion numpy array
-            quaternion = frame_orientation
+        if isinstance(frame_orientation, np.ndarray):
+            quaternion = frame_orientation  # Orientation is quaternion numpy array
         else:
-            # Orientation contains yaw
-            quaternion = tf_transformations.quaternion_from_euler(0, 0, frame_orientation, 'ryxz')
+            quaternion = CartesianFrame.convert_yaw_to_quaternion(frame_orientation)    # Orientation contains yaw
 
         # operator that projects from global coordinate system to relative coordinate system
         H_r_g = np.linalg.inv(CartesianFrame.homo_matrix_3d_from_quaternion(quaternion, frame_position))
@@ -202,12 +200,10 @@ class CartesianFrame:
         :param frame_orientation: orientation of the coordinate system to project from: yaw scalar, or quaternion vector
         :return: the point in the global coordinate system
         """
-        if hasattr(frame_orientation, "__len__"):
-            # Orientation is quaternion numpy array
-            quaternion = frame_orientation
+        if isinstance(frame_orientation, np.ndarray):
+            quaternion = frame_orientation  # Orientation is quaternion numpy array
         else:
-            # Orientation contains yaw
-            quaternion = tf_transformations.quaternion_from_euler(0, 0, frame_orientation, 'ryxz')
+            quaternion = CartesianFrame.convert_yaw_to_quaternion(frame_orientation)    # Orientation contains yaw
 
         # operator that projects from relative coordinate system to global coordinate system
         H_g_r = CartesianFrame.homo_matrix_3d_from_quaternion(quaternion, frame_position)
