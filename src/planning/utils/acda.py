@@ -9,6 +9,7 @@ import numpy as np
 from decision_making.src.global_constants import ACDA_NAME_FOR_LOGGING
 from decision_making.src.map.map_api import MapAPI
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.planning.behavioral.behavioral_state import DynamicObjectOnRoad
 from decision_making.src.planning.utils.acda_constants import *
 
 from decision_making.src.state.state import DynamicObject, EgoState, RelativeRoadLocalization
@@ -24,7 +25,6 @@ class AcdaApi:
 
     @staticmethod
     def compute_acda(objects_on_road: List[DynamicObject], ego_state: EgoState,
-                     objects_rel_road_localization: List[RelativeRoadLocalization],
                      lookahead_path: np.ndarray) -> float:
         """
         This methods calculates the safe driving speed of ego vehicle according to ACDA rules:
@@ -33,7 +33,6 @@ class AcdaApi:
             determined by their horizontal distance from our path.
         3. Assure speed is under critical speed due to road curvature
         :param objects_on_road: list of dynamic and static objects on road
-        :param objects_rel_road_localization: road localization of each object (relative to ego)
         :param ego_state: our car's state. Type EgoState
         :param lookahead_path: the reference driving path: np array of size 2 X m. Assumed to be uniformly distributed.
         :return: maximal safe speed in [m/s]
@@ -42,14 +41,12 @@ class AcdaApi:
 
         # get min long of static objects in my lane
         min_static_object_long = AcdaApi.calc_forward_sight_distance(static_objects=objects_on_road,
-                                                                     objects_rel_road_localization=objects_rel_road_localization,
                                                                      ego_state=ego_state)
         # compute safe speed for forward line of sight
         safe_speed_forward_los = AcdaApi.calc_safe_speed_forward_line_of_sight(min_static_object_long)
 
         min_horizontal_distance_in_trajectory_range = AcdaApi.calc_horizontal_sight_distance(
             static_objects=objects_on_road,
-            objects_rel_road_localization=objects_rel_road_localization,
             ego_state=ego_state,
             set_safety_lookahead_dist_by_ego_vel=set_safety_lookahead_dist_by_ego_vel)
         safe_speed_horizontal_los = AcdaApi.calc_safe_speed_horizontal_distance_original_acda(
@@ -148,8 +145,7 @@ class AcdaApi:
         return object_horizontal_distance <= lateral_safety_margin
 
     @staticmethod
-    def calc_forward_sight_distance(static_objects: List[DynamicObject],
-                                    objects_rel_road_localization: List[RelativeRoadLocalization], ego_state: EgoState,
+    def calc_forward_sight_distance(static_objects: List[DynamicObjectOnRoad], ego_state: EgoState,
                                     dyn_objects: List[DynamicObject] = None) -> float:
         """
         Calculating the minimal distance of something that is in my lane
@@ -162,15 +158,15 @@ class AcdaApi:
         Constants
         """
         min_static_object_long = FORWARD_LOS_MAX_RANGE
-        for obj_ind, static_obj in enumerate(static_objects):
+        for static_obj in static_objects:
 
-            relative_road_localization = objects_rel_road_localization[obj_ind]
-            obj_lon = relative_road_localization.rel_lon
-            obj_lat = relative_road_localization.rel_lat
+            obj_lon = static_obj.relative_road_localization.rel_lon
+            obj_lat = static_obj.relative_road_localization.rel_lat
 
             obj_lon = obj_lon - SENSOR_OFFSET_FROM_FRONT
 
-            if obj_lon > 0 and AcdaApi.is_in_ego_trajectory(obj_lat=obj_lat, obj_width=static_obj.size.width,
+            if obj_lon > 0 and AcdaApi.is_in_ego_trajectory(obj_lat=obj_lat,
+                                                            obj_width=static_obj.dynamic_object_propetries.size.width,
                                                             ego_width=ego_state.size.width,
                                                             lateral_safety_margin=LATERAL_MARGIN_FROM_OBJECTS):
 
@@ -179,15 +175,13 @@ class AcdaApi:
         return min_static_object_long
 
     @staticmethod
-    def calc_horizontal_sight_distance(static_objects: List[DynamicObject],
-                                       objects_rel_road_localization: List[RelativeRoadLocalization],
+    def calc_horizontal_sight_distance(static_objects: List[DynamicObjectOnRoad],
                                        ego_state: EgoState,
                                        set_safety_lookahead_dist_by_ego_vel: bool = False) -> float:
         """
         calculates the minimal horizontal distance of static objects that are within a certain range tbd by
         set_safety_lookahead_dist_by_ego_vel
         :param static_objects: list of static objects, each is a dictionary
-        :param objects_rel_road_localization: road localization of each object (relative to ego)
         :param ego_state: our car's state. Type EnrichedEgoState
         :param set_safety_lookahead_dist_by_ego_vel: parameter determining whether we use the trajectory length or the
         current breaking distance as the lookahead range
@@ -204,12 +198,10 @@ class AcdaApi:
         else:
             lookahead_distance = TRAJECTORY_PLANNING_LOOKAHEAD_DISTANCE
 
-        for obj_ind, static_obj in enumerate(static_objects):
-            relative_road_localization = objects_rel_road_localization[obj_ind]
-
-            obj_lat = relative_road_localization.rel_lat
-            obj_width = static_obj.size.width
-            obj_lon = relative_road_localization.rel_lon
+        for static_obj in static_objects:
+            obj_lat = static_obj.relative_road_localization.rel_lat
+            obj_width = static_obj.dynamic_object_propetries.size.width
+            obj_lon = static_obj.relative_road_localization.rel_lon
             obj_lon = obj_lon - SENSOR_OFFSET_FROM_FRONT
             if obj_lon <= lookahead_distance and not AcdaApi.is_in_ego_trajectory(obj_lat=obj_lat, obj_width=obj_width,
                                                                                   ego_width=ego_state.size.width,

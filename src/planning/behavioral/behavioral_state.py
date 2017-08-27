@@ -9,11 +9,21 @@ from decision_making.src.state.state import State, EgoState, DynamicObject, Rela
 from decision_making.src.map.map_api import MapAPI
 
 
+class DynamicObjectOnRoad(DynamicObject):
+    def __init__(self, dynamic_object_properties: DynamicObject, relative_road_localization: RelativeRoadLocalization):
+        """
+        This object hold the dynamic object and it's relative (to ego) localization on road
+        :param dynamic_object_properties: the dynamic object state
+        :param relative_road_localization: a relative road localization (relative to ego)
+        """
+        self.dynamic_object_propetries = dynamic_object_properties
+        self.relative_road_localization = relative_road_localization
+
+
 class BehavioralState:
     def __init__(self, logger: Logger, map_api: MapAPI, navigation_plan: NavigationPlanMsg, ego_state: EgoState,
                  timestamp: int, ego_position: np.array, ego_orientation: np.array, ego_yaw: float, ego_velocity: float,
-                 ego_road_id: int, ego_on_road: bool, dynamic_objects: List[DynamicObject],
-                 dynamic_objects_relative_localization: List[RelativeRoadLocalization]) -> None:
+                 ego_road_id: int, ego_on_road: bool, dynamic_objects_on_road: List[DynamicObjectOnRoad]) -> None:
         """
         Behavioral state generates and stores relevant state features that will be used for planning
         :param logger: logger
@@ -46,8 +56,7 @@ class BehavioralState:
         self.ego_on_road = ego_on_road
 
         # Dynamic objects and their relative locations
-        self.dynamic_objects = dynamic_objects
-        self.dynamic_objects_relative_localization = dynamic_objects_relative_localization
+        self.dynamic_objects_on_road = dynamic_objects_on_road
 
     def update_behavioral_state(self, state: State, navigation_plan: NavigationPlanMsg):
         """
@@ -71,8 +80,7 @@ class BehavioralState:
             self.logger.warning("Car is off road.")
 
         # Filter static & dynamic objects that are relevant to car's navigation
-        dynamic_objects = []
-        dynamic_objects_relative_localization = []
+        dynamic_objects_on_road = []
         for dynamic_obj in state.dynamic_objects:
             # Get object's relative road localization
             relative_road_localization = dynamic_obj.get_relative_road_localization(
@@ -83,14 +91,15 @@ class BehavioralState:
             if MAX_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING > \
                     relative_road_localization.rel_lon > \
                     MIN_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING:
-                dynamic_objects.append(dynamic_obj)
-                dynamic_objects_relative_localization.append(relative_road_localization)
+                dynamic_obj_on_road = DynamicObjectOnRoad(dynamic_object_properties=dynamic_obj,
+                                                          relative_road_localization=relative_road_localization)
+                dynamic_objects_on_road.append(dynamic_obj_on_road)
 
         return BehavioralState(logger=self.logger, map_api=self.map, navigation_plan=navigation_plan,
                                ego_state=ego_state, timestamp=timestamp, ego_position=ego_position,
                                ego_orientation=ego_orientation, ego_yaw=ego_yaw, ego_velocity=ego_velocity,
-                               ego_road_id=ego_road_id, ego_on_road=ego_on_road, dynamic_objects=dynamic_objects,
-                               dynamic_objects_relative_localization=dynamic_objects_relative_localization)
+                               ego_road_id=ego_road_id, ego_on_road=ego_on_road,
+                               dynamic_objects_on_road=dynamic_objects_on_road)
 
 
 class MarginInfo:

@@ -9,6 +9,7 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.constants import POLICY_ACTION_SPACE_ADDITIVE_LATERAL_OFFSETS_IN_LANES, \
     LATERAL_SAFETY_MARGIN_FROM_OBJECT
+from decision_making.src.planning.behavioral.default_policy_config import DefaultPolicyConfig
 from decision_making.src.planning.behavioral.policy import Policy, PolicyConfig
 from decision_making.src.planning.behavioral.policy_features import DefaultPolicyFeatures
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -50,8 +51,7 @@ class DefaultPolicy(Policy):
             target_path_offset)
 
         # Calculate safe speed according to ACDA
-        acda_safe_speed = AcdaApi.compute_acda(objects_on_road=behavioral_state.dynamic_objects,
-                                               objects_rel_road_localization=behavioral_state.dynamic_objects_relative_localization,
+        acda_safe_speed = AcdaApi.compute_acda(objects_on_road=behavioral_state.dynamic_objects_on_road,
                                                ego_state=behavioral_state.ego_state,
                                                lookahead_path=reference_route_in_cars_frame_x_y_yaw[:, 0:2])
         safe_speed = min(acda_safe_speed, global_constants.BEHAVIORAL_PLANNING_CONSTANT_DRIVE_VELOCITY)

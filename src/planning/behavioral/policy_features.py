@@ -40,20 +40,21 @@ class DefaultPolicyFeatures:
         closest_blocking_object_per_option = np.inf * np.ones(shape=[num_of_lat_options, 1])
 
         # Assign object to optional lanes
-        for obj_ind, blocking_object in enumerate(behavioral_state.dynamic_objects):
+        for blocking_object in behavioral_state.dynamic_objects_on_road:
 
-            relative_road_localization = behavioral_state.dynamic_objects_relative_localization[obj_ind]
-            relative_lon = relative_road_localization.rel_lon
+            relative_lon = blocking_object.relative_road_localization.rel_lon
             if relative_lon < policy_config.assume_blocking_object_at_rear_if_distance_less_than:
                 # If we passed an obstacle, treat it as at inf
                 relative_lon = np.inf
 
             # get leftmost and rightmost edge of object
-            object_leftmost_edge = blocking_object.road_localization.full_lat + 0.5 * blocking_object.size.width
+            object_leftmost_edge = blocking_object.dynamic_object_propetries.road_localization.full_lat \
+                                   + 0.5 * blocking_object.dynamic_object_propetries.size.width
             object_leftmost_edge_dilated = object_leftmost_edge + (
                 LATERAL_SAFETY_MARGIN_FROM_OBJECT + 0.5 * behavioral_state.ego_state.size.width)
 
-            object_rightmost_edge = blocking_object.road_localization.full_lat - 0.5 * blocking_object.size.width
+            object_rightmost_edge = blocking_object.dynamic_object_propetries.road_localization.full_lat \
+                                    - 0.5 * blocking_object.dynamic_object_propetries.size.width
             object_rightmost_edge_dilated = object_rightmost_edge - (
                 LATERAL_SAFETY_MARGIN_FROM_OBJECT + 0.5 * behavioral_state.ego_state.size.width)
 

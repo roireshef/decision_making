@@ -1,7 +1,7 @@
 import numpy as np
 from decision_making.src.map.map_api import MapAPI
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
+from decision_making.src.planning.behavioral.behavioral_state import BehavioralState, DynamicObjectOnRoad
 from decision_making.src.planning.behavioral.default_policy_config import DefaultPolicyConfig
 from decision_making.src.planning.behavioral.policy_features import DefaultPolicyFeatures
 from decision_making.src.state.state import EgoState, RoadLocalization, RelativeRoadLocalization, DynamicObject, \
@@ -32,10 +32,8 @@ def test_get_closest_object_on_lane_ComplexScenraio_success():
                          confidence=1.0, v_x=0.0, v_y=0.0, steering_angle=0.0,
                          acceleration_lon=0.0, yaw_deriv=0.0, road_localization=road_localization)
 
-
     # Create obstacles at (10 + i*1.0, 1.5 + i*0.5, 0)
     objects_list = list()
-    objects_relative_localization_list = list()
     for i in range(10):
         road_localization = RoadLocalization(road_id=1, lane_num=0, full_lat=1.5 + i * 0.5, intra_lane_lat=0.0,
                                              road_lon=10.0 + i * 1.0,
@@ -47,17 +45,16 @@ def test_get_closest_object_on_lane_ComplexScenraio_success():
                                       confidence=1.0, v_x=0.0, v_y=0.0,
                                       acceleration_lon=0.0, yaw_deriv=0.0,
                                       road_localization=road_localization)
+        static_object_on_road = DynamicObjectOnRoad(dynamic_object_properties=static_object,
+                                                    relative_road_localization=relative_road_localization)
 
-        objects_list.append(static_object)
-        objects_relative_localization_list.append(relative_road_localization)
+        objects_list.append(static_object_on_road)
 
     # Initialize behavioral state
     behavioral_state = BehavioralState(logger=logger, map_api=map_api, navigation_plan=navigation_plan,
                                        ego_state=ego_state, timestamp=0, ego_position=np.array([0, 0, 0]),
                                        ego_orientation=([0, 0, 0, 0]), ego_yaw=0.0, ego_velocity=0.0, ego_road_id=0,
-                                       ego_on_road=True, dynamic_objects=objects_list,
-                                       dynamic_objects_relative_localization=objects_relative_localization_list)
-
+                                       ego_on_road=True, dynamic_objects_on_road=objects_list)
 
     ########################################################
     # Functionality Test: get the closest objects on each path
