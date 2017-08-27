@@ -2,7 +2,7 @@ import numpy as np
 
 from decision_making.src.planning.behavioral.constants import LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.behavioral.default_policy import DefaultPolicyConfig
+from decision_making.src.planning.behavioral.default_policy_config import DefaultPolicyConfig
 
 '''
 Static methods for computing complex features, e.g., ACDA speed.
@@ -40,8 +40,10 @@ class DefaultPolicyFeatures:
         closest_blocking_object_per_option = np.inf * np.ones(shape=[num_of_lat_options, 1])
 
         # Assign object to optional lanes
-        for blocking_object in behavioral_state.dynamic_objects:
-            relative_lon = blocking_object.rel_road_localization.rel_lon
+        for obj_ind, blocking_object in enumerate(behavioral_state.dynamic_objects):
+
+            relative_road_localization = behavioral_state.dynamic_objects_relative_localization[obj_ind]
+            relative_lon = relative_road_localization.rel_lon
             if relative_lon < policy_config.assume_blocking_object_at_rear_if_distance_less_than:
                 # If we passed an obstacle, treat it as at inf
                 relative_lon = np.inf

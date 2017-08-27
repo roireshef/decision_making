@@ -17,25 +17,6 @@ from decision_making.src.planning.utils.acda import AcdaApi
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 
 
-class DefaultPolicyConfig(PolicyConfig):
-    def __init__(self, margin_from_road_edge: float = 0.2,
-                 prefer_other_lanes_where_blocking_object_distance_less_than: float = 40.0,
-                 prefer_other_lanes_if_improvement_is_greater_than: float = 5.0,
-                 prefer_any_lane_center_if_blocking_object_distance_greater_than: float = 25.0,
-                 assume_blocking_object_at_rear_if_distance_less_than: float = 0.0):
-        self.margin_from_road_edge = margin_from_road_edge
-        super().__init__()
-
-        self.prefer_other_lanes_where_blocking_object_distance_less_than = \
-            prefer_other_lanes_where_blocking_object_distance_less_than
-        self.prefer_other_lanes_if_improvement_is_greater_than = \
-            prefer_other_lanes_if_improvement_is_greater_than
-        self.prefer_any_lane_center_if_blocking_object_distance_greater_than = \
-            prefer_any_lane_center_if_blocking_object_distance_greater_than
-        self.assume_blocking_object_at_rear_if_distance_less_than = \
-            assume_blocking_object_at_rear_if_distance_less_than
-
-
 class DefaultPolicy(Policy):
     """
     The policy chooses a single reference path from paths alongside the road with different lateral offset.
@@ -70,6 +51,7 @@ class DefaultPolicy(Policy):
 
         # Calculate safe speed according to ACDA
         acda_safe_speed = AcdaApi.compute_acda(objects_on_road=behavioral_state.dynamic_objects,
+                                               objects_rel_road_localization=behavioral_state.dynamic_objects_relative_localization,
                                                ego_state=behavioral_state.ego_state,
                                                lookahead_path=reference_route_in_cars_frame_x_y_yaw[:, 0:2])
         safe_speed = min(acda_safe_speed, global_constants.BEHAVIORAL_PLANNING_CONSTANT_DRIVE_VELOCITY)
