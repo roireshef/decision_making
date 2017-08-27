@@ -10,8 +10,8 @@ def test_convertGlobalToRelativeFrame_onlyTranslation_successful():
     ego_yaw = 0
 
     relative_pos = CartesianFrame.convert_global_to_relative_frame(global_pos, ego_pos, ego_yaw)
-    expected_relative_pos = np.array([1, 0, 0])
-    assert np.testing.assert_array_almost_equal(relative_pos, expected_relative_pos, decimal=ACCURACY_DECIMAL)
+    expected_relative_pos = np.array([1.0, 0.0, 0.0])
+    np.testing.assert_array_almost_equal(relative_pos, expected_relative_pos, decimal=ACCURACY_DECIMAL)
 
 
 def test_convertGlobalToRelativeFrame_withFortyFiveDegRotation_successful():
@@ -20,8 +20,8 @@ def test_convertGlobalToRelativeFrame_withFortyFiveDegRotation_successful():
     ego_yaw = np.pi / 4
 
     relative_pos = CartesianFrame.convert_global_to_relative_frame(global_pos, ego_pos, ego_yaw)
-    expected_relative_pos = np.array([1/np.sqrt(2), -1/np.sqrt(2), 0])
-    assert np.testing.assert_array_almost_equal(relative_pos, expected_relative_pos, decimal=ACCURACY_DECIMAL)
+    expected_relative_pos = np.array([1/np.sqrt(2), -1/np.sqrt(2), 0.0])
+    np.testing.assert_array_almost_equal(relative_pos, expected_relative_pos, decimal=ACCURACY_DECIMAL)
 
 
 def test_convertRelativeToGlobalFrame_onlyTranslation_successful():
@@ -31,7 +31,7 @@ def test_convertRelativeToGlobalFrame_onlyTranslation_successful():
 
     relative_pos = CartesianFrame.convert_relative_to_global_frame(global_pos, ego_pos, ego_yaw)
     expected_relative_pos = np.array([3, 2, 0])
-    assert np.testing.assert_array_almost_equal(relative_pos, expected_relative_pos, decimal=ACCURACY_DECIMAL)
+    np.testing.assert_array_almost_equal(relative_pos, expected_relative_pos, decimal=ACCURACY_DECIMAL)
 
 
 def test_convertRelativeToGlobalFrame_withFortyFiveDegRotation_successful():
@@ -41,4 +41,4 @@ def test_convertRelativeToGlobalFrame_withFortyFiveDegRotation_successful():
 
     relative_pos = CartesianFrame.convert_relative_to_global_frame(global_pos, ego_pos, ego_yaw)
     expected_relative_pos = np.array([1 - 1/np.sqrt(2), 1 + 1/np.sqrt(2), 0])
-    assert np.testing.assert_array_almost_equal(relative_pos, expected_relative_pos, decimal=ACCURACY_DECIMAL)
+    np.testing.assert_array_almost_equal(relative_pos, expected_relative_pos, decimal=ACCURACY_DECIMAL)
