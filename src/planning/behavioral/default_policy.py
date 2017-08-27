@@ -332,8 +332,9 @@ class DefaultPolicy(Policy):
                                            velocity_limits=velocity_limits,
                                            acceleration_limits=acceleration_limits)
 
+        trajectory_execution_time = global_constants.REFERENCE_TRAJECTORY_LENGTH / safe_speed
         trajectory_parameters = TrajectoryParams(reference_route=reference_route,
-                                                 time=1.0,
+                                                 time=trajectory_execution_time,
                                                  target_state=target_state,
                                                  cost_params=cost_params,
                                                  strategy=TrajectoryPlanningStrategy.HIGHWAY)
