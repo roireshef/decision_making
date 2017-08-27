@@ -26,6 +26,18 @@ class AcdaApi:
     def compute_acda(objects_on_road: List[DynamicObject], ego_state: EgoState,
                      objects_rel_road_localization: List[RelativeRoadLocalization],
                      lookahead_path: np.ndarray) -> float:
+        """
+        This methods calculates the safe driving speed of ego vehicle according to ACDA rules:
+        1. Assure safe speed due to vehicle in forward line on sight
+        2. Assure safe speed due to objects that may emerge between objects not in our driving path,
+            determined by their horizontal distance from our path.
+        3. Assure speed is under critical speed due to road curvature
+        :param objects_on_road: list of dynamic and static objects on road
+        :param objects_rel_road_localization: road localization of each object (relative to ego)
+        :param ego_state: our car's state. Type EgoState
+        :param lookahead_path: the reference driving path: np array of size 2 X m. Assumed to be uniformly distributed.
+        :return: maximal safe speed in [m/s]
+        """
         set_safety_lookahead_dist_by_ego_vel = False
 
         # get min long of static objects in my lane
