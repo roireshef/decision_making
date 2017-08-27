@@ -4,8 +4,11 @@ from decision_making.src.map.map_model import MapModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from typing import List
 
-class MapAPI(object):
-    __metaclass__ = ABCMeta
+import six
+
+
+@six.add_metaclass(ABCMeta)
+class MapAPI:
 
     def __init__(self, map_model):
         # type: (MapModel) -> None
