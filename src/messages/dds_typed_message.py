@@ -1,7 +1,7 @@
 import inspect
 from builtins import Exception
 from enum import Enum
-from typing import List, Generic
+from typing import List
 
 import numpy as np
 
@@ -10,33 +10,33 @@ from decision_making.src.messages.exceptions import MsgDeserializationError, Msg
 
 
 class DDSTypedMsg(DDSMsg):
-    def serialize(self)->dict:
+    def serialize(self) -> dict:
         """
         used to create the dds message
         :return: dict containing all the fields of the class
         """
-        try:
-            self_dict = self.__dict__
-            ser_dict = {}
+        self_dict = self.__dict__
+        ser_dict = {}
 
-            # enumerate all fields (and their types) in the constructor
-            for name, tpe in self.__init__.__annotations__.items():
+        # enumerate all fields (and their types) in the constructor
+        for name, tpe in self.__init__.__annotations__.items():
+            try:
                 if issubclass(tpe, np.ndarray):
                     ser_dict[name] = {'array': self_dict[name].flat.__array__().tolist(),
                                       'shape': list(self_dict[name].shape)}
                 elif issubclass(tpe, list):
                     ser_dict[name] = list(map(lambda x: x.serialize(), self_dict[name]))
                 elif issubclass(tpe, Enum):
-                    ser_dict[name] = self_dict[name].name   # save the name of the Enum's value (string)
+                    ser_dict[name] = self_dict[name].name  # save the name of the Enum's value (string)
                 elif inspect.isclass(tpe) and issubclass(tpe, DDSTypedMsg):
                     ser_dict[name] = self_dict[name].serialize()
                 # if the member type in the constructor is a primitive - copy as is
                 else:
                     ser_dict[name] = self_dict[name]
-            return ser_dict
-        except Exception as e:
-            raise MsgSerializationError("Serialization error: could not serialize " +
-                                        str(self_dict[name]) + " into " + str(tpe) + ":\n" + str(e))
+            except Exception as e:
+                raise MsgSerializationError("Serialization error: could not serialize " +
+                                            str(self_dict[name]) + " into " + str(tpe) + ":\n" + str(e))
+        return ser_dict
 
     @classmethod
     def deserialize(cls, message: dict):
@@ -63,4 +63,3 @@ class DDSTypedMsg(DDSMsg):
         except Exception as e:
             raise MsgDeserializationError("Deserialization error: could not deserialize into " +
                                           cls.__name__ + " from " + str(message) + ":\n" + str(e))
-

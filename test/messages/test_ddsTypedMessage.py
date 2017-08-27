@@ -1,13 +1,8 @@
-import sys
 import numpy as np
-import py, pytest
+import pytest
 
 from decision_making.src.messages.exceptions import MsgDeserializationError, MsgSerializationError
-
-if sys.version_info > (3, 0):
-    from decision_making.test.messages.typed_messages_fixture import *
-else:
-    from decision_making.test.messages.nontyped_messages_fixture import *
+from decision_making.test.messages.typed_messages_fixture import *
 
 
 def test_serialize_dummyMsg_successful():
@@ -26,13 +21,15 @@ def test_serialize_dummyMsg_successful():
 def test_serialize_dummyWrongFieldsMsg_throwsError():
     f = Foo(2.0, 3.0)
     v_invalid = Voo(2, np.array([[.1, .2, 3], [11, 22, 33]]))
-    with pytest.raises(MsgSerializationError, message="Trying to serialize wrong class-types passed without an exception"):
+    with pytest.raises(MsgSerializationError,
+                       message="Trying to serialize wrong class-types passed without an exception"):
         v_ser = v_invalid.serialize()
 
     v_valid = Voo(f, np.array([[.1, .2, 3], [11, 22, 33]]))
     v_ser_invalid = v_valid.serialize()
     v_ser_invalid['x'] = 2.0
-    with pytest.raises(MsgDeserializationError, message="Trying to deserialize wrong class-types passed without an exception"):
+    with pytest.raises(MsgDeserializationError,
+                       message="Trying to deserialize wrong class-types passed without an exception"):
         v_new = Voo.deserialize(v_ser_invalid)
 
 

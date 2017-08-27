@@ -1,4 +1,4 @@
-import numpy as np
+import pytest
 
 from decision_making.test.messages.nontyped_messages_fixture import *
 
@@ -26,3 +26,8 @@ def test_deserialize_validEnum_successful():
     m_deser = Moo.deserialize(m_ser)
 
     assert TrajectoryPlanningStrategy[m_deser.strategy.name].value == m_deser.strategy.value
+
+
+def test_deserialize_NoneMsg_throwsError():
+    with pytest.raises(Exception, message="Trying to deserialize wrong class-types passed without an exception"):
+        w_new = Woo.deserialize(None)

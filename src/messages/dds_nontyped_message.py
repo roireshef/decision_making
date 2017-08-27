@@ -16,7 +16,8 @@ class DDSNonTypedMsg(DDSMsg):
         ser_dict = {}
         for key, val in self.__dict__.items():
             if issubclass(type(val), np.ndarray):
-                ser_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': list(val.shape), 'type': 'numpy.ndarray'}
+                ser_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': list(val.shape),
+                                 'type': 'numpy.ndarray'}
             elif issubclass(type(val), list):
                 ser_dict[key] = {'iterable': list(map(lambda x: x.serialize(), val)), 'type': type(val).__name__}
             elif issubclass(type(val), Enum):
@@ -39,7 +40,7 @@ class DDSNonTypedMsg(DDSMsg):
             message_copy = message.copy()
             message_copy.pop('type', None)
             for key, val in message_copy.items():
-                if isinstance(val, dict):   # instance was created from a class
+                if isinstance(val, dict):  # instance was created from a class
                     real_type = locate(val['type'])
                     if issubclass(real_type, np.ndarray):
                         message_copy[key] = np.array(val['array']).reshape(tuple(val['shape']))
