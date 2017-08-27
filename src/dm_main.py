@@ -1,3 +1,5 @@
+import numpy as np
+
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import *
 from decision_making.src.manager.dm_manager import DmManager
@@ -10,20 +12,19 @@ from decision_making.src.planning.behavioral.behavioral_state import BehavioralS
 from decision_making.src.planning.behavioral.policy import DefaultPolicy
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
 from decision_making.src.planning.navigation.navigation_planner import NavigationPlanner
+from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
-from decision_making.src.state.state import OccupancyState, RoadLocalization, EgoState, RelativeRoadLocalization, \
-    ObjectSize
+from decision_making.src.state.state import OccupancyState, RoadLocalization, EgoState, ObjectSize
 from decision_making.src.state.state_module import StateModule
 from rte.python.logger.AV_logger import AV_Logger
-import numpy as np
 
 
 class DmInitialization:
     """
     This class contains the module initializations
     """
+
     @staticmethod
     def create_state_module() -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
@@ -74,7 +75,6 @@ class DmInitialization:
 
 
 def main():
-
     modules_list = \
         [
             DmProcess(DmInitialization.create_state_module(),
@@ -93,5 +93,5 @@ def main():
     manager = DmManager(logger, modules_list)
     manager.start_modules()
 
-main()
 
+main()

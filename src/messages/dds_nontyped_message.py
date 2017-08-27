@@ -4,6 +4,7 @@ from pydoc import locate
 import numpy as np
 
 from decision_making.src.messages.dds_message import *
+from decision_making.src.messages.exceptions import MsgDeserializationError
 
 
 class DDSNonTypedMsg(DDSMsg):
@@ -32,15 +33,19 @@ class DDSNonTypedMsg(DDSMsg):
         :param message: dict containing all fields of the class
         :return: object of type cls, constructed with the arguments from message
         """
-        message_copy = message.copy()
-        message_copy.pop('type', None)
-        for key, val in message_copy.items():
-            if isinstance(val, dict):   # instance was created from a class
-                real_type = locate(val['type'])
-                if issubclass(real_type, np.ndarray):
-                    message_copy[key] = np.array(val['array']).reshape(tuple(val['shape']))
-                elif issubclass(real_type, list):
-                    message_copy[key] = list(map(lambda d: locate(d['type']).deserialize(d), val['iterable']))
-                elif issubclass(real_type, DDSMsg):
-                    message_copy[key] = real_type.deserialize(val)
-        return cls(**message_copy)
+        try:
+            message_copy = message.copy()
+            message_copy.pop('type', None)
+            for key, val in message_copy.items():
+                if isinstance(val, dict):   # instance was created from a class
+                    real_type = locate(val['type'])
+                    if issubclass(real_type, np.ndarray):
+                        message_copy[key] = np.array(val['array']).reshape(tuple(val['shape']))
+                    elif issubclass(real_type, list):
+                        message_copy[key] = list(map(lambda d: locate(d['type']).deserialize(d), val['iterable']))
+                    elif issubclass(real_type, DDSMsg):
+                        message_copy[key] = real_type.deserialize(val)
+            return cls(**message_copy)
+        except:
+            raise MsgDeserializationError("Deserialization error: could not deserialize into " +
+                                          cls.__class__.__name__ + " from " + str(message))

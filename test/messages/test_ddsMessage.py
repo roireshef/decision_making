@@ -30,3 +30,9 @@ def test_serialize_dummyWrongFieldsMsg_throwsError():
         w_ser = w.serialize()
     with pytest.raises(Exception, message="Trying to deserialize wrong class-types passed without an exception"):
         w_new = Woo.deserialize(w_ser)
+
+
+def test_deserialize_NoneMsg_throwsError():
+    with pytest.raises(Exception, message="Trying to deserialize wrong class-types passed without an exception"):
+        w_new = Woo.deserialize(None)
+
