@@ -1,5 +1,5 @@
-from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
-from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
+from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
+from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.utils.geometry_utils import *
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
 from decision_making.test.planning.trajectory.utils import RouteFixture
@@ -31,14 +31,20 @@ def test_werlingPlanner_toyScenario_noException():
 
     state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
 
-    cost_params = TrajectoryCostParams(time=T, ref_deviation_weight=10.0, lane_deviation_weight=10.0,
-                                       obstacle_weight=20000.0, left_lane_offset=.5, right_lane_offset=.5,
-                                       left_deviation_exp=100.0, right_deviation_exp=100.0, obstacle_offset=.2,
-                                       obstacle_exp=5.0, v_x_min_limit=v_min, v_x_max_limit=v_max, a_x_min_limit=a_min,
-                                       a_x_max_limit=a_max)
+    cost_params = TrajectoryCostParams(left_lane_cost=SigmoidFunctionParams(10, 1.0, 1.0),
+                                       right_lane_cost=SigmoidFunctionParams(10, 1.0, 1.0),
+                                       left_road_cost=SigmoidFunctionParams(10, 1.0, 1.5),
+                                       right_road_cost=SigmoidFunctionParams(10, 1.0, 1.5),
+                                       left_shoulder_cost=SigmoidFunctionParams(10, 1.0, 2),
+                                       right_shoulder_cost=SigmoidFunctionParams(10, 1.0, 2),
+                                       obstacle_cost=SigmoidFunctionParams(100, 10.0, 0.3),
+                                       dist_from_ref_sq_cost_coef=1.0,
+                                       velocity_limits=np.array([v_min, v_max]),
+                                       acceleration_limits=np.array([a_min, a_max]))
 
     planner = WerlingPlanner(None)
-    _, _, debug = planner.plan(state, route_points[:, :2], goal, cost_params)
+    _, _, debug = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
+                               time=T, cost_params=cost_params)
 
     assert True
 
