@@ -8,8 +8,10 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryCostPar
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.cost_function import SigmoidStatic2DBoxObstacle
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
+from decision_making.src.planning.trajectory.utils.optimal_control import OptimalControl as OC
 from decision_making.src.planning.utils.columns import *
 from decision_making.src.planning.utils.geometry_utils import FrenetMovingFrame
+from decision_making.src.planning.utils.math import Math
 from decision_making.src.state.state import State
 from logging import Logger
 
@@ -61,7 +63,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                             dx_range, np.sin(goal_theta_diff) * goal[EGO_V], 0)
 
         # solve problem in frenet-frame
-        ftrajectories = self._solve_quintic_poly_frenet(fconstraints_t0, fconstraints_tT, cost_params.time)
+        ftrajectories = self._solve_optimization(fconstraints_t0, fconstraints_tT, cost_params.time)
 
         # filter resulting trajectories by velocity and acceleration
         ftrajectories_filtered = self._filter_limits(ftrajectories, cost_params)
@@ -95,7 +97,8 @@ class WerlingPlanner(TrajectoryPlanner):
         return ftrajectories[conforms]
 
     @staticmethod
-    def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: State, params: TrajectoryCostParams):
+    def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: State,
+                      params: TrajectoryCostParams):
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
@@ -105,37 +108,39 @@ class WerlingPlanner(TrajectoryPlanner):
         :return:
         """
         # TODO: add jerk cost
+        # TODO: handle dynamic objects?
+
+        # TODO: max instead of sum? what if close_obstacles is empty?
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
+        # TODO: validate that both obstacles and ego are in world coordinates. if not, change the filter cond.
+        with state.ego_state as ego, params.obstacle_cost as exp:
+            close_obstacles = [SigmoidStatic2DBoxObstacle.from_object_state(obs, exp.k, exp.offset)
+                               for obs in state.dynamic_objects
+                               if np.linalg.norm([obs.x - ego.x, obs.y - ego.y]) < MAXIMAL_OBSTACLE_PROXIMITY]
 
-        static_obstacles = [
-            SigmoidStatic2DBoxObstacle.from_object_state(obs, params.obstacle_exp, params.obstacle_offset)
-            for obs in state.static_objects]
-
-        # TODO: consider max over trajectory points?
-        # TODO: what if there's no static obstacles? what if close_obstacles is empty?
-        close_obstacles = filter(lambda o: np.linalg.norm([o.x, o.y]) < MAXIMAL_OBSTACLE_PROXIMITY, static_obstacles)
-
-        obstacles_costs = np.sum([obs.compute_cost(ctrajectories[:, :, 0:2]) for obs in close_obstacles], axis=0)
+            cost_per_obstacle = [obs.compute_cost(ctrajectories[:, :, 0:2]) for obs in close_obstacles]
+            obstacles_costs = exp.w * np.sum(cost_per_obstacle, axis=0)
 
         ''' DISTANCE FROM REFERENCE ROUTE ( DX ^ 2 ) '''
+        dist_from_ref_costs = params.dist_from_ref_sq_coef * np.sum(np.power(ftrajectories[:, :, F_DX], 2), axis=1)
 
-        ref_deviation_costs = np.sum(ftrajectories[:, :, F_DX] ** 2, axis=1)
+        ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
+        deviations_costs = np.zeros(ftrajectories.shape[0])
 
-        ''' DEVIATION FROM ROAD/LANE '''
+        # add to deviations_costs the costs of deviations from the left [lane, shoulder, road]
+        for exp in [params.left_lane_cost, params.left_shoulder_cost, params.left_road_cost]:
+            left_offsets = ftrajectories[:, :, F_DX] - exp.offset
+            deviations_costs += Math.clipped_exponent(left_offsets, exp.k, exp.w)
 
-        left_offsets = ftrajectories[:, :, F_DX] - params.left_lane_offset
-        left_deviations_costs = np.sum(np.exp(np.clip(params.left_deviation_exp * left_offsets, 0, EXP_CLIP_TH)),
-                                       axis=1)
+        # add to deviations_costs the costs of deviations from the right [lane, shoulder, road]
+        for exp in [params.right_lane_cost, params.right_shoulder_cost, params.right_road_cost]:
+            right_offsets = np.negative(ftrajectories[:, :, F_DX]) - exp.offset
+            deviations_costs += Math.clipped_exponent(right_offsets, exp.k, exp.w)
 
-        right_offsets = np.negative(ftrajectories[:, :, F_DX]) - params.right_lane_offset
-        right_deviations_costs = np.sum(np.exp(np.clip(params.right_deviation_exp * right_offsets, 0, EXP_CLIP_TH)),
-                                        axis=1)
+        ''' TOTAL '''
+        return obstacles_costs + dist_from_ref_costs + deviations_costs
 
-        return params.lane_deviation_weight * (left_deviations_costs + right_deviations_costs) + \
-               params.ref_deviation_weight * ref_deviation_costs + \
-               params.obstacle_weight * obstacles_costs
-
-    def _solve_quintic_poly_frenet(self, fconst_0, fconst_t, T):
+    def _solve_optimization(self, fconst_0, fconst_t, T):
         """
         Solves the two-point boundary value problem, given a set of constraints over the initial state
         and a set of constraints over the terminal state. The solution is a cartesian product of the solutions returned
@@ -158,11 +163,11 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # solve for dimesion d
         constraints_d = self._cartesian_product_rows(fconst_0.get_grid_d(), fconst_t.get_grid_d())
-        poly_all_coefs_d = self._solve_quintic_poly_1d(A_inv, constraints_d)
+        poly_all_coefs_d = OC.QuinticPoly1D.solve(A_inv, constraints_d)
 
         # solve for dimesion s
         constraints_s = self._cartesian_product_rows(fconst_0.get_grid_s(), fconst_t.get_grid_s())
-        poly_all_coefs_s = self._solve_quintic_poly_1d(A_inv, constraints_s)
+        poly_all_coefs_s = OC.QuinticPoly1D.solve(A_inv, constraints_s)
 
         # concatenate all polynomial coefficients (both dimensions, up to 2nd derivative)
         # [6 poly_coef_d, 5 poly_dot_coef_d, 4 poly_dotodot_coef_d, ...
@@ -180,15 +185,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return trajectories
 
     @staticmethod
-    def _solve_quintic_poly_1d(A_inv, constraints):
-        poly_coefs = np.fliplr(np.dot(constraints, A_inv.transpose()))
-        poly_dot_coefs = np.apply_along_axis(np.polyder, 1, poly_coefs, 1)
-        poly_dotdot_coefs = np.apply_along_axis(np.polyder, 1, poly_coefs, 2)
-
-        return np.concatenate((poly_coefs, poly_dot_coefs, poly_dotdot_coefs), axis=1)
-
-    @staticmethod
-    def _cartesian_product_rows(mat1, mat2):
+    def _cartesian_product_rows(mat1: np.ndarray, mat2: np.ndarray):
         return np.array([np.concatenate((mat1[idx1, :], mat2[idx2, :]))
                          for idx1 in range(mat1.shape[0])
                          for idx2 in range(mat2.shape[0])])
@@ -208,9 +205,13 @@ class FrenetConstraints:
     def get_grid_s(self) -> np.ndarray:
         """
         Generates a grid (cartesian product) of all (position, velocity and acceleration) on dimension S
-        :return:
+        :return: numpy array of shape [n, 3] where n is the resulting number of constraints
         """
         return np.array(np.meshgrid(self._sx, self._sv, self._sa)).T.reshape(-1, 3)
 
-    def get_grid_d(self):
+    def get_grid_d(self) -> np.ndarray:
+        """
+        Generates a grid (cartesian product) of all (position, velocity and acceleration) on dimension D
+        :return: numpy array of shape [n, 3] where n is the resulting number of constraints
+        """
         return np.array(np.meshgrid(self._dx, self._dv, self._da)).T.reshape(-1, 3)

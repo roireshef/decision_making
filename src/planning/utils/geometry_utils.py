@@ -4,9 +4,10 @@ import numpy as np
 from scipy import interpolate as interp
 
 from decision_making.src.global_constants import *
-from decision_making.src.planning.utils import math as robust_math
 from decision_making.src.planning.utils import tf_transformations
 from decision_making.src.planning.utils.columns import *
+from decision_making.src.planning.utils.math import Math
+
 
 class CartesianFrame:
     @staticmethod
@@ -103,10 +104,10 @@ class CartesianFrame:
                              'actual arc length (' + org_s + ')')
 
         # handles cases where we suffer from floating point division inaccuracies
-        num_samples = robust_math.div(desired_curve_len, step_size) + 1
+        num_samples = Math.div(desired_curve_len, step_size) + 1
 
         # if step_size must be preserved but desired_curve_len is not a multiply of step_size - trim desired_curve_len
-        if robust_math.mod(desired_curve_len, step_size) > 0 and preserve_step_size:
+        if Math.mod(desired_curve_len, step_size) > 0 and preserve_step_size:
             desired_curve_len = (num_samples - 1) * step_size
             effective_step_size = step_size
         else:
@@ -155,8 +156,6 @@ class CartesianFrame:
         else:
             dist = np.linalg.norm(segment_p_to_end)
         return sign, dist, proj
-
-
 
     @staticmethod
     def get_vector_in_objective_frame(target_vector: np.array, ego_position: np.array,
