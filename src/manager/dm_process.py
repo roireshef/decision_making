@@ -1,88 +1,89 @@
+import os
 from multiprocessing import Queue, Process
 
-from decision_making.src.infra.dm_factory import DmModulesEnum, DmModuleFactory
+from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTimerTrigger, DmNullTrigger
 
 
-class DmProcess():
-    def __init__(self, module_type: DmModulesEnum, trigger_type: DmTriggerType, trigger_args: dict) -> None:
+class DmProcess:
+
+    # TODO: Get external trigger (requires changes to the PeriodTimer in rte repo)
+    def __init__(self, module_instance: DmModule, trigger_type: DmTriggerType, trigger_args: dict) -> None:
         """
         Manager for a single DM module running in a separate process
-        :param module_type: the type of the DM module to be instantiated
+        :param module_instance: the instance of the DM module to run in a separate process
         :param trigger_type: the type of trigger to use
         :param trigger_args: dictionary containing keyword arguments for initializing the trigger
         """
-        self.module_type = module_type
-        self.trigger_type = trigger_type
-        self.trigger_args = trigger_args
-        self.queue = Queue()
-        self.process = None
-        self.module_instance = None
-        self.trigger = None
+        self._module_instance = module_instance
+        self._trigger_type = trigger_type
+        self._trigger_args = trigger_args
+        self._queue = Queue()
 
-    def get_name(self):
-        return str(self.module_type)
+        process_name = "DM_process_{}".format(self.name)
+        self.process = Process(target=self._module_process_entry, name=process_name)
 
-    def start_process(self):
+        # create the trigger and activate it.
+        if self._trigger_type == DmTriggerType.DM_TRIGGER_PERIODIC:
+            self._trigger = DmPeriodicTimerTrigger(self._trigger_callback, **self._trigger_args)
+        elif self._trigger_type == DmTriggerType.DM_TRIGGER_NONE:
+            self._trigger = DmNullTrigger()
+
+    @property
+    def name(self) -> str:
+        return self._module_instance.__class__.__name__
+
+    def start_process(self) -> None:
         """
         Create and start a process for the DM module
-        :return: 
+        :return:
         """
-        process_name = "DM_process_{}".format(self.module_type)
-        self.process = Process(target=self.__module_process_entry, name=process_name)
         self.process.start()
 
-    def stop_process(self):
+    def stop_process(self) -> None:
         """
         API for signaling to the DM module's process to stop
         :return: None
         """
-        self.queue.put(0)
+        self._queue.put(0)
 
-    def __module_process_entry(self):
+    def _module_process_entry(self) -> None:
         """
         Entry method to the process created for the DM module.
-        The module initialization should be done inside the new process.
+        This is the first code the new process will call, it starts the module, activates the trigger, and waits
+        until it receives a stop signal.
         :return: None
         """
         # create the sub module
-        self.module_instance = DmModuleFactory.create_dm_module(self.module_type)
-        self.module_instance.start()
-
-        # create the trigger and activate it.
-        # It is important to create the trigger inside the new process!!
-        if self.trigger_type == DmTriggerType.DM_TRIGGER_PERIODIC:
-            self.trigger = DmPeriodicTimerTrigger(self.__trigger_callback, **self.trigger_args)
-        elif self.trigger_type == DmTriggerType.DM_TRIGGER_NONE:
-            self.trigger = DmNullTrigger()
+        self._module_instance.start()
 
         # activate method can be blocking, depending on the trigger type
-        self.trigger.activate()
+        self._trigger.activate()
 
         # wait until a stop signal is received on the queue to stop the module
-        self.__module_process_wait_for_signal()
+        self._module_process_wait_for_signal()
 
         # after a stop signal was received we should perform the exit flow
-        self.__module_process_exit()
+        self._module_process_exit()
 
-    def __module_process_wait_for_signal(self):
-        self.queue.get()
+    def _module_process_wait_for_signal(self) -> None:
+        self._queue.get()
 
-    def __module_process_exit(self):
+    def _module_process_exit(self) -> None:
         """
         perform the actions necessary to stop the DM module running inside the process
         :return: None
         """
-        if self.trigger.is_active():
-            self.trigger.deactivate()
-        self.module_instance.stop()
+        if self._trigger.is_active():
+            self._trigger.deactivate()
+        self._module_instance.stop()
 
-    def __trigger_callback(self):
+    def _trigger_callback(self) -> None:
         """
         __timer_callback - this method runs in the module's process
         :return: None
         """
-        self.module_instance.periodic_action()
+        self._module_instance.periodic_action()
         # check if a stop signal was received (necessary in case the trigger method is blocking)
-        if not self.queue.empty():
-            self.__module_process_exit()
+        if not self._queue.empty():
+            self._module_process_exit()

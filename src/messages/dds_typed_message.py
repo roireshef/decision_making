@@ -1,32 +1,41 @@
 import inspect
-from typing import List, TypeVar
-import typing
+from builtins import Exception
+from enum import Enum
+from typing import List
 
 import numpy as np
 
 from decision_making.src.messages.dds_message import *
-from decision_making.src.messages.exceptions import MsgDeserializationError
+from decision_making.src.messages.exceptions import MsgDeserializationError, MsgSerializationError
 
 
 class DDSTypedMsg(DDSMsg):
-    def serialize(self)->dict:
+    def serialize(self) -> dict:
         """
         used to create the dds message
         :return: dict containing all the fields of the class
         """
         self_dict = self.__dict__
         ser_dict = {}
+
+        # enumerate all fields (and their types) in the constructor
         for name, tpe in self.__init__.__annotations__.items():
-            if inspect.isclass(tpe):
+            try:
                 if issubclass(tpe, np.ndarray):
                     ser_dict[name] = {'array': self_dict[name].flat.__array__().tolist(),
                                       'shape': list(self_dict[name].shape)}
                 elif issubclass(tpe, list):
                     ser_dict[name] = list(map(lambda x: x.serialize(), self_dict[name]))
+                elif issubclass(tpe, Enum):
+                    ser_dict[name] = self_dict[name].name  # save the name of the Enum's value (string)
                 elif inspect.isclass(tpe) and issubclass(tpe, DDSTypedMsg):
                     ser_dict[name] = self_dict[name].serialize()
+                # if the member type in the constructor is a primitive - copy as is
                 else:
                     ser_dict[name] = self_dict[name]
+            except Exception as e:
+                raise MsgSerializationError("Serialization error: could not serialize " +
+                                            str(self_dict[name]) + " into " + str(tpe) + ":\n" + str(e))
         return ser_dict
 
     @classmethod
@@ -39,17 +48,17 @@ class DDSTypedMsg(DDSMsg):
         try:
             deser_dict = {}
             for name, tpe in cls.__init__.__annotations__.items():
-                if inspect.isclass(tpe):
-                    if issubclass(tpe, np.ndarray):
-                        deser_dict[name] = np.array(message[name]['array']).reshape(tuple(message[name]['shape']))
-                    elif issubclass(tpe, DDSTypedMsg):
-                        deser_dict[name] = tpe.deserialize(message[name])
-                    elif issubclass(tpe, List):
-                        deser_dict[name] = list(map(lambda d: tpe.__args__[0].deserialize(d), message[name]))
-                    else:
-                        deser_dict[name] = message[name]
+                if issubclass(tpe, np.ndarray):
+                    deser_dict[name] = np.array(message[name]['array']).reshape(tuple(message[name]['shape']))
+                elif issubclass(tpe, Enum):
+                    deser_dict[name] = tpe[message[name]]
+                elif issubclass(tpe, List):
+                    deser_dict[name] = list(map(lambda d: tpe.__args__[0].deserialize(d), message[name]))
+                elif issubclass(tpe, DDSTypedMsg):
+                    deser_dict[name] = tpe.deserialize(message[name])
+                else:
+                    deser_dict[name] = message[name]
             return cls(**deser_dict)
-        except:
+        except Exception as e:
             raise MsgDeserializationError("Deserialization error: could not deserialize into " +
-                                          cls.__class__.__name__ + " from " + str(message))
-
+                                          cls.__name__ + " from " + str(message) + ":\n" + str(e))

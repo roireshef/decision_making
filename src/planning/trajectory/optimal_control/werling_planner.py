@@ -1,3 +1,4 @@
+from logging import Logger
 from numbers import Number
 from typing import Union, Tuple
 
@@ -7,13 +8,12 @@ from decision_making.src.global_constants import *
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.cost_function import SigmoidStatic2DBoxObstacle
+from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils as OC
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
-from decision_making.src.planning.trajectory.utils.optimal_control import OptimalControl as OC
 from decision_making.src.planning.utils.columns import *
 from decision_making.src.planning.utils.geometry_utils import FrenetMovingFrame
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.state.state import State
-from logging import Logger
 
 
 class WerlingPlanner(TrajectoryPlanner):
@@ -22,7 +22,8 @@ class WerlingPlanner(TrajectoryPlanner):
         self._dt = dt
 
     @property
-    def dt(self): return self._dt
+    def dt(self):
+        return self._dt
 
     def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray,
              cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
