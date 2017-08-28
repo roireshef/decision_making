@@ -12,7 +12,8 @@ from logging import Logger
 
 
 class TrajectoryPlanningFacade(DmModule):
-    def __init__(self, dds: DdsPubSub, logger: Logger, strategy_handlers: dict):
+    def __init__(self, dds: DdsPubSub, logger: Logger,
+                 strategy_handlers: dict[TrajectoryPlanningStrategy, TrajectoryPlanner]):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param dds: communication layer (DDS) instance
@@ -43,7 +44,7 @@ class TrajectoryPlanningFacade(DmModule):
 
             # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
             trajectory, cost, debug_results = self._strategy_handlers[params.strategy].plan(
-                state, params.reference_route, params.target_state, params.cost_params)
+                state, params.reference_route, params.target_state, params.time, params.cost_params)
 
             # TODO: should publish v_x?
             # publish results to the lower DM level

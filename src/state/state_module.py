@@ -1,9 +1,9 @@
 from threading import Lock
-from logging import Logger
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import *
 from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 from decision_making.src.state.state import *
 
 
@@ -72,8 +72,8 @@ class StateModule(DmModule):
 
             obj_pos = np.ndarray([x, y, z])
 
-            road_localtization = StateModule.compute_obj_road_localization(obj_pos, yaw, ego_pos, ego_yaw,
-                                                                           self._map_api)
+            road_localtization = StateModule.__compute_obj_road_localization(obj_pos, yaw, ego_pos, ego_yaw,
+                                                                             self._map_api)
 
             # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
             dyn_obj = DynamicObject(id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
@@ -98,7 +98,7 @@ class StateModule(DmModule):
         v_y = ego_localization["velocity"]["v_y"]
         size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
-        road_localization = StateModule.compute_ego_road_localization(np.ndarray([x, y, z]), yaw)
+        road_localization = StateModule.__compute_ego_road_localization(np.ndarray([x, y, z]), yaw)
 
         with self._ego_state_lock:
             # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
@@ -133,10 +133,10 @@ class StateModule(DmModule):
     # TODO: solve the fact that actuator status can be outdated and no one will ever know
     def __actuator_status_callback(self, actuator: dict):
         self.logger.debug("got actuator status %s", actuator)
-        pass # TODO: update self._ego_state.steering_angle. Don't forget to lock self._ego_state!
+        pass  # TODO: update self._ego_state.steering_angle. Don't forget to lock self._ego_state!
 
     @staticmethod
-    def compute_ego_road_localization(pos, yaw, map_api):
+    def __compute_ego_road_localization(pos, yaw, map_api):
         # type: (np.ndarray, float, MapAPI) -> RoadLocalization
         """
         calculate road coordinates for global coordinates for ego
@@ -150,7 +150,7 @@ class StateModule(DmModule):
         return RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
 
     @staticmethod
-    def compute_obj_road_localization(obj_pos, obj_yaw, ego_pos, ego_yaw, map_api):
+    def __compute_obj_road_localization(obj_pos, obj_yaw, ego_pos, ego_yaw, map_api):
         # type: (np.ndarray, float, np.ndarray, float, MapAPI) -> RoadLocalization
         """
         given an object in ego-vehicle's coordinate-frame, calculate its road coordinates
