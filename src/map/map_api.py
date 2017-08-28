@@ -115,17 +115,22 @@ class MapAPI:
         pass
 
     def _find_closest_road(self, x, y, road_ids):
-        # type: (float, float, List[int]) -> (float, float, float, float, float)
+        """
+        Returns the closest road_id of the road which is closest to a point in the world (x, y)
+        :param x: x coordinate on map (given in [m])
+        :param y: y coordinate on map (given in [m])
+        :param road_ids: list of road_id
+        :return: (lat [m], lon [m], road_id) of the closest road
+        """
+        # type: (float, float, List[int]) -> (float, float, int)
         # find the closest road to (x,y)
         closest_lat = LARGE_NUM
-        closest_id = closest_sign = closest_yaw = closest_lon = None
+        closest_id = closest_lon = None
         for road_id in road_ids:
-            sign, lat_dist, lon, road_vec = self._convert_world_to_lat_lon_for_given_road(x, y, road_id)
-            if lat_dist < closest_lat:
-                road_yaw = np.arctan2(road_vec[1], road_vec[0])
-                (closest_lat, closest_sign, closest_lon, closest_yaw, closest_id) = \
-                    (lat_dist, sign, lon, road_yaw, road_id)
-        return (closest_lat, closest_sign, closest_lon, closest_yaw, closest_id)
+            lat, lon = self._convert_world_to_lat_lon_for_given_road(x, y, road_id)
+            if lat < closest_lat:
+                (closest_lat, closest_lon, closest_id) = (lat, lon, road_id)
+        return closest_lat, closest_lon, closest_id
 
     @staticmethod
     def _shift_road_vector_in_lat(points, lat_shift):
@@ -192,7 +197,7 @@ class MapAPI:
         return road_id, length, right_point, lat_vec, pnt_ind, road_lon
 
     def _convert_lat_lon_to_world(self, road_id, lat, lon, navigation_plan):
-        # type: (int, float, float, NavigationPlanMsg) -> Union[np.ndarray, None]
+        # type: (int, float, float, NavigationPlanMsg) -> np.ndarray
         """
         Given road_id, lat & lon, calculate the point in world coordinates.
         Z coordinate is calculated using the OSM data: if road's head and tail are at different layers (height),
@@ -214,13 +219,13 @@ class MapAPI:
         return world_pnt
 
     def _convert_world_to_lat_lon_for_given_road(self, x, y, road_id):
-        # type: (float, float, int) -> (int, float, float, np.ndarray)
+        # type: (float, float, int) -> (float, float)
         """
-        calc lat, lon, road dir for point=(x,y) and a given road
+        Convert point in world coordinates (x, y) to (lat, lon) of road with given road_id
         :param x: the point's world x coordinate in meters
         :param y: the point's world y coordinate in meters
         :param road_id:
-        :return: signed lat (relatively to the road center), lon (from road start), road_vec
+        :return: signed lat (relatively to the road center), lon (from road start)
         """
         road_details = self._cached_map_model.roads_data[road_id]
         longitudes = road_details.longitudes
@@ -246,13 +251,16 @@ class MapAPI:
             lat_dist = lat_dist1
             sign = sign1
             lon = proj1 + longitudes[closest_pnt_ind - 1]
-            road_vec = points[closest_pnt_ind] - points[closest_pnt_ind - 1]
         else:
             lat_dist = lat_dist2
             sign = sign2
             lon = proj2 + longitudes[closest_pnt_ind]
-            road_vec = points[closest_pnt_ind + 1] - points[closest_pnt_ind]
-        return sign, lat_dist, lon, road_vec
+
+        # Convert to location in road coordinates ([m] from rightmost edge of road):
+        # lat_dist is measured relatively to the center of road,
+        # and it's positive sign goes to the left side of the road
+        lat = road_details.width / 2 + lat_dist * sign
+        return lat, lon
 
     @staticmethod
     def normalize_vec(vec):
