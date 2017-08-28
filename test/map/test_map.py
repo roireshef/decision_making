@@ -15,7 +15,7 @@ def test_map():
     lon = 40
     lat = 2
     navigation_plan = NavigationPlanMsg([1,2])
-    road_id, length, right_point, lat_vec, pnt_ind, lon = map._convert_lon_to_world(road_id, pnt_ind, lon, navigation_plan)
+    road_id, length, right_point, lat_vec, pnt_ind, lon = map._advance_road_coordinates_in_lon(road_id, pnt_ind, lon, navigation_plan)
     world_pnt = map._convert_lat_lon_to_world(road_id, lat, lon, navigation_plan)
     lat_dist, lon1 = map._convert_world_to_lat_lon_for_given_road(25, 48, road_id)
     closest_lat, closest_lon, closest_id = map._find_closest_road(25., -51., [1,2])

@@ -151,22 +151,16 @@ class MapAPI:
         shifted_points = points + lat_vec * lat_shift
         return shifted_points
 
-    def _convert_lon_to_world(self, road_id, pnt_ind, road_lon, navigation_plan):
+    def _advance_road_coordinates_in_lon(self, road_id, road_lon, navigation_plan):
         # type: (int, int, float, NavigationPlanMsg, int) -> (int, float, np.ndarray, np.ndarray, int, float)
         """
-        Calculate world point matching to a given longitude of a given road.
+        Get the road matching to a given longitude of a given road.
         If the given longitude exceeds the current road length, then calculate the point in the next road.
         The next road is picked from the navigation plan.
         :param road_id: current road_id
-        :param pnt_ind: index of the road point, from which we can search the new point (for speed optimization)
         :param road_lon: the point's longitude relatively to the start of the road_id
         :param navigation_plan: of type NavigationPlan, includes list of road_ids
-        :return: new road_id (maybe the same one) and its length,
-            right-most road point at the given longitude with latitude vector (perpendicular to the local road's tangent),
-            the first point index with longitude > the given longitude (for the next search)
-            the longitude relatively to the next road (in case if the road_id has changed)
-            the resulted road_id may differ from the input road_id because the target point may belong to another road.
-            for the same reason the resulted road_lon may differ from the input road_lon.
+        :return: new road_id (maybe the same one) and its lon
         """
         # find road_id containing the target road_lon
         longitudes = self._cached_map_model.roads_data[road_id].longitudes
@@ -175,16 +169,33 @@ class MapAPI:
             road_id = navigation_plan.get_next_road(road_id, self.logger)
             if road_id is None:
                 return None, None, None, None, None, None, None
-            pnt_ind = 1
             longitudes = self._cached_map_model.roads_data[road_id].longitudes
 
+        return road_id, road_lon
+
+    def _get_road_properties_in_world_coordinates(self, road_id, lon):
+        # type: (int, float) -> (np.ndarray, np.ndarray, int, float)
+        """
+
+        :return: right-most road point at the given longitude with latitude vector (perpendicular to the local road's tangent),
+            the first point index with longitude > the given longitude (for the next search)
+            the longitude relatively to the next road (in case if the road_id has changed)
+            the resulted road_id may differ from the input road_id because the target point may belong to another road.
+            for the same reason the resulted road_lon may differ from the input road_lon.
+        """
+
         road_details = self._cached_map_model.roads_data[road_id]
+        longitudes = road_details.longitudes
+        max_longitude = longitudes[-1]
+        if max_longitude < lon:
+            error_message = ('asked for lon=%f out of max longitudes vector value (%f)', lon, max_longitude)
+            self.logger.warning(error_message)
+            raise Exception(error_message)
         points = road_details.points[0:2].transpose()
         width = road_details.width
         length = road_details.longitudes[-1]
         # get point with longitude > cur_lon
-        while pnt_ind < len(points) - 1 and road_lon > longitudes[pnt_ind]:
-            pnt_ind += 1
+        pnt_ind = np.argmax(longitudes > lon)
         pnt_ind = max(1, pnt_ind)
 
         # calc lat_vec, right_point, road_lon of the target longitude.
@@ -192,9 +203,9 @@ class MapAPI:
         # for the same reason the resulted road_lon may differ from the input road_lon.
         lane_vec = self.normalize_vec(points[pnt_ind] - points[pnt_ind - 1])
         lat_vec = np.array([-lane_vec[1], lane_vec[0]])  # from right to left
-        center_point = points[pnt_ind] - lane_vec * (longitudes[pnt_ind] - road_lon)
+        center_point = points[pnt_ind] - lane_vec * (longitudes[pnt_ind] - lon)
         right_point = center_point - lat_vec * (width / 2.)
-        return road_id, length, right_point, lat_vec, pnt_ind, road_lon
+        return road_id, length, right_point, lat_vec, pnt_ind, lon
 
     def _convert_lat_lon_to_world(self, road_id, lat, lon, navigation_plan):
         # type: (int, float, float, NavigationPlanMsg) -> np.ndarray
@@ -207,9 +218,15 @@ class MapAPI:
         :param lon:
         :return: point in 3D world coordinates
         """
-        id, length, right_point, lat_vec, _, _ = self._convert_lon_to_world(road_id, 0, lon, navigation_plan)
-        if id != road_id:
-            return None
+
+        actual_road_id, actual_lon = self._advance_road_coordinates_in_lon(road_id, lon, navigation_plan)
+        actual_road_id, length, right_point, lat_vec, _, _ = self._get_road_properties_in_world_coordinates(
+            actual_road_id, actual_lon)
+        if actual_road_id != road_id:
+            self.logger.info(
+                'Conversion of (lat=%f, lon=%f) point on road %d, exceeded max. lon, and received point on road_id=%d',
+                lat, lon, road_id, actual_road_id)
+            road_id = actual_road_id
         road_details = self._cached_map_model.roads_data[road_id]
         head_layer = road_details.head_layer
         tail_layer = road_details.tail_layer
