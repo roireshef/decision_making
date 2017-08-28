@@ -103,7 +103,8 @@ def test_AcdaFeaturesInComplexScenraio_successful():
     # test compute_acda
     lookahead_path = np.zeros(shape=[2, 20])
     lookahead_path[0, :] = np.linspace(0, 10, 20)
-    AcdaApi.compute_acda(objects_on_road=objects_on_road, ego_state=ego_state, lookahead_path=lookahead_path)
+    acda_safe_speed = AcdaApi.compute_acda(objects_on_road=objects_on_road, ego_state=ego_state, lookahead_path=lookahead_path)
+    assert isinstance(acda_safe_speed, float)
 
 
 test_calc_road_turn_radius_TurnOnCircle_successful()

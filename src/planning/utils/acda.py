@@ -24,7 +24,7 @@ class AcdaApi:
         AcdaApi._logger = logger
 
     @staticmethod
-    def compute_acda(objects_on_road: List[DynamicObject], ego_state: EgoState,
+    def compute_acda(objects_on_road: List[DynamicObjectOnRoad], ego_state: EgoState,
                      lookahead_path: np.ndarray) -> float:
         """
         This methods calculates the safe driving speed of ego vehicle according to ACDA rules:
@@ -32,7 +32,8 @@ class AcdaApi:
         2. Assure safe speed due to objects that may emerge between objects not in our driving path,
             determined by their horizontal distance from our path.
         3. Assure speed is under critical speed due to road curvature
-        :param objects_on_road: list of dynamic and static objects on road
+        :param objects_on_road: list of static objects on road, including the obejct information, and it's
+            relative to ego road localization
         :param ego_state: our car's state. Type EgoState
         :param lookahead_path: the reference driving path: np array of size 2 X m. Assumed to be uniformly distributed.
         :return: maximal safe speed in [m/s]
@@ -149,8 +150,8 @@ class AcdaApi:
                                     dyn_objects: List[DynamicObject] = None) -> float:
         """
         Calculating the minimal distance of something that is in my lane
-        :param static_objects: list of static objects, each is EnrichedObjectState
-        :param objects_rel_road_localization: road localization of each object (relative to ego)
+        :param static_objects: list of static objects on road, including the obejct information, and it's
+            relative to ego road localization
         :param ego_state: our car's state. Type EnrichedEgoState
         :param dyn_objects: TODO not used in July Milestone
         :param min_speed_for_following: TODO not used in July Milestone
@@ -181,7 +182,8 @@ class AcdaApi:
         """
         calculates the minimal horizontal distance of static objects that are within a certain range tbd by
         set_safety_lookahead_dist_by_ego_vel
-        :param static_objects: list of static objects, each is a dictionary
+        :param static_objects: list of static objects on road, including the obejct information, and it's
+            relative to ego road localization
         :param ego_state: our car's state. Type EnrichedEgoState
         :param set_safety_lookahead_dist_by_ego_vel: parameter determining whether we use the trajectory length or the
         current breaking distance as the lookahead range
