@@ -84,7 +84,7 @@ class DynamicObject(DDSNonTypedMsg):
         :param acceleration_lon: acceleration in longitude axis
         :param yaw_deriv: 0 for straight motion, positive for CCW (yaw increases), negative for CW
         """
-        self.id = obj_id
+        self.obj_id = obj_id
         self.timestamp = timestamp
         self.x = x
         self.y = y
