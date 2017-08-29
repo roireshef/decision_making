@@ -119,6 +119,7 @@ class MapAPI:
         pass
 
     def _find_closest_road(self, x, y, road_ids):
+        # type: (float, float, List[int]) -> (float, float, int)
         """
         Returns the closest road_id of the road which is closest to a point in the world (x, y)
         :param x: x coordinate on map (given in [m])
@@ -126,7 +127,6 @@ class MapAPI:
         :param road_ids: list of road_id
         :return: (lat [m], lon [m], road_id) of the closest road
         """
-        # type: (float, float, List[int]) -> (float, float, int)
         # find the closest road to (x,y)
         closest_lat = LARGE_NUM
         closest_id = closest_lon = None
@@ -319,6 +319,12 @@ class MapAPI:
 
     @staticmethod
     def normalize_vec(vec):
+        # type: (np.array) -> np.array
+        """
+        normalize vector, prevent division by zero
+        :param vec: numpy array
+        :return: normalized vector (numpy array)
+        """
         vec_norm = np.linalg.norm(vec)
         if vec_norm != 0:
             return vec / vec_norm
