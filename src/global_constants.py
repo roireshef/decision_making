@@ -74,6 +74,7 @@ TRAJECTORY_PUBLISH_TOPIC = "TrajectoryPublisher::TrajectoryWriter"
 TRAJECTORY_VISUALIZATION_TOPIC = ""  # TODO: update XML in common-data and fill this
 
 #### NAMES OF MODULES FOR LOGGING ####
+MAP_NAME_FOR_LOGGING = "Map API"
 DM_MANAGER_NAME_FOR_LOGGING = "DM Manager"
 NAVIGATION_PLANNING_NAME_FOR_LOGGING = "Navigation Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"

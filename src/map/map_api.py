@@ -1,4 +1,6 @@
 import numpy as np
+
+from decision_making.src.global_constants import MAP_NAME_FOR_LOGGING
 from decision_making.src.map.map_model import MapModel
 from typing import List, Union
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -6,14 +8,17 @@ from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 from logging import Logger
 
 from decision_making.src.map.constants import LARGE_NUM
+from rte.python.logger.AV_logger import AV_Logger
 
 
 class MapAPI:
+
+    logger = AV_Logger.get_logger(MAP_NAME_FOR_LOGGING)
+
     def __init__(self, map_model, logger):
         # type: (MapModel, Logger) -> None
         self._cached_map_model = map_model
         self.logger = logger
-        pass
 
     def find_roads_containing_point(self, layer, world_x, world_y):
         # type: (int, float, float) -> List[int]
@@ -143,6 +148,8 @@ class MapAPI:
         points = np.array(points)
         points_direction = np.diff(points, axis=1)
         points_norm = np.linalg.norm(points_direction, axis=0)
+        if len(np.where(points_norm == 0.0)[0]) > 0:
+            MapAPI.logger.warning('Identical consecutive points in path. Norm of diff is Zero')
         normalized_vec_x = np.divide(points_direction[0, :], points_norm)
         normalized_vec_y = np.divide(points_direction[1, :], points_norm)
         lat_vec = np.vstack((-normalized_vec_y, normalized_vec_x))
@@ -224,7 +231,7 @@ class MapAPI:
         right_point = center_point - lat_vec * (width / 2.)
         return length, right_point, lat_vec
 
-    def _convert_lat_lon_to_world(self, road_id, lat, lon, navigation_plan):
+    def convert_lat_lon_to_world(self, road_id, lat, lon, navigation_plan):
         # type: (int, float, float, NavigationPlanMsg) -> (np.ndarray, float)
         """
         Given road_id, lat & lon, calculate the point in world coordinates.
