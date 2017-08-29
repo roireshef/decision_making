@@ -61,12 +61,25 @@ class CartesianFrame:
         return CartesianFrame.homo_matrix_3d_from_quaternion(quaternion, translation)
 
     @staticmethod
+    def add_yaw(xy_points: np.ndarray) -> np.ndarray:
+        """
+        Takes a matrix of curve points ([x, y] only) and adds a yaw column
+        :param xy_points: a numpy matrix of shape [n, 2]
+        :return: a numpy matrix of shape [n, 3]
+        """
+        xy_dot = np.diff(xy_points, axis=0)
+        xy_dot = np.concatenate((xy_dot, np.array([xy_dot[-1, :]])), axis=0)
+        theta = np.arctan2(xy_dot[:, 1], xy_dot[:, 0])  # orientation
+
+        return np.concatenate((xy_points, theta.reshape([-1, 1])), axis=1)
+
+    @staticmethod
     def add_yaw_and_derivatives(xy_points: np.ndarray) -> np.ndarray:
         """
         Takes a matrix of curve points ([x, y] only) and adds columns: [yaw, curvature, derivative of curvature]
         by computing pseudo-derivatives
         :param xy_points: a numpy matrix of shape [n, 2]
-        :return: a numpy matrix of shape [n, 4]
+        :return: a numpy matrix of shape [n, 5]
         """
         xy_dot = np.diff(xy_points, axis=0)
         xy_dotdot = np.diff(xy_dot, axis=0)
@@ -83,7 +96,7 @@ class CartesianFrame:
         k_tag = np.diff(k_col, axis=0)
         k_tag_col = np.concatenate((k_tag, [k_tag[-1]])).reshape([-1, 1])
 
-        return np.concatenate((xy_points, theta_col, k_col, k_tag_col), 1)
+        return np.concatenate((xy_points, theta_col, k_col, k_tag_col), axis=1)
 
     @staticmethod
     def resample_curve(curve: np.ndarray, step_size: float, desired_curve_len: Union[None, float] = None,

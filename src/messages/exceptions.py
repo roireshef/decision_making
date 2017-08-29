@@ -4,3 +4,7 @@ class MsgDeserializationError(Exception):
 
 class MsgSerializationError(Exception):
     pass
+
+
+class RoadNotFound(Exception):
+    pass

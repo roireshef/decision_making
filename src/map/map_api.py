@@ -3,6 +3,8 @@ import numpy as np
 from decision_making.src.global_constants import MAP_NAME_FOR_LOGGING
 from decision_making.src.map.map_model import MapModel
 from typing import List, Union
+
+from decision_making.src.messages.exceptions import RoadNotFound
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 from logging import Logger
@@ -125,16 +127,31 @@ class MapAPI:
         :param x: x coordinate on map (given in [m])
         :param y: y coordinate on map (given in [m])
         :param road_ids: list of road_id
-        :return: (lat [m], lon [m], road_id) of the closest road
+        :return: (lat [m], lon [m], road_id) from the closest road
         """
-        # find the closest road to (x,y)
-        closest_lat = LARGE_NUM
-        closest_id = closest_lon = None
+        closest_lat = closest_lon = np.inf
+        closest_id = None
         for road_id in road_ids:
             lat, lon = self._convert_world_to_lat_lon_for_given_road(x, y, road_id)
             if lat < closest_lat:
-                (closest_lat, closest_lon, closest_id) = (lat, lon, road_id)
+                closest_lat, closest_lon, closest_id = lat, lon, road_id
         return closest_lat, closest_lon, closest_id
+
+    @staticmethod
+    def _shift_road_vector(points, shift):
+        # type: (np.ndarray, np.ndarray) -> np.ndarray
+        """
+        Given points list along a road (in vehicle's coordinate frame), shift them in road's coordinate-frame, i.e.
+        longitudinally and laterally.
+        :param points (Nx2): points list along a given road
+        :param shift: shift (1D numpy array - [lon, lat]) in [m]
+        :return: shifted points array (Nx2)
+        """
+        points_with_yaw = CartesianFrame.add_yaw(points)
+        proj_tensor = np.array([CartesianFrame.homo_matrix_2d(point[2], point[:2])
+                                for point in points_with_yaw])
+        shift_vec = np.append(shift, [1])
+        return np.dot(proj_tensor, shift_vec)[:, :2]
 
     @staticmethod
     def _shift_road_vector_in_lat(points, lat_shift):
@@ -145,64 +162,76 @@ class MapAPI:
         :param lat_shift: shift in meters
         :return: shifted points array (2xN)
         """
-        points = np.array(points)
-        points_direction = np.diff(points, axis=1)
-        points_norm = np.linalg.norm(points_direction, axis=0)
-        if len(np.where(points_norm == 0.0)[0]) > 0:
-            MapAPI.logger.warning('Identical consecutive points in path. Norm of diff is Zero')
-        normalized_vec_x = np.divide(points_direction[0, :], points_norm)
-        normalized_vec_y = np.divide(points_direction[1, :], points_norm)
-        lat_vec = np.vstack((-normalized_vec_y, normalized_vec_x))
-        lat_vec = np.concatenate((lat_vec, lat_vec[:, -1].reshape([2, 1])), axis=1)
-        shifted_points = points + lat_vec * lat_shift
-        return shifted_points
+        return MapAPI._shift_road_vector(points.transpose(), np.array([0, lat_shift])).transpose()
 
     def _advance_road_coordinates_in_lon(self, road_id, start_lon, lon_step, navigation_plan):
         # type: (int, float, float, NavigationPlanMsg, int) -> (int, float, float)
-        """
-        Get the road matching to a given longitude of a given road.
-        If the given longitude exceeds the current road length, then calculate the point in the next road.
-        The next road is picked from the navigation plan.
-        :param road_id: current road_id
-        :param start_lon: the point's longitude relatively to the start of the road_id
-        :param start_lon: the step in [m] in longitude
-        :param navigation_plan: of type NavigationPlan, includes list of road_ids
-        :return: 1. new road_id (maybe the same one); 2. its lon; 3. residual lon from road_lon
-            1. the resulted road_id may differ from the input road_id because the target point may belong to another road.
-            2. for the same reason the resulted road_lon may differ from the input road_lon.
-            3. If couldn't advance to road_lon (due to end of road / navigation plan), then the residual lon will
-              be returned as the actual
-        """
 
-        if road_id not in self._cached_map_model.roads_data:
-            raise KeyError('road_id=%d is not in Map Model', road_id)
+        current_road_idx_in_plan = navigation_plan.get_road_index_in_plan(road_id)  # TODO: catch IndexError
+        roads_ids = navigation_plan.road_ids[current_road_idx_in_plan:]
+        roads_len = [self._cached_map_model.roads_data[rid].longitudes[-1] for rid in roads_ids]
 
-        relative_lon = start_lon + lon_step
-        residual_lon = relative_lon
-        # find road_id containing the target road_lon
-        longitudes = self._cached_map_model.roads_data[road_id].longitudes
-        road_length = longitudes[-1]
-        while relative_lon > road_length:  # then advance to the next road
-            relative_lon -= road_length
-            residual_lon -= road_length
-            next_road_id = navigation_plan.get_next_road(road_id, self.logger)
-            if next_road_id is None:
-                self.logger.warning(
-                    "Couldn't achieve advantage of %f [m] on road_id %d. Terminated at with residual distance of %f",
-                    (start_lon + lon_step), road_id, residual_lon)
-                return road_id, road_length, residual_lon
-            else:
-                road_id = next_road_id
-                longitudes = self._cached_map_model.roads_data[road_id].longitudes
-                road_length = longitudes[-1]
+        roads_dist_to_end = np.cumsum(np.append([roads_len[0] - start_lon], roads_len[1:]))  # current dist to road-end
+        roads_leftovers = np.subtract(lon_step, roads_dist_to_end)  # how much of step_lon is left after this road
 
-        residual_lon -= relative_lon
+        # if navigation plan is too short
+        if np.all(np.greater(roads_leftovers, 0)):
+            return roads_ids[-1], roads_len[-1], roads_leftovers[-1]
+        else:
+            target_road_idx = np.where(roads_leftovers < 0)[0][0]
+            return roads_ids[target_road_idx], roads_leftovers[target_road_idx] + roads_len[target_road_idx], 0
 
-        return road_id, relative_lon, residual_lon
+
+
+    # def _advance_road_coordinates_in_lon(self, road_id, start_lon, lon_step, navigation_plan):
+    #     # type: (int, float, float, NavigationPlanMsg, int) -> (int, float, float)
+    #     """
+    #     Get the road matching to a given longitude of a given road.
+    #     If the given longitude exceeds the current road length, then calculate the point in the next road, iteratively.
+    #     The next road is picked from the navigation plan.
+    #     :param road_id: current road_id
+    #     :param start_lon: the point's longitude relatively to the start of the road_id
+    #     :param lon_step: the step in [m] in longitude
+    #     :param navigation_plan: of type NavigationPlan, includes list of road_ids
+    #     :return: 1. new road_id (maybe the same one); 2. its lon; 3. residual lon from road_lon
+    #         1. the resulted road_id may differ from the input road_id because the target point may belong to another road.
+    #         2. for the same reason the resulted road_lon may differ from the input road_lon.
+    #         3. If couldn't advance to road_lon (due to end of road / navigation plan), then the residual lon will
+    #           be returned as the actual
+    #     """
+    #
+    #     if road_id not in self._cached_map_model.roads_data:
+    #         raise KeyError('road_id=%d is not in Map Model', road_id)
+    #
+    #     relative_lon = start_lon + lon_step
+    #     residual_lon = relative_lon
+    #     # find road_id containing the target road_lon
+    #     longitudes = self._cached_map_model.roads_data[road_id].longitudes
+    #     road_length = longitudes[-1]
+    #     while relative_lon > road_length:  # then advance to the next road
+    #         try:
+    #             relative_lon -= road_length
+    #             residual_lon -= road_length
+    #             next_road_id = navigation_plan.get_next_road(road_id)
+    #             road_id = next_road_id
+    #             longitudes = self._cached_map_model.roads_data[road_id].longitudes
+    #             road_length = longitudes[-1]
+    #         except RoadNotFound as rnf:
+    #             self.logger.warning("Couldn't achieve advantage of %f [m] on road_id %d, due to: %s",
+    #                                 (start_lon + lon_step), road_id, str(rnf))
+    #             self.logger.warning("Terminated at with residual distance of %f", residual_lon)
+    #             return road_id, road_length, residual_lon
+    #
+    #     residual_lon -= relative_lon
+    #
+    #     return road_id, relative_lon, residual_lon
 
     def _get_road_properties_in_world_coordinates(self, road_id, lon):
         # type: (int, float) -> (float, np.ndarray, np.ndarray)
         """
+        ???
+        :param road_id:
+        :param lon:
         :return: right-most road point at the given longitude with latitude vector (perpendicular to the local road's tangent),
             the first point index with longitude > the given longitude (for the next search)
             the longitude relatively to the next road (in case if the road_id has changed)
@@ -211,21 +240,21 @@ class MapAPI:
         road_details = self._cached_map_model.roads_data[road_id]
         longitudes = road_details.longitudes
         max_longitude = longitudes[-1]
+
         if max_longitude < lon:
-            error_message = ('asked for lon=%f out of max longitudes vector value (%f)', lon, max_longitude)
-            self.logger.warning(error_message)
-            raise Exception(error_message)
+            raise Exception('asked for lon=%f out of max longitudes vector value (%f)', lon, max_longitude)
+
         points = road_details.points[0:2].transpose()
         width = road_details.width
         length = road_details.longitudes[-1]
         # get point with longitude > cur_lon
-        pnt_ind = np.argmax(longitudes > lon)
+        pnt_ind = np.argmax(np.greater(longitudes, lon))
         pnt_ind = max(1, pnt_ind)
 
         # calc lat_vec, right_point, road_lon of the target longitude.
         # the resulted road_id may differ from the input road_id because the target point may belong to another road.
         # for the same reason the resulted road_lon may differ from the input road_lon.
-        lane_vec = self.normalize_vec(points[pnt_ind] - points[pnt_ind - 1])
+        lane_vec = self._normalize_vec(points[pnt_ind] - points[pnt_ind - 1])
         lat_vec = np.array([-lane_vec[1], lane_vec[0]])  # from right to left
         center_point = points[pnt_ind] - lane_vec * (longitudes[pnt_ind] - lon)
         right_point = center_point - lat_vec * (width / 2.)
@@ -237,6 +266,7 @@ class MapAPI:
         Given road_id, lat & lon, calculate the point in world coordinates.
         Z coordinate is calculated using the OSM data: if road's head and tail are at different layers (height),
         then interpolate between them.
+        :param navigation_plan:
         :param road_id:
         :param lat:
         :param lon:
@@ -282,43 +312,31 @@ class MapAPI:
         :param road_id:
         :return: signed lat (relatively to the road center), lon (from road start)
         """
+        p = np.array([x, y])
         road_details = self._cached_map_model.roads_data[road_id]
         longitudes = road_details.longitudes
+
         # find the closest point of the road to (x,y)
         points = road_details.points[0:2].transpose()
-        dist_2 = np.linalg.norm(np.asarray(points) - (x, y), axis=1)
-        closest_pnt_ind = np.argmin(dist_2)  # index of the closest road point to (x,y)
-        # find the closest segment and the distance (latitude)
-        # given the closest road point, take two adjacent road segments around it and pick the closest segment to (x,y)
-        # proj1, proj2 are projection points of p onto two above segments
-        # lat_dist1, lat_dist2 are latitude distances from p to the segments
-        # sign1, sign2 are the sign of the above two latitudes
-        p = proj1 = proj2 = np.array([x, y])
-        lat_dist1 = lat_dist2 = LARGE_NUM
-        sign1 = sign2 = 0
-        if closest_pnt_ind > 0:
-            sign1, lat_dist1, proj1 = CartesianFrame.calc_point_segment_dist(p, points[closest_pnt_ind - 1],
-                                                                             points[closest_pnt_ind])
-        if closest_pnt_ind < len(points) - 1:
-            sign2, lat_dist2, proj2 = CartesianFrame.calc_point_segment_dist(p, points[closest_pnt_ind],
-                                                                             points[closest_pnt_ind + 1])
-        if lat_dist1 < lat_dist2:
-            lat_dist = lat_dist1
-            sign = sign1
-            lon = proj1 + longitudes[closest_pnt_ind - 1]
-        else:
-            lat_dist = lat_dist2
-            sign = sign2
-            lon = proj2 + longitudes[closest_pnt_ind]
+        distance_to_road_points = np.linalg.norm(np.array(points) - p, axis=1)
+        closest_pnt_ind = np.argmin(distance_to_road_points)
+        
+        # the relevant road segments will be the one before this point, and the one after it, so for both segments:
+        # compute [sign, latitude, longitude, segment_start_point_index]
+        closest_pnt_ind_pairs = [[closest_pnt_ind - 1, closest_pnt_ind], [closest_pnt_ind, closest_pnt_ind + 1]]
+        segments = np.array([np.append(CartesianFrame.calc_point_segment_dist(p, points[idxs[0]], points[idxs[1]]), idxs[0])
+                             for idxs in closest_pnt_ind_pairs
+                             if idxs[0] > 0 and idxs[1] < len(points)])
 
-        # Convert to location in road coordinates ([m] from rightmost edge of road):
-        # lat_dist is measured relatively to the center of road,
-        # and it's positive sign goes to the left side of the road
-        lat = road_details.width / 2 + lat_dist * sign
-        return lat, lon
+        # find closest segment by min latitude
+        closest_segment = segments[np.argmax(segments[:, 1], axis=0)]
+        sign, lat, lon, start_ind = closest_segment[0], closest_segment[1], closest_segment[2], int(closest_segment[3])
+
+        # lat, lon
+        return road_details.width / 2 + lat * sign, lon + longitudes[start_ind]
 
     @staticmethod
-    def normalize_vec(vec):
+    def _normalize_vec(vec):
         # type: (np.array) -> np.array
         """
         normalize vector, prevent division by zero
