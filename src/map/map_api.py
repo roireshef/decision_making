@@ -1,5 +1,4 @@
 import numpy as np
-
 from decision_making.src.map.map_model import MapModel
 from typing import List, Union
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -151,37 +150,48 @@ class MapAPI:
         shifted_points = points + lat_vec * lat_shift
         return shifted_points
 
-    def _advance_road_coordinates_in_lon(self, road_id, road_lon, navigation_plan):
-        # type: (int, int, float, NavigationPlanMsg, int) -> (int, float, np.ndarray, np.ndarray, int, float)
+    def _advance_road_coordinates_in_lon(self, road_id, start_lon, lon_step, navigation_plan):
+        # type: (int, float, float, NavigationPlanMsg, int) -> (int, float, float)
         """
         Get the road matching to a given longitude of a given road.
         If the given longitude exceeds the current road length, then calculate the point in the next road.
         The next road is picked from the navigation plan.
         :param road_id: current road_id
-        :param road_lon: the point's longitude relatively to the start of the road_id
+        :param start_lon: the point's longitude relatively to the start of the road_id
+        :param start_lon: the step in [m] in longitude
         :param navigation_plan: of type NavigationPlan, includes list of road_ids
-        :return: new road_id (maybe the same one) and its lon
+        :return: 1. new road_id (maybe the same one); 2. its lon; 3. residual lon from road_lon
+            1. the resulted road_id may differ from the input road_id because the target point may belong to another road.
+            2. for the same reason the resulted road_lon may differ from the input road_lon.
+            3. If couldn't advance to road_lon (due to end of road / navigation plan), then the residual lon will
+              be returned as the actual
         """
+        relative_lon = start_lon + lon_step
+        residual_lon = relative_lon
         # find road_id containing the target road_lon
         longitudes = self._cached_map_model.roads_data[road_id].longitudes
-        while road_lon > longitudes[-1]:  # then advance to the next road
-            road_lon -= longitudes[-1]
+        road_length = longitudes[-1]
+        while relative_lon > road_length:  # then advance to the next road
+            relative_lon -= road_length
             road_id = navigation_plan.get_next_road(road_id, self.logger)
             if road_id is None:
-                return None, None, None, None, None, None, None
+                self.logger.warning(
+                    "Couldn't achieve advantage of %f [m] on road_id %d. Terminated at with residual distance of %f",
+                    (start_lon + lon_step), road_id, residual_lon)
+                return road_id, road_length, residual_lon
             longitudes = self._cached_map_model.roads_data[road_id].longitudes
+            road_length = longitudes[-1]
 
-        return road_id, road_lon
+        residual_lon -= relative_lon
+
+        return road_id, relative_lon, residual_lon
 
     def _get_road_properties_in_world_coordinates(self, road_id, lon):
-        # type: (int, float) -> (np.ndarray, np.ndarray, int, float)
+        # type: (int, float) -> (float, np.ndarray, np.ndarray)
         """
-
         :return: right-most road point at the given longitude with latitude vector (perpendicular to the local road's tangent),
             the first point index with longitude > the given longitude (for the next search)
             the longitude relatively to the next road (in case if the road_id has changed)
-            the resulted road_id may differ from the input road_id because the target point may belong to another road.
-            for the same reason the resulted road_lon may differ from the input road_lon.
         """
 
         road_details = self._cached_map_model.roads_data[road_id]
@@ -205,10 +215,10 @@ class MapAPI:
         lat_vec = np.array([-lane_vec[1], lane_vec[0]])  # from right to left
         center_point = points[pnt_ind] - lane_vec * (longitudes[pnt_ind] - lon)
         right_point = center_point - lat_vec * (width / 2.)
-        return road_id, length, right_point, lat_vec, pnt_ind, lon
+        return length, right_point, lat_vec
 
     def _convert_lat_lon_to_world(self, road_id, lat, lon, navigation_plan):
-        # type: (int, float, float, NavigationPlanMsg) -> np.ndarray
+        # type: (int, float, float, NavigationPlanMsg) -> (np.ndarray, float)
         """
         Given road_id, lat & lon, calculate the point in world coordinates.
         Z coordinate is calculated using the OSM data: if road's head and tail are at different layers (height),
@@ -216,24 +226,36 @@ class MapAPI:
         :param road_id:
         :param lat:
         :param lon:
-        :return: point in 3D world coordinates
+        :return: point in 3D world coordinates;
+         actual_lon = lon - residual lon
         """
 
-        actual_road_id, actual_lon = self._advance_road_coordinates_in_lon(road_id, lon, navigation_plan)
-        actual_road_id, length, right_point, lat_vec, _, _ = self._get_road_properties_in_world_coordinates(
-            actual_road_id, actual_lon)
+        # Get actual road_id and actual_lon, in case that the longitude exceeds road length
+        actual_road_id, road_lon, residual_lon = \
+            self._advance_road_coordinates_in_lon(road_id=road_id, start_lon=0.0,
+                                                  lon_step=lon,
+                                                  navigation_plan=navigation_plan)
         if actual_road_id != road_id:
             self.logger.info(
-                'Conversion of (lat=%f, lon=%f) point on road %d, exceeded max. lon, and received point on road_id=%d',
-                lat, lon, road_id, actual_road_id)
-            road_id = actual_road_id
+                'Conversion of (road=%d, lon=%f) exceeded max. lon. Returned point on road_id=%d',
+                road_id, lon, actual_road_id)
+
+        # Warn if couldn't supply sufficient lookahead
+        if not np.math.isclose(residual_lon, 0.0):
+            self.logger.warning(
+                'Conversion of (road=%d, lon=%f) terminated with actual lon of: %f',
+                road_id, lon, lon-residual_lon)
+
+        # Get road structure properties
+        length, right_point, lat_vec = self._get_road_properties_in_world_coordinates(actual_road_id, road_lon)
+        road_id = actual_road_id
         road_details = self._cached_map_model.roads_data[road_id]
         head_layer = road_details.head_layer
         tail_layer = road_details.tail_layer
         tail_wgt = lon / length
         z = head_layer * (1 - tail_wgt) + tail_layer * tail_wgt
         world_pnt = np.append(right_point + lat_vec * lat, [z])  # 3D point
-        return world_pnt
+        return world_pnt, lon-residual_lon
 
     def _convert_world_to_lat_lon_for_given_road(self, x, y, road_id):
         # type: (float, float, int) -> (float, float)
