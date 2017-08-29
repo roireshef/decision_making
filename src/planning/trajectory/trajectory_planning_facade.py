@@ -1,3 +1,5 @@
+from typing import Dict
+
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import *
 from decision_making.src.infra.dm_module import DmModule
@@ -13,7 +15,7 @@ from logging import Logger
 
 class TrajectoryPlanningFacade(DmModule):
     def __init__(self, dds: DdsPubSub, logger: Logger,
-                 strategy_handlers: dict[TrajectoryPlanningStrategy, TrajectoryPlanner]):
+                 strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner]):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param dds: communication layer (DDS) instance
