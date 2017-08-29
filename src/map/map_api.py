@@ -166,6 +166,10 @@ class MapAPI:
             3. If couldn't advance to road_lon (due to end of road / navigation plan), then the residual lon will
               be returned as the actual
         """
+
+        if road_id not in self._cached_map_model.roads_data:
+            raise KeyError('road_id=%d is not in Map Model', road_id)
+
         relative_lon = start_lon + lon_step
         residual_lon = relative_lon
         # find road_id containing the target road_lon
@@ -173,14 +177,17 @@ class MapAPI:
         road_length = longitudes[-1]
         while relative_lon > road_length:  # then advance to the next road
             relative_lon -= road_length
-            road_id = navigation_plan.get_next_road(road_id, self.logger)
-            if road_id is None:
+            residual_lon -= road_length
+            next_road_id = navigation_plan.get_next_road(road_id, self.logger)
+            if next_road_id is None:
                 self.logger.warning(
                     "Couldn't achieve advantage of %f [m] on road_id %d. Terminated at with residual distance of %f",
                     (start_lon + lon_step), road_id, residual_lon)
                 return road_id, road_length, residual_lon
-            longitudes = self._cached_map_model.roads_data[road_id].longitudes
-            road_length = longitudes[-1]
+            else:
+                road_id = next_road_id
+                longitudes = self._cached_map_model.roads_data[road_id].longitudes
+                road_length = longitudes[-1]
 
         residual_lon -= relative_lon
 
@@ -241,10 +248,11 @@ class MapAPI:
                 road_id, lon, actual_road_id)
 
         # Warn if couldn't supply sufficient lookahead
+        actual_lon_lookahead = lon - residual_lon
         if not np.math.isclose(residual_lon, 0.0):
             self.logger.warning(
                 'Conversion of (road=%d, lon=%f) terminated with actual lon of: %f',
-                road_id, lon, lon-residual_lon)
+                road_id, lon, actual_lon_lookahead)
 
         # Get road structure properties
         length, right_point, lat_vec = self._get_road_properties_in_world_coordinates(actual_road_id, road_lon)
@@ -255,7 +263,8 @@ class MapAPI:
         tail_wgt = lon / length
         z = head_layer * (1 - tail_wgt) + tail_layer * tail_wgt
         world_pnt = np.append(right_point + lat_vec * lat, [z])  # 3D point
-        return world_pnt, lon-residual_lon
+
+        return world_pnt, actual_lon_lookahead
 
     def _convert_world_to_lat_lon_for_given_road(self, x, y, road_id):
         # type: (float, float, int) -> (float, float)
