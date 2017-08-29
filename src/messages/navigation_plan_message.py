@@ -42,6 +42,10 @@ class NavigationPlanMsg(DDSNonTypedMsg):
         if road_id is None:
             return None
         plan_index = self.__get_road_index_in_plan(road_id, logger)
+        if plan_index is None:
+            logger.warning("Navigation: Can't get find road_in=%d in plan", road_id)
+            return None
+
         if plan_index < len(self.road_ids) - 1:
             next_road_id = self.road_ids[plan_index + 1]
             return next_road_id

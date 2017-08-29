@@ -145,7 +145,8 @@ class CartesianFrame:
         :param p: 2D Point
         :param p_start: first edge of 2D segment
         :param p_end: second edge of 2D segment
-        :return: signed distance between the point p and the segment p1->p2; length of the projection of p on the segment
+        :return:    signed distance between the point p and the segment p1->p2 (positive if p is CCW relatively to p1->p2);
+                    length of the projection of p on the segment
         """
         segment = p_end - p_start
         segment_start_to_p = p - p_start
@@ -159,7 +160,7 @@ class CartesianFrame:
         sign = np.sign(dotn)
         proj = 0
         if dot1 > 0 and dot2 > 0:  # then p is between p1,p2, so calc dist to the line
-            one_over_vnorm = 1. / np.linalg.norm(segment)
+            one_over_vnorm = 1.0 / np.linalg.norm(segment)
             dist = dotn * one_over_vnorm * sign  # always >= 0
             proj = dot1 * one_over_vnorm  # length of projection of v1 on v
         elif dot1 <= 0:

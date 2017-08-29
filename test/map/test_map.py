@@ -1,22 +1,53 @@
+import matplotlib.pyplot as plt
 from decision_making.src.global_constants import DM_MANAGER_NAME_FOR_LOGGING
 from decision_making.src.map.map_api import *
 from decision_making.src.map.naive_cache_map import NaiveCacheMap
 from rte.python.logger.AV_logger import AV_Logger
 
-def test_map():
-    logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
-    map = NaiveCacheMap("../../resources/maps/CustomMapPickle.bin", logger)
-    points = np.array([[0, 51], [2, 51]]).transpose()
-    shifted_points = map._shift_road_vector_in_lat(points, 1)
-    road_id = 1
-    pnt_ind = 1
-    lon = 40
-    lat = 2
-    navigation_plan = NavigationPlanMsg([1,2])
-    road_id, length, right_point, lat_vec, pnt_ind, lon = map._convert_lon_to_world(road_id, pnt_ind, lon, navigation_plan)
-    world_pnt = map._convert_lat_lon_to_world(road_id, lat, lon, navigation_plan)
-    sign, lat_dist, lon1, road_vec = map._convert_world_to_lat_lon_for_given_road(25, 48, road_id)
-    (closest_lat, closest_sign, closest_lon, closest_yaw, closest_id) = map._find_closest_road(25., -51., [1,2])
-    print("")
 
-test_map()
+def test_map():
+    # TODO: add concrete assert statements
+    logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
+    map = NaiveCacheMap("../../resources/maps/testingGroundMap.bin", logger)
+    road_id = 20
+    lat = 2.0
+    navigation_plan = NavigationPlanMsg([20])
+
+    # Get road info
+    road_info = map._cached_map_model.roads_data[20]
+    road_points = road_info.points
+    rightmost_edge_of_road_points = map._shift_road_vector_in_lat(road_points[0:2,:], -road_info.width/2)
+    leftmost_edge_of_road_points = map._shift_road_vector_in_lat(road_points[0:2,:], +road_info.width / 2)
+    plt.plot(rightmost_edge_of_road_points[0, :], rightmost_edge_of_road_points[1, :], '-b')
+    plt.plot(leftmost_edge_of_road_points[0, :], leftmost_edge_of_road_points[1, :], '-c')
+    plt.plot(road_points[0, 0], road_points[1, 0], '*b')
+
+    # Short longitudinal lookahead
+    lon = 4.0
+    road_id, relative_lon, residual_lon = map._advance_road_coordinates_in_lon(road_id=road_id, start_lon=0.0,
+                                                                               lon_step=lon,
+                                                                               navigation_plan=navigation_plan)
+    world_pnt, actual_lon_lookahead = map.convert_lat_lon_to_world(road_id, lat, lon, navigation_plan)
+
+    # long longitudinal lookahead
+    lon = 1000.0
+    road_id, road_lon, residual_lon = map._advance_road_coordinates_in_lon(road_id=road_id, start_lon=0.0,
+                                                                           lon_step=lon,
+                                                                           navigation_plan=navigation_plan)
+    world_pnt, actual_lon_lookahead = map.convert_lat_lon_to_world(road_id, lat, lon, navigation_plan)
+
+
+
+    # Find closest point on road to an arbitrary point in the world
+    point_in_world = [100.0, 200.0, 0.0]
+    lat_dist, lon1 = map._convert_world_to_lat_lon_for_given_road(point_in_world[0], point_in_world[1], road_id)
+
+    closest_lat, closest_lon, closest_id = map._find_closest_road(point_in_world[0], point_in_world[1], [20])
+    closest_world_point, actual_lon_lookahead = map.convert_lat_lon_to_world(closest_id, 0.0, closest_lon,
+                                                                             navigation_plan)
+    plt.plot([closest_world_point[0], point_in_world[0]], [closest_world_point[1], point_in_world[1]], 'g')
+    plt.plot(100.0, 200.0, '*r')
+    plt.xlim([0.0, 1000.0])
+    plt.ylim([0.0, 1000.0])
+    plt.show()
+
