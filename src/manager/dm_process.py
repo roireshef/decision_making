@@ -1,6 +1,6 @@
 import os
 from multiprocessing import Queue, Process
-
+from typing import Callable
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTimerTrigger, DmNullTrigger
 
@@ -8,14 +8,15 @@ from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTime
 class DmProcess:
 
     # TODO: Get external trigger (requires changes to the PeriodTimer in rte repo)
-    def __init__(self, module_instance: DmModule, trigger_type: DmTriggerType, trigger_args: dict) -> None:
+    def __init__(self, module_creation_method: Callable[[], DmModule], trigger_type: DmTriggerType, trigger_args: dict) -> None:
         """
         Manager for a single DM module running in a separate process
-        :param module_instance: the instance of the DM module to run in a separate process
+        :param module_creation_method: the method to create an instance of the DM module to run in a separate process
         :param trigger_type: the type of trigger to use
         :param trigger_args: dictionary containing keyword arguments for initializing the trigger
         """
-        self._module_instance = module_instance
+
+        self._module_creation_method = module_creation_method
         self._trigger_type = trigger_type
         self._trigger_args = trigger_args
         self._queue = Queue()
@@ -23,15 +24,12 @@ class DmProcess:
         process_name = "DM_process_{}".format(self.name)
         self.process = Process(target=self._module_process_entry, name=process_name)
 
-        # create the trigger and activate it.
-        if self._trigger_type == DmTriggerType.DM_TRIGGER_PERIODIC:
-            self._trigger = DmPeriodicTimerTrigger(self._trigger_callback, **self._trigger_args)
-        elif self._trigger_type == DmTriggerType.DM_TRIGGER_NONE:
-            self._trigger = DmNullTrigger()
+        self._trigger = None
+        self._module_instance = None
 
     @property
     def name(self) -> str:
-        return self._module_instance.__class__.__name__
+        return self._module_creation_method.__name__
 
     def start_process(self) -> None:
         """
@@ -54,6 +52,15 @@ class DmProcess:
         until it receives a stop signal.
         :return: None
         """
+
+        # create the trigger and activate it.
+        if self._trigger_type == DmTriggerType.DM_TRIGGER_PERIODIC:
+            self._trigger = DmPeriodicTimerTrigger(self._trigger_callback, **self._trigger_args)
+        elif self._trigger_type == DmTriggerType.DM_TRIGGER_NONE:
+            self._trigger = DmNullTrigger()
+
+        self._module_instance = self._module_creation_method()
+
         # create the sub module
         self._module_instance.start()
 

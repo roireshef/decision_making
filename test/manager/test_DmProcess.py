@@ -14,9 +14,7 @@ from rte.python.logger.AV_logger import AV_Logger
 import pytest
 
 
-@pytest.fixture()
-def dm_process():
-    # Initializations
+def create_behavioral_planner() -> BehavioralFacade:
     logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
     dds = DdsPubSub(BEHAVIORAL_PLANNER_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
     # TODO: fill the policy
@@ -26,9 +24,14 @@ def dm_process():
     road_localization = RoadLocalization(0, 0, 0, 0, 0, 0)
     ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 0, 0, 0, 0, 0, road_localization)
     behavioral_state = BehavioralState(ego_state=ego_state)
-    behavioral_module = BehavioralFacade(dds=dds, logger=logger, policy=policy, behavioral_state=behavioral_state)
+    return BehavioralFacade(dds=dds, logger=logger, policy=policy, behavioral_state=behavioral_state)
 
-    dm_process_behavioral = DmProcess(behavioral_module, trigger_type=DmTriggerType.DM_TRIGGER_NONE,
+
+@pytest.fixture()
+def dm_process():
+    # Initializations
+
+    dm_process_behavioral = DmProcess(create_behavioral_planner, trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                                       trigger_args={})
 
     dm_process_behavioral.start_process()
@@ -39,10 +42,11 @@ def dm_process():
     dm_process_behavioral.stop_process()
 
 
+
 # Integration test
 def test_StartProcess_SanityCheck_ValidResult(dm_process):
 
-    expected_module_name = "BehavioralFacade"
+    expected_module_name = "create_behavioral_planner"
 
     assert dm_process.name == expected_module_name
     assert dm_process.process.is_alive()

@@ -77,15 +77,15 @@ class DmInitialization:
 def main():
     modules_list = \
         [
-            DmProcess(DmInitialization.create_state_module(),
+            DmProcess(DmInitialization.create_state_module,
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={}),
 
-            DmProcess(DmInitialization.create_behavioral_planner(),
+            DmProcess(DmInitialization.create_behavioral_planner,
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
-            DmProcess(DmInitialization.create_trajectory_planner(),
+            DmProcess(DmInitialization.create_trajectory_planner,
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD})
         ]
