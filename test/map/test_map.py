@@ -27,24 +27,24 @@ def test_map():
     road_id, relative_lon, residual_lon = map._advance_road_coordinates_in_lon(road_id=road_id, start_lon=0.0,
                                                                                lon_step=lon,
                                                                                navigation_plan=navigation_plan)
-    world_pnt, actual_lon_lookahead = map.convert_lat_lon_to_world(road_id, lat, lon, navigation_plan)
+    world_pnt, actual_lon_lookahead = map.convert_road_to_global_coordinates(road_id, lat, lon, navigation_plan)
 
     # long longitudinal lookahead
     lon = 1000.0
     road_id, road_lon, residual_lon = map._advance_road_coordinates_in_lon(road_id=road_id, start_lon=0.0,
                                                                            lon_step=lon,
                                                                            navigation_plan=navigation_plan)
-    world_pnt, actual_lon_lookahead = map.convert_lat_lon_to_world(road_id, lat, lon, navigation_plan)
+    world_pnt, actual_lon_lookahead = map.convert_road_to_global_coordinates(road_id, lat, lon, navigation_plan)
 
 
 
     # Find closest point on road to an arbitrary point in the world
     point_in_world = [100.0, 200.0, 0.0]
-    lat_dist, lon1 = map._convert_world_to_lat_lon_for_given_road(point_in_world[0], point_in_world[1], road_id)
+    lat_dist, lon1 = map._convert_global_to_road_coordinates(point_in_world[0], point_in_world[1], road_id)
 
     closest_lat, closest_lon, closest_id = map._find_closest_road(point_in_world[0], point_in_world[1], [20])
-    closest_world_point, actual_lon_lookahead = map.convert_lat_lon_to_world(closest_id, 0.0, closest_lon,
-                                                                             navigation_plan)
+    closest_world_point, actual_lon_lookahead = map.convert_road_to_global_coordinates(closest_id, 0.0, closest_lon,
+                                                                                       navigation_plan)
     plt.plot([closest_world_point[0], point_in_world[0]], [closest_world_point[1], point_in_world[1]], 'g')
     plt.plot(100.0, 200.0, '*r')
     plt.xlim([0.0, 1000.0])

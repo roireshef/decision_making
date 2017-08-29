@@ -132,7 +132,7 @@ class MapAPI:
         closest_lat = closest_lon = np.inf
         closest_id = None
         for road_id in road_ids:
-            lat, lon = self._convert_world_to_lat_lon_for_given_road(x, y, road_id)
+            lat, lon = self._convert_global_to_road_coordinates(x, y, road_id)
             if lat < closest_lat:
                 closest_lat, closest_lon, closest_id = lat, lon, road_id
         return closest_lat, closest_lon, closest_id
@@ -181,8 +181,6 @@ class MapAPI:
             target_road_idx = np.where(roads_leftovers < 0)[0][0]
             return roads_ids[target_road_idx], roads_leftovers[target_road_idx] + roads_len[target_road_idx], 0
 
-
-
     # def _advance_road_coordinates_in_lon(self, road_id, start_lon, lon_step, navigation_plan):
     #     # type: (int, float, float, NavigationPlanMsg, int) -> (int, float, float)
     #     """
@@ -226,6 +224,7 @@ class MapAPI:
     #
     #     return road_id, relative_lon, residual_lon
 
+    # TODO: explain this better
     def _get_road_properties_in_world_coordinates(self, road_id, lon):
         # type: (int, float) -> (float, np.ndarray, np.ndarray)
         """
@@ -260,7 +259,9 @@ class MapAPI:
         right_point = center_point - lat_vec * (width / 2.)
         return length, right_point, lat_vec
 
-    def convert_lat_lon_to_world(self, road_id, lat, lon, navigation_plan):
+    # TODO: "exceeded max" cases shouldn't be handled inside this function.
+    # a simple check if lon > road's length is sufficient
+    def convert_road_to_global_coordinates(self, road_id, lat, lon, navigation_plan):
         # type: (int, float, float, NavigationPlanMsg) -> (np.ndarray, float)
         """
         Given road_id, lat & lon, calculate the point in world coordinates.
@@ -303,7 +304,7 @@ class MapAPI:
 
         return world_pnt, actual_lon_lookahead
 
-    def _convert_world_to_lat_lon_for_given_road(self, x, y, road_id):
+    def _convert_global_to_road_coordinates(self, x, y, road_id):
         # type: (float, float, int) -> (float, float)
         """
         Convert point in world coordinates (x, y) to (lat, lon) of road with given road_id
