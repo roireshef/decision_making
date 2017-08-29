@@ -14,10 +14,11 @@ class TrajectoryPlanner(metaclass=ABCMeta):
         self._logger = logger
 
     @abstractmethod
-    def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray,
+    def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, time: float,
              cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
         """
         Plans a trajectory according to the specifications in the arguments
+        :param time: the time-window to plan for (time to get from initial state to goal state)
         :param state: environment & ego state object
         :param reference_route: a reference route (often the center of lane). A numpy array of the shape [-1, 2]
         :param goal: A numpy array of the desired ego-state to plan towards, from utils.columns (ego coord-frame)

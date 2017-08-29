@@ -4,9 +4,10 @@ import numpy as np
 from scipy import interpolate as interp
 
 from decision_making.src.global_constants import *
-from decision_making.src.planning.utils import math as robust_math
 from decision_making.src.planning.utils import tf_transformations
 from decision_making.src.planning.utils.columns import *
+from decision_making.src.planning.utils.math import Math
+
 
 class CartesianFrame:
     @staticmethod
@@ -32,8 +33,8 @@ class CartesianFrame:
         :param translation: a [x, y, z] translation vector
         :return: a 3x3 numpy matrix for projection (translation+rotation)
         """
-        t = translation.reshape([-1, 1])  # translation vector
-        return np.vstack((np.hstack((rotation_matrix, t[:3, 1])), [0, 0, 0, 1]))
+        t = translation.reshape([3, 1])  # translation vector
+        return np.vstack((np.hstack((rotation_matrix, t)), [0, 0, 0, 1]))
 
     @staticmethod
     def homo_matrix_3d_from_quaternion(quaternion: np.ndarray, translation: np.ndarray) -> np.ndarray:
@@ -43,10 +44,21 @@ class CartesianFrame:
         :param translation: a [x, y, z] translation vector
         :return: a 3x3 numpy matrix for projection (translation+rotation)
         """
-        # TODO: reimplement without tf (ROS) dependency, if needed
-        # rotation_matrix = tf.transformations.quaternion_matrix(quaternion)     #rotation matrix
-        # return CartesianFrame.homo_matrix_3d(rotation_matrix, translation)
-        pass
+        rotation_matrix = tf_transformations.quaternion_matrix(quaternion)
+        return CartesianFrame.homo_matrix_3d(rotation_matrix[:3, :3], translation)
+
+    @staticmethod
+    def homo_matrix_3d_from_euler(x_rot: float, y_rot: float, z_rot: float, translation: np.ndarray) -> np.ndarray:
+        """
+        Generates a 3D homogeneous matrix for cartesian frame projections
+        :param x_rot: euler rotation around x-axis (0 for no rotation)
+        :param y_rot: euler rotation around y-axis (0 for no rotation)
+        :param z_rot: euler rotation around z-axis (0 for no rotation)
+        :param translation: a [x, y, z] translation vector
+        :return: a 3x3 numpy matrix for projection (translation+rotation)
+        """
+        quaternion = tf_transformations.quaternion_from_euler(x_rot, y_rot, z_rot)
+        return CartesianFrame.homo_matrix_3d_from_quaternion(quaternion, translation)
 
     @staticmethod
     def add_yaw_and_derivatives(xy_points: np.ndarray) -> np.ndarray:
@@ -103,10 +115,10 @@ class CartesianFrame:
                              'actual arc length (' + org_s + ')')
 
         # handles cases where we suffer from floating point division inaccuracies
-        num_samples = robust_math.div(desired_curve_len, step_size) + 1
+        num_samples = Math.div(desired_curve_len, step_size) + 1
 
         # if step_size must be preserved but desired_curve_len is not a multiply of step_size - trim desired_curve_len
-        if robust_math.mod(desired_curve_len, step_size) > 0 and preserve_step_size:
+        if Math.mod(desired_curve_len, step_size) > 0 and preserve_step_size:
             desired_curve_len = (num_samples - 1) * step_size
             effective_step_size = step_size
         else:
@@ -156,33 +168,72 @@ class CartesianFrame:
             dist = np.linalg.norm(segment_p_to_end)
         return sign, dist, proj
 
+    @staticmethod
+    def convert_global_to_relative_frame(global_pos: np.array, frame_position: np.array,
+                                         frame_orientation: Union[float, np.array]) -> np.ndarray:
+        """
+        Convert point in global-frame to a point in relative-frame
+        :param global_pos: (x,y,z) point(s) in global coordinate system. Either an array array of size [3,] or a matrix
+         of size [?, 3]
+        :param frame_position: translation (shift) of coordinate system to project on: (x,y,z) array of size [3,]
+        :param frame_orientation: orientation of the coordinate system to project on: yaw scalar, or quaternion vector
+        :return: The point(s) relative to coordinate system specified by <frame_position> and <frame_orientation>. The
+        shape of global_pos is kept.
+        """
+        if isinstance(frame_orientation, np.ndarray):
+            quaternion = frame_orientation  # Orientation is quaternion numpy array
+        else:
+            quaternion = CartesianFrame.convert_yaw_to_quaternion(frame_orientation)  # Orientation contains yaw
 
+        # operator that projects from global coordinate system to relative coordinate system
+        H_r_g = np.linalg.inv(CartesianFrame.homo_matrix_3d_from_quaternion(quaternion, frame_position))
+
+        # add a trailing [1] element to the position vector, for proper multiplication with the 4x4 projection operator
+        # then throw it (the result from multiplication is [x, y, z, 1])
+        if len(global_pos.shape) == 1:  # relative_pos is a 1D vector
+            ones = [1]
+            remove_ones = lambda x: x[:3]
+        elif len(global_pos.shape) == 2:
+            ones = np.ones([global_pos.shape[0], 1])
+            remove_ones = lambda x: x[:, :3]
+        else:
+            raise ValueError("relative_pos cardinality (" + str(global_pos.shape) +
+                             ")is not supported in convert_relative_to_global_frame")
+
+        return remove_ones(np.dot(np.hstack((global_pos, ones)), H_r_g.transpose()))
 
     @staticmethod
-    def get_vector_in_objective_frame(target_vector: np.array, ego_position: np.array,
-                                      ego_orientation: Union[float, np.array]):
+    def convert_relative_to_global_frame(relative_pos: np.array, frame_position: np.array,
+                                         frame_orientation: Union[float, np.array]) -> np.ndarray:
         """
-        :param target_vector: (x,y,z) array of size [3,]
-        :param ego_position: translation of ego frame: (x,y,z) array of size [3,]
-        :param ego_orientation: orientation of ego frame. Can be either yaw scalar, or quaternion vector
-        :return:
+        Convert point in relative coordinate-system to a global coordinate-system
+        :param relative_pos: (x,y,z) point(s) in relative coordinate system. Either an array array of size [3,] or a
+        matrix of size [?, 3]
+        :param frame_position: translation (shift) of coordinate system to project from: (x,y,z) array of size [3,]
+        :param frame_orientation: orientation of the coordinate system to project from: yaw scalar, or quaternion vector
+        :return: the point(s) in the global coordinate system. The shape of relative_pos is kept.
         """
-        if hasattr(ego_orientation, "__len__"):
-            # Orientation is quaternion numpy array
-            quaternion = ego_orientation
+        if isinstance(frame_orientation, np.ndarray):
+            quaternion = frame_orientation  # Orientation is quaternion numpy array
         else:
-            # Orientation contains yaw
-            quaternion = tf_transformations.quaternion_from_euler(0, 0, ego_orientation, 'ryxz')
+            quaternion = CartesianFrame.convert_yaw_to_quaternion(frame_orientation)  # Orientation contains yaw
 
-        car_rotation = tf_transformations.quaternion_matrix(quaternion)
-        car_position = np.array(ego_position).reshape([3, -1])
-        if len(target_vector.shape) == 1:
-            target_vector = target_vector.reshape([3, -1])
-        elif target_vector.shape[0] != 3:
-            target_vector = target_vector.transpose()
-        target_pos_in_obj_frame = np.dot(np.linalg.pinv(car_rotation[0:3, 0:3]), target_vector - car_position)
+        # operator that projects from relative coordinate system to global coordinate system
+        H_g_r = CartesianFrame.homo_matrix_3d_from_quaternion(quaternion, frame_position)
 
-        return target_pos_in_obj_frame
+        # add a trailing [1] element to the position vector, for proper multiplication with the 4x4 projection operator
+        # then throw it (the result from multiplication is [x, y, z, 1])
+        if len(relative_pos.shape) == 1:  # relative_pos is a 1D vector
+            ones = [1]
+            remove_ones = lambda x: x[:3]
+        elif len(relative_pos.shape) == 2:
+            ones = np.ones([relative_pos.shape[0], 1])
+            remove_ones = lambda x: x[:, :3]
+        else:
+            raise ValueError("relative_pos cardinality (" + str(relative_pos.shape) +
+                             ")is not supported in convert_relative_to_global_frame")
+
+        return remove_ones(np.dot(np.hstack((relative_pos, ones)), H_g_r.transpose()))
 
     @staticmethod
     def convert_yaw_to_quaternion(yaw: float):
@@ -190,7 +241,7 @@ class CartesianFrame:
         :param yaw: angle in [rad]
         :return: quaternion
         """
-        return tf_transformations.quaternion_from_euler(0, 0, yaw, 'ryxz')
+        return tf_transformations.quaternion_from_euler(0, 0, yaw)
 
 
 class FrenetMovingFrame:
@@ -339,6 +390,7 @@ class FrenetMovingFrame:
                                k.reshape([num_t, num_p, 1])), axis=2)
 
 
+# TODO: change to matrix operations, use numpy arrays instead of individual values or tuples
 class Dynamics:
     """
     predicting location & velocity for moving objects
@@ -394,33 +446,3 @@ class Dynamics:
             goal_yaw = yaw
 
         return tuple((goal_x, goal_y, goal_yaw, goal_v_x, goal_v_y))
-
-    @staticmethod
-    def rotate_and_shift_point(x: float, y: float, cosa: float, sina: float, dx: float, dy: float) \
-            -> tuple((float, float)):
-        """
-        calculate new point location after rotation & shift
-        :param x: original point location
-        :param y:
-        :param cosa: cos of rotation angle
-        :param sina: sin of rotation angle
-        :param dx: shift
-        :param dy:
-        :return: new point location
-        """
-        return tuple((x * cosa - y * sina + dx, x * sina + y * cosa + dy))
-
-    @staticmethod
-    def rotate_and_shift_points(points: np.ndarray, cosa: float, sina: float, dx: float, dy: float) -> np.ndarray:
-        """
-        calculate new point location after rotation & shift
-        :param points: Nx3 matrix of the original points
-        :param cosa: cos of rotation angle
-        :param sina: sin of rotation angle
-        :param dx: shift
-        :param dy:
-        :return: Nx3 matrix: new points location
-        """
-        return np.c_[points[:, 0] * cosa - points[:, 1] * sina + dx,
-                     points[:, 0] * sina + points[:, 1] * cosa + dy,
-                     points[:, 2]]

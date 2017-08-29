@@ -1,3 +1,5 @@
+import os
+
 DIVISION_FLOATING_ACCURACY = 10 ** -10
 
 # Trajectory Planner #
@@ -40,6 +42,9 @@ SX_STEPS, SV_STEPS, DX_STEPS = 5, 10, 5
 # [m] Bounding box size around ego vehicle
 EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 0, 0, 0
 
+# [m] Default height for objects - State Module
+DEFAULT_OBJECT_Z_VALUE = 0
+
 ### DM Manager configuration ###
 BEHAVIORAL_PLANNING_MODULE_PERIOD = 1
 TRAJECTORY_PLANNING_MODULE_PERIOD = 0.1
@@ -57,6 +62,10 @@ DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC = "StateSubscriber::DynamicObjectsReader"
 SELF_LOCALIZATION_SUBSCRIBE_TOPIC = "StateSubscriber::SelfLocalizationReader"
 OCCUPANCY_STATE_SUBSCRIBE_TOPIC = "StateSubscriber::OccupancyStateReader"
 STATE_PUBLISH_TOPIC = "StatePublisher::StateWriter"
+
+# Maps
+MAPS_DIR = os.path.join(os.path.dirname(__file__), '../resources/maps/')
+MAP_FILE_NAME = os.path.join(MAPS_DIR, 'map.p')
 
 # Navigation Planning Module
 NAVIGATION_PLAN_PUBLISH_TOPIC = "NavigationPublisher::NavigationPlanWriter"
@@ -80,4 +89,3 @@ BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
 ACDA_NAME_FOR_LOGGING = "ACDA Module"
 TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 STATE_MODULE_NAME_FOR_LOGGING = "State Module"
-
