@@ -29,14 +29,9 @@ class DmInitialization:
     def create_state_module() -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         dds = DdsPubSub(STATE_MODULE_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
-        occupancy_state = OccupancyState(0, np.array([]), np.array([]))
-        dynamic_objects = []
-        size = ObjectSize(0, 0, 0)
         map_model = MapModel()
         map_api = MapAPI(map_model)
-        road_localization = RoadLocalization(0, 0, 0, 0, 0, 0)
-        ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 0, 0, 0, 0, 0, road_localization)
-        state_module = StateModule(dds, logger, map_api, occupancy_state, dynamic_objects, ego_state)
+        state_module = StateModule(dds, logger, map_api, None, None, None)
         return state_module
 
     @staticmethod
