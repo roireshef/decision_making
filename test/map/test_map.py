@@ -16,24 +16,24 @@ def test_map():
     # Get road info
     road_info = map._cached_map_model.roads_data[20]
     road_points = road_info.points
-    rightmost_edge_of_road_points = map._shift_road_vector_in_lat(road_points[0:2,:], -road_info.width/2)
-    leftmost_edge_of_road_points = map._shift_road_vector_in_lat(road_points[0:2,:], +road_info.width / 2)
+    rightmost_edge_of_road_points = map._shift_road_points_in_latitude(road_points[0:2, :], -road_info.width / 2)
+    leftmost_edge_of_road_points = map._shift_road_points_in_latitude(road_points[0:2, :], +road_info.width / 2)
     plt.plot(rightmost_edge_of_road_points[0, :], rightmost_edge_of_road_points[1, :], '-b')
     plt.plot(leftmost_edge_of_road_points[0, :], leftmost_edge_of_road_points[1, :], '-c')
     plt.plot(road_points[0, 0], road_points[1, 0], '*b')
 
     # Short longitudinal lookahead
     lon = 4.0
-    road_id, relative_lon, residual_lon = map._advance_road_coordinates_in_lon(road_id=road_id, start_lon=0.0,
-                                                                               lon_step=lon,
-                                                                               navigation_plan=navigation_plan)
+    road_id, relative_lon, residual_lon = map.advance_on_plan(initial_road_id=road_id, initial_lon=0.0,
+                                                              desired_lon=lon,
+                                                              navigation_plan=navigation_plan)
     world_pnt, actual_lon_lookahead = map.convert_road_to_global_coordinates(road_id, lat, lon, navigation_plan)
 
     # long longitudinal lookahead
     lon = 1000.0
-    road_id, road_lon, residual_lon = map._advance_road_coordinates_in_lon(road_id=road_id, start_lon=0.0,
-                                                                           lon_step=lon,
-                                                                           navigation_plan=navigation_plan)
+    road_id, road_lon, residual_lon = map.advance_on_plan(initial_road_id=road_id, initial_lon=0.0,
+                                                          desired_lon=lon,
+                                                          navigation_plan=navigation_plan)
     world_pnt, actual_lon_lookahead = map.convert_road_to_global_coordinates(road_id, lat, lon, navigation_plan)
 
 

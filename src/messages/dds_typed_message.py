@@ -5,8 +5,8 @@ from typing import List
 
 import numpy as np
 
+from decision_making.src.exceptions import MsgDeserializationError, MsgSerializationError
 from decision_making.src.messages.dds_message import *
-from decision_making.src.messages.exceptions import MsgDeserializationError, MsgSerializationError
 
 
 class DDSTypedMsg(DDSMsg):
