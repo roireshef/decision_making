@@ -50,7 +50,7 @@ class TrajectoryPlanningFacade(DmModule):
 
             # TODO: should publish v_x?
             # publish results to the lower DM level
-            self.__publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory, reference_route=params.reference_route,
+            self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory, reference_route=params.reference_route,
                                                         current_speed=state.ego_state.v_x))
 
             # TODO: publish cost to behavioral layer?
@@ -81,7 +81,7 @@ class TrajectoryPlanningFacade(DmModule):
         self.logger.debug('Received state: %s', input_params)
         return TrajectoryParams.deserialize(input_params)
 
-    def __publish_trajectory(self, results: TrajectoryPlanMsg) -> None:
+    def _publish_trajectory(self, results: TrajectoryPlanMsg) -> None:
         self.dds.publish(TRAJECTORY_PUBLISH_TOPIC, results.serialize())
 
     def __publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
