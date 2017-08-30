@@ -123,7 +123,7 @@ class WerlingPlanner(TrajectoryPlanner):
         obstacles_costs = params.obstacle_cost.w * np.sum(cost_per_obstacle, axis=0)
 
         ''' DISTANCE FROM REFERENCE ROUTE ( DX ^ 2 ) '''
-        dist_from_ref_costs = params.dist_from_ref_sq_coef * np.sum(np.power(ftrajectories[:, :, F_DX], 2), axis=1)
+        dist_from_ref_costs = params.dist_from_ref_sq_cost_coef * np.sum(np.power(ftrajectories[:, :, F_DX], 2), axis=1)
 
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
         deviations_costs = np.zeros(ftrajectories.shape[0])
