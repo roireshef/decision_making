@@ -35,10 +35,11 @@ class RoadDetails:
         :param ext_tail_lanes: lanes number in the outgoing road
         :param turn_lanes: list of strings describing where each lane turns
         """
-        assert points.shape[1] != 2, "points should be a Nx2 matrix"
+        assert points.shape[1] == 2, "points should be a Nx2 matrix"
 
         self.id = id
         self.name = name
+        self.points = points
         self.longitudes = longitudes
         self.head_node = head_node
         self.tail_node = tail_node

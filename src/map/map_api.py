@@ -128,7 +128,7 @@ class MapAPI:
         closest_id = None
         for road_id in road_ids:
             lat, lon = self._convert_global_to_road_coordinates(x, y, road_id)
-            if lat < closest_lat:
+            if np.math.fabs(lat) < np.math.fabs(closest_lat):
                 closest_lat, closest_lon, closest_id = lat, lon, road_id
         return closest_lat, closest_lon, closest_id
 
@@ -139,7 +139,7 @@ class MapAPI:
         Given points list along a road, shift them laterally by lat_shift meters
         :param points (Nx2): points list along a given road
         :param lat_shift: shift in meters
-        :return: shifted points array (2xN)
+        :return: shifted points array (Nx2)
         """
         points_direction = np.diff(points, axis=0)
         norms = np.linalg.norm(points_direction, axis=1)[np.newaxis].T
@@ -154,7 +154,7 @@ class MapAPI:
 
     @raises(RoadNotFound, LongitudeOutOfRoad)
     def advance_on_plan(self, initial_road_id, initial_lon, desired_lon, navigation_plan):
-        # type: (int, float, float, NavigationPlanMsg) -> (int, float, float)
+        # type: (int, float, float, NavigationPlanMsg) -> (int, float)
         """
         Given a longitude on specific road (<initial_road_id> and <initial_lon>), advance (lookahead) <desired_lon>
         distance. The lookahead iterates over the next roads specified in the <navigation_plan> and returns: (the final
@@ -199,24 +199,34 @@ class MapAPI:
 
     @raises(RoadNotFound, LongitudeOutOfRoad)
     def _convert_road_to_global_coordinates(self, road_id, lon, lat):
+        # type: (int, float, float) -> (np.array, float)
         """
         get the global coordinate that corresponds to a given road ID, longitude and latitude (relative to its
         center points) along it.
-        :return: 3D point [x, y, z] in global coordinate frame
+        :return:
+            numpy array of 3D point [x, y, z] in global coordinate frame;
+            yaw [rad] in global coordinate frame
         """
         road = self._cached_map_model.get_road_data(road_id)
         points_with_yaw = CartesianFrame.add_yaw(road.points)
 
-        try:
-            pnt_ind = np.where(np.greater(road.longitudes, lon))[0][0]
+        if road.longitudes[0] <= lon <= road.longitudes[-1]:
+            pnt_ind = np.argmin(np.abs(road.longitudes - lon)) # find index closest to target lon
+            distance_in_lon_from_closest_point = lon - road.longitudes[pnt_ind]
             road_point = points_with_yaw[pnt_ind]
-            lat_shift = np.array([0, lat, 1])
-            shifted_point = np.dot(CartesianFrame.homo_matrix_2d(road_point[2], road_point[:2]), lat_shift)
+
+            # Move lat from the rightmost edge of road
+            # Also, fix move along the lon axis by 'distance_in_lon_from_closest_point',
+            # in order to fix the difference caused by the map quantization.
+            lon_lat_shift = np.array([distance_in_lon_from_closest_point, lat - road.width/2, 1])
+            shifted_point = np.dot(CartesianFrame.homo_matrix_2d(road_point[2], road_point[:2]), lon_lat_shift)
 
             progress = lon / road.longitudes[-1]
             layer_avg = (1 - progress) * road.head_layer + progress * road.tail_layer #TODO: head_layer/tail_layer are z values??
-            return np.append(shifted_point[:2], [layer_avg])
-        except IndexError:
+            position_in_world = np.append(shifted_point[:2], [layer_avg])
+            orientation_in_world = road_point[2]
+            return position_in_world, orientation_in_world
+        else:
             raise LongitudeOutOfRoad("longitude %f is out of road's longitudes range [%f, %f]",
                                      lon, road.longitudes[0], road.longitudes[-1])
 
@@ -240,7 +250,7 @@ class MapAPI:
         longitudes = road_details.longitudes
 
         # find the closest point of the road to (x,y)
-        points = road_details.points[0:2].transpose()
+        points = road_details.points[:, 0:2]
         distance_to_road_points = np.linalg.norm(np.array(points) - p, axis=0)
         closest_pnt_ind = np.argmin(distance_to_road_points)
         
@@ -249,10 +259,10 @@ class MapAPI:
         closest_pnt_ind_pairs = [[closest_pnt_ind - 1, closest_pnt_ind], [closest_pnt_ind, closest_pnt_ind + 1]]
         segments = np.array([np.append(CartesianFrame.calc_point_segment_dist(p, points[idxs[0]], points[idxs[1]]), idxs[0])
                              for idxs in closest_pnt_ind_pairs
-                             if idxs[0] > 0 and idxs[1] < len(points)])
+                             if idxs[0] >= 0 and idxs[1] < len(points)])
 
         # find closest segment by min latitude
-        closest_segment = segments[np.argmax(segments[:, 1], axis=0)]
+        closest_segment = segments[np.argmin(segments[:, 1], axis=0)]
         sign, lat, lon, start_ind = closest_segment[0], closest_segment[1], closest_segment[2], int(closest_segment[3])
 
         # lat, lon
