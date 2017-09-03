@@ -47,12 +47,12 @@ class StateModule(DmModule):
                              "Since objects are given in ego-vehicle's coordinate frame this is impossible. Aborting.")
             pass
 
-        with self._ego_state as ego:
-            ego_pos = np.ndarray([ego.x, ego.y, ego.z])
-            ego_yaw = ego.yaw
+        ego = self._ego_state
+        ego_pos = np.array([ego.x, ego.y, ego.z])
+        ego_yaw = ego.yaw
 
         timestamp = objects["timestamp"]
-        dyn_obj_list_dict = objects["timestamp"]["dynamic_objects"]
+        dyn_obj_list_dict = objects["dynamic_objects"]
 
         # TODO: can we use history-knowledge about dynamic objects?
         dyn_obj_list = []
@@ -70,7 +70,7 @@ class StateModule(DmModule):
             v_x = dyn_obj_dict["velocity"]["v_x"]
             v_y = dyn_obj_dict["velocity"]["v_y"]
 
-            obj_pos = np.ndarray([x, y, z])
+            obj_pos = np.array([x, y, z])
 
             road_localtization = StateModule.__compute_obj_road_localization(obj_pos, yaw, ego_pos, ego_yaw,
                                                                              self._map_api)
@@ -98,7 +98,7 @@ class StateModule(DmModule):
         v_y = ego_localization["velocity"]["v_y"]
         size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
-        road_localization = StateModule.__compute_ego_road_localization(np.ndarray([x, y, z]), yaw)
+        road_localization = StateModule.__compute_ego_road_localization(np.array([x, y, z]), yaw, None)
 
         with self._ego_state_lock:
             # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
@@ -110,16 +110,13 @@ class StateModule(DmModule):
     def __occupancy_state_callback(self, occupancy: dict):
         self.logger.debug("got occupancy status %s", occupancy)
         timestamp = occupancy["timestamp"]
-        points_list_dict = occupancy["points_list"]
-        points_list = []
-        confidence_list = []
-        for pnt_dict in points_list_dict:
-            pnt = [pnt_dict["x"], pnt_dict["y"], pnt_dict["z"]]
-            points_list.append(pnt)
-            confidence_list.append(pnt_dict["confidence"])
+        free_space_points = occupancy["free_space_points"]
+
+        points_list = [point[0:3] for point in free_space_points]
+        confidence_list = [point[3] for point in free_space_points]
 
         with self._occupancy_state_lock:
-            self._occupancy_state = OccupancyState(timestamp, np.ndarray(points_list), np.ndarray(confidence_list))
+            self._occupancy_state = OccupancyState(timestamp, np.array(points_list), np.array(confidence_list))
 
         self.__publish_state_if_full()
 
@@ -127,10 +124,11 @@ class StateModule(DmModule):
     def __publish_state_if_full(self):
         # if some part of the state is missing, don't publish state message
         if self._occupancy_state is None or self._dynamic_objects is None or self._ego_state is None:
-            pass
+            return
 
         with self._occupancy_state_lock, self._ego_state_lock, self._dynamic_objects_lock:
             state = State(self._occupancy_state, self._dynamic_objects, self._ego_state)
+        self.logger.debug("publishing state %s", state.serialize())
 
         self.dds.publish(STATE_PUBLISH_TOPIC, state.serialize())
 
@@ -149,9 +147,10 @@ class StateModule(DmModule):
         :param map_api: MapAPI instance
         :return: the road localization
         """
-        road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw = \
-            map_api.convert_world_to_lat_lon(pos[0], pos[1], pos[2], yaw)
-        return RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
+        # road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw = \
+        #     map_api.convert_world_to_lat_lon(pos[0], pos[1], pos[2], yaw)
+        # return RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
+        return RoadLocalization(0, 0, 0, 0, 0, 0)
 
     @staticmethod
     def __compute_obj_road_localization(obj_pos, obj_yaw, ego_pos, ego_yaw, map_api):
@@ -164,6 +163,7 @@ class StateModule(DmModule):
         global_obj_pos = CartesianFrame.convert_relative_to_global_frame(obj_pos, ego_pos, ego_yaw)
         global_obj_yaw = obj_yaw + ego_yaw
 
-        road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw = \
-            map_api.convert_world_to_lat_lon(global_obj_pos[0], global_obj_pos[1], global_obj_pos[2], global_obj_yaw)
-        return RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
+        # road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw = \
+        #     map_api.convert_world_to_lat_lon(global_obj_pos[0], global_obj_pos[1], global_obj_pos[2], global_obj_yaw)
+        # return RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
+        return RoadLocalization(0, 0, 0, 0, 0, 0)
