@@ -1,6 +1,5 @@
 # This code is based on https://en.wikipedia.org/wiki/Assured_Clear_Distance_Ahead
 import math
-from abc import ABCMeta
 from typing import List
 
 import numpy as np
@@ -9,7 +8,6 @@ from decision_making.src.global_constants import ACDA_NAME_FOR_LOGGING
 from decision_making.src.map.map_api import MapAPI
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.acda_constants import *
-
 from decision_making.src.state.state import DynamicObject, EgoState
 from rte.python.logger.AV_logger import AV_Logger
 
@@ -152,7 +150,7 @@ class AcdaApi:
         for static_obj in static_objects:
 
             relative_road_localization = static_obj.get_relative_road_localization(
-                ego_road_localization=ego_state.road_localization, ego_navigation_plan=navigation_plan,
+                ego_road_localization=ego_state.road_localization, ego_nav_plan=navigation_plan,
                 map_api=map_api, max_lookahead_dist=BEHAVIORAL_PLANNING_LOOKAHEAD_DISTANCE)
 
             obj_lon = relative_road_localization.rel_lon
