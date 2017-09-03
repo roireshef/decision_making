@@ -194,11 +194,7 @@ class MapAPI:
         :return: shifted points array (Nx2)
         """
         points_direction = np.diff(points, axis=0)
-        norms = np.linalg.norm(points_direction, axis=1)[np.newaxis].T
-        if not np.all(np.greater(norms, 0.0)):
-            # TODO: find a better way
-            MapAPI.logger.warning('Identical consecutive points in path. Norm of diff is Zero')
-        direction_unit_vec = np.divide(points_direction, norms)
+        direction_unit_vec = MapAPI._normalize_matrix_rows(points_direction)
         normal_unit_vec = np.c_[-direction_unit_vec[:, 1], direction_unit_vec[:, 0]]
         normal_unit_vec = np.concatenate((normal_unit_vec, normal_unit_vec[-1, np.newaxis]))
         shifted_points = points + normal_unit_vec * lat_shift
@@ -271,15 +267,19 @@ class MapAPI:
         return road_details.width / 2 + lat * sign, lon + longitudes[start_ind]
 
     @staticmethod
-    def _normalize_vec(vec):
+    def _normalize_matrix_rows(mat):
         # type: (np.array) -> np.array
         """
         normalize vector, prevent division by zero
-        :param vec: numpy array
+        :param mat: 2D numpy array
         :return: normalized vector (numpy array)
         """
-        vec_norm = np.linalg.norm(vec)
-        if vec_norm != 0:
-            return vec / vec_norm
-        else:
-            return vec
+        norms = np.linalg.norm(mat, axis=1)[np.newaxis].T
+        zero_norm_idx = np.where(norms == 0.0)
+
+        if len(zero_norm_idx) > 0:
+            MapAPI.logger.warning('Called normalization on a zero vector %d times (division by zero)',
+                                  len(zero_norm_idx))
+            norms[zero_norm_idx] = 1.0
+
+        return np.divide(mat, norms)
