@@ -221,9 +221,8 @@ class MapAPI:
             lon_lat_shift = np.array([distance_in_lon_from_closest_point, lat - road.width/2, 1])
             shifted_point = np.dot(CartesianFrame.homo_matrix_2d(road_point[2], road_point[:2]), lon_lat_shift)
 
-            progress = lon / road.longitudes[-1]
-            layer_avg = (1 - progress) * road.head_layer + progress * road.tail_layer #TODO: head_layer/tail_layer are z values??
-            position_in_world = np.append(shifted_point[:2], [layer_avg])
+            #TODO: currently we assume altitude z = 0
+            position_in_world = np.append(shifted_point[:2], [0.])
             orientation_in_world = road_point[2]
             return position_in_world, orientation_in_world
         else:
