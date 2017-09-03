@@ -1,5 +1,6 @@
 import numpy as np
 
+from decision_making.src.global_constants import *
 from decision_making.src.map.constants import *
 from decision_making.src.map.map_model import MapModel
 from typing import List, Union
@@ -72,12 +73,8 @@ class MapAPI:
         :return: road_id, lane, full latitude, lane_lat, longitude, yaw_in_road
         """
         # use road_id by navigation if the point is outside the roads
-        if z > 1:
-            road_ids = self.find_roads_containing_point(1, x, y)
-        else:
-            road_ids = self.find_roads_containing_point(0, x, y)
-            if len(road_ids) == 0:
-                road_ids = self.find_roads_containing_point(1, x, y)
+        # TODO: convert z to layer
+        road_ids = self.find_roads_containing_point(DEFAULT_MAP_LAYER, x, y)
 
         if len(road_ids) == 0:
             raise Exception("convert_world_to_lat_lon failed to find the road")
