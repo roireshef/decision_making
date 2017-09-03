@@ -207,11 +207,12 @@ class MapAPI:
     def _convert_road_to_global_coordinates(self, road_id, lon, lat):
         # type: (int, float, float) -> (np.array, float)
         """
-        get the global coordinate that corresponds to a given road ID, longitude and latitude (relative to its
-        center points) along it.
-        :return:
-            numpy array of 3D point [x, y, z] in global coordinate frame;
-            yaw [rad] in global coordinate frame
+        Given road ID, longitude and latitude along it (relative to its center points), find the matching point in
+        global (cartesian) coordinate frame.
+        :param road_id: road ID as in the map model
+        :param lon: longitude from the beginning of the current road
+        :param lat: latitude relative to road's center points
+        :return: numpy array of 3D point [x, y, z] in global coordinate frame, yaw [rad] in global coordinate frame
         """
         road = self._cached_map_model.get_road_data(road_id)
         points_with_yaw = CartesianFrame.add_yaw(road.points)
@@ -244,7 +245,7 @@ class MapAPI:
         Convert point in world coordinates (x, y) to (lat, lon) of road with given road_id
         :param x: the point's world x coordinate in meters
         :param y: the point's world y coordinate in meters
-        :param road_id:
+        :param road_id: road ID as in the map model
         :return: signed lat (relatively to the road center), lon (from road start)
         """
         p = np.array([x, y])
