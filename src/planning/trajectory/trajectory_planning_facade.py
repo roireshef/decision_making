@@ -56,7 +56,7 @@ class TrajectoryPlanningFacade(DmModule):
             # TODO: publish cost to behavioral layer?
 
             # publish visualization/debug data
-            self.__publish_debug(debug_results)
+            self._publish_debug(debug_results)
 
         except MsgDeserializationError as e:
             self.logger.debug(str(e))
@@ -84,5 +84,5 @@ class TrajectoryPlanningFacade(DmModule):
     def _publish_trajectory(self, results: TrajectoryPlanMsg) -> None:
         self.dds.publish(TRAJECTORY_PUBLISH_TOPIC, results.serialize())
 
-    def __publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
+    def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
         self.dds.publish(TRAJECTORY_VISUALIZATION_TOPIC, debug_msg.serialize())

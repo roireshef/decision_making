@@ -1,40 +1,41 @@
-from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
-from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
-from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
-from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from logging import Logger
-import numpy as np
+
+from common_data.dds.python.Communication.ddspubsub import DdsPubSub
+from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
+from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
+from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
+from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
+from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 
 
 class TrajectoryPlanningSimulationFacadeMock(TrajectoryPlanningFacade):
     """
     Sends periodic dummy trajectory message
     """
-    def __init__(self, dds: DdsPubSub, logger: Logger):
+    def __init__(self, dds: DdsPubSub, logger: Logger, trajectory_msg: TrajectoryPlanMsg,
+                 visualization_msg: TrajectoryVisualizationMsg):
+        """
+        :param dds: communication layer (DDS) instance
+        :param logger: logger
+        :param trajectory_msg: the trajectory message to publish periodically
+        :param visualization_msg: the visualization message to publish periodically
+        """
+
         planner = WerlingPlanner(logger)
         strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
                              TrajectoryPlanningStrategy.PARKING: planner,
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
         TrajectoryPlanningFacade.__init__(self, dds, logger, strategy_handlers)
+        self._trajectory_msg = trajectory_msg
+        self._visualization_msg = visualization_msg
 
     def _periodic_action_impl(self):
         """
-        will execute planning with using the implementation. This mock sends a dummy message
+        This mock sends the received messages from the init.
         """
 
-        trajectory = np.array(
-            [[1.0, 0.0, 0.0, 0.0], [2.0, -0.33, 0.0, 0.0], [3.0, -0.66, 0.0, 0.0], [4.0, -1.0, 0.0, 0.0],
-             [5.0, -1.33, 0.0, 0.0], [6.0, -1.66, 0.0, 0.0], [7.0, -2.0, 0.0, 0.0], [8.0, -2.0, 0.0, 0.0],
-             [9.0, -2.0, 0.0, 0.0], [10.0, -2.0, 0.0, 0.0], [11.0, -2.0, 0.0, 0.0]])
-        ref_route = np.array(
-            [[1.0, -2.0, 0.0], [2.0, -2.0, 0.0], [3.0, -2.0, 0.0], [4.0, -2.0, 0.0], [5.0, -2.0, 0.0],
-             [6.0, -2.0, 0.0],
-             [7.0, -2.0, 0.0], [8.0, -2.0, 0.0], [9.0, -2.0, 0.0], [10.0, -2.0, 0.0], [11.0, -2.0, 0.0],
-             [12.0, -2.0, 0.0], [13.0, -2.0, 0.0], [14.0, -2.0, 0.0], [15.0, -2.0, 0.0], [16.0, -2.0, 0.0]])
-
         # publish results to the lower DM level
-        self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory, reference_route=ref_route, current_speed=5.0))
+        self._publish_trajectory(self._trajectory_msg)
 
         # publish visualization/debug data
-        #self.__publish_debug(debug_results)
+        self._publish_debug(self._visualization_msg)
