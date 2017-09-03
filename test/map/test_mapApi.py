@@ -49,9 +49,8 @@ def test_shiftRoadVector_simpleRoadShift1MRight_accurateShift(testable_map_api):
     np.testing.assert_array_almost_equal(shifted_points, expected_shifted_points)
 
 
-def test__convert_road_to_global_coordinates_accurateConversion(testable_map_api):
+def test_convertRoadToGlobalCoordinates_accurateConversion(testable_map_api):
     road = testable_map_api._cached_map_model.get_road_data(1)
-    road_points = road.points
 
     lon_of_first_segment = 10.2
     point_on_first_segment = np.array([10.2, -ROAD_WIDTH / 2])
@@ -86,7 +85,7 @@ def test__convert_road_to_global_coordinates_accurateConversion(testable_map_api
     # plt.show()
 
 
-def test_advance_to_end_of_plan_accurate(testable_map_api):
+def test_advanceToEndOfPlan_accurate(testable_map_api):
     navigation_plan = NavigationPlanMsg(road_ids=[1, 2])
     start_lon = 10.0
     first_road_length = testable_map_api._cached_map_model.get_road_data(1).longitudes[-1]
@@ -99,7 +98,7 @@ def test_advance_to_end_of_plan_accurate(testable_map_api):
     assert roads_dist_to_end == first_road_length + second_road_length - start_lon
 
 
-def test_advance_on_plan_accurate(testable_map_api):
+def test_advanceOnPlan_accurate(testable_map_api):
     navigation_plan = NavigationPlanMsg(road_ids=[1, 2])
     path_total_len = MAP_INFLATION_FACTOR * (6 - 0.1)
     start_lon = 10.0
@@ -113,7 +112,7 @@ def test_advance_on_plan_accurate(testable_map_api):
     assert lon == (start_lon + advance_in_lon - first_road_length)
 
 
-def test_find_closest_road_accurate(testable_map_api):
+def test_findClosestRoad_accurate(testable_map_api):
     point_close_to_road_1 = np.array([0.9, -0.1]) * MAP_INFLATION_FACTOR
     closest_lat, closest_lon, closest_id = testable_map_api._find_closest_road(point_close_to_road_1[0],
                                                                                point_close_to_road_1[1], [1, 2])
