@@ -2,29 +2,33 @@ from logging import Logger
 from typing import List, Union
 
 import numpy as np
-
+from abc import ABCMeta, abstractmethod
 from decision_making.src.exceptions import RoadNotFound, raises, LongitudeOutOfRoad
 from decision_making.src.global_constants import MAP_NAME_FOR_LOGGING
 from decision_making.src.map.map_model import MapModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 from rte.python.logger.AV_logger import AV_Logger
+from typing import List
+
+import six
 
 
+@six.add_metaclass(ABCMeta)
 class MapAPI:
     def __init__(self, map_model, logger):
         # type: (MapModel, Logger) -> None
         self._cached_map_model = map_model
         self.logger = logger
 
-    def find_roads_containing_point(self, layer, world_x, world_y):
+    def find_roads_containing_point(self, layer, x, y):
         # type: (int, float, float) -> List[int]
         """
         shortcut to a cell of the map xy2road_map
         :param layer: 0 ground, 1 on bridge, 2 bridge above bridge, etc
-        :param world_x: world coordinates in meters
-        :param world_y: world coordinates in meters
-        :return: road_ids containing the point (world_x, world_y)
+        :param x: world coordinates in meters
+        :param y: world coordinates in meters
+        :return: road_ids containing the point x, y
         """
         pass
 
@@ -68,7 +72,7 @@ class MapAPI:
 
     def get_point_relative_longitude(self, from_road_id, from_lon_in_road, to_road_id, to_lon_in_road,
                                      max_lookahead_distance, navigation_plan):
-        # type: (int, float, int, float, float, NavigationPlanMsg) -> (float, bool)
+        # type: (int, float, int, float, float, NavigationPlanMsg) -> float
         """
         Find longitude distance between two points in road coordinates.
         First search forward from the point (from_road_id, from_lon_in_road) to the point (to_road_id, to_lon_in_road);
@@ -78,12 +82,12 @@ class MapAPI:
         :param to_road_id:
         :param to_lon_in_road: search to this point
         :param max_lookahead_distance: max search distance
-        :return: longitude distance between the given two points, boolean "found connection"
+        :return: longitude distance between the given two points, or raises an exception if connection is not found
         """
         pass
 
     def get_path_lookahead(self, road_id, lon, lat, max_lookahead_distance, navigation_plan, direction=1):
-        # type: (int, float, float, float, NavigationPlanMsg, int) -> Union[np.ndarray, None]
+        # type: (int, float, float, float, NavigationPlanMsg, int) -> np.ndarray
         """
         Get path with lookahead distance (starting from certain road, and continuing to the next ones if lookahead distance > road length)
             lat is measured in meters
@@ -93,7 +97,7 @@ class MapAPI:
         :param lat: lateral shift in meters
         :param max_lookahead_distance:
         :param direction: forward (1) or backward (-1)
-        :return: points array
+        :return: points array, or raises exception
         """
         pass
 
@@ -253,7 +257,7 @@ class MapAPI:
         points = road_details.points[:, 0:2]
         distance_to_road_points = np.linalg.norm(np.array(points) - p, axis=0)
         closest_pnt_ind = np.argmin(distance_to_road_points)
-        
+
         # the relevant road segments will be the one before this point, and the one after it, so for both segments:
         # compute [sign, latitude, longitude, segment_start_point_index]
         closest_pnt_ind_pairs = [[closest_pnt_ind - 1, closest_pnt_ind], [closest_pnt_ind, closest_pnt_ind + 1]]
