@@ -64,8 +64,7 @@ OCCUPANCY_STATE_SUBSCRIBE_TOPIC = "StateSubscriber::OccupancyStateReader"
 STATE_PUBLISH_TOPIC = "StatePublisher::StateWriter"
 
 # Maps
-MAPS_DIR = os.path.join(os.path.dirname(__file__), '../resources/maps/')
-MAP_FILE_NAME = os.path.join(MAPS_DIR, 'testingGroundMap.bin')
+MAP_RESOURCE_FILE_NAME = os.path.join('maps', 'testingGroundMap.bin')
 
 # Navigation Planning Module
 NAVIGATION_PLAN_PUBLISH_TOPIC = "NavigationPublisher::NavigationPlanWriter"
