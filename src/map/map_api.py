@@ -109,7 +109,8 @@ class MapAPI:
         :return: longitude distance between the given two points, boolean "found connection"
         """
         if to_road_id == from_road_id:  # simple case
-            return to_lon_in_road - from_lon_in_road, True
+            total_lon_distance = to_lon_in_road - from_lon_in_road
+            return total_lon_distance, (total_lon_distance <= max_lookahead_distance)
 
         road_id = from_road_id
         found_connection = False
@@ -137,7 +138,7 @@ class MapAPI:
                     total_lon_distance += to_lon_in_road
                 else:  # backward
                     total_lon_distance += self._cached_map_model.roads_data[to_road_id].longitudes[-1] - to_lon_in_road
-                found_connection = True
+                found_connection = (total_lon_distance <= max_lookahead_distance)
                 break  # stop the search when the connection is found
 
         return total_lon_distance, found_connection
