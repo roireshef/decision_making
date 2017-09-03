@@ -3,7 +3,7 @@ import pytest
 
 from decision_making.src.map.map_api import MapAPI
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.test.map.test_map_model_utils import TestMapModelUtils
+from decision_making.test.map.map_model_utils import TestMapModelUtils
 from rte.python.logger.AV_logger import AV_Logger
 
 NUM_LANES = 3
