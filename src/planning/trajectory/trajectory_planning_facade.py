@@ -1,8 +1,10 @@
+from typing import Dict
+
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import *
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.exceptions import MsgDeserializationError
-from decision_making.src.messages.trajectory_parameters import TrajectoryParameters
+from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
@@ -12,7 +14,8 @@ from logging import Logger
 
 
 class TrajectoryPlanningFacade(DmModule):
-    def __init__(self, dds: DdsPubSub, logger: Logger, strategy_handlers: dict):
+    def __init__(self, dds: DdsPubSub, logger: Logger,
+                 strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner]):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param dds: communication layer (DDS) instance
@@ -43,7 +46,7 @@ class TrajectoryPlanningFacade(DmModule):
 
             # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
             trajectory, cost, debug_results = self._strategy_handlers[params.strategy].plan(
-                state, params.reference_route, params.target_state, params.cost_params)
+                state, params.reference_route, params.target_state, params.time, params.cost_params)
 
             # TODO: should publish v_x?
             # publish results to the lower DM level
@@ -73,10 +76,10 @@ class TrajectoryPlanningFacade(DmModule):
         self.logger.debug('Received state: %s', input_state)
         return State.deserialize(input_state)
 
-    def _get_mission_params(self) -> TrajectoryParameters:
-        input_params = self.dds.get_latest_sample(topic=TRAJECTORY_PARAMS_READER_TOPIC, timeout=1)
+    def _get_mission_params(self) -> TrajectoryParams:
+        input_params = self.dds.get_latest_sample(topic=TRAJECTORY_STATE_READER_TOPIC, timeout=1)
         self.logger.debug('Received state: %s', input_params)
-        return TrajectoryParameters.deserialize(input_params)
+        return TrajectoryParams.deserialize(input_params)
 
     def __publish_trajectory(self, results: TrajectoryPlanMsg) -> None:
         self.dds.publish(TRAJECTORY_PUBLISH_TOPIC, results.serialize())

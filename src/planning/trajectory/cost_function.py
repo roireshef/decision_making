@@ -77,7 +77,7 @@ class SigmoidStatic2DBoxObstacle(BoxObstacle):
     def margin(self): return self._margin
 
     @classmethod
-    def from_object_state(cls, os: ObjectState, k, offset):
+    def from_object(cls, os: ObjectState, k, offset):
         """
         Additional constructor that takes a ObjectState from the State object and wraps it
         :param os: ObjectState object from State object
@@ -85,7 +85,7 @@ class SigmoidStatic2DBoxObstacle(BoxObstacle):
         :param offset:
         :return: new SigmoidStatic2DBoxObstacle instance
         """
-        return cls(os.x, os.y, os.yaw, os.object_size.length, os.object_size.width, k, offset)
+        return cls(os.x, os.y, os.yaw, os.size.length, os.size.width, k, offset)
 
     def compute_cost(self, points: np.ndarray) -> np.ndarray:
         """
