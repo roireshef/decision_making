@@ -79,6 +79,7 @@ def test__convert_road_to_global_coordinates_accurateConversion(testable_map_api
     np.testing.assert_array_almost_equal(shifted_world_position[0:2],
                                          point_on_second_segment + np.array([-point_lateral_shift, 0.]))
 
+    # Uncomment below to see the road structure
     # plt.plot(road_points[:, 0], road_points[:, 1], '-b')
     # plt.plot(right_edge_position[0], right_edge_position[1], '*c')
     # plt.plot(shifted_world_position[0], shifted_world_position[1], '*r')
