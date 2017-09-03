@@ -83,7 +83,7 @@ class StateModule(DmModule):
         with self._dynamic_objects_lock:
             self._dynamic_objects = dyn_obj_list
 
-        self.__publish_state()
+        self.__publish_state_if_full()
 
     def __self_localization_callback(self, ego_localization: dict):
         self.logger.debug("got self localization %s", ego_localization)
@@ -105,7 +105,7 @@ class StateModule(DmModule):
             self._ego_state = EgoState(0, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, self.UNKNWON_DEFAULT_VAL,
                                        self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localization)
 
-        self.__publish_state()
+        self.__publish_state_if_full()
 
     def __occupancy_state_callback(self, occupancy: dict):
         self.logger.debug("got occupancy status %s", occupancy)
@@ -121,10 +121,14 @@ class StateModule(DmModule):
         with self._occupancy_state_lock:
             self._occupancy_state = OccupancyState(timestamp, np.ndarray(points_list), np.ndarray(confidence_list))
 
-        self.__publish_state()
+        self.__publish_state_if_full()
 
     # TODO: integrate compensation for time differences (aka short-time predict)
-    def __publish_state(self):
+    def __publish_state_if_full(self):
+        # if some part of the state is missing, don't publish state message
+        if self._occupancy_state is None or self._dynamic_objects is None or self._ego_state is None:
+            pass
+
         with self._occupancy_state_lock, self._ego_state_lock, self._dynamic_objects_lock:
             state = State(self._occupancy_state, self._dynamic_objects, self._ego_state)
 

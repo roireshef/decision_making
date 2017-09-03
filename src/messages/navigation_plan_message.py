@@ -1,5 +1,5 @@
 import numpy as np
-
+from typing import Union
 from decision_making.src.exceptions import RoadNotFound, raises
 from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
 
@@ -10,7 +10,8 @@ class NavigationPlanMsg(DDSNonTypedMsg):
         It also implements function (required by MapAPI) that iterate over the roads list in the navigation plan.
         Important assumption: we assume that road_ids is a UNIQUE list, containing each value only once.
     """
-    def __init__(self, road_ids: np.array):
+    def __init__(self, road_ids):
+        # type: (np.array) -> None
         """
         Initialization of the navigation plan. This is an initial implementation which contains only a list o road ids.
         :param road_ids: list of road ids corresponding to the map.
@@ -18,7 +19,8 @@ class NavigationPlanMsg(DDSNonTypedMsg):
         self.road_ids = np.array(road_ids)
 
     @raises(RoadNotFound)
-    def get_road_index_in_plan(self, road_id: int) -> int:
+    def get_road_index_in_plan(self, road_id):
+        # type:  (int) -> int
         """
         Given a road_id, returns the index of this road_id in the navigation plan
         :param road_id: the request road_id to look for in the plan
@@ -30,7 +32,8 @@ class NavigationPlanMsg(DDSNonTypedMsg):
             raise RoadNotFound("Road ID %d is not in plan's road-IDs [%s]", road_id, str(self.road_ids))
 
     @raises(RoadNotFound)
-    def get_next_road(self, road_id: int) -> int:
+    def get_next_road(self, road_id):
+        # type:  (int) -> int
         """
         Given a road_id, returns the next road_id in the navigation plan
         :param road_id: the current road_id
@@ -45,7 +48,8 @@ class NavigationPlanMsg(DDSNonTypedMsg):
                                str(self.road_ids) + ". " + str(e))
 
     @raises(RoadNotFound)
-    def get_previous_road(self, road_id: int) -> int:
+    def get_previous_road(self, road_id):
+        # type:  (int) -> int
         """
         Given a road_id, returns the previous road_id in the navigation plan
         :param road_id: the current road_id

@@ -1,6 +1,4 @@
-from abc import ABCMeta
 from typing import Dict
-from typing import List
 
 import numpy as np
 import pygame
