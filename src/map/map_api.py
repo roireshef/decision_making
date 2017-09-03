@@ -6,6 +6,7 @@ import numpy as np
 import six
 
 from decision_making.src.exceptions import RoadNotFound, raises, LongitudeOutOfRoad
+from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE
 from decision_making.src.map.map_model import MapModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
@@ -228,10 +229,7 @@ class MapAPI:
             lon_lat_shift = np.array([distance_in_lon_from_closest_point, lat - road.width / 2, 1])
             shifted_point = np.dot(CartesianFrame.homo_matrix_2d(road_point[2], road_point[:2]), lon_lat_shift)
 
-            progress = lon / road.longitudes[-1]
-            layer_avg = (
-                        1 - progress) * road.head_layer + progress * road.tail_layer  # TODO: head_layer/tail_layer are z values??
-            position_in_world = np.append(shifted_point[:2], [layer_avg])
+            position_in_world = np.append(shifted_point[:2], [DEFAULT_OBJECT_Z_VALUE])
             orientation_in_world = road_point[2]
             return position_in_world, orientation_in_world
         else:
