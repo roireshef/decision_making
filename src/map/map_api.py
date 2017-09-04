@@ -8,6 +8,7 @@ import six
 from decision_making.src.exceptions import *
 from decision_making.src.exceptions import RoadNotFound, raises, LongitudeOutOfRoad
 from decision_making.src.global_constants import *
+from decision_making.src.map.constants import ROADS_MAP_TILE_SIZE
 from decision_making.src.map.map_model import MapModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
@@ -207,11 +208,11 @@ class MapAPI:
         :param y: world coordinates in meters
         :return: road_ids containing the point (x, y)
         """
-        # TODO: unify cell-from-xy computation with the one in the map's creation procedure
+        # TODO: unify cell-from-xy computation with the one in the map's creation procedure,
         tile_size = self._cached_map_model.xy2road_tile_size
         cell_x = int(round(x / tile_size))
         cell_y = int(round(y / tile_size))
-        return self._cached_map_model.get_xy2road_cell((cell_x, cell_y))
+        return self._cached_map_model.get_xy2road_cell((DEFAULT_MAP_LAYER, cell_x, cell_y))
 
     @raises(RoadNotFound)
     def _shift_road_points_from_rightside(self, road_id, latitude_shift):

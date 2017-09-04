@@ -48,8 +48,8 @@ class BehavioralFacade(DmModule):
             trajectory_params, behavioral_visualization_message = self._policy.plan(
                 behavioral_state=self._behavioral_state)
 
-            self.__publish_results(trajectory_params)
-            self.__publish_visualization(behavioral_visualization_message)
+            self._publish_results(trajectory_params)
+            self._publish_visualization(behavioral_visualization_message)
 
         except MsgDeserializationError as e:
             self.logger.debug(str(e))
@@ -66,9 +66,9 @@ class BehavioralFacade(DmModule):
         self.logger.debug('Received navigation plan: %s', input_plan)
         return NavigationPlanMsg.deserialize(input_plan)
 
-    def __publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
+    def _publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
         self.dds.publish(BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC, trajectory_parameters.serialize())
 
-    def __publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
+    def _publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
         self.dds.publish(BEHAVIORAL_VISUALIZATION_TOPIC, visualization_message.serialize())
 
