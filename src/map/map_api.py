@@ -31,33 +31,22 @@ class MapAPI:
     def update_perceived_roads(self):
         pass
 
-    def find_roads_containing_point(self, layer, world_x, world_y):
+    # TODO: explain better what this does.
+    # #TODO: also, consider moving ROADS_MAP_TILE_SIZE to be a member of MapModel. what is layer in coordinates?
+    def find_roads_containing_point(self, layer, x, y):
         # type: (int, float, float) -> List[int]
         """
         shortcut to a cell of the map xy2road_map
         :param layer: 0 ground, 1 on bridge, 2 bridge above bridge, etc
-        :param world_x: world coordinates in meters
-        :param world_y: world coordinates in meters
-        :return: road_ids containing the point (world_x, world_y)
+        :param x: world coordinates in meters
+        :param y: world coordinates in meters
+        :return: road_ids containing the point (x, y)
         """
-        cell_x = int(round(world_x / ROADS_MAP_TILE_SIZE))
-        cell_y = int(round(world_y / ROADS_MAP_TILE_SIZE))
-        return self._cached_map_model.xy2road_map.get((layer, cell_x, cell_y), [])
+        cell_x = int(round(x / ROADS_MAP_TILE_SIZE))
+        cell_y = int(round(y / ROADS_MAP_TILE_SIZE))
+        return self._cached_map_model.get_xy2road_cell((layer, cell_x, cell_y))
 
-    def get_center_lanes_latitudes(self, road_id):
-        # type: (int) -> np.array
-        """
-        get list of latitudes of all centers of lanes in the road
-        :param road_id:
-        :return: list of latitudes of all centers of lanes in the road relative to the right side of the road
-        """
-        road_details = self._get_road(road_id)
-        lanes_num = road_details.lanes_num
-        road_width = road_details.width
-        lane_width = float(road_width) / lanes_num
-        center_lanes = lane_width / 2 + np.array(range(lanes_num)) * lane_width
-        return center_lanes
-
+    # TODO: unnecessary
     def get_road_main_details(self, road_id):
         # type: (int) -> (int, float, float, np.ndarray)
         """
@@ -70,6 +59,26 @@ class MapAPI:
         road_details = self._get_road(road_id)
         return road_details.lanes_num, road_details.width, road_details.longitudes[-1], road_details.points
 
+    # TODO: unnecessary. this is a two-liner.
+    def get_uniform_path_lookahead(self, road_id, lat_shift, starting_lon, lon_step, steps_num, navigation_plan):
+        # type: (int, float, float, float, int, NavigationPlanMsg) -> np.ndarray
+        """
+        Create array of uniformly distributed points along a given road, shifted laterally by by lat_shift.
+        When some road finishes, it automatically continues to the next road, according to the navigation plan.
+        The distance between consecutive points is lon_step.
+        :param road_id: starting road_id
+        :param lat_shift: lateral shift
+        :param starting_lon: starting longitude
+        :param lon_step: distance between consecutive points
+        :param steps_num: output points number
+        :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
+        :return: uniform points array (Nx2)
+        """
+        shifted = self.get_lookahead_points(road_id, starting_lon, lat_shift, lon_step * steps_num, navigation_plan)
+        resampled, _ = CartesianFrame.resample_curve(shifted, lon_step)
+        return resampled
+
+    # TODO: rewrite. split into few methods? the name doesn't explain the function
     def convert_world_to_lat_lon(self, x, y, z, yaw):
         # type: (float, float, float, float) -> (int, int, float, float, float, float)
         """
@@ -165,24 +174,20 @@ class MapAPI:
 
         return total_lon_distance
 
-    # TODO: provide better documentation
-    def get_uniform_path_lookahead(self, road_id, lat, starting_lon, lon_step, steps_num, navigation_plan):
-        # type: (int, float, float, float, int, NavigationPlanMsg) -> np.ndarray
+    @raises(RoadNotFound)
+    def get_center_lanes_latitudes(self, road_id):
+        # type: (int) -> np.array
         """
-        Create array of uniformly distanced points along the given road, shifted by lat.
-        When some road finishes, it automatically continues to the next road, according to the navigation plan.
-        The distance between consecutive points is lon_step.
-        :param road_id: starting road_id
-        :param lat: lateral shift
-        :param starting_lon: starting longitude
-        :param lon_step: distance between consecutive points
-        :param steps_num: output points number
-        :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
-        :return: uniform points array (Nx2)
+        Get list of latitudes of all centers of lanes in the road
+        :param road_id: Road ID to iterate over its lanes
+        :return: list of latitudes of all centers of lanes in the road relative to the right side of the road
         """
-        shifted_path = self.get_lookahead_points(road_id, starting_lon, lat, lon_step*steps_num, navigation_plan)
-        resampled_path, _ = CartesianFrame.resample_curve(shifted_path, lon_step)
-        return resampled_path
+        road_details = self._get_road(road_id)
+        lanes_num = road_details.lanes_num
+        road_width = road_details.width
+        lane_width = float(road_width) / lanes_num
+        center_lanes = lane_width / 2 + np.array(range(lanes_num)) * lane_width
+        return center_lanes
 
     @raises(RoadNotFound, LongitudeOutOfRoad)
     def get_lookahead_points(self, initial_road_id, initial_lon, desired_lon, desired_lat_shift, navigation_plan):
@@ -301,8 +306,8 @@ class MapAPI:
     def _shift_road_points_from_rightside(self, road_id, latitude_shift):
         """
         Returns Road.points shifted by <latitude_shift> relative to road's right-side
-        :param road_id:
-        :param latitude_shift:
+        :param road_id: road ID to get the points of.
+        :param latitude_shift: desired shift relative to road's right-side
         :return:
         """
         road = self._get_road(road_id)
@@ -318,7 +323,7 @@ class MapAPI:
         is meaningless.
         :param x: x coordinate on map (given in [m])
         :param y: y coordinate on map (given in [m])
-        :param road_ids: list of road_id
+        :param road_ids: list of road IDs to try to project the point on
         :return: (lat [m], lon [m], road_id) from the closest road
         """
         closest_lat = closest_lon = np.inf
@@ -385,10 +390,9 @@ class MapAPI:
         # the relevant road segments will be the one before this point, and the one after it, so for both segments:
         # compute [sign, latitude, longitude, segment_start_point_index]
         closest_point_ind_pairs = [[closest_point_ind - 1, closest_point_ind], [closest_point_ind, closest_point_ind + 1]]
-        segments = np.array(
-            [np.append(CartesianFrame.calc_point_segment_dist(p, points[idxs[0]], points[idxs[1]]), idxs[0])
-             for idxs in closest_point_ind_pairs
-             if idxs[0] >= 0 and idxs[1] < len(points)])
+        segments = [np.append(CartesianFrame.calc_point_segment_dist(p, points[pair[0]], points[pair[1]]), pair[0])
+                    for pair in closest_point_ind_pairs if pair[0] >= 0 and pair[1] < len(points)]
+        segments = np.array(segments)
 
         # find closest segment by min distance (latitude)
         closest_segment = segments[np.argmin(segments[:, 1], axis=0)]
