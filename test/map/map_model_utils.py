@@ -21,7 +21,7 @@ class TestMapModelUtils:
 
             # generate the road details
             road_details = RoadDetails(road_gen_id, road_name, points, longitudes, 0, 0, 0, 0, 0, lanes_num, True, lane_width,
-                                       Sidewalk.none, 0, 0, 0, 0, [])
+                                       Sidewalk.NONE, 0, 0, 0, 0, [])
 
             roads_data[road_gen_id] = road_details
             # Render the mapping of (x,y) -> road id

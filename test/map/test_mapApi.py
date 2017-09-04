@@ -15,7 +15,7 @@ MAP_INFLATION_FACTOR = 300.0
 class TestableMapApi(MapAPI):
     def shift_road_vector_in_latitude(self, points, lat_shift):
         # type: (np.ndarray, float) -> np.ndarray
-        return self._shift_road_points_in_latitude(points, lat_shift)
+        return self._lateral_shift_road_points(points, lat_shift)
 
     def convert_road_to_global_coordinates(self, road_id, lon, lat):
         # type: (int, float, float) -> (np.array, float)

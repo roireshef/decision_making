@@ -54,8 +54,8 @@ OSM_STEPS_ROAD_WIDTH = 0.8
 
 # sidewalk types in OSM
 class Sidewalk(Enum):
-    no = 'no'
-    none = 'none'
-    left = 'left'
-    right = 'right'
-    both = 'both'
+    NO = 'no'
+    NONE = 'none'
+    LEFT = 'left'
+    RIGHT = 'right'
+    BOTH = 'both'
