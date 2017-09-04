@@ -117,7 +117,7 @@ class MapAPI:
         lane_lat = full_lat % lane_width
         return road_id, lane, full_lat, lane_lat, lon, yaw_in_road
 
-    # TODO: raise exception and drop boolean
+    # TODO: rewrite as vector ops + raise exception and drop boolean
     # TODO: change to work with Nx2
     @raises(RoadNotFound)
     def get_point_relative_longitude(self, from_road_id, from_lon_in_road, to_road_id, to_lon_in_road,
