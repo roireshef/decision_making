@@ -50,20 +50,20 @@ def test_get_point_relative_longitude(map):
     from_lon_in_road = 20
     to_lon_in_road = 10
     max_lookahead_distance = 500
-    total_lon_distance, found_connection = map.get_point_relative_longitude(from_road_id=1, from_lon_in_road=from_lon_in_road,
+    total_lon_distance = map.get_point_relative_longitude(from_road_id=1, from_lon_in_road=from_lon_in_road,
                                                                             to_road_id=2, to_lon_in_road=to_lon_in_road,
                                                                             max_lookahead_distance=max_lookahead_distance,
                                                                             navigation_plan=navigation_plan)
-    assert found_connection and total_lon_distance == length - from_lon_in_road + to_lon_in_road
+    assert total_lon_distance == length - from_lon_in_road + to_lon_in_road
 
     from_lon_in_road = 10
     to_lon_in_road = 170
     max_lookahead_distance = 150  # less than the distance between the given points
-    total_lon_distance, found_connection = map.get_point_relative_longitude(from_road_id=2, from_lon_in_road=from_lon_in_road,
+    total_lon_distance = map.get_point_relative_longitude(from_road_id=2, from_lon_in_road=from_lon_in_road,
                                                                             to_road_id=2, to_lon_in_road=to_lon_in_road,
                                                                             max_lookahead_distance=max_lookahead_distance,
                                                                             navigation_plan=navigation_plan)
-    assert not found_connection
+    assert to_lon_in_road - from_lon_in_road - 10 < total_lon_distance < to_lon_in_road - from_lon_in_road + 10
 
 
 def test_get_path_lookahead(map):

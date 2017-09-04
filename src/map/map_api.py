@@ -1,5 +1,6 @@
 import numpy as np
 
+from decision_making.src.exceptions import RoadNotFound, raises, LongitudeOutOfRoad
 from decision_making.src.global_constants import *
 from decision_making.src.map.constants import *
 from decision_making.src.map.map_model import MapModel
@@ -73,7 +74,6 @@ class MapAPI:
         :return: road_id, lane, full latitude, lane_lat, longitude, yaw_in_road
         """
         # use road_id by navigation if the point is outside the roads
-        # TODO: convert z to layer
         road_ids = self.find_roads_containing_point(DEFAULT_MAP_LAYER, x, y)
 
         if len(road_ids) == 0:
@@ -94,9 +94,10 @@ class MapAPI:
         lane_lat = full_lat % lane_width
         return road_id, lane, full_lat, lane_lat, lon, yaw_in_road
 
+    @raises(RoadNotFound)
     def get_point_relative_longitude(self, from_road_id, from_lon_in_road, to_road_id, to_lon_in_road,
                                      max_lookahead_distance, navigation_plan):
-        # type: (int, float, int, float, float, NavigationPlanMsg) -> (float, bool)
+        # type: (int, float, int, float, float, NavigationPlanMsg) -> float
         """
         Find longitude distance between two points in road coordinates.
         First search forward from the point (from_road_id, from_lon_in_road) to the point (to_road_id, to_lon_in_road);
@@ -110,7 +111,7 @@ class MapAPI:
         """
         if to_road_id == from_road_id:  # simple case
             total_lon_distance = to_lon_in_road - from_lon_in_road
-            return total_lon_distance, (total_lon_distance <= max_lookahead_distance)
+            return total_lon_distance
 
         road_id = from_road_id
         found_connection = False
@@ -138,13 +139,18 @@ class MapAPI:
                     total_lon_distance += to_lon_in_road
                 else:  # backward
                     total_lon_distance += self._cached_map_model.roads_data[to_road_id].longitudes[-1] - to_lon_in_road
-                found_connection = (total_lon_distance <= max_lookahead_distance)
+                found_connection = True
                 break  # stop the search when the connection is found
 
-        return total_lon_distance, found_connection
+        if not found_connection:
+            raise RoadNotFound("The connection within max_lookahead_distance %f between source road_id %d and destination road_id %d was not found",
+                               max_lookahead_distance, from_road_id, to_road_id)
 
+        return total_lon_distance
+
+    @raises(LongitudeOutOfRoad)
     def get_path_lookahead(self, road_id, lon, lat, max_lookahead_distance, navigation_plan, direction=1):
-        # type: (int, float, float, float, NavigationPlanMsg, int) -> Union[np.ndarray, None]
+        # type: (int, float, float, float, NavigationPlanMsg, int) -> np.ndarray
         """
         Get path with lookahead distance (starting from certain road, and continuing to the next ones if lookahead distance > road length)
             lat is measured in meters
@@ -175,7 +181,8 @@ class MapAPI:
             target_longitude_index = np.argmin(np.abs(longitudes - (residual_lookahead + road_starting_longitude)))
             first_exact_lon_point = self._convert_lat_lon_to_world(road_id, center_road_lat, lon, navigation_plan)
             if first_exact_lon_point is None:
-                return None
+                raise LongitudeOutOfRoad("starting point's longitude %f is out of road's longitudes range [%f, %f]",
+                                         lon, longitudes[0], longitudes[-1])
             partial_path_points = path_points[:, closest_longitude_index:target_longitude_index + 1]
             partial_path_points[:, 0] = first_exact_lon_point[0:2]
             achieved_lookahead = road_length - lon
@@ -183,7 +190,8 @@ class MapAPI:
             target_longitude_index = np.argmin(np.abs((road_length - longitudes) - residual_lookahead))
             first_exact_lon_point = self._convert_lat_lon_to_world(road_id, center_road_lat, lon, navigation_plan)
             if first_exact_lon_point is None:
-                return None
+                raise LongitudeOutOfRoad("starting point's longitude %f is out of road's longitudes range [%f, %f]",
+                                         lon, longitudes[0], longitudes[-1])
             partial_path_points = path_points[:, target_longitude_index:closest_longitude_index + 1]
             partial_path_points = np.flip(partial_path_points, axis=1)
             partial_path_points[:, 0] = first_exact_lon_point[0:2]
@@ -233,7 +241,8 @@ class MapAPI:
         if road_id is not None:
             last_exact_lon_point = self._convert_lat_lon_to_world(road_id, center_road_lat, last_lon, navigation_plan)
             if last_exact_lon_point is None:
-                return None
+                raise LongitudeOutOfRoad("end point's longitude %f is out of road's longitudes range [%f, %f]",
+                                         last_lon, longitudes[0], longitudes[-1])
 
             # if path consists of a single point, add it to the end of route. else, replace last point
             path_length = path.shape[1]
