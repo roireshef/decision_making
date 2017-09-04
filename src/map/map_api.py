@@ -1,11 +1,15 @@
 import numpy as np
 from abc import ABCMeta, abstractmethod
 from decision_making.src.map.map_model import MapModel
-from typing import List
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from typing import List
+
+import six
 
 
-class MapAPI(metaclass=ABCMeta):
+@six.add_metaclass(ABCMeta)
+class MapAPI:
+
     def __init__(self, map_model):
         # type: (MapModel) -> None
         self._cached_map_model = map_model
