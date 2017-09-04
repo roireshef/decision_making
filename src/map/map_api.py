@@ -166,7 +166,6 @@ class MapAPI:
         closest_idx = np.argmin(roads_proj[:, 1])
         return road_ids[closest_idx], roads_proj[closest_idx, 0], roads_proj[closest_idx, 1]
 
-
     @raises(RoadNotFound, LongitudeOutOfRoad)
     def _convert_road_to_global_coordinates(self, road_id, lon, lat):
         # type: (int, float, float) -> (np.array, float)
