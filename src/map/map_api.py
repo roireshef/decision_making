@@ -48,7 +48,7 @@ class MapAPI:
         :param road_id:
         :return: list of latitudes of all centers of lanes in the road relative to the right side of the road
         """
-        road_details = self._cached_map_model.roads_data[road_id]
+        road_details = self._get_road(road_id)
         lanes_num = road_details.lanes_num
         road_width = road_details.width
         lane_width = float(road_width) / lanes_num
@@ -64,7 +64,7 @@ class MapAPI:
         """
         if road_id not in self._cached_map_model.roads_data.keys():
             return None, None, None, None
-        road_details = self._cached_map_model.roads_data[road_id]
+        road_details = self._get_road(road_id)
         return road_details.lanes_num, road_details.width, road_details.longitudes[-1], road_details.points
 
     def convert_world_to_lat_lon(self, x, y, z, yaw):
@@ -93,7 +93,7 @@ class MapAPI:
         # find the closest road to (x,y) among the road_ids list
         (lat_dist, sign, lon, road_yaw, road_id) = self._find_closest_road(x, y, road_ids)
 
-        road_details = self._cached_map_model.roads_data[road_id]
+        road_details = self._get_road(road_id)
         lanes_num = road_details.lanes_num
         lane_width = road_details.width / float(lanes_num)
 
@@ -134,23 +134,23 @@ class MapAPI:
 
             # 1. First road segment
             if direction > 0:  # forward
-                total_lon_distance = self._cached_map_model.roads_data[from_road_id].longitudes[-1] - from_lon_in_road
+                total_lon_distance = self._get_road(from_road_id).longitudes[-1] - from_lon_in_road
             else:  # backward
                 total_lon_distance = from_lon_in_road
 
             # 2. Middle road segments
-            road_id = navigation_plan.get_next_road(road_id, self.logger)
+            road_id = navigation_plan.get_next_road(road_id)
             while road_id is not None and road_id != to_road_id and total_lon_distance < max_lookahead_distance:
-                road_length = self._cached_map_model.roads_data[road_id].longitudes[-1]
+                road_length = self._get_road(road_id).longitudes[-1]
                 total_lon_distance += road_length
-                road_id = navigation_plan.get_next_road(road_id, self.logger)
+                road_id = navigation_plan.get_next_road(road_id)
 
             # 3. Add length of last road segment
             if road_id == to_road_id:
                 if direction > 0:  # forward
                     total_lon_distance += to_lon_in_road
                 else:  # backward
-                    total_lon_distance += self._cached_map_model.roads_data[to_road_id].longitudes[-1] - to_lon_in_road
+                    total_lon_distance += self._get_road(to_road_id).longitudes[-1] - to_lon_in_road
                 found_connection = True
                 break  # stop the search when the connection is found
 
@@ -174,7 +174,7 @@ class MapAPI:
         :param direction: forward (1) or backward (-1)
         :return: points array
         """
-        road_details = self._cached_map_model.roads_data[road_id]
+        road_details = self._get_road(road_id)
         road_width = road_details.width
         center_road_lat = road_width / 2.0
 
@@ -213,10 +213,10 @@ class MapAPI:
         # Iterate over next road, until we get enough lookahead
         while achieved_lookahead < max_lookahead_distance and road_id is not None:
             road_starting_longitude = 0
-            road_id = navigation_plan.get_next_road(road_id, self.logger)
+            road_id = navigation_plan.get_next_road(road_id)
 
             if road_id is not None:
-                road_details = self._cached_map_model.roads_data[road_id]
+                road_details = self._get_road(road_id)
                 longitudes = road_details.longitudes
                 road_length = longitudes[-1]
                 path_points = road_details.points
