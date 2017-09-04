@@ -1,6 +1,10 @@
+from logging import Logger
+
 import numpy as np
 import copy
 from typing import List, Dict
+
+from decision_making.src.exceptions import RoadNotFound
 from decision_making.src.map.constants import Sidewalk
 
 
@@ -14,7 +18,7 @@ class RoadDetails:
         Road details class
         :param id: road's id
         :param name: road's name
-        :param points: road's points array. numpy array of size 2xN (2 rows, N columns)
+        :param points: road's points array. numpy array of size Nx2 (N rows, 2 columns)
         :param longitudes: list of longitudes of the road's points starting from 0
         :param head_node: node id of the road's head
         :param tail_node:
@@ -31,6 +35,8 @@ class RoadDetails:
         :param ext_tail_lanes: lanes number in the outgoing road
         :param turn_lanes: list of strings describing where each lane turns
         """
+        assert points.shape[1] == 2, "points should be a Nx2 matrix"
+
         self.id = id
         self.name = name
         self.points = points
@@ -54,9 +60,15 @@ class RoadDetails:
 
 
 class MapModel:
-    def __init__(self, roads_data={}, incoming_roads={}, outgoing_roads={}, xy2road_map={}):
+    def __init__(self, roads_data, incoming_roads, outgoing_roads, xy2road_map):
         # type: (Dict[int, RoadDetails], Dict[int, List[int]], Dict[int, List[int]], Dict[(float, float), List[int]]) -> None
-        self.roads_data = copy.deepcopy(roads_data)  # dictionary: road_id -> RoadDetails
-        self.incoming_roads = copy.deepcopy(incoming_roads)  # dictionary: node id -> incoming roads
-        self.outgoing_roads = copy.deepcopy(outgoing_roads)  # dictionary: node id -> outgoing roads
-        self.xy2road_map = copy.deepcopy(xy2road_map)  # maps world coordinates to road_ids
+        self.__roads_data = copy.deepcopy(roads_data)  # dictionary: road_id -> RoadDetails
+        self.__incoming_roads = copy.deepcopy(incoming_roads)  # dictionary: node id -> incoming roads
+        self.__outgoing_roads = copy.deepcopy(outgoing_roads)  # dictionary: node id -> outgoing roads
+        self.__xy2road_map = copy.deepcopy(xy2road_map)  # maps world coordinates to road_ids
+
+    def get_road_data(self, road_id):
+        try:
+            return self.__roads_data[road_id]
+        except KeyError:
+            raise RoadNotFound("MapModel doesn't have road %d", road_id)

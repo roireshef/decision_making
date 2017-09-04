@@ -1,3 +1,4 @@
+from abc import ABCMeta
 import numpy as np
 
 from decision_making.src.exceptions import RoadNotFound, raises, LongitudeOutOfRoad
@@ -8,14 +9,24 @@ from typing import List, Union
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 from logging import Logger
+from typing import List
+
+import numpy as np
+import six
+
+from decision_making.src.exceptions import RoadNotFound, raises, LongitudeOutOfRoad
+from decision_making.src.global_constants import *
+from decision_making.src.map.map_model import MapModel
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 
 
+@six.add_metaclass(ABCMeta)
 class MapAPI:
     def __init__(self, map_model, logger):
         # type: (MapModel, Logger) -> None
         self._cached_map_model = map_model
         self.logger = logger
-        pass
 
     def find_roads_containing_point(self, layer, world_x, world_y):
         # type: (int, float, float) -> List[int]
@@ -94,6 +105,7 @@ class MapAPI:
         lane_lat = full_lat % lane_width
         return road_id, lane, full_lat, lane_lat, lon, yaw_in_road
 
+    # TODO: raise exception and drop boolean
     @raises(RoadNotFound)
     def get_point_relative_longitude(self, from_road_id, from_lon_in_road, to_road_id, to_lon_in_road,
                                      max_lookahead_distance, navigation_plan):
@@ -107,7 +119,7 @@ class MapAPI:
         :param to_road_id:
         :param to_lon_in_road: search to this point
         :param max_lookahead_distance: max search distance
-        :return: longitude distance between the given two points, boolean "found connection"
+        :return: longitude distance between the given two points, or raises an exception if connection is not found
         """
         if to_road_id == from_road_id:  # simple case
             total_lon_distance = to_lon_in_road - from_lon_in_road
@@ -281,150 +293,188 @@ class MapAPI:
     def update_perceived_roads(self):
         pass
 
-    def _find_closest_road(self, x, y, road_ids):
-        # type: (float, float, List[int]) -> (float, float, float, float, float)
-        # find the closest road to (x,y)
-        closest_lat = LARGE_NUM
-        closest_id = closest_sign = closest_yaw = closest_lon = None
-        for road_id in road_ids:
-            sign, lat_dist, lon, road_vec = self._convert_world_to_lat_lon_for_given_road(x, y, road_id)
-            if lat_dist < closest_lat:
-                road_yaw = np.arctan2(road_vec[1], road_vec[0])
-                (closest_lat, closest_sign, closest_lon, closest_yaw, closest_id) = \
-                    (lat_dist, sign, lon, road_yaw, road_id)
-        return (closest_lat, closest_sign, closest_lon, closest_yaw, closest_id)
+    @raises(RoadNotFound, LongitudeOutOfRoad)
+    def advance_on_plan(self, initial_road_id, initial_lon, desired_lon, navigation_plan):
+        # type: (int, float, float, NavigationPlanMsg) -> (int, float)
+        """
+        Given a longitude on specific road (<initial_road_id> and <initial_lon>), advance (lookahead) <desired_lon>
+        distance. The lookahead iterates over the next roads specified in the <navigation_plan> and returns: (the final
+        road id, the longitude along this road). If <desired_lon> is more than the distance to end of the plan, a
+        LongitudeOutOfRoad exception is thrown.
+        :param initial_road_id: the initial road_id (the vehicle is current on)
+        :param initial_lon: initial longitude along <initial_road_id>
+        :param desired_lon: the deisred distance of lookahead in [m].
+        :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
+        :return: (road_id, longitude along <road_id>)
+        """
+        current_road_idx_in_plan = navigation_plan.get_road_index_in_plan(initial_road_id)
+        roads_ids = navigation_plan.road_ids[current_road_idx_in_plan:]
+        roads_len = [self._cached_map_model.get_road_data(rid).longitudes[-1] for rid in roads_ids]
+
+        roads_dist_to_end = np.cumsum(np.append([roads_len[0] - initial_lon], roads_len[1:]))  # dist to roads-ends
+        roads_leftovers = np.subtract(desired_lon, roads_dist_to_end)  # how much of step_lon is left after this road
+
+        try:
+            target_road_idx = np.where(roads_leftovers < 0)[0][0]
+            return roads_ids[target_road_idx], roads_leftovers[target_road_idx] + roads_len[target_road_idx]
+        except IndexError:
+            raise LongitudeOutOfRoad("The specified navigation plan is short %f meters to advance %f in longitude",
+                                     roads_leftovers[-1], desired_lon)
+
+    @raises(RoadNotFound)
+    def advance_to_end_of_plan(self, initial_road_id, initial_lon, navigation_plan):
+        # type: (int, float, NavigationPlanMsg) -> (int, float, float)
+        """
+        Given a longitude on specific road (<initial_road_id> and <initial_lon>), advance (lookahead) to the final point
+        in the navigation plan.
+        :param initial_road_id: the initial road_id (the vehicle is current on)
+        :param initial_lon: initial longitude along <initial_road_id>
+        :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
+        :return: (the last road id, its length, accumulated distance its end point)
+        """
+        initial_road_idx_in_plan = navigation_plan.get_road_index_in_plan(initial_road_id)
+        roads_ids = navigation_plan.road_ids[initial_road_idx_in_plan:]
+        roads_len = [self._cached_map_model.get_road_data(rid).longitudes[-1] for rid in roads_ids]
+        roads_dist_to_end = np.cumsum(np.append([roads_len[0] - initial_lon], roads_len[1:]))  # dist to roads-ends
+        return roads_ids[-1], roads_len[-1], roads_dist_to_end[-1]
+
+    @raises(RoadNotFound, LongitudeOutOfRoad)
+    def get_global_point_on_road_rightside(self, road_id, lon):
+        road_width = self._cached_map_model.get_road_data(road_id).width
+        return self._convert_road_to_global_coordinates(road_id, lon, -road_width / 2)
+
+    '''###################'''
+    ''' PRIVATE FUNCTIONS '''
+    '''###################'''
+
+    @raises(RoadNotFound)
+    def _get_road(self, road_id):
+        return self._cached_map_model.get_road_data(road_id)
 
     @staticmethod
-    def _shift_road_vector_in_lat(points, lat_shift):
+    def _shift_road_points(points, lateral_shift):
         # type: (np.ndarray, float) -> np.ndarray
         """
         Given points list along a road, shift them laterally by lat_shift meters
-        :param points (2xN): points list along a given road
-        :param lat_shift: shift in meters
-        :return: shifted points array (2xN)
+        :param points (Nx2): points list along a given road
+        :param lateral_shift: shift in meters
+        :return: shifted points array (Nx2)
         """
-        points = np.array(points)
-        points_direction = np.diff(points, axis=1)
-        points_norm = np.linalg.norm(points_direction, axis=0)
-        normalized_vec_x = np.divide(points_direction[0, :], points_norm)
-        normalized_vec_y = np.divide(points_direction[1, :], points_norm)
-        lat_vec = np.vstack((-normalized_vec_y, normalized_vec_x))
-        lat_vec = np.concatenate((lat_vec, lat_vec[:, -1].reshape([2, 1])), axis=1)
-        shifted_points = points + lat_vec * lat_shift
+        points_direction = np.diff(points, axis=0)
+        direction_unit_vec = MapAPI._normalize_matrix_rows(points_direction)
+        normal_unit_vec = np.c_[-direction_unit_vec[:, 1], direction_unit_vec[:, 0]]
+        normal_unit_vec = np.concatenate((normal_unit_vec, normal_unit_vec[-1, np.newaxis]))
+        shifted_points = points + normal_unit_vec * lateral_shift
         return shifted_points
 
-    def _convert_lon_to_world(self, road_id, pnt_ind, road_lon, navigation_plan):
-        # type: (int, int, float, NavigationPlanMsg, int) -> (int, float, np.ndarray, np.ndarray, int, float)
+    @raises(RoadNotFound)
+    def _shift_road_points_from_rightside(self, road_id, latitude_shift):
         """
-        Calculate world point matching to a given longitude of a given road.
-        If the given longitude exceeds the current road length, then calculate the point in the next road.
-        The next road is picked from the navigation plan.
-        :param road_id: current road_id
-        :param pnt_ind: index of the road point, from which we can search the new point (for speed optimization)
-        :param road_lon: the point's longitude relatively to the start of the road_id
-        :param navigation_plan: of type NavigationPlan, includes list of road_ids
-        :return: new road_id (maybe the same one) and its length,
-            right-most road point at the given longitude with latitude vector (perpendicular to the local road's tangent),
-            the first point index with longitude > the given longitude (for the next search)
-            the longitude relatively to the next road (in case if the road_id has changed)
-            the resulted road_id may differ from the input road_id because the target point may belong to another road.
-            for the same reason the resulted road_lon may differ from the input road_lon.
-        """
-        # find road_id containing the target road_lon
-        longitudes = self._cached_map_model.roads_data[road_id].longitudes
-        while road_lon > longitudes[-1]:  # then advance to the next road
-            road_lon -= longitudes[-1]
-            road_id = navigation_plan.get_next_road(road_id, self.logger)
-            if road_id is None:
-                return None, None, None, None, None, None, None
-            pnt_ind = 1
-            longitudes = self._cached_map_model.roads_data[road_id].longitudes
-
-        road_details = self._cached_map_model.roads_data[road_id]
-        points = road_details.points[0:2].transpose()
-        width = road_details.width
-        length = road_details.longitudes[-1]
-        # get point with longitude > cur_lon
-        while pnt_ind < len(points) - 1 and road_lon > longitudes[pnt_ind]:
-            pnt_ind += 1
-        pnt_ind = max(1, pnt_ind)
-
-        # calc lat_vec, right_point, road_lon of the target longitude.
-        # the resulted road_id may differ from the input road_id because the target point may belong to another road.
-        # for the same reason the resulted road_lon may differ from the input road_lon.
-        lane_vec = self.normalize_vec(points[pnt_ind] - points[pnt_ind - 1])
-        lat_vec = np.array([-lane_vec[1], lane_vec[0]])  # from right to left
-        center_point = points[pnt_ind] - lane_vec * (longitudes[pnt_ind] - road_lon)
-        right_point = center_point - lat_vec * (width / 2.)
-        return road_id, length, right_point, lat_vec, pnt_ind, road_lon
-
-    def _convert_lat_lon_to_world(self, road_id, lat, lon, navigation_plan):
-        # type: (int, float, float, NavigationPlanMsg) -> Union[np.ndarray, None]
-        """
-        Given road_id, lat & lon, calculate the point in world coordinates.
-        Z coordinate is calculated using the OSM data: if road's head and tail are at different layers (height),
-        then interpolate between them.
+        Returns Road.points shifted by <latitude_shift> relative to road's right-side
         :param road_id:
-        :param lat:
-        :param lon:
-        :return: point in 3D world coordinates
+        :param latitude_shift:
+        :return:
         """
-        id, length, right_point, lat_vec, _, _ = self._convert_lon_to_world(road_id, 0, lon, navigation_plan)
-        if id != road_id:
-            return None
-        road_details = self._cached_map_model.roads_data[road_id]
-        head_layer = road_details.head_layer
-        tail_layer = road_details.tail_layer
-        tail_wgt = lon / length
-        z = head_layer * (1 - tail_wgt) + tail_layer * tail_wgt
-        world_pnt = np.append(right_point + lat_vec * lat, [z])  # 3D point
-        return world_pnt
+        road = self._get_road(road_id)
+        return self._shift_road_points_in_latitude(road.points, latitude_shift - road.width / 2)
 
-    def _convert_world_to_lat_lon_for_given_road(self, x, y, road_id):
-        # type: (float, float, int) -> (int, float, float, np.ndarray)
+    @raises(RoadNotFound)
+    def _find_closest_road(self, x, y, road_ids):
+        # type: (float, float, List[int]) -> (float, float, int)
         """
-        calc lat, lon, road dir for point=(x,y) and a given road
+        Returns the closest road_id of the road which is closest to a point in the world (x, y).
+        If the point is on the road (in the sense of longitude), closest_lat is also the distance between the
+        point and the road. Otherwise closest_lat is the distance but not latitude, because in this case latitude
+        is meaningless.
+        :param x: x coordinate on map (given in [m])
+        :param y: y coordinate on map (given in [m])
+        :param road_ids: list of road_id
+        :return: (lat [m], lon [m], road_id) from the closest road
+        """
+        closest_lat = closest_lon = np.inf
+        closest_id = None
+        for road_id in road_ids:
+            lat, lon = self._convert_global_to_road_coordinates(x, y, road_id)
+            if np.math.fabs(lat) < np.math.fabs(closest_lat):
+                closest_lat, closest_lon, closest_id = lat, lon, road_id
+        return closest_lat, closest_lon, closest_id
+
+    @raises(RoadNotFound, LongitudeOutOfRoad)
+    def _convert_road_to_global_coordinates(self, road_id, lon, lat):
+        # type: (int, float, float) -> (np.array, float)
+        """
+        Given road ID, longitude and latitude along it (relative to its center points), find the matching point in
+        global (cartesian) coordinate frame.
+        :param road_id: road ID as in the map model
+        :param lon: longitude from the beginning of the current road
+        :param lat: latitude relative to road's center points
+        :return: numpy array of 3D point [x, y, z] in global coordinate frame, yaw [rad] in global coordinate frame
+        """
+        road = self._cached_map_model.get_road_data(road_id)
+        points_with_yaw = CartesianFrame.add_yaw(road.points)
+
+        if road.longitudes[0] <= lon <= road.longitudes[-1]:
+            point_ind = np.argmin(np.abs(road.longitudes - lon))  # find index closest to target lon
+            distance_in_lon_from_closest_point = lon - road.longitudes[point_ind]
+            road_point = points_with_yaw[point_ind]
+
+            # Move lat from the rightmost edge of road
+            # Also, fix move along the lon axis by 'distance_in_lon_from_closest_point',
+            # in order to fix the difference caused by the map quantization.
+            lon_lat_shift = np.array([distance_in_lon_from_closest_point, lat - road.width / 2, 1])
+            shifted_point = np.dot(CartesianFrame.homo_matrix_2d(road_point[2], road_point[:2]), lon_lat_shift)
+
+            position_in_world = np.append(shifted_point[:2], [DEFAULT_OBJECT_Z_VALUE])
+            orientation_in_world = road_point[2]
+            return position_in_world, orientation_in_world
+        else:
+            raise LongitudeOutOfRoad("longitude {} is out of road's longitudes range [{}, {}]"
+                                     .format(lon, road.longitudes[0], road.longitudes[-1]))
+
+    @raises(RoadNotFound)
+    def _convert_global_to_road_coordinates(self, x, y, road_id):
+        # type: (float, float, int) -> (float, float)
+        """
+        Convert point in world coordinates (x, y) to (lat, lon) of road with given road_id
+        If the point is on the road (in the sense of longitude), then lat is also the distance between the point
+        and the road. Otherwise lat is the distance but not latitude, because in this case latitude is meaningless.
         :param x: the point's world x coordinate in meters
         :param y: the point's world y coordinate in meters
-        :param road_id:
-        :return: signed lat (relatively to the road center), lon (from road start), road_vec
+        :param road_id: road ID as in the map model
+        :return: signed lat (relatively to the road center), lon (from road start)
         """
-        road_details = self._cached_map_model.roads_data[road_id]
-        longitudes = road_details.longitudes
+        p = np.array([x, y])
+        road = self._cached_map_model.get_road_data(road_id)
+        longitudes = road.longitudes
+
         # find the closest point of the road to (x,y)
-        points = road_details.points[0:2].transpose()
-        dist_2 = np.linalg.norm(np.asarray(points) - (x, y), axis=1)
-        closest_pnt_ind = np.argmin(dist_2)  # index of the closest road point to (x,y)
-        # find the closest segment and the distance (latitude)
-        # given the closest road point, take two adjacent road segments around it and pick the closest segment to (x,y)
-        # proj1, proj2 are projection points of p onto two above segments
-        # lat_dist1, lat_dist2 are latitude distances from p to the segments
-        # sign1, sign2 are the sign of the above two latitudes
-        p = proj1 = proj2 = np.array([x, y])
-        lat_dist1 = lat_dist2 = LARGE_NUM
-        sign1 = sign2 = 0
-        if closest_pnt_ind > 0:
-            sign1, lat_dist1, proj1 = CartesianFrame.calc_point_segment_dist(p, points[closest_pnt_ind - 1],
-                                                                             points[closest_pnt_ind])
-        if closest_pnt_ind < len(points) - 1:
-            sign2, lat_dist2, proj2 = CartesianFrame.calc_point_segment_dist(p, points[closest_pnt_ind],
-                                                                             points[closest_pnt_ind + 1])
-        if lat_dist1 < lat_dist2:
-            lat_dist = lat_dist1
-            sign = sign1
-            lon = proj1 + longitudes[closest_pnt_ind - 1]
-            road_vec = points[closest_pnt_ind] - points[closest_pnt_ind - 1]
-        else:
-            lat_dist = lat_dist2
-            sign = sign2
-            lon = proj2 + longitudes[closest_pnt_ind]
-            road_vec = points[closest_pnt_ind + 1] - points[closest_pnt_ind]
-        return sign, lat_dist, lon, road_vec
+        points = road.points[:, 0:2]
+        distance_to_road_points = np.linalg.norm(np.array(points) - p, axis=0)
+        closest_point_ind = np.argmin(distance_to_road_points)
+
+        # the relevant road segments will be the one before this point, and the one after it, so for both segments:
+        # compute [sign, latitude, longitude, segment_start_point_index]
+        closest_point_ind_pairs = [[closest_point_ind - 1, closest_point_ind], [closest_point_ind, closest_point_ind + 1]]
+        segments = np.array(
+            [np.append(CartesianFrame.calc_point_segment_dist(p, points[idxs[0]], points[idxs[1]]), idxs[0])
+             for idxs in closest_point_ind_pairs
+             if idxs[0] >= 0 and idxs[1] < len(points)])
+
+        # find closest segment by min distance (latitude)
+        closest_segment = segments[np.argmin(segments[:, 1], axis=0)]
+        sign, lat, lon, start_ind = closest_segment[0], closest_segment[1], closest_segment[2], int(closest_segment[3])
+
+        # lat, lon
+        return road.width / 2 + lat * sign, lon + longitudes[start_ind]
 
     @staticmethod
-    def normalize_vec(vec):
-        vec_norm = np.linalg.norm(vec)
-        if vec_norm != 0:
-            return vec / vec_norm
-        else:
-            return vec
+    def _normalize_matrix_rows(mat):
+        # type: (np.array) -> np.array
+        """
+        normalize vector, prevent division by zero
+        :param mat: 2D numpy array
+        :return: normalized vector (numpy array)
+        """
+        norms = np.linalg.norm(mat, axis=1)[np.newaxis].T
+        norms[np.where(norms == 0.0)] = 1.0
+        return np.divide(mat, norms)
