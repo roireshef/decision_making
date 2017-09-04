@@ -19,7 +19,7 @@ class NavigationFacade(DmModule):
         pass
 
     def _periodic_action_impl(self):
-        self.__publish_navigation_plan(self.handler.plan())
+        self._publish_navigation_plan(self.handler.plan())
 
-    def __publish_navigation_plan(self, plan: NavigationPlanMsg):
+    def _publish_navigation_plan(self, plan: NavigationPlanMsg):
         self.dds.publish(NAVIGATION_PLAN_PUBLISH_TOPIC, plan)
