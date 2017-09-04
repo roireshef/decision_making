@@ -97,36 +97,36 @@ def test_convertRoadToGlobalCoordinates_accurateConversion(testable_map_api):
     # plt.show()
 
 
-def test_advanceToEndOfPlan_accurate(testable_map_api):
-    navigation_plan = NavigationPlanMsg(road_ids=[1, 2])
-    start_lon = 10.0
-    first_road_length = testable_map_api.cached_map_model.get_road_data(1).longitudes[-1]
-    second_road_length = testable_map_api.cached_map_model.get_road_data(2).longitudes[-1]
-    roads_id, roads_len, roads_dist_to_end = testable_map_api.advance_to_end_of_plan(1, start_lon, navigation_plan)
+# def test_advanceToEndOfPlan_accurate(testable_map_api):
+#     navigation_plan = NavigationPlanMsg(road_ids=[1, 2])
+#     start_lon = 10.0
+#     first_road_length = testable_map_api.cached_map_model.get_road_data(1).longitudes[-1]
+#     second_road_length = testable_map_api.cached_map_model.get_road_data(2).longitudes[-1]
+#     roads_id, roads_len, roads_dist_to_end = testable_map_api.advance_to_end_of_plan(1, start_lon, navigation_plan)
+#
+#     # Check that we got to the end of the plan
+#     assert roads_id == 2
+#     assert roads_len == second_road_length
+#     assert roads_dist_to_end == first_road_length + second_road_length - start_lon
 
-    # Check that we got to the end of the plan
-    assert roads_id == 2
-    assert roads_len == second_road_length
-    assert roads_dist_to_end == first_road_length + second_road_length - start_lon
 
-
-def test_advanceOnPlan_accurate(testable_map_api):
-    navigation_plan = NavigationPlanMsg(road_ids=[1, 2])
-    path_total_len = MAP_INFLATION_FACTOR * (6 - 0.1)
-    start_lon = 10.0
-    first_road_length = testable_map_api.cached_map_model.get_road_data(1).longitudes[-1]
-    advance_in_lon = path_total_len * 0.9
-
-    road_id, lon = testable_map_api.advance_on_plan(1, start_lon, advance_in_lon, navigation_plan)
-
-    # Check that the longitude on the second road equals to the advantage in lon, minus the first road's length
-    assert road_id == 2
-    assert lon == (start_lon + advance_in_lon - first_road_length)
+# def test_advanceOnPlan_accurate(testable_map_api):
+#     navigation_plan = NavigationPlanMsg(road_ids=[1, 2])
+#     path_total_len = MAP_INFLATION_FACTOR * (6 - 0.1)
+#     start_lon = 10.0
+#     first_road_length = testable_map_api.cached_map_model.get_road_data(1).longitudes[-1]
+#     advance_in_lon = path_total_len * 0.9
+#
+#     road_id, lon = testable_map_api.advance_on_plan(1, start_lon, advance_in_lon, navigation_plan)
+#
+#     # Check that the longitude on the second road equals to the advantage in lon, minus the first road's length
+#     assert road_id == 2
+#     assert lon == (start_lon + advance_in_lon - first_road_length)
 
 
 def test_findClosestRoad_accurate(testable_map_api):
     point_close_to_road_1 = np.array([0.9, -0.1]) * MAP_INFLATION_FACTOR
-    closest_lat, closest_lon, closest_id = testable_map_api.find_closest_road(point_close_to_road_1[0],
+    closest_id, closest_lon, closest_lat = testable_map_api.find_closest_road(point_close_to_road_1[0],
                                                                               point_close_to_road_1[1], [1, 2])
 
     # Check that closest road is 1 and (lat, lon) location is correct
@@ -136,7 +136,7 @@ def test_findClosestRoad_accurate(testable_map_api):
                            ROAD_WIDTH / 2 + point_close_to_road_1[1])  # center of lane + dist from center of lane
 
     point_close_to_road_2 = np.array([0.7, 1.1]) * MAP_INFLATION_FACTOR
-    closest_lat, closest_lon, closest_id = testable_map_api.find_closest_road(point_close_to_road_2[0],
+    closest_id, closest_lon, closest_lat = testable_map_api.find_closest_road(point_close_to_road_2[0],
                                                                               point_close_to_road_2[1], [1, 2])
 
     # Check that closest road is 2 and (lat, lon) location is correct
