@@ -17,8 +17,11 @@ class LongitudeOutOfRoad(Exception):
 class MapCellNotFound(Exception):
     pass
 
-# a decorator that determines that a function may raise a specific exception
+
 def raises(*e: Exception):
+    """
+    A decorator that determines that a function may raise a specific exception
+    """
     def decorator(func):
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)

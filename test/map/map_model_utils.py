@@ -3,7 +3,7 @@ from typing import Dict
 import numpy as np
 import pygame
 
-from decision_making.src.map.constants import Sidewalk, EARTH_RADIUS, EPSILON
+from decision_making.src.map.constants import Sidewalk, EARTH_RADIUS, EPSILON, ROADS_MAP_TILE_SIZE
 from decision_making.src.map.map_model import MapModel, RoadDetails
 
 
@@ -32,7 +32,8 @@ class TestMapModelUtils:
                                                           xy2road_map=xy2road_map)
 
         # Generate model
-        map_model = MapModel(roads_data=roads_data, incoming_roads={}, outgoing_roads={}, xy2road_map=xy2road_map)
+        map_model = MapModel(roads_data=roads_data, incoming_roads={}, outgoing_roads={}, xy2road_map=xy2road_map,
+                             xy2road_tile_size=ROADS_MAP_TILE_SIZE)
 
         return map_model
 

@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Union
+from typing import Union, Optional
 from decision_making.src.exceptions import RoadNotFound, raises
 from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
 
@@ -19,17 +19,24 @@ class NavigationPlanMsg(DDSNonTypedMsg):
         self.road_ids = np.array(road_ids)
 
     @raises(RoadNotFound)
-    def get_road_index_in_plan(self, road_id):
-        # type:  (int) -> int
+    def get_road_index_in_plan(self, road_id, start=None, end=None):
+        # type:  (int, Optional[int], Optional[Int]) -> int
         """
         Given a road_id, returns the index of this road_id in the navigation plan
         :param road_id: the request road_id to look for in the plan
+        :param start: optional. starting index to look from in the plan (inclusive)
+        :param end: optional. ending index to look up to in the plan (inclusive)
         :return: index of road_id in the plan
         """
         try:
-            return np.where(self.road_ids == road_id)[0][0]
+            if start is None:
+                start = 0
+            if end is None:
+                end = len(self.road_ids)
+            return np.where(self.road_ids[start:(end+1)] == road_id)[0][0] + start
         except IndexError:
-            raise RoadNotFound("Road ID %d is not in plan's road-IDs [%s]", road_id, str(self.road_ids))
+            raise RoadNotFound("Road ID {} is not in clipped [{}, {}] plan's road-IDs [{}]"
+                               .format(road_id, start, end, self.road_ids[start:(end+1)]))
 
     @raises(RoadNotFound)
     def get_next_road(self, road_id):

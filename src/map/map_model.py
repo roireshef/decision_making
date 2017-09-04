@@ -60,12 +60,18 @@ class RoadDetails:
 
 
 class MapModel:
-    def __init__(self, roads_data, incoming_roads, outgoing_roads, xy2road_map):
-        # type: (Dict[int, RoadDetails], Dict[int, List[int]], Dict[int, List[int]], Dict[(float, float), List[int]]) -> None
+    def __init__(self, roads_data, incoming_roads, outgoing_roads, xy2road_map, xy2road_tile_size):
+        # type: (Dict[int, RoadDetails], Dict[int, List[int]], Dict[int, List[int]], Dict[(float, float), List[int]], float) -> None
         self.__roads_data = copy.deepcopy(roads_data)  # dictionary: road_id -> RoadDetails
         self.__incoming_roads = copy.deepcopy(incoming_roads)  # dictionary: node id -> incoming roads
         self.__outgoing_roads = copy.deepcopy(outgoing_roads)  # dictionary: node id -> outgoing roads
         self.__xy2road_map = copy.deepcopy(xy2road_map)  # maps world coordinates to road_ids
+        self.__xy2road_tile_size = xy2road_tile_size
+
+    @property
+    def xy2road_tile_size(self):
+        # type: () -> float
+        return self.__xy2road_tile_size
 
     def get_road_data(self, road_id):
         # type: (int) -> RoadDetails

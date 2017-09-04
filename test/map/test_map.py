@@ -14,19 +14,19 @@ def map_fixture():
 
 def test_find_roads_containing_point(map_fixture):
     correct_road_ids_list = [1, 2]
-    road_ids = map_fixture.find_roads_containing_point(0, -30, 50)
+    road_ids = map_fixture._find_roads_containing_point(0, -30, 50)
     np.testing.assert_array_equal(correct_road_ids_list, road_ids)
 
     correct_road_ids_list = [1]
-    road_ids = map_fixture.find_roads_containing_point(0, -20, 50)
+    road_ids = map_fixture._find_roads_containing_point(0, -20, 50)
     np.testing.assert_array_equal(correct_road_ids_list, road_ids)
 
     correct_road_ids_list = [1, 2]
-    road_ids = map_fixture.find_roads_containing_point(0, 30, -50)
+    road_ids = map_fixture._find_roads_containing_point(0, 30, -50)
     np.testing.assert_array_equal(correct_road_ids_list, road_ids)
 
     correct_road_ids_list = [2]
-    road_ids = map_fixture.find_roads_containing_point(0, -20, -50)
+    road_ids = map_fixture._find_roads_containing_point(0, -20, -50)
     np.testing.assert_array_equal(correct_road_ids_list, road_ids)
 
 

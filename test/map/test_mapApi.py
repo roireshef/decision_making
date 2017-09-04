@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
 
+from typing import List
+
 from decision_making.src.map.map_api import MapAPI
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.test.map.map_model_utils import TestMapModelUtils
@@ -25,7 +27,7 @@ class TestableMapApi(MapAPI):
         return self._convert_road_to_global_coordinates(road_id, lon, lat)
 
     def find_closest_road(self, x, y, road_ids):
-        # type: (float, float, List[int]) -> (float, float, int)
+        # type: (float, float, List[int]) -> (int, float, float)
         return self._find_closest_road(x, y, road_ids)
 
     @property
@@ -129,7 +131,7 @@ def test_advanceOnPlan_accurate(testable_map_api):
 
 def test_findClosestRoad_accurate(testable_map_api):
     point_close_to_road_1 = np.array([0.9, -0.1]) * MAP_INFLATION_FACTOR
-    closest_lat, closest_lon, closest_id = testable_map_api.find_closest_road(point_close_to_road_1[0],
+    closest_id, closest_lon, closest_lat = testable_map_api.find_closest_road(point_close_to_road_1[0],
                                                                               point_close_to_road_1[1], [1, 2])
 
     # Check that closest road is 1 and (lat, lon) location is correct
@@ -139,7 +141,7 @@ def test_findClosestRoad_accurate(testable_map_api):
                            ROAD_WIDTH / 2 + point_close_to_road_1[1])  # center of lane + dist from center of lane
 
     point_close_to_road_2 = np.array([0.7, 1.1]) * MAP_INFLATION_FACTOR
-    closest_lat, closest_lon, closest_id = testable_map_api.find_closest_road(point_close_to_road_2[0],
+    closest_id, closest_lon, closest_lat = testable_map_api.find_closest_road(point_close_to_road_2[0],
                                                                               point_close_to_road_2[1], [1, 2])
 
     # Check that closest road is 2 and (lat, lon) location is correct
