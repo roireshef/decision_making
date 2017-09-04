@@ -22,7 +22,7 @@ class DmProcess:
         self._queue = Queue()
 
         process_name = "DM_process_{}".format(self.name)
-        self.process = Process(target=self._module_process_entry, name=process_name)
+        self.process = Process(target=self._module_process_entry, name=process_name, daemon=True)
 
         self._trigger = None
         self._module_instance = None

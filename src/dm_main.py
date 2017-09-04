@@ -1,4 +1,4 @@
-import numpy as np
+import time
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import *
@@ -87,6 +87,12 @@ def main():
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
     manager = DmManager(logger, modules_list)
     manager.start_modules()
+    try:
+        manager.wait_for_submodules()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        manager.stop_modules()
 
 
 main()

@@ -36,3 +36,12 @@ class DmManager:
                 self._logger.error('module %s has not stopped', dm_process.name)
 
         self._logger.debug('stopping all DM modules complete')
+
+    def wait_for_submodules(self) -> None:
+        """
+        wait until all submodules have stopped
+        :return:
+        """
+        for dm_process in self._dm_process_list:
+            dm_process.process.join()
+            self._logger.info('module %s has stopped', dm_process.name)
