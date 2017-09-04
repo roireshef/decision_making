@@ -78,44 +78,6 @@ class MapAPI:
         resampled, _ = CartesianFrame.resample_curve(shifted, lon_step)
         return resampled
 
-    # TODO: rewrite. split into few methods? the name doesn't explain the function
-    def convert_world_to_lat_lon(self, x, y, z, yaw):
-        # type: (float, float, float, float) -> (int, int, float, float, float, float)
-        """
-        Given 3D world point, calculate:
-            1. road_id,
-            2. lane from left,
-            3. latitude relatively to the road's left edge,
-            4. longitude relatively to the road's start
-            5. yaw relatively to the road
-        The function uses the rendered map that for every square meter stores the road_id containing it.
-        If the point is outside any road, return road_id according to the navigation plan.
-        :param x:
-        :param y:
-        :param z:
-        :param yaw:
-        :return: road_id, lane, full latitude, lane_lat, longitude, yaw_in_road
-        """
-        # use road_id by navigation if the point is outside the roads
-        road_ids = self.find_roads_containing_point(DEFAULT_MAP_LAYER, x, y)
-
-        if len(road_ids) == 0:
-            raise Exception("convert_world_to_lat_lon failed to find the road")
-
-        # find the closest road to (x,y) among the road_ids list
-        (lat_dist, sign, lon, road_yaw, road_id) = self._find_closest_road(x, y, road_ids)
-
-        road_details = self._get_road(road_id)
-        lanes_num = road_details.lanes_num
-        lane_width = road_details.width / float(lanes_num)
-
-        # calc lane number, intra-lane lat and yaw
-        full_lat = lat_dist * sign + 0.5 * lanes_num * lane_width  # latitude relatively to the right road edge
-        lane = float(int(full_lat / lane_width))  # from right to left
-        lane = np.clip(lane, 0, lanes_num - 1)
-        yaw_in_road = (yaw - road_yaw + 2 * np.pi) % (2 * np.pi)
-        lane_lat = full_lat % lane_width
-        return road_id, lane, full_lat, lane_lat, lon, yaw_in_road
 
     # TODO: rewrite as vector ops + raise exception and drop boolean
     # TODO: change to work with Nx2
@@ -189,6 +151,7 @@ class MapAPI:
         center_lanes = lane_width / 2 + np.array(range(lanes_num)) * lane_width
         return center_lanes
 
+    # TODO: make private
     @raises(RoadNotFound, LongitudeOutOfRoad)
     def get_lookahead_points(self, initial_road_id, initial_lon, desired_lon, desired_lat_shift, navigation_plan):
         # type: (int, float, float, float, NavigationPlanMsg) -> np.ndarray
