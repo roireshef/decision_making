@@ -30,7 +30,7 @@ class Paths:
     @staticmethod
     def get_resource_absolute_path_filename(filename):
         # type: (str) -> str
-        return os.path.join(Paths.get_config_path(), filename)
+        return os.path.join(Paths.get_resource_path(), filename)
 
     @staticmethod
     def get_resource_path():
