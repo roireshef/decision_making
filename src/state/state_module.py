@@ -43,9 +43,9 @@ class StateModule(DmModule):
         self.logger.info("got dynamic objects %s", objects)
 
         if self._ego_state is None:
-            self.logger.warn("StateModule is trying to parse dynamic objects with None EgoState. "
-                             "Since objects are given in ego-vehicle's coordinate frame this is impossible. Aborting.")
-            pass
+            self.logger.warning("StateModule is trying to parse dynamic objects with None EgoState. " +
+                                "Since objects are given in ego-vehicle's coordinate frame this is impossible. Aborting.")
+            return
 
         ego = self._ego_state
         ego_pos = np.array([ego.x, ego.y, ego.z])
@@ -112,8 +112,8 @@ class StateModule(DmModule):
         timestamp = occupancy["timestamp"]
         free_space_points = occupancy["free_space_points"]
 
-        points_list = [point[0:3] for point in free_space_points]
-        confidence_list = [point[3] for point in free_space_points]
+        points_list = [[float(point[0]), float(point[1]), float(point[2])] for point in free_space_points]
+        confidence_list = [float(point[3]) for point in free_space_points]
 
         with self._occupancy_state_lock:
             self._occupancy_state = OccupancyState(timestamp, np.array(points_list), np.array(confidence_list))
