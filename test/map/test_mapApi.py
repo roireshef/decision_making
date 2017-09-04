@@ -13,6 +13,9 @@ MAP_INFLATION_FACTOR = 300.0
 
 
 class TestableMapApi(MapAPI):
+    """
+    Wrapper for the tests to be able to call protected methods.
+    """
     def shift_road_vector_in_latitude(self, points, lat_shift):
         # type: (np.ndarray, float) -> np.ndarray
         return self._shift_road_points(points, lat_shift)
