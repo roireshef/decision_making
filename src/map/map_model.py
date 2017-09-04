@@ -61,17 +61,12 @@ class RoadDetails:
 
 class MapModel:
     def __init__(self, roads_data, incoming_roads, outgoing_roads, xy2road_map, xy2road_tile_size):
-        # type: (Dict[int, RoadDetails], Dict[int, List[int]], Dict[int, List[int]], Dict[(float, float), List[int]], float) -> None
+        # type: (Dict[int, RoadDetails], Dict[int, List[int]], Dict[int, List[int]], Dict[(int, float, float), List[int]], float) -> None
         self.__roads_data = copy.deepcopy(roads_data)  # dictionary: road_id -> RoadDetails
         self.__incoming_roads = copy.deepcopy(incoming_roads)  # dictionary: node id -> incoming roads
         self.__outgoing_roads = copy.deepcopy(outgoing_roads)  # dictionary: node id -> outgoing roads
         self.__xy2road_map = copy.deepcopy(xy2road_map)  # maps world coordinates to road_ids
-        self.__xy2road_tile_size = xy2road_tile_size
-
-    @property
-    def xy2road_tile_size(self):
-        # type: () -> float
-        return self.__xy2road_tile_size
+        self.xy2road_tile_size = xy2road_tile_size
 
     def get_road_data(self, road_id):
         # type: (int) -> RoadDetails
@@ -81,7 +76,7 @@ class MapModel:
             raise RoadNotFound("MapModel doesn't have road {}".format(road_id))
 
     def get_xy2road_cell(self, coordinates):
-        # type: ((float, float)) -> List[Int]
+        # type: ((int, float, float)) -> List[int]
         try:
             return self.__xy2road_map.get(coordinates)
         except KeyError:

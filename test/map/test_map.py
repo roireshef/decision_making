@@ -1,112 +1,109 @@
 import pytest
 
 from rte.python.logger.AV_logger import AV_Logger
+from spav.decision_making.paths import Paths
 from spav.decision_making.src.map.map_api import *
 from spav.decision_making.src.map.naive_cache_map import NaiveCacheMap
 
+import pickle
 
 @pytest.fixture()
 def map_fixture():
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
-    # TODO: change to paths.py function once commited
-    yield NaiveCacheMap("../../resources/maps/CustomMapPickle.bin", logger)
+
+    map_model_filename = Paths.get_resource_absolute_path_filename("maps/CustomMapPickle.bin")
+    map_model = pickle.load(open(map_model_filename, "rb"))
+
+    # TODO: temporal fix
+    map_model.xy2road_tile_size = ROADS_MAP_TILE_SIZE
+    trans_roads_data = {}
+    for rid, road in map_model.roads_data.items():
+        road.points = np.transpose(road.points)
+        trans_roads_data[rid] = road
+    map_model.roads_data = trans_roads_data
+    yield NaiveCacheMap(map_model, logger)
 
 
 def test_find_roads_containing_point(map_fixture):
     correct_road_ids_list = [1, 2]
-    road_ids = map_fixture._find_roads_containing_point(0, -30, 50)
+    road_ids = map_fixture._find_roads_containing_point(-30, 50)
     np.testing.assert_array_equal(correct_road_ids_list, road_ids)
 
     correct_road_ids_list = [1]
-    road_ids = map_fixture._find_roads_containing_point(0, -20, 50)
+    road_ids = map_fixture._find_roads_containing_point(-20, 50)
     np.testing.assert_array_equal(correct_road_ids_list, road_ids)
 
     correct_road_ids_list = [1, 2]
-    road_ids = map_fixture._find_roads_containing_point(0, 30, -50)
+    road_ids = map_fixture._find_roads_containing_point(30, -50)
     np.testing.assert_array_equal(correct_road_ids_list, road_ids)
 
     correct_road_ids_list = [2]
-    road_ids = map_fixture._find_roads_containing_point(0, -20, -50)
+    road_ids = map_fixture._find_roads_containing_point(-20, -50)
     np.testing.assert_array_equal(correct_road_ids_list, road_ids)
 
 
 def test_get_center_lanes_latitudes(map_fixture):
     road_id = 1
-    lanes_num, width, length, points = map_fixture.get_road_main_details(road_id)
+    lanes_num = map_fixture._get_road(road_id).lanes_num
+    width = map_fixture._get_road(road_id).width
     lane_wid = width / lanes_num
     correct_lat_list = np.arange(lane_wid / 2, width, lane_wid)
     lanes_lat = map_fixture.get_center_lanes_latitudes(road_id)
     np.testing.assert_array_almost_equal(correct_lat_list, lanes_lat)
 
-
-def test_convert_world_to_lat_lon(map_fixture):
-    points = [[20, 51], [20, -49], [20, 71]]
-    lat_lon = [[1, 50], [2, 10], []]
-
-    for i, p in enumerate(points):
-        try:
-            road_id, lane, full_lat, lane_lat, lon, yaw_in_road = map_fixture.convert_world_to_lat_lon(p[0], p[1], 0, 0)
-            assert lane_lat == lat_lon[i][0] and lon == lat_lon[i][1]
-        except:
-            assert len(lat_lon[i]) == 0
-            print("the point is outside any road")
-
-
+# TODO: expect certain values
 def test_get_point_relative_longitude(map_fixture):
     navigation_plan = NavigationPlanMsg([1, 2])
 
-    lanes_num, width, length, points = map_fixture.get_road_main_details(1)
+    length = map_fixture._get_road(1).longitudes[-1]
+
     from_lon_in_road = 20
     to_lon_in_road = 10
-    max_lookahead_distance = 500
-    total_lon_distance = map_fixture.get_point_relative_longitude(from_road_id=1, from_lon_in_road=from_lon_in_road,
-                                                                  to_road_id=2, to_lon_in_road=to_lon_in_road,
-                                                                  max_lookahead_distance=max_lookahead_distance,
-                                                                  navigation_plan=navigation_plan)
+    total_lon_distance = map_fixture.get_longitudinal_difference(init_road_id=1, init_lon=from_lon_in_road,
+                                                                 final_road_id=2, final_lon=to_lon_in_road,
+                                                                 navigation_plan=navigation_plan)
     assert total_lon_distance == length - from_lon_in_road + to_lon_in_road
 
     from_lon_in_road = 10
     to_lon_in_road = 170
-    max_lookahead_distance = 150  # less than the distance between the given points
-    total_lon_distance = map_fixture.get_point_relative_longitude(from_road_id=2, from_lon_in_road=from_lon_in_road,
-                                                                  to_road_id=2, to_lon_in_road=to_lon_in_road,
-                                                                  max_lookahead_distance=max_lookahead_distance,
-                                                                  navigation_plan=navigation_plan)
+    total_lon_distance = map_fixture.get_longitudinal_difference(init_road_id=2, init_lon=from_lon_in_road,
+                                                                 final_road_id=2, final_lon=to_lon_in_road,
+                                                                 navigation_plan=navigation_plan)
     assert to_lon_in_road - from_lon_in_road - 10 < total_lon_distance < to_lon_in_road - from_lon_in_road + 10
 
 
 def test_get_path_lookahead(map_fixture):
-    lanes_num, width, length, points = map_fixture.get_road_main_details(1)
+    points = map_fixture._get_road(1).points
+    width = map_fixture._get_road(1).width
     navigation_plan = NavigationPlanMsg([1, 2])
-    max_lookahead_distance = 50  # test short path
+    lookahead_distance = 50  # test short path
     road_id = 1
     lon = 10
     lat = 2  # right lane
-    path1 = map_fixture.get_path_lookahead(road_id, lon, lat, max_lookahead_distance, navigation_plan)
+    path1 = map_fixture.get_lookahead_points(road_id, lon, lookahead_distance, lat, navigation_plan)
     path_x = path1[0]
     path_y = path1[1]
     assert path_x[0] == -30 + lon
-    assert path_x[-1] == -30 + lon + max_lookahead_distance
+    assert path_x[-1] == -30 + lon + lookahead_distance
     for p in range(path1.shape[1]):
         assert path_y[p] == points[1][0] - width / 2 + lat
 
-    max_lookahead_distance = 200  # test path including two road_ids
-    path2 = map_fixture.get_path_lookahead(road_id, lon, lat, max_lookahead_distance, navigation_plan)
+    lookahead_distance = 200  # test path including two road_ids
+    path2 = map_fixture.get_path_lookahead(road_id, lon, lat, lookahead_distance, navigation_plan)
     segments = np.diff(path2, axis=1)
     segments_norm = np.linalg.norm(segments, axis=0)
     path_length_small_radius = np.sum(segments_norm)
-    assert max_lookahead_distance - 10 < path_length_small_radius < max_lookahead_distance
+    assert lookahead_distance - 10 < path_length_small_radius < lookahead_distance
 
     lat = 4  # left lane
-    path3 = map_fixture.get_path_lookahead(road_id, lon, lat, max_lookahead_distance, navigation_plan)
+    path3 = map_fixture.get_path_lookahead(road_id, lon, lat, lookahead_distance, navigation_plan)
     segments = np.diff(path3, axis=1)
     segments_norm = np.linalg.norm(segments, axis=0)
     path_length_large_radius = np.sum(segments_norm)
-    assert max_lookahead_distance < path_length_large_radius < max_lookahead_distance + 10
+    assert lookahead_distance < path_length_large_radius < lookahead_distance + 10
 
 
 def test_get_uniform_path_lookahead(map_fixture):
-    lanes_num, width, length, points = map_fixture.get_road_main_details(1)
     navigation_plan = NavigationPlanMsg([1, 2])
     road_id = 1
     lon = 10
