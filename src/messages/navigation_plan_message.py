@@ -64,9 +64,9 @@ class NavigationPlanMsg(DDSNonTypedMsg):
         """
         try:
             plan_index = self.get_road_index_in_plan(road_id)
-            next_road_id = self.road_ids[plan_index - 1]
-            return next_road_id
+            prev_road_id = self.road_ids[plan_index - 1]
+            return prev_road_id
         except (IndexError, RoadNotFound) as e:
-            raise RoadNotFound("Navigation: Can't find the next road_id to #" + str(road_id) + " in plan " +
+            raise RoadNotFound("Navigation: Can't find the prev road_id to #" + str(road_id) + " in plan " +
                                str(self.road_ids) + ". " + str(e))
 
