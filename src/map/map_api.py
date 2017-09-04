@@ -164,6 +164,42 @@ class MapAPI:
         road_width = self._cached_map_model.get_road_data(road_id).width
         return self._convert_road_to_global_coordinates(road_id, lon, -road_width / 2)
 
+    '''###################'''
+    ''' PRIVATE FUNCTIONS '''
+    '''###################'''
+
+    @raises(RoadNotFound)
+    def _get_road(self, road_id):
+        return self._cached_map_model.get_road_data(road_id)
+
+    @staticmethod
+    def _shift_road_points(points, lateral_shift):
+        # type: (np.ndarray, float) -> np.ndarray
+        """
+        Given points list along a road, shift them laterally by lat_shift meters
+        :param points (Nx2): points list along a given road
+        :param lateral_shift: shift in meters
+        :return: shifted points array (Nx2)
+        """
+        points_direction = np.diff(points, axis=0)
+        direction_unit_vec = MapAPI._normalize_matrix_rows(points_direction)
+        normal_unit_vec = np.c_[-direction_unit_vec[:, 1], direction_unit_vec[:, 0]]
+        normal_unit_vec = np.concatenate((normal_unit_vec, normal_unit_vec[-1, np.newaxis]))
+        shifted_points = points + normal_unit_vec * lateral_shift
+        return shifted_points
+
+    @raises(RoadNotFound)
+    def _shift_road_points_from_rightside(self, road_id, latitude_shift):
+        """
+        Returns Road.points shifted by <latitude_shift> relative to road's right-side
+        :param road_id: 
+        :param latitude_shift: 
+        :return: 
+        """
+        road = self._get_road(road_id)
+        return self._shift_road_points_in_latitude(road.points, latitude_shift - road.width / 2)
+
+    @raises(RoadNotFound)
     def _find_closest_road(self, x, y, road_ids):
         # type: (float, float, List[int]) -> (float, float, int)
         """
@@ -183,22 +219,6 @@ class MapAPI:
             if np.math.fabs(lat) < np.math.fabs(closest_lat):
                 closest_lat, closest_lon, closest_id = lat, lon, road_id
         return closest_lat, closest_lon, closest_id
-
-    @staticmethod
-    def _lateral_shift_road_points(points, lat_shift):
-        # type: (np.ndarray, float) -> np.ndarray
-        """
-        Given points list along a road, shift them laterally by lat_shift meters
-        :param points (Nx2): points list along a given road
-        :param lat_shift: shift in meters
-        :return: shifted points array (Nx2)
-        """
-        points_direction = np.diff(points, axis=0)
-        direction_unit_vec = MapAPI._normalize_matrix_rows(points_direction)
-        normal_unit_vec = np.c_[-direction_unit_vec[:, 1], direction_unit_vec[:, 0]]
-        normal_unit_vec = np.concatenate((normal_unit_vec, normal_unit_vec[-1, np.newaxis]))
-        shifted_points = points + normal_unit_vec * lat_shift
-        return shifted_points
 
     @raises(RoadNotFound, LongitudeOutOfRoad)
     def _convert_road_to_global_coordinates(self, road_id, lon, lat):
@@ -229,8 +249,8 @@ class MapAPI:
             orientation_in_world = road_point[2]
             return position_in_world, orientation_in_world
         else:
-            raise LongitudeOutOfRoad("longitude %f is out of road's longitudes range [%f, %f]",
-                                     lon, road.longitudes[0], road.longitudes[-1])
+            raise LongitudeOutOfRoad("longitude {} is out of road's longitudes range [{}, {}]"
+                                     .format(lon, road.longitudes[0], road.longitudes[-1]))
 
     @raises(RoadNotFound)
     def _convert_global_to_road_coordinates(self, x, y, road_id):
@@ -245,11 +265,11 @@ class MapAPI:
         :return: signed lat (relatively to the road center), lon (from road start)
         """
         p = np.array([x, y])
-        road_details = self._cached_map_model.get_road_data(road_id)
-        longitudes = road_details.longitudes
+        road = self._cached_map_model.get_road_data(road_id)
+        longitudes = road.longitudes
 
         # find the closest point of the road to (x,y)
-        points = road_details.points[:, 0:2]
+        points = road.points[:, 0:2]
         distance_to_road_points = np.linalg.norm(np.array(points) - p, axis=0)
         closest_point_ind = np.argmin(distance_to_road_points)
 
@@ -266,7 +286,7 @@ class MapAPI:
         sign, lat, lon, start_ind = closest_segment[0], closest_segment[1], closest_segment[2], int(closest_segment[3])
 
         # lat, lon
-        return road_details.width / 2 + lat * sign, lon + longitudes[start_ind]
+        return road.width / 2 + lat * sign, lon + longitudes[start_ind]
 
     @staticmethod
     def _normalize_matrix_rows(mat):
@@ -277,11 +297,5 @@ class MapAPI:
         :return: normalized vector (numpy array)
         """
         norms = np.linalg.norm(mat, axis=1)[np.newaxis].T
-        zero_norm_idx = np.where(norms == 0.0)
-
-        if len(zero_norm_idx) > 0:
-            MapAPI.logger.warning('Called normalization on a zero vector %d times (division by zero)',
-                                  len(zero_norm_idx))
-            norms[zero_norm_idx] = 1.0
-
+        norms[np.where(norms == 0.0)] = 1.0
         return np.divide(mat, norms)
