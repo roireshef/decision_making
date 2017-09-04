@@ -43,7 +43,10 @@ SX_STEPS, SV_STEPS, DX_STEPS = 5, 10, 5
 EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 0, 0, 0
 
 # [m] Default height for objects - State Module
-DEFAULT_OBJECT_Z_VALUE = 0
+DEFAULT_OBJECT_Z_VALUE = 0.
+
+# [int] Default layer on map (0 means ground)
+DEFAULT_MAP_LAYER = 0
 
 ### DM Manager configuration ###
 BEHAVIORAL_PLANNING_MODULE_PERIOD = 1
@@ -64,8 +67,7 @@ OCCUPANCY_STATE_SUBSCRIBE_TOPIC = "StateSubscriber::OccupancyStateReader"
 STATE_PUBLISH_TOPIC = "StatePublisher::StateWriter"
 
 # Maps
-MAPS_DIR = os.path.join(os.path.dirname(__file__), '../resources/maps/')
-MAP_FILE_NAME = os.path.join(MAPS_DIR, 'testingGroundMap.bin')
+MAP_RESOURCE_FILE_NAME = os.path.join('maps', 'testingGroundMap.bin')
 
 # Navigation Planning Module
 NAVIGATION_PLAN_PUBLISH_TOPIC = "NavigationPublisher::NavigationPlanWriter"
