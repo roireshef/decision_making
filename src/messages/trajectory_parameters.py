@@ -34,8 +34,8 @@ class TrajectoryCostParams(DDSTypedMsg):
         :param right_shoulder_cost: defines the sigmoid cost of the right-shoulder of the road (physical boundary)
         :param obstacle_cost: defines the sigmoid cost of obstacles
         :param dist_from_ref_sq_cost_coef: if cost of distance from the reference route is C(x) = a*x^2, this is a.
-        :param velocity_limits: 1D numpy array of [min allowed velocity, max allowed velocity]
-        :param acceleration_limits: 1D numpy array of [min allowed acceleration, max allowed acceleration]
+        :param velocity_limits: 1D numpy array of [min allowed velocity, max allowed velocity] in [m/sec]
+        :param acceleration_limits: 1D numpy array of [min allowed acceleration, max allowed acceleration] in [m/sec^2]
         """
         self.obstacle_cost = obstacle_cost
         self.left_lane_cost = left_lane_cost

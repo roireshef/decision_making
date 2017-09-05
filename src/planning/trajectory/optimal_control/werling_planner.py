@@ -27,6 +27,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
     def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, time: float,
              cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
+        """ see base class """
         # create road coordinate-frame
         frenet = FrenetMovingFrame(reference_route)
 
@@ -91,10 +92,10 @@ class WerlingPlanner(TrajectoryPlanner):
         :param cost_params: A CostParams instance specifying the required limitations
         :return: a numpy array of valid trajectories. shape is [reduced_t, p, 6]
         """
-        conforms = np.all((ftrajectories[:, :, F_SV] >= cost_params.velocity_limits[0]) &
-                          (ftrajectories[:, :, F_SV] <= cost_params.velocity_limits[1]) &
-                          (ftrajectories[:, :, F_SA] >= cost_params.acceleration_limits[0]) &
-                          (ftrajectories[:, :, F_SA] <= cost_params.acceleration_limits[1]), axis=1)
+        conforms = np.all((np.greater_equal(ftrajectories[:, :, F_SV], cost_params.velocity_limits[0])) &
+                          (np.less_equal(ftrajectories[:, :, F_SV], cost_params.velocity_limits[1])) &
+                          (np.greater_equal(ftrajectories[:, :, F_SA], cost_params.acceleration_limits[0])) &
+                          (np.less_equal(ftrajectories[:, :, F_SA], cost_params.acceleration_limits[1])), axis=1)
         return ftrajectories[conforms]
 
     @staticmethod
