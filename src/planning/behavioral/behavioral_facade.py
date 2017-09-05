@@ -43,6 +43,7 @@ class BehavioralFacade(DmModule):
             state = self._get_current_state()
             navigation_plan = self._get_current_navigation_plan()
 
+            self.logger.debug(state.ego_state.x, state.ego_state.y, state.ego_state.yaw)
             self._behavioral_state.update_behavioral_state(state, navigation_plan)
             trajectory_params, behavioral_visualization_message = self._policy.plan(
                 behavioral_state=self._behavioral_state)
