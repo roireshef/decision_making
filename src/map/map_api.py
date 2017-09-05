@@ -36,12 +36,19 @@ class MapAPI:
         projecting it onto this road
         :param x: x coordinate in global coordinate frame
         :param y: y coordinate in global coordinate frame
-        :return: Road ID, longitude from the road's start, latitude **relative to road's right-side**
+        :return: Road ID, longitude from the road's start, latitude **relative to road's right-side**,
+            is object within road latitudes; is object within road longitudes
         """
         relevant_road_ids = self._find_roads_containing_point(x, y)
         closest_road_id, _, _ = self._find_closest_road(x, y, relevant_road_ids)
         lon, lat = self._convert_global_to_road_coordinates(x, y, closest_road_id)
-        return closest_road_id, lon, lat
+
+        road_details = self._get_road(closest_road_id)
+        road_length = road_details.longitudes[-1]
+        road_width = road_details.width
+        is_within_road_longitudes = 0 <= lon <= road_length
+        is_within_road_latitudes = 0 <= lat <= road_width
+        return closest_road_id, lon, lat, is_within_road_latitudes, is_within_road_longitudes
 
     @raises(RoadNotFound)
     def get_center_lanes_latitudes(self, road_id):
@@ -68,13 +75,15 @@ class MapAPI:
     def get_longitudinal_difference(self, init_road_id, init_lon, final_road_id, final_lon, navigation_plan):
         # type: (int, float, int, float, NavigationPlanMsg) -> float
         """
-
-        :param init_road_id:
-        :param init_lon:
-        :param final_road_id:
-        :param final_lon:
-        :param navigation_plan:
-        :return:
+        This function calculates the total longitudinal difference in [m] between two points in road coordinates.
+        IMPORTANT: If the destination road id is not in the navigation plan, raises RoadNotFound EXCEPTION.
+         Handling needs to be done in the caller
+        :param init_road_id: initial road id (int)
+        :param init_lon: initial road longitude in [m]
+        :param final_road_id: destination road id (int)
+        :param final_lon: destination longitude in [m]
+        :param navigation_plan: navigation plan according to which we advance on road
+        :return: longitudinal difference in [m]
         """
         init_road_idx = navigation_plan.get_road_index_in_plan(init_road_id)
         final_road_idx = navigation_plan.get_road_index_in_plan(final_road_id)
