@@ -66,7 +66,7 @@ def test_shiftRoadVectorInLatitude_simpleRoadShift1MRight_accurateShift(testable
     np.testing.assert_array_almost_equal(shifted_points, expected_shifted_points)
 
 
-def test_convertRoadToGlobalCoordinates_accurateConversion(testable_map_api):
+def test_convertRoadToGlobalCoordinates_simpleRoad_accurateConversion(testable_map_api):
     lon_of_first_segment = 10.2
     point_on_first_segment = np.array([10.2, -ROAD_WIDTH / 2])
     point_lateral_shift = 9.
@@ -102,7 +102,7 @@ def test_convertRoadToGlobalCoordinates_accurateConversion(testable_map_api):
     # plt.show()
 
 
-def test_advanceToEndOfPlan_accurate(testable_map_api):
+def test_advanceToEndOfPlan_twoRoadsStartFromMiddleOfFirst_rightRoadAndDistances(testable_map_api):
     navigation_plan = NavigationPlanMsg(road_ids=[1, 2])
     start_lon = 10.0
     first_road_length = testable_map_api.cached_map_model.get_road_data(1).longitudes[-1]
@@ -115,7 +115,7 @@ def test_advanceToEndOfPlan_accurate(testable_map_api):
     assert roads_dist_to_end == first_road_length + second_road_length - start_lon
 
 
-def test_advanceOnPlan_accurate(testable_map_api):
+def test_advanceOnPlan_twoRoadsStartFromMiddleOfFirst_rightRoadAndDistances(testable_map_api):
     navigation_plan = NavigationPlanMsg(road_ids=[1, 2])
     path_total_len = MAP_INFLATION_FACTOR * (6 - 0.1)
     start_lon = 10.0
@@ -129,7 +129,7 @@ def test_advanceOnPlan_accurate(testable_map_api):
     assert lon == (start_lon + advance_in_lon - first_road_length)
 
 
-def test_findClosestRoad_accurate(testable_map_api):
+def test_findClosestRoad_twoRoads_firstRoadIsClosest(testable_map_api):
     point_close_to_road_1 = np.array([0.9, -0.1]) * MAP_INFLATION_FACTOR
     closest_id, closest_lon, closest_lat = testable_map_api.find_closest_road(point_close_to_road_1[0],
                                                                               point_close_to_road_1[1], [1, 2])
@@ -140,6 +140,8 @@ def test_findClosestRoad_accurate(testable_map_api):
     assert np.math.isclose(closest_lat,
                            ROAD_WIDTH / 2 + point_close_to_road_1[1])  # center of lane + dist from center of lane
 
+
+def test_findClosestRoad_twoRoads_secondRoadIsClosest(testable_map_api):
     point_close_to_road_2 = np.array([0.7, 1.1]) * MAP_INFLATION_FACTOR
     closest_id, closest_lon, closest_lat = testable_map_api.find_closest_road(point_close_to_road_2[0],
                                                                               point_close_to_road_2[1], [1, 2])

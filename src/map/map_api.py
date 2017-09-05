@@ -126,7 +126,7 @@ class MapAPI:
         :param initial_road_id: the initial road_id (the vehicle is current on)
         :param initial_lon: initial longitude along <initial_road_id>
         :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
-        :return: (the last road id, its length, accumulated distance its end point)
+        :return: (the last road id, its length, total distance to its end point)
         """
         initial_road_idx_in_plan = navigation_plan.get_road_index_in_plan(initial_road_id)
         roads_ids = navigation_plan.road_ids[initial_road_idx_in_plan:]
