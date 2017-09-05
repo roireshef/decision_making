@@ -32,7 +32,8 @@ class TestMapModelUtils:
                                                           xy2road_map=xy2road_map)
 
         # Generate model
-        map_model = MapModel(roads_data=roads_data, incoming_roads={}, outgoing_roads={}, xy2road_map=xy2road_map)
+        map_model = MapModel(roads_data=roads_data, incoming_roads={}, outgoing_roads={}, xy2road_map=xy2road_map,
+                             xy2road_tile_size=ROADS_MAP_TILE_SIZE)
 
         return map_model
 
