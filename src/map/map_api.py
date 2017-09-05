@@ -82,12 +82,12 @@ class MapAPI:
         if final_road_idx > init_road_idx or (final_road_idx == init_road_idx and final_lon > init_lon):
             road_ids = navigation_plan.road_ids[init_road_idx:final_road_idx]  # this excludes last road
             longitudes = [self._get_road(rid).longitudes[-1] for rid in road_ids]
-            return np.sum(longitudes) - init_lon + final_lon
+            return float(np.sum(longitudes) - init_lon + final_lon)
         # look back
         else:
             road_ids = navigation_plan.road_ids[final_road_idx:init_road_idx]  # this excludes last road
             longitudes = [self._get_road(rid).longitudes[-1] for rid in road_ids]
-            return -1 * (np.sum(longitudes) - final_lon + init_lon)
+            return float(-1 * (np.sum(longitudes) - final_lon + init_lon))
 
     @raises(RoadNotFound, LongitudeOutOfRoad)
     def advance_on_plan(self, initial_road_id, initial_lon, desired_lon, navigation_plan):
@@ -170,8 +170,13 @@ class MapAPI:
         shifted_points = shifted_points[np.greater(longitudes - initial_lon, 0) &
                                         np.less(longitudes - initial_lon, desired_lon)]
 
+        # Build path
         path = np.concatenate(([init_point], shifted_points, [final_point]))
-        return path[np.append(np.sum(np.diff(path, axis=0), axis=1) != 0.0, [True])]
+
+        # Remove duplicate points (start of next road == end of last road)
+        path = path[np.append(np.sum(np.diff(path, axis=0), axis=1) != 0.0, [True])]
+
+        return path
 
     def get_uniform_path_lookahead(self, road_id, lat_shift, starting_lon, lon_step, steps_num, navigation_plan):
         # type: (int, float, float, float, int, NavigationPlanMsg) -> np.ndarray
@@ -188,6 +193,7 @@ class MapAPI:
         :return: uniform points array (Nx2)
         """
         shifted = self.get_lookahead_points(road_id, starting_lon, lon_step * steps_num, lat_shift, navigation_plan)
+        # TODO change to precise resampling
         resampled, _ = CartesianFrame.resample_curve(shifted, lon_step)
         return resampled
 
