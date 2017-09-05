@@ -187,7 +187,7 @@ class MapAPI:
         :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
         :return: uniform points array (Nx2)
         """
-        shifted = self.get_lookahead_points(road_id, starting_lon, lat_shift, lon_step * steps_num, navigation_plan)
+        shifted = self.get_lookahead_points(road_id, starting_lon, lon_step * steps_num, lat_shift, navigation_plan)
         resampled, _ = CartesianFrame.resample_curve(shifted, lon_step)
         return resampled
 
@@ -260,7 +260,7 @@ class MapAPI:
         points_with_yaw = CartesianFrame.add_yaw(road.points)
 
         if road.longitudes[0] <= lon <= road.longitudes[-1]:
-            point_ind = np.argmin(np.abs(road.longitudes - lon))  # find index closest to target lon
+            point_ind = np.where(road.longitudes <= lon)[0][-1]  # find index closest to target lon
             distance_in_lon_from_closest_point = lon - road.longitudes[point_ind]
             road_point = points_with_yaw[point_ind]
 

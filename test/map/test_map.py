@@ -14,13 +14,10 @@ def map_fixture():
     map_model_filename = Paths.get_resource_absolute_path_filename("maps/CustomMapPickle.bin")
     map_model = pickle.load(open(map_model_filename, "rb"))
 
-    # TODO: temporal fix
-    map_model.xy2road_tile_size = ROADS_MAP_TILE_SIZE
     trans_roads_data = {}
-    for rid, road in map_model.roads_data.items():
-        road.points = np.transpose(road.points)
+    for rid, road in map_model._roads_data.items():
         trans_roads_data[rid] = road
-    map_model.roads_data = trans_roads_data
+    map_model._roads_data = trans_roads_data
     yield NaiveCacheMap(map_model, logger)
 
 
@@ -72,43 +69,45 @@ def test_getPointRelativeLongitude_sameRoad(map_fixture):
     assert to_lon_in_road - from_lon_in_road - 10 < total_lon_distance < to_lon_in_road - from_lon_in_road + 10
 
 
-def test_GetPathLookahead_upperPath(map_fixture):
+def test_GetPathLookahead_almostUntilEndOfUpperHorizontalPath_validatePathLengthAndConstantY(map_fixture):
     points = map_fixture._get_road(1).points
     width = map_fixture._get_road(1).width
     navigation_plan = NavigationPlanMsg([1, 2])
-    lookahead_distance = 50  # test short path
+    lookahead_distance = 49.9  # test short path
     road_id = 1
     lon = 10
     lat = 2  # right lane
     path1 = map_fixture.get_lookahead_points(road_id, lon, lookahead_distance, lat, navigation_plan)
-    path_x = path1[0]
-    path_y = path1[1]
+    path_x = path1[:, 0]
+    path_y = path1[:, 1]
     assert path_x[0] == -30 + lon
-    assert path_x[-1] == -30 + lon + lookahead_distance
-    for p in range(path1.shape[1]):
-        assert path_y[p] == points[1][0] - width / 2 + lat
+    np.testing.assert_almost_equal(path_x[-1], -30 + lon + lookahead_distance)
 
-def test_GetPathLookahead_testPathOnTwoRoadsOnRightLane(map_fixture):
+    y = points[0, 1] - width / 2 + lat
+    for p in range(path1.shape[0]):
+        assert path_y[p] == y
+
+def test_getPathLookahead_testLongPathOnTwoRoadsOnRightLane_validateLengthIsABitLessThanLookaheadDistance(map_fixture):
     navigation_plan = NavigationPlanMsg([1, 2])
     road_id = 1
     lon = 10
     lat = 2  # right lane
     lookahead_distance = 200  # test path including two road_ids
-    path2 = map_fixture.get_path_lookahead(road_id, lon, lat, lookahead_distance, navigation_plan)
-    segments = np.diff(path2, axis=1)
-    segments_norm = np.linalg.norm(segments, axis=0)
+    path2 = map_fixture.get_lookahead_points(road_id, lon, lookahead_distance, lat, navigation_plan)
+    segments = np.diff(path2, axis=0)
+    segments_norm = np.linalg.norm(segments, axis=1)
     path_length_small_radius = np.sum(segments_norm)
     assert lookahead_distance - 10 < path_length_small_radius < lookahead_distance
 
-def test_GetPathLookahead_testPathOnTwoRoadsOnLeftLane(map_fixture):
+def test_getPathLookahead_testLongPathOnTwoRoadsOnLeftLane_validateLengthIsABitMoreThanLookaheadDistance(map_fixture):
     navigation_plan = NavigationPlanMsg([1, 2])
     road_id = 1
     lon = 10
     lat = 4  # left lane
     lookahead_distance = 200  # test path including two road_ids
-    path3 = map_fixture.get_path_lookahead(road_id, lon, lat, lookahead_distance, navigation_plan)
-    segments = np.diff(path3, axis=1)
-    segments_norm = np.linalg.norm(segments, axis=0)
+    path3 = map_fixture.get_lookahead_points(road_id, lon, lookahead_distance, lat, navigation_plan)
+    segments = np.diff(path3, axis=0)
+    segments_norm = np.linalg.norm(segments, axis=1)
     path_length_large_radius = np.sum(segments_norm)
     assert lookahead_distance < path_length_large_radius < lookahead_distance + 10
 
@@ -123,8 +122,8 @@ def test_getUniformPathLookahead_testUniformityOnTwoRoadsOnRightLane(map_fixture
     max_lookahead_distance = lon_step * steps_num
     path = map_fixture.get_uniform_path_lookahead(road_id, lat, lon, lon_step=lon_step, steps_num=steps_num,
                                                   navigation_plan=navigation_plan)
-    segments = np.diff(path, axis=1)
-    segments_norm = np.linalg.norm(segments, axis=0)
+    segments = np.diff(path, axis=0)
+    segments_norm = np.linalg.norm(segments, axis=1)
     path_length_small_radius = np.sum(segments_norm)
     assert max_lookahead_distance - 10 < path_length_small_radius < max_lookahead_distance
     required_norm = path_length_small_radius / (steps_num - 1)

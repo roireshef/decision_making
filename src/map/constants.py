@@ -34,8 +34,6 @@ CUSTOM_LANE_WIDTH = 3.
 CUSTOM_ROAD_ROUND_SQUARE_SIZE = 100.
 # [m] size of the straight part of the edge
 CUSTOM_ROAD_ROUND_SQUARE_STRAIGHT_SIZE = 60.
-# [m] default tile size in xy2road_map of MapModel
-DEFAULT_TILE_SIZE_OF_XY_TO_ROAD_MAP = 10.
 
 # [m] Road_width for different road types in OSM file. These numbers were chosen arbitrarily
 OSM_FOOTWAY_ROAD_WIDTH = 1.0
