@@ -337,10 +337,10 @@ class MapAPI:
                 seg_start = points[segment_idx_pair[0]]
                 seg_end = points[segment_idx_pair[1]]
 
-                segments_lon_lat.append([
-                    np.linalg.norm(Euclidean.project_on_segment_2d(point, seg_start, seg_end) - seg_start),
-                    Euclidean.signed_dist_to_line_2d(point, seg_start, seg_end)
-                ])
+                lon_dist_on_segment = np.linalg.norm(Euclidean.project_on_segment_2d(point, seg_start, seg_end) - seg_start)
+                lat_dist_from_seg_extended_line = Euclidean.signed_dist_to_line_2d(point, seg_start, seg_end)
+
+                segments_lon_lat.append([lon_dist_on_segment, lat_dist_from_seg_extended_line]
             except OutOfSegmentBack:
                 back_of_segment += 1
                 pass
