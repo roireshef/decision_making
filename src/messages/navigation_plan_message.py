@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Union, Optional
+from typing import Optional, List
 from decision_making.src.exceptions import RoadNotFound, raises
 from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
 
@@ -20,7 +20,7 @@ class NavigationPlanMsg(DDSNonTypedMsg):
 
     @raises(RoadNotFound)
     def get_road_index_in_plan(self, road_id, start=None, end=None):
-        # type:  (int, Optional[int], Optional[Int]) -> int
+        # type:  (int, Optional[int], Optional[int]) -> int
         """
         Given a road_id, returns the index of this road_id in the navigation plan
         :param road_id: the request road_id to look for in the plan

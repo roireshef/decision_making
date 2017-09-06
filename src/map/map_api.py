@@ -6,7 +6,7 @@ import numpy as np
 import six
 
 from decision_making.src.exceptions import *
-from decision_making.src.exceptions import RoadNotFound, raises, LongitudeOutOfRoad
+from decision_making.src.exceptions import RoadNotFound, raises, LongitudeOutOfRoad, MapCellNotFound
 from decision_making.src.global_constants import *
 from decision_making.src.map.constants import ROADS_MAP_TILE_SIZE
 from decision_making.src.map.map_model import MapModel
@@ -243,7 +243,7 @@ class MapAPI:
 
     @raises(RoadNotFound)
     def _find_closest_road(self, x, y, road_ids):
-        # type: (float, float, List[int]) -> (float, float, int)
+        # type: (float, float, List[int]) -> (int, float, float)
         """
         Returns the closest road_id of the road which is closest to a point in the world (x, y).
         If the point is on the road (in the sense of longitude), closest_lat is also the distance between the
@@ -258,7 +258,6 @@ class MapAPI:
         roads_proj = np.array([np.array(self._convert_global_to_road_coordinates(x, y, rid)) for rid in road_ids])
         closest_idx = np.argmin(roads_proj[:, 1])
         return road_ids[closest_idx], roads_proj[closest_idx, 0], roads_proj[closest_idx, 1]
-
 
     @raises(RoadNotFound, LongitudeOutOfRoad)
     def _convert_road_to_global_coordinates(self, road_id, lon, lat):
