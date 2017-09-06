@@ -53,6 +53,8 @@ class DefaultPolicy(Policy):
         # Calculate safe speed according to ACDA
         acda_safe_speed = AcdaApi.compute_acda(objects_on_road=behavioral_state.dynamic_objects_on_road,
                                                ego_state=behavioral_state.ego_state,
+                                               navigation_plan=behavioral_state.navigation_plan,
+                                               map_api=behavioral_state.map,
                                                lookahead_path=reference_route_in_cars_frame_x_y_yaw[:, 0:2])
         safe_speed = min(acda_safe_speed, global_constants.BEHAVIORAL_PLANNING_CONSTANT_DRIVE_VELOCITY)
 
@@ -220,10 +222,9 @@ class DefaultPolicy(Policy):
         # Transform into car's frame
         reference_route_x_y_z = np.concatenate((reference_route_xy, np.zeros(shape=[reference_route_len, 1])),
                                                axis=1)
-        reference_route_xyz_in_cars_frame = geometry_utils.CartesianFrame.get_vector_in_objective_frame(
-            target_vector=reference_route_x_y_z.transpose(),
-            ego_position=behavioral_state.ego_position,
-            ego_orientation=behavioral_state.ego_orientation)
+        reference_route_xyz_in_cars_frame = geometry_utils.CartesianFrame.convert_global_to_relative_frame(
+            global_pos=reference_route_x_y_z.transpose(), frame_position=behavioral_state.ego_position,
+            frame_orientation=behavioral_state.ego_orientation)
         reference_route_xy_in_cars_frame = reference_route_xyz_in_cars_frame[0:2, :].transpose()
 
         # interpolate and create uniformly spaced path
