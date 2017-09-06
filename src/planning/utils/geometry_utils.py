@@ -3,7 +3,7 @@ from typing import Union
 import numpy as np
 from scipy import interpolate as interp
 
-from decision_making.src.exceptions import OutOfSegmentBack, OutOfSegmentFront
+from decision_making.src.exceptions import OutOfSegmentBack, OutOfSegmentFront, raises
 from decision_making.src.global_constants import *
 from decision_making.src.planning.utils import tf_transformations
 from decision_making.src.planning.utils.columns import *

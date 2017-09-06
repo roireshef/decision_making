@@ -1,7 +1,7 @@
 import numpy as np
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 
-
+# TODO: change this to test Euclidean
 def test_calc_point_segment_dist_success():
     point = np.array([1.0, 1.0])
     p_start = np.array([0.0, 0.0])

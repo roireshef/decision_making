@@ -50,7 +50,7 @@ def test_getCenterLanesLatitudes_checkLatitudesOfAllLanes(map_fixture):
 
 # TODO: expect certain values
 def test_getPointRelativeLongitude_differentRoads(map_fixture):
-    navigation_plan = NavigationPlanMsg([1, 2])
+    navigation_plan = NavigationPlanMsg(np.array([1, 2]))
     length = map_fixture._get_road(1).longitudes[-1]
     from_lon_in_road = 20
     to_lon_in_road = 10
@@ -60,7 +60,7 @@ def test_getPointRelativeLongitude_differentRoads(map_fixture):
     assert total_lon_distance == length - from_lon_in_road + to_lon_in_road
 
 def test_getPointRelativeLongitude_sameRoad(map_fixture):
-    navigation_plan = NavigationPlanMsg([1, 2])
+    navigation_plan = NavigationPlanMsg(np.array([1, 2]))
     from_lon_in_road = 10
     to_lon_in_road = 170
     total_lon_distance = map_fixture.get_longitudinal_difference(init_road_id=2, init_lon=from_lon_in_road,
@@ -72,7 +72,7 @@ def test_getPointRelativeLongitude_sameRoad(map_fixture):
 def test_GetPathLookahead_almostUntilEndOfUpperHorizontalPath_validatePathLengthAndConstantY(map_fixture):
     points = map_fixture._get_road(1).points
     width = map_fixture._get_road(1).width
-    navigation_plan = NavigationPlanMsg([1, 2])
+    navigation_plan = NavigationPlanMsg(np.array([1, 2]))
     lookahead_distance = 49.9  # test short path
     road_id = 1
     lon = 10
@@ -88,7 +88,7 @@ def test_GetPathLookahead_almostUntilEndOfUpperHorizontalPath_validatePathLength
         assert path_y[p] == y
 
 def test_getPathLookahead_testLongPathOnTwoRoadsOnRightLane_validateLengthIsABitLessThanLookaheadDistance(map_fixture):
-    navigation_plan = NavigationPlanMsg([1, 2])
+    navigation_plan = NavigationPlanMsg(np.array([1, 2]))
     road_id = 1
     lon = 10
     lat = 2  # right lane
@@ -100,7 +100,7 @@ def test_getPathLookahead_testLongPathOnTwoRoadsOnRightLane_validateLengthIsABit
     assert lookahead_distance - 10 < path_length_small_radius < lookahead_distance
 
 def test_getPathLookahead_testLongPathOnTwoRoadsOnLeftLane_validateLengthIsABitMoreThanLookaheadDistance(map_fixture):
-    navigation_plan = NavigationPlanMsg([1, 2])
+    navigation_plan = NavigationPlanMsg(np.array([1, 2]))
     road_id = 1
     lon = 10
     lat = 4  # left lane
@@ -113,7 +113,7 @@ def test_getPathLookahead_testLongPathOnTwoRoadsOnLeftLane_validateLengthIsABitM
 
 
 def test_getUniformPathLookahead_testUniformityOnTwoRoadsOnRightLane(map_fixture):
-    navigation_plan = NavigationPlanMsg([1, 2])
+    navigation_plan = NavigationPlanMsg(np.array([1, 2]))
     road_id = 1
     lon = 10
     lat = 2

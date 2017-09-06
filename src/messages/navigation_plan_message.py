@@ -11,12 +11,12 @@ class NavigationPlanMsg(DDSNonTypedMsg):
         Important assumption: we assume that road_ids is a UNIQUE list, containing each value only once.
     """
     def __init__(self, road_ids):
-        # type: (List[int]) -> None
+        # type: (np.ndarray) -> None
         """
         Initialization of the navigation plan. This is an initial implementation which contains only a list o road ids.
-        :param road_ids: List of road ids corresponding to the map.
+        :param road_ids: Numpy array (dtype has to be int) of road ids corresponding to the map.
         """
-        self.road_ids = np.array(road_ids)
+        self.road_ids = road_ids.astype(np.int)
 
     @raises(RoadNotFound)
     def get_road_index_in_plan(self, road_id, start=None, end=None):
@@ -35,7 +35,7 @@ class NavigationPlanMsg(DDSNonTypedMsg):
                 end = len(self.road_ids)
             return np.where(self.road_ids[start:(end+1)] == road_id)[0][0] + start
         except IndexError:
-            raise RoadNotFound("Road ID {} is not in clipped [{}, {}] plan's road-IDs [{}]"
+            raise RoadNotFound("Road ID {} is not in clipped (indices: [{}, {}]) plan's road-IDs [{}]"
                                .format(road_id, start, end, self.road_ids[start:(end+1)]))
 
     @raises(RoadNotFound)
