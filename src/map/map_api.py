@@ -41,6 +41,7 @@ class MapAPI:
         """
         relevant_road_ids = self._find_roads_containing_point(x, y)
         closest_road_id = self._find_closest_road(x, y, relevant_road_ids)
+
         lon, lat = self._convert_global_to_road_coordinates(x, y, closest_road_id)
 
         road_details = self._get_road(closest_road_id)
@@ -370,7 +371,7 @@ class MapAPI:
             # find closest segment by min distance (latitude)
             segments = np.array(segments)
             closest_segment = segments[np.argmin(segments[:, 1], axis=0)]
-            start_ind, lon, lat_signed = closest_segment[0], closest_segment[1], closest_segment[2], int(closest_segment[3])
+            start_ind, lon, lat_signed = int(closest_segment[0]), closest_segment[1], closest_segment[2]
 
             # latitude (relative to right side), longitude
             return lon + longitudes[start_ind], road.width / 2 + lat_signed
