@@ -330,15 +330,14 @@ class MapAPI:
 
         # for relevant segments, compute (each row): [segment_start_point_index,
         # longitudinal distance of projection on segment, signed lateral distance to the line extending the segment]
-        segments = []
+        segments_lon_lat = []
         back_of_segment = front_of_segment = 0  # this is used to catch a special case after the for loop
-        for pair in relevant_ind_pairs:
+        for segment_idx_pair in relevant_ind_pairs:
             try:
-                seg_start = points[pair[0]]
-                seg_end = points[pair[1]]
+                seg_start = points[segment_idx_pair[0]]
+                seg_end = points[segment_idx_pair[1]]
 
-                segments.append([
-                    pair[0],
+                segments_lon_lat.append([
                     np.linalg.norm(Euclidean.project_on_segment_2d(point, seg_start, seg_end) - seg_start),
                     Euclidean.signed_dist_to_line_2d(point, seg_start, seg_end)
                 ])
@@ -352,16 +351,21 @@ class MapAPI:
         # special case where the point is in the funnel that is created by the normals of two segments
         # at their intersection point. Once this happens, both OutOfSegmentBack and OutOfSegmentFront are raised
         if len(relevant_ind_pairs) == 2 and front_of_segment == 1 and back_of_segment == 1:
-            segments = [relevant_ind_pairs[1][0], 0.0, np.linalg.norm(point - points[relevant_ind_pairs[1][0]])]
+            second_seg_start_point_idx = relevant_ind_pairs[1][0]
+            distance_to_second_seg_start = np.linalg.norm(point - points[second_seg_start_point_idx])
+            segments_lon_lat = [second_seg_start_point_idx, 0.0, distance_to_second_seg_start]
+
+        segments_lon_lat = np.array(segments_lon_lat)
 
         try:
             # find closest segment by min latitudinal distance
-            segments = np.array(segments)
-            closest_segment = segments[np.argmin(segments[:, 1], axis=0)]
-            start_ind, lon, lat_signed = int(closest_segment[0]), closest_segment[1], closest_segment[2]
+            closest_segment_idx = np.argmin(segments_lon_lat[:, 1], axis=0)
+            lon = segments_lon_lat[closest_segment_idx, 0]
+            signed_latitude = segments_lon_lat[closest_segment_idx, 1]
+            seg_start_point_idx = relevant_ind_pairs[closest_segment_idx][0]
 
-            # latitude (relative to right side), longitude
-            return lon + longitudes[start_ind], road.width / 2 + lat_signed
+            # longitude (segment offset + longitude on segment), latitude (relative to right side),
+            return longitudes[seg_start_point_idx] + lon, signed_latitude + road.width / 2
         except IndexError:  # happens when <segments> is empty
             raise LongitudeOutOfRoad("Tried to project point {} onto road #{} but projection falls outside "
                                      "the road (longitudinally)")
