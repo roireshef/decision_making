@@ -1,11 +1,10 @@
 import pytest
 
-from rte.python.logger.AV_logger import AV_Logger
 from spav.decision_making.paths import Paths
 from spav.decision_making.src.map.map_api import *
-from spav.decision_making.src.map.naive_cache_map import NaiveCacheMap
-
+from decision_making.test.map.testable_map_fixtures import *
 import pickle
+
 
 @pytest.fixture()
 def map_fixture():
@@ -20,6 +19,61 @@ def map_fixture():
     map_model._roads_data = trans_roads_data
     yield NaiveCacheMap(map_model, logger)
 
+
+def test_convertGlobalToRoadCoordinates_OutOfRoad_exception(testable_map_api, navigation_fixture):
+    try:
+        map_fixture = testable_map_api
+        map_fixture.convert_global_to_road_coordinates(-1.0, 0.0)
+        # must get out-of-road exception
+        assert False
+    except (MapCellNotFound, LongitudeOutOfRoad) as e:
+        assert True
+
+
+def test_convertGlobalToRoadCoordinates_OnRoad_exact(testable_map_api, navigation_fixture):
+    map_fixture = testable_map_api
+
+    # Check that a point on the first road is exactly localized
+    closest_road_id, lon, lat, is_within_road_latitudes, is_within_road_longitudes = \
+        map_fixture.convert_global_to_road_coordinates(10.0, 0.0)
+
+    assert closest_road_id == 1
+    assert lon == 10.0
+    assert lat == ROAD_WIDTH / 2.0
+    assert is_within_road_latitudes
+    assert is_within_road_longitudes
+
+    # Check that a point on the second road is exactly localized
+    closest_road_id, lon, lat, is_within_road_latitudes, is_within_road_longitudes = \
+        map_fixture.convert_global_to_road_coordinates(MAP_INFLATION_FACTOR - 10.0, MAP_INFLATION_FACTOR)
+
+    assert closest_road_id == 2
+    assert lon == 10.0
+    assert lat == ROAD_WIDTH / 2.0
+    assert is_within_road_latitudes
+    assert is_within_road_longitudes
+
+
+def test_convertGlobalToRoadCoordinates_OutOfRoadLat_precise(testable_map_api, navigation_fixture):
+    map_fixture = testable_map_api
+    closest_road_id, lon, lat, is_within_road_latitudes, is_within_road_longitudes = \
+        map_fixture.convert_global_to_road_coordinates(10.0, -6.0)
+
+    assert closest_road_id == 1
+    assert lon == 10.0
+    assert lat == ROAD_WIDTH / 2.0 - 6.0
+    assert not is_within_road_latitudes
+    assert is_within_road_longitudes
+
+
+def test_convertGlobalToRoadCoordinates_OutOfRoadLat_mapCellNotFoundException(testable_map_api, navigation_fixture):
+    try:
+        map_fixture = testable_map_api
+        closest_road_id, lon, lat, is_within_road_latitudes, is_within_road_longitudes = \
+            map_fixture.convert_global_to_road_coordinates(10.0, -16.0)
+
+    except MapCellNotFound as e:
+        assert True
 
 def test_findRoadsContainingPoint_testDifferentPointsOnTwoRoad(map_fixture):
     correct_road_ids_list = [1, 2]
@@ -48,6 +102,7 @@ def test_getCenterLanesLatitudes_checkLatitudesOfAllLanes(map_fixture):
     lanes_lat = map_fixture.get_center_lanes_latitudes(road_id)
     np.testing.assert_array_almost_equal(correct_lat_list, lanes_lat)
 
+
 # TODO: expect certain values
 def test_getPointRelativeLongitude_differentRoads(map_fixture):
     navigation_plan = NavigationPlanMsg(np.array([1, 2]))
@@ -59,6 +114,7 @@ def test_getPointRelativeLongitude_differentRoads(map_fixture):
                                                                  navigation_plan=navigation_plan)
     assert total_lon_distance == length - from_lon_in_road + to_lon_in_road
 
+
 def test_getPointRelativeLongitude_sameRoad(map_fixture):
     navigation_plan = NavigationPlanMsg(np.array([1, 2]))
     from_lon_in_road = 10
@@ -69,10 +125,11 @@ def test_getPointRelativeLongitude_sameRoad(map_fixture):
     assert to_lon_in_road - from_lon_in_road - 10 < total_lon_distance < to_lon_in_road - from_lon_in_road + 10
 
 
-def test_GetPathLookahead_almostUntilEndOfUpperHorizontalPath_validatePathLengthAndConstantY(map_fixture):
+def test_GetPathLookahead_almostUntilEndOfUpperHorizontalPath_validatePathLengthAndConstantY(map_fixture,
+                                                                                             navigation_fixture):
     points = map_fixture._get_road(1).points
     width = map_fixture._get_road(1).width
-    navigation_plan = NavigationPlanMsg(np.array([1, 2]))
+    navigation_plan = navigation_fixture
     lookahead_distance = 49.9  # test short path
     road_id = 1
     lon = 10
@@ -87,8 +144,10 @@ def test_GetPathLookahead_almostUntilEndOfUpperHorizontalPath_validatePathLength
     for p in range(path1.shape[0]):
         assert path_y[p] == y
 
-def test_getPathLookahead_testLongPathOnTwoRoadsOnRightLane_validateLengthIsABitLessThanLookaheadDistance(map_fixture):
-    navigation_plan = NavigationPlanMsg(np.array([1, 2]))
+
+def test_getPathLookahead_testLongPathOnTwoRoadsOnRightLane_validateLengthIsABitLessThanLookaheadDistance(map_fixture,
+                                                                                                          navigation_fixture):
+    navigation_plan = navigation_fixture
     road_id = 1
     lon = 10
     lat = 2  # right lane
@@ -99,8 +158,10 @@ def test_getPathLookahead_testLongPathOnTwoRoadsOnRightLane_validateLengthIsABit
     path_length_small_radius = np.sum(segments_norm)
     assert lookahead_distance - 10 < path_length_small_radius < lookahead_distance
 
-def test_getPathLookahead_testLongPathOnTwoRoadsOnLeftLane_validateLengthIsABitMoreThanLookaheadDistance(map_fixture):
-    navigation_plan = NavigationPlanMsg(np.array([1, 2]))
+
+def test_getPathLookahead_testLongPathOnTwoRoadsOnLeftLane_validateLengthIsABitMoreThanLookaheadDistance(map_fixture,
+                                                                                                         navigation_fixture):
+    navigation_plan = navigation_fixture
     road_id = 1
     lon = 10
     lat = 4  # left lane
@@ -112,8 +173,8 @@ def test_getPathLookahead_testLongPathOnTwoRoadsOnLeftLane_validateLengthIsABitM
     assert lookahead_distance < path_length_large_radius < lookahead_distance + 10
 
 
-def test_getUniformPathLookahead_testUniformityOnTwoRoadsOnRightLane(map_fixture):
-    navigation_plan = NavigationPlanMsg(np.array([1, 2]))
+def test_getUniformPathLookahead_testUniformityOnTwoRoadsOnRightLane(map_fixture, navigation_fixture):
+    navigation_plan = navigation_fixture
     road_id = 1
     lon = 10
     lat = 2

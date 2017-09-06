@@ -82,6 +82,10 @@ class MapModel:
     def get_xy2road_cell(self, coordinates):
         # type: ((int, float, float)) -> List[int]
         try:
-            return self._xy2road_map.get(coordinates)
+            roads_list = self._xy2road_map.get(coordinates)
+            if roads_list is None:
+                raise KeyError
+            else:
+                return roads_list
         except KeyError:
             raise MapCellNotFound("MapModel's xy2road_map doesn't have cell {}".format(coordinates))
