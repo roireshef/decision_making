@@ -344,7 +344,7 @@ class MapAPI:
             try:
                 segments.append([
                     pair[0],
-                    np.linalg.norm(Euclidean.project_on_segment_2d(point, points[pair[0]], points[pair[1]]) - pair[0]),
+                    np.linalg.norm(Euclidean.project_on_segment_2d(point, points[pair[0]], points[pair[1]]) - points[pair[0]]),
                     Euclidean.signed_dist_to_line_2d(point, points[pair[0]], points[pair[1]])
                 ])
             except OutOfSegmentBack:
