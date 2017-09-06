@@ -37,7 +37,7 @@ class MapAPI:
         :param x: x coordinate in global coordinate frame
         :param y: y coordinate in global coordinate frame
         :return: Road ID, longitude from the road's start, latitude **relative to road's right-side**,
-            is object within road latitudes; is object within road longitudes
+            is object within road latitudes
         """
         relevant_road_ids = self._find_roads_containing_point(x, y)
         closest_road_id = self._find_closest_road(x, y, relevant_road_ids)
