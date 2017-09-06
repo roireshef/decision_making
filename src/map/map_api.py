@@ -101,9 +101,9 @@ class MapAPI:
         LongitudeOutOfRoad exception is thrown.
         :param initial_road_id: the initial road_id (the vehicle is current on)
         :param initial_lon: initial longitude along <initial_road_id>
-        :param lookahead_dist: the deisred distance of lookahead in [m].
+        :param lookahead_dist: the desired distance of lookahead in [m].
         :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
-        :return: (road_id, longitude along <road_id>)
+        :return: (road_id, longitudinal distance from the beginning of <road_id>)
         """
         current_road_idx_in_plan = navigation_plan.get_road_index_in_plan(initial_road_id)
         roads_ids = navigation_plan.road_ids[current_road_idx_in_plan:]
@@ -135,11 +135,11 @@ class MapAPI:
         initial_road_idx_in_plan = navigation_plan.get_road_index_in_plan(initial_road_id)
         roads_ids = navigation_plan.road_ids[initial_road_idx_in_plan:]
         roads_len = [self._get_road(rid).length for rid in roads_ids]
-        roads_dist_to_end = np.cumsum(np.append([roads_len[0] - initial_lon], roads_len[1:]))  # dist to roads-ends
-        return roads_ids[-1], roads_len[-1], roads_dist_to_end[-1]
+        roads_dist_to_end = np.sum(np.append([roads_len[0] - initial_lon], roads_len[1:]))  # dist to roads-ends
+        return roads_ids[-1], roads_len[-1], roads_dist_to_end
 
     @raises(RoadNotFound, LongitudeOutOfRoad)
-    def get_lookahead_points(self, initial_road_id, initial_lon, desired_lon, desired_lat, navigation_plan):
+    def get_lookahead_points(self, initial_road_id, initial_lon, lookahead_dist, desired_lat, navigation_plan):
         # type: (int, float, float, float, NavigationPlanMsg) -> np.ndarray
         """
         Given a longitude on specific road, return all the points along this (and next) road(s) until reaching
@@ -147,13 +147,14 @@ class MapAPI:
         relative to the roads right-side.
         :param initial_road_id: the initial road_id (the vehicle is current on)
         :param initial_lon: initial longitude along <initial_road_id>
-        :param desired_lon: the desired distance of lookahead in [m].
+        :param lookahead_dist: the desired distance of lookahead in [m].
         :param desired_lat: desired lateral shift of points **relative to road's right-side**
         :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
         :return:
         """
-        # find the final point's (according to desired lon. lookahead amount) road_id and longitude along this road
-        final_road_id, final_road_lon = self.advance_on_plan(initial_road_id, initial_lon, desired_lon, navigation_plan)
+        # find the final point's (according to desired lookahead distance) road_id and longitude along this road
+        final_road_id, final_road_lon = self.advance_on_plan(initial_road_id, initial_lon, lookahead_dist,
+                                                             navigation_plan)
         init_road_idx = navigation_plan.get_road_index_in_plan(initial_road_id)
         final_road_idx = navigation_plan.get_road_index_in_plan(final_road_id)
         relevant_road_ids = navigation_plan.road_ids[init_road_idx:(final_road_idx+1)]
@@ -172,7 +173,7 @@ class MapAPI:
 
         # trim shifted points from both sides according to initial point and final (desired) point
         shifted_points = shifted_points[np.greater(longitudes - initial_lon, 0) &
-                                        np.less(longitudes - initial_lon, desired_lon)]
+                                        np.less(longitudes - initial_lon, lookahead_dist)]
 
         # Build path
         path = np.concatenate(([init_point], shifted_points, [final_point]))
