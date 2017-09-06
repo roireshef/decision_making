@@ -78,7 +78,7 @@ class Euclidean:
         point = np.array([x, y])
 
         # find the closest point of the road to (x,y)
-        distance_to_road_points = np.linalg.norm(np.array(path_points) - point, axis=0)
+        distance_to_road_points = np.linalg.norm(np.array(path_points) - point, axis=1)
         closest_point_ind = np.argmin(distance_to_road_points)
 
         # the point (x,y) should be projected either onto the segment before the closest point or onto the one after it.
