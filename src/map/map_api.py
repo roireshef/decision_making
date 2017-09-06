@@ -30,7 +30,7 @@ class MapAPI:
 
     @raises(MapCellNotFound, RoadNotFound, LongitudeOutOfRoad)
     def convert_global_to_road_coordinates(self, x, y):
-        # type: (float, float) -> (int, float, float)
+        # type: (float, float) -> (int, float, float, bool)
         """
         Convert a point in global coordinate frame to road coordinate, by searching for the nearest road and
         projecting it onto this road
@@ -44,12 +44,11 @@ class MapAPI:
 
         lon, lat = self._convert_global_to_road_coordinates(x, y, closest_road_id)
 
-        road_details = self._get_road(closest_road_id)
-        road_length = road_details.longitudes[-1]
-        road_width = road_details.width
-        is_within_road_longitudes = 0 <= lon <= road_length
-        is_within_road_latitudes = 0 <= lat <= road_width
-        return closest_road_id, lon, lat, is_within_road_latitudes, is_within_road_longitudes
+        road_width = self._get_road(closest_road_id).width
+        is_on_road = bool(0.0 <= lat <= road_width)
+
+        return closest_road_id, lon, lat, is_on_road
+
 
     @raises(RoadNotFound)
     def get_center_lanes_latitudes(self, road_id):
