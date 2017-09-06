@@ -117,11 +117,11 @@ class DynamicObject(DDSNonTypedMsg):
         :param map_api: the map which will be used to calculate the road localization
         :return: a RelativeRoadLocalization object
         """
-        relative_lon = map_api.get_longitudinal_difference(init_road_id=ego_road_localization.road_id,
-                                                            init_lon=ego_road_localization.road_lon,
-                                                            final_road_id=self.road_localization.road_id,
-                                                            final_lon=self.road_localization.road_lon,
-                                                            navigation_plan=ego_nav_plan)
+        relative_lon = map_api.get_longitudinal_difference(initial_road_id=ego_road_localization.road_id,
+                                                           initial_lon=ego_road_localization.road_lon,
+                                                           final_road_id=self.road_localization.road_id,
+                                                           final_lon=self.road_localization.road_lon,
+                                                           navigation_plan=ego_nav_plan)
 
         if relative_lon is None:
             logger.debug("get_point_relative_longitude returned None at DynamicObject.get_relative_road_localization "

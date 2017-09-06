@@ -54,7 +54,7 @@ def test_getPointRelativeLongitude_differentRoads(map_fixture):
     length = map_fixture._get_road(1).longitudes[-1]
     from_lon_in_road = 20
     to_lon_in_road = 10
-    total_lon_distance = map_fixture.get_longitudinal_difference(init_road_id=1, init_lon=from_lon_in_road,
+    total_lon_distance = map_fixture.get_longitudinal_difference(initial_road_id=1, initial_lon=from_lon_in_road,
                                                                  final_road_id=2, final_lon=to_lon_in_road,
                                                                  navigation_plan=navigation_plan)
     assert total_lon_distance == length - from_lon_in_road + to_lon_in_road
@@ -63,7 +63,7 @@ def test_getPointRelativeLongitude_sameRoad(map_fixture):
     navigation_plan = NavigationPlanMsg(np.array([1, 2]))
     from_lon_in_road = 10
     to_lon_in_road = 170
-    total_lon_distance = map_fixture.get_longitudinal_difference(init_road_id=2, init_lon=from_lon_in_road,
+    total_lon_distance = map_fixture.get_longitudinal_difference(initial_road_id=2, initial_lon=from_lon_in_road,
                                                                  final_road_id=2, final_lon=to_lon_in_road,
                                                                  navigation_plan=navigation_plan)
     assert to_lon_in_road - from_lon_in_road - 10 < total_lon_distance < to_lon_in_road - from_lon_in_road + 10
