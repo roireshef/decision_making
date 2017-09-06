@@ -58,6 +58,9 @@ class RoadDetails:
         self.ext_tail_lanes = ext_tail_lanes
         self.turn_lanes = turn_lanes
 
+    @property
+    def length(self):
+        return self.longitudes[-1]
 
 class MapModel:
     def __init__(self, roads_data, incoming_roads, outgoing_roads, xy2road_map, xy2road_tile_size):
