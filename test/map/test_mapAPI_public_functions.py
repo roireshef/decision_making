@@ -34,36 +34,31 @@ def test_convertGlobalToRoadCoordinates_OnRoad_exact(testable_map_api, navigatio
     map_fixture = testable_map_api
 
     # Check that a point on the first road is exactly localized
-    closest_road_id, lon, lat, is_within_road_latitudes, is_within_road_longitudes = \
-        map_fixture.convert_global_to_road_coordinates(10.0, 0.0)
+    closest_road_id, lon, lat, is_within_road_latitudes = map_fixture.convert_global_to_road_coordinates(10.0, 0.0)
 
     assert closest_road_id == 1
     assert lon == 10.0
     assert lat == ROAD_WIDTH / 2.0
     assert is_within_road_latitudes
-    assert is_within_road_longitudes
 
     # Check that a point on the second road is exactly localized
-    closest_road_id, lon, lat, is_within_road_latitudes, is_within_road_longitudes = \
-        map_fixture.convert_global_to_road_coordinates(MAP_INFLATION_FACTOR - 10.0, MAP_INFLATION_FACTOR)
+    closest_road_id, lon, lat, is_within_road_latitudes = map_fixture.convert_global_to_road_coordinates(
+        MAP_INFLATION_FACTOR - 10.0, MAP_INFLATION_FACTOR)
 
     assert closest_road_id == 2
     assert lon == 10.0
     assert lat == ROAD_WIDTH / 2.0
     assert is_within_road_latitudes
-    assert is_within_road_longitudes
 
 
 def test_convertGlobalToRoadCoordinates_OutOfRoadLat_precise(testable_map_api, navigation_fixture):
     map_fixture = testable_map_api
-    closest_road_id, lon, lat, is_within_road_latitudes, is_within_road_longitudes = \
-        map_fixture.convert_global_to_road_coordinates(10.0, -6.0)
+    closest_road_id, lon, lat, is_within_road_latitudes = map_fixture.convert_global_to_road_coordinates(10.0, -6.0)
 
     assert closest_road_id == 1
     assert lon == 10.0
     assert lat == ROAD_WIDTH / 2.0 - 6.0
     assert not is_within_road_latitudes
-    assert is_within_road_longitudes
 
 
 def test_convertGlobalToRoadCoordinates_OutOfRoadLat_mapCellNotFoundException(testable_map_api, navigation_fixture):
@@ -74,6 +69,7 @@ def test_convertGlobalToRoadCoordinates_OutOfRoadLat_mapCellNotFoundException(te
 
     except MapCellNotFound as e:
         assert True
+
 
 def test_findRoadsContainingPoint_testDifferentPointsOnTwoRoad(map_fixture):
     correct_road_ids_list = [1, 2]

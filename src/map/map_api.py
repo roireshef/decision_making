@@ -334,7 +334,7 @@ class MapAPI:
         # the relevant road segments will be the one before this point, and the one after it, so for both segments:
         # compute [sign, latitude (relative to road center), longitude, segment_start_point_index]
         pairs = np.array([[closest_point_ind - 1, closest_point_ind], [closest_point_ind, closest_point_ind + 1]])
-        relevant_ind_pairs = pairs[pairs[:, 0] >= 0 and pairs[:, 1] < len(points)]
+        relevant_ind_pairs = pairs[(pairs[:, 0] >= 0) & (pairs[:, 1] < len(points))]
 
         # each row in segment will be: [segment_start_point_index, longitudinal distance of projection on segment,
         # signed lateral distance to the line extending the segment]
@@ -362,7 +362,8 @@ class MapAPI:
         try:
             # find closest segment by min distance (latitude)
             segments = np.array(segments)
-            closest_segment = segments[np.argmin(segments[:, 1], axis=0)]
+            full_dist_from_segment = np.linalg.norm(segments[:, 2:3], axis=1)
+            closest_segment = segments[np.argmin(full_dist_from_segment, axis=0)]
             start_ind, lon, lat_signed = int(closest_segment[0]), closest_segment[1], closest_segment[2]
 
             # latitude (relative to right side), longitude
