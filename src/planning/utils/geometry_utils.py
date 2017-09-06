@@ -3,10 +3,93 @@ from typing import Union
 import numpy as np
 from scipy import interpolate as interp
 
+from decision_making.src.exceptions import OutOfSegmentBack, OutOfSegmentFront, raises
 from decision_making.src.global_constants import *
 from decision_making.src.planning.utils import tf_transformations
 from decision_making.src.planning.utils.columns import *
 from decision_making.src.planning.utils.math import Math
+
+
+class Euclidean:
+    @staticmethod
+    def project_on_segment_2d(point: np.ndarray, seg_start: np.ndarray, seg_end: np.ndarray) -> np.ndarray:
+        """
+        Projects an arbitrary point onto the segment seg_start->seg_end, or throw an error point's projection is outside
+        the segment.
+        :param point: 2D arbitrary point in space
+        :param seg_start: 2D init point of the segment
+        :param seg_end: 2D end point of the segment
+        :return: 2D projection of point onto the segment seg_start->seg_end
+        """
+        seg_vector = seg_end - seg_start
+        seg_length = np.linalg.norm(seg_vector)
+        # 1D progress of the projection of the point on the segment (or the line extending it)
+        progress = np.dot(point - seg_start, seg_vector) / seg_length ** 2
+
+        if progress < 0.0:
+            raise OutOfSegmentBack("Can't project point [{}] on segment [{}]->[{}]".format(point, seg_start, seg_end))
+        if progress > 1.0:
+            raise OutOfSegmentFront("Can't project point [{}] on segment [{}]->[{}]".format(point, seg_start, seg_end))
+
+        return seg_start + progress * seg_vector  # progress from <seg_start> towards <seg_end>
+
+    @staticmethod
+    def dist_to_segment_2d(point: np.ndarray, seg_start: np.ndarray, seg_end: np.ndarray) -> float:
+        """
+        Compute distance from point to *segment* seg_start->seg_end. if the point can't be projected onto the segment,
+        the distance is either from the segment's init-point or end-point
+        :param point: 2D arbitrary point in space
+        :param seg_start: 2D init point of the segment
+        :param seg_end: 2D end point of the segment
+        :return: distance from point to the segment
+        """
+        try:
+            projection = Euclidean.project_on_segment_2d(point, seg_start, seg_end)
+            return np.linalg.norm(point - projection)
+        except OutOfSegmentBack:
+            return np.linalg.norm(point - seg_start)
+        except OutOfSegmentFront:
+            return np.linalg.norm(point - seg_end)
+
+    @staticmethod
+    def signed_dist_to_line_2d(point: np.ndarray, seg_start: np.ndarray, seg_end: np.ndarray) -> float:
+        """
+        Compute the signed distance of point to the line extending the segment seg_start->seg_end
+        :param point: 2D arbitrary point in space
+        :param seg_start: 2D init point of the segment
+        :param seg_end: 2D end point of the segment
+        :return: signed distance from point to the line (+ if point is to the left of the line, - if to the right)
+        """
+        seg_vector = seg_end - seg_start  # vector from segment start to its end
+        normal = [-seg_vector[1], seg_vector[0]]  # normal vector of the segment at its start point
+        return np.divide(np.dot(point - seg_start, normal), np.linalg.norm(normal))
+
+
+    @staticmethod
+    def get_closest_segments_to_point(x, y, path_points):
+        # type: (float, float, np.array) -> np.array
+        """
+        This functions finds the the segment before and after the nearest point to (x,y)
+        :param x: x coordinate
+        :param y: y coordinate
+        :param path_points: numpy array of size [Nx2] of path coordinates (x,y)
+        :return: the closest segments to (x,y): numpy array of size [Nx2] N={0,1,2}
+        """
+        point = np.array([x, y])
+
+        # find the closest point of the road to (x,y)
+        distance_to_road_points = np.linalg.norm(np.array(path_points) - point, axis=0)
+        closest_point_ind = np.argmin(distance_to_road_points)
+
+        # the point (x,y) should be projected either onto the segment before the closest point or onto the one after it.
+        closest_point_idx_pairs = np.array([[closest_point_ind - 1, closest_point_ind],
+                                            [closest_point_ind, closest_point_ind + 1]])
+
+        # filter out non-existing indices
+        closest_point_idx_pairs = closest_point_idx_pairs[np.greater_equal(closest_point_idx_pairs[:, 0], 0.0) &
+                                                          np.less(closest_point_idx_pairs[:, 1], len(path_points))]
+
+        return closest_point_idx_pairs
 
 
 class CartesianFrame:
@@ -33,8 +116,8 @@ class CartesianFrame:
         :param translation: a [x, y, z] translation vector
         :return: a 3x3 numpy matrix for projection (translation+rotation)
         """
-        t = translation.reshape([-1, 1])  # translation vector
-        return np.vstack((np.hstack((rotation_matrix, t[:3, 1])), [0, 0, 0, 1]))
+        t = translation.reshape([3, 1])  # translation vector
+        return np.vstack((np.hstack((rotation_matrix, t)), [0, 0, 0, 1]))
 
     @staticmethod
     def homo_matrix_3d_from_quaternion(quaternion: np.ndarray, translation: np.ndarray) -> np.ndarray:
@@ -44,10 +127,34 @@ class CartesianFrame:
         :param translation: a [x, y, z] translation vector
         :return: a 3x3 numpy matrix for projection (translation+rotation)
         """
-        # TODO: reimplement without tf (ROS) dependency, if needed
-        # rotation_matrix = tf.transformations.quaternion_matrix(quaternion)     #rotation matrix
-        # return CartesianFrame.homo_matrix_3d(rotation_matrix, translation)
-        pass
+        rotation_matrix = tf_transformations.quaternion_matrix(quaternion)
+        return CartesianFrame.homo_matrix_3d(rotation_matrix[:3, :3], translation)
+
+    @staticmethod
+    def homo_matrix_3d_from_euler(x_rot: float, y_rot: float, z_rot: float, translation: np.ndarray) -> np.ndarray:
+        """
+        Generates a 3D homogeneous matrix for cartesian frame projections
+        :param x_rot: euler rotation around x-axis (0 for no rotation)
+        :param y_rot: euler rotation around y-axis (0 for no rotation)
+        :param z_rot: euler rotation around z-axis (0 for no rotation)
+        :param translation: a [x, y, z] translation vector
+        :return: a 3x3 numpy matrix for projection (translation+rotation)
+        """
+        quaternion = tf_transformations.quaternion_from_euler(x_rot, y_rot, z_rot)
+        return CartesianFrame.homo_matrix_3d_from_quaternion(quaternion, translation)
+
+    @staticmethod
+    def add_yaw(xy_points: np.ndarray) -> np.ndarray:
+        """
+        Takes a matrix of curve points ([x, y] only) and adds a yaw column
+        :param xy_points: a numpy matrix of shape [n, 2]
+        :return: a numpy matrix of shape [n, 3]
+        """
+        xy_dot = np.diff(xy_points, axis=0)
+        xy_dot = np.concatenate((xy_dot, np.array([xy_dot[-1, :]])), axis=0)
+        theta = np.arctan2(xy_dot[:, 1], xy_dot[:, 0])  # orientation
+
+        return np.concatenate((xy_points, theta.reshape([-1, 1])), axis=1)
 
     @staticmethod
     def add_yaw_and_derivatives(xy_points: np.ndarray) -> np.ndarray:
@@ -55,7 +162,7 @@ class CartesianFrame:
         Takes a matrix of curve points ([x, y] only) and adds columns: [yaw, curvature, derivative of curvature]
         by computing pseudo-derivatives
         :param xy_points: a numpy matrix of shape [n, 2]
-        :return: a numpy matrix of shape [n, 4]
+        :return: a numpy matrix of shape [n, 5]
         """
         xy_dot = np.diff(xy_points, axis=0)
         xy_dotdot = np.diff(xy_dot, axis=0)
@@ -72,7 +179,7 @@ class CartesianFrame:
         k_tag = np.diff(k_col, axis=0)
         k_tag_col = np.concatenate((k_tag, [k_tag[-1]])).reshape([-1, 1])
 
-        return np.concatenate((xy_points, theta_col, k_col, k_tag_col), 1)
+        return np.concatenate((xy_points, theta_col, k_col, k_tag_col), axis=1)
 
     @staticmethod
     def resample_curve(curve: np.ndarray, step_size: float, desired_curve_len: Union[None, float] = None,
@@ -125,87 +232,71 @@ class CartesianFrame:
         return interp_curve, effective_step_size
 
     @staticmethod
-    def calc_point_segment_dist(p: np.ndarray, p_start: np.ndarray, p_end: np.ndarray) -> (int, float, float):
+    def convert_global_to_relative_frame(global_pos: np.array, frame_position: np.array,
+                                         frame_orientation: Union[float, np.array]) -> np.ndarray:
         """
-        Given point p and directed segment p1->p2, calculate:
-            1. from which side p is located relatively to the line p1->p2,
-            2. the closest distance from p to the segment,
-            3. length of the projection of p on the segment (zero if the projection is outside the segment).
-        :param p: 2D Point
-        :param p_start: first edge of 2D segment
-        :param p_end: second edge of 2D segment
-        :return: signed distance between the point p and the segment p1->p2; length of the projection of p on the segment
+        Convert point in global-frame to a point in relative-frame
+        :param global_pos: (x,y,z) point(s) in global coordinate system. Either an array array of size [3,] or a matrix
+         of size [?, 3]
+        :param frame_position: translation (shift) of coordinate system to project on: (x,y,z) array of size [3,]
+        :param frame_orientation: orientation of the coordinate system to project on: yaw scalar, or quaternion vector
+        :return: The point(s) relative to coordinate system specified by <frame_position> and <frame_orientation>. The
+        shape of global_pos is kept.
         """
-        segment = p_end - p_start
-        segment_start_to_p = p - p_start
-        segment_p_to_end = p_end - p
-        if segment[0] == 0 and segment[1] == 0:
-            return 0, np.linalg.norm(segment_start_to_p), 0
-        dot1 = np.dot(segment, segment_start_to_p)
-        dot2 = np.dot(segment, segment_p_to_end)
-        normal = np.array([-segment[1], segment[0]])  # normal of v toward left if v looks up
-        dotn = np.dot(normal, segment_start_to_p)
-        sign = np.sign(dotn)
-        proj = 0
-        if dot1 > 0 and dot2 > 0:  # then p is between p1,p2, so calc dist to the line
-            one_over_vnorm = 1. / np.linalg.norm(segment)
-            dist = dotn * one_over_vnorm * sign  # always >= 0
-            proj = dot1 * one_over_vnorm  # length of projection of v1 on v
-        elif dot1 <= 0:
-            dist = np.linalg.norm(segment_start_to_p)
+        if isinstance(frame_orientation, np.ndarray):
+            quaternion = frame_orientation  # Orientation is quaternion numpy array
         else:
-            dist = np.linalg.norm(segment_p_to_end)
-        return sign, dist, proj
+            quaternion = CartesianFrame.convert_yaw_to_quaternion(frame_orientation)  # Orientation contains yaw
+
+        # operator that projects from global coordinate system to relative coordinate system
+        H_r_g = np.linalg.inv(CartesianFrame.homo_matrix_3d_from_quaternion(quaternion, frame_position))
+
+        # add a trailing [1] element to the position vector, for proper multiplication with the 4x4 projection operator
+        # then throw it (the result from multiplication is [x, y, z, 1])
+        if len(global_pos.shape) == 1:  # relative_pos is a 1D vector
+            ones = [1]
+            remove_ones = lambda x: x[:3]
+        elif len(global_pos.shape) == 2:
+            ones = np.ones([global_pos.shape[0], 1])
+            remove_ones = lambda x: x[:, :3]
+        else:
+            raise ValueError("relative_pos cardinality (" + str(global_pos.shape) +
+                             ")is not supported in convert_relative_to_global_frame")
+
+        return remove_ones(np.dot(np.hstack((global_pos, ones)), H_r_g.transpose()))
 
     @staticmethod
-    def get_vector_in_objective_frame(target_vector: np.array, ego_position: np.array,
-                                      ego_orientation: Union[float, np.array]):
+    def convert_relative_to_global_frame(relative_pos: np.array, frame_position: np.array,
+                                         frame_orientation: Union[float, np.array]) -> np.ndarray:
         """
-        convert point in absolute frame to relative to ego frame
-        :param target_vector: (x,y,z) array of size [3,]
-        :param ego_position: translation of ego frame: (x,y,z) array of size [3,]
-        :param ego_orientation: orientation of ego frame. Can be either yaw scalar, or quaternion vector
-        :return: point in relative to ego frame
+        Convert point in relative coordinate-system to a global coordinate-system
+        :param relative_pos: (x,y,z) point(s) in relative coordinate system. Either an array array of size [3,] or a
+        matrix of size [?, 3]
+        :param frame_position: translation (shift) of coordinate system to project from: (x,y,z) array of size [3,]
+        :param frame_orientation: orientation of the coordinate system to project from: yaw scalar, or quaternion vector
+        :return: the point(s) in the global coordinate system. The shape of relative_pos is kept.
         """
-        if hasattr(ego_orientation, "__len__"):
-            # Orientation is quaternion numpy array
-            quaternion = ego_orientation
+        if isinstance(frame_orientation, np.ndarray):
+            quaternion = frame_orientation  # Orientation is quaternion numpy array
         else:
-            # Orientation contains yaw
-            quaternion = tf_transformations.quaternion_from_euler(0, 0, ego_orientation, 'ryxz')
+            quaternion = CartesianFrame.convert_yaw_to_quaternion(frame_orientation)  # Orientation contains yaw
 
-        car_rotation = tf_transformations.quaternion_matrix(quaternion)
-        car_position = np.array(ego_position).reshape([3, -1])
-        if len(target_vector.shape) == 1:
-            target_vector = target_vector.reshape([3, -1])
-        elif target_vector.shape[0] != 3:
-            target_vector = target_vector.transpose()
-        target_pos_in_obj_frame = np.dot(np.linalg.pinv(car_rotation[0:3, 0:3]), target_vector - car_position)
+        # operator that projects from relative coordinate system to global coordinate system
+        H_g_r = CartesianFrame.homo_matrix_3d_from_quaternion(quaternion, frame_position)
 
-        return target_pos_in_obj_frame
+        # add a trailing [1] element to the position vector, for proper multiplication with the 4x4 projection operator
+        # then throw it (the result from multiplication is [x, y, z, 1])
+        if len(relative_pos.shape) == 1:  # relative_pos is a 1D vector
+            ones = [1]
+            remove_ones = lambda x: x[:3]
+        elif len(relative_pos.shape) == 2:
+            ones = np.ones([relative_pos.shape[0], 1])
+            remove_ones = lambda x: x[:, :3]
+        else:
+            raise ValueError("relative_pos cardinality (" + str(relative_pos.shape) +
+                             ")is not supported in convert_relative_to_global_frame")
 
-    @staticmethod
-    def convert_relative_to_absolute_frame(relative_vector: np.array, ego_position: np.array, ego_yaw: float):
-        """
-        convert point in relative ego frame to absolute frame
-        :param relative_vector: (x,y,z) array in ego frame
-        :param ego_position: translation of ego frame: (x,y,z) array of size [3,]
-        :param ego_yaw: yaw scalar - orientation of ego frame
-        :return: point in absolute frame
-        """
-        #quaternion = tf_transformations.quaternion_from_euler(0, 0, ego_yaw, 'ryxz')
-        #car_rotation = tf_transformations.quaternion_matrix(quaternion)
-
-        car_position = np.array(ego_position).reshape([3, -1])
-        if len(relative_vector.shape) == 1:
-            relative_vector = relative_vector.reshape([3, -1])
-        elif relative_vector.shape[0] != 3:
-            relative_vector = relative_vector.transpose()
-        cos = np.cos(ego_yaw)
-        sin = np.sin(ego_yaw)
-        car_rotation = np.array([[cos, -sin, 0], [sin, cos, 0], [0, 0, 1]])
-        target_pos_in_abs_frame = np.dot(car_rotation[0:3, 0:3], relative_vector) + car_position
-        return target_pos_in_abs_frame
+        return remove_ones(np.dot(np.hstack((relative_pos, ones)), H_g_r.transpose()))
 
     @staticmethod
     def convert_yaw_to_quaternion(yaw: float):
@@ -213,7 +304,7 @@ class CartesianFrame:
         :param yaw: angle in [rad]
         :return: quaternion
         """
-        return tf_transformations.quaternion_from_euler(0, 0, yaw, 'ryxz')
+        return tf_transformations.quaternion_from_euler(0, 0, yaw)
 
 
 class FrenetMovingFrame:
@@ -362,6 +453,7 @@ class FrenetMovingFrame:
                                k.reshape([num_t, num_p, 1])), axis=2)
 
 
+# TODO: change to matrix operations, use numpy arrays instead of individual values or tuples
 class Dynamics:
     """
     predicting location & velocity for moving objects
@@ -417,33 +509,3 @@ class Dynamics:
             goal_yaw = yaw
 
         return tuple((goal_x, goal_y, goal_yaw, goal_v_x, goal_v_y))
-
-    @staticmethod
-    def rotate_and_shift_point(x: float, y: float, cosa: float, sina: float, dx: float, dy: float) \
-            -> tuple((float, float)):
-        """
-        calculate new point location after rotation & shift
-        :param x: original point location
-        :param y:
-        :param cosa: cos of rotation angle
-        :param sina: sin of rotation angle
-        :param dx: shift
-        :param dy:
-        :return: new point location
-        """
-        return tuple((x * cosa - y * sina + dx, x * sina + y * cosa + dy))
-
-    @staticmethod
-    def rotate_and_shift_points(points: np.ndarray, cosa: float, sina: float, dx: float, dy: float) -> np.ndarray:
-        """
-        calculate new point location after rotation & shift
-        :param points: Nx3 matrix of the original points
-        :param cosa: cos of rotation angle
-        :param sina: sin of rotation angle
-        :param dx: shift
-        :param dy:
-        :return: Nx3 matrix: new points location
-        """
-        return np.c_[points[:, 0] * cosa - points[:, 1] * sina + dx,
-                     points[:, 0] * sina + points[:, 1] * cosa + dy,
-                     points[:, 2]]

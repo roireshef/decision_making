@@ -55,6 +55,12 @@ ROAD_SHOULDERS_WIDTH = 1.5
 # [m] Bounding box size around ego vehicle
 EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 0, 0, 0
 
+# [m] Default height for objects - State Module
+DEFAULT_OBJECT_Z_VALUE = 0.
+
+# [int] Default layer on map (0 means ground)
+DEFAULT_MAP_LAYER = 0
+
 ### DM Manager configuration ###
 BEHAVIORAL_PLANNING_MODULE_PERIOD = 1
 TRAJECTORY_PLANNING_MODULE_PERIOD = 0.1
@@ -74,8 +80,7 @@ OCCUPANCY_STATE_SUBSCRIBE_TOPIC = "StateSubscriber::OccupancyStateReader"
 STATE_PUBLISH_TOPIC = "StatePublisher::StateWriter"
 
 # Maps
-MAPS_DIR = os.path.join(os.path.dirname(__file__), '../resources/maps/')
-MAP_FILE_NAME = os.path.join(MAPS_DIR, 'map.p')
+MAP_RESOURCE_FILE_NAME = os.path.join('maps', 'testingGroundMap.bin')
 
 # Navigation Planning Module
 NAVIGATION_PLAN_PUBLISH_TOPIC = "NavigationPublisher::NavigationPlanWriter"
@@ -93,6 +98,7 @@ TRAJECTORY_PUBLISH_TOPIC = "TrajectoryPublisher::TrajectoryWriter"
 TRAJECTORY_VISUALIZATION_TOPIC = ""  # TODO: update XML in common-data and fill this
 
 #### NAMES OF MODULES FOR LOGGING ####
+MAP_NAME_FOR_LOGGING = "Map API"
 DM_MANAGER_NAME_FOR_LOGGING = "DM Manager"
 NAVIGATION_PLANNING_NAME_FOR_LOGGING = "Navigation Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"

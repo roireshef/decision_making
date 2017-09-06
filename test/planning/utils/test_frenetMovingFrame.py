@@ -1,5 +1,6 @@
-from src.planning.utils.geometry_utils import *
-from test.planning.trajectory.utils import RouteFixture
+import numpy as np
+from decision_making.src.planning.utils.geometry_utils import *
+from decision_making.test.planning.trajectory.utils import RouteFixture
 
 
 def test_fpointToCpoint_simpleConversion_accurateConversion():

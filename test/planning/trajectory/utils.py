@@ -3,7 +3,7 @@ from typing import List
 import matplotlib.patches as patches
 import numpy as np
 
-from src.planning.trajectory.cost_function import SigmoidStatic2DBoxObstacle
+from decision_making.src.planning.trajectory.cost_function import SigmoidStatic2DBoxObstacle
 
 
 class RouteFixture:

@@ -52,7 +52,7 @@ class TrajectoryCostParams(DDSTypedMsg):
         self.right_shoulder_cost = right_shoulder_cost
         self.left_road_cost = left_road_cost
         self.right_road_cost = right_road_cost
-        self.dist_from_ref_sq_coef = dist_from_ref_sq_cost_coef
+        self.dist_from_ref_sq_cost_coef = dist_from_ref_sq_cost_coef
         self.velocity_limits = velocity_limits
         self.acceleration_limits = acceleration_limits
 

@@ -1,18 +1,21 @@
+from logging import Logger
+from typing import Dict
+
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
+from decision_making.src.exceptions import MsgDeserializationError
 from decision_making.src.global_constants import *
 from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.messages.exceptions import MsgDeserializationError
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.state.state import State
-from logging import Logger
 
 
 class TrajectoryPlanningFacade(DmModule):
-    def __init__(self, dds: DdsPubSub, logger: Logger, strategy_handlers: dict):
+    def __init__(self, dds: DdsPubSub, logger: Logger,
+                 strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner]):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param dds: communication layer (DDS) instance
@@ -43,17 +46,17 @@ class TrajectoryPlanningFacade(DmModule):
 
             # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
             trajectory, cost, debug_results = self._strategy_handlers[params.strategy].plan(
-                state, params.reference_route, params.target_state, params.cost_params)
+                state, params.reference_route, params.target_state, params.time, params.cost_params)
 
             # TODO: should publish v_x?
             # publish results to the lower DM level
-            self.__publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory, reference_route=params.reference_route,
+            self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory, reference_route=params.reference_route,
                                                         current_speed=state.ego_state.v_x))
 
             # TODO: publish cost to behavioral layer?
 
             # publish visualization/debug data
-            self.__publish_debug(debug_results)
+            self._publish_debug(debug_results)
 
         except MsgDeserializationError as e:
             self.logger.debug(str(e))
@@ -78,8 +81,8 @@ class TrajectoryPlanningFacade(DmModule):
         self.logger.debug('Received state: %s', input_params)
         return TrajectoryParams.deserialize(input_params)
 
-    def __publish_trajectory(self, results: TrajectoryPlanMsg) -> None:
+    def _publish_trajectory(self, results: TrajectoryPlanMsg) -> None:
         self.dds.publish(TRAJECTORY_PUBLISH_TOPIC, results.serialize())
 
-    def __publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
+    def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
         self.dds.publish(TRAJECTORY_VISUALIZATION_TOPIC, debug_msg.serialize())
