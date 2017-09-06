@@ -328,8 +328,8 @@ class MapAPI:
         relevant_ind_pairs = segments_point_idx_pairs[(segments_point_idx_pairs[:, 0] >= 0) &
                                                       (segments_point_idx_pairs[:, 1] < len(points))]
 
-        # for relevant segments, compute (each row): [segment_start_point_index,
-        # longitudinal distance of projection on segment, signed lateral distance to the line extending the segment]
+        # for relevant segments, compute (each row): [longitudinal distance of projection on segment,
+        # signed lateral distance to the line extending the segment]
         segments_lon_lat = []
         back_of_segment = front_of_segment = 0  # this is used to catch a special case after the for loop
         for segment_idx_pair in relevant_ind_pairs:
