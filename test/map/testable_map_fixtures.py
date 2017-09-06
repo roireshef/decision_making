@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 
+from decision_making.src.map.map_api import MapAPI
 from decision_making.src.map.naive_cache_map import NaiveCacheMap
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.test.map.map_model_utils import TestMapModelUtils
@@ -31,7 +32,7 @@ def testable_map_api():
                                                                         road_name='def',
                                                                         lanes_num=NUM_LANES, lane_width=LANE_WIDTH)
 
-    yield NaiveCacheMap(map_model=test_map_model, logger=AV_Logger.get_logger("testable_map_api"))
+    yield MapAPI(map_model=test_map_model, logger=AV_Logger.get_logger("testable_map_api"))
 
 @pytest.fixture()
 def navigation_fixture():

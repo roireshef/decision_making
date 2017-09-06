@@ -17,7 +17,7 @@ def map_fixture():
     for rid, road in map_model._roads_data.items():
         trans_roads_data[rid] = road
     map_model._roads_data = trans_roads_data
-    yield NaiveCacheMap(map_model, logger)
+    yield MapAPI(map_model, logger)
 
 
 def test_convertGlobalToRoadCoordinates_OutOfRoad_exception(testable_map_api, navigation_fixture):
