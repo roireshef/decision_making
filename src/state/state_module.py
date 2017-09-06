@@ -1,4 +1,5 @@
 from threading import Lock
+from typing import Optional
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import *
@@ -12,8 +13,8 @@ class StateModule(DmModule):
     UNKNWON_DEFAULT_VAL = 0.0
 
     # TODO: implement double-buffer mechanism for locks wherever needed
-    def __init__(self, dds: DdsPubSub, logger: Logger, map_api: MapAPI, occupancy_state: Union[OccupancyState, None],
-                 dynamic_objects: Union[List[DynamicObject], None], ego_state: Union[EgoState, None]):
+    def __init__(self, dds: DdsPubSub, logger: Logger, map_api: MapAPI, occupancy_state: Optional[OccupancyState],
+                 dynamic_objects: Optional[List[DynamicObject]], ego_state: Optional[EgoState]):
         super().__init__(dds, logger)
         self._map_api = map_api
 
@@ -140,8 +141,7 @@ class StateModule(DmModule):
         pass  # TODO: update self._ego_state.steering_angle. Don't forget to lock self._ego_state!
 
     @staticmethod
-    def __compute_ego_road_localization(pos, yaw, map_api):
-        # type: (np.ndarray, float, MapAPI) -> RoadLocalization
+    def __compute_ego_road_localization(pos: np.ndarray, yaw: float, map_api: MapAPI) -> RoadLocalization:
         """
         calculate road coordinates for global coordinates for ego
         :param pos: 1D numpy array of ego vehicle's [x,y,z] in global coordinate-frame
@@ -154,8 +154,8 @@ class StateModule(DmModule):
         return RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
 
     @staticmethod
-    def __compute_obj_road_localization(obj_pos, obj_yaw, ego_pos, ego_yaw, map_api):
-        # type: (np.ndarray, float, np.ndarray, float, MapAPI) -> RoadLocalization
+    def __compute_obj_road_localization(obj_pos: np.ndarray, obj_yaw: float, ego_pos: np.ndarray, ego_yaw: float,
+                                        map_api: MapAPI) -> RoadLocalization:
         """
         given an object in ego-vehicle's coordinate-frame, calculate its road coordinates
 
