@@ -11,7 +11,7 @@ from decision_making.src.global_constants import *
 from decision_making.src.map.constants import ROADS_MAP_TILE_SIZE
 from decision_making.src.map.map_model import MapModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.utils.geometry_utils import CartesianFrame
+from decision_making.src.planning.utils.geometry_utils import CartesianFrame, Euclidean
 
 
 @six.add_metaclass(ABCMeta)
@@ -28,7 +28,7 @@ class MapAPI:
     ''' EXTERNAL FUNCTIONS '''
     '''####################'''
 
-    @raises(MapCellNotFound, RoadNotFound)
+    @raises(MapCellNotFound, RoadNotFound, LongitudeOutOfRoad)
     def convert_global_to_road_coordinates(self, x, y):
         # type: (float, float) -> (int, float, float)
         """
@@ -241,7 +241,7 @@ class MapAPI:
         road = self._get_road(road_id)
         return self._shift_road_points(road.points, latitude_shift - road.width / 2)
 
-    @raises(RoadNotFound)
+    @raises(RoadNotFound, LongitudeOutOfRoad)
     def _find_closest_road(self, x, y, road_ids):
         # type: (float, float, List[int]) -> (int, float, float)
         """
@@ -291,7 +291,7 @@ class MapAPI:
             raise LongitudeOutOfRoad("longitude {} is out of road's longitudes range [{}, {}]"
                                      .format(lon, road.longitudes[0], road.longitudes[-1]))
 
-    @raises(RoadNotFound)
+    @raises(RoadNotFound, LongitudeOutOfRoad)
     def _convert_global_to_road_coordinates(self, x, y, road_id):
         # type: (float, float, int) -> (float, float)
         """
@@ -303,28 +303,42 @@ class MapAPI:
         :param road_id: road ID as in the map model
         :return: longitude (from road start), latitude **relative to road's right side**
         """
-        p = np.array([x, y])
+        point = np.array([x, y])
         road = self._cached_map_model.get_road_data(road_id)
         longitudes = road.longitudes
 
         # find the closest point of the road to (x,y)
         points = road.points[:, 0:2]
-        distance_to_road_points = np.linalg.norm(np.array(points) - p, axis=0)
+        distance_to_road_points = np.linalg.norm(np.array(points) - point, axis=0)
         closest_point_ind = np.argmin(distance_to_road_points)
 
         # the relevant road segments will be the one before this point, and the one after it, so for both segments:
         # compute [sign, latitude (relative to road center), longitude, segment_start_point_index]
         closest_point_ind_pairs = [[closest_point_ind - 1, closest_point_ind], [closest_point_ind, closest_point_ind + 1]]
-        segments = [np.append(CartesianFrame.calc_point_segment_dist(p, points[pair[0]], points[pair[1]]), pair[0])
-                    for pair in closest_point_ind_pairs if pair[0] >= 0 and pair[1] < len(points)]
-        segments = np.array(segments)
+        relevant_ind_pairs = filter(lambda pair: pair[0] >= 0 and pair[1] < len(points), closest_point_ind_pairs)
+        try:
+            # each row in segment will be: [segment_start_point_index, longitudinal distance of projection on segment,
+            # signed lateral distance to the line extending the segment]
+            segments = []
+            for pair in relevant_ind_pairs:
+                try:
+                    segments.append([
+                        pair[0],
+                        np.linalg.norm(Euclidean.project_on_segment_2d(point, pair[0], pair[1]) - pair[0]),
+                        Euclidean.signed_dist_to_line_2d(point, pair[0], pair[1])
+                    ])
+                except (OutOfSegmentBack, OutOfSegmentFront): pass
+            segments = np.array(segments)
 
-        # find closest segment by min distance (latitude)
-        closest_segment = segments[np.argmin(segments[:, 1], axis=0)]
-        sign, lat, lon, start_ind = closest_segment[0], closest_segment[1], closest_segment[2], int(closest_segment[3])
+            # find closest segment by min distance (latitude)
+            closest_segment = segments[np.argmin(segments[:, 1], axis=0)]
+            sign, lat, lon, start_ind = closest_segment[0], closest_segment[1], closest_segment[2], int(closest_segment[3])
 
-        # latitude (relative to right side), longitude
-        return lon + longitudes[start_ind], road.width / 2 + lat * sign
+            # latitude (relative to right side), longitude
+            return lon + longitudes[start_ind], road.width / 2 + lat * sign
+        except IndexError:  # happens when <segments> is empty
+            LongitudeOutOfRoad("Tried to project point {} onto road #{} but projection falls outside "
+                               "the road (longitudinally)")
 
     @staticmethod
     def _shift_road_points(points, lateral_shift):
