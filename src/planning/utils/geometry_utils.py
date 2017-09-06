@@ -3,10 +3,66 @@ from typing import Union
 import numpy as np
 from scipy import interpolate as interp
 
+from decision_making.src.exceptions import OutOfSegmentBack, OutOfSegmentFront
 from decision_making.src.global_constants import *
 from decision_making.src.planning.utils import tf_transformations
 from decision_making.src.planning.utils.columns import *
 from decision_making.src.planning.utils.math import Math
+
+
+class Euclidean:
+    @staticmethod
+    def project_on_segment_2d(point: np.ndarray, seg_start: np.ndarray, seg_end: np.ndarray) -> np.ndarray:
+        """
+        Projects an arbitrary point onto the segment seg_start->seg_end, or throw an error point's projection is outside
+        the segment.
+        :param point: 2D arbitrary point in space
+        :param seg_start: 2D init point of the segment
+        :param seg_end: 2D end point of the segment
+        :return: 2D projection of point onto the segment seg_start->seg_end
+        """
+        seg_vector = seg_end - seg_start
+        seg_length = np.linalg.norm(seg_vector)
+        # 1D progress of the projection of the point on the segment (or the line extending it)
+        progress = np.dot(point - seg_start, seg_vector) / seg_length ** 2
+
+        if progress < 0.0:
+            raise OutOfSegmentBack("Can't project point [{}] on segment [{}]->[{}]".format(point, seg_start, seg_end))
+        if progress > 1.0:
+            raise OutOfSegmentFront("Can't project point [{}] on segment [{}]->[{}]".format(point, seg_start, seg_end))
+
+        return seg_start + progress * seg_vector  # progress from <seg_start> towards <seg_end>
+
+    @staticmethod
+    def dist_to_segment_2d(point: np.ndarray, seg_start: np.ndarray, seg_end: np.ndarray) -> float:
+        """
+        Compute distance from point to *segment* seg_start->seg_end. if the point can't be projected onto the segment,
+        the distance is either from the segment's init-point or end-point
+        :param point: 2D arbitrary point in space
+        :param seg_start: 2D init point of the segment
+        :param seg_end: 2D end point of the segment
+        :return: distance from point to the segment
+        """
+        try:
+            projection = Euclidean.project_on_segment_2d(point, seg_start, seg_end)
+            return np.linalg.norm(point - projection)
+        except OutOfSegmentBack:
+            return np.linalg.norm(point - seg_start)
+        except OutOfSegmentFront:
+            return np.linalg.norm(point - seg_end)
+
+    @staticmethod
+    def signed_dist_to_line_2d(point: np.ndarray, seg_start: np.ndarray, seg_end: np.ndarray) -> float:
+        """
+        Compute the signed distance of point to the line extending the segment seg_start->seg_end
+        :param point: 2D arbitrary point in space
+        :param seg_start: 2D init point of the segment
+        :param seg_end: 2D end point of the segment
+        :return: signed distance from point to the line (+ if point is to the left of the line, - if to the right)
+        """
+        seg_vector = seg_end - seg_start  # vector from segment start to its end
+        normal = [-seg_vector[1], seg_vector[0]]  # normal vector of the segment at its start point
+        return np.divide(np.dot(point - seg_start, normal), np.linalg.norm(normal))
 
 
 class CartesianFrame:

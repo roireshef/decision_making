@@ -18,6 +18,14 @@ class MapCellNotFound(Exception):
     pass
 
 
+class OutOfSegmentBack(Exception):
+    pass
+
+
+class OutOfSegmentFront(Exception):
+    pass
+
+
 def raises(*e: Exception):
     """
     A decorator that determines that a function may raise a specific exception
