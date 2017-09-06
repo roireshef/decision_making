@@ -65,6 +65,33 @@ class Euclidean:
         return np.divide(np.dot(point - seg_start, normal), np.linalg.norm(normal))
 
 
+    @staticmethod
+    def get_closest_segments_to_point(x, y, path_points):
+        # type: (float, float, np.array) -> np.array
+        """
+        This functions finds the the segment before and after the nearest point to (x,y)
+        :param x: x coordinate
+        :param y: y coordinate
+        :param path_points: numpy array of size [Nx2] of path coordinates (x,y)
+        :return: the closest segments to (x,y): numpy array of size [Nx2] N={0,1,2}
+        """
+        point = np.array([x, y])
+
+        # find the closest point of the road to (x,y)
+        distance_to_road_points = np.linalg.norm(np.array(path_points) - point, axis=0)
+        closest_point_ind = np.argmin(distance_to_road_points)
+
+        # the point (x,y) should be projected either onto the segment before the closest point or onto the one after it.
+        closest_point_idx_pairs = np.array([[closest_point_ind - 1, closest_point_ind],
+                                            [closest_point_ind, closest_point_ind + 1]])
+
+        # filter out non-existing indices
+        closest_point_idx_pairs = closest_point_idx_pairs[np.greater_equal(closest_point_idx_pairs[:, 0], 0.0) &
+                                                          np.less(closest_point_idx_pairs[:, 1], len(path_points))]
+
+        return closest_point_idx_pairs
+
+
 class CartesianFrame:
     @staticmethod
     def homo_matrix_2d(rotation_angle: float, translation: np.ndarray) -> np.ndarray:

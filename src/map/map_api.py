@@ -237,6 +237,8 @@ class MapAPI:
         distances = [self._dist_to_road(x, y, rid) for rid in road_ids]
         return road_ids[np.argmin(distances)]
 
+
+
     @raises(RoadNotFound)
     def _dist_to_road(self, x, y, road_id):
         # type: (float, float, int) -> float
@@ -250,20 +252,12 @@ class MapAPI:
         """
         point = np.array([x, y])
         road = self._get_road(road_id)
-
-        # find the closest point of the road to (x,y)
         points = road.points[:, 0:2]
-        distance_to_road_points = np.linalg.norm(np.array(points) - point, axis=0)
-        closest_point_ind = np.argmin(distance_to_road_points)
 
-        # the point (x,y) should be projected either onto the segment before the closest point or onto the one after it.
-        closest_point_idx_pairs = [[closest_point_ind - 1, closest_point_ind],
-                                   [closest_point_ind, closest_point_ind + 1]]
+        # Get closest segments to point (x,y)
+        closest_point_idx_pairs = Euclidean.get_closest_segments_to_point(x, y, points)
 
-        # filter out non-existing indices
-        closest_point_idx_pairs = closest_point_idx_pairs[np.greater_equal(closest_point_idx_pairs[:, 0], 0.0) &
-                                                          np.less(closest_point_idx_pairs[:, 1], len(points))]
-
+        # Get distance from (x,y) to those segments
         segments_dists = [Euclidean.dist_to_segment_2d(point, points[pair[0]], points[pair[1]])
                           for pair in closest_point_idx_pairs]
 
@@ -316,18 +310,10 @@ class MapAPI:
         point = np.array([x, y])
         road = self._get_road(road_id)
         longitudes = road.longitudes
-
-        # find the closest point of the road to (x,y)
         points = road.points[:, 0:2]
-        distance_to_road_points = np.linalg.norm(np.array(points) - point, axis=0)
-        closest_point_idx = np.argmin(distance_to_road_points)
 
-        # the point (x,y) should be projected either onto the segment before the closest point or onto the one after it.
-        segments_point_idx_pairs = np.array([[closest_point_idx - 1, closest_point_idx],
-                                             [closest_point_idx, closest_point_idx + 1]])
-        # filter out non-existing indices
-        relevant_ind_pairs = segments_point_idx_pairs[np.greater_equal(segments_point_idx_pairs[:, 0], 0) &
-                                                      np.less(segments_point_idx_pairs[:, 1], len(points))]
+        # Get closest segments to point (x,y)
+        relevant_ind_pairs = Euclidean.get_closest_segments_to_point(x, y, points)
 
         # for relevant segments, compute (each row): [longitudinal distance of projection on segment,
         # signed lateral distance to the line extending the segment]
