@@ -8,7 +8,6 @@ import six
 from decision_making.src.exceptions import *
 from decision_making.src.exceptions import RoadNotFound, raises, LongitudeOutOfRoad, MapCellNotFound
 from decision_making.src.global_constants import *
-from decision_making.src.map.constants import ROADS_MAP_TILE_SIZE
 from decision_making.src.map.map_model import MapModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame, Euclidean
@@ -65,31 +64,31 @@ class MapAPI:
         return center_lanes
 
     @raises(RoadNotFound)
-    def get_longitudinal_difference(self, init_road_id, init_lon, final_road_id, final_lon, navigation_plan):
+    def get_longitudinal_difference(self, initial_road_id, initial_lon, final_road_id, final_lon, navigation_plan):
         # type: (int, float, int, float, NavigationPlanMsg) -> float
         """
         This function calculates the total longitudinal difference in [m] between two points in road coordinates.
         IMPORTANT: If the destination road id is not in the navigation plan, raises RoadNotFound EXCEPTION.
          Handling needs to be done in the caller
-        :param init_road_id: initial road id (int)
-        :param init_lon: initial road longitude in [m]
+        :param initial_road_id: initial road id (int)
+        :param initial_lon: initial road longitude in [m]
         :param final_road_id: destination road id (int)
         :param final_lon: destination longitude in [m]
         :param navigation_plan: navigation plan according to which we advance on road
         :return: longitudinal difference in [m]
         """
-        init_road_idx = navigation_plan.get_road_index_in_plan(init_road_id)
+        initial_road_idx = navigation_plan.get_road_index_in_plan(initial_road_id)
         final_road_idx = navigation_plan.get_road_index_in_plan(final_road_id)
         # look ahead
-        if final_road_idx > init_road_idx or (final_road_idx == init_road_idx and final_lon > init_lon):
-            roads_ids = navigation_plan.road_ids[init_road_idx:final_road_idx]  # this excludes last road
+        if final_road_idx > initial_road_idx or (final_road_idx == initial_road_idx and final_lon > initial_lon):
+            roads_ids = navigation_plan.road_ids[initial_road_idx:final_road_idx]  # this excludes last road
             roads_len = [self._get_road(rid).length for rid in roads_ids]
-            return np.add(np.sum(roads_len), -init_lon + final_lon)
+            return np.add(np.sum(roads_len), -initial_lon + final_lon)
         # look back
         else:
-            roads_ids = navigation_plan.road_ids[final_road_idx:init_road_idx]  # this excludes last road
+            roads_ids = navigation_plan.road_ids[final_road_idx:initial_road_idx]  # this excludes last road
             roads_len = [self._get_road(rid).length for rid in roads_ids]
-            return -1 * np.add(np.sum(roads_len),  - final_lon + init_lon)
+            return -1 * np.add(np.sum(roads_len), - final_lon + initial_lon)
 
     @raises(RoadNotFound, LongitudeOutOfRoad)
     def advance_on_plan(self, initial_road_id, initial_lon, lookahead_dist, navigation_plan):
@@ -108,11 +107,11 @@ class MapAPI:
         current_road_idx_in_plan = navigation_plan.get_road_index_in_plan(initial_road_id)
         roads_ids = navigation_plan.road_ids[current_road_idx_in_plan:]
         roads_len = [self._get_road(rid).length for rid in roads_ids]
-        
+
         # distance to roads-ends
-        roads_dist_to_end = np.cumsum(np.append([roads_len[0] - initial_lon], roads_len[1:]))  
+        roads_dist_to_end = np.cumsum(np.append([roads_len[0] - initial_lon], roads_len[1:]))
         # how much of lookahead_dist is left after this road
-        roads_leftovers = np.subtract(lookahead_dist, roads_dist_to_end)  
+        roads_leftovers = np.subtract(lookahead_dist, roads_dist_to_end)
 
         try:
             target_road_idx = np.where(roads_leftovers < 0)[0][0]
@@ -153,15 +152,15 @@ class MapAPI:
         :return:
         """
         # find the final point's (according to desired lookahead distance) road_id and longitude along this road
-        final_road_id, final_road_lon = self.advance_on_plan(initial_road_id, initial_lon, lookahead_dist,
-                                                             navigation_plan)
-        init_road_idx = navigation_plan.get_road_index_in_plan(initial_road_id)
+        final_road_id, final_lon = self.advance_on_plan(initial_road_id, initial_lon, lookahead_dist,
+                                                        navigation_plan)
+        initial_road_idx = navigation_plan.get_road_index_in_plan(initial_road_id)
         final_road_idx = navigation_plan.get_road_index_in_plan(final_road_id)
-        relevant_road_ids = navigation_plan.road_ids[init_road_idx:(final_road_idx+1)]
+        relevant_road_ids = navigation_plan.road_ids[initial_road_idx:(final_road_idx + 1)]
 
         # exact projection of the initial point and final point on the road
-        init_point = self._convert_road_to_global_coordinates(initial_road_id, initial_lon, desired_lat)[0][:2]
-        final_point = self._convert_road_to_global_coordinates(final_road_id, final_road_lon, desired_lat)[0][:2]
+        initial_point = self._convert_road_to_global_coordinates(initial_road_id, initial_lon, desired_lat)[0][:2]
+        final_point = self._convert_road_to_global_coordinates(final_road_id, final_lon, desired_lat)[0][:2]
 
         # shift points (laterally) and concatenate all points of all relevant roads
         shifted_points = np.concatenate([self._shift_road_points_to_latitude(rid, desired_lat)
@@ -176,7 +175,7 @@ class MapAPI:
                                         np.less(longitudes - initial_lon, lookahead_dist)]
 
         # Build path
-        path = np.concatenate(([init_point], shifted_points, [final_point]))
+        path = np.concatenate(([initial_point], shifted_points, [final_point]))
 
         # Remove duplicate points (start of next road == end of last road)
         path = path[np.append(np.sum(np.diff(path, axis=0), axis=1) != 0.0, [True])]
@@ -335,7 +334,8 @@ class MapAPI:
             try:
                 segments.append([
                     pair[0],
-                    np.linalg.norm(Euclidean.project_on_segment_2d(point, points[pair[0]], points[pair[1]]) - points[pair[0]]),
+                    np.linalg.norm(
+                        Euclidean.project_on_segment_2d(point, points[pair[0]], points[pair[1]]) - points[pair[0]]),
                     Euclidean.signed_dist_to_line_2d(point, points[pair[0]], points[pair[1]])
                 ])
             except OutOfSegmentBack:
