@@ -319,24 +319,28 @@ class MapAPI:
         # find the closest point of the road to (x,y)
         points = road.points[:, 0:2]
         distance_to_road_points = np.linalg.norm(np.array(points) - point, axis=0)
-        closest_point_ind = np.argmin(distance_to_road_points)
+        closest_point_idx = np.argmin(distance_to_road_points)
 
-        # the relevant road segments will be the one before this point, and the one after it, so for both segments:
-        # compute [sign, latitude (relative to road center), longitude, segment_start_point_index]
-        pairs = np.array([[closest_point_ind - 1, closest_point_ind], [closest_point_ind, closest_point_ind + 1]])
-        relevant_ind_pairs = pairs[pairs[:, 0] >= 0 and pairs[:, 1] < len(points)]
+        # the point (x,y) should be projected either onto the segment before the closest point or onto the one after it.
+        segments_point_idx_pairs = np.array([[closest_point_idx - 1, closest_point_idx],
+                                             [closest_point_idx, closest_point_idx + 1]])
+        # filter out non-existing indices
+        relevant_ind_pairs = segments_point_idx_pairs[(segments_point_idx_pairs[:, 0] >= 0) &
+                                                      (segments_point_idx_pairs[:, 1] < len(points))]
 
-        # each row in segment will be: [segment_start_point_index, longitudinal distance of projection on segment,
-        # signed lateral distance to the line extending the segment]
+        # for relevant segments, compute (each row): [segment_start_point_index,
+        # longitudinal distance of projection on segment, signed lateral distance to the line extending the segment]
         segments = []
-        back_of_segment = front_of_segment = 0
+        back_of_segment = front_of_segment = 0  # this is used to catch a special case after the for loop
         for pair in relevant_ind_pairs:
             try:
+                seg_start = points[pair[0]]
+                seg_end = points[pair[1]]
+
                 segments.append([
                     pair[0],
-                    np.linalg.norm(
-                        Euclidean.project_on_segment_2d(point, points[pair[0]], points[pair[1]]) - points[pair[0]]),
-                    Euclidean.signed_dist_to_line_2d(point, points[pair[0]], points[pair[1]])
+                    np.linalg.norm(Euclidean.project_on_segment_2d(point, seg_start, seg_end) - seg_start),
+                    Euclidean.signed_dist_to_line_2d(point, seg_start, seg_end)
                 ])
             except OutOfSegmentBack:
                 back_of_segment += 1
@@ -346,12 +350,12 @@ class MapAPI:
                 pass
 
         # special case where the point is in the funnel that is created by the normals of two segments
-        # at their intersection point
+        # at their intersection point. Once this happens, both OutOfSegmentBack and OutOfSegmentFront are raised
         if len(relevant_ind_pairs) == 2 and front_of_segment == 1 and back_of_segment == 1:
             segments = [relevant_ind_pairs[1][0], 0.0, np.linalg.norm(point - points[relevant_ind_pairs[1][0]])]
 
         try:
-            # find closest segment by min distance (latitude)
+            # find closest segment by min latitudinal distance
             segments = np.array(segments)
             closest_segment = segments[np.argmin(segments[:, 1], axis=0)]
             start_ind, lon, lat_signed = int(closest_segment[0]), closest_segment[1], closest_segment[2]
