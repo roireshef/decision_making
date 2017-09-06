@@ -62,22 +62,26 @@ class RoadDetails:
 class MapModel:
     def __init__(self, roads_data, incoming_roads, outgoing_roads, xy2road_map, xy2road_tile_size):
         # type: (Dict[int, RoadDetails], Dict[int, List[int]], Dict[int, List[int]], Dict[(int, float, float), List[int]], float) -> None
-        self.__roads_data = copy.deepcopy(roads_data)  # dictionary: road_id -> RoadDetails
-        self.__incoming_roads = copy.deepcopy(incoming_roads)  # dictionary: node id -> incoming roads
-        self.__outgoing_roads = copy.deepcopy(outgoing_roads)  # dictionary: node id -> outgoing roads
-        self.__xy2road_map = copy.deepcopy(xy2road_map)  # maps world coordinates to road_ids
+        self._roads_data = copy.deepcopy(roads_data)  # dictionary: road_id -> RoadDetails
+        self._incoming_roads = copy.deepcopy(incoming_roads)  # dictionary: node id -> incoming roads
+        self._outgoing_roads = copy.deepcopy(outgoing_roads)  # dictionary: node id -> outgoing roads
+        self._xy2road_map = copy.deepcopy(xy2road_map)  # maps world coordinates to road_ids
         self.xy2road_tile_size = xy2road_tile_size
 
     def get_road_data(self, road_id):
         # type: (int) -> RoadDetails
         try:
-            return self.__roads_data[road_id]
+            return self._roads_data[road_id]
         except KeyError:
             raise RoadNotFound("MapModel doesn't have road {}".format(road_id))
+
+    def get_road_ids(self):
+        # type: () -> List[int]
+        return list(self._roads_data.keys())
 
     def get_xy2road_cell(self, coordinates):
         # type: ((int, float, float)) -> List[int]
         try:
-            return self.__xy2road_map.get(coordinates)
+            return self._xy2road_map.get(coordinates)
         except KeyError:
             raise MapCellNotFound("MapModel's xy2road_map doesn't have cell {}".format(coordinates))

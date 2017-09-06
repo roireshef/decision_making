@@ -36,12 +36,19 @@ class MapAPI:
         projecting it onto this road
         :param x: x coordinate in global coordinate frame
         :param y: y coordinate in global coordinate frame
-        :return: Road ID, longitude from the road's start, latitude **relative to road's right-side**
+        :return: Road ID, longitude from the road's start, latitude **relative to road's right-side**,
+            is object within road latitudes; is object within road longitudes
         """
         relevant_road_ids = self._find_roads_containing_point(x, y)
         closest_road_id, _, _ = self._find_closest_road(x, y, relevant_road_ids)
         lon, lat = self._convert_global_to_road_coordinates(x, y, closest_road_id)
-        return closest_road_id, lon, lat
+
+        road_details = self._get_road(closest_road_id)
+        road_length = road_details.longitudes[-1]
+        road_width = road_details.width
+        is_within_road_longitudes = 0 <= lon <= road_length
+        is_within_road_latitudes = 0 <= lat <= road_width
+        return closest_road_id, lon, lat, is_within_road_latitudes, is_within_road_longitudes
 
     @raises(RoadNotFound)
     def get_center_lanes_latitudes(self, road_id):
@@ -68,13 +75,15 @@ class MapAPI:
     def get_longitudinal_difference(self, init_road_id, init_lon, final_road_id, final_lon, navigation_plan):
         # type: (int, float, int, float, NavigationPlanMsg) -> float
         """
-
-        :param init_road_id:
-        :param init_lon:
-        :param final_road_id:
-        :param final_lon:
-        :param navigation_plan:
-        :return:
+        This function calculates the total longitudinal difference in [m] between two points in road coordinates.
+        IMPORTANT: If the destination road id is not in the navigation plan, raises RoadNotFound EXCEPTION.
+         Handling needs to be done in the caller
+        :param init_road_id: initial road id (int)
+        :param init_lon: initial road longitude in [m]
+        :param final_road_id: destination road id (int)
+        :param final_lon: destination longitude in [m]
+        :param navigation_plan: navigation plan according to which we advance on road
+        :return: longitudinal difference in [m]
         """
         init_road_idx = navigation_plan.get_road_index_in_plan(init_road_id)
         final_road_idx = navigation_plan.get_road_index_in_plan(final_road_id)
@@ -82,12 +91,12 @@ class MapAPI:
         if final_road_idx > init_road_idx or (final_road_idx == init_road_idx and final_lon > init_lon):
             road_ids = navigation_plan.road_ids[init_road_idx:final_road_idx]  # this excludes last road
             longitudes = [self._get_road(rid).longitudes[-1] for rid in road_ids]
-            return np.sum(longitudes) - init_lon + final_lon
+            return float(np.sum(longitudes) - init_lon + final_lon)
         # look back
         else:
             road_ids = navigation_plan.road_ids[final_road_idx:init_road_idx]  # this excludes last road
             longitudes = [self._get_road(rid).longitudes[-1] for rid in road_ids]
-            return -1 * (np.sum(longitudes) - final_lon + init_lon)
+            return float(-1 * (np.sum(longitudes) - final_lon + init_lon))
 
     @raises(RoadNotFound, LongitudeOutOfRoad)
     def advance_on_plan(self, initial_road_id, initial_lon, desired_lon, navigation_plan):
@@ -170,8 +179,13 @@ class MapAPI:
         shifted_points = shifted_points[np.greater(longitudes - initial_lon, 0) &
                                         np.less(longitudes - initial_lon, desired_lon)]
 
+        # Build path
         path = np.concatenate(([init_point], shifted_points, [final_point]))
-        return path[np.append(np.sum(np.diff(path, axis=0), axis=1) != 0.0, [True])]
+
+        # Remove duplicate points (start of next road == end of last road)
+        path = path[np.append(np.sum(np.diff(path, axis=0), axis=1) != 0.0, [True])]
+
+        return path
 
     def get_uniform_path_lookahead(self, road_id, lat_shift, starting_lon, lon_step, steps_num, navigation_plan):
         # type: (int, float, float, float, int, NavigationPlanMsg) -> np.ndarray
@@ -187,7 +201,8 @@ class MapAPI:
         :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
         :return: uniform points array (Nx2)
         """
-        shifted = self.get_lookahead_points(road_id, starting_lon, lat_shift, lon_step * steps_num, navigation_plan)
+        shifted = self.get_lookahead_points(road_id, starting_lon, lon_step * steps_num, lat_shift, navigation_plan)
+        # TODO change to precise resampling
         resampled, _ = CartesianFrame.resample_curve(shifted, lon_step)
         return resampled
 
@@ -260,7 +275,7 @@ class MapAPI:
         points_with_yaw = CartesianFrame.add_yaw(road.points)
 
         if road.longitudes[0] <= lon <= road.longitudes[-1]:
-            point_ind = np.argmin(np.abs(road.longitudes - lon))  # find index closest to target lon
+            point_ind = np.where(road.longitudes <= lon)[0][-1]  # find index closest to target lon
             distance_in_lon_from_closest_point = lon - road.longitudes[point_ind]
             road_point = points_with_yaw[point_ind]
 
