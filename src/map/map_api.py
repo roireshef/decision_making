@@ -49,7 +49,6 @@ class MapAPI:
 
         return closest_road_id, lon, lat, is_on_road
 
-
     @raises(RoadNotFound)
     def get_center_lanes_latitudes(self, road_id):
         # type: (int) -> np.ndarray
@@ -64,12 +63,6 @@ class MapAPI:
         lane_width = float(road_width) / lanes_num
         center_lanes = lane_width / 2 + np.array(range(lanes_num)) * lane_width
         return center_lanes
-
-    @raises(RoadNotFound, LongitudeOutOfRoad)
-    def get_global_point_on_road_rightside(self, road_id, lon):
-        # type: (int, float) -> (np.array, float)
-        road_width = self._cached_map_model.get_road_data(road_id).width
-        return self._convert_road_to_global_coordinates(road_id, lon, -road_width / 2)
 
     @raises(RoadNotFound)
     def get_longitudinal_difference(self, init_road_id, init_lon, final_road_id, final_lon, navigation_plan):
@@ -340,33 +333,33 @@ class MapAPI:
 
         # the relevant road segments will be the one before this point, and the one after it, so for both segments:
         # compute [sign, latitude (relative to road center), longitude, segment_start_point_index]
-        closest_point_ind_pairs = [[closest_point_ind - 1, closest_point_ind], [closest_point_ind, closest_point_ind + 1]]
-        relevant_ind_pairs = filter(lambda pair: pair[0] >= 0 and pair[1] < len(points), closest_point_ind_pairs)
+        pairs = np.array([[closest_point_ind - 1, closest_point_ind], [closest_point_ind, closest_point_ind + 1]])
+        relevant_ind_pairs = pairs[pairs[:, 0] >= 0 and pairs[:, 1] < len(points)]
+
+        # each row in segment will be: [segment_start_point_index, longitudinal distance of projection on segment,
+        # signed lateral distance to the line extending the segment]
+        segments = []
+        back_of_segment = front_of_segment = 0
+        for pair in relevant_ind_pairs:
+            try:
+                segments.append([
+                    pair[0],
+                    np.linalg.norm(Euclidean.project_on_segment_2d(point, points[pair[0]], points[pair[1]]) - pair[0]),
+                    Euclidean.signed_dist_to_line_2d(point, points[pair[0]], points[pair[1]])
+                ])
+            except OutOfSegmentBack:
+                back_of_segment += 1
+                pass
+            except OutOfSegmentFront:
+                front_of_segment += 1
+                pass
+
+        # special case where the point is in the funnel that is created by the normals of two segments
+        # at their intersection point
+        if len(relevant_ind_pairs) == 2 and front_of_segment == 1 and back_of_segment == 1:
+            segments = [relevant_ind_pairs[1][0], 0.0, np.linalg.norm(point - points[relevant_ind_pairs[1][0]])]
 
         try:
-            # each row in segment will be: [segment_start_point_index, longitudinal distance of projection on segment,
-            # signed lateral distance to the line extending the segment]
-            segments = []
-            back_of_segment = front_of_segment = 0
-            for pair in relevant_ind_pairs:
-                try:
-                    segments.append([
-                        pair[0],
-                        np.linalg.norm(Euclidean.project_on_segment_2d(point, points[pair[0]], points[pair[1]]) - pair[0]),
-                        Euclidean.signed_dist_to_line_2d(point, points[pair[0]], points[pair[1]])
-                    ])
-                except OutOfSegmentBack:
-                    back_of_segment += 1
-                    pass
-                except OutOfSegmentFront:
-                    front_of_segment += 1
-                    pass
-
-            # special case where the point is in the funnel that is created by the normals of two segments
-            # at their intersection point
-            if len(relevant_ind_pairs) == 2 and front_of_segment == 1 and back_of_segment == 1:
-                segments = [relevant_ind_pairs[1][0], 0.0, np.linalg.norm(point - points[relevant_ind_pairs[1][0]])]
-
             # find closest segment by min distance (latitude)
             segments = np.array(segments)
             closest_segment = segments[np.argmin(segments[:, 1], axis=0)]

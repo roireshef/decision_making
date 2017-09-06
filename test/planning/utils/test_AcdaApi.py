@@ -22,7 +22,7 @@ class MapMock(MapAPI):
 
 @pytest.fixture()
 def testable_navigation_plan():
-    yield NavigationPlanMsg(road_ids=[1, 2])
+    yield NavigationPlanMsg(road_ids=np.array([1, 2]))
 
 
 @pytest.fixture()
