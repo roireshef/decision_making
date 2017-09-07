@@ -150,15 +150,8 @@ class StateModule(DmModule):
         # road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw = \
         #     map_api.convert_world_to_lat_lon(pos[0], pos[1], pos[2], yaw)
         # return RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
-
-        # TODO: Add yaw
-        closest_road_id, lon, lat, is_on_road = map_api.convert_global_to_road_coordinates(pos[0], pos[1])
-        road_details = map_api._get_road(closest_road_id)
-        lane_width = road_details.width / road_details.lanes_num
-        lane = np.math.floor(lat / lane_width)
-        intra_lane_lat = lat - lane * lane_width
-
-        return RoadLocalization(closest_road_id, int(lane), lat, intra_lane_lat, lon, 0.0)
+        # TODO - return real localization
+        return RoadLocalization(0, 0, 0.0, 0.0, 0.0, 0.0)
 
     @staticmethod
     def __compute_obj_road_localization(obj_pos: np.ndarray, obj_yaw: float, ego_pos: np.ndarray, ego_yaw: float,
@@ -174,4 +167,5 @@ class StateModule(DmModule):
         # road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw = \
         #     map_api.convert_world_to_lat_lon(global_obj_pos[0], global_obj_pos[1], global_obj_pos[2], global_obj_yaw)
         # return RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
+        # TODO - return real localization
         return RoadLocalization(0, 0, 0, 0, 0, 0)
