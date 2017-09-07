@@ -75,7 +75,7 @@ class DmInitialization:
         policy = DefaultPolicy(logger, policy_config)
 
         init_navigation_plan = NavigationPlanMsg(np.array([]))
-        init_ego_state = EgoState(0, 0, 0.0, 0.0, 0.0, 0.0, ObjectSize(0.0, 0.0, 0.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        init_ego_state = EgoState(0, None, 0.0, 0.0, 0.0, 0.0, ObjectSize(0.0, 0.0, 0.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                   RoadLocalization(0, 0, 0.0, 0.0, 0.0, 0.0))
 
         behavioral_state = BehavioralState(logger, map_api, init_navigation_plan, init_ego_state, 0, np.array([0.0]),
