@@ -1,16 +1,16 @@
+from logging import Logger
 from typing import Dict
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
+from decision_making.src.exceptions import MsgDeserializationError
 from decision_making.src.global_constants import *
 from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.messages.exceptions import MsgDeserializationError
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.state.state import State
-from logging import Logger
 
 
 class TrajectoryPlanningFacade(DmModule):

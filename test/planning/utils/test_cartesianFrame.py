@@ -13,7 +13,6 @@ def test_convertGlobalToRelativeFrame_vecOnlyTranslation_successful():
     expected_relative_pos = np.array([1.0, 0.0, 0.0])
     np.testing.assert_array_almost_equal(relative_pos, expected_relative_pos, decimal=ACCURACY_DECIMAL)
 
-
 def test_convertGlobalToRelativeFrame_vecWithFortyFiveDegRotation_successful():
     global_pos = np.array([2, 1, 0])
     ego_pos = np.array([1, 1, 0])

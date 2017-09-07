@@ -1,15 +1,16 @@
+from logging import Logger
+
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
+from decision_making.src.exceptions import MsgDeserializationError
 from decision_making.src.global_constants import BEHAVIORAL_STATE_READER_TOPIC, \
     BEHAVIORAL_NAV_PLAN_READER_TOPIC, BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC, BEHAVIORAL_VISUALIZATION_TOPIC
 from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.messages.exceptions import MsgDeserializationError
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.policy import Policy
 from decision_making.src.state.state import State
-from logging import Logger
 
 
 class BehavioralFacade(DmModule):

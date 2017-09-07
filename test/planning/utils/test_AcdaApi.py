@@ -1,16 +1,51 @@
 import numpy as np
+import pytest
 
 from decision_making.src.map.map_api import MapAPI
 from decision_making.src.map.naive_cache_map import NaiveCacheMap
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.acda import AcdaApi
 from decision_making.src.planning.utils.acda_constants import *
 from decision_making.src.state.state import EgoState, ObjectSize, DynamicObject, RoadLocalization, \
     RelativeRoadLocalization
+from decision_making.test.map.map_model_utils import TestMapModelUtils
+from rte.python.logger.AV_logger import AV_Logger
+
+MAP_INFLATION_FACTOR = 300.0
+NUM_LANES = 3
+LANE_WIDTH = 3.0
 
 
 class MapMock(MapAPI):
-    def __init__(self):
-        pass
+    pass
+
+
+@pytest.fixture()
+def testable_navigation_plan():
+    yield NavigationPlanMsg(road_ids=np.array([1, 2]))
+
+
+@pytest.fixture()
+def testable_map_api():
+    # Create a rectangle test map
+    road_coordinates_1 = np.array([[0., 0.],
+                                   [1., 0.],
+                                   [2., 0.],
+                                   [2., 0.5],
+                                   [2., 1.],
+                                   [1., 1.]]) * MAP_INFLATION_FACTOR
+    road_coordinates_2 = np.array([[1., 1.],
+                                   [0., 1.],
+                                   [0., 0.5],
+                                   [0., 0.1]]) * MAP_INFLATION_FACTOR
+    road_coordinates = list()
+    road_coordinates.append(road_coordinates_1)
+    road_coordinates.append(road_coordinates_2)
+    test_map_model = TestMapModelUtils.create_road_map_from_coordinates(points_of_roads=road_coordinates, road_id=1,
+                                                                        road_name='def',
+                                                                        lanes_num=NUM_LANES, lane_width=LANE_WIDTH)
+
+    yield MapMock(map_model=test_map_model, logger=AV_Logger.get_logger('test_map_acda'))
 
 
 def test_calc_road_turn_radius_TurnOnCircle_successful():
@@ -24,23 +59,28 @@ def test_calc_road_turn_radius_TurnOnCircle_successful():
     turn_radius = AcdaApi.calc_road_turn_radius(road_points)
     assert np.abs(turn_radius - turn_amp) < 0.001
 
+
 def test_calc_safe_speed_critical_speed_CheckSpeed_successful():
     # test calc_safe_speed_critical_speed
     assert AcdaApi.calc_safe_speed_critical_speed(curve_radius=5.0) > 0
+
 
 def test_calc_safe_speed_following_distance_CheckSpeed_successful():
     # test calc_safe_speed_following_distance
     assert AcdaApi.calc_safe_speed_following_distance(following_distance=10.0) > 0
 
+
 def test_calc_safe_speed_forward_line_of_sight_CheckSpeed_successful():
     # test calc_safe_speed_forward_line_of_sight
     assert AcdaApi.calc_safe_speed_forward_line_of_sight(forward_sight_distance=10.0) > 0
 
-def test_AcdaFeaturesInComplexScenraio_successful():
+
+def test_AcdaFeaturesInComplexScenraio_successful(testable_map_api, testable_navigation_plan):
     # Prepare scenario for test
 
     # Prepare cached map
-    map_api = MapMock()
+    map_api = testable_map_api
+    navigation_plan = testable_navigation_plan
 
     # ego state at (0,0,0)
     road_localization = RoadLocalization(road_id=1, lane_num=0, full_lat=0.0, intra_lane_lat=0.0, road_lon=0.0,
@@ -80,15 +120,19 @@ def test_AcdaFeaturesInComplexScenraio_successful():
     # test calc_forward_sight_distance
     forward_distance = 10.0
     assert np.abs(AcdaApi.calc_forward_sight_distance(static_objects=objects_on_road,
-                                                      ego_state=ego_state) - (
-                  forward_distance - SENSOR_OFFSET_FROM_FRONT)) < 0.001
+                                                      ego_state=ego_state, navigation_plan=navigation_plan,
+                                                      map_api=map_api) - (
+                      forward_distance - SENSOR_OFFSET_FROM_FRONT)) < 0.001
     # test calc_horizontal_sight_distance
-    horizontal_dist = 2.5 - 0.5*(ego_state.size.width + far_static_object.size.width)
+    horizontal_dist = 2.5 - 0.5 * (ego_state.size.width + far_static_object.size.width)
     assert np.abs(AcdaApi.calc_horizontal_sight_distance(static_objects=objects_on_road, ego_state=ego_state,
+                                                         navigation_plan=navigation_plan, map_api=map_api,
                                                          set_safety_lookahead_dist_by_ego_vel=True) - horizontal_dist) < 0.001
 
     # test compute_acda
     lookahead_path = np.zeros(shape=[2, 20])
     lookahead_path[0, :] = np.linspace(0, 10, 20)
-    AcdaApi.compute_acda(objects_on_road=objects_on_road, ego_state=ego_state, lookahead_path=lookahead_path)
+    safe_speed = AcdaApi.compute_acda(objects_on_road=objects_on_road, ego_state=ego_state, navigation_plan=navigation_plan,
+                         map_api=map_api, lookahead_path=lookahead_path)
 
+    assert safe_speed > 0.0
