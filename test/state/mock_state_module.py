@@ -16,7 +16,7 @@ class StateModuleMock(StateModule):
         :param state: the state message to publish periodically
         """
         self._state = state
-        super().__init__(dds, logger, MapAPI(None), None, None, None)
+        super().__init__(dds, logger, None, None, None, None)
 
     def _periodic_action_impl(self):
         self.__publish_state()

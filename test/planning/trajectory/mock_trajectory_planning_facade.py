@@ -8,7 +8,7 @@ from decision_making.src.planning.trajectory.trajectory_planning_facade import T
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 
 
-class TrajectoryPlanningSimulationFacadeMock(TrajectoryPlanningFacade):
+class TrajectoryPlanningFacadeMock(TrajectoryPlanningFacade):
     """
     Sends periodic dummy trajectory message
     """

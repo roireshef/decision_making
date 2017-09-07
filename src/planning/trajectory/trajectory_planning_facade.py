@@ -77,7 +77,7 @@ class TrajectoryPlanningFacade(DmModule):
         return State.deserialize(input_state)
 
     def _get_mission_params(self) -> TrajectoryParams:
-        input_params = self.dds.get_latest_sample(topic=TRAJECTORY_STATE_READER_TOPIC, timeout=1)
+        input_params = self.dds.get_latest_sample(topic=TRAJECTORY_PARAMS_READER_TOPIC, timeout=1)
         self.logger.debug('Received state: %s', input_params)
         return TrajectoryParams.deserialize(input_params)
 
