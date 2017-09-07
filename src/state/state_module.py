@@ -93,13 +93,13 @@ class StateModule(DmModule):
         timestamp = ego_localization["timestamp"]
         x = ego_localization["location"]["x"]
         y = ego_localization["location"]["y"]
-        z = 0
+        z = 0.0
         yaw = ego_localization["yaw"]
         v_x = ego_localization["velocity"]["v_x"]
         v_y = ego_localization["velocity"]["v_y"]
         size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
-        road_localization = StateModule.__compute_ego_road_localization(np.array([x, y, z]), yaw, None)
+        road_localization = StateModule.__compute_ego_road_localization(np.array([x, y, z]), yaw, self._map_api)
 
         with self._ego_state_lock:
             # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
@@ -150,7 +150,15 @@ class StateModule(DmModule):
         # road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw = \
         #     map_api.convert_world_to_lat_lon(pos[0], pos[1], pos[2], yaw)
         # return RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
-        return RoadLocalization(0, 0, 0, 0, 0, 0)
+
+        # TODO: Add yaw
+        closest_road_id, lon, lat, is_on_road = map_api.convert_global_to_road_coordinates(pos[0], pos[1])
+        road_details = map_api._get_road(closest_road_id)
+        lane_width = road_details.width / road_details.lanes_num
+        lane = np.math.floor(lat / lane_width)
+        intra_lane_lat = lat - lane * lane_width
+
+        return RoadLocalization(closest_road_id, int(lane), lat, intra_lane_lat, lon, 0.0)
 
     @staticmethod
     def __compute_obj_road_localization(obj_pos: np.ndarray, obj_yaw: float, ego_pos: np.ndarray, ego_yaw: float,
