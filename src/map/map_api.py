@@ -254,7 +254,7 @@ class MapAPI:
         points = road.points[:, 0:2]
 
         # Get closest segments to point (x,y)
-        closest_point_idx_pairs = Euclidean.get_closest_segments_to_point(x, y, points)
+        closest_point_idx_pairs = Euclidean.get_indexes_of_closest_segments_to_point(x, y, points)
 
         # Get distance from (x,y) to those segments
         segments_dists = [Euclidean.dist_to_segment_2d(point, points[pair[0]], points[pair[1]])
@@ -313,7 +313,7 @@ class MapAPI:
         points = road.points[:, 0:2]
 
         # Get closest segments to point (x,y)
-        relevant_ind_pairs = Euclidean.get_closest_segments_to_point(x, y, points)
+        relevant_ind_pairs = Euclidean.get_indexes_of_closest_segments_to_point(x, y, points)
 
         # for relevant segments, compute (each row): [longitudinal distance of projection on segment,
         # signed lateral distance to the line extending the segment]
