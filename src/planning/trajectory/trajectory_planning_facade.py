@@ -25,8 +25,8 @@ class TrajectoryPlanningFacade(DmModule):
         """
         super().__init__(dds=dds, logger=logger)
 
-        self._validate_strategy_handlers()
         self._strategy_handlers = strategy_handlers
+        self._validate_strategy_handlers()
 
     def _start_impl(self):
         pass

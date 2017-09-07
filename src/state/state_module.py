@@ -99,7 +99,7 @@ class StateModule(DmModule):
         v_y = ego_localization["velocity"]["v_y"]
         size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
-        road_localization = StateModule._compute_ego_road_localization(np.ndarray([x, y, z]), yaw)
+        road_localization = StateModule._compute_ego_road_localization(np.array([x, y, z]), yaw, self._map_api)
 
         with self._ego_state_lock:
             # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
