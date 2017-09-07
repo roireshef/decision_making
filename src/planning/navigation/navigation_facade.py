@@ -22,4 +22,4 @@ class NavigationFacade(DmModule):
         self._publish_navigation_plan(self.handler.plan())
 
     def _publish_navigation_plan(self, plan: NavigationPlanMsg):
-        self.dds.publish(NAVIGATION_PLAN_PUBLISH_TOPIC, plan)
+        self.dds.publish(NAVIGATION_PLAN_PUBLISH_TOPIC, plan.serialize())

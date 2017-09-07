@@ -67,7 +67,7 @@ class BehavioralState:
         :return: a new and updated BehavioralState
         """
         ego_state = state.ego_state
-        timestamp = ego_state._timestamp
+        timestamp = ego_state.timestamp
         ego_yaw = ego_state.yaw
         ego_position = np.array([ego_state.x, ego_state.y, ego_state.z])
         ego_orientation = np.array(CartesianFrame.convert_yaw_to_quaternion(ego_state.yaw))

@@ -43,7 +43,7 @@ class DefaultPolicy(Policy):
             return None, None
 
         # High-level planning
-        target_path_offset, target_path_latitude = self._high_level_planning(behavioral_state)
+        target_path_offset, target_path_latitude = self.__high_level_planning(behavioral_state)
 
         # Calculate reference route for driving
         reference_route_x_y_z, reference_route_in_cars_frame_x_y_yaw = DefaultPolicy.__generate_reference_route(
@@ -73,15 +73,15 @@ class DefaultPolicy(Policy):
         visualization_message = BehavioralVisualizationMsg(reference_route=reference_route_x_y_z)
         return trajectory_parameters, visualization_message
 
-    def _high_level_planning(self, behavioral_state: BehavioralState) -> (float, float):
+    def __high_level_planning(self, behavioral_state: BehavioralState) -> (float, float):
         """
         Generates a high-level plan
         :param behavioral_state: processed behavioral state
         :return target latitude for driving in [lanes], target latitude for driving in [m]
         """
 
-        num_lanes, road_width, _, _ = behavioral_state.map.get_road_details(behavioral_state.ego_road_id)
-        lane_width = float(road_width) / num_lanes
+        num_lanes = behavioral_state.map._get_road(behavioral_state.ego_road_id).lanes_num
+        lane_width = behavioral_state.map._get_road(behavioral_state.ego_road_id).lane_width
         # remain in right most lane
         # return lanes_in_current_road
 
@@ -252,8 +252,7 @@ class DefaultPolicy(Policy):
         """
 
         # Get road details
-        num_lanes, road_width, _, _ = behavioral_state.map.get_road_details(behavioral_state.ego_road_id)
-        lane_width = road_width / num_lanes
+        lane_width = behavioral_state.map._get_road(behavioral_state.ego_road_id).lane_width
 
         # Create target state
         target_state_x_y_yaw = reference_route[-1, :]

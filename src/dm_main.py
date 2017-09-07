@@ -1,5 +1,6 @@
 import pickle
 import time
+import numpy as np
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.paths import Paths
