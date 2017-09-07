@@ -109,8 +109,8 @@ def test_findRoadsContainingPoint_testDifferentPointsOnTwoRoad(map_fixture):
 
 def test_getCenterLanesLatitudes_checkLatitudesOfAllLanes(map_fixture):
     road_id = 1
-    lanes_num = map_fixture._get_road(road_id).lanes_num
-    width = map_fixture._get_road(road_id).width
+    lanes_num = map_fixture.get_road(road_id).lanes_num
+    width = map_fixture.get_road(road_id).width
     lane_wid = width / lanes_num
     correct_lat_list = np.arange(lane_wid / 2, width, lane_wid)
     lanes_lat = map_fixture.get_center_lanes_latitudes(road_id)
@@ -120,7 +120,7 @@ def test_getCenterLanesLatitudes_checkLatitudesOfAllLanes(map_fixture):
 # TODO: expect certain values
 def test_getPointRelativeLongitude_differentRoads(map_fixture):
     navigation_plan = NavigationPlanMsg(np.array([1, 2]))
-    length = map_fixture._get_road(1).longitudes[-1]
+    length = map_fixture.get_road(1).longitudes[-1]
     from_lon_in_road = 20
     to_lon_in_road = 10
     total_lon_distance = map_fixture.get_longitudinal_difference(initial_road_id=1, initial_lon=from_lon_in_road,
@@ -141,8 +141,8 @@ def test_getPointRelativeLongitude_sameRoad(map_fixture):
 
 def test_GetPathLookahead_almostUntilEndOfUpperHorizontalPath_validatePathLengthAndConstantY(map_fixture,
                                                                                              navigation_fixture):
-    points = map_fixture._get_road(1).points
-    width = map_fixture._get_road(1).width
+    points = map_fixture.get_road(1).points
+    width = map_fixture.get_road(1).width
     navigation_plan = navigation_fixture
     lookahead_distance = 49.9  # test short path
     road_id = 1

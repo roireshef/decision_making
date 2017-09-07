@@ -99,7 +99,7 @@ class StateModule(DmModule):
         v_y = ego_localization["velocity"]["v_y"]
         size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
-        road_localization = StateModule._compute_ego_road_localization(np.ndarray([x, y, z]), yaw)
+        road_localization = StateModule._compute_ego_road_localization(np.array([x, y, z]), yaw, self._map_api)
 
         with self._ego_state_lock:
             # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
@@ -148,8 +148,8 @@ class StateModule(DmModule):
         :return: the road localization
         """
         closest_road_id, lon, lat, yaw, is_on_road = map_api.convert_global_to_road_coordinates(pos[0], pos[1], yaw)
-        road_details = map_api._get_road(closest_road_id)
-        lane_width = road_details.width / road_details.lanes_num
+        road_details = map_api.get_road(closest_road_id)
+        lane_width = road_details.lane_width
         lane = np.math.floor(lat / lane_width)
         intra_lane_lat = lat - lane * lane_width
 
