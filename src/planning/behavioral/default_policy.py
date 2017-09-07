@@ -93,11 +93,8 @@ class DefaultPolicy(Policy):
         # the target latitude of the driving trajectory
 
         # generated_path_offsets_grid is a grid of optional lateral offsets in [lanes]
-        generated_path_offsets_grid = \
-            DefaultPolicy.__generate_latitudes_grid(num_of_lanes=num_lanes,
-                                                    current_lane_latitude=current_center_lane_offset,
-                                                    policy_config=self._policy_config)
-        path_absolute_latitudes = lane_width * generated_path_offsets_grid
+        path_absolute_latitudes = behavioral_state.map.get_center_lanes_latitudes(behavioral_state.ego_road_id)
+        generated_path_offsets_grid = path_absolute_latitudes / lane_width
 
         # For each latitude, find closest blocking object on lane
         closest_blocking_object_on_path = \

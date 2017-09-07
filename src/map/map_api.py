@@ -67,7 +67,7 @@ class MapAPI:
         road_width = road_details.width
         lane_width = float(road_width) / lanes_num
         center_lanes = np.array(range(lanes_num)) * lane_width + lane_width / 2
-        return center_lanes
+        return np.array(center_lanes)
 
     @raises(RoadNotFound)
     def get_longitudinal_difference(self, initial_road_id, initial_lon, final_road_id, final_lon, navigation_plan):
