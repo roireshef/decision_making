@@ -4,6 +4,7 @@ from typing import List
 
 import numpy as np
 import six
+import copy
 
 from decision_making.src.exceptions import *
 from decision_making.src.exceptions import RoadNotFound, raises, LongitudeOutOfRoad, MapCellNotFound
@@ -27,6 +28,10 @@ class MapAPI:
     ''' EXTERNAL FUNCTIONS '''
     '''####################'''
 
+    @raises(RoadNotFound)
+    def get_road(self, road_id):
+        return copy.deepcopy(self._cached_map_model.get_road_data(road_id))
+
     @raises(MapCellNotFound, RoadNotFound, LongitudeOutOfRoad)
     def convert_global_to_road_coordinates(self, x, y, yaw):
         # type: (float, float) -> (int, float, float, bool)
@@ -44,7 +49,7 @@ class MapAPI:
 
         lon, lat, yaw = self._convert_global_to_road_coordinates(x, y, yaw, closest_road_id)
 
-        road_width = self._get_road(closest_road_id).width
+        road_width = self.__get_road(closest_road_id).width
         is_on_road = bool(0.0 <= lat <= road_width)
 
         return closest_road_id, lon, lat, yaw, is_on_road
@@ -57,7 +62,7 @@ class MapAPI:
         :param road_id: Road ID to iterate over its lanes
         :return: list of latitudes of all centers of lanes in the road relative to the right side of the road
         """
-        road_details = self._get_road(road_id)
+        road_details = self.__get_road(road_id)
         lanes_num = road_details.lanes_num
         road_width = road_details.width
         lane_width = float(road_width) / lanes_num
@@ -83,12 +88,12 @@ class MapAPI:
         # look ahead
         if final_road_idx > initial_road_idx or (final_road_idx == initial_road_idx and final_lon > initial_lon):
             roads_ids = navigation_plan.road_ids[initial_road_idx:final_road_idx]  # this excludes last road
-            roads_len = [self._get_road(rid).length for rid in roads_ids]
+            roads_len = [self.__get_road(rid).length for rid in roads_ids]
             return np.add(np.sum(roads_len), -initial_lon + final_lon)
         # look back
         else:
             roads_ids = navigation_plan.road_ids[final_road_idx:initial_road_idx]  # this excludes last road
-            roads_len = [self._get_road(rid).length for rid in roads_ids]
+            roads_len = [self.__get_road(rid).length for rid in roads_ids]
             return -1 * np.add(np.sum(roads_len), - final_lon + initial_lon)
 
     @raises(RoadNotFound, LongitudeOutOfRoad)
@@ -107,7 +112,7 @@ class MapAPI:
         """
         current_road_idx_in_plan = navigation_plan.get_road_index_in_plan(initial_road_id)
         roads_ids = navigation_plan.road_ids[current_road_idx_in_plan:]
-        roads_len = [self._get_road(rid).length for rid in roads_ids]
+        roads_len = [self.__get_road(rid).length for rid in roads_ids]
 
         # distance to roads-ends
         roads_dist_to_end = np.cumsum(np.append([roads_len[0] - initial_lon], roads_len[1:]))
@@ -134,7 +139,7 @@ class MapAPI:
         """
         initial_road_idx_in_plan = navigation_plan.get_road_index_in_plan(initial_road_id)
         roads_ids = navigation_plan.road_ids[initial_road_idx_in_plan:]
-        roads_len = [self._get_road(rid).length for rid in roads_ids]
+        roads_len = [self.__get_road(rid).length for rid in roads_ids]
         roads_dist_to_end = np.sum(np.append([roads_len[0] - initial_lon], roads_len[1:]))  # dist to roads-ends
         return roads_ids[-1], roads_len[-1], roads_dist_to_end
 
@@ -168,7 +173,7 @@ class MapAPI:
                                          for rid in relevant_road_ids])
 
         # calculate accumulate longitudinal distance for all points
-        longitudes = np.cumsum(np.concatenate([np.append([0], np.diff(self._get_road(rid).longitudes))
+        longitudes = np.cumsum(np.concatenate([np.append([0], np.diff(self.__get_road(rid).longitudes))
                                                for rid in relevant_road_ids]))
 
         # trim shifted points from both sides according to initial point and final (desired) point
@@ -207,7 +212,7 @@ class MapAPI:
     '''####################'''
 
     @raises(RoadNotFound)
-    def _get_road(self, road_id):
+    def __get_road(self, road_id):
         return self._cached_map_model.get_road_data(road_id)
 
     @raises(MapCellNotFound)
@@ -250,7 +255,7 @@ class MapAPI:
         :return: road ID to compute the distance to
         """
         point = np.array([x, y])
-        road = self._get_road(road_id)
+        road = self.__get_road(road_id)
         points = road.points[:, 0:2]
 
         # Get closest segments to point (x,y)
@@ -273,7 +278,7 @@ class MapAPI:
         :param lat: latitude relative to road's center points
         :return: numpy array of 3D point [x, y, z] in global coordinate frame, yaw [rad] in global coordinate frame
         """
-        road = self._get_road(road_id)
+        road = self.__get_road(road_id)
         points_with_yaw = CartesianFrame.add_yaw(road.points)
 
         if road.longitudes[0] <= lon <= road.longitudes[-1]:
@@ -308,7 +313,7 @@ class MapAPI:
         :return: longitude (from road start), latitude **relative to road's right side**, intra-road yaw [rad]
         """
         point = np.array([x, y])
-        road = self._get_road(road_id)
+        road = self.__get_road(road_id)
         longitudes = road.longitudes
         points = road.points[:, 0:2]
 
@@ -377,7 +382,7 @@ class MapAPI:
         :param latitude: desired latitude relative to road's right-side
         :return:
         """
-        road = self._get_road(road_id)
+        road = self.__get_road(road_id)
         return self._shift_road_points(road.points, latitude - road.width / 2)
 
     @staticmethod
