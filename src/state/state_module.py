@@ -148,7 +148,7 @@ class StateModule(DmModule):
         :return: the road localization
         """
         closest_road_id, lon, lat, yaw, is_on_road = map_api.convert_global_to_road_coordinates(pos[0], pos[1], yaw)
-        road_details = map_api._get_road(closest_road_id)
+        road_details = map_api.get_road(closest_road_id)
         lane_width = road_details.width / road_details.lanes_num
         lane = np.math.floor(lat / lane_width)
         intra_lane_lat = lat - lane * lane_width

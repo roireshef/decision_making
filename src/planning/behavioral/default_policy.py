@@ -80,8 +80,8 @@ class DefaultPolicy(Policy):
         :return target latitude for driving in [lanes], target latitude for driving in [m]
         """
 
-        num_lanes = behavioral_state.map._get_road(behavioral_state.ego_road_id).lanes_num
-        lane_width = behavioral_state.map._get_road(behavioral_state.ego_road_id).lane_width
+        num_lanes = behavioral_state.map.get_road(behavioral_state.ego_road_id).lanes_num
+        lane_width = behavioral_state.map.get_road(behavioral_state.ego_road_id).lane_width
         # remain in right most lane
         # return lanes_in_current_road
 
@@ -252,7 +252,7 @@ class DefaultPolicy(Policy):
         """
 
         # Get road details
-        lane_width = behavioral_state.map._get_road(behavioral_state.ego_road_id).lane_width
+        lane_width = behavioral_state.map.get_road(behavioral_state.ego_road_id).lane_width
 
         # Create target state
         target_state_x_y_yaw = reference_route[-1, :]
