@@ -25,7 +25,7 @@ class TrajectoryPlanningFacade(DmModule):
         """
         super().__init__(dds=dds, logger=logger)
 
-        self.__validate_strategy_handlers(strategy_handlers)
+        self._validate_strategy_handlers()
         self._strategy_handlers = strategy_handlers
 
     def _start_impl(self):
@@ -51,7 +51,7 @@ class TrajectoryPlanningFacade(DmModule):
             # TODO: should publish v_x?
             # publish results to the lower DM level
             self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory, reference_route=params.reference_route,
-                                                        current_speed=state.ego_state.v_x))
+                                                       current_speed=state.ego_state.v_x))
 
             # TODO: publish cost to behavioral layer?
 
@@ -63,12 +63,11 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.warn("MsgDeserializationError was raised. skipping planning. " +
                              "turn on debug logging level for more details.")
 
-    @staticmethod
-    def __validate_strategy_handlers(handlers: dict):
+    def _validate_strategy_handlers(self) -> None:
         for elem in TrajectoryPlanningStrategy.__members__.values():
-            if not handlers.keys().__contains__(elem):
+            if not self._strategy_handlers.keys().__contains__(elem):
                 raise KeyError('strategy_handlers does not contain a  record for ' + elem)
-            if not isinstance(handlers[elem], TrajectoryPlanner):
+            if not isinstance(self._strategy_handlers[elem], TrajectoryPlanner):
                 raise ValueError('strategy_handlers does not contain a TrajectoryPlanner impl. for ' + elem)
 
     def _get_current_state(self) -> State:

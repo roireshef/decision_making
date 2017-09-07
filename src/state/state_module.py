@@ -28,9 +28,9 @@ class StateModule(DmModule):
         self._ego_state_lock = Lock()
 
     def _start_impl(self):
-        self.dds.subscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, self.__dynamic_obj_callback)
-        self.dds.subscribe(SELF_LOCALIZATION_SUBSCRIBE_TOPIC, self.__self_localization_callback)
-        self.dds.subscribe(OCCUPANCY_STATE_SUBSCRIBE_TOPIC, self.__occupancy_state_callback)
+        self.dds.subscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, self._dynamic_obj_callback)
+        self.dds.subscribe(SELF_LOCALIZATION_SUBSCRIBE_TOPIC, self._self_localization_callback)
+        self.dds.subscribe(OCCUPANCY_STATE_SUBSCRIBE_TOPIC, self._occupancy_state_callback)
 
     def _stop_impl(self):
         self.dds.unsubscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC)
@@ -40,7 +40,7 @@ class StateModule(DmModule):
     def _periodic_action_impl(self):
         pass
 
-    def __dynamic_obj_callback(self, objects: dict) -> None:
+    def _dynamic_obj_callback(self, objects: dict) -> None:
         self.logger.info("got dynamic objects %s", objects)
 
         if self._ego_state is None:
@@ -73,8 +73,8 @@ class StateModule(DmModule):
 
             obj_pos = np.ndarray([x, y, z])
 
-            road_localtization = StateModule.__compute_obj_road_localization(obj_pos, yaw, ego_pos, ego_yaw,
-                                                                             self._map_api)
+            road_localtization = StateModule._compute_obj_road_localization(obj_pos, yaw, ego_pos, ego_yaw,
+                                                                            self._map_api)
 
             # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
             dyn_obj = DynamicObject(id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
@@ -84,9 +84,9 @@ class StateModule(DmModule):
         with self._dynamic_objects_lock:
             self._dynamic_objects = dyn_obj_list
 
-        self.__publish_state_if_full()
+        self._publish_state_if_full()
 
-    def __self_localization_callback(self, ego_localization: dict):
+    def _self_localization_callback(self, ego_localization: dict):
         self.logger.debug("got self localization %s", ego_localization)
 
         confidence = ego_localization["location"]["confidence"]
@@ -99,16 +99,16 @@ class StateModule(DmModule):
         v_y = ego_localization["velocity"]["v_y"]
         size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
-        road_localization = StateModule.__compute_ego_road_localization(np.ndarray([x, y, z]), yaw)
+        road_localization = StateModule._compute_ego_road_localization(np.ndarray([x, y, z]), yaw)
 
         with self._ego_state_lock:
             # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
             self._ego_state = EgoState(0, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, self.UNKNWON_DEFAULT_VAL,
                                        self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localization)
 
-        self.__publish_state_if_full()
+        self._publish_state_if_full()
 
-    def __occupancy_state_callback(self, occupancy: dict):
+    def _occupancy_state_callback(self, occupancy: dict):
         self.logger.debug("got occupancy status %s", occupancy)
         timestamp = occupancy["timestamp"]
         points_list_dict = occupancy["points_list"]
@@ -122,10 +122,10 @@ class StateModule(DmModule):
         with self._occupancy_state_lock:
             self._occupancy_state = OccupancyState(timestamp, np.ndarray(points_list), np.ndarray(confidence_list))
 
-        self.__publish_state_if_full()
+        self._publish_state_if_full()
 
     # TODO: integrate compensation for time differences (aka short-time predict)
-    def __publish_state_if_full(self):
+    def _publish_state_if_full(self):
         # if some part of the state is missing, don't publish state message
         if self._occupancy_state is None or self._dynamic_objects is None or self._ego_state is None:
             pass
@@ -136,12 +136,12 @@ class StateModule(DmModule):
         self.dds.publish(STATE_PUBLISH_TOPIC, state.serialize())
 
     # TODO: solve the fact that actuator status can be outdated and no one will ever know
-    def __actuator_status_callback(self, actuator: dict):
+    def _actuator_status_callback(self, actuator: dict):
         self.logger.debug("got actuator status %s", actuator)
         pass  # TODO: update self._ego_state.steering_angle. Don't forget to lock self._ego_state!
 
     @staticmethod
-    def __compute_ego_road_localization(pos: np.ndarray, yaw: float, map_api: MapAPI) -> RoadLocalization:
+    def _compute_ego_road_localization(pos: np.ndarray, yaw: float, map_api: MapAPI) -> RoadLocalization:
         """
         calculate road coordinates for global coordinates for ego
         :param pos: 1D numpy array of ego vehicle's [x,y,z] in global coordinate-frame
@@ -154,8 +154,8 @@ class StateModule(DmModule):
         return RoadLocalization(road_id, lane_num, full_lat, intra_lane_lat, lon, intra_lane_yaw)
 
     @staticmethod
-    def __compute_obj_road_localization(obj_pos: np.ndarray, obj_yaw: float, ego_pos: np.ndarray, ego_yaw: float,
-                                        map_api: MapAPI) -> RoadLocalization:
+    def _compute_obj_road_localization(obj_pos: np.ndarray, obj_yaw: float, ego_pos: np.ndarray, ego_yaw: float,
+                                       map_api: MapAPI) -> RoadLocalization:
         """
         given an object in ego-vehicle's coordinate-frame, calculate its road coordinates
 
