@@ -89,13 +89,13 @@ NAVIGATION_PLAN_PUBLISH_TOPIC = "NavigationPublisher::NavigationPlanWriter"
 BEHAVIORAL_STATE_READER_TOPIC = "BehavioralSubscriber::StateReader"
 BEHAVIORAL_NAV_PLAN_READER_TOPIC = "BehavioralSubscriber::NavigationPlanReader"
 BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC = "BehavioralPublisher::TrajectoryParametersWriter"
-BEHAVIORAL_VISUALIZATION_TOPIC = ""  # TODO: update XML in common-data and fill this
+BEHAVIORAL_VISUALIZATION_TOPIC = "BehavioralPublisher::BehavioralVisualizationWriter"
 
 # Trajectory Planning Module
 TRAJECTORY_STATE_READER_TOPIC = "TrajectorySubscriber::StateReader"
 TRAJECTORY_PARAMS_READER_TOPIC = "TrajectorySubscriber::TrajectoryParametersReader"
 TRAJECTORY_PUBLISH_TOPIC = "TrajectoryPublisher::TrajectoryWriter"
-TRAJECTORY_VISUALIZATION_TOPIC = ""  # TODO: update XML in common-data and fill this
+TRAJECTORY_VISUALIZATION_TOPIC = "TrajectoryPublisher::TrajectoryVisualizationWriter"
 
 #### NAMES OF MODULES FOR LOGGING ####
 MAP_NAME_FOR_LOGGING = "Map API"

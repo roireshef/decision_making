@@ -66,14 +66,14 @@ class Euclidean:
 
 
     @staticmethod
-    def get_closest_segments_to_point(x, y, path_points):
+    def get_indexes_of_closest_segments_to_point(x, y, path_points):
         # type: (float, float, np.array) -> np.array
         """
-        This functions finds the the segment before and after the nearest point to (x,y)
+        This functions finds the indexes of the segment before and after the nearest point to (x,y)
         :param x: x coordinate
         :param y: y coordinate
         :param path_points: numpy array of size [Nx2] of path coordinates (x,y)
-        :return: the closest segments to (x,y): numpy array of size [Nx2] N={0,1,2}
+        :return: the indexes of the closest segments to (x,y): numpy array of size [Nx2] N={0,1,2}
         """
         point = np.array([x, y])
 
