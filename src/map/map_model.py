@@ -88,3 +88,8 @@ class MapModel:
             return self._xy2road_map[coordinates]
         except KeyError:
             raise MapCellNotFound("MapModel's xy2road_map doesn't have cell {}".format(coordinates))
+
+    @staticmethod
+    def remove_duplicate_points(points):
+        # type: (np.ndarray) -> np.ndarray
+        return points[np.append(np.sum(np.diff(points, axis=0), axis=1) != 0.0, [True])]

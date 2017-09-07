@@ -60,6 +60,8 @@ class Euclidean:
         :param seg_end: 2D end point of the segment
         :return: signed distance from point to the line (+ if point is to the left of the line, - if to the right)
         """
+        if np.linalg.norm(seg_start - seg_end) == 0.0:
+            return np.linalg.norm(point - seg_start)
         seg_vector = seg_end - seg_start  # vector from segment start to its end
         normal = [-seg_vector[1], seg_vector[0]]  # normal vector of the segment at its start point
         return np.divide(np.dot(point - seg_start, normal), np.linalg.norm(normal))

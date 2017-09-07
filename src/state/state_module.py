@@ -124,8 +124,12 @@ class StateModule(DmModule):
     # TODO: integrate compensation for time differences (aka short-time predict)
     def _publish_state_if_full(self):
         # if some part of the state is missing, don't publish state message
+
+        # TODO: add occupancy state
+        self._occupancy_state = OccupancyState(0, np.array([[1.0,1.0,0.0]]), np.array([0.0]))
         if self._occupancy_state is None or self._dynamic_objects is None or self._ego_state is None:
             return
+
 
         with self._occupancy_state_lock, self._ego_state_lock, self._dynamic_objects_lock:
             state = State(self._occupancy_state, self._dynamic_objects, self._ego_state)

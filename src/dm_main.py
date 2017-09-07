@@ -1,5 +1,7 @@
 import pickle
 import time
+from logging import Logger
+
 import numpy as np
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
@@ -26,6 +28,18 @@ from decision_making.src.state.state_module import StateModule
 from rte.python.logger.AV_logger import AV_Logger
 
 
+NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))
+
+
+class NavigationFacadeMock(NavigationFacade):
+    def __init__(self, dds: DdsPubSub, logger: Logger, plan: NavigationPlanMsg):
+        super().__init__(dds=dds, logger=logger, handler=None)
+        self.plan = plan
+
+    def _periodic_action_impl(self):
+        self._publish_navigation_plan(self.plan)
+
+
 class DmInitialization:
     """
     This class contains the module initializations
@@ -45,8 +59,9 @@ class DmInitialization:
         logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
         dds = DdsPubSub(NAVIGATION_PLANNER_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
         # TODO: fill navigation planning handlers
-        navigator = NavigationPlanner()
-        navigation_module = NavigationFacade(dds=dds, logger=logger, handler=navigator)
+        # navigator = NavigationPlannerMock(plan)
+        # navigation_module = NavigationFacadeMock(dds=dds, logger=logger, handler=navigator)
+        navigation_module = NavigationFacadeMock(dds=dds, logger=logger, plan=NAVIGATION_PLAN)
         return navigation_module
 
     @staticmethod
@@ -54,7 +69,8 @@ class DmInitialization:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
         dds = DdsPubSub(BEHAVIORAL_PLANNER_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
         # TODO: fill the policy
-        map_api = NaiveCacheMap(Paths.get_resource_absolute_path_filename(MAP_RESOURCE_FILE_NAME), logger)
+        map_model = pickle.load(open(Paths.get_resource_absolute_path_filename(MAP_RESOURCE_FILE_NAME), "rb"))
+        map_api = NaiveCacheMap(map_model, logger)
         policy_config = DefaultPolicyConfig()
         policy = DefaultPolicy(logger, policy_config)
 
@@ -84,6 +100,11 @@ class DmInitialization:
 def main():
     modules_list = \
         [
+
+            DmProcess(DmInitialization.create_navigation_planner,
+                      trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
+                      trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
+
             DmProcess(DmInitialization.create_state_module,
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={}),

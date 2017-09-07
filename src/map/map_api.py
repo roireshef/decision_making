@@ -30,7 +30,10 @@ class MapAPI:
 
     @raises(RoadNotFound)
     def get_road(self, road_id):
-        return copy.deepcopy(self._cached_map_model.get_road_data(road_id))
+        # TODO: move solution to mapping module
+        road = copy.deepcopy(self._cached_map_model.get_road_data(road_id))
+        road.points = MapModel.remove_duplicate_points(road.points)
+        return road
 
     @raises(MapCellNotFound, RoadNotFound, LongitudeOutOfRoad)
     def convert_global_to_road_coordinates(self, x, y, yaw):
@@ -213,7 +216,9 @@ class MapAPI:
 
     @raises(RoadNotFound)
     def __get_road(self, road_id):
-        return self._cached_map_model.get_road_data(road_id)
+        # TODO: move solution to mapping module
+        # return MapModel.remove_duplicate_points(self._cached_map_model.get_road_data(road_id).)
+        return self.get_road(road_id)
 
     @raises(MapCellNotFound)
     def _find_roads_containing_point(self, x, y):

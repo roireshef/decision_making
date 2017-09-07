@@ -41,7 +41,7 @@ class BehavioralFacade(DmModule):
             state = self._get_current_state()
             navigation_plan = self._get_current_navigation_plan()
 
-            self._behavioral_state.update_behavioral_state(state, navigation_plan)
+            self._behavioral_state = self._behavioral_state.update_behavioral_state(state, navigation_plan)
 
             if self._behavioral_state.ego_timestamp is not None:
                 # Plan if we behavioral state has valid timestamp
