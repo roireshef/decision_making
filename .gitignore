@@ -9,3 +9,7 @@
 **/*~
 /.idea
 /.idea/**
+**/cache
+**/.cache
+**/cache/**
+**/.cache/**
