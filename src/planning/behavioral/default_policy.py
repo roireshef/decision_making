@@ -46,7 +46,7 @@ class DefaultPolicy(Policy):
         target_path_offset, target_path_latitude = self.__high_level_planning(behavioral_state)
 
         # Calculate reference route for driving
-        reference_route_x_y_z, reference_route_in_cars_frame_x_y_yaw = DefaultPolicy.__generate_reference_route(
+        reference_route_x_y_z, reference_route_in_cars_frame_x_y = DefaultPolicy.__generate_reference_route(
             behavioral_state,
             target_path_offset)
 
@@ -55,7 +55,7 @@ class DefaultPolicy(Policy):
                                                ego_state=behavioral_state.ego_state,
                                                navigation_plan=behavioral_state.navigation_plan,
                                                map_api=behavioral_state.map,
-                                               lookahead_path=reference_route_in_cars_frame_x_y_yaw[:, 0:2])
+                                               lookahead_path=reference_route_in_cars_frame_x_y)
         safe_speed = min(acda_safe_speed, global_constants.BEHAVIORAL_PLANNING_CONSTANT_DRIVE_VELOCITY)
 
         if safe_speed < 0:
@@ -68,7 +68,7 @@ class DefaultPolicy(Policy):
             DefaultPolicy._generate_trajectory_specs(behavioral_state=behavioral_state,
                                                      safe_speed=safe_speed,
                                                      target_path_latitude=target_path_latitude,
-                                                     reference_route=reference_route_in_cars_frame_x_y_yaw)
+                                                     reference_route=reference_route_in_cars_frame_x_y)
 
         visualization_message = BehavioralVisualizationMsg(reference_route=reference_route_x_y_z)
         return trajectory_parameters, visualization_message
@@ -85,31 +85,31 @@ class DefaultPolicy(Policy):
         # remain in right most lane
         # return lanes_in_current_road
 
-        current_center_lane_offset = behavioral_state.ego_state.road_localization.lane + 0.5
+        current_center_lane_offset = behavioral_state.ego_state.road_localization.lane_num + 0.5
 
-        # Load policy parameters config
-        with self._policy_config as pc:
-            # Creates a grid of latitude locations on road, which will be used to determine
-            # the target latitude of the driving trajectory
+        #Load policy parameters config
 
-            # generated_path_offsets_grid is a grid of optional lateral offsets in [lanes]
-            generated_path_offsets_grid = \
-                DefaultPolicy.__generate_latitudes_grid(num_of_lanes=num_lanes,
-                                                        current_lane_latitude=current_center_lane_offset,
-                                                        policy_config=pc)
-            path_absolute_latitudes = lane_width * generated_path_offsets_grid
+        # Creates a grid of latitude locations on road, which will be used to determine
+        # the target latitude of the driving trajectory
 
-            # For each latitude, find closest blocking object on lane
-            closest_blocking_object_on_path = \
-                DefaultPolicyFeatures.get_closest_object_on_path(policy_config=pc,
-                                                                 behavioral_state=behavioral_state,
-                                                                 lat_options=path_absolute_latitudes)
+        # generated_path_offsets_grid is a grid of optional lateral offsets in [lanes]
+        generated_path_offsets_grid = \
+            DefaultPolicy.__generate_latitudes_grid(num_of_lanes=num_lanes,
+                                                    current_lane_latitude=current_center_lane_offset,
+                                                    policy_config=self._policy_config)
+        path_absolute_latitudes = lane_width * generated_path_offsets_grid
 
-            # Choose a proper action (latitude offset from current center lane)
-            selected_action, selected_offset = DefaultPolicy.__select_latitude_from_grid(
-                path_absolute_offsets=generated_path_offsets_grid, current_lane_offset=current_center_lane_offset,
-                closest_object_in_lane=closest_blocking_object_on_path, policy_config=pc)
-            selected_latitude = selected_offset * lane_width
+        # For each latitude, find closest blocking object on lane
+        closest_blocking_object_on_path = \
+            DefaultPolicyFeatures.get_closest_object_on_path(policy_config=self._policy_config,
+                                                             behavioral_state=behavioral_state,
+                                                             lat_options=path_absolute_latitudes)
+
+        # Choose a proper action (latitude offset from current center lane)
+        selected_action, selected_offset = DefaultPolicy.__select_latitude_from_grid(
+            path_absolute_offsets=generated_path_offsets_grid, current_lane_offset=current_center_lane_offset,
+            closest_object_in_lane=closest_blocking_object_on_path, policy_config=self._policy_config)
+        selected_latitude = selected_offset * lane_width
 
         return selected_offset, selected_latitude
 
@@ -193,10 +193,10 @@ class DefaultPolicy(Policy):
         # is stored in 'latitude_options_in_lanes'
         latitude_options_in_lanes = [absolute_latitude_offset_grid_in_lanes[ind] for ind in
                                      range(num_of_latitude_options)
-                                     if ((absolute_latitude_offset_grid_in_lanes[ind] >
+                                     if ((absolute_latitude_offset_grid_in_lanes[ind] <
                                           leftmost_edge_of_road - policy_config.margin_from_road_edge)
                                          and (absolute_latitude_offset_grid_in_lanes[ind]
-                                              < rightmost_edge_of_road + policy_config.margin_from_road_edge))]
+                                              > rightmost_edge_of_road + policy_config.margin_from_road_edge))]
         latitude_options_in_lanes = np.array(latitude_options_in_lanes)
 
         return latitude_options_in_lanes
@@ -210,34 +210,32 @@ class DefaultPolicy(Policy):
         :return: [nx3] array of reference_route (x,y,z) [m,m,m] in world coordinates,
          [nx3] array of reference_route (x,y,yaw) [m,m,rad] in cars coordinates
         """
-        lookahead_path = behavioral_state.map.get_path_lookahead(
+        lookahead_path = behavioral_state.map.get_uniform_path_lookahead(
             road_id=behavioral_state.ego_road_id,
-            lon=behavioral_state.ego_state.road_localization.road_lon,
-            lat=target_lane_latitude,
-            max_lookahead_distance=global_constants.REFERENCE_TRAJECTORY_LENGTH,
-            direction=1)
-        reference_route_xy = lookahead_path.transpose()
+            lat_shift=target_lane_latitude,
+            starting_lon=behavioral_state.ego_state.road_localization.road_lon,
+            lon_step=global_constants.TRAJECTORY_ARCLEN_RESOLUTION,
+            steps_num=int(np.round(global_constants.REFERENCE_TRAJECTORY_LENGTH / global_constants.TRAJECTORY_ARCLEN_RESOLUTION)),
+            navigation_plan=behavioral_state.navigation_plan)
+        reference_route_xy = lookahead_path
         reference_route_len = reference_route_xy.shape[0]
 
         # Transform into car's frame
         reference_route_x_y_z = np.concatenate((reference_route_xy, np.zeros(shape=[reference_route_len, 1])),
                                                axis=1)
         reference_route_xyz_in_cars_frame = geometry_utils.CartesianFrame.convert_global_to_relative_frame(
-            global_pos=reference_route_x_y_z.transpose(), frame_position=behavioral_state.ego_position,
+            global_pos=reference_route_x_y_z, frame_position=behavioral_state.ego_position,
             frame_orientation=behavioral_state.ego_orientation)
-        reference_route_xy_in_cars_frame = reference_route_xyz_in_cars_frame[0:2, :].transpose()
+        reference_route_xy_in_cars_frame = reference_route_xyz_in_cars_frame[:, 0:2]
 
         # interpolate and create uniformly spaced path
-        reference_route_xy_in_cars_frame = \
+        reference_route_xy_in_cars_frame, _ = \
             CartesianFrame.resample_curve(curve=reference_route_xy_in_cars_frame,
                                           step_size=global_constants.TRAJECTORY_ARCLEN_RESOLUTION,
                                           desired_curve_len=global_constants.REFERENCE_TRAJECTORY_LENGTH,
                                           preserve_step_size=False)
 
-        reference_route_in_cars_frame_x_y_yaw = CartesianFrame.add_yaw_and_derivatives(
-            reference_route_xy_in_cars_frame)[:, 0:3]
-
-        return reference_route_x_y_z, reference_route_in_cars_frame_x_y_yaw
+        return reference_route_x_y_z, reference_route_xy_in_cars_frame
 
     @staticmethod
     def _generate_trajectory_specs(behavioral_state: BehavioralState, target_path_latitude: float,
@@ -253,9 +251,11 @@ class DefaultPolicy(Policy):
 
         # Get road details
         lane_width = behavioral_state.map._get_road(behavioral_state.ego_road_id).lane_width
+        road_width = behavioral_state.map._get_road(behavioral_state.ego_road_id).width
 
         # Create target state
-        target_state_x_y_yaw = reference_route[-1, :]
+        reference_route_x_y_yaw = CartesianFrame.add_yaw(reference_route)
+        target_state_x_y_yaw = reference_route_x_y_yaw[-1, :]
         target_state_velocity = safe_speed
         target_state = np.array(
             [target_state_x_y_yaw[0], target_state_x_y_yaw[1], target_state_x_y_yaw[2], target_state_velocity])

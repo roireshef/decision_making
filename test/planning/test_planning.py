@@ -48,9 +48,10 @@ def test_behavioralPlanningFacade_defaultPolicy_anyResult(dds_pubsub: DdsPubSubM
 
     state_module.periodic_action()
     navigation_facade.periodic_action()
-    behavioral_planner_module = BehavioralFacade(dds=dds_pubsub, logger=logger,policy=policy, behavioral_state=default_policy_behavioral_state)
+    behavioral_planner_module = BehavioralFacade(dds=dds_pubsub, logger=logger,policy=policy,
+                                                 behavioral_state=default_policy_behavioral_state)
 
-    dds_pubsub.subscribe(BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC, behavioral_publish_mock)
+    dds_pubsub.subscribe(TRAJECTORY_PARAMS_READER_TOPIC, behavioral_publish_mock)
     #dds_pubsub.subscribe(STATE_PUBLISH_TOPIC, state_module)
 
     behavioral_planner_module.start()

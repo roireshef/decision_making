@@ -6,8 +6,8 @@ from decision_making.test.constants import TOPIC_PIPELINE_DICTIONARY
 
 
 class DdsPubSubMock(DdsPubSub):
-    def __init__(self, logger: Logger, topic_pipelining=TOPIC_PIPELINE_DICTIONARY):
-        # type: (Dict[str, List[str]]) -> None
+    def __init__(self, logger, topic_pipelining=TOPIC_PIPELINE_DICTIONARY):
+        # type: (Logger, Dict[str, List[str]]) -> None
         """
         Mock for communication layer (DDS)
         :param topic_pipelining: dictionary used to pipeline message from publish topics to their corresponding

@@ -42,7 +42,7 @@ class AcdaApi:
 
         # TODO - refactor curve radius.
         # get curve radius
-        curve_radius = AcdaApi.calc_road_turn_radius(lookahead_path)
+        curve_radius =  AcdaApi.calc_road_turn_radius(lookahead_path)
         safe_speed_curve_radius = AcdaApi.calc_safe_speed_critical_speed(curve_radius)
 
         safe_speed = min(safe_speed_forward_los, safe_speed_horizontal_los, safe_speed_curve_radius)
@@ -223,8 +223,7 @@ class AcdaApi:
 
         matrix_of_points = np.transpose(path_points)  # mX2 matrix of the points
         m = matrix_of_points.shape[0]
-        matrix_of_points_squared = np.multiply(matrix_of_points, matrix_of_points)  # squaring each element
-        y = matrix_of_points_squared.sum(axis=1)  # summing each row
+        y = np.sum(np.square(matrix_of_points), axis=1)  # summing each row
         x = np.concatenate((matrix_of_points, np.ones((m, 1))), axis=1)
         transpose_x = np.transpose(x)
         xt_x = np.dot(transpose_x, x)
