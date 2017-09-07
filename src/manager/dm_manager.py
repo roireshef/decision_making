@@ -43,5 +43,5 @@ class DmManager:
         :return:
         """
         for dm_process in self._dm_process_list:
-            dm_process.process.join(timeout=timeoutin )
+            dm_process.process.join(timeout=timeout)
             self._logger.info('module %s has stopped', dm_process.name)
