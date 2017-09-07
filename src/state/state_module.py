@@ -111,10 +111,10 @@ class StateModule(DmModule):
     def __occupancy_state_callback(self, occupancy: dict):
         self.logger.debug("got occupancy status %s", occupancy)
         timestamp = occupancy["timestamp"]
-        free_space_points = occupancy["free_space_points"]
 
-        points_list = [[float(point[0]), float(point[1]), float(point[2])] for point in free_space_points]
-        confidence_list = [float(point[3]) for point in free_space_points]
+        free_space_points = np.array(occupancy["free_space_points"], dtype=float)
+        points_list = free_space_points[:, :3]
+        confidence_list = free_space_points[:, 3]
 
         with self._occupancy_state_lock:
             self._occupancy_state = OccupancyState(timestamp, np.array(points_list), np.array(confidence_list))
