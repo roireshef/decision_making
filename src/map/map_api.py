@@ -315,7 +315,7 @@ class MapAPI:
         # Get closest segments to point (x,y)
         relevant_ind_pairs = Euclidean.get_indexes_of_closest_segments_to_point(x, y, points)
 
-        # for relevant segments, compute (each row): [longitudinal distance of projection on segment,
+        # for relevant segments, compute (each row): [longitudinal distance (of projection on segment) relative to road,
         # signed lateral distance to the line extending the segment]
         segments_lon_lat_yaw = []
         back_of_segment = front_of_segment = 0  # this is used to catch a special case after the for loop
@@ -323,6 +323,7 @@ class MapAPI:
             try:
                 seg_start = points[segment_idx_pair[0]]
                 seg_end = points[segment_idx_pair[1]]
+                seg_lon_offset = longitudes[segment_idx_pair[0]]   # longitude of segment-start-point relative to road
 
                 lon_dist_on_segment = np.linalg.norm(
                     Euclidean.project_on_segment_2d(point, seg_start, seg_end) - seg_start)
@@ -331,7 +332,7 @@ class MapAPI:
                 yaw_relative_to_segment = yaw - np.arctan2(segment_heading[1], segment_heading[0])
 
                 segments_lon_lat_yaw.append(
-                    [lon_dist_on_segment, lat_dist_from_seg_extended_line, yaw_relative_to_segment])
+                    [lon_dist_on_segment + seg_lon_offset, lat_dist_from_seg_extended_line, yaw_relative_to_segment])
             except OutOfSegmentBack:
                 back_of_segment += 1
                 pass
@@ -343,29 +344,26 @@ class MapAPI:
         # at their intersection point. Once this happens, both OutOfSegmentBack and OutOfSegmentFront are raised
         if len(relevant_ind_pairs) == 2 and front_of_segment == 1 and back_of_segment == 1:
             second_seg_start_point_idx = relevant_ind_pairs[1][0]
+            second_seg_lon_offset = road.longitudes[second_seg_start_point_idx]
             seg_start = points[second_seg_start_point_idx]
             seg_end = points[second_seg_start_point_idx+1]
             segment_heading = seg_end - seg_start
-            distance_to_second_seg_start = np.linalg.norm(point - points[second_seg_start_point_idx])
+            distance_to_second_seg_start = np.linalg.norm(point - seg_start)
             yaw_relative_to_segment = yaw - np.arctan2(segment_heading[1], segment_heading[0])
-            # Create an array that contains a first dummy object,
-            # where the second options is the valid segment which will be returned
-            segments_lon_lat_yaw = [[np.inf, np.inf, 0.0],
-                                    [0.0, distance_to_second_seg_start, yaw_relative_to_segment]]
+
+            segments_lon_lat_yaw = [[second_seg_lon_offset, distance_to_second_seg_start, yaw_relative_to_segment]]
 
         segments_lon_lat_yaw = np.array(segments_lon_lat_yaw)
 
         try:
             # find closest segment by min latitudinal distance
-            full_dist_from_segment = np.linalg.norm(segments_lon_lat_yaw[:, 0:2], axis=1)
-            closest_segment_idx = np.argmin(full_dist_from_segment)
+            closest_segment_idx = np.argmin(segments_lon_lat_yaw[:, 1], axis=0)
             lon = segments_lon_lat_yaw[closest_segment_idx, 0]
             signed_latitude = segments_lon_lat_yaw[closest_segment_idx, 1]
             relative_yaw = segments_lon_lat_yaw[closest_segment_idx, 2]
-            seg_start_point_idx = relevant_ind_pairs[closest_segment_idx][0]
 
             # longitude (segment offset + longitude on segment), latitude (relative to right side),
-            return longitudes[seg_start_point_idx] + lon, signed_latitude + road.width / 2, relative_yaw
+            return lon, signed_latitude + road.width / 2, relative_yaw
         except IndexError:  # happens when <segments> is empty
             raise LongitudeOutOfRoad("Tried to project point {} onto road #{} but projection falls outside "
                                      "the road (longitudinally)")
