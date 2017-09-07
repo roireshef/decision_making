@@ -3,10 +3,93 @@ from typing import Union
 import numpy as np
 from scipy import interpolate as interp
 
+from decision_making.src.exceptions import OutOfSegmentBack, OutOfSegmentFront, raises
 from decision_making.src.global_constants import *
 from decision_making.src.planning.utils import tf_transformations
 from decision_making.src.planning.utils.columns import *
 from decision_making.src.planning.utils.math import Math
+
+
+class Euclidean:
+    @staticmethod
+    def project_on_segment_2d(point: np.ndarray, seg_start: np.ndarray, seg_end: np.ndarray) -> np.ndarray:
+        """
+        Projects an arbitrary point onto the segment seg_start->seg_end, or throw an error point's projection is outside
+        the segment.
+        :param point: 2D arbitrary point in space
+        :param seg_start: 2D init point of the segment
+        :param seg_end: 2D end point of the segment
+        :return: 2D projection of point onto the segment seg_start->seg_end
+        """
+        seg_vector = seg_end - seg_start
+        seg_length = np.linalg.norm(seg_vector)
+        # 1D progress of the projection of the point on the segment (or the line extending it)
+        progress = np.dot(point - seg_start, seg_vector) / seg_length ** 2
+
+        if progress < 0.0:
+            raise OutOfSegmentBack("Can't project point [{}] on segment [{}]->[{}]".format(point, seg_start, seg_end))
+        if progress > 1.0:
+            raise OutOfSegmentFront("Can't project point [{}] on segment [{}]->[{}]".format(point, seg_start, seg_end))
+
+        return seg_start + progress * seg_vector  # progress from <seg_start> towards <seg_end>
+
+    @staticmethod
+    def dist_to_segment_2d(point: np.ndarray, seg_start: np.ndarray, seg_end: np.ndarray) -> float:
+        """
+        Compute distance from point to *segment* seg_start->seg_end. if the point can't be projected onto the segment,
+        the distance is either from the segment's init-point or end-point
+        :param point: 2D arbitrary point in space
+        :param seg_start: 2D init point of the segment
+        :param seg_end: 2D end point of the segment
+        :return: distance from point to the segment
+        """
+        try:
+            projection = Euclidean.project_on_segment_2d(point, seg_start, seg_end)
+            return np.linalg.norm(point - projection)
+        except OutOfSegmentBack:
+            return np.linalg.norm(point - seg_start)
+        except OutOfSegmentFront:
+            return np.linalg.norm(point - seg_end)
+
+    @staticmethod
+    def signed_dist_to_line_2d(point: np.ndarray, seg_start: np.ndarray, seg_end: np.ndarray) -> float:
+        """
+        Compute the signed distance of point to the line extending the segment seg_start->seg_end
+        :param point: 2D arbitrary point in space
+        :param seg_start: 2D init point of the segment
+        :param seg_end: 2D end point of the segment
+        :return: signed distance from point to the line (+ if point is to the left of the line, - if to the right)
+        """
+        seg_vector = seg_end - seg_start  # vector from segment start to its end
+        normal = [-seg_vector[1], seg_vector[0]]  # normal vector of the segment at its start point
+        return np.divide(np.dot(point - seg_start, normal), np.linalg.norm(normal))
+
+
+    @staticmethod
+    def get_closest_segments_to_point(x, y, path_points):
+        # type: (float, float, np.array) -> np.array
+        """
+        This functions finds the the segment before and after the nearest point to (x,y)
+        :param x: x coordinate
+        :param y: y coordinate
+        :param path_points: numpy array of size [Nx2] of path coordinates (x,y)
+        :return: the closest segments to (x,y): numpy array of size [Nx2] N={0,1,2}
+        """
+        point = np.array([x, y])
+
+        # find the closest point of the road to (x,y)
+        distance_to_road_points = np.linalg.norm(np.array(path_points) - point, axis=0)
+        closest_point_ind = np.argmin(distance_to_road_points)
+
+        # the point (x,y) should be projected either onto the segment before the closest point or onto the one after it.
+        closest_point_idx_pairs = np.array([[closest_point_ind - 1, closest_point_ind],
+                                            [closest_point_ind, closest_point_ind + 1]])
+
+        # filter out non-existing indices
+        closest_point_idx_pairs = closest_point_idx_pairs[np.greater_equal(closest_point_idx_pairs[:, 0], 0.0) &
+                                                          np.less(closest_point_idx_pairs[:, 1], len(path_points))]
+
+        return closest_point_idx_pairs
 
 
 class CartesianFrame:
@@ -61,12 +144,25 @@ class CartesianFrame:
         return CartesianFrame.homo_matrix_3d_from_quaternion(quaternion, translation)
 
     @staticmethod
+    def add_yaw(xy_points: np.ndarray) -> np.ndarray:
+        """
+        Takes a matrix of curve points ([x, y] only) and adds a yaw column
+        :param xy_points: a numpy matrix of shape [n, 2]
+        :return: a numpy matrix of shape [n, 3]
+        """
+        xy_dot = np.diff(xy_points, axis=0)
+        xy_dot = np.concatenate((xy_dot, np.array([xy_dot[-1, :]])), axis=0)
+        theta = np.arctan2(xy_dot[:, 1], xy_dot[:, 0])  # orientation
+
+        return np.concatenate((xy_points, theta.reshape([-1, 1])), axis=1)
+
+    @staticmethod
     def add_yaw_and_derivatives(xy_points: np.ndarray) -> np.ndarray:
         """
         Takes a matrix of curve points ([x, y] only) and adds columns: [yaw, curvature, derivative of curvature]
         by computing pseudo-derivatives
         :param xy_points: a numpy matrix of shape [n, 2]
-        :return: a numpy matrix of shape [n, 4]
+        :return: a numpy matrix of shape [n, 5]
         """
         xy_dot = np.diff(xy_points, axis=0)
         xy_dotdot = np.diff(xy_dot, axis=0)
@@ -83,7 +179,7 @@ class CartesianFrame:
         k_tag = np.diff(k_col, axis=0)
         k_tag_col = np.concatenate((k_tag, [k_tag[-1]])).reshape([-1, 1])
 
-        return np.concatenate((xy_points, theta_col, k_col, k_tag_col), 1)
+        return np.concatenate((xy_points, theta_col, k_col, k_tag_col), axis=1)
 
     @staticmethod
     def resample_curve(curve: np.ndarray, step_size: float, desired_curve_len: Union[None, float] = None,
@@ -134,39 +230,6 @@ class CartesianFrame:
             interp_curve[:, col] = curve_func(s)
 
         return interp_curve, effective_step_size
-
-    @staticmethod
-    def calc_point_segment_dist(p: np.ndarray, p_start: np.ndarray, p_end: np.ndarray) -> (int, float, float):
-        """
-        Given point p and directed segment p1->p2, calculate:
-            1. from which side p is located relatively to the line p1->p2,
-            2. the closest distance from p to the segment,
-            3. length of the projection of p on the segment (zero if the projection is outside the segment).
-        :param p: 2D Point
-        :param p_start: first edge of 2D segment
-        :param p_end: second edge of 2D segment
-        :return: signed distance between the point p and the segment p1->p2; length of the projection of p on the segment
-        """
-        segment = p_end - p_start
-        segment_start_to_p = p - p_start
-        segment_p_to_end = p_end - p
-        if segment[0] == 0 and segment[1] == 0:
-            return 0, np.linalg.norm(segment_start_to_p), 0
-        dot1 = np.dot(segment, segment_start_to_p)
-        dot2 = np.dot(segment, segment_p_to_end)
-        normal = np.array([-segment[1], segment[0]])  # normal of v toward left if v looks up
-        dotn = np.dot(normal, segment_start_to_p)
-        sign = np.sign(dotn)
-        proj = 0
-        if dot1 > 0 and dot2 > 0:  # then p is between p1,p2, so calc dist to the line
-            one_over_vnorm = 1. / np.linalg.norm(segment)
-            dist = dotn * one_over_vnorm * sign  # always >= 0
-            proj = dot1 * one_over_vnorm  # length of projection of v1 on v
-        elif dot1 <= 0:
-            dist = np.linalg.norm(segment_start_to_p)
-        else:
-            dist = np.linalg.norm(segment_p_to_end)
-        return sign, dist, proj
 
     @staticmethod
     def convert_global_to_relative_frame(global_pos: np.array, frame_position: np.array,

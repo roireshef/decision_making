@@ -1,3 +1,4 @@
+import numpy as np
 from decision_making.src.planning.utils.geometry_utils import *
 from decision_making.test.planning.trajectory.utils import RouteFixture
 

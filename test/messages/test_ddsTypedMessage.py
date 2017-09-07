@@ -1,7 +1,6 @@
-import numpy as np
 import pytest
 
-from decision_making.src.messages.exceptions import MsgDeserializationError, MsgSerializationError
+from decision_making.src.exceptions import MsgDeserializationError, MsgSerializationError
 from decision_making.test.messages.typed_messages_fixture import *
 
 
