@@ -107,23 +107,21 @@ class DynamicObject(DDSNonTypedMsg):
         """
         pass
 
-    def get_relative_road_localization(self, ego_road_localization, ego_nav_plan, map_api, max_lookahead_dist, logger):
-        # type: (RoadLocalization, NavigationPlanMsg, MapAPI, float, Logger) -> Union[RelativeRoadLocalization, None]
+    def get_relative_road_localization(self, ego_road_localization, ego_nav_plan, map_api, logger):
+        # type: (RoadLocalization, NavigationPlanMsg, MapAPI, Logger) -> Union[RelativeRoadLocalization, None]
         """
         Returns a relative road localization (to given ego state)
         :param logger: logger for debug purposes
         :param ego_road_localization: base road location
         :param ego_nav_plan: the ego vehicle navigation plan
         :param map_api: the map which will be used to calculate the road localization
-        :param max_lookahead_dist: lookahead in [m] to search from ego towards dynamic object on map
         :return: a RelativeRoadLocalization object
         """
-        relative_lon = map_api.get_point_relative_longitude(from_road_id=ego_road_localization.road_id,
-                                                            from_lon_in_road=ego_road_localization.road_lon,
-                                                            to_road_id=self.road_localization.road_id,
-                                                            to_lon_in_road=self.road_localization.road_lon,
-                                                            max_lookahead_distance=max_lookahead_dist,
-                                                            navigation_plan=ego_nav_plan)
+        relative_lon = map_api.get_longitudinal_difference(initial_road_id=ego_road_localization.road_id,
+                                                           initial_lon=ego_road_localization.road_lon,
+                                                           final_road_id=self.road_localization.road_id,
+                                                           final_lon=self.road_localization.road_lon,
+                                                           navigation_plan=ego_nav_plan)
 
         if relative_lon is None:
             logger.debug("get_point_relative_longitude returned None at DynamicObject.get_relative_road_localization "

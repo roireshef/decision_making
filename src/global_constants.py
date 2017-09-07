@@ -43,7 +43,10 @@ SX_STEPS, SV_STEPS, DX_STEPS = 5, 10, 5
 EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 0, 0, 0
 
 # [m] Default height for objects - State Module
-DEFAULT_OBJECT_Z_VALUE = 0
+DEFAULT_OBJECT_Z_VALUE = 0.
+
+# [int] Default layer on map (0 means ground)
+DEFAULT_MAP_LAYER = 0
 
 ### DM Manager configuration ###
 BEHAVIORAL_PLANNING_MODULE_PERIOD = 1
@@ -82,6 +85,7 @@ TRAJECTORY_PUBLISH_TOPIC = "TrajectoryPublisher::TrajectoryWriter"
 TRAJECTORY_VISUALIZATION_TOPIC = "TrajectoryPublisher::TrajectoryVisualizationWriter"
 
 #### NAMES OF MODULES FOR LOGGING ####
+MAP_NAME_FOR_LOGGING = "Map API"
 DM_MANAGER_NAME_FOR_LOGGING = "DM Manager"
 NAVIGATION_PLANNING_NAME_FOR_LOGGING = "Navigation Planning"
 BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
