@@ -1,8 +1,8 @@
-from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
+from decision_making.src.messages.dds_typed_message import DDSTypedMsg
 from decision_making.src.state.state import State
 
 
-class StateVisualizationMsg(DDSNonTypedMsg):
+class StateVisualizationMsg(DDSTypedMsg):
     def __init__(self, state):
         # type: (State) -> None
         """

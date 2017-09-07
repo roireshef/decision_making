@@ -1,9 +1,9 @@
 import numpy as np
 
-from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
+from decision_making.src.messages.dds_typed_message import DDSTypedMsg
 
 
-class TrajectoryVisualizationMsg(DDSNonTypedMsg):
+class TrajectoryVisualizationMsg(DDSTypedMsg):
     def __init__(self, reference_route, trajectories, costs):
         # type: (np.ndarray, np.ndarray, np.ndarray) -> None
         """
