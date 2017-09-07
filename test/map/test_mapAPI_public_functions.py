@@ -23,7 +23,7 @@ def map_fixture():
 def test_convertGlobalToRoadCoordinates_OutOfRoad_exception(testable_map_api, navigation_fixture):
     try:
         map_fixture = testable_map_api
-        map_fixture.convert_global_to_road_coordinates(-1.0, 0.0)
+        map_fixture.convert_global_to_road_coordinates(-1.0, 0.0, np.pi / 4.0)
         # must get out-of-road exception
         assert False
     except (MapCellNotFound, LongitudeOutOfRoad) as e:
@@ -34,38 +34,56 @@ def test_convertGlobalToRoadCoordinates_OnRoad_exact(testable_map_api, navigatio
     map_fixture = testable_map_api
 
     # Check that a point on the first road is exactly localized
-    closest_road_id, lon, lat, is_within_road_latitudes = map_fixture.convert_global_to_road_coordinates(10.0, 0.0)
+    closest_road_id, lon, lat, yaw, is_within_road_latitudes = map_fixture.convert_global_to_road_coordinates(10.0, 0.0,
+                                                                                                         np.pi / 4.0)
 
     assert closest_road_id == 1
     assert lon == 10.0
     assert lat == ROAD_WIDTH / 2.0
+    assert yaw == np.pi / 4.0
     assert is_within_road_latitudes
 
     # Check that a point on the second road is exactly localized
-    closest_road_id, lon, lat, is_within_road_latitudes = map_fixture.convert_global_to_road_coordinates(
-        MAP_INFLATION_FACTOR - 10.0, MAP_INFLATION_FACTOR)
+    closest_road_id, lon, lat, yaw, is_within_road_latitudes = map_fixture.convert_global_to_road_coordinates(
+        MAP_INFLATION_FACTOR - 10.0, MAP_INFLATION_FACTOR, np.pi + np.pi/6.0)
 
     assert closest_road_id == 2
     assert lon == 10.0
     assert lat == ROAD_WIDTH / 2.0
+    assert np.math.isclose(yaw, np.pi / 6.0)
     assert is_within_road_latitudes
 
 
 def test_convertGlobalToRoadCoordinates_OutOfRoadLat_precise(testable_map_api, navigation_fixture):
     map_fixture = testable_map_api
-    closest_road_id, lon, lat, is_within_road_latitudes = map_fixture.convert_global_to_road_coordinates(10.0, -6.0)
+    closest_road_id, lon, lat, yaw, is_within_road_latitudes = map_fixture.convert_global_to_road_coordinates(10.0, -6.0, np.pi / 4.0)
 
     assert closest_road_id == 1
     assert lon == 10.0
     assert lat == ROAD_WIDTH / 2.0 - 6.0
+    assert yaw == np.pi / 4.0
     assert not is_within_road_latitudes
+
+
+def test_convertGlobalToRoadCoordinates_TestPointInFunnel_precise(testable_map_api, navigation_fixture):
+    # special case where the point is in the funnel that is created by the normals of two segments
+    map_fixture = testable_map_api
+    closest_road_id, lon, lat, yaw, is_within_road_latitudes = map_fixture.convert_global_to_road_coordinates(
+        2.0*MAP_INFLATION_FACTOR + 1.0, 0 - 1.0, np.pi / 4.0)
+
+    assert closest_road_id == 1
+    assert lon == 2.0 * MAP_INFLATION_FACTOR
+    # We are projected on the start of the second segment, therefore our lat, yaw are relative to it
+    assert np.math.isclose(lat, ROAD_WIDTH / 2.0 + np.sqrt(2.0))
+    assert np.math.isclose(yaw, np.pi / 4.0 - np.pi/2.0)
+    assert is_within_road_latitudes
 
 
 def test_convertGlobalToRoadCoordinates_OutOfRoadLat_mapCellNotFoundException(testable_map_api, navigation_fixture):
     try:
         map_fixture = testable_map_api
-        closest_road_id, lon, lat, is_within_road_latitudes, is_within_road_longitudes = \
-            map_fixture.convert_global_to_road_coordinates(10.0, -16.0)
+        closest_road_id, lon, lat, yaw, is_within_road_latitudes, is_within_road_longitudes = \
+            map_fixture.convert_global_to_road_coordinates(10.0, -16.0, np.pi/4.0)
 
     except MapCellNotFound as e:
         assert True

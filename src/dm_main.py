@@ -1,12 +1,15 @@
-import numpy as np
+import pickle
+import time
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
+from decision_making.paths import Paths
 from decision_making.src.global_constants import *
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import *
 from decision_making.src.map.map_api import MapAPI
 from decision_making.src.map.map_model import MapModel
+from decision_making.src.map.naive_cache_map import NaiveCacheMap
 from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.policy import DefaultPolicy
@@ -29,8 +32,8 @@ class DmInitialization:
     def create_state_module() -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         dds = DdsPubSub(STATE_MODULE_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
-        map_model = MapModel()
-        map_api = MapAPI(map_model)
+        map_model = pickle.load(open(Paths.get_resource_absolute_path_filename(MAP_RESOURCE_FILE_NAME), "rb"))
+        map_api = MapAPI(map_model, logger)
         state_module = StateModule(dds, logger, map_api, None, None, None)
         return state_module
 
@@ -87,6 +90,12 @@ def main():
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
     manager = DmManager(logger, modules_list)
     manager.start_modules()
+    try:
+        manager.wait_for_submodules()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        manager.stop_modules()
 
 
 main()
