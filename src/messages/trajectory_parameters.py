@@ -34,8 +34,8 @@ class TrajectoryCostParams(DDSTypedMsg):
         :param right_shoulder_cost: defines the sigmoid cost of the right-shoulder of the road (physical boundary)
         :param obstacle_cost: defines the sigmoid cost of obstacles
         :param dist_from_ref_sq_cost_coef: if cost of distance from the reference route is C(x) = a*x^2, this is a.
-        :param velocity_limits: 1D numpy array of [min allowed velocity, max allowed velocity]
-        :param acceleration_limits: 1D numpy array of [min allowed acceleration, max allowed acceleration]
+        :param velocity_limits: 1D numpy array of [min allowed velocity, max allowed velocity] in [m/sec]
+        :param acceleration_limits: 1D numpy array of [min allowed acceleration, max allowed acceleration] in [m/sec^2]
         """
         self.obstacle_cost = obstacle_cost
         self.left_lane_cost = left_lane_cost
@@ -54,8 +54,10 @@ class TrajectoryParams(DDSTypedMsg):
                  target_state: np.ndarray, cost_params: TrajectoryCostParams, time: float):
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
-        :param reference_route: of type np.ndarray, with rows of [(x ,y, theta)] where x, y, theta are floats
-        :param target_state: of type np.array (x,y, theta, v) all of which are floats.
+        :param reference_route: a reference route (often the center of lane). A numpy array of the shape [-1, 2] where
+        each row is a point (x, y) relative to the ego-coordinate-frame.
+        :param target_state: A 1D numpy array of the desired ego-state to plan towards, represented in current
+        ego-coordinate-frame (see EGO_* in planning.utils.columns.py for the fields)
         :param cost_params: list of parameters for the cost function of trajectory planner.
         :param strategy: trajectory planning strategy.
         :param time: trajectory planning time-frame
