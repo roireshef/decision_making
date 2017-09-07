@@ -10,7 +10,6 @@ class BehavioralFacadeMock(BehavioralFacade):
     """
     Operate according to to policy with an empty dummy behavioral state
     """
-
     def __init__(self, dds: DdsPubSub, logger: Logger, trajectory_params: TrajectoryParams,
                  visualization_msg: BehavioralVisualizationMsg):
         """
@@ -28,6 +27,5 @@ class BehavioralFacadeMock(BehavioralFacade):
         Publishes the received messages initialized in init
         :return: void
         """
-
         self._publish_results(self._trajectory_params)
         self._publish_visualization(self._visualization_msg)

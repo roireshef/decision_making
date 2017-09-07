@@ -20,9 +20,4 @@ class StateModuleMock(StateModule):
         super().__init__(dds, logger, MapAPI(None, Logger), None, None, None)
 
     def _periodic_action_impl(self):
-        self.__publish_state()
-
-    # TODO: protected instead of private
-    def __publish_state(self):
-
         self.dds.publish(STATE_PUBLISH_TOPIC, self._state.serialize())

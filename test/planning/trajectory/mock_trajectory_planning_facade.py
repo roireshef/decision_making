@@ -8,7 +8,7 @@ from decision_making.src.planning.trajectory.trajectory_planning_facade import T
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 
 
-class TrajectoryPlanningSimulationFacadeMock(TrajectoryPlanningFacade):
+class TrajectoryPlanningFacadeMock(TrajectoryPlanningFacade):
     """
     Sends periodic dummy trajectory message
     """
@@ -20,20 +20,17 @@ class TrajectoryPlanningSimulationFacadeMock(TrajectoryPlanningFacade):
         :param trajectory_msg: the trajectory message to publish periodically
         :param visualization_msg: the visualization message to publish periodically
         """
-
-        planner = WerlingPlanner(logger)
-        strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
-                             TrajectoryPlanningStrategy.PARKING: planner,
-                             TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
-        TrajectoryPlanningFacade.__init__(self, dds, logger, strategy_handlers)
+        TrajectoryPlanningFacade.__init__(self, dds, logger, None)
         self._trajectory_msg = trajectory_msg
         self._visualization_msg = visualization_msg
+
+    def _validate_strategy_handlers(self) -> None:
+        pass
 
     def _periodic_action_impl(self):
         """
         This mock sends the received messages from the init.
         """
-
         # publish results to the lower DM level
         self._publish_trajectory(self._trajectory_msg)
 
