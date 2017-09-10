@@ -212,7 +212,8 @@ class DefaultPolicy(Policy):
             lat_shift=target_lane_latitude,
             starting_lon=behavioral_state.ego_state.road_localization.road_lon,
             lon_step=global_constants.TRAJECTORY_ARCLEN_RESOLUTION,
-            steps_num=int(np.round(global_constants.REFERENCE_TRAJECTORY_LENGTH / global_constants.TRAJECTORY_ARCLEN_RESOLUTION)),
+            steps_num=int(np.round(global_constants.REFERENCE_TRAJECTORY_LENGTH_EXTENDED /
+                                   global_constants.TRAJECTORY_ARCLEN_RESOLUTION)),
             navigation_plan=behavioral_state.navigation_plan)
         reference_route_xy = lookahead_path
         reference_route_len = reference_route_xy.shape[0]
@@ -229,7 +230,7 @@ class DefaultPolicy(Policy):
         reference_route_xy_in_cars_frame, _ = \
             CartesianFrame.resample_curve(curve=reference_route_xy_in_cars_frame,
                                           step_size=global_constants.TRAJECTORY_ARCLEN_RESOLUTION,
-                                          desired_curve_len=None, #global_constants.REFERENCE_TRAJECTORY_LENGTH,
+                                          desired_curve_len=global_constants.REFERENCE_TRAJECTORY_LENGTH,
                                           preserve_step_size=False)
 
         return reference_route_x_y_z, reference_route_xy_in_cars_frame

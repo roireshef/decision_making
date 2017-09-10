@@ -47,9 +47,14 @@ class TrajectoryPlanningFacade(DmModule):
             state = self._get_current_state()
             params = self._get_mission_params()
 
+            self.logger.debug("input: target_state:{}".format(params.target_state))
+            self.logger.debug("input: reference_route:{}".format(params.reference_route))
+            self.logger.debug("input: ego: v_x: {}, v_y: {}".format(state.ego_state.v_x, state.ego_state.v_y))
+
             # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
             trajectory, cost, debug_results = self._strategy_handlers[params.strategy].plan(
                 state, params.reference_route, params.target_state, params.time, params.cost_params)
+
 
             # TODO: should publish v_x?
             # publish results to the lower DM level
