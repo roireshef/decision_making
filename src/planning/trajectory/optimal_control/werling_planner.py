@@ -74,7 +74,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         if len(ftrajectories_filtered) == 0:
             raise NoValidTrajectoriesFound("No valid trajectories found. time: {}, goal: {}, ref_route: {}, state: {}"
-                                           .format(time, goal, reference_route, state))
+                                           .format(time, goal, str(reference_route), state))
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
