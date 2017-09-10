@@ -23,7 +23,7 @@ from decision_making.src.planning.navigation.navigation_planner import Navigatio
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.state.state import EgoState, ObjectSize, RoadLocalization
+from decision_making.src.state.state import EgoState, ObjectSize, RoadLocalization, OccupancyState
 from decision_making.src.state.state_module import StateModule
 from rte.python.logger.AV_logger import AV_Logger
 
@@ -51,7 +51,9 @@ class DmInitialization:
         dds = DdsPubSub(STATE_MODULE_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
         map_model = pickle.load(open(Paths.get_resource_absolute_path_filename(MAP_RESOURCE_FILE_NAME), "rb"))
         map_api = MapAPI(map_model, logger)
-        state_module = StateModule(dds, logger, map_api, None, None, None)
+        default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
+                                                 np.array([0.1], dtype=np.float))
+        state_module = StateModule(dds, logger, map_api, default_occupancy_state, None, None)
         return state_module
 
     @staticmethod

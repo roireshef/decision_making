@@ -12,7 +12,7 @@ BEHAVIORAL_PLANNING_CONSTANT_DRIVE_VELOCITY = 5.0
 
 # [m] length of reference trajectory provided by behavioral plenner
 REFERENCE_TRAJECTORY_LENGTH = 30.0
-REFERENCE_TRAJECTORY_LENGTH_EXTENDED = 35.0
+REFERENCE_TRAJECTORY_LENGTH_EXTENDED = 31.0
 
 # [m] Resolution for the interpolation of the reference route
 TRAJECTORY_ARCLEN_RESOLUTION = 0.1
@@ -35,16 +35,16 @@ NUM_ALTERNATIVE_TRAJECTORIES = 10
 WERLING_TIME_RESOLUTION = 0.1
 
 # [m] Range for grid search in werling planner (long. position)
-SX_OFFSET_MIN, SX_OFFSET_MAX = -3, 0
+SX_OFFSET_MIN, SX_OFFSET_MAX = -5, 0.1
 
 # [m] Range for grid search in werling planner (long. velocity)
-SV_OFFSET_MIN, SV_OFFSET_MAX = -5, 5
+SV_OFFSET_MIN, SV_OFFSET_MAX = -2, 2.1
 
 # [m] Range for grid search in werling planner (lat. position)
-DX_OFFSET_MIN, DX_OFFSET_MAX = -1, 1
+DX_OFFSET_MIN, DX_OFFSET_MAX = -1, 1.1
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 5, 5, 5
+SX_STEPS, SV_STEPS, DX_STEPS = 10, 5, 5
 
 # State #
 

@@ -16,7 +16,7 @@ class DynamicObjectOnRoad(DynamicObject):
         :param dynamic_object_properties: the dynamic object state
         :param relative_road_localization: a relative road localization (relative to ego)
         """
-        self.dynamic_object_propetries = dynamic_object_properties
+        super().__init__(**dynamic_object_properties.__dict__)
         self.relative_road_localization = relative_road_localization
 
 
@@ -91,9 +91,9 @@ class BehavioralState:
             if MAX_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING > \
                     relative_road_localization.rel_lon > \
                     MIN_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING:
-                dynamic_obj_on_road = DynamicObjectOnRoad(dynamic_object_properties=dynamic_obj,
-                                                          relative_road_localization=relative_road_localization)
-                dynamic_objects_on_road.append(dynamic_obj_on_road)
+                dynamic_object_on_road = DynamicObjectOnRoad(dynamic_object_properties=dynamic_obj,
+                                                             relative_road_localization=relative_road_localization)
+                dynamic_objects_on_road.append(dynamic_object_on_road)
 
         return BehavioralState(logger=self.logger, map_api=self.map, navigation_plan=navigation_plan,
                                ego_state=ego_state, timestamp=timestamp, ego_position=ego_position,

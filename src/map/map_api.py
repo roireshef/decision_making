@@ -375,8 +375,8 @@ class MapAPI:
             # longitude (segment offset + longitude on segment), latitude (relative to right side),
             return lon, signed_latitude + road.width / 2, relative_yaw
         except IndexError:  # happens when <segments> is empty
-            raise LongitudeOutOfRoad("Tried to project point {} onto road #{} but projection falls outside "
-                                     "the road (longitudinally)")
+            raise LongitudeOutOfRoad("LongitudeOutOfRoad: Tried to project point {} onto road #{} but projection "
+                                     "falls outside the road (longitudinally)".format(point, road_id))
 
     @raises(RoadNotFound)
     def _shift_road_points_to_latitude(self, road_id, latitude):

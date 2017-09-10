@@ -1,5 +1,5 @@
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
-from decision_making.src.exceptions import MsgDeserializationError
+from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException
 from decision_making.src.global_constants import BEHAVIORAL_STATE_READER_TOPIC, \
     BEHAVIORAL_NAV_PLAN_READER_TOPIC, BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC, BEHAVIORAL_VISUALIZATION_TOPIC
 from decision_making.src.infra.dm_module import DmModule
@@ -58,21 +58,25 @@ class BehavioralFacade(DmModule):
                 # Send visualization data if valid
                 self._publish_visualization(behavioral_visualization_message)
 
-            self.logger.info("BehavioralFacade._periodic_action_impl time %f", time.time()-start_time)
+            self.logger.info("BehavioralFacade._periodic_action_impl time {}".format(time.time()-start_time))
 
         except MsgDeserializationError as e:
             self.logger.warning("MsgDeserializationError was raised. skipping planning. " +
                                 "turn on debug logging level for more details.")
             self.logger.debug(str(e))
+        except BehavioralPlanningException as e:
+            self.logger.warning(e)
+        except Exception as e:
+            self.logger.error(e)
 
     def _get_current_state(self) -> State:
         input_state = self.dds.get_latest_sample(topic=BEHAVIORAL_STATE_READER_TOPIC, timeout=1)
-        self.logger.debug('Received State:  %s', input_state)
+        self.logger.debug('Received State:  {}'.format(input_state))
         return State.deserialize(input_state)
 
     def _get_current_navigation_plan(self) -> NavigationPlanMsg:
         input_plan = self.dds.get_latest_sample(topic=BEHAVIORAL_NAV_PLAN_READER_TOPIC, timeout=1)
-        self.logger.debug('Received navigation plan: %s', input_plan)
+        self.logger.debug('Received navigation plan: {}'.format(input_plan))
         return NavigationPlanMsg.deserialize(input_plan)
 
     def _publish_results(self, trajectory_parameters: TrajectoryParams) -> None:

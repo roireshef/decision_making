@@ -140,7 +140,7 @@ class AcdaApi:
         Calculating the minimal distance of something that is in my lane
         :param map_api: map API
         :param navigation_plan: navigation plan of ego, to search relation to other objects on map
-        :param static_objects: list of static objects, each is EnrichedObjectState
+        :param static_objects: list of static objects, each is DynamicObject
         :param ego_state: our car's state. Type EnrichedEgoState
         :param dyn_objects: TODO not used in July Milestone
         :param min_speed_for_following: TODO not used in July Milestone

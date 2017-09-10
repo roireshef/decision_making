@@ -2,6 +2,7 @@ from logging import Logger
 import numpy as np
 
 from decision_making.src import global_constants
+from decision_making.src.exceptions import VehicleOutOfRoad, NoValidLanesFound, raises
 from decision_making.src.global_constants import ROAD_SHOULDERS_WIDTH
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
@@ -29,6 +30,7 @@ class DefaultPolicy(Policy):
     def __init__(self, logger: Logger, policy_config: DefaultPolicyConfig):
         super().__init__(logger=logger, policy_config=policy_config)
 
+    @raises(VehicleOutOfRoad, NoValidLanesFound)
     def plan(self, behavioral_state: BehavioralState) -> (TrajectoryParams, BehavioralVisualizationMsg):
         """
         This policy first calls to __high_level_planning that returns a desired lateral offset for driving.
@@ -48,7 +50,7 @@ class DefaultPolicy(Policy):
         # Calculate reference route for driving
         reference_route_x_y_z, reference_route_in_cars_frame_x_y = DefaultPolicy.__generate_reference_route(
             behavioral_state,
-            target_path_offset)
+            target_path_latitude)
 
         # Calculate safe speed according to ACDA
         acda_safe_speed = AcdaApi.compute_acda(objects_on_road=behavioral_state.dynamic_objects_on_road,
@@ -70,9 +72,13 @@ class DefaultPolicy(Policy):
                                                      target_path_latitude=target_path_latitude,
                                                      reference_route=reference_route_in_cars_frame_x_y)
 
+        self.logger.debug("Actual reference route[0] is {} and target_path_latitude is {}"
+                          .format(reference_route_in_cars_frame_x_y[0], target_path_latitude))
+
         visualization_message = BehavioralVisualizationMsg(reference_route=reference_route_x_y_z)
         return trajectory_parameters, visualization_message
 
+    @raises(VehicleOutOfRoad, NoValidLanesFound)
     def __high_level_planning(self, behavioral_state: BehavioralState) -> (float, float):
         """
         Generates a high-level plan
@@ -108,9 +114,14 @@ class DefaultPolicy(Policy):
             closest_object_in_lane=closest_blocking_object_on_path, policy_config=self._policy_config)
         selected_latitude = selected_offset * lane_width
 
+        self.logger.debug("DefaultPolicy.__high_level_planning is considering latitudes: {} (lanes {}) - "
+                          "latitude {} is chosen (lane {})".format(path_absolute_latitudes, generated_path_offsets_grid,
+                                                                   selected_latitude, selected_offset))
+
         return selected_offset, selected_latitude
 
     @staticmethod
+    @raises(VehicleOutOfRoad, NoValidLanesFound)
     def __select_latitude_from_grid(path_absolute_offsets: np.array, current_lane_offset: float,
                                     closest_object_in_lane: np.array, policy_config: PolicyConfig) -> (
             float, float):
@@ -122,16 +133,24 @@ class DefaultPolicy(Policy):
         :param policy_config: policy parameters
         :return: bets action index, best lateral offset [lanes]
         """
-        num_of_valid_latitude_options = len(path_absolute_offsets)
+        try:
+            num_of_valid_latitude_options = len(path_absolute_offsets)
 
-        current_center_lane_index_in_grid = \
-            np.where(path_absolute_offsets == current_lane_offset)[0][0]
-        # check which options are in the center of lane
-        center_of_lane = np.isclose(np.mod(path_absolute_offsets - 0.5, 1.0),
-                                    np.zeros(shape=[num_of_valid_latitude_options]))
-        other_center_lane_indexes_in_grid = \
-            np.where((path_absolute_offsets != current_lane_offset) & center_of_lane)[
-                0]  # check if integer
+            current_center_lane_index_in_grid = \
+                np.where(path_absolute_offsets == current_lane_offset)[0][0]
+            # check which options are in the center of lane
+            center_of_lane = np.isclose(np.mod(path_absolute_offsets - 0.5, 1.0),
+                                        np.zeros(shape=[num_of_valid_latitude_options]))
+        except IndexError as ie:
+            raise VehicleOutOfRoad("VehicleOutOfRoad in __select_latitude_from_grid with: path_absolute_offsets={}, "
+                                   "current_lane_offset={}. {}".format(path_absolute_offsets, current_lane_offset, ie))
+        try:
+            other_center_lane_indexes_in_grid = \
+                np.where((path_absolute_offsets != current_lane_offset) & center_of_lane)[0]  # check if integer
+        except IndexError as ie:
+            raise NoValidLanesFound("NoValidLanesFound in __select_latitude_from_grid with: path_absolute_offsets={},"
+                                    "current_lane_offset={}, center_of_lane={}"
+                                    .format(path_absolute_offsets, current_lane_offset, center_of_lane))
 
         object_distance_in_current_lane = closest_object_in_lane[current_center_lane_index_in_grid]
         is_other_lanes_available = len(other_center_lane_indexes_in_grid) > 0

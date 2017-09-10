@@ -48,13 +48,13 @@ class DefaultPolicyFeatures:
                 relative_lon = np.inf
 
             # get leftmost and rightmost edge of object
-            object_leftmost_edge = blocking_object.dynamic_object_propetries.road_localization.full_lat \
-                                   + 0.5 * blocking_object.dynamic_object_propetries.size.width
+            object_leftmost_edge = blocking_object.road_localization.full_lat \
+                                   + 0.5 * blocking_object.size.width
             object_leftmost_edge_dilated = object_leftmost_edge + (
                 LATERAL_SAFETY_MARGIN_FROM_OBJECT + 0.5 * behavioral_state.ego_state.size.width)
 
-            object_rightmost_edge = blocking_object.dynamic_object_propetries.road_localization.full_lat \
-                                    - 0.5 * blocking_object.dynamic_object_propetries.size.width
+            object_rightmost_edge = blocking_object.road_localization.full_lat \
+                                    - 0.5 * blocking_object.size.width
             object_rightmost_edge_dilated = object_rightmost_edge - (
                 LATERAL_SAFETY_MARGIN_FROM_OBJECT + 0.5 * behavioral_state.ego_state.size.width)
 

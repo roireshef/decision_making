@@ -30,14 +30,26 @@ class OutOfSegmentFront(Exception):
 
 
 # TRAJECTORY PLANNING
-
-
 @six.add_metaclass(ABCMeta)
 class TrjajectoryPlanningException(Exception):
     pass
 
 
 class NoValidTrajectoriesFound(TrjajectoryPlanningException):
+    pass
+
+
+# TRAJECTORY PLANNING
+@six.add_metaclass(ABCMeta)
+class BehavioralPlanningException(Exception):
+    pass
+
+
+class VehicleOutOfRoad(BehavioralPlanningException):
+    pass
+
+
+class NoValidLanesFound(BehavioralPlanningException):
     pass
 
 

@@ -2,15 +2,14 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryCostPar
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.utils.geometry_utils import *
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
-from decision_making.test.planning.trajectory.utils import RouteFixture
-
+from decision_making.test.planning.trajectory.utils import *
 
 def test_werlingPlanner_toyScenario_noException():
     route_points = CartesianFrame.add_yaw_and_derivatives(
         RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5))
 
-    v0 = 8
-    vT = 8
+    v0 = 6
+    vT = 10
     v_min = 0
     v_max = 10
     a_min = -5
@@ -48,24 +47,24 @@ def test_werlingPlanner_toyScenario_noException():
 
     assert True
 
-    # import matplotlib.pyplot as plt
-    #
-    # fig = plt.figure()
-    # p1 = fig.add_subplot(211)
-    # p2 = fig.add_subplot(212)
-    # plottable_obs = [PlottableSigmoidStatic2DBoxObstacle.from_object_state(o, cost_params.obstacle_exp, cost_params.obstacle_offset)
-    #                  for o in state.static_objects]
-    # WerlingVisualizer.plot_obstacles(p1, plottable_obs)
-    # WerlingVisualizer.plot_obstacles(p2, plottable_obs)
-    # WerlingVisualizer.plot_route(p1, debug['ref_route'])
-    # WerlingVisualizer.plot_route(p2, debug['ref_route'])
-    #
-    # WerlingVisualizer.plot_best(p2, debug['trajectories'][0])
-    # WerlingVisualizer.plot_alternatives(p1, debug['trajectories'])
-    #
-    # print(debug['costs'])
-    #
-    # # WerlingVisualizer.plot_route(p1, route_points)
-    #
-    # fig.show()
-    # fig.clear()
+    import matplotlib.pyplot as plt
+
+    fig = plt.figure()
+    p1 = fig.add_subplot(211)
+    p2 = fig.add_subplot(212)
+    plottable_obs = [PlottableSigmoidStatic2DBoxObstacle.from_object(o, cost_params.obstacle_cost.k, cost_params.obstacle_cost.offset)
+                     for o in state.dynamic_objects]
+    WerlingVisualizer.plot_obstacles(p1, plottable_obs)
+    WerlingVisualizer.plot_obstacles(p2, plottable_obs)
+    WerlingVisualizer.plot_route(p1, debug.reference_route)
+    WerlingVisualizer.plot_route(p2, debug.reference_route)
+
+    WerlingVisualizer.plot_best(p2, debug.trajectories[0])
+    WerlingVisualizer.plot_alternatives(p1, debug.trajectories)
+
+    print(debug.costs)
+
+    # WerlingVisualizer.plot_route(p1, route_points)
+
+    fig.show()
+    fig.clear()
