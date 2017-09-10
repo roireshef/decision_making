@@ -229,7 +229,7 @@ class DefaultPolicy(Policy):
         reference_route_xy_in_cars_frame, _ = \
             CartesianFrame.resample_curve(curve=reference_route_xy_in_cars_frame,
                                           step_size=global_constants.TRAJECTORY_ARCLEN_RESOLUTION,
-                                          desired_curve_len=global_constants.REFERENCE_TRAJECTORY_LENGTH,
+                                          desired_curve_len=None, #global_constants.REFERENCE_TRAJECTORY_LENGTH,
                                           preserve_step_size=False)
 
         return reference_route_x_y_z, reference_route_xy_in_cars_frame

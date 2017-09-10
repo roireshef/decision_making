@@ -2,7 +2,7 @@ from logging import Logger
 from typing import Dict
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
-from decision_making.src.exceptions import MsgDeserializationError
+from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import *
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
@@ -11,6 +11,7 @@ from decision_making.src.messages.visualization.trajectory_visualization_message
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.state.state import State
+import time
 
 
 class TrajectoryPlanningFacade(DmModule):
@@ -41,6 +42,8 @@ class TrajectoryPlanningFacade(DmModule):
         :return: no return value. results are published in self.__publish_results()
         """
         try:
+            start_time = time.time()
+
             state = self._get_current_state()
             params = self._get_mission_params()
 
@@ -58,10 +61,16 @@ class TrajectoryPlanningFacade(DmModule):
             # publish visualization/debug data
             self._publish_debug(debug_results)
 
+            self.logger.info("TrajectoryPlanningFacade._periodic_action_impl time %f", time.time()-start_time)
+
         except MsgDeserializationError as e:
-            self.logger.debug(str(e))
             self.logger.warn("MsgDeserializationError was raised. skipping planning. " +
                              "turn on debug logging level for more details.")
+            self.logger.debug(str(e))
+        except NoValidTrajectoriesFound as e:
+            self.logger.warn("NoValidTrajectoriesFound was raised. skipping planning. " +
+                             "turn on debug logging level for more details.")
+            self.logger.debug(str(e))
 
     def _validate_strategy_handlers(self) -> None:
         for elem in TrajectoryPlanningStrategy.__members__.values():

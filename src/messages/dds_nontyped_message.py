@@ -52,5 +52,5 @@ class DDSNonTypedMsg(DDSMsg):
                         message_copy[key] = real_type.deserialize(val)
             return cls(**message_copy)
         except:
-            raise MsgDeserializationError("Deserialization error: could not deserialize into " +
-                                          cls.__class__.__name__ + " from " + str(message))
+            raise MsgDeserializationError("MsgDeserializationError error: could not deserialize into " +
+                                          cls.__name__ + " from " + str(message))

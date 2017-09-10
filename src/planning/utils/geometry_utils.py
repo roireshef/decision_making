@@ -209,8 +209,8 @@ class CartesianFrame:
 
         # this method does not support extrapolation
         if desired_curve_len > org_s[-1]:
-            raise ValueError('resampled_curve_len (' + str(desired_curve_len) + ') is greater than the accumulated ' +
-                             'actual arc length (' + org_s + ')')
+            raise ValueError('desired_curve_len ({}) is greater than the accumulated actual arc length ({})'
+                             .format(desired_curve_len, org_s[-1]))
 
         # handles cases where we suffer from floating point division inaccuracies
         num_samples = Math.div(desired_curve_len, step_size) + 1
