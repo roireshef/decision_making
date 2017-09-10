@@ -108,11 +108,13 @@ class DefaultPolicy(Policy):
                                                              behavioral_state=behavioral_state,
                                                              lat_options=path_absolute_latitudes)
 
+        self.logger.debug("BEHAVIORAL: closest_blocking_object_on_path: {}".format(closest_blocking_object_on_path))
         # Choose a proper action (latitude offset from current center lane)
         selected_action, selected_offset = DefaultPolicy.__select_latitude_from_grid(
             path_absolute_offsets=generated_path_offsets_grid, current_lane_offset=current_center_lane_offset,
             closest_object_in_lane=closest_blocking_object_on_path, policy_config=self._policy_config)
         selected_latitude = selected_offset * lane_width
+        self.logger.debug("BEHAVIORAL: selected_latitude: {}".format(selected_latitude))
 
         self.logger.debug("DefaultPolicy.__high_level_planning is considering latitudes: {} (lanes {}) - "
                           "latitude {} is chosen (lane {})".format(path_absolute_latitudes, generated_path_offsets_grid,
@@ -176,7 +178,7 @@ class DefaultPolicy(Policy):
         # If blocking object is too close: choose any valid lateral offset
         if (object_distance_in_current_lane <
                 policy_config.prefer_any_lane_center_if_blocking_object_distance_greater_than) \
-                and (best_center_of_lane_distance_from_object <
+                and (best_center_of_lane_distance_from_object >
                          policy_config.prefer_any_lane_center_if_blocking_object_distance_greater_than):
             selected_action = np.argmax(closest_object_in_lane)
 

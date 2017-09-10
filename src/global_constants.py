@@ -63,7 +63,7 @@ DEFAULT_OBJECT_Z_VALUE = 0.
 DEFAULT_MAP_LAYER = 0
 
 ### DM Manager configuration ###
-BEHAVIORAL_PLANNING_MODULE_PERIOD = 1.0
+BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.4
 TRAJECTORY_PLANNING_MODULE_PERIOD = 0.2
 
 ### DDS Constants ###
@@ -81,7 +81,7 @@ OCCUPANCY_STATE_SUBSCRIBE_TOPIC = "StateSubscriber::OccupancyStateReader"
 STATE_PUBLISH_TOPIC = "StatePublisher::StateWriter"
 
 # Maps
-MAP_RESOURCE_FILE_NAME = os.path.join('maps', 'testingGroundMap.bin')
+MAP_RESOURCE_FILE_NAME = os.path.join('maps', 'testingGroundMap_10Sep_1.bin')
 
 # Navigation Planning Module
 NAVIGATION_PLAN_PUBLISH_TOPIC = "NavigationPublisher::NavigationPlanWriter"
