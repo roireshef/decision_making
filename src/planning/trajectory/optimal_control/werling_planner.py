@@ -4,6 +4,7 @@ from typing import Union, Tuple
 
 import numpy as np
 
+from decision_making.src.exceptions import NoValidTrajectoriesFound
 from decision_making.src.global_constants import *
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
@@ -37,7 +38,8 @@ class WerlingPlanner(TrajectoryPlanner):
         ego_theta_diff = frenet.curve[0, R_THETA]
 
         # TODO: fix velocity jitters at the State level
-        ego_v_x = np.max((state.ego_state.v_x, 0))
+        # ego_v_x = np.max((state.ego_state.v_x, 0))
+        ego_v_x = state.ego_state.v_x
 
         # TODO: translate velocity (better) and acceleration of initial state
         # define constraints for the initial state
@@ -70,6 +72,10 @@ class WerlingPlanner(TrajectoryPlanner):
         # filter resulting trajectories by velocity and acceleration
         ftrajectories_filtered = self._filter_limits(ftrajectories, cost_params)
 
+        if len(ftrajectories_filtered) == 0:
+            raise NoValidTrajectoriesFound("No valid trajectories found. time: {}, goal: {}, ref_route: {}, state: {}"
+                                           .format(time, goal, reference_route, state))
+
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
 
@@ -79,7 +85,8 @@ class WerlingPlanner(TrajectoryPlanner):
 
         debug_results = TrajectoryVisualizationMsg(frenet.curve,
                                                    ctrajectories[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES], :, :EGO_V],
-                                                   trajectory_costs[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES]])
+                                                   trajectory_costs[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES]],
+                                                   state)
 
         return ctrajectories[sorted_idxs[0], :, :EGO_V], trajectory_costs[sorted_idxs[0]], debug_results
 

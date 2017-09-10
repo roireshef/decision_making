@@ -3,6 +3,7 @@ from typing import Tuple
 
 import numpy as np
 
+from decision_making.src.exceptions import raises, NoValidTrajectoriesFound
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.state.state import State
@@ -14,6 +15,7 @@ class TrajectoryPlanner(metaclass=ABCMeta):
         self._logger = logger
 
     @abstractmethod
+    @raises(NoValidTrajectoriesFound)
     def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, time: float,
              cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
         """

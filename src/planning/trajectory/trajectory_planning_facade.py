@@ -2,7 +2,7 @@ from logging import Logger
 from typing import Dict
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
-from decision_making.src.exceptions import MsgDeserializationError
+from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import *
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
@@ -61,12 +61,16 @@ class TrajectoryPlanningFacade(DmModule):
             # publish visualization/debug data
             self._publish_debug(debug_results)
 
-            self.logger.info("trajectory callback time %f", time.time()-start_time)
+            self.logger.info("TrajectoryPlanningFacade._periodic_action_impl time %f", time.time()-start_time)
 
         except MsgDeserializationError as e:
-            self.logger.debug(str(e))
             self.logger.warn("MsgDeserializationError was raised. skipping planning. " +
                              "turn on debug logging level for more details.")
+            self.logger.debug(str(e))
+        except NoValidTrajectoriesFound as e:
+            self.logger.warn("NoValidTrajectoriesFound was raised. skipping planning. " +
+                             "turn on debug logging level for more details.")
+            self.logger.debug(str(e))
 
     def _validate_strategy_handlers(self) -> None:
         for elem in TrajectoryPlanningStrategy.__members__.values():

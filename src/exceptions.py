@@ -1,3 +1,6 @@
+import six
+from abc import ABCMeta
+
 class MsgDeserializationError(Exception):
     pass
 
@@ -23,6 +26,18 @@ class OutOfSegmentBack(Exception):
 
 
 class OutOfSegmentFront(Exception):
+    pass
+
+
+# TRAJECTORY PLANNING
+
+
+@six.add_metaclass(ABCMeta)
+class TrjajectoryPlanningException(Exception):
+    pass
+
+
+class NoValidTrajectoriesFound(TrjajectoryPlanningException):
     pass
 
 

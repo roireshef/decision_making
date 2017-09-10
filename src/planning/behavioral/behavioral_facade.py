@@ -58,12 +58,12 @@ class BehavioralFacade(DmModule):
                 # Send visualization data if valid
                 self._publish_visualization(behavioral_visualization_message)
 
-            self.logger.info("behavioral callback time %f", time.time()-start_time)
+            self.logger.info("BehavioralFacade._periodic_action_impl time %f", time.time()-start_time)
 
         except MsgDeserializationError as e:
-            self.logger.debug(e)
             self.logger.warning("MsgDeserializationError was raised. skipping planning. " +
                                 "turn on debug logging level for more details.")
+            self.logger.debug(str(e))
 
     def _get_current_state(self) -> State:
         input_state = self.dds.get_latest_sample(topic=BEHAVIORAL_STATE_READER_TOPIC, timeout=1)
