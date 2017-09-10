@@ -12,6 +12,7 @@ BEHAVIORAL_PLANNING_CONSTANT_DRIVE_VELOCITY = 5.0
 
 # [m] length of reference trajectory provided by behavioral plenner
 REFERENCE_TRAJECTORY_LENGTH = 30.0
+REFERENCE_TRAJECTORY_LENGTH_EXTENDED = 35.0
 
 # [m] Resolution for the interpolation of the reference route
 TRAJECTORY_ARCLEN_RESOLUTION = 0.1
