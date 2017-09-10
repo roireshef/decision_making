@@ -40,11 +40,14 @@ class WerlingPlanner(TrajectoryPlanner):
         # TODO: fix velocity jitters at the State level
         # ego_v_x = np.max((state.ego_state.v_x, 0))
         ego_v_x = state.ego_state.v_x
+        ego_v_y = state.ego_state.v_y
 
         # TODO: translate velocity (better) and acceleration of initial state
         # define constraints for the initial state
-        fconstraints_t0 = FrenetConstraints(0, np.cos(ego_theta_diff) * ego_v_x, 0,
-                                            ego_in_frenet[1], np.sin(ego_theta_diff) * ego_v_x, 0)
+        # fconstraints_t0 = FrenetConstraints(0, np.cos(ego_theta_diff) * ego_v_x, 0,
+        #                                     ego_in_frenet[1], np.sin(ego_theta_diff) * ego_v_x, 0)
+        fconstraints_t0 = FrenetConstraints(0, np.cos(ego_theta_diff) * ego_v_x + np.sin(ego_theta_diff) * ego_v_y, 0,
+                                            ego_in_frenet[1], -np.sin(ego_theta_diff) * ego_v_x + np.cos(ego_theta_diff) * ego_v_y, 0)
 
         # define constraints for the terminal (goal) state
         goal_in_frenet = frenet.cpoint_to_fpoint(goal[[EGO_X, EGO_Y]])
@@ -62,9 +65,9 @@ class WerlingPlanner(TrajectoryPlanner):
         dx_range = np.linspace(DX_OFFSET_MIN + goal_dx,
                                DX_OFFSET_MAX + goal_dx,
                                DX_STEPS)
+        dv = np.sin(goal_theta_diff) * goal[EGO_V]
 
-        fconstraints_tT = FrenetConstraints(sx_range, sv_range, 0,
-                                            dx_range, np.sin(goal_theta_diff) * goal[EGO_V], 0)
+        fconstraints_tT = FrenetConstraints(sx_range, sv_range, 0, dx_range, dv, 0)
 
         # solve problem in frenet-frame
         ftrajectories = self._solve_optimization(fconstraints_t0, fconstraints_tT, time)
@@ -73,8 +76,8 @@ class WerlingPlanner(TrajectoryPlanner):
         ftrajectories_filtered = self._filter_limits(ftrajectories, cost_params)
 
         if len(ftrajectories_filtered) == 0:
-            raise NoValidTrajectoriesFound("No valid trajectories found. time: {}, goal: {}, ref_route: {}, state: {}"
-                                           .format(time, goal, str(reference_route), state))
+            raise NoValidTrajectoriesFound("No valid trajectories found. time: {}, goal: {}, state: {}"
+                                           .format(time, goal, state))
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
@@ -87,6 +90,12 @@ class WerlingPlanner(TrajectoryPlanner):
                                                    ctrajectories[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES], :, :EGO_V],
                                                    trajectory_costs[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES]],
                                                    state)
+
+        actual_end_theta_diff = ctrajectories[sorted_idxs[0], -1, EGO_THETA] - frenet.curve[frenet.sx_to_s_idx(goal_sx), R_THETA]
+
+        # self._logger.info("goal_theta_diff: {}, actual_end_theta_diff: {}, goal[EGO_THETA]: {}, actual trajectory[EGO_THETA]: {}"
+        #                   .format(goal_theta_diff, actual_end_theta_diff,
+        #                           goal[EGO_THETA], ctrajectories[sorted_idxs[0], -1, EGO_THETA]))
 
         return ctrajectories[sorted_idxs[0], :, :EGO_V], trajectory_costs[sorted_idxs[0]], debug_results
 
