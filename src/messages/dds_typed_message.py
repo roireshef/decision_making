@@ -34,7 +34,7 @@ class DDSTypedMsg(DDSMsg):
                 else:
                     ser_dict[name] = self_dict[name]
             except Exception as e:
-                raise MsgSerializationError("Serialization error: could not serialize " +
+                raise MsgSerializationError("MsgSerializationError error: could not serialize " +
                                             str(self_dict[name]) + " into " + str(tpe) + ":\n" + str(e))
         return ser_dict
 
@@ -60,5 +60,5 @@ class DDSTypedMsg(DDSMsg):
                     deser_dict[name] = message[name]
             return cls(**deser_dict)
         except Exception as e:
-            raise MsgDeserializationError("Deserialization error: could not deserialize into " +
+            raise MsgDeserializationError("MsgDeserializationError error: could not deserialize into " +
                                           cls.__name__ + " from " + str(message) + ":\n" + str(e))

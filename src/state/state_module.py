@@ -44,8 +44,8 @@ class StateModule(DmModule):
         self.logger.info("got dynamic objects %s", objects)
 
         if self._ego_state is None:
-            self.logger.warning("StateModule is trying to parse dynamic objects with None EgoState. " +
-                                "Since objects are given in ego-vehicle's coordinate frame this is impossible. Aborting.")
+            self.logger.warning("StateModule is trying to parse dynamic objects with None EgoState. Since objects " +
+                                "are given in ego-vehicle's coordinate frame this is impossible. Aborting.")
             return
 
         ego = self._ego_state
@@ -81,7 +81,7 @@ class StateModule(DmModule):
                                         self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localtization)
                 dyn_obj_list.append(dyn_obj)
             except:
-                self.logger.info("Detected object not on road, but at ({}, {})".format(x, y))
+                self.logger.info("Detected object out of road (x: {}, y: {})".format(x, y))
                 pass
 
         with self._dynamic_objects_lock:

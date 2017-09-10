@@ -1,4 +1,5 @@
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
+from decision_making.src.exceptions import MsgDeserializationError
 from decision_making.src.global_constants import BEHAVIORAL_STATE_READER_TOPIC, \
     BEHAVIORAL_NAV_PLAN_READER_TOPIC, BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC, BEHAVIORAL_VISUALIZATION_TOPIC
 from decision_making.src.infra.dm_module import DmModule
@@ -9,6 +10,7 @@ from decision_making.src.planning.behavioral.behavioral_state import BehavioralS
 from decision_making.src.planning.behavioral.policy import Policy
 from decision_making.src.state.state import State
 from logging import Logger
+import time
 
 class BehavioralFacade(DmModule):
     def __init__(self, dds: DdsPubSub, logger: Logger, policy: Policy, behavioral_state: BehavioralState) -> None:
@@ -38,6 +40,8 @@ class BehavioralFacade(DmModule):
         :return: void
         """
         try:
+            start_time = time.time()
+
             state = self._get_current_state()
             navigation_plan = self._get_current_navigation_plan()
 
@@ -54,8 +58,10 @@ class BehavioralFacade(DmModule):
                 # Send visualization data if valid
                 self._publish_visualization(behavioral_visualization_message)
 
-        except Exception as e:
-            self.logger.debug(str(e))
+            self.logger.info("behavioral callback time %f", time.time()-start_time)
+
+        except MsgDeserializationError as e:
+            self.logger.debug(e)
             self.logger.warning("MsgDeserializationError was raised. skipping planning. " +
                                 "turn on debug logging level for more details.")
 

@@ -43,7 +43,7 @@ SV_OFFSET_MIN, SV_OFFSET_MAX = -5, 5
 DX_OFFSET_MIN, DX_OFFSET_MAX = -1, 1
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 5, 10, 5
+SX_STEPS, SV_STEPS, DX_STEPS = 5, 5, 5
 
 # State #
 
@@ -63,7 +63,7 @@ DEFAULT_MAP_LAYER = 0
 
 ### DM Manager configuration ###
 BEHAVIORAL_PLANNING_MODULE_PERIOD = 1.0
-TRAJECTORY_PLANNING_MODULE_PERIOD = 0.1
+TRAJECTORY_PLANNING_MODULE_PERIOD = 0.2
 
 ### DDS Constants ###
 STATE_MODULE_DDS_PARTICIPANT = "DecisionMakingParticipantLibrary::StateModule"
