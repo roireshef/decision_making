@@ -28,6 +28,7 @@ class StateModule(DmModule):
         self._ego_state_lock = Lock()
 
         self._dynamic_objects_average_location = {}
+        self._dynamic_objects_history = {}
 
     def _start_impl(self):
         self.dds.subscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, self._dynamic_obj_callback)
@@ -89,27 +90,48 @@ class StateModule(DmModule):
                 else:
                     mean_samples_obj_tuple = global_coordinates
                 self._dynamic_objects_average_location[id] = mean_samples_obj_tuple
-                averaged_relative_pos = CartesianFrame.convert_global_to_relative_frame(
-                    self._dynamic_objects_average_location[id], ego_pos, ego_yaw)
-                x, y, z = averaged_relative_pos
-                #######################################
+                # averaged_relative_pos = CartesianFrame.convert_global_to_relative_frame(
+                #     self._dynamic_objects_average_location[id], ego_pos, ego_yaw)
+                # x, y, z = averaged_relative_pos
+                # #######################################
+                #
+                # obj_pos = np.array([x, y, z])
 
-                obj_pos = np.array([x, y, z])
+                self._dynamic_objects_history[id] = copy.deepcopy(dyn_obj_dict)
+                self._dynamic_objects_history[id]["timestamp"] = timestamp
+                self._dynamic_objects_history[id]["mean_samples_obj_tuple"] = mean_samples_obj_tuple
+                self._dynamic_objects_history[id]["size"] = size
+                self._dynamic_objects_history[id]["confidence"] = confidence
 
-                try:
-                    road_localtization = StateModule._compute_obj_road_localization(obj_pos, yaw, ego_pos, ego_yaw,
-                                                                                    self._map_api)
+            for id in self._dynamic_objects_history.keys():
+                if timestamp - self._dynamic_objects_history[id]["timestamp"] < OBJECT_HISTORY_TIMEOUT:
+                    averaged_relative_pos = CartesianFrame.convert_global_to_relative_frame(
+                        self._dynamic_objects_history[id]["mean_samples_obj_tuple"], ego_pos, ego_yaw)
+                    x, y, z = averaged_relative_pos
+                    obj_pos = np.array([x, y, z])
+                    v_x = -self._ego_state.v_x
+                    v_y = -self._ego_state.v_y
+                    # TODO: fix yaw
+                    yaw = 0
+                    size = self._dynamic_objects_history[id]["size"]
+                    confidence = self._dynamic_objects_history[id]["confidence"]
 
-                    # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
-                    # dyn_obj = DynamicObject(id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
-                    #                         self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localtization)
-                    fixed_yaw = -self._ego_state.road_localization.intra_lane_yaw
-                    dyn_obj = DynamicObject(id, timestamp, x, y, z, fixed_yaw, size, confidence, v_x, v_y,
-                                            self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localtization)
-                    dyn_obj_list.append(dyn_obj)
-                except:
-                    self.logger.info("Detected object out of road (x: {}, y: {})".format(x, y))
-                    pass
+                    try:
+                        road_localtization = StateModule._compute_obj_road_localization(obj_pos, yaw, ego_pos, ego_yaw,
+                                                                                        self._map_api)
+
+                        # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
+                        # dyn_obj = DynamicObject(id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
+                        #                         self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localtization)
+                        fixed_yaw = -self._ego_state.road_localization.intra_lane_yaw
+                        dyn_obj = DynamicObject(id, timestamp, x, y, z, fixed_yaw, size, confidence, v_x, v_y,
+                                                self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localtization)
+                        dyn_obj_list.append(dyn_obj)
+                    except:
+                        self.logger.info("Detected object out of road (x: {}, y: {})".format(x, y))
+                        pass
+                else:
+                    self._dynamic_objects_history.pop(id)
 
             with self._dynamic_objects_lock:
                 self._dynamic_objects = dyn_obj_list

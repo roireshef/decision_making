@@ -17,6 +17,8 @@ REFERENCE_TRAJECTORY_LENGTH_EXTENDED = 31.0
 # [m] Resolution for the interpolation of the reference route
 TRAJECTORY_ARCLEN_RESOLUTION = 0.1
 
+OBJECT_HISTORY_TIMEOUT = 1000*1000*1000*2
+
 # Curve interpolation type (order)
 TRAJECTORY_CURVE_INTERP_TYPE = 'cubic'
 
