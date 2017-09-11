@@ -84,7 +84,7 @@ class StateModule(DmModule):
                 if id in self._dynamic_objects_average_location.keys():
                     mean_samples_obj_tuple = self._dynamic_objects_average_location[id]
                     mean_samples_obj_tuple[1] += 1
-                    mean_samples_obj_tuple[0] += mean_samples_obj_tuple[1] * (
+                    mean_samples_obj_tuple[0] += (1.0/mean_samples_obj_tuple[1]) * (
                     global_coordinates - mean_samples_obj_tuple[0])
                 else:
                     self._dynamic_objects_average_location[id] = [obj_pos, 1.0]
