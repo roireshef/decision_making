@@ -77,19 +77,20 @@ class StateModule(DmModule):
                 v_x = dyn_obj_dict["velocity"]["v_x"]
                 v_y = dyn_obj_dict["velocity"]["v_y"]
 
+                ALPHA = 0.2
+                obj_pos = np.array([x, y, z])
                 #######################################
                 # computing the global coordinates in order to average the location of the object
                 # used in order to smooth jittery detections
                 global_coordinates = CartesianFrame.convert_relative_to_global_frame(obj_pos, ego_pos, ego_yaw)
                 if id in self._dynamic_objects_average_location.keys():
                     mean_samples_obj_tuple = self._dynamic_objects_average_location[id]
-                    mean_samples_obj_tuple[1] += 1
-                    mean_samples_obj_tuple[0] += (1.0/mean_samples_obj_tuple[1]) * (
-                    global_coordinates - mean_samples_obj_tuple[0])
+                    mean_samples_obj_tuple += ALPHA * (global_coordinates - mean_samples_obj_tuple)
                 else:
-                    self._dynamic_objects_average_location[id] = [obj_pos, 1.0]
+                    mean_samples_obj_tuple = global_coordinates
+                self._dynamic_objects_average_location[id] = mean_samples_obj_tuple
                 averaged_relative_pos = CartesianFrame.convert_global_to_relative_frame(
-                    self._dynamic_objects_average_location[id][0], ego_pos, ego_yaw)
+                    self._dynamic_objects_average_location[id], ego_pos, ego_yaw)
                 x, y, z = averaged_relative_pos
                 #######################################
 
