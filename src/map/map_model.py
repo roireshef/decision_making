@@ -12,8 +12,8 @@ class RoadDetails:
     def __init__(self, id, name, points, longitudes, head_node, tail_node,
                  head_layer, tail_layer, max_layer, lanes_num, oneway, lane_width,
                  sidewalk: Sidewalk, ext_head_yaw, ext_tail_yaw,
-                 ext_head_lanes, ext_tail_lanes, turn_lanes):
-        # type: (int, str, np.ndarray, np.ndarray, int, int, int, int, int, int, bool, float, Sidewalk, float, float, int, int, List[str]) -> None
+                 ext_head_lanes, ext_tail_lanes, turn_lanes, points_downsample_step=0):
+        # type: (int, str, np.ndarray, np.ndarray, int, int, int, int, int, int, bool, float, Sidewalk, float, float, int, int, List[str], float) -> None
         """
         Road details class
         :param id: road's id
@@ -34,12 +34,16 @@ class RoadDetails:
         :param ext_head_lanes: lanes number in the incoming road
         :param ext_tail_lanes: lanes number in the outgoing road
         :param turn_lanes: list of strings describing where each lane turns
+        :param points_downsample_step: whether to perform downsampling of the points with given step
         """
         assert points.shape[1] == 2, "points should be a Nx2 matrix"
+        if points_downsample_step > 0:
+            self.points = self.downsample_points(points, points_downsample_step)
+        else:
+            self.points = points
 
         self.id = id
         self.name = name
-        self.points = points
         self.longitudes = longitudes
         self.head_node = head_node
         self.tail_node = tail_node
@@ -61,6 +65,15 @@ class RoadDetails:
     @property
     def length(self):
         return self.longitudes[-1]
+
+    @staticmethod
+    def downsample_points(points, sample_step):
+        downsampled = np.array([points[0]])
+        for p in points:
+            if np.linalg.norm(downsampled[-1] - p) >= sample_step:
+                downsampled = np.vstack([downsampled, p])
+        return downsampled
+
 
 class MapModel:
     def __init__(self, roads_data, incoming_roads, outgoing_roads, xy2road_map, xy2road_tile_size):
