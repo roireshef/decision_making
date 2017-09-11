@@ -86,9 +86,10 @@ class WerlingPlanner(TrajectoryPlanner):
         trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, cost_params)
         sorted_idxs = trajectory_costs.argsort()
 
+        alternative_ids_skip_range = range(0, len(ctrajectories), int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES))
         debug_results = TrajectoryVisualizationMsg(frenet.curve,
-                                                   ctrajectories[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES], :, :EGO_V],
-                                                   trajectory_costs[sorted_idxs[:NUM_ALTERNATIVE_TRAJECTORIES]],
+                                                   ctrajectories[sorted_idxs[alternative_ids_skip_range], :, :EGO_V],
+                                                   trajectory_costs[sorted_idxs[alternative_ids_skip_range]],
                                                    state)
 
         actual_end_theta_diff = ctrajectories[sorted_idxs[0], -1, EGO_THETA] - frenet.curve[frenet.sx_to_s_idx(goal_sx), R_THETA]
@@ -134,7 +135,7 @@ class WerlingPlanner(TrajectoryPlanner):
         close_obstacles = \
             [SigmoidStatic2DBoxObstacle.from_object(obs, params.obstacle_cost.k, params.obstacle_cost.offset)
              for obs in state.dynamic_objects
-             if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < MAXIMAL_OBSTACLE_PROXIMITY]
+             if np.linalg.norm([obs.x, obs.y]) < MAXIMAL_OBSTACLE_PROXIMITY]
 
         cost_per_obstacle = [obs.compute_cost(ctrajectories[:, :, 0:2]) for obs in close_obstacles]
         obstacles_costs = params.obstacle_cost.w * np.sum(cost_per_obstacle, axis=0)
