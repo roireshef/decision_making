@@ -100,7 +100,10 @@ class StateModule(DmModule):
                                                                                     self._map_api)
 
                     # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
-                    dyn_obj = DynamicObject(id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
+                    # dyn_obj = DynamicObject(id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
+                    #                         self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localtization)
+                    fixed_yaw = -self._ego_state.road_localization.intra_lane_yaw
+                    dyn_obj = DynamicObject(id, timestamp, x, y, z, fixed_yaw, size, confidence, v_x, v_y,
                                             self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localtization)
                     dyn_obj_list.append(dyn_obj)
                 except:

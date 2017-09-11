@@ -262,7 +262,7 @@ class DefaultPolicy(Policy):
         """
         Generate trajectory specification (cost) for trajectory planner
         :param behavioral_state: processed behavioral state
-        :param target_path_latitude: road latitude of reference route in [m]
+        :param target_path_latitude: road latitude of reference route in [m] from right-side of road
         :param safe_speed: safe speed in [m/s] (ACDA)
         :param reference_route: [nx3] numpy array of (x, y, z, yaw) states
         :return: Trajectory cost specifications [TrajectoryParameters]
@@ -280,9 +280,10 @@ class DefaultPolicy(Policy):
             [target_state_x_y_yaw[0], target_state_x_y_yaw[1], target_state_x_y_yaw[2], target_state_velocity])
 
         # TODO: assign proper cost parameters
-        infinite_sigmoid_cost = 1000.0  # not a constant because it might be learned. TBD
+        infinite_sigmoid_cost = 5000.0  # not a constant because it might be learned. TBD
+        deviations_cost = 10 ** -3  # not a constant because it might be learned. TBD
         zero_sigmoid_cost = 0.0  # not a constant because it might be learned. TBD
-        sigmoid_k_param = 20.0
+        sigmoid_k_param = 10.0
 
         # lateral distance in [m] from ref. path to rightmost edge of lane
         left_margin = right_margin = behavioral_state.ego_state.size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
@@ -303,13 +304,13 @@ class DefaultPolicy(Policy):
                                                 offset=right_lane_offset)  # Zero cost
         left_lane_cost = SigmoidFunctionParams(w=zero_sigmoid_cost, k=sigmoid_k_param,
                                                offset=left_lane_offset)  # Zero cost
-        right_shoulder_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
+        right_shoulder_cost = SigmoidFunctionParams(w=deviations_cost, k=sigmoid_k_param,
                                                     offset=right_shoulder_offset)  # Very high (inf) cost
-        left_shoulder_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
+        left_shoulder_cost = SigmoidFunctionParams(w=deviations_cost, k=sigmoid_k_param,
                                                    offset=left_shoulder_offset)  # Very high (inf) cost
-        right_road_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
+        right_road_cost = SigmoidFunctionParams(w=zero_sigmoid_cost, k=sigmoid_k_param,
                                                 offset=right_road_offset)  # Very high (inf) cost
-        left_road_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
+        left_road_cost = SigmoidFunctionParams(w=zero_sigmoid_cost, k=sigmoid_k_param,
                                                offset=left_road_offset)  # Very high (inf) cost
 
         # Set objects parameters
@@ -318,10 +319,10 @@ class DefaultPolicy(Policy):
         objects_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
                                              offset=objects_dilation_size)  # Very high (inf) cost
 
-        distance_from_reference_route_sq_factor = 1.0
+        distance_from_reference_route_sq_factor = 0.4
         # TODO: set velocity and acceleration limits properly
-        velocity_limits = np.array([0.0, 100.0])  # [m/s]. not a constant because it might be learned. TBD
-        acceleration_limits = np.array([-10.0, 10.0])  # [m/s^2]. not a constant because it might be learned. TBD
+        velocity_limits = np.array([0.0, 50.0])  # [m/s]. not a constant because it might be learned. TBD
+        acceleration_limits = np.array([-5.0, 5.0])  # [m/s^2]. not a constant because it might be learned. TBD
         cost_params = TrajectoryCostParams(left_lane_cost=left_lane_cost,
                                            right_lane_cost=right_lane_cost,
                                            left_road_cost=left_road_cost,
@@ -333,7 +334,10 @@ class DefaultPolicy(Policy):
                                            velocity_limits=velocity_limits,
                                            acceleration_limits=acceleration_limits)
 
-        trajectory_execution_time = global_constants.REFERENCE_TRAJECTORY_LENGTH / safe_speed
+        current_speed = np.linalg.norm([behavioral_state.ego_state.v_x, behavioral_state.ego_state.v_y])
+        euclidean_dist_to_target = np.linalg.norm(target_state[:2])
+        trajectory_execution_time = 2 * euclidean_dist_to_target / (safe_speed + current_speed)
+
         trajectory_parameters = TrajectoryParams(reference_route=reference_route,
                                                  time=trajectory_execution_time,
                                                  target_state=target_state,
