@@ -27,16 +27,18 @@ class StateModule(DmModule):
         self._ego_state = ego_state
         self._ego_state_lock = Lock()
 
+        self._dynamic_objects_average_location = {}
+
     def _start_impl(self):
         self.dds.subscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, self._dynamic_obj_callback)
         self.dds.subscribe(SELF_LOCALIZATION_SUBSCRIBE_TOPIC, self._self_localization_callback)
-        #TODO: invalid!
+        # TODO: invalid!
         # self.dds.subscribe(OCCUPANCY_STATE_SUBSCRIBE_TOPIC, self._occupancy_state_callback)
 
     def _stop_impl(self):
         self.dds.unsubscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC)
         self.dds.unsubscribe(SELF_LOCALIZATION_SUBSCRIBE_TOPIC)
-        #TODO: invalid!
+        # TODO: invalid!
         # self.dds.unsubscribe(OCCUPANCY_STATE_SUBSCRIBE_TOPIC)
 
     def _periodic_action_impl(self):
@@ -47,8 +49,9 @@ class StateModule(DmModule):
             self.logger.info("got dynamic objects %s", objects)
 
             if self._ego_state is None:
-                self.logger.warning("StateModule is trying to parse dynamic objects with None EgoState. Since objects " +
-                                    "are given in ego-vehicle's coordinate frame this is impossible. Aborting.")
+                self.logger.warning(
+                    "StateModule is trying to parse dynamic objects with None EgoState. Since objects " +
+                    "are given in ego-vehicle's coordinate frame this is impossible. Aborting.")
                 return
 
             ego = self._ego_state
@@ -74,10 +77,27 @@ class StateModule(DmModule):
                 v_x = dyn_obj_dict["velocity"]["v_x"]
                 v_y = dyn_obj_dict["velocity"]["v_y"]
 
+                #######################################
+                # computing the global coordinates in order to average the location of the object
+                # used in order to smooth jittery detections
+                global_coordinates = CartesianFrame.convert_relative_to_global_frame(obj_pos, ego_pos, ego_yaw)
+                if id in self._dynamic_objects_average_location.keys():
+                    mean_samples_obj_tuple = self._dynamic_objects_average_location[id]
+                    mean_samples_obj_tuple[1] += 1
+                    mean_samples_obj_tuple[0] += mean_samples_obj_tuple[1] * (
+                    global_coordinates - mean_samples_obj_tuple[0])
+                else:
+                    self._dynamic_objects_average_location[id] = [obj_pos, 1.0]
+                averaged_relative_pos = CartesianFrame.convert_global_to_relative_frame(
+                    self._dynamic_objects_average_location[id][0], ego_pos, ego_yaw)
+                x, y, z = averaged_relative_pos
+                #######################################
+
                 obj_pos = np.array([x, y, z])
 
                 try:
-                    road_localtization = StateModule._compute_obj_road_localization(obj_pos, yaw, ego_pos, ego_yaw, self._map_api)
+                    road_localtization = StateModule._compute_obj_road_localization(obj_pos, yaw, ego_pos, ego_yaw,
+                                                                                    self._map_api)
 
                     # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
                     dyn_obj = DynamicObject(id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
@@ -112,14 +132,15 @@ class StateModule(DmModule):
 
             with self._ego_state_lock:
                 # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
-                self._ego_state = EgoState(0, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, self.UNKNWON_DEFAULT_VAL,
+                self._ego_state = EgoState(0, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
+                                           self.UNKNWON_DEFAULT_VAL,
                                            self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localization)
 
             self._publish_state_if_full()
         except Exception as e:
             self.logger.error("StateModule._self_localization_callback failed due to {}".format(e))
 
-    #TODO: handle invalid data
+    # TODO: handle invalid data
     def _occupancy_state_callback(self, occupancy: dict):
         try:
             self.logger.debug("got occupancy status %s", occupancy)
@@ -171,7 +192,8 @@ class StateModule(DmModule):
         return RoadLocalization(closest_road_id, int(lane), lat, intra_lane_lat, lon, yaw)
 
     @staticmethod
-    def _compute_obj_road_localization(pos: np.ndarray, yaw: float, ego_pos: np.ndarray, ego_yaw: float,  map_api: MapAPI) -> RoadLocalization:
+    def _compute_obj_road_localization(pos: np.ndarray, yaw: float, ego_pos: np.ndarray, ego_yaw: float,
+                                       map_api: MapAPI) -> RoadLocalization:
         """
         given an object in ego-vehicle's coordinate-frame, calculate its road coordinates
 
