@@ -262,7 +262,7 @@ class DefaultPolicy(Policy):
         """
         Generate trajectory specification (cost) for trajectory planner
         :param behavioral_state: processed behavioral state
-        :param target_path_latitude: road latitude of reference route in [m]
+        :param target_path_latitude: road latitude of reference route in [m] from right-side of road
         :param safe_speed: safe speed in [m/s] (ACDA)
         :param reference_route: [nx3] numpy array of (x, y, z, yaw) states
         :return: Trajectory cost specifications [TrajectoryParameters]
@@ -281,9 +281,9 @@ class DefaultPolicy(Policy):
 
         # TODO: assign proper cost parameters
         infinite_sigmoid_cost = 5000.0  # not a constant because it might be learned. TBD
-        deviations_cost = 100.0  # not a constant because it might be learned. TBD
+        deviations_cost = 10 ** -3  # not a constant because it might be learned. TBD
         zero_sigmoid_cost = 0.0  # not a constant because it might be learned. TBD
-        sigmoid_k_param = 5.0
+        sigmoid_k_param = 10.0
 
         # lateral distance in [m] from ref. path to rightmost edge of lane
         left_margin = right_margin = behavioral_state.ego_state.size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
@@ -319,7 +319,7 @@ class DefaultPolicy(Policy):
         objects_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
                                              offset=objects_dilation_size)  # Very high (inf) cost
 
-        distance_from_reference_route_sq_factor = 1.0
+        distance_from_reference_route_sq_factor = 0.4
         # TODO: set velocity and acceleration limits properly
         velocity_limits = np.array([0.0, 50.0])  # [m/s]. not a constant because it might be learned. TBD
         acceleration_limits = np.array([-5.0, 5.0])  # [m/s^2]. not a constant because it might be learned. TBD
