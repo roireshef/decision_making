@@ -37,30 +37,49 @@ class RoadDetails:
         """
         assert points.shape[1] == 2, "points should be a Nx2 matrix"
 
-        self.id = id
-        self.name = name
-        self.points = points
-        self.longitudes = longitudes
-        self.head_node = head_node
-        self.tail_node = tail_node
-        self.head_layer = head_layer
-        self.tail_layer = tail_layer
-        self.max_layer = max_layer
-        self.lanes_num = lanes_num
-        self.oneway = oneway
-        self.lane_width = lane_width
-        if lanes_num is not None and lane_width is not None:
-            self.width = lane_width*lanes_num
-        self.sidewalk = sidewalk
-        self.ext_head_yaw = ext_head_yaw
-        self.ext_tail_yaw = ext_tail_yaw
-        self.ext_head_lanes = ext_head_lanes
-        self.ext_tail_lanes = ext_tail_lanes
-        self.turn_lanes = turn_lanes
+        self._id = id
+        self._name = name
+        self._points = RoadDetails.remove_duplicate_points(points)
+        self._longitudes = longitudes
+        self._head_node = head_node
+        self._tail_node = tail_node
+        self._head_layer = head_layer
+        self._tail_layer = tail_layer
+        self._max_layer = max_layer
+        self._lanes_num = lanes_num
+        self._oneway = oneway
+        self._lane_width = lane_width
+        if self._lanes_num is not None and self._lane_width is not None:
+            self._road_width = self._lane_width * self._lanes_num
+        self._sidewalk = sidewalk
+        self._ext_head_yaw = ext_head_yaw
+        self._ext_tail_yaw = ext_tail_yaw
+        self._ext_head_lanes = ext_head_lanes
+        self._ext_tail_lanes = ext_tail_lanes
+        self._turn_lanes = turn_lanes
 
     @property
     def length(self):
-        return self.longitudes[-1]
+        return self._longitudes[-1]
+
+    @property
+    def lanes_num(self):
+        return self._lanes_num
+
+    @property
+    def lane_width(self):
+        return self._lane_width
+
+    @property
+    def road_width(self):
+        return self._road_width
+
+    @staticmethod
+    def remove_duplicate_points(points):
+        # type: (np.ndarray) -> np.ndarray
+        # TODO: move solution to mapping module
+        return points[np.append(np.sum(np.diff(points, axis=0), axis=1) != 0.0, [True])]
+
 
 class MapModel:
     def __init__(self, roads_data, incoming_roads, outgoing_roads, xy2road_map, xy2road_tile_size):
@@ -89,7 +108,4 @@ class MapModel:
         except KeyError:
             raise MapCellNotFound("MapModel's xy2road_map doesn't have cell {}".format(coordinates))
 
-    @staticmethod
-    def remove_duplicate_points(points):
-        # type: (np.ndarray) -> np.ndarray
-        return points[np.append(np.sum(np.diff(points, axis=0), axis=1) != 0.0, [True])]
+

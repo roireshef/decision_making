@@ -154,7 +154,7 @@ class StateModule(DmModule):
             v_y = ego_localization["velocity"]["v_y"]
             size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
-            road_localization = StateModule._compute_ego_road_localization(np.array([x, y, z]), yaw, self._map_api)
+            road_localization = StateModule._compute_road_localization(np.array([x, y, z]), yaw, self._map_api)
 
             with self._ego_state_lock:
                 # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
@@ -201,21 +201,22 @@ class StateModule(DmModule):
         pass  # TODO: update self._ego_state.steering_angle. Don't forget to lock self._ego_state!
 
     @staticmethod
-    def _compute_ego_road_localization(pos: np.ndarray, yaw: float, map_api: MapAPI) -> RoadLocalization:
+    def _compute_road_localization(global_pos: np.ndarray, global_yaw: float, map_api: MapAPI) -> RoadLocalization:
         """
         calculate road coordinates for global coordinates for ego
-        :param pos: 1D numpy array of ego vehicle's [x,y,z] in global coordinate-frame
-        :param yaw: in global coordinate-frame
+        :param global_pos: 1D numpy array of ego vehicle's [x,y,z] in global coordinate-frame
+        :param global_yaw: in global coordinate-frame
         :param map_api: MapAPI instance
         :return: the road localization
         """
-        closest_road_id, lon, lat, yaw, is_on_road = map_api.convert_global_to_road_coordinates(pos[0], pos[1], yaw)
-        road_details = map_api.get_road(closest_road_id)
-        lane_width = road_details.lane_width
+        closest_road_id, lon, lat, global_yaw, is_on_road = map_api.convert_global_to_road_coordinates(global_pos[0],
+                                                                                                       global_pos[1],
+                                                                                                       global_yaw)
+        lane_width = map_api.get_road(closest_road_id).lane_width
         lane = np.math.floor(lat / lane_width)
         intra_lane_lat = lat - lane * lane_width
 
-        return RoadLocalization(closest_road_id, int(lane), lat, intra_lane_lat, lon, yaw)
+        return RoadLocalization(closest_road_id, int(lane), lat, intra_lane_lat, lon, global_yaw)
 
     @staticmethod
     def _compute_obj_road_localization(pos: np.ndarray, yaw: float, ego_pos: np.ndarray, ego_yaw: float,
@@ -226,12 +227,5 @@ class StateModule(DmModule):
         :return:
         """
         global_coordinates = CartesianFrame.convert_relative_to_global_frame(pos, ego_pos, ego_yaw)
-        closest_road_id, lon, lat, yaw, is_on_road = map_api.convert_global_to_road_coordinates(global_coordinates[0],
-                                                                                                global_coordinates[1],
-                                                                                                ego_yaw + yaw)
-        road_details = map_api.get_road(closest_road_id)
-        lane_width = road_details.lane_width
-        lane = np.math.floor(lat / lane_width)
-        intra_lane_lat = lat - lane * lane_width
 
-        return RoadLocalization(closest_road_id, int(lane), lat, intra_lane_lat, lon, yaw)
+        return StateModule._compute_road_localization(global_coordinates, ego_yaw + yaw, map_api)

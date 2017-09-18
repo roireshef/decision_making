@@ -26,9 +26,9 @@ class TestMapModelUtils:
             roads_data[road_gen_id] = road_details
             # Render the mapping of (x,y) -> road id
             xy2road_map = TestMapModelUtils.__render_road(road_gen_id,
-                                                          road_details.points,
-                                                          road_details.width,
-                                                          road_details.max_layer,
+                                                          road_details._points,
+                                                          road_details.road_width,
+                                                          road_details._max_layer,
                                                           xy2road_map=xy2road_map)
 
         # Generate model
