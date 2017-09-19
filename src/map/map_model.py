@@ -9,17 +9,16 @@ from decision_making.src.map.constants import Sidewalk
 
 
 class RoadDetails:
-    def __init__(self, id, name, points, longitudes, head_node, tail_node,
+    def __init__(self, id, name, points, head_node, tail_node,
                  head_layer, tail_layer, max_layer, lanes_num, oneway, lane_width,
                  sidewalk: Sidewalk, ext_head_yaw, ext_tail_yaw,
                  ext_head_lanes, ext_tail_lanes, turn_lanes):
-        # type: (int, str, np.ndarray, np.ndarray, int, int, int, int, int, int, bool, float, Sidewalk, float, float, int, int, List[str]) -> None
+        # type: (int, str, np.ndarray, int, int, int, int, int, int, bool, float, Sidewalk, float, float, int, int, List[str]) -> None
         """
         Road details class
         :param id: road's id
         :param name: road's name
         :param points: road's points array. numpy array of size Nx2 (N rows, 2 columns)
-        :param longitudes: list of longitudes of the road's points starting from 0
         :param head_node: node id of the road's head
         :param tail_node:
         :param head_layer: int layer of the road's head (0 means ground layer)
@@ -40,7 +39,7 @@ class RoadDetails:
         self._id = id
         self._name = name
         self._points = RoadDetails.remove_duplicate_points(points)
-        self._longitudes = longitudes
+        self._longitudes = RoadDetails.calc_longitudes(self._points)
         self._head_node = head_node
         self._tail_node = tail_node
         self._head_layer = head_layer
@@ -78,8 +77,19 @@ class RoadDetails:
     def remove_duplicate_points(points):
         # type: (np.ndarray) -> np.ndarray
         # TODO: move solution to mapping module
-        return points[np.append(np.sum(np.diff(points, axis=0), axis=1) != 0.0, [True])]
+        return points[np.append(np.linalg.norm(np.diff(points, axis=0), axis=1) > 0.0, [True])]
 
+    @staticmethod
+    def calc_longitudes(points: np.ndarray) -> np.ndarray:
+        """
+        given road points, calculate array of longitudes of all points
+        :param points: array of road points
+        :return: longitudes array (longitudes[0] = 0)
+        """
+        points_direction = np.diff(np.array(points), axis=0)
+        points_norm = np.linalg.norm(points_direction, axis=1)
+        longitudes = np.concatenate(([0], np.cumsum(points_norm)))
+        return longitudes
 
 class MapModel:
     def __init__(self, roads_data, incoming_roads, outgoing_roads, xy2road_map, xy2road_tile_size):

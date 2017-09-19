@@ -16,11 +16,9 @@ class TestMapModelUtils:
 
             road_gen_id = road_id + road_ind
 
-            # build cumulative longitudes list for the road points
-            longitudes = TestMapModelUtils.__calc_longitudes(points)
 
             # generate the road details
-            road_details = RoadDetails(road_gen_id, road_name, points, longitudes, 0, 0, 0, 0, 0, lanes_num, True, lane_width,
+            road_details = RoadDetails(road_gen_id, road_name, points, 0, 0, 0, 0, 0, lanes_num, True, lane_width,
                                        Sidewalk.NONE, 0, 0, 0, 0, [])
 
             roads_data[road_gen_id] = road_details
