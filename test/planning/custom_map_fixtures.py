@@ -24,7 +24,7 @@ def state():
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     dynamic_objects = []
     size = ObjectSize(0, 0, 0)
-    road_localization = RoadLocalization(0, 0, 0, 0, 0, 0)
+    road_localization = RoadLocalization(1, 0, 0, 0, 0, 0)
     ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0, road_localization)
     yield State(occupancy_state, dynamic_objects, ego_state)
 

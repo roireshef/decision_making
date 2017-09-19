@@ -7,7 +7,7 @@ from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
 from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.behavioral.policy import DefaultPolicy
+from decision_making.src.planning.behavioral.default_policy import DefaultPolicy
 from decision_making.src.state.state import EgoState, RoadLocalization, ObjectSize
 from rte.python.logger.AV_logger import AV_Logger
 

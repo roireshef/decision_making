@@ -18,6 +18,9 @@ class DdsPubSubMock(DdsPubSub):
         self.topic_msg_mapping = {}
         self.topic_pipeline_mapping = topic_pipelining
 
+    def __del__(self):
+        pass
+
     def subscribe(self, topic, callback) -> None:
         """Set a callback on a topic"""
         self.topic_callback_mapping[topic] = callback

@@ -57,6 +57,6 @@ def test_behavioralPlanningFacade_defaultPolicy_anyResult(dds_pubsub: DdsPubSubM
     behavioral_planner_module.start()
     behavioral_planner_module.periodic_action()
 
-    behavioral_publish_mock.periodic_action()
+    # behavioral_publish_mock.periodic_action()
 
     behavioral_publish_mock.assert_called_once()
