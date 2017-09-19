@@ -17,11 +17,13 @@ REFERENCE_TRAJECTORY_LENGTH_EXTENDED = 31.0
 # [m] Resolution for the interpolation of the reference route
 TRAJECTORY_ARCLEN_RESOLUTION = 0.1
 
+OBJECT_HISTORY_TIMEOUT = 1000*1000*1000*2
+
 # Curve interpolation type (order)
 TRAJECTORY_CURVE_INTERP_TYPE = 'cubic'
 
 # [m] Do not consider obastacles that are distant than this thershold
-MAXIMAL_OBSTACLE_PROXIMITY = 25.0
+MAXIMAL_OBSTACLE_PROXIMITY = 40.0
 
 # [m] Cost function clips higher distances before exponentiation
 EXP_CLIP_TH = 50.0
@@ -35,16 +37,16 @@ NUM_ALTERNATIVE_TRAJECTORIES = 10
 WERLING_TIME_RESOLUTION = 0.1
 
 # [m] Range for grid search in werling planner (long. position)
-SX_OFFSET_MIN, SX_OFFSET_MAX = -5, 0.1
+SX_OFFSET_MIN, SX_OFFSET_MAX = -3, 0.1
 
 # [m] Range for grid search in werling planner (long. velocity)
 SV_OFFSET_MIN, SV_OFFSET_MAX = -2, 2.1
 
 # [m] Range for grid search in werling planner (lat. position)
-DX_OFFSET_MIN, DX_OFFSET_MAX = -1, 1.1
+DX_OFFSET_MIN, DX_OFFSET_MAX = -3, 2.3
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 10, 5, 5
+SX_STEPS, SV_STEPS, DX_STEPS = 3, 5, 5
 
 # State #
 
@@ -81,7 +83,7 @@ OCCUPANCY_STATE_SUBSCRIBE_TOPIC = "StateSubscriber::OccupancyStateReader"
 STATE_PUBLISH_TOPIC = "StatePublisher::StateWriter"
 
 # Maps
-MAP_RESOURCE_FILE_NAME = os.path.join('maps', 'testingGroundMap_10Sep_1.bin')
+MAP_RESOURCE_FILE_NAME = os.path.join('maps', 'testingGroundMap_10Sep_1_behavioral_refactoring.bin')
 
 # Navigation Planning Module
 NAVIGATION_PLAN_PUBLISH_TOPIC = "NavigationPublisher::NavigationPlanWriter"

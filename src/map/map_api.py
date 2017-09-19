@@ -31,9 +31,7 @@ class MapAPI:
     @raises(RoadNotFound)
     def get_road(self, road_id):
         # TODO: move solution to mapping module
-        road = copy.deepcopy(self._cached_map_model.get_road_data(road_id))
-        road.points = MapModel.remove_duplicate_points(road.points)
-        return road
+        return self.__get_road(road_id)
 
     @raises(MapCellNotFound, RoadNotFound, LongitudeOutOfRoad)
     def convert_global_to_road_coordinates(self, x, y, yaw):
@@ -52,7 +50,7 @@ class MapAPI:
 
         lon, lat, yaw = self._convert_global_to_road_coordinates(x, y, yaw, closest_road_id)
 
-        road_width = self.__get_road(closest_road_id).width
+        road_width = self.__get_road(closest_road_id).road_width
         is_on_road = bool(0.0 <= lat <= road_width)
 
         return closest_road_id, lon, lat, yaw, is_on_road
@@ -67,8 +65,7 @@ class MapAPI:
         """
         road_details = self.__get_road(road_id)
         lanes_num = road_details.lanes_num
-        road_width = road_details.width
-        lane_width = float(road_width) / lanes_num
+        lane_width = road_details.lane_width
         center_lanes = np.array(range(lanes_num)) * lane_width + lane_width / 2
         return np.array(center_lanes)
 
@@ -176,7 +173,7 @@ class MapAPI:
                                          for rid in relevant_road_ids])
 
         # calculate accumulate longitudinal distance for all points
-        longitudes = np.cumsum(np.concatenate([np.append([0], np.diff(self.__get_road(rid).longitudes))
+        longitudes = np.cumsum(np.concatenate([np.append([0], np.diff(self.__get_road(rid)._longitudes))
                                                for rid in relevant_road_ids]))
 
         # trim shifted points from both sides according to initial point and final (desired) point
@@ -216,9 +213,7 @@ class MapAPI:
 
     @raises(RoadNotFound)
     def __get_road(self, road_id):
-        # TODO: move solution to mapping module
-        # return MapModel.remove_duplicate_points(self._cached_map_model.get_road_data(road_id).)
-        return self.get_road(road_id)
+        return self._cached_map_model.get_road_data(road_id)
 
     @raises(MapCellNotFound)
     def _find_roads_containing_point(self, x, y):
@@ -261,7 +256,7 @@ class MapAPI:
         """
         point = np.array([x, y])
         road = self.__get_road(road_id)
-        points = road.points[:, 0:2]
+        points = road._points[:, 0:2]
 
         # Get closest segments to point (x,y)
         closest_point_idx_pairs = Euclidean.get_indexes_of_closest_segments_to_point(x, y, points)
@@ -284,17 +279,17 @@ class MapAPI:
         :return: numpy array of 3D point [x, y, z] in global coordinate frame, yaw [rad] in global coordinate frame
         """
         road = self.__get_road(road_id)
-        points_with_yaw = CartesianFrame.add_yaw(road.points)
+        points_with_yaw = CartesianFrame.add_yaw(road._points)
 
-        if road.longitudes[0] <= lon <= road.longitudes[-1]:
-            point_ind = np.where(road.longitudes <= lon)[0][-1]  # find index closest to target lon
-            distance_in_lon_from_closest_point = lon - road.longitudes[point_ind]
+        if road._longitudes[0] <= lon <= road._longitudes[-1]:
+            point_ind = np.where(road._longitudes <= lon)[0][-1]  # find index closest to target lon
+            distance_in_lon_from_closest_point = lon - road._longitudes[point_ind]
             road_point = points_with_yaw[point_ind]
 
             # Move lat from the rightmost edge of road
             # Also, fix move along the lon axis by 'distance_in_lon_from_closest_point',
             # in order to fix the difference caused by the map quantization.
-            lon_lat_shift = np.array([distance_in_lon_from_closest_point, lat - road.width / 2, 1])
+            lon_lat_shift = np.array([distance_in_lon_from_closest_point, lat - road.road_width / 2, 1])
             shifted_point = np.dot(CartesianFrame.homo_matrix_2d(road_point[2], road_point[:2]), lon_lat_shift)
 
             position_in_world = np.append(shifted_point[:2], [DEFAULT_OBJECT_Z_VALUE])
@@ -302,7 +297,7 @@ class MapAPI:
             return position_in_world, orientation_in_world
         else:
             raise LongitudeOutOfRoad("longitude {} is out of road's longitudes range [{}, {}]"
-                                     .format(lon, road.longitudes[0], road.longitudes[-1]))
+                                     .format(lon, road._longitudes[0], road._longitudes[-1]))
 
     @raises(RoadNotFound, LongitudeOutOfRoad)
     def _convert_global_to_road_coordinates(self, x, y, yaw, road_id):
@@ -319,8 +314,8 @@ class MapAPI:
         """
         point = np.array([x, y])
         road = self.__get_road(road_id)
-        longitudes = road.longitudes
-        points = road.points[:, 0:2]
+        longitudes = road._longitudes
+        points = road._points[:, 0:2]
 
         # Get closest segments to point (x,y)
         relevant_ind_pairs = Euclidean.get_indexes_of_closest_segments_to_point(x, y, points)
@@ -354,7 +349,7 @@ class MapAPI:
         # at their intersection point. Once this happens, both OutOfSegmentBack and OutOfSegmentFront are raised
         if len(relevant_ind_pairs) == 2 and front_of_segment == 1 and back_of_segment == 1:
             second_seg_start_point_idx = relevant_ind_pairs[1][0]
-            second_seg_lon_offset = road.longitudes[second_seg_start_point_idx]
+            second_seg_lon_offset = road._longitudes[second_seg_start_point_idx]
             seg_start = points[second_seg_start_point_idx]
             seg_end = points[second_seg_start_point_idx+1]
             segment_heading = seg_end - seg_start
@@ -373,7 +368,7 @@ class MapAPI:
             relative_yaw = segments_lon_lat_yaw[closest_segment_idx, 2]
 
             # longitude (segment offset + longitude on segment), latitude (relative to right side),
-            return lon, signed_latitude + road.width / 2, relative_yaw
+            return lon, signed_latitude + road.road_width / 2, relative_yaw
         except IndexError:  # happens when <segments> is empty
             raise LongitudeOutOfRoad("LongitudeOutOfRoad: Tried to project point {} onto road #{} but projection "
                                      "falls outside the road (longitudinally)".format(point, road_id))
@@ -388,7 +383,7 @@ class MapAPI:
         :return:
         """
         road = self.__get_road(road_id)
-        return self._shift_road_points(road.points, latitude - road.width / 2)
+        return self._shift_road_points(road._points, latitude - road.road_width / 2)
 
     @staticmethod
     def _shift_road_points(points, lateral_shift):

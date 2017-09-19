@@ -51,6 +51,7 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.debug("input: reference_route[0]:{}".format(params.reference_route[0]))
             self.logger.debug("input: ego: pos: (x: {} y: {})".format(state.ego_state.x, state.ego_state.y))
             self.logger.debug("input: ego: v_x: {}, v_y: {}".format(state.ego_state.v_x, state.ego_state.v_y))
+            self.logger.info("state: {} objects detected".format(len(state.dynamic_objects)))
 
             # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
             trajectory, cost, debug_results = self._strategy_handlers[params.strategy].plan(

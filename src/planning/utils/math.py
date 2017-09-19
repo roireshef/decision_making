@@ -10,7 +10,7 @@ class Math:
 
     @staticmethod
     def clipped_exponent(x: np.ndarray, w: float, k: float,
-                         min_clip: float=0, max_clip: float=EXP_CLIP_TH) -> np.ndarray:
+                         min_clip: float=-np.inf, max_clip: float=EXP_CLIP_TH) -> np.ndarray:
         """
         compute sigmoid with clipping the exponent between [0, EXP_CLIP_TH]
         :param x: sigmoid function is f(x) = w / (1 + exp(k * x))
@@ -20,7 +20,7 @@ class Math:
         :param max_clip: clips the (k * x) part for too high values. default threshold is EXP_CLIP_TH
         :return: numpy array of exponentiated values
         """
-        return w * np.sum(np.exp(np.clip(k * x, min_clip, max_clip)), axis=1)
+        return w * np.mean(np.exp(np.clip(k * x, min_clip, max_clip)), axis=1)
 
     @staticmethod
     def div(a: T,  b: T, precision: float = DIVISION_FLOATING_ACCURACY) -> T:

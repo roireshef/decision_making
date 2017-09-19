@@ -9,17 +9,16 @@ from decision_making.src.map.constants import Sidewalk
 
 
 class RoadDetails:
-    def __init__(self, id, name, points, longitudes, head_node, tail_node,
+    def __init__(self, id, name, points, head_node, tail_node,
                  head_layer, tail_layer, max_layer, lanes_num, oneway, lane_width,
                  sidewalk: Sidewalk, ext_head_yaw, ext_tail_yaw,
                  ext_head_lanes, ext_tail_lanes, turn_lanes, points_downsample_step=0):
-        # type: (int, str, np.ndarray, np.ndarray, int, int, int, int, int, int, bool, float, Sidewalk, float, float, int, int, List[str], float) -> None
+        # type: (int, str, np.ndarray, int, int, int, int, int, int, bool, float, Sidewalk, float, float, int, int, List[str], float) -> None
         """
         Road details class
         :param id: road's id
         :param name: road's name
         :param points: road's points array. numpy array of size Nx2 (N rows, 2 columns)
-        :param longitudes: list of longitudes of the road's points starting from 0
         :param head_node: node id of the road's head
         :param tail_node:
         :param head_layer: int layer of the road's head (0 means ground layer)
@@ -38,33 +37,63 @@ class RoadDetails:
         """
         assert points.shape[1] == 2, "points should be a Nx2 matrix"
         if points_downsample_step > 0:
-            self.points = self.downsample_points(points, points_downsample_step)
+            self._points = RoadDetails.downsample_points(points, points_downsample_step)
         else:
-            self.points = points
+            self._points = RoadDetails.remove_duplicate_points(points)
 
-        self.id = id
-        self.name = name
-        self.longitudes = longitudes
-        self.head_node = head_node
-        self.tail_node = tail_node
-        self.head_layer = head_layer
-        self.tail_layer = tail_layer
-        self.max_layer = max_layer
-        self.lanes_num = lanes_num
-        self.oneway = oneway
-        self.lane_width = lane_width
-        if lanes_num is not None and lane_width is not None:
-            self.width = lane_width*lanes_num
-        self.sidewalk = sidewalk
-        self.ext_head_yaw = ext_head_yaw
-        self.ext_tail_yaw = ext_tail_yaw
-        self.ext_head_lanes = ext_head_lanes
-        self.ext_tail_lanes = ext_tail_lanes
-        self.turn_lanes = turn_lanes
+        self._id = id
+        self._name = name
+        self._longitudes = RoadDetails.calc_longitudes(self._points)
+        self._head_node = head_node
+        self._tail_node = tail_node
+        self._head_layer = head_layer
+        self._tail_layer = tail_layer
+        self._max_layer = max_layer
+        self._lanes_num = lanes_num
+        self._oneway = oneway
+        self._lane_width = lane_width
+        if self._lanes_num is not None and self._lane_width is not None:
+            self._road_width = self._lane_width * self._lanes_num
+        self._sidewalk = sidewalk
+        self._ext_head_yaw = ext_head_yaw
+        self._ext_tail_yaw = ext_tail_yaw
+        self._ext_head_lanes = ext_head_lanes
+        self._ext_tail_lanes = ext_tail_lanes
+        self._turn_lanes = turn_lanes
 
     @property
     def length(self):
-        return self.longitudes[-1]
+        return self._longitudes[-1]
+
+    @property
+    def lanes_num(self):
+        return self._lanes_num
+
+    @property
+    def lane_width(self):
+        return self._lane_width
+
+    @property
+    def road_width(self):
+        return self._road_width
+
+    @staticmethod
+    def remove_duplicate_points(points):
+        # type: (np.ndarray) -> np.ndarray
+        # TODO: move solution to mapping module
+        return points[np.append(np.linalg.norm(np.diff(points, axis=0), axis=1) > 0.0, [True])]
+
+    @staticmethod
+    def calc_longitudes(points: np.ndarray) -> np.ndarray:
+        """
+        given road points, calculate array of longitudes of all points
+        :param points: array of road points
+        :return: longitudes array (longitudes[0] = 0)
+        """
+        points_direction = np.diff(np.array(points), axis=0)
+        points_norm = np.linalg.norm(points_direction, axis=1)
+        longitudes = np.concatenate(([0], np.cumsum(points_norm)))
+        return longitudes
 
     @staticmethod
     def downsample_points(points, sample_step):
@@ -101,8 +130,3 @@ class MapModel:
             return self._xy2road_map[coordinates]
         except KeyError:
             raise MapCellNotFound("MapModel's xy2road_map doesn't have cell {}".format(coordinates))
-
-    @staticmethod
-    def remove_duplicate_points(points):
-        # type: (np.ndarray) -> np.ndarray
-        return points[np.append(np.sum(np.diff(points, axis=0), axis=1) != 0.0, [True])]

@@ -49,8 +49,8 @@ def test_convertRoadToGlobalCoordinates_simpleRoad_accurateConversion(testable_m
 def test_advanceToEndOfPlan_twoRoadsStartFromMiddleOfFirst_rightRoadAndDistances(testable_map_api, navigation_fixture):
     navigation_plan = navigation_fixture
     start_lon = 10.0
-    first_road_length = testable_map_api._cached_map_model.get_road_data(1).longitudes[-1]
-    second_road_length = testable_map_api._cached_map_model.get_road_data(2).longitudes[-1]
+    first_road_length = testable_map_api._cached_map_model.get_road_data(1).length
+    second_road_length = testable_map_api._cached_map_model.get_road_data(2).length
     roads_id, roads_len, roads_dist_to_end = testable_map_api.advance_to_end_of_plan(1, start_lon, navigation_plan)
 
     # Check that we got to the end of the plan
@@ -63,7 +63,7 @@ def test_advanceOnPlan_twoRoadsStartFromMiddleOfFirst_rightRoadAndDistances(test
     navigation_plan = navigation_fixture
     path_total_len = MAP_INFLATION_FACTOR * (6 - 0.1)
     start_lon = 10.0
-    first_road_length = testable_map_api._cached_map_model.get_road_data(1).longitudes[-1]
+    first_road_length = testable_map_api._cached_map_model.get_road_data(1).length
     advance_in_lon = path_total_len * 0.9
 
     road_id, lon = testable_map_api.advance_on_plan(1, start_lon, advance_in_lon, navigation_plan)
