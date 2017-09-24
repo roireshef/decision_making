@@ -75,9 +75,12 @@ class TrajectoryPlanningFacade(DmModule):
                              "turn on debug logging level for more details.")
             self.logger.debug(str(e))
         except NoValidTrajectoriesFound as e:
+            # TODO - we need to handle this as an emergency.
             self.logger.warn("NoValidTrajectoriesFound was raised. skipping planning. " +
                              "turn on debug logging level for more details.")
             self.logger.debug(str(e))
+        except Exception as e:
+            self.logger.critical("UNHANDLED EXCEPTION in trajectory planning: " + str(e))
 
     def _validate_strategy_handlers(self) -> None:
         for elem in TrajectoryPlanningStrategy.__members__.values():
