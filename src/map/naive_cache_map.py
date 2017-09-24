@@ -9,8 +9,6 @@ class NaiveCacheMap(MapAPI):
     def __init__(self, map_model, logger):
         # type: (str, Logger) -> None
         """
-        :param map_model: MapModel containing all relevant map data. To load .bin files (pickle), use:
-        import pickle
-        pickle.load(open(map_model_filename, "rb"))
+        :param map_model: MapModel containing all relevant map data.
         """
         super().__init__(map_model, logger)
