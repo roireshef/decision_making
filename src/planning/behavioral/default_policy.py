@@ -3,7 +3,7 @@ import numpy as np
 
 from decision_making.src import global_constants
 from decision_making.src.exceptions import VehicleOutOfRoad, NoValidLanesFound, raises
-from decision_making.src.global_constants import ROAD_SHOULDERS_WIDTH
+from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg

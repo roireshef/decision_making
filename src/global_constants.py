@@ -50,10 +50,6 @@ SX_STEPS, SV_STEPS, DX_STEPS = 3, 5, 5
 
 # State #
 
-# TODO: set real values from map / perception
-# Road shoulders width in [m]
-ROAD_SHOULDERS_WIDTH = 1.5
-
 # TODO: set real values
 # [m] Bounding box size around ego vehicle
 EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 0, 0, 0
