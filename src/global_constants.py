@@ -61,9 +61,6 @@ EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 0, 0, 0
 # [m] Default height for objects - State Module
 DEFAULT_OBJECT_Z_VALUE = 0.
 
-# [int] Default layer on map (0 means ground)
-DEFAULT_MAP_LAYER = 0
-
 ### DM Manager configuration ###
 BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.4
 TRAJECTORY_PLANNING_MODULE_PERIOD = 0.2

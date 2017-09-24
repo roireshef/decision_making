@@ -1,12 +1,12 @@
 import copy
 from logging import Logger
-
-import numpy as np
 from typing import List, Union
 
-from decision_making.src.map.map_api import MapAPI
+import numpy as np
+
 from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from mapping.src.model.map_api import MapAPI
 
 
 class RoadLocalization(DDSNonTypedMsg):

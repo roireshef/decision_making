@@ -1,12 +1,14 @@
 from logging import Logger
-from typing import List, Union
+from typing import List
+
 import numpy as np
+
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.constants import MIN_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING, \
     MAX_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING
 from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 from decision_making.src.state.state import State, EgoState, DynamicObject, RelativeRoadLocalization
-from decision_making.src.map.map_api import MapAPI
+from mapping.src.model.map_api import MapAPI
 
 
 class DynamicObjectOnRoad(DynamicObject):

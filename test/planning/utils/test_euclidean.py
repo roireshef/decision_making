@@ -1,7 +1,7 @@
 import numpy as np
 
-from decision_making.src.exceptions import LongitudeOutOfRoad, OutOfSegmentFront, OutOfSegmentBack
-from decision_making.src.planning.utils.geometry_utils import CartesianFrame, Euclidean
+from mapping.src.exceptions import OutOfSegmentFront, OutOfSegmentBack
+from decision_making.src.planning.utils.geometry_utils import Euclidean
 import pytest
 
 # # TODO: change this to test Euclidean

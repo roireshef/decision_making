@@ -1,14 +1,13 @@
 import numpy as np
 import pytest
 
-from decision_making.src.map.map_api import MapAPI
-from decision_making.src.map.naive_cache_map import NaiveCacheMap
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.acda import AcdaApi
 from decision_making.src.planning.utils.acda_constants import *
 from decision_making.src.state.state import EgoState, ObjectSize, DynamicObject, RoadLocalization, \
     RelativeRoadLocalization
-from decision_making.test.map.map_model_utils import TestMapModelUtils
+from mapping.src.model.map_api import MapAPI
+from mapping.test.model.map_model_utils import TestMapModelUtils
 from rte.python.logger.AV_logger import AV_Logger
 
 MAP_INFLATION_FACTOR = 300.0

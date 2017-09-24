@@ -1,6 +1,6 @@
 import numpy as np
 from typing import Optional, List
-from decision_making.src.exceptions import RoadNotFound, raises
+from mapping.src.exceptions import RoadNotFound, raises
 from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
 
 

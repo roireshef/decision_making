@@ -5,10 +5,10 @@ from typing import List
 import numpy as np
 
 from decision_making.src.global_constants import ACDA_NAME_FOR_LOGGING
-from decision_making.src.map.map_api import MapAPI
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.acda_constants import *
 from decision_making.src.state.state import DynamicObject, EgoState
+from mapping.src.model.map_api import MapAPI
 from rte.python.logger.AV_logger import AV_Logger
 
 

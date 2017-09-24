@@ -1,31 +1,12 @@
 import six
 from abc import ABCMeta
 
+
 class MsgDeserializationError(Exception):
     pass
 
 
 class MsgSerializationError(Exception):
-    pass
-
-
-class RoadNotFound(Exception):
-    pass
-
-
-class LongitudeOutOfRoad(Exception):
-    pass
-
-
-class MapCellNotFound(Exception):
-    pass
-
-
-class OutOfSegmentBack(Exception):
-    pass
-
-
-class OutOfSegmentFront(Exception):
     pass
 
 
