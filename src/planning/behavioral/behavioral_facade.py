@@ -48,14 +48,14 @@ class BehavioralFacade(DmModule):
             self._behavioral_state = self._behavioral_state.update_behavioral_state(state, navigation_plan)
 
             if self._behavioral_state.ego_timestamp is not None:
-                # Plan if we behavioral state has valid timestamp
+                # Plan if the behavioral state has valid timestamp
                 trajectory_params, behavioral_visualization_message = self._policy.plan(
                     behavioral_state=self._behavioral_state)
 
-                # Send plan to trajectory if valid
+                # Send plan to trajectory
                 self._publish_results(trajectory_params)
 
-                # Send visualization data if valid
+                # Send visualization data
                 self._publish_visualization(behavioral_visualization_message)
 
             self.logger.info("BehavioralFacade._periodic_action_impl time {}".format(time.time()-start_time))
@@ -67,7 +67,7 @@ class BehavioralFacade(DmModule):
         except BehavioralPlanningException as e:
             self.logger.warning(e)
         except Exception as e:
-            self.logger.error(e)
+            self.logger.critical("UNHANDLED EXCEPTION IN BEHAVIORAL FACADE: {}".format(e))
 
     def _get_current_state(self) -> State:
         input_state = self.dds.get_latest_sample(topic=BEHAVIORAL_STATE_READER_TOPIC, timeout=1)

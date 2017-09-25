@@ -42,7 +42,7 @@ class AcdaApi:
 
         # TODO - refactor curve radius.
         # get curve radius
-        curve_radius =  AcdaApi.calc_road_turn_radius(lookahead_path)
+        curve_radius = AcdaApi.calc_road_turn_radius(lookahead_path)
         safe_speed_curve_radius = AcdaApi.calc_safe_speed_critical_speed(curve_radius)
 
         safe_speed = min(safe_speed_forward_los, safe_speed_horizontal_los, safe_speed_curve_radius)

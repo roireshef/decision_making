@@ -92,7 +92,7 @@ class DefaultPolicy(Policy):
 
         current_center_lane_offset = behavioral_state.ego_state.road_localization.lane_num + 0.5
 
-        #Load policy parameters config
+        # Load policy parameters config
 
         # Creates a grid of latitude locations on road, which will be used to determine
         # the target latitude of the driving trajectory
@@ -280,7 +280,8 @@ class DefaultPolicy(Policy):
 
         # TODO: assign proper cost parameters
         infinite_sigmoid_cost = 5000.0  # not a constant because it might be learned. TBD
-        deviations_cost = 10 ** -3  # not a constant because it might be learned. TBD
+        deviation_from_road_cost = 10 ** -3  # not a constant because it might be learned. TBD
+        deviation_to_shoulder_cost = 10 ** -3  # not a constant because it might be learned. TBD
         zero_sigmoid_cost = 0.0  # not a constant because it might be learned. TBD
         sigmoid_k_param = 10.0
 
@@ -303,14 +304,14 @@ class DefaultPolicy(Policy):
                                                 offset=right_lane_offset)  # Zero cost
         left_lane_cost = SigmoidFunctionParams(w=zero_sigmoid_cost, k=sigmoid_k_param,
                                                offset=left_lane_offset)  # Zero cost
-        right_shoulder_cost = SigmoidFunctionParams(w=deviations_cost, k=sigmoid_k_param,
-                                                    offset=right_shoulder_offset)  # Very high (inf) cost
-        left_shoulder_cost = SigmoidFunctionParams(w=deviations_cost, k=sigmoid_k_param,
-                                                   offset=left_shoulder_offset)  # Very high (inf) cost
-        right_road_cost = SigmoidFunctionParams(w=zero_sigmoid_cost, k=sigmoid_k_param,
-                                                offset=right_road_offset)  # Very high (inf) cost
-        left_road_cost = SigmoidFunctionParams(w=zero_sigmoid_cost, k=sigmoid_k_param,
-                                               offset=left_road_offset)  # Very high (inf) cost
+        right_shoulder_cost = SigmoidFunctionParams(w=deviation_to_shoulder_cost, k=sigmoid_k_param,
+                                                    offset=right_shoulder_offset)  # Very high cost
+        left_shoulder_cost = SigmoidFunctionParams(w=deviation_to_shoulder_cost, k=sigmoid_k_param,
+                                                   offset=left_shoulder_offset)  # Very high cost
+        right_road_cost = SigmoidFunctionParams(w=deviation_from_road_cost, k=sigmoid_k_param,
+                                                offset=right_road_offset)  # Very high cost
+        left_road_cost = SigmoidFunctionParams(w=deviation_from_road_cost, k=sigmoid_k_param,
+                                               offset=left_road_offset)  # Very high cost
 
         # Set objects parameters
         # dilate each object by cars length + safety margin
