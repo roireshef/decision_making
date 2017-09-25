@@ -8,6 +8,7 @@ from decision_making.src.manager.dm_trigger import DmTriggerType
 from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.default_policy import DefaultPolicy
+from decision_making.src.planning.behavioral.default_policy_config import DefaultPolicyConfig
 from decision_making.src.state.state import EgoState, RoadLocalization, ObjectSize
 from rte.python.logger.AV_logger import AV_Logger
 
@@ -18,12 +19,13 @@ def create_behavioral_planner() -> BehavioralFacade:
     logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
     dds = DdsPubSub(BEHAVIORAL_PLANNER_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
     # TODO: fill the policy
-    policy_params = dict()
-    policy = DefaultPolicy(policy_params)
+    policy_params = DefaultPolicyConfig()
+    policy = DefaultPolicy(logger, policy_params)
     size = ObjectSize(0, 0, 0)
     road_localization = RoadLocalization(0, 0, 0, 0, 0, 0)
     ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 0, 0, 0, 0, 0, road_localization)
-    behavioral_state = BehavioralState(ego_state=ego_state)
+    behavioral_state = BehavioralState(logger=logger, map_api=None, navigation_plan=None, ego_state=ego_state,
+                                       dynamic_objects_on_road=None)
     return BehavioralFacade(dds=dds, logger=logger, policy=policy, behavioral_state=behavioral_state)
 
 

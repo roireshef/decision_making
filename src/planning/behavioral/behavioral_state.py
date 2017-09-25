@@ -24,21 +24,13 @@ class DynamicObjectOnRoad(DynamicObject):
 
 class BehavioralState:
     def __init__(self, logger: Logger, map_api: MapAPI, navigation_plan: NavigationPlanMsg, ego_state: EgoState,
-                 timestamp: int, ego_position: np.array, ego_orientation: np.array, ego_yaw: float, ego_velocity: float,
-                 ego_road_id: int, ego_on_road: bool, dynamic_objects_on_road: List[DynamicObjectOnRoad]) -> None:
+                 dynamic_objects_on_road: List[DynamicObjectOnRoad]) -> None:
         """
         Behavioral state generates and stores relevant state features that will be used for planning
         :param logger: logger
         :param map_api: map API
         :param navigation_plan: car's navigation plan
         :param ego_state: updated ego state
-        :param timestamp: of ego
-        :param ego_position: np.array of (x,y,z) location of ego in [m]
-        :param ego_orientation: np.array of (x,y,z,w) quaternion orientation og ego
-        :param ego_yaw: yaw of ego in [rad]
-        :param ego_road_id: ego road_id
-        :param ego_velocity: velocity of ego in [m/s]
-        :param ego_on_road: boolean flat that states whether car is located on road
         """
 
         self.logger = logger
@@ -48,14 +40,17 @@ class BehavioralState:
         self.navigation_plan = navigation_plan
 
         # Ego state features
-        self.ego_timestamp = timestamp
+        self.ego_timestamp = ego_state.timestamp
         self.ego_state = ego_state
-        self.ego_position = ego_position
-        self.ego_orientation = ego_orientation
-        self.ego_yaw = ego_yaw
-        self.ego_velocity = ego_velocity
-        self.ego_road_id = ego_road_id
-        self.ego_on_road = ego_on_road
+
+        self.ego_yaw = ego_state.yaw
+        self.ego_position = np.array([ego_state.x, ego_state.y, ego_state.z])
+        self.ego_orientation = np.array(CartesianFrame.convert_yaw_to_quaternion(ego_state.yaw))
+        self.ego_velocity = np.linalg.norm([ego_state.v_x, ego_state.v_y])
+        self.ego_road_id = ego_state.road_localization.road_id
+        self.ego_on_road = ego_state.road_localization.road_id is not None
+        if not self.ego_on_road:
+            self.logger.warning("Car is off road.")
 
         # Dynamic objects and their relative locations
         self.dynamic_objects_on_road = dynamic_objects_on_road
@@ -69,17 +64,9 @@ class BehavioralState:
         :return: a new and updated BehavioralState
         """
         ego_state = state.ego_state
-        timestamp = ego_state.timestamp
-        ego_yaw = ego_state.yaw
-        ego_position = np.array([ego_state.x, ego_state.y, ego_state.z])
-        ego_orientation = np.array(CartesianFrame.convert_yaw_to_quaternion(ego_state.yaw))
-        ego_velocity = np.linalg.norm([ego_state.v_x, ego_state.v_y])
-        ego_road_id = ego_state.road_localization.road_id
 
-        # Save last known road localization if car is off road
-        ego_on_road = ego_state.road_localization.road_id is not None
-        if not ego_on_road:
-            self.logger.warning("Car is off road.")
+
+
 
         # Filter static & dynamic objects that are relevant to car's navigation
         dynamic_objects_on_road = []
@@ -98,10 +85,7 @@ class BehavioralState:
                 dynamic_objects_on_road.append(dynamic_object_on_road)
 
         return BehavioralState(logger=self.logger, map_api=self.map, navigation_plan=navigation_plan,
-                               ego_state=ego_state, timestamp=timestamp, ego_position=ego_position,
-                               ego_orientation=ego_orientation, ego_yaw=ego_yaw, ego_velocity=ego_velocity,
-                               ego_road_id=ego_road_id, ego_on_road=ego_on_road,
-                               dynamic_objects_on_road=dynamic_objects_on_road)
+                               ego_state=ego_state, dynamic_objects_on_road=dynamic_objects_on_road)
 
 
 class MarginInfo:

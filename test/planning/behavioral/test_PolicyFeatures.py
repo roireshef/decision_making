@@ -53,9 +53,7 @@ def test_get_closest_object_on_lane_ComplexScenraio_success():
 
     # Initialize behavioral state
     behavioral_state = BehavioralState(logger=logger, map_api=map_api, navigation_plan=navigation_plan,
-                                       ego_state=ego_state, timestamp=0, ego_position=np.array([0, 0, 0]),
-                                       ego_orientation=([0, 0, 0, 0]), ego_yaw=0.0, ego_velocity=0.0, ego_road_id=1,
-                                       ego_on_road=True, dynamic_objects_on_road=objects_list)
+                                       ego_state=ego_state, dynamic_objects_on_road=objects_list)
 
     ########################################################
     # Functionality Test: get the closest objects on each path

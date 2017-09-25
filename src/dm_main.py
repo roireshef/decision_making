@@ -75,8 +75,7 @@ class DmInitialization:
         init_ego_state = EgoState(0, None, 0.0, 0.0, 0.0, 0.0, ObjectSize(0.0, 0.0, 0.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                   RoadLocalization(0, 0, 0.0, 0.0, 0.0, 0.0))
 
-        behavioral_state = BehavioralState(logger, map_api, init_navigation_plan, init_ego_state, 0, np.array([0.0]),
-                                           np.array([0.0]), 0.0, 0.0, 0, False, [])
+        behavioral_state = BehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [])
         behavioral_module = BehavioralFacade(dds=dds, logger=logger, policy=policy, behavioral_state=behavioral_state)
         return behavioral_module
 
