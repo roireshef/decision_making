@@ -1,16 +1,11 @@
 from unittest.mock import MagicMock
 
-from decision_making.src.global_constants import *
 from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
 from decision_making.src.planning.behavioral.default_policy import DefaultPolicy
 from decision_making.src.planning.behavioral.default_policy_config import DefaultPolicyConfig
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
-from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.test.dds.mock_ddspubsub import DdsPubSubMock
-from decision_making.test.planning.custom_map_fixtures import *
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import *
-
 from rte.python.logger.AV_logger import AV_Logger
 
 

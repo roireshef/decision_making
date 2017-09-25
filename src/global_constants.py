@@ -6,7 +6,8 @@ DIVISION_FLOATING_ACCURACY = 10 ** -10
 
 # [m] high-level behavioral planner lookahead distance
 BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 60.0
-BEHAVIORAL_PLANNING_CONSTANT_DRIVE_VELOCITY = 5.0
+# TODO - get this value from the map
+BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT = 10.0
 
 # Trajectory Planner #
 

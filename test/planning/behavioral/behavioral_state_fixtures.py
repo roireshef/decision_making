@@ -1,7 +1,5 @@
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.utils.geometry_utils import CartesianFrame
-from decision_making.test.planning.custom_map_fixtures import *
+from decision_making.test.planning.custom_fixtures import *
 from mapping.test.model.testable_map_fixtures import *
 from rte.python.logger.AV_logger import AV_Logger
 

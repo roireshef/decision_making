@@ -48,7 +48,7 @@ class DefaultPolicy(Policy):
         target_path_offset, target_path_latitude = self.__high_level_planning(behavioral_state)
 
         # Calculate reference route for driving
-        reference_route_x_y_z, reference_route_in_cars_frame_x_y = DefaultPolicy.__generate_reference_route(
+        reference_route_in_cars_frame_x_y = DefaultPolicy.__generate_reference_route(
             behavioral_state,
             target_path_latitude)
 
@@ -58,7 +58,7 @@ class DefaultPolicy(Policy):
                                                navigation_plan=behavioral_state.navigation_plan,
                                                map_api=behavioral_state.map,
                                                lookahead_path=reference_route_in_cars_frame_x_y)
-        safe_speed = min(acda_safe_speed, global_constants.BEHAVIORAL_PLANNING_CONSTANT_DRIVE_VELOCITY)
+        safe_speed = min(acda_safe_speed, global_constants.BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT)
 
         if safe_speed < 0:
             self.logger.warning("safe speed < 0")
@@ -75,7 +75,7 @@ class DefaultPolicy(Policy):
         self.logger.debug("Actual reference route[0] is {} and target_path_latitude is {}"
                           .format(reference_route_in_cars_frame_x_y[0], target_path_latitude))
 
-        visualization_message = BehavioralVisualizationMsg(reference_route=reference_route_x_y_z)
+        visualization_message = BehavioralVisualizationMsg(reference_route=reference_route_in_cars_frame_x_y)
         return trajectory_parameters, visualization_message
 
     @raises(VehicleOutOfRoad, NoValidLanesFound)
@@ -219,13 +219,11 @@ class DefaultPolicy(Policy):
         return latitude_options_in_lanes
 
     @staticmethod
-    def __generate_reference_route(behavioral_state: BehavioralState, target_lane_latitude: float) -> (
-            np.array, np.array):
+    def __generate_reference_route(behavioral_state: BehavioralState, target_lane_latitude: float) -> np.ndarray:
         """
         :param behavioral_state: processed behavioral state
         :param target_lane_latitude: road latitude of reference route in [m]
-        :return: [nx3] array of reference_route (x,y,z) [m,m,m] in world coordinates,
-         [nx3] array of reference_route (x,y,yaw) [m,m,rad] in cars coordinates
+        :return: [nx3] array of reference_route (x,y,yaw) [m,m,rad] in cars coordinates
         """
         lookahead_path = behavioral_state.map.get_uniform_path_lookahead(
             road_id=behavioral_state.ego_road_id,
@@ -253,7 +251,7 @@ class DefaultPolicy(Policy):
                                           desired_curve_len=global_constants.REFERENCE_TRAJECTORY_LENGTH,
                                           preserve_step_size=False)
 
-        return reference_route_x_y_z, reference_route_xy_in_cars_frame
+        return reference_route_xy_in_cars_frame
 
     @staticmethod
     def _generate_trajectory_specs(behavioral_state: BehavioralState, target_path_latitude: float,

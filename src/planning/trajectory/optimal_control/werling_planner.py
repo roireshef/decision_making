@@ -47,7 +47,8 @@ class WerlingPlanner(TrajectoryPlanner):
         # fconstraints_t0 = FrenetConstraints(0, np.cos(ego_theta_diff) * ego_v_x, 0,
         #                                     ego_in_frenet[1], np.sin(ego_theta_diff) * ego_v_x, 0)
         fconstraints_t0 = FrenetConstraints(0, np.cos(ego_theta_diff) * ego_v_x + np.sin(ego_theta_diff) * ego_v_y, 0,
-                                            ego_in_frenet[1], -np.sin(ego_theta_diff) * ego_v_x + np.cos(ego_theta_diff) * ego_v_y, 0)
+                                            ego_in_frenet[1],
+                                            -np.sin(ego_theta_diff) * ego_v_x + np.cos(ego_theta_diff) * ego_v_y, 0)
 
         # define constraints for the terminal (goal) state
         goal_in_frenet = frenet.cpoint_to_fpoint(goal[[EGO_X, EGO_Y]])
@@ -86,13 +87,15 @@ class WerlingPlanner(TrajectoryPlanner):
         trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, cost_params)
         sorted_idxs = trajectory_costs.argsort()
 
-        alternative_ids_skip_range = range(0, len(ctrajectories), int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES))
+        alternative_ids_skip_range = range(0, len(ctrajectories),
+                                           max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
         debug_results = TrajectoryVisualizationMsg(frenet.curve,
                                                    ctrajectories[sorted_idxs[alternative_ids_skip_range], :, :EGO_V],
                                                    trajectory_costs[sorted_idxs[alternative_ids_skip_range]],
                                                    state)
 
-        actual_end_theta_diff = ctrajectories[sorted_idxs[0], -1, EGO_THETA] - frenet.curve[frenet.sx_to_s_idx(goal_sx), R_THETA]
+        actual_end_theta_diff = ctrajectories[sorted_idxs[0], -1, EGO_THETA] - frenet.curve[
+            frenet.sx_to_s_idx(goal_sx), R_THETA]
 
         # self._logger.info("goal_theta_diff: {}, actual_end_theta_diff: {}, goal[EGO_THETA]: {}, actual trajectory[EGO_THETA]: {}"
         #                   .format(goal_theta_diff, actual_end_theta_diff,
