@@ -135,7 +135,7 @@ class WerlingPlanner(TrajectoryPlanner):
         close_obstacles = \
             [SigmoidStatic2DBoxObstacle.from_object(obs, params.obstacle_cost.k, params.obstacle_cost.offset)
              for obs in state.dynamic_objects
-             if np.linalg.norm([obs.x, obs.y]) < MAXIMAL_OBSTACLE_PROXIMITY]
+             if np.linalg.norm([obs.x, obs.y]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
 
         cost_per_obstacle = [obs.compute_cost(ctrajectories[:, :, 0:2]) for obs in close_obstacles]
         obstacles_costs = params.obstacle_cost.w * np.sum(cost_per_obstacle, axis=0)

@@ -17,13 +17,14 @@ REFERENCE_TRAJECTORY_LENGTH_EXTENDED = 31.0
 # [m] Resolution for the interpolation of the reference route
 TRAJECTORY_ARCLEN_RESOLUTION = 0.1
 
+# Time to remember object after it disappears from perception (in nanoseconds)
 OBJECT_HISTORY_TIMEOUT = 1000*1000*1000*2
 
 # Curve interpolation type (order)
 TRAJECTORY_CURVE_INTERP_TYPE = 'cubic'
 
-# [m] Do not consider obastacles that are distant than this thershold
-MAXIMAL_OBSTACLE_PROXIMITY = 40.0
+# [m] Do not consider obstacles that are distant than this threshold
+TRAJECTORY_OBSTACLE_LOOKAHEAD = 40.0
 
 # [m] Cost function clips higher distances before exponentiation
 EXP_CLIP_TH = 50.0
