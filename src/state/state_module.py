@@ -14,7 +14,8 @@ class StateModule(DmModule):
 
     # TODO: implement double-buffer mechanism for locks wherever needed
     def __init__(self, dds: DdsPubSub, logger: Logger, map_api: MapAPI, occupancy_state: Optional[OccupancyState],
-                 dynamic_objects: Optional[List[DynamicObject]], ego_state: Optional[EgoState]):
+                 dynamic_objects: Optional[List[DynamicObject]], ego_state: Optional[EgoState],
+                 dynamic_objects_average_location: dict = {}, dynamic_objects_history: dict = {}):
         super().__init__(dds, logger)
         self._map_api = map_api
 
@@ -27,8 +28,8 @@ class StateModule(DmModule):
         self._ego_state = ego_state
         self._ego_state_lock = Lock()
 
-        self._dynamic_objects_average_location = {}
-        self._dynamic_objects_history = {}
+        self._dynamic_objects_average_location = dynamic_objects_average_location
+        self._dynamic_objects_history = dynamic_objects_history
 
     def _start_impl(self):
         self.dds.subscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, self._dynamic_obj_callback)
