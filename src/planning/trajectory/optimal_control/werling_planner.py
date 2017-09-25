@@ -149,12 +149,12 @@ class WerlingPlanner(TrajectoryPlanner):
         # add to deviations_costs the costs of deviations from the left [lane, shoulder, road]
         for exp in [params.left_lane_cost, params.left_shoulder_cost, params.left_road_cost]:
             left_offsets = ftrajectories[:, :, F_DX] - exp.offset
-            deviations_costs += Math.clipped_exponent(left_offsets, exp.w, exp.k)
+            deviations_costs += np.mean(Math.clipped_exponent(left_offsets, exp.w, exp.k), axis=1)
 
         # add to deviations_costs the costs of deviations from the right [lane, shoulder, road]
         for exp in [params.right_lane_cost, params.right_shoulder_cost, params.right_road_cost]:
             right_offsets = np.negative(ftrajectories[:, :, F_DX]) - exp.offset
-            deviations_costs += Math.clipped_exponent(right_offsets, exp.w, exp.k)
+            deviations_costs += np.mean(Math.clipped_exponent(right_offsets, exp.w, exp.k), axis=1)
 
         ''' TOTAL '''
         return obstacles_costs + dist_from_ref_costs + deviations_costs
