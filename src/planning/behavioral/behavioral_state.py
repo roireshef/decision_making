@@ -65,9 +65,6 @@ class BehavioralState:
         """
         ego_state = state.ego_state
 
-
-
-
         # Filter static & dynamic objects that are relevant to car's navigation
         dynamic_objects_on_road = []
         for dynamic_obj in state.dynamic_objects:
