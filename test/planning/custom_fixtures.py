@@ -24,10 +24,10 @@ def state():
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     dynamic_objects = []
     size = ObjectSize(0, 0, 0)
+    # TODO - decouple from navigation plan below (1 is the road id). Make this dependency explicit.
     road_localization = RoadLocalization(1, 0, 0, 0, 0, 0)
     ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0, road_localization)
     yield State(occupancy_state, dynamic_objects, ego_state)
-
 
 @pytest.fixture(scope='function')
 def navigation_plan():
