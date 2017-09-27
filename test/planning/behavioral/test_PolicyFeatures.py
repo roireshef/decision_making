@@ -31,7 +31,7 @@ def test_get_closest_object_on_lane_ComplexScenraio_success():
     ego_state = EgoState(obj_id=0, timestamp=0, x=0.0, y=0.0, z=0.0, yaw=0.0,
                          size=ObjectSize(length=2.5, width=1.5, height=1.0),
                          confidence=1.0, v_x=0.0, v_y=0.0, steering_angle=0.0,
-                         acceleration_lon=0.0, yaw_deriv=0.0, road_localization=road_localization)
+                         acceleration_lon=0.0, omega_yaw=0.0, road_localization=road_localization)
 
     # Create obstacles at (10 + i*1.0, 1.5 + i*0.5, 0)
     objects_list = list()
@@ -44,7 +44,7 @@ def test_get_closest_object_on_lane_ComplexScenraio_success():
         static_object = DynamicObject(obj_id=1, timestamp=0, x=10.0 + i * 1.0, y=1.5 + i * 0.5, z=0.0, yaw=0.0,
                                       size=ObjectSize(length=2.5, width=1.5, height=1.0),
                                       confidence=1.0, v_x=0.0, v_y=0.0,
-                                      acceleration_lon=0.0, yaw_deriv=0.0,
+                                      acceleration_lon=0.0, omega_yaw=0.0,
                                       road_localization=road_localization)
         static_object_on_road = DynamicObjectOnRoad(dynamic_object_properties=static_object,
                                                     relative_road_localization=relative_road_localization)

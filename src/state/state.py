@@ -66,7 +66,7 @@ class ObjectSize(DDSNonTypedMsg):
 
 
 class DynamicObject(DDSNonTypedMsg):
-    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, acceleration_lon, yaw_deriv,
+    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, acceleration_lon, omega_yaw,
                  road_localization):
         # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float, RoadLocalization) -> None
         """
@@ -82,7 +82,7 @@ class DynamicObject(DDSNonTypedMsg):
         :param v_x: in m/sec; for ego in world coordinates, for the rest relatively to ego
         :param v_y: in m/sec
         :param acceleration_lon: acceleration in longitude axis
-        :param yaw_deriv: 0 for straight motion, positive for CCW (yaw increases), negative for CW
+        :param omega_yaw: 0 for straight motion, positive for CCW (yaw increases), negative for CW
         """
         self.obj_id = obj_id
         self.timestamp = timestamp
@@ -96,7 +96,7 @@ class DynamicObject(DDSNonTypedMsg):
         self.v_y = v_y
         self.road_localization = road_localization
         self.acceleration_lon = acceleration_lon
-        self.yaw_deriv = yaw_deriv
+        self.omega_yaw = omega_yaw
 
     def predict(self, goal_timestamp, map_api):
         # type: (int, MapAPI) -> DynamicObject
@@ -135,7 +135,7 @@ class DynamicObject(DDSNonTypedMsg):
 
 class EgoState(DynamicObject, DDSNonTypedMsg):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence,
-                 v_x, v_y, acceleration_lon, yaw_deriv, steering_angle, road_localization):
+                 v_x, v_y, acceleration_lon, omega_yaw, steering_angle, road_localization):
         # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float, float, RoadLocalization) -> None
         """
         :param obj_id:
@@ -149,11 +149,11 @@ class EgoState(DynamicObject, DDSNonTypedMsg):
         :param v_x: in m/sec
         :param v_y: in m/sec
         :param acceleration_lon: in m/s^2
-        :param yaw_deriv: radius of turning of the ego
+        :param omega_yaw: radius of turning of the ego
         :param steering_angle: equivalent to knowing of turn_radius
         """
         DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
-                               acceleration_lon, yaw_deriv, road_localization)
+                               acceleration_lon, omega_yaw, road_localization)
         self.steering_angle = steering_angle
 
 

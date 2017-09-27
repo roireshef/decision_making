@@ -88,7 +88,7 @@ def test_AcdaFeaturesInComplexScenraio_successful(testable_map_api, testable_nav
     ego_state = EgoState(obj_id=0, timestamp=0, x=0.0, y=0.0, z=0.0, yaw=0.0,
                          size=ObjectSize(length=2.5, width=1.5, height=1.0),
                          confidence=1.0, v_x=0.0, v_y=0.0, steering_angle=0.0,
-                         acceleration_lon=0.0, yaw_deriv=0.0, road_localization=road_localization)
+                         acceleration_lon=0.0, omega_yaw=0.0, road_localization=road_localization)
 
     # obstacle at (10,1.5,0)
     road_localization = RoadLocalization(road_id=1, lane_num=0, full_lat=1.5, intra_lane_lat=1.5, road_lon=10.0,
@@ -98,7 +98,7 @@ def test_AcdaFeaturesInComplexScenraio_successful(testable_map_api, testable_nav
     near_static_object = DynamicObject(obj_id=1, timestamp=0, x=10.0, y=1.0, z=0.0, yaw=0.0,
                                        size=ObjectSize(length=2.5, width=1.5, height=1.0),
                                        confidence=1.0, v_x=0.0, v_y=0.0,
-                                       acceleration_lon=0.0, yaw_deriv=0.0, road_localization=road_localization)
+                                       acceleration_lon=0.0, omega_yaw=0.0, road_localization=road_localization)
 
     # obstacle at (15,2.5,0)
     road_localization = RoadLocalization(road_id=1, lane_num=0, full_lat=2.5, intra_lane_lat=2.5, road_lon=15.0,
@@ -108,7 +108,7 @@ def test_AcdaFeaturesInComplexScenraio_successful(testable_map_api, testable_nav
     far_static_object = DynamicObject(obj_id=1, timestamp=0, x=15.0, y=2.5, z=0.0, yaw=0.0,
                                       size=ObjectSize(length=2.5, width=1.5, height=1.0),
                                       confidence=1.0, v_x=0.0, v_y=0.0,
-                                      acceleration_lon=0.0, yaw_deriv=0.0, road_localization=road_localization)
+                                      acceleration_lon=0.0, omega_yaw=0.0, road_localization=road_localization)
 
     objects_on_road = list()
     objects_on_road.append(near_static_object)

@@ -20,13 +20,13 @@ def test_werlingPlanner_toyScenario_noException():
 
     obs = list([
         DynamicObject(obj_id=0, timestamp=0, x=7, y=-.5, z=0, yaw=0, size=ObjectSize(1.5, 0.5, 0),
-                      road_localization=None, confidence=1.0, v_x=0.0, v_y=0.0, acceleration_lon=0.0, yaw_deriv=0.0),
+                      road_localization=None, confidence=1.0, v_x=0.0, v_y=0.0, acceleration_lon=0.0, omega_yaw=0.0),
         DynamicObject(obj_id=0, timestamp=0, x=13, y=2, z=0, yaw=np.pi / 4, size=ObjectSize(1.5, 0.5, 0),
-                      road_localization=None, confidence=1.0, v_x=0.0, v_y=0.0, acceleration_lon=0.0, yaw_deriv=0.0)
+                      road_localization=None, confidence=1.0, v_x=0.0, v_y=0.0, acceleration_lon=0.0, omega_yaw=0.0)
     ])
 
     ego = EgoState(obj_id=-1, timestamp=0, x=0, y=0, z=0, yaw=0, size=None, road_localization=None, confidence=1.0,
-                   v_x=v0, v_y=0, steering_angle=0.0, acceleration_lon=0.0, yaw_deriv=0.0)
+                   v_x=v0, v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
     state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
 
