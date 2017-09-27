@@ -78,6 +78,7 @@ class StateModule(DmModule):
                 size = ObjectSize(length, width, height)
                 v_x = dyn_obj_dict["velocity"]["v_x"]
                 v_y = dyn_obj_dict["velocity"]["v_y"]
+                omega_yaw = dyn_obj_dict["velocity"]["omega_yaw"]
 
                 ALPHA = 0.2
                 obj_pos = np.array([x, y, z])
