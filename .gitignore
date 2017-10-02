@@ -13,3 +13,8 @@
 **/.cache
 **/cache/**
 **/.cache/**
+/install
+/CPackConfig.cmake
+/CPackSourceConfig.cmake
+/decision_making.version
+/install_manifest.txt
