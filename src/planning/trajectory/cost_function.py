@@ -3,34 +3,28 @@ from abc import abstractmethod
 import numpy as np
 
 from decision_making.src.global_constants import EXP_CLIP_TH
-from decision_making.src.planning.utils.geometry_utils import CartesianFrame
-from decision_making.src.state.state import DynamicObject as ObjectState
+from decision_making.src.planning.utils.geometry_utils import CartesianFrame, R_THETA
+from decision_making.src.state.state import DynamicObject as ObjectState, EgoState
 
 
 class BoxObstacle:
-    def __init__(self, x: float, y: float, theta: float, length: float, width: float):
+    def __init__(self, poses: np.ndarray, length: float, width: float):
         """
-        :param x: relative location in vehicle's longitudinal axis
-        :param y: relative location in vehicle's lateral axis
-        :param theta: object yaw
+        :param poses: array of the object's predicted poses, each pose is np.array([x, y, theta])
         :param length: length of the box in its own longitudinal axis (box's x)
         :param width: length of the box in its own lateral axis (box's y)
         """
-        self._x = x
-        self._y = y
-        self._theta = theta
+        self._poses = np.copy(poses)
         self._length = length
         self._width = width
-        self._R = CartesianFrame.homo_matrix_2d(self.theta, np.array([self.x, self.y]))
+        self._R = np.zeros((poses.shape[0], 3, 3))
+        # conversion matrices from global to relative to obstacle
+        for pose_ind in range(self._poses.shape[0]):
+            R = CartesianFrame.homo_matrix_2d(self._poses[pose_ind, R_THETA], self._poses[pose_ind, :R_THETA])
+            self._R[pose_ind] = np.linalg.inv(R).transpose()
 
     @property
-    def x(self): return self._x
-
-    @property
-    def y(self): return self._y
-
-    @property
-    def theta(self): return self._theta
+    def poses(self): return self._poses
 
     @property
     def length(self): return self._length
@@ -55,18 +49,16 @@ class SigmoidStatic2DBoxObstacle(BoxObstacle):
     points in the vehicle's coordinate frame
     """
 
-    # width is on y, height is on x
-    def __init__(self, x: float, y: float, theta: float, length: float, width: float, k: float, margin: float):
+    # width is on y, length is on x
+    def __init__(self, poses: np.ndarray, length: float, width: float, k: float, margin: float):
         """
-        :param x: relative location in vehicle's longitudinal axis
-        :param y: relative location in vehicle's lateral axis
-        :param theta: object yaw
+        :param poses: array of the object's predicted poses, each pose is np.array([x, y, theta])
         :param length: length of the box in its own longitudinal axis (box's x)
         :param width: length of the box in its own lateral axis (box's y)
         :param k: sigmoid's  exponent coefficient
         :param margin: center of sigmoid offset
         """
-        super().__init__(x, y, theta, length, width)
+        super().__init__(poses, length, width)
         self._k = k
         self._margin = margin
 
@@ -77,15 +69,18 @@ class SigmoidStatic2DBoxObstacle(BoxObstacle):
     def margin(self): return self._margin
 
     @classmethod
-    def from_object(cls, os: ObjectState, k, offset):
+    def from_object(cls, os: ObjectState, ego: EgoState, k: float, offset: float, time_samples: np.ndarray):
         """
         Additional constructor that takes a ObjectState from the State object and wraps it
-        :param os: ObjectState object from State object
+        :param os: ObjectState object from State object (in global coordinates)
         :param k:
         :param offset:
+        :param time: [sec] time period for prediction
         :return: new SigmoidStatic2DBoxObstacle instance
         """
-        return cls(os.x, os.y, os.yaw, os.size.length, os.size.width, k, offset)
+        # get predictions of the dynamic object in global coordinates
+        predictions = os.predict(time_samples)
+        return cls(predictions, os.size.length, os.size.width, k, offset)
 
     def compute_cost(self, points: np.ndarray) -> np.ndarray:
         """
@@ -102,8 +97,9 @@ class SigmoidStatic2DBoxObstacle(BoxObstacle):
         points_ext = np.dstack((points, ones))
 
         # (for each trajectory:) project all points to the box obstacle coordinate-frame (absolute value)
+        # each trajectory point (j index below) is multiplied by the appropriate conversion matrix R_inv[j]
         # now each record is the [x, y] distances from the box coordinate frame (box-center).
-        points_proj = np.abs(np.einsum('ijk, kl -> ijl', points_ext, np.linalg.inv(self._R).transpose())[:, :, :2])
+        points_proj = np.abs(np.einsum('ijk, jkl -> ijl', points_ext, self._R)[:, :, :2])
 
         # subtract from the distances: 1. the box dimensions (height, width) and the margin
         points_offset = np.subtract(points_proj, [self.length / 2 + self.margin, self.width / 2 + self.margin])
@@ -112,5 +108,4 @@ class SigmoidStatic2DBoxObstacle(BoxObstacle):
         logit_costs = np.divide(1.0, (1.0 + np.exp(np.clip(self.k * points_offset, -np.inf, EXP_CLIP_TH))))
 
         return np.sum(logit_costs[:, :, 0] * logit_costs[:, :, 1], axis=1)
-
 

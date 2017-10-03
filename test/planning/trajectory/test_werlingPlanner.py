@@ -52,7 +52,9 @@ def test_werlingPlanner_toyScenario_noException():
     fig = plt.figure()
     p1 = fig.add_subplot(211)
     p2 = fig.add_subplot(212)
-    plottable_obs = [PlottableSigmoidStatic2DBoxObstacle.from_object(o, cost_params.obstacle_cost.k, cost_params.obstacle_cost.offset)
+    time_samples = np.arange(0.0, T, 0.1)
+    plottable_obs = [PlottableSigmoidStatic2DBoxObstacle.from_object(o, ego, cost_params.obstacle_cost.k,
+                                                                     cost_params.obstacle_cost.offset, time_samples)
                      for o in state.dynamic_objects]
     WerlingVisualizer.plot_obstacles(p1, plottable_obs)
     WerlingVisualizer.plot_obstacles(p2, plottable_obs)
@@ -68,3 +70,6 @@ def test_werlingPlanner_toyScenario_noException():
 
     fig.show()
     fig.clear()
+
+
+test_werlingPlanner_toyScenario_noException()

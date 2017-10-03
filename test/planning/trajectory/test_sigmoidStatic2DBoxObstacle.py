@@ -8,7 +8,8 @@ def test_computeCost_threeSRoutesOneObstacle_validScore():
                        RouteFixture.get_route(lng=200, k=.05, step=10, lat=100, offset=-50.0),
                        RouteFixture.get_route(lng=200, k=.05, step=10, lat=100, offset=-100.0)])
 
-    obs = PlottableSigmoidStatic2DBoxObstacle(x=200, y=-40, theta=np.pi / 8, length=40, width=20, k=100, margin=10)
+    pose = np.array([200, -40, np.pi / 8])
+    obs = PlottableSigmoidStatic2DBoxObstacle(np.array([pose]), length=40, width=20, k=100, margin=10)
 
     costs = obs.compute_cost(routes)
 
@@ -27,3 +28,5 @@ def test_computeCost_threeSRoutesOneObstacle_validScore():
     #
     # fig.show()
     # fig.clear()
+
+test_computeCost_threeSRoutesOneObstacle_validScore()

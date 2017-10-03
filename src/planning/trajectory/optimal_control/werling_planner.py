@@ -70,8 +70,9 @@ class WerlingPlanner(TrajectoryPlanner):
 
         fconstraints_tT = FrenetConstraints(sx_range, sv_range, 0, dx_range, dv, 0)
 
+        time_samples = np.arange(0.0, time, self.dt)
         # solve problem in frenet-frame
-        ftrajectories = self._solve_optimization(fconstraints_t0, fconstraints_tT, time)
+        ftrajectories = self._solve_optimization(fconstraints_t0, fconstraints_tT, time, time_samples)
 
         # filter resulting trajectories by velocity and acceleration
         ftrajectories_filtered = self._filter_limits(ftrajectories, cost_params)
@@ -84,7 +85,7 @@ class WerlingPlanner(TrajectoryPlanner):
         ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
 
         # compute trajectory costs
-        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, cost_params)
+        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, cost_params, time_samples)
         sorted_idxs = trajectory_costs.argsort()
 
         alternative_ids_skip_range = range(0, len(ctrajectories),
@@ -120,13 +121,14 @@ class WerlingPlanner(TrajectoryPlanner):
 
     @staticmethod
     def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: State,
-                      params: TrajectoryCostParams):
+                      params: TrajectoryCostParams, time_samples: np.ndarray):
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
         :param ftrajectories: numpy tensor of trajectories in frenet-frame
         :param state: the state object (that includes obstacles, etc.)
         :param params: parameters for the cost function (from behavioral layer)
+        :param time_samples: [sec] time samples for prediction
         :return:
         """
         # TODO: add jerk cost
@@ -136,7 +138,8 @@ class WerlingPlanner(TrajectoryPlanner):
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
         # TODO: validate that both obstacles and ego are in world coordinates. if not, change the filter cond.
         close_obstacles = \
-            [SigmoidStatic2DBoxObstacle.from_object(obs, params.obstacle_cost.k, params.obstacle_cost.offset)
+            [SigmoidStatic2DBoxObstacle.from_object(obs, state.ego_state, params.obstacle_cost.k,
+                                                    params.obstacle_cost.offset, time_samples)
              for obs in state.dynamic_objects
              if np.linalg.norm([obs.x, obs.y]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
 
@@ -162,7 +165,7 @@ class WerlingPlanner(TrajectoryPlanner):
         ''' TOTAL '''
         return obstacles_costs + dist_from_ref_costs + deviations_costs
 
-    def _solve_optimization(self, fconst_0, fconst_t, T):
+    def _solve_optimization(self, fconst_0, fconst_t, T, time_samples):
         """
         Solves the two-point boundary value problem, given a set of constraints over the initial state
         and a set of constraints over the terminal state. The solution is a cartesian product of the solutions returned
@@ -170,6 +173,7 @@ class WerlingPlanner(TrajectoryPlanner):
         :param fconst_0: a set of constraints over the initial state
         :param fconst_t: a set of constraints over the terminal state
         :param T: trajectory duration (sec.)
+        :param time_samples: [sec] from 0 to T with step=self.dt
         :return: a matrix of rows of the form [sx, sv, sa, dx, dv, da]
         """
         A = np.array([[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],  # dx0/sx0
@@ -181,7 +185,6 @@ class WerlingPlanner(TrajectoryPlanner):
                      dtype=np.float64)
 
         A_inv = np.linalg.inv(A)
-        time_samples = np.arange(0.0, T, self.dt)
 
         # solve for dimesion d
         constraints_d = self._cartesian_product_rows(fconst_0.get_grid_d(), fconst_t.get_grid_d())
