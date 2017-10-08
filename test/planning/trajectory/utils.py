@@ -29,6 +29,7 @@ class RouteFixture:
 class PlottableSigmoidStatic2DBoxObstacle(SigmoidStatic2DBoxObstacle):
     def plot(self, plt):
         plt.plot(self.poses[0][0], self.poses[0][1], '*k')
+        plt.plot(self.poses[-1][0], self.poses[-1][1], '*r')
         lower_left_p = np.dot(self._R[0], [-self.length / 2, -self.width / 2, 1])
         plt.add_patch(patches.Rectangle(
             (lower_left_p[0], lower_left_p[1]), self.length, self.width, angle=np.rad2deg(self.poses[0][R_THETA]), hatch='\\',
