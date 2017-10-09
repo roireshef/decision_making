@@ -12,9 +12,9 @@ from decision_making.src.planning.trajectory.cost_function import SigmoidStatic2
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils as OC
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.planning.utils.columns import *
-from decision_making.src.planning.utils.geometry_utils import FrenetMovingFrame
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.state.state import State
+from decision_making.src.planning.utils.frenet_moving_frame import FrenetMovingFrame
 
 
 class WerlingPlanner(TrajectoryPlanner):
