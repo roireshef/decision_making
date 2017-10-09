@@ -113,4 +113,3 @@ class SigmoidStatic2DBoxObstacle(BoxObstacle):
 
         return np.sum(logit_costs[:, :, 0] * logit_costs[:, :, 1], axis=1)
 
-
