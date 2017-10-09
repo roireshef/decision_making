@@ -80,8 +80,9 @@ class StateModule(DmModule):
                 v_y = dyn_obj_dict["velocity"]["v_y"]
                 omega_yaw = dyn_obj_dict["velocity"]["omega_yaw"]
 
-                road_localtization = StateModule._compute_road_localization(np.array([x, y, z]), yaw, self._map_api)
-                #StateModule._compute_obj_road_localization(np.array([x, y, z]), yaw, ego_pos, ego_yaw, self._map_api)
+                road_localtization = StateModule._compute_obj_road_localization(np.array([x, y, z]), yaw, ego_pos,
+                                                                                ego_yaw, self._map_api)
+
                 dyn_obj = DynamicObject(id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
                                         self.UNKNWON_DEFAULT_VAL, omega_yaw, road_localtization)
                 dyn_obj_list.append(dyn_obj)
@@ -172,3 +173,15 @@ class StateModule(DmModule):
         intra_lane_lat = lat - lane * lane_width
 
         return RoadLocalization(closest_road_id, int(lane), lat, intra_lane_lat, lon, global_yaw)
+
+    @staticmethod
+    def _compute_obj_road_localization(pos: np.ndarray, yaw: float, ego_pos: np.ndarray, ego_yaw: float,
+                                       map_api: MapAPI) -> RoadLocalization:
+        """
+        given an object in ego-vehicle's coordinate-frame, calculate its road coordinates
+
+        :return:
+        """
+        global_coordinates = CartesianFrame.convert_relative_to_global_frame(pos, ego_pos, ego_yaw)
+
+        return StateModule._compute_road_localization(global_coordinates, ego_yaw + yaw, map_api)
