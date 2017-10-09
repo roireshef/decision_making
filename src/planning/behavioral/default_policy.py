@@ -325,7 +325,8 @@ class DefaultPolicy(Policy):
                                            acceleration_limits=acceleration_limits)
 
         current_speed = np.linalg.norm([behavioral_state.ego_state.v_x, behavioral_state.ego_state.v_y])
-        euclidean_dist_to_target = np.linalg.norm(target_state[:2])
+        euclidean_dist_to_target = np.linalg.norm(target_state[:2] - np.array([behavioral_state.ego_state.x,
+                                                                               behavioral_state.ego_state.y]))
         trajectory_execution_time = 2 * euclidean_dist_to_target / (safe_speed + current_speed)
 
         trajectory_parameters = TrajectoryParams(reference_route=reference_route,
