@@ -49,7 +49,7 @@ class DefaultPolicy(Policy):
         target_path_offset, target_path_latitude = self.__high_level_planning(behavioral_state)
 
         # Calculate reference route for driving
-        reference_route_in_cars_frame_x_y = DefaultPolicy.__generate_reference_route(
+        reference_route_xy = DefaultPolicy.__generate_reference_route(
             behavioral_state,
             target_path_latitude)
 
@@ -58,7 +58,7 @@ class DefaultPolicy(Policy):
                                                ego_state=behavioral_state.ego_state,
                                                navigation_plan=behavioral_state.navigation_plan,
                                                map_api=behavioral_state.map,
-                                               lookahead_path=reference_route_in_cars_frame_x_y)
+                                               lookahead_path=reference_route_xy)
         safe_speed = min(acda_safe_speed, global_constants.BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT)
 
         if safe_speed < 0:
@@ -71,12 +71,12 @@ class DefaultPolicy(Policy):
             DefaultPolicy._generate_trajectory_specs(behavioral_state=behavioral_state,
                                                      safe_speed=safe_speed,
                                                      target_path_latitude=target_path_latitude,
-                                                     reference_route=reference_route_in_cars_frame_x_y)
+                                                     reference_route=reference_route_xy)
 
         self.logger.debug("Actual reference route[0] is {} and target_path_latitude is {}"
-                          .format(reference_route_in_cars_frame_x_y[0], target_path_latitude))
+                          .format(reference_route_xy[0], target_path_latitude))
 
-        visualization_message = BehavioralVisualizationMsg(reference_route=reference_route_in_cars_frame_x_y)
+        visualization_message = BehavioralVisualizationMsg(reference_route=reference_route_xy)
         return trajectory_parameters, visualization_message
 
     @raises(VehicleOutOfRoad, NoValidLanesFound)
@@ -224,7 +224,7 @@ class DefaultPolicy(Policy):
         """
         :param behavioral_state: processed behavioral state
         :param target_lane_latitude: road latitude of reference route in [m]
-        :return: [nx3] array of reference_route (x,y,yaw) [m,m,rad] in cars coordinates
+        :return: [nx3] array of reference_route (x,y,yaw) [m,m,rad] in global coordinates
         """
         lookahead_path = behavioral_state.map.get_uniform_path_lookahead(
             road_id=behavioral_state.ego_road_id,
@@ -235,24 +235,15 @@ class DefaultPolicy(Policy):
                                    global_constants.TRAJECTORY_ARCLEN_RESOLUTION)),
             navigation_plan=behavioral_state.navigation_plan)
         reference_route_xy = lookahead_path
-        reference_route_len = reference_route_xy.shape[0]
-
-        # Transform into car's frame
-        reference_route_x_y_z = np.concatenate((reference_route_xy, np.zeros(shape=[reference_route_len, 1])),
-                                               axis=1)
-        reference_route_xyz_in_cars_frame = geometry_utils.CartesianFrame.convert_global_to_relative_frame(
-            global_pos=reference_route_x_y_z, frame_position=behavioral_state.ego_position,
-            frame_orientation=behavioral_state.ego_orientation)
-        reference_route_xy_in_cars_frame = reference_route_xyz_in_cars_frame[:, 0:2]
 
         # interpolate and create uniformly spaced path
-        reference_route_xy_in_cars_frame, _ = \
-            CartesianFrame.resample_curve(curve=reference_route_xy_in_cars_frame,
+        reference_route_xy_resampled, _ = \
+            CartesianFrame.resample_curve(curve=reference_route_xy,
                                           step_size=global_constants.TRAJECTORY_ARCLEN_RESOLUTION,
                                           desired_curve_len=global_constants.REFERENCE_TRAJECTORY_LENGTH,
                                           preserve_step_size=False)
 
-        return reference_route_xy_in_cars_frame
+        return reference_route_xy_resampled
 
     @staticmethod
     def _generate_trajectory_specs(behavioral_state: BehavioralState, target_path_latitude: float,
