@@ -1,6 +1,6 @@
 import os
 
-DIVISION_FLOATING_ACCURACY = 10 ** -10
+
 
 # Behavioral Planner
 

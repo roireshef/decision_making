@@ -4,8 +4,8 @@ from typing import Optional
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import *
 from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.planning.utils.geometry_utils import CartesianFrame
 from decision_making.src.state.state import *
+from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
 class StateModule(DmModule):
