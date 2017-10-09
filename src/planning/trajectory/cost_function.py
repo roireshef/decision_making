@@ -3,7 +3,8 @@ from abc import abstractmethod
 import numpy as np
 
 from decision_making.src.global_constants import EXP_CLIP_TH
-from decision_making.src.state.state import DynamicObject as ObjectState
+from decision_making.src.planning.utils.columns import R_THETA
+from decision_making.src.state.state import DynamicObject as ObjectState, EgoState
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
