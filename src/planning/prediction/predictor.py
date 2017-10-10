@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.state.state import DynamicObject, EgoState, State
+from decision_making.src.state.state import DynamicObject, EgoState, State, ObjectSize
 from mapping.src.model.map_api import MapAPI
 
 
@@ -12,9 +12,9 @@ class Predictor:
     Base class for predictors of dynamic objects
     """
 
-    @staticmethod
-    def predict_object_trajectory(dynamic_object: DynamicObject, predicted_timestamps: np.ndarray, map_api: MapAPI,
-                                  nav_plan:NavigationPlanMsg) -> np.ndarray:
+    @classmethod
+    def predict_object_trajectory(cls, dynamic_object: DynamicObject, predicted_timestamps: np.ndarray, map_api: MapAPI,
+                                  nav_plan: NavigationPlanMsg) -> np.ndarray:
         """
         Method to compute future locations, yaw, and velocities for dynamic objects. Returns the np.array used by the
          trajectory planner.
@@ -26,10 +26,9 @@ class Predictor:
         """
         pass
 
-
-    @staticmethod
-    def predict_object_state(dynamic_object: DynamicObject, predicted_timestamps: np.ndarray, map_api: MapAPI,
-                                  nav_plan:NavigationPlanMsg) -> List[DynamicObject]:
+    @classmethod
+    def predict_object_state(cls, dynamic_object: DynamicObject, predicted_timestamps: np.ndarray, map_api: MapAPI,
+                             nav_plan: NavigationPlanMsg) -> List[DynamicObject]:
         """
         Wrapper method that uses the predict_object_trajectory, and creates the dynamic object list.
         :param dynamic_object: in map coordinates
@@ -40,16 +39,14 @@ class Predictor:
         """
         pass
 
-
-    @staticmethod
-    def predict_ego_state(ego_state: EgoState, predicted_timestamps: np.ndarray, map_api: MapAPI,
-                                  nav_plan:NavigationPlanMsg) -> List[EgoState]:
+    @classmethod
+    def predict_ego_state(cls, ego_state: EgoState, predicted_timestamps: np.ndarray, map_api: MapAPI,
+                          nav_plan: NavigationPlanMsg) -> List[EgoState]:
         pass
 
-
-    @staticmethod
-    def predict_state(state: State, predicted_timestamps: np.ndarray, map_api: MapAPI,
-                          nav_plan: NavigationPlanMsg) -> List[State]:
+    @classmethod
+    def predict_state(cls, state: State, predicted_timestamps: np.ndarray, map_api: MapAPI,
+                      nav_plan: NavigationPlanMsg) -> List[State]:
         """
          Wrapper method that uses the predict_ego_state and predict_object_state, and creates a list containing the
          complete predicted states. TODO - consider adding reference route so that this method will be able to project
