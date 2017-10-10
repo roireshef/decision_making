@@ -44,7 +44,7 @@ class RoadFollowingPredictor(Predictor):
 
         # resample the route to predicted_timestamps
         predicted_distances_from_start = object_velocity * (predicted_timestamps - dynamic_object.timestamp) # assuming constant velocity
-        route_xy = CartesianFrame.resample_curve(curve=lookahead_route,
+        route_xy, _ = CartesianFrame.resample_curve(curve=lookahead_route,
                                                  arbitrary_curve_sampling_points=predicted_distances_from_start)
 
         # add yaw and velocity
