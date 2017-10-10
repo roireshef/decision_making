@@ -22,7 +22,7 @@ def predict(dynamic_object: DynamicObject, predicted_timestamps: np.ndarray, map
             nav_plan: NavigationPlanMsg) -> np.ndarray:
     """
     :param dynamic_object: in map coordinates
-    :param predicted_timestamps: np array of timestamps to predict for. In ascending order.
+    :param predicted_timestamps: np array of timestamps to predict_object_trajectory for. In ascending order.
     :param map_api: used in order to get the predicted trajectory and center lanes in map  coordinates
     :param nav_plan: predicted navigation plan of the object
     :return: predicted object's locations in global map coordinates np.array([x, y, theta, vel])
