@@ -1,8 +1,10 @@
 from typing import List
 
+import copy
 import numpy as np
 
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.planning.prediction.columns import *
 from decision_making.src.state.state import DynamicObject, EgoState, State, ObjectSize
 from mapping.src.model.map_api import MapAPI
 
@@ -37,7 +39,25 @@ class Predictor:
         :param nav_plan: predicted navigation plan of the object
         :return: List of dynamic objects whose pos/yaw/vel values are predicted using predict_object_trajectory.
         """
-        pass
+
+        predicted_object_trajectory = cls.predict_object_trajectory(dynamic_object, predicted_timestamps, map_api,
+                                                                    nav_plan)
+
+        # Initiate array of DynamicObject at predicted times
+        predicted_object_states = [copy.deepcopy(dynamic_object) for x in range(len(predicted_timestamps))]
+
+        # Fill with predicted state
+        for t_ind, predicted_object_state in enumerate(predicted_object_states):
+            predicted_object_state.timestamp = predicted_timestamps[t_ind]
+            predicted_object_state.x = predicted_object_trajectory[t_ind, PREDICT_X]
+            predicted_object_state.y = predicted_object_trajectory[t_ind, PREDICT_Y]
+            predicted_object_state.yaw = predicted_object_trajectory[t_ind, PREDICT_YAW]
+            predicted_object_state.v_x = predicted_object_trajectory[t_ind, PREDICT_VEL] * np.cos(
+                predicted_object_trajectory[t_ind, PREDICT_YAW])
+            predicted_object_state.v_y = predicted_object_trajectory[t_ind, PREDICT_VEL] * np.sin(
+                predicted_object_trajectory[t_ind, PREDICT_YAW])
+
+        return predicted_object_states
 
     @classmethod
     def predict_ego_state(cls, ego_state: EgoState, predicted_timestamps: np.ndarray, map_api: MapAPI,
