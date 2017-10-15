@@ -1,8 +1,5 @@
-import pytest
-import numpy as np
-
+from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import DynamicObject, ObjectSize
-from decision_making.src.planning.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state_module import StateModule
 from mapping.test.model.testable_map_fixtures import *
 

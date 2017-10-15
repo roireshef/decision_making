@@ -1,7 +1,8 @@
 from typing import Type
 
-from decision_making.src.planning.prediction.columns import PREDICT_X, PREDICT_Y, PREDICT_YAW, PREDICT_VEL
-from decision_making.src.planning.prediction.predictor import Predictor
+from decision_making.src.prediction.predictor import Predictor
+
+from decision_making.src.prediction.columns import PREDICT_X, PREDICT_Y, PREDICT_YAW, PREDICT_VEL
 from decision_making.src.state.state import DynamicObject
 from decision_making.test.planning.custom_fixtures import *
 from mapping.src.model.map_api import MapAPI
