@@ -66,13 +66,13 @@ class Predictor:
                               map_api: MapAPI,
                               nav_plan: NavigationPlanMsg) -> List[Type[DynamicObject]]:
         """
-        Wrapper method that uses the predict_object_trajectories, and creates the dynamic object list.
+        Wrapper method that uses the predict_object_trajectories method, and creates the dynamic object list.
         :param dynamic_object: in map coordinates
         :param prediction_timestamps: np array of timestamps to predict_object_trajectories for. In ascending order.
         :param map_api: used in order to get the predicted trajectory and center lanes in map  coordinates
         :param nav_plan: predicted navigation plan of the object
         :return: List of predicted states of the dynamic object where pos/yaw/vel values are predicted using
-        predict_object_trajectories.
+        predict_object_trajectories. IMPORTANT - returned list must be in the same order as prediction_timestamps.
         """
         predictions = cls.predict_object_trajectories(dynamic_object, prediction_timestamps, map_api, nav_plan)
         return Predictor._convert_predictions_to_dynamic_objects(dynamic_object, predictions, prediction_timestamps)
@@ -80,6 +80,15 @@ class Predictor:
     @classmethod
     def _predict_ego_state(cls, ego_state: EgoState, prediction_timestamps: np.ndarray, map_api: MapAPI,
                            nav_plan: NavigationPlanMsg) -> List[EgoState]:
+        """
+        Wrapper method that uses the predict_ego_trajectories method, and creates the list of predicted ego states.
+        :param ego_state: initial ego state
+        :param prediction_timestamps: np array of timestamps to predict_object_trajectories for. In ascending order.
+        :param map_api: used in order to get the predicted trajectory and center lanes in map  coordinates
+        :param nav_plan: predicted navigation plan of the object
+        :return: List of predicted states of ego where pos/yaw/vel values are predicted using
+        predict_ego_trajectories. IMPORTANT - returned list must be in the same order as prediction_timestamps.
+        """
         # TODO: update EgoState attributes that are copied and are not part of DynamicObject (as steering_angle)
         predictions = cls.predict_ego_trajectories(ego_state, prediction_timestamps, map_api, nav_plan)
         return Predictor._convert_predictions_to_dynamic_objects(ego_state, predictions, prediction_timestamps)
