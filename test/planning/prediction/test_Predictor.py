@@ -9,10 +9,10 @@ from mapping.src.model.map_api import MapAPI
 
 class TestPredictorMock(Predictor):
     @classmethod
-    def predict_object_trajectory(cls, dynamic_object: Type[DynamicObject], predicted_timestamps: np.ndarray,
-                                  map_api: MapAPI,
-                                  nav_plan: NavigationPlanMsg) -> np.ndarray:
-        traj = np.array([[0.0, 0.0, np.pi / 4, x] for x in range(len(predicted_timestamps))])
+    def predict_object_trajectories(cls, dynamic_object: Type[DynamicObject], prediction_timestamps: np.ndarray,
+                                    map_api: MapAPI,
+                                    nav_plan: NavigationPlanMsg) -> np.ndarray:
+        traj = np.array([[0.0, 0.0, np.pi / 4, x] for x in range(len(prediction_timestamps))])
         traj[:, PREDICT_X] = np.cumsum(traj[:, PREDICT_VEL] * np.cos(traj[:, PREDICT_YAW]))
         traj[:, PREDICT_Y] = np.cumsum(traj[:, PREDICT_VEL] * np.sin(traj[:, PREDICT_YAW]))
 
@@ -23,9 +23,9 @@ def test_predictEgoState_apiTest_returnsEgoStatesList(state, navigation_plan):
     ego_state = state.ego_state
 
     predicted_timestamps = [0.0, 0.2, 0.4, 0.6, 0.8]
-    predicted_states = TestPredictorMock.predict_ego_state(ego_state=ego_state,
-                                                           predicted_timestamps=predicted_timestamps, map_api=None,
-                                                           nav_plan=navigation_plan)
+    predicted_states = TestPredictorMock._predict_ego_state(ego_state=ego_state,
+                                                            prediction_timestamps=predicted_timestamps, map_api=None,
+                                                            nav_plan=navigation_plan)
 
     assert np.all([isinstance(predicted_states[x], EgoState) for x in range(len(predicted_states))])
     assert len(predicted_states) == len(predicted_timestamps)
