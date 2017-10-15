@@ -32,8 +32,8 @@ class WerlingPlanner(TrajectoryPlanner):
         # create road coordinate-frame
         frenet = FrenetMovingFrame(reference_route)
 
-        # the convention is that the reference_route is given in the vehicle's coordinate-frame, so that the vehicle
-        # is always at the origin. Nonetheless, the vehicle doesn't need to lay parallel to the road
+        # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
+        # The vehicle doesn't need to lay parallel to the road.
         ego_in_frenet = frenet.cpoint_to_fpoint(np.array([state.ego_state.x, state.ego_state.y]))
         ego_theta_diff = frenet.curve[0, R_THETA] - state.ego_state.yaw
 

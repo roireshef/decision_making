@@ -1,5 +1,5 @@
 from threading import Lock
-from typing import Optional
+from typing import Optional, Tuple
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import *
@@ -81,22 +81,13 @@ class StateModule(DmModule):
                 omega_yaw = dyn_obj_dict["velocity"]["omega_yaw"]
 
                 # TODO - temporary! conversion to global coords, until perception delivers the global coords.
-                global_coordinates = CartesianFrame.convert_relative_to_global_frame(np.array([x, y, z]), ego_pos,
-                                                                                     ego_yaw)
-                global_yaw = ego_yaw + yaw
+                global_coordinates, global_yaw, road_localization = \
+                    self._convert_relative_to_global_pos(id, x, y, z, yaw, ego_pos, ego_yaw)
 
-                try:
-                    # Try to localize object on road. If not successful, warn.
-                    road_localtization = StateModule._compute_road_localization(global_coordinates, global_yaw,
-                                                                                self._map_api)
-
-                    dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
-                                            global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
-                                            self.UNKNWON_DEFAULT_VAL, omega_yaw, road_localtization)
-                    dyn_obj_list.append(dyn_obj)
-                except MapCellNotFound:
-                    self.logger.warning(
-                        "Couldn't localize object id {} on road. Object location: ({}, {}, {})".format(id, x, y, z))
+                dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
+                                        global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
+                                        self.UNKNWON_DEFAULT_VAL, omega_yaw, road_localization)
+                dyn_obj_list.append(dyn_obj)
 
             with self._dynamic_objects_lock:
                 self._dynamic_objects = dyn_obj_list
@@ -182,3 +173,21 @@ class StateModule(DmModule):
         intra_lane_lat = lat - lane * lane_width
 
         return RoadLocalization(closest_road_id, int(lane), lat, intra_lane_lat, lon, global_yaw)
+
+    def _convert_relative_to_global_pos(self, id: int, x: float, y: float, z: float, yaw: float,
+                                        ego_pos: np.ndarray, ego_yaw: float) -> \
+            Tuple[np.ndarray, float, RoadLocalization]:
+
+        global_coordinates = CartesianFrame.convert_relative_to_global_frame(np.array([x, y, z]), ego_pos,
+                                                                             ego_yaw)
+        global_yaw = ego_yaw + yaw
+
+        try:
+            # Try to localize object on road. If not successful, warn.
+            road_localization = StateModule._compute_road_localization(global_coordinates, global_yaw, self._map_api)
+
+            return global_coordinates, global_yaw, road_localization
+
+        except MapCellNotFound:
+            self.logger.warning(
+                "Couldn't localize object id {} on road. Object location: ({}, {}, {})".format(id, x, y, z))
