@@ -23,9 +23,9 @@ class TrajectoryPlanner(metaclass=ABCMeta):
         :param time: the time-window to plan for (time to get from initial state to goal state)
         :param state: environment & ego state object
         :param reference_route: a reference route (often the center of lane). A numpy array of the shape [-1, 2] where
-        each row is a point (x, y) relative to the ego-coordinate-frame.
+        each row is a point (x, y) in world coordinates.
         :param goal: A 1D numpy array of the desired ego-state to plan towards, represented in current
-        ego-coordinate-frame (see EGO_* in planning.utils.columns.py for the fields)
+        global-coordinate-frame (see EGO_* in planning.utils.columns.py for the fields)
         :param cost_params: Data object with parameters that specify how to build the planning's cost function
         :return: a tuple of: (numpy array: trajectory - each row is [x, y, yaw, velocity], trajectory cost,
         debug results)

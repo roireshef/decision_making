@@ -81,16 +81,21 @@ class StateModule(DmModule):
                 omega_yaw = dyn_obj_dict["velocity"]["omega_yaw"]
 
                 # TODO - temporary! conversion to global coords, until perception delivers the global coords.
-                global_coordinates, global_yaw, road_localization = \
-                    self._convert_relative_to_global_pos(id, x, y, z, yaw, ego_pos, ego_yaw)
+                global_coordinates, global_yaw = CartesianFrame.convert_relative_to_global_frame(
+                    np.array([x, y, z]), yaw, ego_pos, ego_yaw)
 
-                dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
-                                        global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
-                                        self.UNKNWON_DEFAULT_VAL, omega_yaw, road_localization)
-                dyn_obj_list.append(dyn_obj)
+                try:
+                    # Try to localize object on road. If not successful, warn.
+                    road_localtization = StateModule._compute_road_localization(global_coordinates, global_yaw,
+                                                                                self._map_api)
 
-            with self._dynamic_objects_lock:
-                self._dynamic_objects = dyn_obj_list
+                    dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
+                                            global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
+                                            self.UNKNWON_DEFAULT_VAL, omega_yaw, road_localtization)
+                    dyn_obj_list.append(dyn_obj)
+                except MapCellNotFound:
+                    self.logger.warning(
+                        "Couldn't localize object id {} on road. Object location: ({}, {}, {})".format(id, x, y, z))
 
             self._publish_state_if_full()
         except Exception as e:
