@@ -5,7 +5,7 @@ from decision_making.src.messages.navigation_plan_message import NavigationPlanM
 from decision_making.src.prediction.predictor import Predictor
 
 from decision_making.src.prediction.columns import PREDICT_X, PREDICT_Y, PREDICT_YAW, PREDICT_VEL
-from decision_making.src.state.state import DynamicObject, EgoState
+from decision_making.src.state.state import DynamicObject, EgoState, State
 from decision_making.test.planning.custom_fixtures import state, navigation_plan
 from mapping.src.model.map_api import MapAPI
 
@@ -32,3 +32,15 @@ def test_predictEgoState_apiTest_returnsEgoStatesList(state, navigation_plan):
 
     assert np.all([isinstance(predicted_states[x], EgoState) for x in range(len(predicted_states))])
     assert len(predicted_states) == len(predicted_timestamps)
+
+def test_predictState_apiTest_returnsStatesList(state, navigation_plan):
+    predicted_timestamps = np.array([0.0, 0.2, 0.4, 0.6, 0.8])
+    predicted_states = TestPredictorMock.predict_state(state,
+                                          prediction_timestamps=predicted_timestamps, map_api=None,
+                                          nav_plan=navigation_plan)
+
+    assert np.all([isinstance(predicted_states[x], State) for x in range(len(predicted_states))])
+    assert len(predicted_states) == len(predicted_timestamps)
+    for predicted_state in predicted_states:
+        assert np.all([isinstance(predicted_state.dynamic_objects[x], DynamicObject) for x in range(len(predicted_state.dynamic_objects))])
+
