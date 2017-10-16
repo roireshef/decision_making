@@ -2,7 +2,7 @@ import pickle
 from logging import Logger
 
 import numpy as np
-from mapping.src.model.naive_cache_map import NaiveCacheMap
+from mapping.src.model.map_service import MapService
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.paths import Paths
@@ -44,8 +44,8 @@ class DmInitialization:
     def create_state_module() -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         dds = DdsPubSub(STATE_MODULE_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
-        map_model = pickle.load(open(Paths.get_resource_absolute_path_filename(MAP_RESOURCE_FILE_NAME), "rb"))
-        map_api = NaiveCacheMap(map_model, logger)
+        MapService.initialize()
+        map_api = MapService.get_instance()
         default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
                                                  np.array([0.1], dtype=np.float))
         state_module = StateModule(dds, logger, map_api, default_occupancy_state, None, None)
@@ -67,8 +67,8 @@ class DmInitialization:
         dds = DdsPubSub(BEHAVIORAL_PLANNER_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
         # TODO: fill the policy
         # Init map
-        map_model = pickle.load(open(Paths.get_resource_absolute_path_filename(MAP_RESOURCE_FILE_NAME), "rb"))
-        map_api = NaiveCacheMap(map_model, logger)
+        MapService.initialize()
+        map_api = MapService.get_instance()
 
         # Init states
         init_navigation_plan = NavigationPlanMsg(np.array([]))
