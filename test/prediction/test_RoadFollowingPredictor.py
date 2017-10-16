@@ -8,7 +8,7 @@ def test_predict_movingCarAlongRoad_precisePrediction(testable_map_api, navigati
     map_api = testable_map_api
     nav_plan = navigation_fixture
 
-    predictor = RoadFollowingPredictor()
+    predictor = RoadFollowingPredictor(map_api=None)
     size = ObjectSize(1, 1, 1)
     global_pos = np.array([500.0, 0.0, 0.0])
     road_localization = StateModule._compute_road_localization(global_pos=global_pos, global_yaw=0, map_api=map_api)
