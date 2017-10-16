@@ -81,7 +81,7 @@ class DmInitialization:
         policy = DefaultPolicy(logger, policy_config, behavioral_state, None, map_api)
 
 
-        behavioral_module = BehavioralFacade(dds=dds, logger=logger, policy=policy, behavioral_state=behavioral_state)
+        behavioral_module = BehavioralFacade(dds=dds, logger=logger, policy=policy)
         return behavioral_module
 
     @staticmethod

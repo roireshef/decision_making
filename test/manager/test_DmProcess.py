@@ -1,12 +1,22 @@
+import os
+
 import pytest
 
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
 from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
-from decision_making.test.planning.custom_fixtures import *
+from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
+from rte.python.logger.AV_logger import AV_Logger
+from  decision_making.test.planning import custom_fixtures
 
 
-def create_behavioral_planner(dds_pubsub, trajectory_params, behavioral_visualization_msg) -> BehavioralFacade:
+def create_behavioral_planner() -> BehavioralFacade:
+
+    dds_pubsub = custom_fixtures.dds_pubsub
+    trajectory_params = custom_fixtures.trajectory_params
+    behavioral_visualization_msg = custom_fixtures.behavioral_visualization_msg
+
     logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
 
     behavioral_module = BehavioralFacadeMock(dds=dds_pubsub, logger=logger, trajectory_params=trajectory_params,
@@ -26,7 +36,6 @@ def dm_process():
 
     print("tear down")
     dm_process_behavioral.stop_process()
-
 
 
 # Integration test

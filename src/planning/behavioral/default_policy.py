@@ -15,7 +15,6 @@ from decision_making.src.planning.behavioral.constants import POLICY_ACTION_SPAC
     MIN_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING
 from decision_making.src.planning.behavioral.default_policy_config import DefaultPolicyConfig
 from decision_making.src.planning.behavioral.policy import Policy, PolicyConfig
-from decision_making.src.planning.behavioral.policy_features import DefaultPolicyFeatures
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.acda import AcdaApi
 from decision_making.src.prediction.predictor import Predictor
@@ -25,6 +24,10 @@ from mapping.src.model.map_api import MapAPI
 from mapping.src.transformations import geometry_utils
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
+
+######################################################################################################
+#################   Default Policy Beahvioral State
+######################################################################################################
 
 class DefaultBehavioralState(BehavioralState):
     def __init__(self, logger: Logger, map_api: MapAPI, navigation_plan: NavigationPlanMsg, ego_state: EgoState,
@@ -85,9 +88,79 @@ class DefaultBehavioralState(BehavioralState):
                                                              relative_road_localization=relative_road_localization)
                 dynamic_objects_on_road.append(dynamic_object_on_road)
 
-        return BehavioralState(logger=self.logger, map_api=self.map, navigation_plan=navigation_plan,
+        return DefaultBehavioralState(logger=self.logger, map_api=self.map, navigation_plan=navigation_plan,
                                ego_state=ego_state, dynamic_objects_on_road=dynamic_objects_on_road)
 
+
+
+######################################################################################################
+#################   Default Policy Features
+######################################################################################################
+
+class DefaultPolicyFeatures:
+    @staticmethod
+    def compute_acda_speed(behavioral_state: DefaultBehavioralState):
+        pass
+
+    @staticmethod
+    def get_preferred_lane(behavioral_state: DefaultBehavioralState):
+        """
+        Navigation/traffic laws based function to determine the optimal lane for our current route. For example, default
+         should be rightmost lane, but when nearing a left turn, should return the left lane.
+        :param behavioral_state:
+        :return: Integer representing the lane index 0 is right most lane.
+        """
+        pass
+
+    @staticmethod
+    def get_closest_object_on_path(policy_config: DefaultPolicyConfig, behavioral_state: DefaultBehavioralState,
+                                   lat_options: np.array) -> np.array:
+        """
+        Gets the closest object on lane per each lateral offset in lat_options
+        :param policy_config: policy parameters configuration
+        :param behavioral_state:
+        :param lat_options: grid of lateral offsets on road [m]
+        :return: array with closest object per each lateral location options
+        """
+
+        # Fetch each latitude offset attributes (free-space, blocking objects, etc.)
+        num_of_lat_options = len(lat_options)
+        closest_blocking_object_per_option = np.inf * np.ones(shape=[num_of_lat_options, 1])
+
+        # Assign object to optional lanes
+        for blocking_object in behavioral_state.dynamic_objects_on_road:
+
+            relative_lon = blocking_object.relative_road_localization.rel_lon
+            if relative_lon < policy_config.assume_blocking_object_at_rear_if_distance_less_than:
+                # If we passed an obstacle, treat it as at inf
+                relative_lon = np.inf
+
+            # get leftmost and rightmost edge of object
+            object_leftmost_edge = blocking_object.road_localization.full_lat \
+                                   + 0.5 * blocking_object.size.width
+            object_leftmost_edge_dilated = object_leftmost_edge + (
+                LATERAL_SAFETY_MARGIN_FROM_OBJECT + 0.5 * behavioral_state.ego_state.size.width)
+
+            object_rightmost_edge = blocking_object.road_localization.full_lat \
+                                    - 0.5 * blocking_object.size.width
+            object_rightmost_edge_dilated = object_rightmost_edge - (
+                LATERAL_SAFETY_MARGIN_FROM_OBJECT + 0.5 * behavioral_state.ego_state.size.width)
+
+            # check which lateral offsets are affected
+            affected_lanes = np.where((lat_options < object_leftmost_edge_dilated) & (
+                lat_options > object_rightmost_edge_dilated))[0]
+
+            # assign closest object to each lateral offset
+            closest_blocking_object_per_option[affected_lanes] = np.minimum(
+                closest_blocking_object_per_option[affected_lanes],
+                relative_lon)
+
+        return closest_blocking_object_per_option
+
+
+######################################################################################################
+#################   Default Policy
+######################################################################################################
 
 class DefaultPolicy(Policy):
     """
@@ -158,7 +231,7 @@ class DefaultPolicy(Policy):
         return trajectory_parameters, visualization_message
 
     @raises(VehicleOutOfRoad, NoValidLanesFound)
-    def __high_level_planning(self, behavioral_state: BehavioralState) -> (float, float):
+    def __high_level_planning(self, behavioral_state: DefaultBehavioralState) -> (float, float):
         """
         Generates a high-level plan
         :param behavioral_state: processed behavioral state
@@ -298,7 +371,7 @@ class DefaultPolicy(Policy):
         return latitude_options_in_lanes
 
     @staticmethod
-    def __generate_reference_route(behavioral_state: BehavioralState, target_lane_latitude: float) -> np.ndarray:
+    def __generate_reference_route(behavioral_state: DefaultBehavioralState, target_lane_latitude: float) -> np.ndarray:
         """
         :param behavioral_state: processed behavioral state
         :param target_lane_latitude: road latitude of reference route in [m]
@@ -324,7 +397,7 @@ class DefaultPolicy(Policy):
         return reference_route_xy_resampled
 
     @staticmethod
-    def _generate_trajectory_specs(behavioral_state: BehavioralState, target_path_latitude: float,
+    def _generate_trajectory_specs(behavioral_state: DefaultBehavioralState, target_path_latitude: float,
                                    safe_speed: float, reference_route: np.ndarray) -> TrajectoryParams:
         """
         Generate trajectory specification (cost) for trajectory planner
@@ -416,7 +489,7 @@ class DefaultPolicy(Policy):
         return trajectory_parameters
 
     @staticmethod
-    def __visualize_high_level_policy(path_absolute_latitudes: np.array, behavioral_state: BehavioralState,
+    def __visualize_high_level_policy(path_absolute_latitudes: np.array, behavioral_state: DefaultBehavioralState,
                                       selected_action: float) -> None:
         # TODO: implement visualization
         relevant_options_array = list()
@@ -436,3 +509,5 @@ class DefaultPolicy(Policy):
                 selected_option.append(reference_route_xyz)
             else:
                 relevant_options_array.append(reference_route_xyz)
+
+

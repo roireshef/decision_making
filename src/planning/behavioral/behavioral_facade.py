@@ -43,7 +43,6 @@ class BehavioralFacade(DmModule):
             state = self._get_current_state()
             navigation_plan = self._get_current_navigation_plan()
 
-
             if state is not None:
                 # Plan if the behavioral state has valid timestamp
                 trajectory_params, behavioral_visualization_message = self._policy.plan(state, navigation_plan)
