@@ -7,7 +7,7 @@ from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanM
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.state.state import OccupancyState, RoadLocalization, ObjectSize, EgoState, State
+from decision_making.src.state.state import OccupancyState, RoadLocalization, ObjectSize, EgoState, State, DynamicObject
 from decision_making.test.constants import DDS_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.dds.mock_ddspubsub import DdsPubSubMock
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
@@ -22,7 +22,11 @@ from rte.python.logger.AV_logger import AV_Logger
 @pytest.fixture(scope='function')
 def state():
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
-    dynamic_objects = []
+    dyn1 = DynamicObject(1,34, 0.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1,1,1), 1.0, 2.0, 2.0, 0.0, 0.0,
+                         RoadLocalization(1, 1, 0.0, 0.0, 10.0, 0.0))
+    dyn2 = DynamicObject(1, 35, 10.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0,
+                         RoadLocalization(1, 1, 0.0, 0.0, 20.0, 0.0))
+    dynamic_objects = [dyn1, dyn2]
     size = ObjectSize(0, 0, 0)
     # TODO - decouple from navigation plan below (1 is the road id). Make this dependency explicit.
     road_localization = RoadLocalization(1, 0, 0, 0, 0, 0)
