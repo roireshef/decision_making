@@ -97,6 +97,9 @@ class StateModule(DmModule):
                     self.logger.warning(
                         "Couldn't localize object id {} on road. Object location: ({}, {}, {})".format(id, x, y, z))
 
+            with self._dynamic_objects_lock:
+                self._dynamic_objects = dyn_obj_list
+
             self._publish_state_if_full()
         except Exception as e:
             self.logger.error("StateModule._dynamic_obj_callback failed due to {}".format(e))
