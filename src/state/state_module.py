@@ -178,21 +178,3 @@ class StateModule(DmModule):
         intra_lane_lat = lat - lane * lane_width
 
         return RoadLocalization(closest_road_id, int(lane), lat, intra_lane_lat, lon, global_yaw)
-
-    def _convert_relative_to_global_pos(self, id: int, x: float, y: float, z: float, yaw: float,
-                                        ego_pos: np.ndarray, ego_yaw: float) -> \
-            Tuple[np.ndarray, float, RoadLocalization]:
-
-        global_coordinates = CartesianFrame.convert_relative_to_global_frame(np.array([x, y, z]), ego_pos,
-                                                                             ego_yaw)
-        global_yaw = ego_yaw + yaw
-
-        try:
-            # Try to localize object on road. If not successful, warn.
-            road_localization = StateModule._compute_road_localization(global_coordinates, global_yaw, self._map_api)
-
-            return global_coordinates, global_yaw, road_localization
-
-        except MapCellNotFound:
-            self.logger.warning(
-                "Couldn't localize object id {} on road. Object location: ({}, {}, {})".format(id, x, y, z))
