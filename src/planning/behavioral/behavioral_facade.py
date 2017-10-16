@@ -13,14 +13,12 @@ from logging import Logger
 import time
 
 class BehavioralFacade(DmModule):
-    def __init__(self, dds: DdsPubSub, logger: Logger, policy: Policy, behavioral_state: BehavioralState) -> None:
+    def __init__(self, dds: DdsPubSub, logger: Logger, policy: Policy) -> None:
         """
         :param policy: decision making component
-        :param behavioral_state: initial state of the system. Can be empty, i.e. initialized with default values.
         """
         super().__init__(dds=dds, logger=logger)
         self._policy = policy
-        self._behavioral_state = behavioral_state
         self.logger.info("Initialized Behavioral Planner Facade.")
 
     # TODO: implement
@@ -45,18 +43,19 @@ class BehavioralFacade(DmModule):
             state = self._get_current_state()
             navigation_plan = self._get_current_navigation_plan()
 
-            self._behavioral_state = self._behavioral_state.update_behavioral_state(state, navigation_plan)
 
-            if self._behavioral_state.ego_timestamp is not None:
+            if state is not None:
                 # Plan if the behavioral state has valid timestamp
-                trajectory_params, behavioral_visualization_message = self._policy.plan(
-                    behavioral_state=self._behavioral_state)
+                trajectory_params, behavioral_visualization_message = self._policy.plan(state, navigation_plan)
 
-                # Send plan to trajectory
-                self._publish_results(trajectory_params)
+                if trajectory_params is not None:
+                    # Send plan to trajectory
+                    self._publish_results(trajectory_params)
 
-                # Send visualization data
-                self._publish_visualization(behavioral_visualization_message)
+                    # Send visualization data
+                    self._publish_visualization(behavioral_visualization_message)
+                else:
+                    self.logger.info("No plan was generated.")
 
             self.logger.info("BehavioralFacade._periodic_action_impl time {}".format(time.time()-start_time))
 

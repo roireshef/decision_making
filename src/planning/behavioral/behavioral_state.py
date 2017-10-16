@@ -32,28 +32,8 @@ class BehavioralState:
         :param navigation_plan: car's navigation plan
         :param ego_state: updated ego state
         """
+        pass
 
-        self.logger = logger
-
-        # Navigation
-        self.map = map_api
-        self.navigation_plan = navigation_plan
-
-        # Ego state features
-        self.ego_timestamp = ego_state.timestamp
-        self.ego_state = ego_state
-
-        self.ego_yaw = ego_state.yaw
-        self.ego_position = np.array([ego_state.x, ego_state.y, ego_state.z])
-        self.ego_orientation = np.array(CartesianFrame.convert_yaw_to_quaternion(ego_state.yaw))
-        self.ego_velocity = np.linalg.norm([ego_state.v_x, ego_state.v_y])
-        self.ego_road_id = ego_state.road_localization.road_id
-        self.ego_on_road = ego_state.road_localization.road_id is not None
-        if not self.ego_on_road:
-            self.logger.warning("Car is off road.")
-
-        # Dynamic objects and their relative locations
-        self.dynamic_objects_on_road = dynamic_objects_on_road
 
     def update_behavioral_state(self, state: State, navigation_plan: NavigationPlanMsg):
         """
@@ -63,26 +43,7 @@ class BehavioralState:
         :param state: new world state
         :return: a new and updated BehavioralState
         """
-        ego_state = state.ego_state
-
-        # Filter static & dynamic objects that are relevant to car's navigation
-        dynamic_objects_on_road = []
-        for dynamic_obj in state.dynamic_objects:
-            # Get object's relative road localization
-            relative_road_localization = dynamic_obj.get_relative_road_localization(
-                ego_road_localization=ego_state.road_localization, ego_nav_plan=navigation_plan,
-                map_api=self.map, logger=self.logger)
-
-            # filter objects with out of decision-making range
-            if MAX_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING > \
-                    relative_road_localization.rel_lon > \
-                    MIN_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING:
-                dynamic_object_on_road = DynamicObjectOnRoad(dynamic_object_properties=dynamic_obj,
-                                                             relative_road_localization=relative_road_localization)
-                dynamic_objects_on_road.append(dynamic_object_on_road)
-
-        return BehavioralState(logger=self.logger, map_api=self.map, navigation_plan=navigation_plan,
-                               ego_state=ego_state, dynamic_objects_on_road=dynamic_objects_on_road)
+        pass
 
 
 class MarginInfo:

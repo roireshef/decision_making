@@ -1,23 +1,92 @@
 from logging import Logger
+from typing import Type, List
 
 import numpy as np
 
 from decision_making.src import global_constants
 from decision_making.src.exceptions import VehicleOutOfRoad, NoValidLanesFound, raises
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
+from decision_making.src.planning.behavioral.behavioral_state import BehavioralState, DynamicObjectOnRoad
 from decision_making.src.planning.behavioral.constants import POLICY_ACTION_SPACE_ADDITIVE_LATERAL_OFFSETS_IN_LANES, \
-    LATERAL_SAFETY_MARGIN_FROM_OBJECT
+    LATERAL_SAFETY_MARGIN_FROM_OBJECT, MAX_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING, \
+    MIN_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING
 from decision_making.src.planning.behavioral.default_policy_config import DefaultPolicyConfig
 from decision_making.src.planning.behavioral.policy import Policy, PolicyConfig
 from decision_making.src.planning.behavioral.policy_features import DefaultPolicyFeatures
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.acda import AcdaApi
+from decision_making.src.prediction.predictor import Predictor
+from decision_making.src.state.state import EgoState, State
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
+from mapping.src.model.map_api import MapAPI
 from mapping.src.transformations import geometry_utils
 from mapping.src.transformations.geometry_utils import CartesianFrame
+
+
+class DefaultBehavioralState(BehavioralState):
+    def __init__(self, logger: Logger, map_api: MapAPI, navigation_plan: NavigationPlanMsg, ego_state: EgoState,
+                 dynamic_objects_on_road: List[DynamicObjectOnRoad]) -> None:
+        """
+        Behavioral state generates and stores relevant state features that will be used for planning
+        :param logger: logger
+        :param map_api: map API
+        :param navigation_plan: car's navigation plan
+        :param ego_state: updated ego state
+        """
+
+        self.logger = logger
+
+        # Navigation
+        self.map = map_api
+        self.navigation_plan = navigation_plan
+
+        # Ego state features
+        self.ego_timestamp = ego_state.timestamp
+        self.ego_state = ego_state
+
+        self.ego_yaw = ego_state.yaw
+        self.ego_position = np.array([ego_state.x, ego_state.y, ego_state.z])
+        self.ego_orientation = np.array(CartesianFrame.convert_yaw_to_quaternion(ego_state.yaw))
+        self.ego_velocity = np.linalg.norm([ego_state.v_x, ego_state.v_y])
+        self.ego_road_id = ego_state.road_localization.road_id
+        self.ego_on_road = ego_state.road_localization.road_id is not None
+        if not self.ego_on_road:
+            self.logger.warning("Car is off road.")
+
+        # Dynamic objects and their relative locations
+        self.dynamic_objects_on_road = dynamic_objects_on_road
+
+    def update_behavioral_state(self, state: State, navigation_plan: NavigationPlanMsg):
+        """
+        This method updates the behavioral state according to the new world state and navigation plan.
+         It fetches relevant features that will be used for the decision-making process.
+        :param navigation_plan: new navigation plan of vehicle
+        :param state: new world state
+        :return: a new and updated BehavioralState
+        """
+        ego_state = state.ego_state
+
+        # Filter static & dynamic objects that are relevant to car's navigation
+        dynamic_objects_on_road = []
+        for dynamic_obj in state.dynamic_objects:
+            # Get object's relative road localization
+            relative_road_localization = dynamic_obj.get_relative_road_localization(
+                ego_road_localization=ego_state.road_localization, ego_nav_plan=navigation_plan,
+                map_api=self.map, logger=self.logger)
+
+            # filter objects with out of decision-making range
+            if MAX_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING > \
+                    relative_road_localization.rel_lon > \
+                    MIN_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING:
+                dynamic_object_on_road = DynamicObjectOnRoad(dynamic_object_properties=dynamic_obj,
+                                                             relative_road_localization=relative_road_localization)
+                dynamic_objects_on_road.append(dynamic_object_on_road)
+
+        return BehavioralState(logger=self.logger, map_api=self.map, navigation_plan=navigation_plan,
+                               ego_state=ego_state, dynamic_objects_on_road=dynamic_objects_on_road)
 
 
 class DefaultPolicy(Policy):
@@ -28,36 +97,45 @@ class DefaultPolicy(Policy):
     The selected lateral offset then defines the reference route that is forwarded to the trajectory planner.
     """
 
-    def __init__(self, logger: Logger, policy_config: DefaultPolicyConfig):
-        super().__init__(logger=logger, policy_config=policy_config)
+    def __init__(self, logger: Logger, policy_config: DefaultPolicyConfig, behavioral_state: DefaultBehavioralState,
+                 predictor: Type[Predictor], map_api: MapAPI):
+        """
+        see base class
+        """
+        super().__init__(logger=logger, policy_config=policy_config, behavioral_state=behavioral_state,
+                         predictor=predictor, map_api=map_api)
 
     @raises(VehicleOutOfRoad, NoValidLanesFound)
-    def plan(self, behavioral_state: BehavioralState) -> (TrajectoryParams, BehavioralVisualizationMsg):
+    def plan(self, state: State, nav_plan: NavigationPlanMsg) -> (TrajectoryParams, BehavioralVisualizationMsg):
         """
         This policy first calls to __high_level_planning that returns a desired lateral offset for driving.
         On the basis of the desired lateral offset, the policy defines a target state and cost parameters
           that will be forwarded to the trajectory planner.
-        :param behavioral_state:
+        :param nav_plan: ego navigation plan
+        :param state: world state
         :return: trajectory parameters for trajectories evaluation, visualization object
         """
-        if behavioral_state.ego_timestamp is None:
+
+        self._behavioral_state = self._behavioral_state.update_behavioral_state(state, nav_plan)
+
+        if self._behavioral_state.ego_timestamp is None:
             # supposed to be prevented in the facade
             self.logger.warning("Invalid behavioral state: behavioral_state.ego_timestamp is None")
             return None, None
 
         # High-level planning
-        target_path_offset, target_path_latitude = self.__high_level_planning(behavioral_state)
+        target_path_offset, target_path_latitude = self.__high_level_planning(self._behavioral_state)
 
         # Calculate reference route for driving
         reference_route_xy = DefaultPolicy.__generate_reference_route(
-            behavioral_state,
+            self._behavioral_state,
             target_path_latitude)
 
         # Calculate safe speed according to ACDA
-        acda_safe_speed = AcdaApi.compute_acda(objects_on_road=behavioral_state.dynamic_objects_on_road,
-                                               ego_state=behavioral_state.ego_state,
-                                               navigation_plan=behavioral_state.navigation_plan,
-                                               map_api=behavioral_state.map,
+        acda_safe_speed = AcdaApi.compute_acda(objects_on_road=self._behavioral_state.dynamic_objects_on_road,
+                                               ego_state=self._behavioral_state.ego_state,
+                                               navigation_plan=self._behavioral_state.navigation_plan,
+                                               map_api=self._behavioral_state.map,
                                                lookahead_path=reference_route_xy)
         safe_speed = min(acda_safe_speed, global_constants.BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT)
 
@@ -68,7 +146,7 @@ class DefaultPolicy(Policy):
 
         # Generate specs for trajectory planner
         trajectory_parameters = \
-            DefaultPolicy._generate_trajectory_specs(behavioral_state=behavioral_state,
+            DefaultPolicy._generate_trajectory_specs(behavioral_state=self._behavioral_state,
                                                      safe_speed=safe_speed,
                                                      target_path_latitude=target_path_latitude,
                                                      reference_route=reference_route_xy)
