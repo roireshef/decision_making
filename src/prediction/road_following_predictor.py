@@ -18,8 +18,7 @@ class RoadFollowingPredictor(Predictor):
     """
 
 
-    @classmethod
-    def predict_object_trajectories(cls, dynamic_object: DynamicObject, prediction_timestamps: np.ndarray, map_api: MapAPI,
+    def predict_object_trajectories(self, dynamic_object: DynamicObject, prediction_timestamps: np.ndarray,
                                     nav_plan: NavigationPlanMsg) -> np.ndarray:
         """
         :param dynamic_object: in map coordinates
@@ -36,7 +35,7 @@ class RoadFollowingPredictor(Predictor):
         lookahead_distance = (prediction_timestamps[-1] - dynamic_object.timestamp) * object_velocity
         lookahead_distance += LOOKAHEAD_MARGIN_DUE_TO_ROUTE_LINEARIZATION_APPROXIMATION
 
-        lookahead_route = map_api.get_lookahead_points(dynamic_object.road_localization.road_id,
+        lookahead_route = self._map_api.get_lookahead_points(dynamic_object.road_localization.road_id,
                                                        dynamic_object.road_localization.road_lon,
                                                        lookahead_distance,
                                                        dynamic_object.road_localization.full_lat,

@@ -8,7 +8,7 @@ def test_predict_movingCarAlongRoad_precisePrediction(testable_map_api, navigati
     map_api = testable_map_api
     nav_plan = navigation_fixture
 
-    predictor = RoadFollowingPredictor(map_api=None)
+    predictor = RoadFollowingPredictor(map_api=map_api)
     size = ObjectSize(1, 1, 1)
     global_pos = np.array([500.0, 0.0, 0.0])
     road_localization = StateModule._compute_road_localization(global_pos=global_pos, global_yaw=0, map_api=map_api)
@@ -16,6 +16,6 @@ def test_predict_movingCarAlongRoad_precisePrediction(testable_map_api, navigati
                             v_x = 10, v_y = 0,
                             acceleration_lon=0, omega_yaw=0, road_localization=road_localization)
     pred_timestamps = np.arange(5.0, 12.0, 0.1)
-    traj = predictor.predict_object_trajectories(dyn_obj, pred_timestamps, map_api, nav_plan)
+    traj = predictor.predict_object_trajectories(dyn_obj, pred_timestamps, nav_plan)
     assert np.isclose(traj[0][0],550.) and np.isclose(traj[0][1], 0.) and \
            np.isclose(traj[-1][0], 600.) and np.isclose(traj[-1][1], 19.)
