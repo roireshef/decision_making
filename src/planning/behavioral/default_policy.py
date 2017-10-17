@@ -23,11 +23,19 @@ from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.model.map_api import MapAPI
 from mapping.src.transformations import geometry_utils
 from mapping.src.transformations.geometry_utils import CartesianFrame
-
+from abc import ABCMeta, abstractmethod
 
 ######################################################################################################
-#################   Default Policy Beahvioral State
+#################   Default Policy Behavioral State
 ######################################################################################################
+
+GRID_LEFT_FORWARD_FAR, GRID_LEFT_FORWARD_NEAR, GRID_LEFT_ASIDE, GRID_LEFT_REAR_NEAR, GRID_LEFT_REAR_FAR = 0, 1, 2, 3, 4
+GRID_RIGHT_FORWARD_FAR, GRID_RIGHT_FORWARD_NEAR, GRID_RIGHT_ASIDE, GRID_RIGHT_REAR_NEAR, GRID_RIGHT_REAR_FAR = 5, 6, 7, 8, 9
+GRID_MID = 10
+
+
+class RoadOccupancyGrid:
+
 
 class DefaultBehavioralState(BehavioralState):
     def __init__(self, logger: Logger, map_api: MapAPI, navigation_plan: NavigationPlanMsg, ego_state: EgoState,
@@ -89,8 +97,7 @@ class DefaultBehavioralState(BehavioralState):
                 dynamic_objects_on_road.append(dynamic_object_on_road)
 
         return DefaultBehavioralState(logger=self.logger, map_api=self.map, navigation_plan=navigation_plan,
-                               ego_state=ego_state, dynamic_objects_on_road=dynamic_objects_on_road)
-
+                                      ego_state=ego_state, dynamic_objects_on_road=dynamic_objects_on_road)
 
 
 ######################################################################################################
@@ -111,6 +118,14 @@ class DefaultPolicyFeatures:
         :return: Integer representing the lane index 0 is right most lane.
         """
         pass
+
+    @staticmethod
+    def assign_objects_to_road_grid(behavioral_state: DefaultBehavioralState):
+        """
+        Assigns dynamic objects to each cell in the road grid.
+        :param behavioral_state:
+        :return:
+        """
 
     @staticmethod
     def get_closest_object_on_path(policy_config: DefaultPolicyConfig, behavioral_state: DefaultBehavioralState,
@@ -509,5 +524,3 @@ class DefaultPolicy(Policy):
                 selected_option.append(reference_route_xyz)
             else:
                 relevant_options_array.append(reference_route_xyz)
-
-
