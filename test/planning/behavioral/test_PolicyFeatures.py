@@ -1,9 +1,9 @@
 import numpy as np
 
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.behavioral.behavioral_state import BehavioralState, DynamicObjectOnRoad
+from decision_making.src.planning.behavioral.behavioral_state import DynamicObjectOnRoad
+from decision_making.src.planning.behavioral.default_policy import DefaultBehavioralState, DefaultPolicyFeatures
 from decision_making.src.planning.behavioral.default_policy_config import DefaultPolicyConfig
-from decision_making.src.planning.behavioral.policy_features import DefaultPolicyFeatures
 from decision_making.src.state.state import EgoState, RoadLocalization, RelativeRoadLocalization, DynamicObject, \
     ObjectSize
 from mapping.src.model.map_api import MapAPI
@@ -52,7 +52,7 @@ def test_get_closest_object_on_lane_ComplexScenraio_success():
         objects_list.append(static_object_on_road)
 
     # Initialize behavioral state
-    behavioral_state = BehavioralState(logger=logger, map_api=map_api, navigation_plan=navigation_plan,
+    behavioral_state = DefaultBehavioralState(logger=logger, map_api=map_api, navigation_plan=navigation_plan,
                                        ego_state=ego_state, dynamic_objects_on_road=objects_list)
 
     ########################################################

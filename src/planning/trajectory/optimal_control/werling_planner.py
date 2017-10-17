@@ -32,10 +32,10 @@ class WerlingPlanner(TrajectoryPlanner):
         # create road coordinate-frame
         frenet = FrenetMovingFrame(reference_route)
 
-        # the convention is that the reference_route is given in the vehicle's coordinate-frame, so that the vehicle
-        # is always at the origin. Nonetheless, the vehicle doesn't need to lay parallel to the road
-        ego_in_frenet = frenet.cpoint_to_fpoint(np.array([0, 0]))
-        ego_theta_diff = frenet.curve[0, R_THETA]
+        # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
+        # The vehicle doesn't need to lay parallel to the road.
+        ego_in_frenet = frenet.cpoint_to_fpoint(np.array([state.ego_state.x, state.ego_state.y]))
+        ego_theta_diff = frenet.curve[0, R_THETA] - state.ego_state.yaw
 
         # TODO: fix velocity jitters at the State level
         # ego_v_x = np.max((state.ego_state.v_x, 0))
@@ -141,7 +141,7 @@ class WerlingPlanner(TrajectoryPlanner):
             [SigmoidStatic2DBoxObstacle.from_object(obs, state.ego_state, params.obstacle_cost.k,
                                                     params.obstacle_cost.offset, time_samples)
              for obs in state.dynamic_objects
-             if np.linalg.norm([obs.x, obs.y]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
+             if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
 
         cost_per_obstacle = [obs.compute_cost(ctrajectories[:, :, 0:2]) for obs in close_obstacles]
         obstacles_costs = params.obstacle_cost.w * np.sum(cost_per_obstacle, axis=0)

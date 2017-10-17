@@ -176,26 +176,3 @@ class State(DDSNonTypedMsg):
         self.occupancy_state = copy.deepcopy(occupancy_state)
         self.dynamic_objects = copy.deepcopy(dynamic_objects)
         self.ego_state = copy.deepcopy(ego_state)
-
-    def update_objects(self):
-        """
-        insert object to state - will be implemented by Ron
-        :return: merged State
-        """
-        pass
-
-    def update_ego_state(self):
-        """
-        insert ego localization to state - will be implemented by Ron
-        :return: merged State
-        """
-        pass
-
-    def predict(self, goal_timestamp, map_api):
-        # type: (int, MapAPI) -> State
-        """
-        predict the ego localization, other objects and free space for the future timestamp
-        :param goal_timestamp:
-        :return: predicted State
-        """
-        pass

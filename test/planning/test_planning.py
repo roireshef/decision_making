@@ -39,12 +39,11 @@ def test_behavioralPlanningFacade_defaultPolicy_anyResult(dds_pubsub: DdsPubSubM
     logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
     behavioral_publish_mock = MagicMock()
     policy_config = DefaultPolicyConfig()
-    policy = DefaultPolicy(logger, policy_config)
+    policy = DefaultPolicy(logger, policy_config, default_policy_behavioral_state, None, None)
 
     state_module.periodic_action()
     navigation_facade.periodic_action()
-    behavioral_planner_module = BehavioralFacade(dds=dds_pubsub, logger=logger,policy=policy,
-                                                 behavioral_state=default_policy_behavioral_state)
+    behavioral_planner_module = BehavioralFacade(dds=dds_pubsub, logger=logger, policy=policy)
 
     dds_pubsub.subscribe(TRAJECTORY_PARAMS_READER_TOPIC, behavioral_publish_mock)
     #dds_pubsub.subscribe(STATE_PUBLISH_TOPIC, state_module)

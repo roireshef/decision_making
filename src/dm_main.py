@@ -13,7 +13,7 @@ from decision_making.src.manager.dm_trigger import *
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.behavioral.default_policy import DefaultPolicy
+from decision_making.src.planning.behavioral.default_policy import DefaultPolicy, DefaultBehavioralState
 from decision_making.src.planning.behavioral.default_policy_config import DefaultPolicyConfig
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
@@ -66,17 +66,22 @@ class DmInitialization:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
         dds = DdsPubSub(BEHAVIORAL_PLANNER_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
         # TODO: fill the policy
+        # Init map
         map_model = pickle.load(open(Paths.get_resource_absolute_path_filename(MAP_RESOURCE_FILE_NAME), "rb"))
         map_api = NaiveCacheMap(map_model, logger)
-        policy_config = DefaultPolicyConfig()
-        policy = DefaultPolicy(logger, policy_config)
 
+        # Init states
         init_navigation_plan = NavigationPlanMsg(np.array([]))
         init_ego_state = EgoState(0, None, 0.0, 0.0, 0.0, 0.0, ObjectSize(0.0, 0.0, 0.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                                   RoadLocalization(0, 0, 0.0, 0.0, 0.0, 0.0))
 
-        behavioral_state = BehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [])
-        behavioral_module = BehavioralFacade(dds=dds, logger=logger, policy=policy, behavioral_state=behavioral_state)
+        # Init policy
+        behavioral_state = DefaultBehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [])
+        policy_config = DefaultPolicyConfig()
+        policy = DefaultPolicy(logger, policy_config, behavioral_state, None, map_api)
+
+
+        behavioral_module = BehavioralFacade(dds=dds, logger=logger, policy=policy)
         return behavioral_module
 
     @staticmethod

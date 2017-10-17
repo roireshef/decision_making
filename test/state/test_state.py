@@ -5,9 +5,10 @@ from mapping.src.transformations.geometry_utils import CartesianFrame
 def test_init():
 
     rel_pos = np.array([1, 1, 0])
+    rel_yaw = 0
     ego_pos = np.array([1, 0, 0])
     ego_yaw = -np.pi/2
-    glob_pos = CartesianFrame.convert_relative_to_global_frame(rel_pos, ego_pos, ego_yaw)
+    glob_pos, glob_yaw = CartesianFrame.convert_relative_to_global_frame(rel_pos, rel_yaw, ego_pos, ego_yaw)
 
     # test state.predict
     size = ObjectSize(0, 0, 0)
