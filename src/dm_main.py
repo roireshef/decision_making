@@ -2,7 +2,7 @@ import pickle
 from logging import Logger
 
 import numpy as np
-from mapping.src.model.map_service import MapService
+from mapping.src.service.map_service import MapService
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.paths import Paths
