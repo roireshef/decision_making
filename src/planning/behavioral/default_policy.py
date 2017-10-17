@@ -1,5 +1,5 @@
 from logging import Logger
-from typing import Type, List
+from typing import Type, List, Dict
 
 import numpy as np
 
@@ -29,23 +29,37 @@ from abc import ABCMeta, abstractmethod
 #################   Default Policy Behavioral State
 ######################################################################################################
 
-GRID_LEFT_FORWARD_FAR, GRID_LEFT_FORWARD_NEAR, GRID_LEFT_ASIDE, GRID_LEFT_REAR_NEAR, GRID_LEFT_REAR_FAR = 0, 1, 2, 3, 4
-GRID_RIGHT_FORWARD_FAR, GRID_RIGHT_FORWARD_NEAR, GRID_RIGHT_ASIDE, GRID_RIGHT_REAR_NEAR, GRID_RIGHT_REAR_FAR = 5, 6, 7, 8, 9
+SEMANTIC_GRID_FRONT, SEMANTIC_GRID_ASIDE, SEMANTIC_GRID_BEHIND = 1.0, 0.0. -1.0
 GRID_MID = 10
 
+# The margin that we take from the front/read of the vehicle to define the front/rear partitions
+SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO = 1.0
 
-class RoadOccupancyGrid:
+
+class RoadSemanticOccupancyGrid:
+    """
+    This class holds a semantic occupancy grid. We assume that the road is partitioned into semantic areas,
+     and the class holds an occupancy grid that associates object to these areas.
+    """
+
+    def __init__(self, road_occupancy_grid: Dict[List[float], List[DynamicObjectOnRoad]]):
+        """
+        :param road_occupancy_grid: A dictionary that maps a partition to a list of dynamic objects.
+        """
+        self.road_occupancy_grid = road_occupancy_grid
 
 
 class DefaultBehavioralState(BehavioralState):
     def __init__(self, logger: Logger, map_api: MapAPI, navigation_plan: NavigationPlanMsg, ego_state: EgoState,
-                 dynamic_objects_on_road: List[DynamicObjectOnRoad]) -> None:
+                 dynamic_objects_on_road: List[DynamicObjectOnRoad],
+                 road_semantic_occupancy_grid: RoadSemanticOccupancyGrid) -> None:
         """
         Behavioral state generates and stores relevant state features that will be used for planning
         :param logger: logger
         :param map_api: map API
         :param navigation_plan: car's navigation plan
         :param ego_state: updated ego state
+        :param road_semantic_occupancy_grid:
         """
 
         self.logger = logger
@@ -69,6 +83,9 @@ class DefaultBehavioralState(BehavioralState):
 
         # Dynamic objects and their relative locations
         self.dynamic_objects_on_road = dynamic_objects_on_road
+
+        # The semantic road occupancy grid
+        self.road_occupancy_grid = road_semantic_occupancy_grid
 
     def update_behavioral_state(self, state: State, navigation_plan: NavigationPlanMsg):
         """
@@ -96,8 +113,70 @@ class DefaultBehavioralState(BehavioralState):
                                                              relative_road_localization=relative_road_localization)
                 dynamic_objects_on_road.append(dynamic_object_on_road)
 
+        road_semantic_occupancy_grid = self.__generate_semantic_occupancy_grid(ego_state, dynamic_objects_on_road)
+
         return DefaultBehavioralState(logger=self.logger, map_api=self.map, navigation_plan=navigation_plan,
-                                      ego_state=ego_state, dynamic_objects_on_road=dynamic_objects_on_road)
+                                      ego_state=ego_state, dynamic_objects_on_road=dynamic_objects_on_road,
+                                      road_semantic_occupancy_grid=road_semantic_occupancy_grid)
+
+    @staticmethod
+    def __generate_semantic_occupancy_grid(ego_state: EgoState,
+                                           dynamic_objects_on_road: List[
+                                               DynamicObjectOnRoad]) -> RoadSemanticOccupancyGrid:
+        """
+        Occupy the occupancy grid.
+        :param ego_state:
+        :param dynamic_objects_on_road:
+        :return: road semantic occupancy grid
+        """
+
+        ego_lane = ego_state.road_localization.lane_num
+
+        # TODO - document assumptions
+        semantic_occupancy_grid: Dict[List[float], List[DynamicObjectOnRoad]] = dict()
+        for dynamic_objects_on_road in dynamic_objects_on_road:
+
+            object_lon_dist = dynamic_objects_on_road.relative_road_localization.rel_lon
+            object_dist_from_front = object_lon_dist - ego_state.size.length
+            object_relative_lane = dynamic_objects_on_road.road_localization.lane_num - ego_lane
+
+            if object_relative_lane == 1.0 or object_relative_lane == -1.0:
+                # Object is one lane on the left/right
+
+                if object_dist_from_front > SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO:
+                    # Object in front of vehicle
+                    occupancy_index = (object_relative_lane, SEMANTIC_GRID_FRONT)
+
+                elif object_lon_dist > -1*SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO:
+                    # Object vehicle aside of ego
+                    occupancy_index = (object_relative_lane, SEMANTIC_GRID_ASIDE)
+
+                else:
+                    # Object behind rear of vehicle
+                        occupancy_index = (object_relative_lane, SEMANTIC_GRID_BEHIND)
+
+                if occupancy_index not in semantic_occupancy_grid:
+                    # add to occupancy grid
+                    semantic_occupancy_grid[occupancy_index] = dynamic_objects_on_road
+                else:
+                    if occupancy_index[1] == SEMANTIC_GRID_FRONT:
+                        # take the object with least lon
+                        if semantic_occupancy_grid[
+                            occupancy_index].dynamic_objects_on_road.relative_road_localization.rel_lon < object_lon_dist
+                            # replace object the the closer one
+                            semantic_occupancy_grid[occupancy_index][0] = dynamic_objects_on_road
+                    else:
+                        # take the object with largest lon
+                        if semantic_occupancy_grid[
+                            occupancy_index].dynamic_objects_on_road.relative_road_localization.rel_lon > object_lon_dist
+                            # replace object the the closer one
+                            semantic_occupancy_grid[occupancy_index][0] = dynamic_objects_on_road
+
+
+        return semantic_occupancy_grid
+
+
+
 
 
 ######################################################################################################
