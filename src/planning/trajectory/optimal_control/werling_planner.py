@@ -1,11 +1,12 @@
 from logging import Logger
 from numbers import Number
-from typing import Union, Tuple
+from typing import Union, Tuple, Type
 
 import numpy as np
 
 from decision_making.src.exceptions import NoValidTrajectoriesFound
 from decision_making.src.global_constants import *
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.cost_function import SigmoidStatic2DBoxObstacle
@@ -13,13 +14,14 @@ from decision_making.src.planning.trajectory.optimal_control.optimal_control_uti
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.planning.utils.columns import *
 from decision_making.src.planning.utils.math import Math
+from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 from decision_making.src.planning.utils.frenet_moving_frame import FrenetMovingFrame
 
 
 class WerlingPlanner(TrajectoryPlanner):
-    def __init__(self, logger: Logger, dt=WERLING_TIME_RESOLUTION):
-        super().__init__(logger)
+    def __init__(self, logger: Logger, predictor: Type[Predictor], dt=WERLING_TIME_RESOLUTION):
+        super().__init__(logger, predictor)
         self._dt = dt
 
     @property
@@ -27,7 +29,8 @@ class WerlingPlanner(TrajectoryPlanner):
         return self._dt
 
     def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, time: float,
-             cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
+             cost_params: TrajectoryCostParams,
+             navigation_plan: NavigationPlanMsg) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
         """ see base class """
         # create road coordinate-frame
         frenet = FrenetMovingFrame(reference_route)
@@ -85,7 +88,8 @@ class WerlingPlanner(TrajectoryPlanner):
         ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
 
         # compute trajectory costs
-        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, cost_params, time_samples)
+        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, cost_params, time_samples,
+                                              self._predictor, navigation_plan)
         sorted_idxs = trajectory_costs.argsort()
 
         alternative_ids_skip_range = range(0, len(ctrajectories),
@@ -121,7 +125,8 @@ class WerlingPlanner(TrajectoryPlanner):
 
     @staticmethod
     def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: State,
-                      params: TrajectoryCostParams, time_samples: np.ndarray):
+                      params: TrajectoryCostParams, time_samples: np.ndarray, predictor: Type[Predictor],
+                      navigation_plan: NavigationPlanMsg):
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
@@ -139,7 +144,8 @@ class WerlingPlanner(TrajectoryPlanner):
         # TODO: validate that both obstacles and ego are in world coordinates. if not, change the filter cond.
         close_obstacles = \
             [SigmoidStatic2DBoxObstacle.from_object(obs, state.ego_state, params.obstacle_cost.k,
-                                                    params.obstacle_cost.offset, time_samples)
+                                                    params.obstacle_cost.offset, time_samples, predictor,
+                                                    navigation_plan)
              for obs in state.dynamic_objects
              if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
 

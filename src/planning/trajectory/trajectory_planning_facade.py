@@ -5,6 +5,7 @@ from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import *
 from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
@@ -16,7 +17,8 @@ import time
 
 class TrajectoryPlanningFacade(DmModule):
     def __init__(self, dds: DdsPubSub, logger: Logger,
-                 strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner]):
+                 strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner],
+                 navigation_plan: NavigationPlanMsg):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param dds: communication layer (DDS) instance
@@ -28,6 +30,7 @@ class TrajectoryPlanningFacade(DmModule):
 
         self._strategy_handlers = strategy_handlers
         self._validate_strategy_handlers()
+        self._navigation_plan = navigation_plan
 
     def _start_impl(self):
         pass
@@ -55,7 +58,8 @@ class TrajectoryPlanningFacade(DmModule):
 
             # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
             trajectory, cost, debug_results = self._strategy_handlers[params.strategy].plan(
-                state, params.reference_route, params.target_state, params.time, params.cost_params)
+                state, params.reference_route, params.target_state, params.time, params.cost_params,
+                self._navigation_plan)
 
 
             # TODO: should publish v_x?

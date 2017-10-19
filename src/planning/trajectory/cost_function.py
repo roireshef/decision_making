@@ -1,17 +1,20 @@
 from abc import abstractmethod
+from typing import Type
 
 import numpy as np
 
 from decision_making.src.global_constants import EXP_CLIP_TH
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.columns import R_THETA
-from decision_making.src.state.state import DynamicObject as ObjectState, EgoState
+from decision_making.src.prediction.predictor import Predictor
+from decision_making.src.state.state import DynamicObject, EgoState
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
 class BoxObstacle:
     def __init__(self, poses: np.ndarray, length: float, width: float):
         """
-        :param poses: array of the object's predicted poses, each pose is np.array([x, y, theta])
+        :param poses: array of the object's predicted poses, each pose is np.array([x, y, theta, vel])
         :param length: length of the box in its own longitudinal axis (box's x)
         :param width: length of the box in its own lateral axis (box's y)
         """
@@ -53,7 +56,7 @@ class SigmoidStatic2DBoxObstacle(BoxObstacle):
     # width is on y, length is on x
     def __init__(self, poses: np.ndarray, length: float, width: float, k: float, margin: float):
         """
-        :param poses: array of the object's predicted poses, each pose is np.array([x, y, theta])
+        :param poses: array of the object's predicted poses, each pose is np.array([x, y, theta, vel])
         :param length: length of the box in its own longitudinal axis (box's x)
         :param width: length of the box in its own lateral axis (box's y)
         :param k: sigmoid's  exponent coefficient
@@ -70,18 +73,19 @@ class SigmoidStatic2DBoxObstacle(BoxObstacle):
     def margin(self): return self._margin
 
     @classmethod
-    def from_object(cls, os: ObjectState, ego: EgoState, k: float, offset: float, time_samples: np.ndarray):
+    def from_object(cls, obj: DynamicObject, ego: EgoState, k: float, offset: float, time_samples: np.ndarray,
+                    predictor: Type[Predictor], navigation_plan: NavigationPlanMsg):
         """
         Additional constructor that takes a ObjectState from the State object and wraps it
-        :param os: ObjectState object from State object (in global coordinates)
+        :param obj: ObjectState object from State object (in global coordinates)
         :param k:
         :param offset:
         :param time: [sec] time period for prediction
         :return: new SigmoidStatic2DBoxObstacle instance
         """
         # get predictions of the dynamic object in global coordinates
-        predictions = os.predict(time_samples)
-        return cls(predictions, os.size.length, os.size.width, k, offset)
+        predictions = predictor.predict_object_trajectories(obj, time_samples, navigation_plan)
+        return cls(predictions, obj.size.length, obj.size.width, k, offset)
 
     def compute_cost(self, points: np.ndarray) -> np.ndarray:
         """

@@ -4,7 +4,6 @@ from decision_making.src.messages.navigation_plan_message import NavigationPlanM
 from decision_making.src.prediction.constants import LOOKAHEAD_MARGIN_DUE_TO_ROUTE_LINEARIZATION_APPROXIMATION
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject
-from mapping.src.model.map_api import MapAPI
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
@@ -16,7 +15,6 @@ class RoadFollowingPredictor(Predictor):
     velocity along the longitudinal axis of of the road. Meaning, there is no acceleration,
     and the speed norm is directed towards advancing in the road while preserving the lateral offset.
     """
-
 
     def predict_object_trajectories(self, dynamic_object: DynamicObject, prediction_timestamps: np.ndarray,
                                     nav_plan: NavigationPlanMsg) -> np.ndarray:

@@ -2,6 +2,8 @@ import pickle
 from logging import Logger
 
 import numpy as np
+
+from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from mapping.src.model.naive_cache_map import NaiveCacheMap
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
@@ -88,13 +90,23 @@ class DmInitialization:
     def create_trajectory_planner() -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
         dds = DdsPubSub(TRAJECTORY_PLANNER_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
+
+        # Init map
+        map_model = pickle.load(open(Paths.get_resource_absolute_path_filename(MAP_RESOURCE_FILE_NAME), "rb"))
+        map_api = NaiveCacheMap(map_model, logger)
+        init_navigation_plan = NavigationPlanMsg(NAVIGATION_PLAN)
+
+        predictor = RoadFollowingPredictor(map_api)
+
         # TODO: fill the strategy handlers
-        planner = WerlingPlanner(logger)
+        planner = WerlingPlanner(logger, predictor)
         strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
                              TrajectoryPlanningStrategy.PARKING: planner,
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
+
         trajectory_planning_module = TrajectoryPlanningFacade(dds=dds, logger=logger,
-                                                              strategy_handlers=strategy_handlers)
+                                                              strategy_handlers=strategy_handlers,
+                                                              navigation_plan=init_navigation_plan)
         return trajectory_planning_module
 
 

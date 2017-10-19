@@ -1,7 +1,8 @@
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import DynamicObject, ObjectSize
 from decision_making.src.state.state_module import StateModule
-from mapping.test.model.testable_map_fixtures import *
+import numpy as np
+from mapping.test.model.testable_map_fixtures import testable_map_api, navigation_fixture
 
 
 def test_predict_movingCarAlongRoad_precisePrediction(testable_map_api, navigation_fixture):
