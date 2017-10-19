@@ -94,7 +94,7 @@ class DmInitialization:
         # Init map
         map_model = pickle.load(open(Paths.get_resource_absolute_path_filename(MAP_RESOURCE_FILE_NAME), "rb"))
         map_api = NaiveCacheMap(map_model, logger)
-        init_navigation_plan = NavigationPlanMsg(NAVIGATION_PLAN)
+        init_navigation_plan = NAVIGATION_PLAN
 
         predictor = RoadFollowingPredictor(map_api)
 
