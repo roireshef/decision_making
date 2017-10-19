@@ -97,7 +97,8 @@ class WerlingPlanner(TrajectoryPlanner):
         debug_results = TrajectoryVisualizationMsg(frenet.curve,
                                                    ctrajectories[sorted_idxs[alternative_ids_skip_range], :, :EGO_V],
                                                    trajectory_costs[sorted_idxs[alternative_ids_skip_range]],
-                                                   state)
+                                                   state,
+                                                   time)
 
         actual_end_theta_diff = ctrajectories[sorted_idxs[0], -1, EGO_THETA] - frenet.curve[
             frenet.sx_to_s_idx(goal_sx), R_THETA]
