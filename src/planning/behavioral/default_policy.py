@@ -12,7 +12,8 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState, DynamicObjectOnRoad
 from decision_making.src.planning.behavioral.constants import POLICY_ACTION_SPACE_ADDITIVE_LATERAL_OFFSETS_IN_LANES, \
     LATERAL_SAFETY_MARGIN_FROM_OBJECT, MAX_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING, \
-    MIN_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING, BEHAVIORAL_PLANNING_HORIZON, BEHAVIORAL_PLANNING_TIME_RESOLUTION
+    MIN_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING, BEHAVIORAL_PLANNING_HORIZON, BEHAVIORAL_PLANNING_TIME_RESOLUTION, \
+    BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON
 from decision_making.src.planning.behavioral.default_policy_config import DefaultPolicyConfig
 from decision_making.src.planning.behavioral.policy import Policy, PolicyConfig
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -206,11 +207,13 @@ class DefaultPolicyFeatures:
         """
 
         # Predict object trajectory
-        prediction_timestamps = np.arange(0.0, BEHAVIORAL_PLANNING_HORIZON, BEHAVIORAL_PLANNING_TIME_RESOLUTION)
+        prediction_timestamps = np.arange(0.0, BEHAVIORAL_PLANNING_HORIZON, BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON)
         predicted_object_trajectory = predictor.predict_object_trajectories(dynamic_object=dynamic_object,
                                                                             prediction_timestamps=prediction_timestamps,
                                                                             nav_plan=nav_plan)
         object_final_state = predicted_object_trajectory[-1]
+
+        ego_initial_state = np.array([ego_state.x, ego_state.y, ego_state.yaw, ego_state.v_x])
 
         # TODO: Generate reference trajectories that will merge in front / behind object.
         # incorporate safety restrictions (e.g. ACDA, distance keeping)

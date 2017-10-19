@@ -11,6 +11,7 @@ MAX_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING = 80.0
 
 # Planning horizon in [sec]: prediction horizon in the behavioral planner
 BEHAVIORAL_PLANNING_HORIZON = 5.0
+BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON = 2.0
 
 # Planning resolution in [sec].
 # Used for prediction resolution, i.e. the resolution of states along the path to be used for acda computations:
