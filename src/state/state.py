@@ -98,21 +98,10 @@ class DynamicObject(DDSNonTypedMsg):
         self.acceleration_lon = acceleration_lon
         self.omega_yaw = omega_yaw
 
-    def predict(self, goal_timestamps):
-        # type: (np.ndarray) -> np.ndarray
-        """
-        Predict the object's locations for the future timestamps using Kalman filter of Perception module
-        :param goal_timestamps: [sec] array of goal float timestamps for prediction
-        :return: predicted object's locations in global map coordinates np.array([x, y, theta, vel])
-        """
+    @property
+    def timestamp_in_sec(self):
+        return self.timestamp * 1e-9
 
-        # TODO: use Kalman filter; temporarily create naive prediction
-        pred_x = self.x + goal_timestamps*self.v_x
-        pred_y = self.y + goal_timestamps*self.v_y
-        pred_yaw = [self.yaw]*goal_timestamps.shape[0]
-        pred_v = [np.linalg.norm([self.v_x, self.v_y])]*goal_timestamps.shape[0]
-        predictions = np.column_stack((pred_x, pred_y, pred_yaw, pred_v))
-        return predictions
 
     def get_relative_road_localization(self, ego_road_localization, ego_nav_plan, map_api, logger):
         # type: (RoadLocalization, NavigationPlanMsg, MapAPI, Logger) -> Union[RelativeRoadLocalization, None]
@@ -138,6 +127,25 @@ class DynamicObject(DDSNonTypedMsg):
             relative_lat = self.road_localization.full_lat - ego_road_localization.full_lat
             relative_yaw = self.road_localization.intra_lane_yaw - ego_road_localization.intra_lane_yaw
             return RelativeRoadLocalization(rel_lat=relative_lat, rel_lon=relative_lon, rel_yaw=relative_yaw)
+
+    @staticmethod
+    def compute_road_localization(global_pos: np.ndarray, global_yaw: float, map_api: MapAPI) -> RoadLocalization:
+        """
+        calculate road coordinates for global coordinates for ego
+        :param global_pos: 1D numpy array of ego vehicle's [x,y,z] in global coordinate-frame
+        :param global_yaw: in global coordinate-frame
+        :param map_api: MapAPI instance
+        :return: the road localization
+        """
+        closest_road_id, lon, lat, global_yaw, is_on_road = map_api.convert_global_to_road_coordinates(global_pos[0],
+                                                                                                       global_pos[1],
+                                                                                                       global_yaw)
+        lane_width = map_api.get_road(closest_road_id).lane_width
+        lane = np.math.floor(lat / lane_width)
+        intra_lane_lat = lat - lane * lane_width
+
+        return RoadLocalization(closest_road_id, int(lane), lat, intra_lane_lat, lon, global_yaw)
+
 
 
 class EgoState(DynamicObject, DDSNonTypedMsg):

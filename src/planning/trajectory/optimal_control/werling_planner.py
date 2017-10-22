@@ -88,7 +88,8 @@ class WerlingPlanner(TrajectoryPlanner):
         ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
 
         # compute trajectory costs
-        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, cost_params, time_samples,
+        global_time_samples_in_sec = time_samples + state.ego_state.timestamp_in_sec
+        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, cost_params, global_time_samples_in_sec,
                                               self._predictor, navigation_plan)
         sorted_idxs = trajectory_costs.argsort()
 
@@ -134,7 +135,7 @@ class WerlingPlanner(TrajectoryPlanner):
         :param ftrajectories: numpy tensor of trajectories in frenet-frame
         :param state: the state object (that includes obstacles, etc.)
         :param params: parameters for the cost function (from behavioral layer)
-        :param time_samples: [sec] time samples for prediction
+        :param time_samples: [sec] time samples for prediction (global, not relative)
         :return:
         """
         # TODO: add jerk cost

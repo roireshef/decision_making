@@ -21,6 +21,7 @@ class RoadFollowingPredictor(Predictor):
         """
         :param dynamic_object: in map coordinates
         :param prediction_timestamps: np array of timestamps to predict_object_trajectories for. In ascending order.
+        Global, not relative
         :param map_api: used in order to get the predicted trajectory and center lanes in map  coordinates
         :param nav_plan: predicted navigation plan of the object
         :return: predicted object's locations in global map coordinates np.array([x, y, theta, vel])
@@ -30,22 +31,31 @@ class RoadFollowingPredictor(Predictor):
         object_velocity = np.linalg.norm([dynamic_object.v_x, dynamic_object.v_y])
 
         # we assume the objects is travelling with a constant velocity, therefore the lookahead distance is
-        lookahead_distance = (prediction_timestamps[-1] - dynamic_object.timestamp) * object_velocity
+        lookahead_distance = (prediction_timestamps[-1] - dynamic_object.timestamp_in_sec) * object_velocity
         lookahead_distance += LOOKAHEAD_MARGIN_DUE_TO_ROUTE_LINEARIZATION_APPROXIMATION
 
-        lookahead_route = self._map_api.get_lookahead_points(dynamic_object.road_localization.road_id,
+        # TODO: Handle negative prediction times. For now, we take only t >= 0
+        lookahead_distance = np.maximum(lookahead_distance, 0.0)
+
+        lookahead_route, initial_yaw = self._map_api.get_lookahead_points(dynamic_object.road_localization.road_id,
                                                        dynamic_object.road_localization.road_lon,
                                                        lookahead_distance,
                                                        dynamic_object.road_localization.full_lat,
                                                        nav_plan)
 
         # resample the route to prediction_timestamps
-        predicted_distances_from_start = object_velocity * (prediction_timestamps - dynamic_object.timestamp) # assuming constant velocity
+        predicted_distances_from_start = object_velocity * (prediction_timestamps - dynamic_object.timestamp_in_sec) # assuming constant velocity
         route_xy, _ = CartesianFrame.resample_curve(curve=lookahead_route,
                                                  arbitrary_curve_sampling_points=predicted_distances_from_start)
-
         # add yaw and velocity
-        velocity_column = np.ones(shape=[route_xy.shape[0], 1]) * object_velocity
-        route_x_y_theta_v = np.c_[CartesianFrame.add_yaw(route_xy), velocity_column]
+        route_len = route_xy.shape[0]
+        velocity_column = np.ones(shape=[route_len, 1]) * object_velocity
+
+        if route_len > 1:
+            route_x_y_theta_v = np.c_[CartesianFrame.add_yaw(route_xy), velocity_column]
+            route_x_y_theta_v[:,2] += initial_yaw
+        else:
+            yaw_vector = np.ones(shape=[route_len, 1]) * initial_yaw
+            route_x_y_theta_v = np.concatenate((route_xy, yaw_vector, velocity_column), axis=1)
 
         return route_x_y_theta_v
