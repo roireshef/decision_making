@@ -6,7 +6,7 @@ from decision_making.src.prediction.predictor import Predictor
 
 from decision_making.src.prediction.columns import PREDICT_X, PREDICT_Y, PREDICT_YAW, PREDICT_VEL
 from decision_making.src.state.state import DynamicObject, EgoState, State
-from decision_making.test.planning.custom_fixtures import state, navigation_plan
+from decision_making.test.planning.custom_fixtures import state_fix, navigation_plan
 
 
 class TestPredictorMock(Predictor):
@@ -20,8 +20,8 @@ class TestPredictorMock(Predictor):
         return traj
 
 
-def test_predictEgoState_apiTest_returnsEgoStatesList(state, navigation_plan):
-    ego_state = state.ego_state
+def test_predictEgoState_apiTest_returnsEgoStatesList(state_fix, navigation_plan):
+    ego_state = state_fix.ego_state
 
     predicted_timestamps = np.array([0.0, 0.2, 0.4, 0.6, 0.8])
     test_predictor_mock = TestPredictorMock(map_api=None)
@@ -32,10 +32,10 @@ def test_predictEgoState_apiTest_returnsEgoStatesList(state, navigation_plan):
     assert np.all([isinstance(predicted_states[x], EgoState) for x in range(len(predicted_states))])
     assert len(predicted_states) == len(predicted_timestamps)
 
-def test_predictState_apiTest_returnsStatesList(state, navigation_plan):
+def test_predictState_apiTest_returnsStatesList(state_fix, navigation_plan):
     predicted_timestamps = np.array([0.0, 0.2, 0.4, 0.6, 0.8])
     test_predictor_mock = TestPredictorMock(map_api=None)
-    predicted_states = test_predictor_mock.predict_state(state,
+    predicted_states = test_predictor_mock.predict_state(state_fix,
                                           prediction_timestamps=predicted_timestamps,
                                           nav_plan=navigation_plan)
 

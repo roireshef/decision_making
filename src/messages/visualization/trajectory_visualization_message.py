@@ -5,8 +5,8 @@ from decision_making.src.state.state import State
 
 
 class TrajectoryVisualizationMsg(DDSNonTypedMsg):
-    def __init__(self, reference_route, trajectories, costs, state, plan_time):
-        # type: (np.ndarray, np.ndarray, np.ndarray, State, float) -> None
+    def __init__(self, reference_route, trajectories, costs, state, predicted_state, plan_time):
+        # type: (np.ndarray, np.ndarray, np.ndarray, State, State, float) -> None
         """
         Message that holds debug results of WerlingPlanner to be broadcasted to the visualizer
         :param reference_route: numpy array the refernce route. please see FrenetMovingFrame.curve documentation
@@ -20,6 +20,7 @@ class TrajectoryVisualizationMsg(DDSNonTypedMsg):
         self.trajectories = trajectories
         self.costs = costs
         self.state = state
+        self.predicted_state = predicted_state
         self.plan_time = plan_time
 
     @property

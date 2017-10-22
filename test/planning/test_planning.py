@@ -11,7 +11,7 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.test.dds.mock_ddspubsub import DdsPubSubMock
-from decision_making.test.planning.custom_fixtures import state_module, behavioral_facade, navigation_plan
+from decision_making.test.planning.custom_fixtures import state_module, behavioral_facade, navigation_plan, dds_pubsub
 from mapping.test.model.testable_map_fixtures import testable_map_api
 
 from rte.python.logger.AV_logger import AV_Logger

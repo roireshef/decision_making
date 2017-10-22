@@ -46,7 +46,7 @@ class Predictor:
                                                 prediction_timestamps: np.ndarray):
         # Initiate array of DynamicObject at predicted times
         predicted_object_states: List[Type[DynamicObject]] = [copy.deepcopy(dynamic_object) for x in
-                                                              range(len(prediction_timestamps))]
+                                                        range(len(prediction_timestamps))]
         # Fill with predicted state
         for t_ind, predicted_object_state in enumerate(predicted_object_states):
             predicted_pos = np.array([predictions[t_ind, PREDICT_X], predictions[t_ind, PREDICT_Y], 0.0])
@@ -120,6 +120,7 @@ class Predictor:
         for dynamic_object in dynamic_objects:
             predicted_obj_states = self._predict_object_state(dynamic_object, prediction_timestamps, nav_plan)
             for t_ind in range(len(prediction_timestamps)):
-                predicted_object_state = predicted_obj_states[t_ind]
+                predicted_states[t_ind].dynamic_objects.append(
+                    predicted_obj_states[t_ind])  # adding predicted obj_state
 
         return predicted_states

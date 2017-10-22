@@ -89,16 +89,21 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # compute trajectory costs
         global_time_samples_in_sec = time_samples + state.ego_state.timestamp_in_sec
-        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, cost_params, global_time_samples_in_sec,
-                                              self._predictor, navigation_plan)
+        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, cost_params,
+                                              global_time_samples_in_sec, self._predictor, navigation_plan)
         sorted_idxs = trajectory_costs.argsort()
 
         alternative_ids_skip_range = range(0, len(ctrajectories),
                                            max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
+
+        predicted_state_at_end_of_traj_execution = self._predictor.predict_state(state=state,
+                                      prediction_timestamps=np.array([state.ego_state.timestamp_in_sec + time]),
+                                      nav_plan=navigation_plan)[0]
         debug_results = TrajectoryVisualizationMsg(frenet.curve,
                                                    ctrajectories[sorted_idxs[alternative_ids_skip_range], :, :EGO_V],
                                                    trajectory_costs[sorted_idxs[alternative_ids_skip_range]],
                                                    state,
+                                                   predicted_state_at_end_of_traj_execution,
                                                    time)
 
         actual_end_theta_diff = ctrajectories[sorted_idxs[0], -1, EGO_THETA] - frenet.curve[

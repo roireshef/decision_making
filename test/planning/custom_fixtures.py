@@ -1,8 +1,11 @@
 import pytest
+import numpy as np
 
-from decision_making.src.global_constants import *
+from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
+    NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.messages.trajectory_parameters import *
+from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
+    TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
@@ -19,8 +22,14 @@ from rte.python.logger.AV_logger import AV_Logger
 
 ### MESSAGES ###
 
+
+
 @pytest.fixture(scope='function')
-def state():
+def navigation_plan():
+    yield NavigationPlanMsg(np.array([1, 2]))
+
+@pytest.fixture(scope='function')
+def state_fix():
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     dyn1 = DynamicObject(1,34, 0.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1,1,1), 1.0, 2.0, 2.0, 0.0, 0.0,
                          RoadLocalization(1, 1, 0.0, 0.0, 10.0, 0.0))
@@ -32,10 +41,6 @@ def state():
     road_localization = RoadLocalization(1, 0, 0, 0, 0, 0)
     ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0, road_localization)
     yield State(occupancy_state, dynamic_objects, ego_state)
-
-@pytest.fixture(scope='function')
-def navigation_plan():
-    yield NavigationPlanMsg(np.array([1, 2]))
 
 
 @pytest.fixture(scope='function')
@@ -82,6 +87,7 @@ def trajectory_visualization_msg(trajectory):
                                      trajectories=np.array([trajectory.chosen_trajectory]),
                                      costs=np.array([0]),
                                      state=state_module,
+                                     predicted_state=state,
                                      plan_time=2.0)
 
 
@@ -93,10 +99,10 @@ def dds_pubsub():
 
 
 @pytest.fixture(scope='function')
-def state_module(dds_pubsub, state):
+def state_module(dds_pubsub, state_fix):
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
-    state_mock = StateModuleMock(dds_pubsub, logger, state)
+    state_mock = StateModuleMock(dds_pubsub, logger, state_fix)
     state_mock.start()
     yield state_mock
     state_mock.stop()
