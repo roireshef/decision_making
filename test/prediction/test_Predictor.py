@@ -7,6 +7,7 @@ from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.prediction.columns import PREDICT_X, PREDICT_Y, PREDICT_YAW, PREDICT_VEL
 from decision_making.src.state.state import DynamicObject, EgoState, State
 from decision_making.test.planning.custom_fixtures import state_fix, navigation_plan
+from mapping.test.model.testable_map_fixtures import testable_map_api
 
 
 class TestPredictorMock(Predictor):
@@ -20,11 +21,11 @@ class TestPredictorMock(Predictor):
         return traj
 
 
-def test_predictEgoState_apiTest_returnsEgoStatesList(state_fix, navigation_plan):
+def test_predictEgoState_apiTest_returnsEgoStatesList(state_fix, navigation_plan, testable_map_api):
     ego_state = state_fix.ego_state
 
     predicted_timestamps = np.array([0.0, 0.2, 0.4, 0.6, 0.8])
-    test_predictor_mock = TestPredictorMock(map_api=None)
+    test_predictor_mock = TestPredictorMock(map_api=testable_map_api)
     predicted_states = test_predictor_mock._predict_ego_state(ego_state=ego_state,
                                                             prediction_timestamps=predicted_timestamps,
                                                             nav_plan=navigation_plan)
@@ -32,9 +33,9 @@ def test_predictEgoState_apiTest_returnsEgoStatesList(state_fix, navigation_plan
     assert np.all([isinstance(predicted_states[x], EgoState) for x in range(len(predicted_states))])
     assert len(predicted_states) == len(predicted_timestamps)
 
-def test_predictState_apiTest_returnsStatesList(state_fix, navigation_plan):
+def test_predictState_apiTest_returnsStatesList(state_fix, navigation_plan, testable_map_api):
     predicted_timestamps = np.array([0.0, 0.2, 0.4, 0.6, 0.8])
-    test_predictor_mock = TestPredictorMock(map_api=None)
+    test_predictor_mock = TestPredictorMock(map_api=testable_map_api)
     predicted_states = test_predictor_mock.predict_state(state_fix,
                                           prediction_timestamps=predicted_timestamps,
                                           nav_plan=navigation_plan)
