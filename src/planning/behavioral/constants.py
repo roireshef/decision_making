@@ -6,8 +6,8 @@ POLICY_ACTION_SPACE_ADDITIVE_LATERAL_OFFSETS_IN_LANES = [-2.0, -1.0, 0.0, 1.0, 2
 
 # A lower and upper thresholds on the longitudinal offset between object and ego.
 # Any object out of this scope won't be accounted in the behavioral planning process
-MIN_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING = -20.0
-MAX_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING = 80.0
+MAX_PLANNING_DISTANCE_BACKWARD = -20.0
+MAX_PLANNING_DISTANCE_FORWARD = 80.0
 
 # Planning horizon in [sec]: prediction horizon in the behavioral planner
 BEHAVIORAL_PLANNING_HORIZON = 5.0
