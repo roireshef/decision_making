@@ -34,7 +34,8 @@ class NoValidLanesFound(BehavioralPlanningException):
     pass
 
 
-def raises(*e: Exception):
+def raises(*e):
+    # type: (Exception)
     """
     A decorator that determines that a function may raise a specific exception
     """

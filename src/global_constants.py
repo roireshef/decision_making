@@ -77,9 +77,6 @@ SELF_LOCALIZATION_SUBSCRIBE_TOPIC = "StateSubscriber::SelfLocalizationReader"
 OCCUPANCY_STATE_SUBSCRIBE_TOPIC = "StateSubscriber::OccupancyStateReader"
 STATE_PUBLISH_TOPIC = "StatePublisher::StateWriter"
 
-# Maps
-MAP_RESOURCE_FILE_NAME = os.path.join('maps', 'testingGroundMap_10Sep_1_behavioral_refactoring.bin')
-
 # Navigation Planning Module
 NAVIGATION_PLAN_PUBLISH_TOPIC = "NavigationPublisher::NavigationPlanWriter"
 

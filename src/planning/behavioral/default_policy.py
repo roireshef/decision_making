@@ -1,5 +1,5 @@
 from logging import Logger
-from typing import Type, List
+from typing import Type, List, Dict, Tuple
 
 import numpy as np
 
@@ -12,32 +12,52 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState, DynamicObjectOnRoad
 from decision_making.src.planning.behavioral.constants import POLICY_ACTION_SPACE_ADDITIVE_LATERAL_OFFSETS_IN_LANES, \
     LATERAL_SAFETY_MARGIN_FROM_OBJECT, MAX_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING, \
-    MIN_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING
+    MIN_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING, BEHAVIORAL_PLANNING_HORIZON, BEHAVIORAL_PLANNING_TIME_RESOLUTION
 from decision_making.src.planning.behavioral.default_policy_config import DefaultPolicyConfig
 from decision_making.src.planning.behavioral.policy import Policy, PolicyConfig
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.acda import AcdaApi
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import EgoState, State
+from decision_making.src.state.state import EgoState, State, DynamicObject
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.model.map_api import MapAPI
-from mapping.src.transformations import geometry_utils
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
+######################################################################################################
+#################   Default Policy Behavioral State
+######################################################################################################
 
-######################################################################################################
-#################   Default Policy Beahvioral State
-######################################################################################################
+SEMANTIC_GRID_FRONT, SEMANTIC_GRID_ASIDE, SEMANTIC_GRID_BEHIND = 1.0, 0.0, -1.0
+GRID_MID = 10
+
+# The margin that we take from the front/read of the vehicle to define the front/rear partitions
+SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO = 1.0
+
+
+class RoadSemanticOccupancyGrid:
+    """
+    This class holds a semantic occupancy grid. We assume that the road is partitioned into semantic areas,
+     and the class holds an occupancy grid that associates object to these areas.
+    """
+
+    def __init__(self, road_occupancy_grid: Dict[Tuple[float], List[DynamicObjectOnRoad]]):
+        """
+        :param road_occupancy_grid: A dictionary that maps a partition to a list of dynamic objects.
+        """
+        self.road_occupancy_grid = road_occupancy_grid
+
 
 class DefaultBehavioralState(BehavioralState):
     def __init__(self, logger: Logger, map_api: MapAPI, navigation_plan: NavigationPlanMsg, ego_state: EgoState,
-                 dynamic_objects_on_road: List[DynamicObjectOnRoad]) -> None:
+                 dynamic_objects_on_road: List[DynamicObjectOnRoad],
+                 road_semantic_occupancy_grid: RoadSemanticOccupancyGrid) -> None:
         """
         Behavioral state generates and stores relevant state features that will be used for planning
         :param logger: logger
         :param map_api: map API
         :param navigation_plan: car's navigation plan
         :param ego_state: updated ego state
+        :param road_semantic_occupancy_grid:
         """
 
         self.logger = logger
@@ -61,6 +81,9 @@ class DefaultBehavioralState(BehavioralState):
 
         # Dynamic objects and their relative locations
         self.dynamic_objects_on_road = dynamic_objects_on_road
+
+        # The semantic road occupancy grid
+        self.road_semantic_occupancy_grid = road_semantic_occupancy_grid
 
     def update_behavioral_state(self, state: State, navigation_plan: NavigationPlanMsg):
         """
@@ -88,9 +111,81 @@ class DefaultBehavioralState(BehavioralState):
                                                              relative_road_localization=relative_road_localization)
                 dynamic_objects_on_road.append(dynamic_object_on_road)
 
-        return DefaultBehavioralState(logger=self.logger, map_api=self.map, navigation_plan=navigation_plan,
-                               ego_state=ego_state, dynamic_objects_on_road=dynamic_objects_on_road)
+        road_semantic_occupancy_grid = DefaultBehavioralState.generate_semantic_occupancy_grid(ego_state,
+                                                                                               dynamic_objects_on_road)
 
+        return DefaultBehavioralState(logger=self.logger, map_api=self.map, navigation_plan=navigation_plan,
+                                      ego_state=ego_state, dynamic_objects_on_road=dynamic_objects_on_road,
+                                      road_semantic_occupancy_grid=road_semantic_occupancy_grid)
+
+    @staticmethod
+    def generate_semantic_occupancy_grid(ego_state: EgoState, dynamic_objects_on_road: List[
+        DynamicObjectOnRoad]) -> RoadSemanticOccupancyGrid:
+        """
+        Occupy the occupancy grid.
+        :param ego_state:
+        :param dynamic_objects_on_road:
+        :return: road semantic occupancy grid
+        """
+
+        ego_lane = ego_state.road_localization.lane_num
+
+        # TODO - document assumptions
+        semantic_occupancy_dict: Dict[Tuple[float], List[DynamicObjectOnRoad]] = dict()
+        for dynamic_objects_on_road in dynamic_objects_on_road:
+            # TODO - make sure ego localization is compatible. Consider creating a global constant representing the dist to front/back of ego.
+            object_lon_dist = dynamic_objects_on_road.relative_road_localization.rel_lon
+            object_dist_from_front = object_lon_dist - ego_state.size.length
+            object_relative_lane = dynamic_objects_on_road.road_localization.lane_num - ego_lane
+
+            # Determine cell index in occupancy grid
+            if object_relative_lane == 0.0:
+                # Object is on same lane as ego
+                if object_dist_from_front > 0:
+                    # Object in front of vehicle
+                    occupancy_index = (object_relative_lane, SEMANTIC_GRID_FRONT)
+
+                else:
+                    # Object behind vehicle
+                    occupancy_index = (object_relative_lane, SEMANTIC_GRID_BEHIND)
+
+            elif object_relative_lane == 1.0 or object_relative_lane == -1.0:
+                # Object is one lane on the left/right
+
+                if object_dist_from_front > SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO:
+                    # Object in front of vehicle
+                    occupancy_index = (object_relative_lane, SEMANTIC_GRID_FRONT)
+
+                elif object_lon_dist > -1 * SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO:
+                    # Object vehicle aside of ego
+                    occupancy_index = (object_relative_lane, SEMANTIC_GRID_ASIDE)
+
+                else:
+                    # Object behind rear of vehicle
+                    occupancy_index = (object_relative_lane, SEMANTIC_GRID_BEHIND)
+
+            # Add object to occupancy grid
+            # TODO - keeping only a single dynamic object per cell. List is used for future dev.
+            if occupancy_index not in semantic_occupancy_dict:
+                # add to occupancy grid
+                semantic_occupancy_dict[occupancy_index] = [dynamic_objects_on_road]
+            else:
+                object_in_grid_lon_dist = semantic_occupancy_dict[occupancy_index][
+                    0].relative_road_localization.rel_lon
+
+                if occupancy_index[1] == SEMANTIC_GRID_FRONT:
+                    # take the object with least lon
+                    if object_lon_dist < object_in_grid_lon_dist:
+                        # replace object the the closer one
+                        semantic_occupancy_dict[occupancy_index][0] = dynamic_objects_on_road
+                else:
+                    # Assumption - taking the object with the largest long even in the ASIDE cells
+                    # take the object with largest lon
+                    if object_lon_dist > object_in_grid_lon_dist:
+                        # replace object the the closer one
+                        semantic_occupancy_dict[occupancy_index][0] = dynamic_objects_on_road
+
+        return RoadSemanticOccupancyGrid(semantic_occupancy_dict)
 
 
 ######################################################################################################
@@ -99,18 +194,26 @@ class DefaultBehavioralState(BehavioralState):
 
 class DefaultPolicyFeatures:
     @staticmethod
-    def compute_acda_speed(behavioral_state: DefaultBehavioralState):
-        pass
+    def generate_trajectories_towards_object(ego_state: EgoState, dynamic_object: Type[DynamicObject],
+                                             nav_plan: NavigationPlanMsg, predictor: Predictor) -> List[np.ndarray]:
+        """
+        Uses prediction to generates semantic actions that are related to a certain dynamic object on road.
+         e.g. a reference route that merges in front / behind a given vehicle
+        :param ego_state:
+        :param dynamic_object:
+        :param nav_plan:
+        :return: list of numpy arrays (Nx4) describing trajectories. each row is (x,y,yaw,v)
+        """
 
-    @staticmethod
-    def get_preferred_lane(behavioral_state: DefaultBehavioralState):
-        """
-        Navigation/traffic laws based function to determine the optimal lane for our current route. For example, default
-         should be rightmost lane, but when nearing a left turn, should return the left lane.
-        :param behavioral_state:
-        :return: Integer representing the lane index 0 is right most lane.
-        """
-        pass
+        # Predict object trajectory
+        prediction_timestamps = np.arange(0.0, BEHAVIORAL_PLANNING_HORIZON, BEHAVIORAL_PLANNING_TIME_RESOLUTION)
+        predicted_object_trajectory = predictor.predict_object_trajectories(dynamic_object=dynamic_object,
+                                                                            prediction_timestamps=prediction_timestamps,
+                                                                            nav_plan=nav_plan)
+        object_final_state = predicted_object_trajectory[-1]
+
+        # TODO: Generate reference trajectories that will merge in front / behind object.
+        # incorporate safety restrictions (e.g. ACDA, distance keeping)
 
     @staticmethod
     def get_closest_object_on_path(policy_config: DefaultPolicyConfig, behavioral_state: DefaultBehavioralState,
@@ -229,6 +332,22 @@ class DefaultPolicy(Policy):
 
         visualization_message = BehavioralVisualizationMsg(reference_route=reference_route_xy)
         return trajectory_parameters, visualization_message
+
+    def __generate_semantic_action_space(self, behavioral_state: DefaultBehavioralState) -> List[np.ndarray]:
+        """
+        Creates a list of possible actions that the agent can choose from. Actions are characterized by trajectory.
+        :param behavioral_state:
+        :return: list of numpy arrays (Nx4) describing trajectories. each row is (x,y,yaw,v)
+        """
+        for dynamic_objects_in_cell in self._behavioral_state.road_semantic_occupancy_grid:
+            if len(dynamic_objects_in_cell) > 0:
+                semantic_actions_towards_object = DefaultPolicyFeatures.generate_trajectories_towards_object(
+                    ego_state=behavioral_state.ego_state,
+                    dynamic_object=dynamic_objects_in_cell[0],
+                    nav_plan=behavioral_state.navigation_plan,
+                    predictor=self._predictor)
+
+            # TODO: filter relevant semantic actions: decide which are safe and beneficial.
 
     @raises(VehicleOutOfRoad, NoValidLanesFound)
     def __high_level_planning(self, behavioral_state: DefaultBehavioralState) -> (float, float):
@@ -509,5 +628,3 @@ class DefaultPolicy(Policy):
                 selected_option.append(reference_route_xyz)
             else:
                 relevant_options_array.append(reference_route_xyz)
-
-
