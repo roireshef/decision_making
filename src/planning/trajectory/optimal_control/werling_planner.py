@@ -66,8 +66,14 @@ class WerlingPlanner(TrajectoryPlanner):
             np.max((SV_OFFSET_MIN + np.cos(goal_theta_diff) * goal[EGO_V], cost_params.velocity_limits[0])),
             np.min((SV_OFFSET_MAX + np.cos(goal_theta_diff) * goal[EGO_V], cost_params.velocity_limits[1])),
             SV_STEPS)
-        dx_range = np.linspace(DX_OFFSET_MIN + goal_dx,
-                               DX_OFFSET_MAX + goal_dx,
+
+        # change the grid of dx such that zero will be included in it
+        dx_step = (DX_OFFSET_MAX - DX_OFFSET_MIN) / (DX_STEPS-1)
+        dx_offset = (DX_OFFSET_MIN + goal_dx) % dx_step
+        if dx_offset > 0.5*dx_step:
+            dx_offset -= dx_step
+        dx_range = np.linspace(DX_OFFSET_MIN + goal_dx - dx_offset,
+                               DX_OFFSET_MAX + goal_dx - dx_offset,
                                DX_STEPS)
         dv = np.sin(goal_theta_diff) * goal[EGO_V]
 
