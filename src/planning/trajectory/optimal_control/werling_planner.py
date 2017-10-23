@@ -17,6 +17,11 @@ from decision_making.src.state.state import State
 from decision_making.src.planning.utils.frenet_moving_frame import FrenetMovingFrame
 
 
+class TraversableWerlingTrajectory(TraversableTrajectory):
+    def __init__(self, ):
+        pass
+
+
 class WerlingPlanner(TrajectoryPlanner):
     def __init__(self, logger: Logger, dt=WERLING_TIME_RESOLUTION):
         super().__init__(logger)

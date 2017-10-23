@@ -6,8 +6,20 @@ import numpy as np
 from decision_making.src.exceptions import raises, NoValidTrajectoriesFound
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
-from decision_making.src.state.state import State
+from decision_making.src.state.state import State, EgoState
 from logging import Logger
+
+
+# TODO: Document, fill
+class TraversableTrajectory(metaclass=ABCMeta):
+    @abstractmethod
+    def traverse(self, dt: float) -> EgoState:
+        """
+
+        :param dt:
+        :return:
+        """
+        pass
 
 
 class TrajectoryPlanner(metaclass=ABCMeta):
