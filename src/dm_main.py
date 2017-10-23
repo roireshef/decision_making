@@ -78,7 +78,7 @@ class DmInitialization:
                                   RoadLocalization(0, 0, 0.0, 0.0, 0.0, 0.0))
 
         # Init policy
-        behavioral_state = DefaultBehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [])
+        behavioral_state = DefaultBehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [], None)
         policy_config = DefaultPolicyConfig()
         policy = DefaultPolicy(logger, policy_config, behavioral_state, None, map_api)
 
@@ -92,7 +92,6 @@ class DmInitialization:
         dds = DdsPubSub(TRAJECTORY_PLANNER_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
 
         # Init map
-        map_model = pickle.load(open(Paths.get_resource_absolute_path_filename(MAP_RESOURCE_FILE_NAME), "rb"))
         MapService.initialize()
         map_api = MapService.get_instance()
         init_navigation_plan = NAVIGATION_PLAN
