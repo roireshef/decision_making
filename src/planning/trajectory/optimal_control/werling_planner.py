@@ -10,7 +10,7 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryCostPar
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.cost_function import SigmoidStatic2DBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils as OC
-from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
+from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, TraversableTrajectory
 from decision_making.src.planning.utils.columns import *
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.state.state import State
@@ -44,8 +44,6 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # TODO: translate velocity (better) and acceleration of initial state
         # define constraints for the initial state
-        # fconstraints_t0 = FrenetConstraints(0, np.cos(ego_theta_diff) * ego_v_x, 0,
-        #                                     ego_in_frenet[1], np.sin(ego_theta_diff) * ego_v_x, 0)
         fconstraints_t0 = FrenetConstraints(0, np.cos(ego_theta_diff) * ego_v_x + np.sin(ego_theta_diff) * ego_v_y, 0,
                                             ego_in_frenet[1],
                                             -np.sin(ego_theta_diff) * ego_v_x + np.cos(ego_theta_diff) * ego_v_y, 0)
@@ -71,7 +69,7 @@ class WerlingPlanner(TrajectoryPlanner):
         fconstraints_tT = FrenetConstraints(sx_range, sv_range, 0, dx_range, dv, 0)
 
         # solve problem in frenet-frame
-        ftrajectories = self._solve_optimization(fconstraints_t0, fconstraints_tT, time)
+        ftrajectories, poly_coefs = self._solve_optimization(fconstraints_t0, fconstraints_tT, time)
 
         # filter resulting trajectories by velocity and acceleration
         ftrajectories_filtered = self._filter_limits(ftrajectories, cost_params)
@@ -93,13 +91,6 @@ class WerlingPlanner(TrajectoryPlanner):
                                                    ctrajectories[sorted_idxs[alternative_ids_skip_range], :, :EGO_V],
                                                    trajectory_costs[sorted_idxs[alternative_ids_skip_range]],
                                                    state)
-
-        actual_end_theta_diff = ctrajectories[sorted_idxs[0], -1, EGO_THETA] - frenet.curve[
-            frenet.sx_to_s_idx(goal_sx), R_THETA]
-
-        # self._logger.info("goal_theta_diff: {}, actual_end_theta_diff: {}, goal[EGO_THETA]: {}, actual trajectory[EGO_THETA]: {}"
-        #                   .format(goal_theta_diff, actual_end_theta_diff,
-        #                           goal[EGO_THETA], ctrajectories[sorted_idxs[0], -1, EGO_THETA]))
 
         return ctrajectories[sorted_idxs[0], :, :EGO_V], trajectory_costs[sorted_idxs[0]], debug_results
 
@@ -185,32 +176,23 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # solve for dimesion d
         constraints_d = self._cartesian_product_rows(fconst_0.get_grid_d(), fconst_t.get_grid_d())
-        poly_all_coefs_d = OC.QuinticPoly1D.solve(A_inv, constraints_d)
+        poly_d = OC.QuinticPoly1D.solve(A_inv, constraints_d)
+        solutions_d = OC.QuinticPoly1D.polyval_with_derivatives(poly_d, time_samples)
 
         # solve for dimesion s
         constraints_s = self._cartesian_product_rows(fconst_0.get_grid_s(), fconst_t.get_grid_s())
-        poly_all_coefs_s = OC.QuinticPoly1D.solve(A_inv, constraints_s)
+        poly_s = OC.QuinticPoly1D.solve(A_inv, constraints_s)
+        solutions_s = OC.QuinticPoly1D.polyval_with_derivatives(poly_s, time_samples)
 
-        # concatenate all polynomial coefficients (both dimensions, up to 2nd derivative)
-        # [6 poly_coef_d, 5 poly_dot_coef_d, 4 poly_dotodot_coef_d, ...
-        # 6 poly_coef_s, 5 poly_dot_coef_s, 4 poly_dotodot_coef_s]
-        poly_all_coefs = self._cartesian_product_rows(poly_all_coefs_s, poly_all_coefs_d)
-
-        trajectories = np.array([np.array([np.polyval(coefs[0:6], time_samples),  # sx
-                                           np.polyval(coefs[6:11], time_samples),  # sv
-                                           np.polyval(coefs[11:15], time_samples),  # sa
-                                           np.polyval(coefs[15:21], time_samples),  # dx
-                                           np.polyval(coefs[21:26], time_samples),  # dv
-                                           np.polyval(coefs[26:30], time_samples),  # da
-                                           ]).transpose() for coefs in poly_all_coefs])
-
-        return trajectories
+        return self._cartesian_product_rows(solutions_s, solutions_d), self._cartesian_product_rows(poly_s, poly_d)
 
     @staticmethod
     def _cartesian_product_rows(mat1: np.ndarray, mat2: np.ndarray):
-        return np.array([np.concatenate((mat1[idx1, :], mat2[idx2, :]))
-                         for idx1 in range(mat1.shape[0])
-                         for idx2 in range(mat2.shape[0])])
+        mat1_shape_for_tile = np.ones_like(mat1.shape)
+        mat1_shape_for_tile[0] = len(mat1)
+        return np.concatenate((np.repeat(mat1, len(mat2), axis=0), np.tile(mat2, tuple(mat1_shape_for_tile))),
+                              axis=len(mat1.shape)-1)
+
 
 
 class FrenetConstraints:
