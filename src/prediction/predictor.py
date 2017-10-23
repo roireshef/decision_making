@@ -89,13 +89,16 @@ class Predictor:
                       nav_plan: NavigationPlanMsg) -> List[State]:
         """
          Wrapper method that uses the _predict_ego_state and _predict_object_state, and creates a list containing the
-         complete predicted states. TODO - consider adding reference route so that this method will be able to project
-         the current state to the reference route, for example to a different lane.
+         complete predicted states.
         :param state: State object
         :param prediction_timestamps: np array of timestamps to predict_object_trajectories for. In ascending order.
         :param nav_plan: predicted navigation plan of the object
         :return: a list of predicted states.
         """
+
+        # TODO - consider adding reference route so that this method will be able to project the current
+        #  state to the reference route, for example to a different lane.
+
         initial_state = copy.deepcopy(state) # protecting the state input from changes
         predicted_states = [copy.deepcopy(state) for x in range(len(prediction_timestamps))] # creating copies to populate
 
