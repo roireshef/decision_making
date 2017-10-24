@@ -98,6 +98,20 @@ class DynamicObject(DDSNonTypedMsg):
         self.acceleration_lon = acceleration_lon
         self.omega_yaw = omega_yaw
 
+    @property
+    def road_longitudinal_speed(self) -> float:
+        """
+        :return: Longitudinal speed (relative to road)
+        """
+        return np.linalg.norm([self.v_x, self.v_y]) * np.cos(self.road_localization.intra_lane_yaw)
+
+    @property
+    def road_lateral_speed(self) -> float:
+        """
+        :return: Longitudinal speed (relative to road)
+        """
+        return np.linalg.norm([self.v_x, self.v_y]) * np.sin(self.road_localization.intra_lane_yaw)
+
     def predict(self, goal_timestamp, map_api):
         # type: (int, MapAPI) -> DynamicObject
         """

@@ -5,6 +5,7 @@ import numpy as np
 
 from decision_making.src import global_constants
 from decision_making.src.exceptions import VehicleOutOfRoad, NoValidLanesFound, raises
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
@@ -18,6 +19,7 @@ from decision_making.src.planning.behavioral.default_policy_config import Defaul
 from decision_making.src.planning.behavioral.policy import Policy, PolicyConfig
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.acda import AcdaApi
+from decision_making.src.planning.utils.acda_constants import TIME_GAP
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import EgoState, State, DynamicObject
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
@@ -46,7 +48,6 @@ class RoadSemanticOccupancyGrid:
         :param road_occupancy_grid: A dictionary that maps a partition to a list of dynamic objects.
         """
         self.road_occupancy_grid = road_occupancy_grid
-
 
 
 class SemanticActionGrid:
@@ -210,12 +211,18 @@ class DefaultBehavioralState(BehavioralState):
 
 class DefaultPolicyFeatures:
     @staticmethod
-    def generate_reference_trajectories_towards_object(ego_state: EgoState, dynamic_object: Type[DynamicObject],
-                                                       nav_plan: NavigationPlanMsg, predictor: Predictor) -> List[
+    def generate_reference_trajectories_towards_object(ego_state: EgoState, dynamic_object: DynamicObjectOnRoad,
+                                                       desired_speed: float, map_api: MapAPI,
+                                                       nav_plan: NavigationPlanMsg,
+                                                       predictor: Predictor, logger: Logger) -> List[
         np.ndarray]:
         """
         Uses prediction to generates semantic actions that are related to a certain dynamic object on road.
          e.g. a reference route that merges in front / behind a given vehicle
+        :param desired_speed:
+        :param logger:
+        :param predictor:
+        :param map_api:
         :param ego_state:
         :param dynamic_object:
         :param nav_plan:
@@ -227,15 +234,33 @@ class DefaultPolicyFeatures:
         predicted_object_trajectory = predictor.predict_object_trajectories(dynamic_object=dynamic_object,
                                                                             prediction_timestamps=prediction_timestamps,
                                                                             nav_plan=nav_plan)
-        object_final_state = predicted_object_trajectory[-1]
 
-        ego_initial_state = np.array([ego_state.x, ego_state.y, ego_state.yaw, ego_state.v_x])
+        # Get the relative position to ego at the objects' final state
+        object_final_state = predictor.convert_predictions_to_dynamic_objects(dynamic_object=dynamic_object,
+                                                                              predictions=predicted_object_trajectory[
+                                                                                  -1], prediction_timestamps=
+                                                                              prediction_timestamps[-1])[0]
+        object_final_state_relative_road_localization = object_final_state.get_relative_road_localization(
+            ego_road_localization=ego_state.road_localization, ego_nav_plan=nav_plan, map_api=map_api, logger=logger)
 
-        # TODO: Generate reference trajectories that will merge in front / behind object.
-        # incorporate safety restrictions (e.g. ACDA, distance keeping)
+        lat_dist = object_final_state_relative_road_localization.rel_lat
+        lon_dist = object_final_state_relative_road_localization.rel_lon
+
+        target_speed = np.min([desired_speed, object_final_state.road_longitudinal_speed])
+        target_lon = lon_dist - target_speed * TIME_GAP
+
+        # TODO: generate a reference route that will achieve target speed / target lon with some trade-off.
+        # Divide into cases, depending on the desired acceleration induced by condition
+
+        # TODO: add ACDA and safety checks
+        # TODO: we might need to add the predicted states as input, so we could evaluate the ACDA of this specific trajectory using the predicted states
+        #safe_distance = AcdaApi.calc_forward_sight_distance(static_objects=[dynamic_object], ego_state=ego_state)
+
+        # Generate reference trajectory towards the rear of the objects final state
 
     @staticmethod
     def generate_reference_trajectory_towards_location(ego_state: EgoState, target_road_offset: np.ndarray,
+                                                       desired_speed: float, map_api: MapAPI,
                                                        nav_plan: NavigationPlanMsg,
                                                        predictor: Predictor) -> np.ndarray:
         """
@@ -293,7 +318,7 @@ class DefaultPolicyFeatures:
         return closest_blocking_object_per_option
 
 
-######################################################################################################
+#####################################################################################################
 #################   Default Policy
 ######################################################################################################
 
@@ -342,8 +367,6 @@ class DefaultPolicy(Policy):
         # Calculate safe speed according to ACDA
         acda_safe_speed = AcdaApi.compute_acda(objects_on_road=self._behavioral_state.dynamic_objects_on_road,
                                                ego_state=self._behavioral_state.ego_state,
-                                               navigation_plan=self._behavioral_state.navigation_plan,
-                                               map_api=self._behavioral_state.map,
                                                lookahead_path=reference_route_xy)
         safe_speed = min(acda_safe_speed, global_constants.BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT)
 
@@ -374,38 +397,52 @@ class DefaultPolicy(Policy):
          all options are organized in SemanticActionGrid
         """
 
+        # Initialize an empty semantic action space structure
         semantic_actions_grid: Dict[Tuple(float), List(np.ndarray)] = dict()
 
         for grid_cell_key, dynamic_objects_in_cell in self._behavioral_state.road_semantic_occupancy_grid.road_occupancy_grid:
+
+            # Soft traffic rules
+            # TODO: define max speed induced by neighboring cars on the left to prevent bypassing from the right
+            max_speed_induced_by_left_lanes = np.inf
+
+            # Define desired speed
+            desired_speed_in_cell = np.min(
+                [BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, max_speed_induced_by_left_lanes])
+
             if len(dynamic_objects_in_cell) > 0:
                 # Create reference trajectories towards the front / back of objects at each cell
                 semantic_actions_towards_object = DefaultPolicyFeatures.generate_reference_trajectories_towards_object(
                     ego_state=behavioral_state.ego_state,
-                    dynamic_object=dynamic_objects_in_cell[0],
-                    nav_plan=behavioral_state.navigation_plan,
-                    predictor=self._predictor)
+                    dynamic_object=dynamic_objects_in_cell[0], desired_speed=desired_speed_in_cell,
+                    map_api=self._map_api, nav_plan=behavioral_state.navigation_plan,
+                    predictor=self._predictor, logger=self.logger)
+
+                # Add actions to grid
                 semantic_actions_grid[grid_cell_key] = semantic_actions_towards_object
             else:
-                # Create actions towards forward road cells in grid even if not object occupies them.
+                # Create actions towards empty road grid cells
                 if grid_cell_key[1] == 1.0:
+                    # handle forward cells
                     grid_cell_relative_lane = int(grid_cell_key[0])
                     grid_cell_lane = behavioral_state.ego_state.road_localization.lane_num + grid_cell_relative_lane
                     grid_cell_lane_lat = behavioral_state.map.get_center_lanes_latitudes[grid_cell_lane]
 
-                    semantic_actions_grid[grid_cell_key] = list()
                     target_road_offset = np.array(
                         [grid_cell_lane_lat, MAX_PLANNING_DISTANCE_FORWARD])  # lat, lon offsets
                     semantic_action_towards_location = DefaultPolicyFeatures.generate_reference_trajectory_towards_location(
                         ego_state=behavioral_state.ego_state, target_road_offset=target_road_offset,
+                        desired_speed=desired_speed_in_cell, map_api=self._map_api,
                         nav_plan=behavioral_state.navigation_plan, predictor=self._predictor)
 
-                    semantic_actions_grid[grid_cell_key].append(semantic_action_towards_location)
-
+                    # Add action to grid
+                    semantic_actions_grid[grid_cell_key] = [semantic_action_towards_location]
 
         # TODO: filter relevant semantic actions: decide which are safe and beneficial.
+
+        # Return the semantic action grid
         semantic_actions = SemanticActionGrid(semantic_actions_grid=semantic_actions_grid)
         return semantic_actions
-
 
     @raises(VehicleOutOfRoad, NoValidLanesFound)
     def __high_level_planning(self, behavioral_state: DefaultBehavioralState) -> (float, float):

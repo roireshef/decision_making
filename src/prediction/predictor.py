@@ -13,9 +13,9 @@ class Predictor:
     """
     Base class for predictors of dynamic objects
     """
+
     def __init__(self, map_api: MapAPI):
         self._map_api = map_api
-
 
     def predict_object_trajectories(self, dynamic_object: Type[DynamicObject], prediction_timestamps: np.ndarray,
                                     nav_plan: NavigationPlanMsg) -> np.ndarray:
@@ -30,7 +30,7 @@ class Predictor:
         pass
 
     def predict_ego_trajectories(self, ego_state: EgoState, prediction_timestamps: np.ndarray,
-                                    nav_plan: NavigationPlanMsg) -> np.ndarray:
+                                 nav_plan: NavigationPlanMsg) -> np.ndarray:
         """
         Method to compute future locations, yaw, and velocities for ego vehicle. Returns the np.array used by the
          trajectory planner.
@@ -42,7 +42,8 @@ class Predictor:
         return self.predict_object_trajectories(ego_state, prediction_timestamps, nav_plan)
 
     @staticmethod
-    def _convert_predictions_to_dynamic_objects(dynamic_object, predictions, prediction_timestamps):
+    def convert_predictions_to_dynamic_objects(dynamic_object: Type[DynamicObject], predictions: np.ndarray,
+                                               prediction_timestamps: np.ndarray) -> List[DynamicObject]:
         # Initiate array of DynamicObject at predicted times
         predicted_object_states = [copy.deepcopy(dynamic_object) for x in range(len(prediction_timestamps))]
         # Fill with predicted state
@@ -69,7 +70,7 @@ class Predictor:
         predict_object_trajectories. IMPORTANT - returned list must be in the same order as prediction_timestamps.
         """
         predictions = self.predict_object_trajectories(dynamic_object, prediction_timestamps, nav_plan)
-        return Predictor._convert_predictions_to_dynamic_objects(dynamic_object, predictions, prediction_timestamps)
+        return Predictor.convert_predictions_to_dynamic_objects(dynamic_object, predictions, prediction_timestamps)
 
     def _predict_ego_state(self, ego_state: EgoState, prediction_timestamps: np.ndarray,
                            nav_plan: NavigationPlanMsg) -> List[EgoState]:
@@ -83,7 +84,7 @@ class Predictor:
         """
         # TODO: update EgoState attributes that are copied and are not part of DynamicObject (as steering_angle)
         predictions = self.predict_ego_trajectories(ego_state, prediction_timestamps, nav_plan)
-        return Predictor._convert_predictions_to_dynamic_objects(ego_state, predictions, prediction_timestamps)
+        return Predictor.convert_predictions_to_dynamic_objects(ego_state, predictions, prediction_timestamps)
 
     def predict_state(self, state: State, prediction_timestamps: np.ndarray,
                       nav_plan: NavigationPlanMsg) -> List[State]:
@@ -99,20 +100,21 @@ class Predictor:
         # TODO - consider adding reference route so that this method will be able to project the current
         #  state to the reference route, for example to a different lane.
 
-        initial_state = copy.deepcopy(state) # protecting the state input from changes
-        predicted_states = [copy.deepcopy(state) for x in range(len(prediction_timestamps))] # creating copies to populate
+        initial_state = copy.deepcopy(state)  # protecting the state input from changes
+        predicted_states = [copy.deepcopy(state) for x in
+                            range(len(prediction_timestamps))]  # creating copies to populate
 
         ego_state = initial_state.ego_state
         dynamic_objects = initial_state.dynamic_objects
         predicted_ego_states = self._predict_ego_state(ego_state, prediction_timestamps, nav_plan)
         for t_ind in range(len(prediction_timestamps)):
-            predicted_states[t_ind].ego_state = predicted_ego_states[t_ind] # updating ego_state
-            predicted_states[t_ind].dynamic_objects.clear() # clearing dynamic object lists of copied states
+            predicted_states[t_ind].ego_state = predicted_ego_states[t_ind]  # updating ego_state
+            predicted_states[t_ind].dynamic_objects.clear()  # clearing dynamic object lists of copied states
 
         for dynamic_object in dynamic_objects:
             predicted_obj_states = self._predict_object_state(dynamic_object, prediction_timestamps, nav_plan)
             for t_ind in range(len(prediction_timestamps)):
-                predicted_states[t_ind].dynamic_objects.append(predicted_obj_states[t_ind]) # adding predicted obj_state
+                predicted_states[t_ind].dynamic_objects.append(
+                    predicted_obj_states[t_ind])  # adding predicted obj_state
 
         return predicted_states
-
