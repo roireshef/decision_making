@@ -10,16 +10,24 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryCostPar
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.cost_function import SigmoidStatic2DBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils as OC
-from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, TraversableTrajectory
+from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.utils.columns import *
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.state.state import State
 from decision_making.src.planning.utils.frenet_moving_frame import FrenetMovingFrame
 
 
-class TraversableWerlingTrajectory(TraversableTrajectory):
-    def __init__(self, ):
-        pass
+class SamplableWerlingTrajectory(SamplableTrajectory):
+    def __init__(self, frenet_frame: FrenetMovingFrame, poly_coefs: np.ndarray):
+        self.frenet_frame = frenet_frame
+        self.poly_s_coefs = poly_coefs[:6]
+        self.poly_d_coefs = poly_coefs[6:]
+
+    def sample(self, time_points: np.ndarray) -> np.ndarray:
+        poly_s_d = np.array([self.poly_s_coefs, self.poly_d_coefs])
+        fpoints = OC.QuinticPoly1D.polyval_with_derivatives(poly_s_d, time_points)[:, :, 0]  # extract dx, sx only
+        cpoints = np.apply_along_axis(func1d=self.frenet_frame.fpoint_to_cpoint, axis=1, arr=fpoints.transpose())
+        return cpoints
 
 
 class WerlingPlanner(TrajectoryPlanner):
@@ -32,7 +40,8 @@ class WerlingPlanner(TrajectoryPlanner):
         return self._dt
 
     def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, time: float,
-             cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
+             cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, SamplableWerlingTrajectory,
+                                                         TrajectoryVisualizationMsg]:
         """ see base class """
         # create road coordinate-frame
         frenet = FrenetMovingFrame(reference_route)
@@ -77,7 +86,7 @@ class WerlingPlanner(TrajectoryPlanner):
         ftrajectories, poly_coefs = self._solve_optimization(fconstraints_t0, fconstraints_tT, time)
 
         # filter resulting trajectories by velocity and acceleration
-        ftrajectories_filtered = self._filter_limits(ftrajectories, cost_params)
+        ftrajectories_filtered, filtered_indices = self._filter_limits(ftrajectories, cost_params)
 
         if len(ftrajectories_filtered) == 0:
             raise NoValidTrajectoriesFound("No valid trajectories found. time: {}, goal: {}, state: {}"
@@ -97,10 +106,13 @@ class WerlingPlanner(TrajectoryPlanner):
                                                    trajectory_costs[sorted_idxs[alternative_ids_skip_range]],
                                                    state)
 
-        return ctrajectories[sorted_idxs[0], :, :EGO_V], trajectory_costs[sorted_idxs[0]], debug_results
+        return ctrajectories[sorted_idxs[0], :, :(EGO_V+1)], \
+               trajectory_costs[sorted_idxs[0]], \
+               SamplableWerlingTrajectory(frenet, poly_coefs[filtered_indices[sorted_idxs[0]]]), \
+               debug_results
 
     @staticmethod
-    def _filter_limits(ftrajectories: np.ndarray, cost_params: TrajectoryCostParams) -> np.ndarray:
+    def _filter_limits(ftrajectories: np.ndarray, cost_params: TrajectoryCostParams) -> (np.ndarray, np.ndarray):
         """
         filters trajectories in their frenet-frame representation according to velocity and acceleration limits
         :param ftrajectories: trajectories in frenet-frame. A numpy array of shape [t, p, 6] with t trajectories,
@@ -112,7 +124,7 @@ class WerlingPlanner(TrajectoryPlanner):
                           (np.less_equal(ftrajectories[:, :, F_SV], cost_params.velocity_limits[1])) &
                           (np.greater_equal(ftrajectories[:, :, F_SA], cost_params.acceleration_limits[0])) &
                           (np.less_equal(ftrajectories[:, :, F_SA], cost_params.acceleration_limits[1])), axis=1)
-        return ftrajectories[conforms]
+        return ftrajectories[conforms], np.argwhere(conforms).flatten()
 
     @staticmethod
     def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: State,
@@ -166,7 +178,8 @@ class WerlingPlanner(TrajectoryPlanner):
         :param fconst_0: a set of constraints over the initial state
         :param fconst_t: a set of constraints over the terminal state
         :param T: trajectory duration (sec.)
-        :return: a matrix of rows of the form [sx, sv, sa, dx, dv, da]
+        :return: a tuple: (points-matrix of rows in the form [sx, sv, sa, dx, dv, da],
+        poly-coefficients-matrix of rows in the form [c0_s, c1_s, ... c5_s, c0_d, ..., c5_d])
         """
         A = np.array([[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],  # dx0/sx0
                       [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],  # dv0/sv0
