@@ -33,6 +33,11 @@ EXP_CLIP_TH = 50.0
 # Number of (best) trajectories to publish to visualization
 NUM_ALTERNATIVE_TRAJECTORIES = 10
 
+# [m] "Negligible distance" threshold between the desired location and the actual location between two TP planning
+# iterations. If the distance is lower than this threshold, the TP plans the trajectory as is the ego vehicle is
+# currently in the desired location and not in its actual location.
+NEGLIGIBLE_LOCATION_DIFF = 0.3
+
 # Werling Planner #
 
 # [sec] Time-Resolution for planning

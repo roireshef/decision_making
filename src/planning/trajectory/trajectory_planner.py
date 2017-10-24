@@ -44,6 +44,6 @@ class TrajectoryPlanner(metaclass=ABCMeta):
         global-coordinate-frame (see EGO_* in planning.utils.columns.py for the fields)
         :param cost_params: Data object with parameters that specify how to build the planning's cost function
         :return: a tuple of: (numpy array: trajectory - each row is [x, y, yaw, velocity], trajectory cost,
-        samplable represantation of the chosen trajectory, debug results)
+        samplable represantation of the chosen trajecdebug results)
         """
         pass
