@@ -58,8 +58,7 @@ class TrajectoryPlanningFacade(DmModule):
 
             # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
             trajectory, cost, debug_results = self._strategy_handlers[params.strategy].plan(
-                state, params.reference_route, params.target_state, params.time, params.cost_params,
-                self._navigation_plan)
+                state, params.reference_route, params.target_state, params.time, params.cost_params)
 
 
             # TODO: should publish v_x?

@@ -29,8 +29,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return self._dt
 
     def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, time: float,
-             cost_params: TrajectoryCostParams,
-             navigation_plan: NavigationPlanMsg) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
+             cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
         """ see base class """
         # create road coordinate-frame
         frenet = FrenetMovingFrame(reference_route)
@@ -91,15 +90,14 @@ class WerlingPlanner(TrajectoryPlanner):
         # compute trajectory costs
         global_time_samples_in_sec = time_samples + state.ego_state.timestamp_in_sec
         trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, cost_params,
-                                              global_time_samples_in_sec, self._predictor, navigation_plan)
+                                              global_time_samples_in_sec, self._predictor)
         sorted_idxs = trajectory_costs.argsort()
 
         alternative_ids_skip_range = range(0, len(ctrajectories),
                                            max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
 
         predicted_state_at_end_of_traj_execution = self._predictor.predict_state(state=state,
-                                      prediction_timestamps=np.array([state.ego_state.timestamp_in_sec + time]),
-                                      nav_plan=navigation_plan)[0]
+                                      prediction_timestamps=np.array([state.ego_state.timestamp_in_sec + time]))[0]
         debug_results = TrajectoryVisualizationMsg(frenet.curve,
                                                    ctrajectories[sorted_idxs[alternative_ids_skip_range], :, :EGO_V],
                                                    trajectory_costs[sorted_idxs[alternative_ids_skip_range]],
@@ -133,8 +131,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
     @staticmethod
     def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: State,
-                      params: TrajectoryCostParams, time_samples: np.ndarray, predictor: Type[Predictor],
-                      navigation_plan: NavigationPlanMsg):
+                      params: TrajectoryCostParams, time_samples: np.ndarray, predictor: Type[Predictor]):
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
@@ -152,8 +149,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # TODO: validate that both obstacles and ego are in world coordinates. if not, change the filter cond.
         close_obstacles = \
             [SigmoidStatic2DBoxObstacle.from_object(obs, state.ego_state, params.obstacle_cost.k,
-                                                    params.obstacle_cost.offset, time_samples, predictor,
-                                                    navigation_plan)
+                                                    params.obstacle_cost.offset, time_samples, predictor)
              for obs in state.dynamic_objects
              if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
 

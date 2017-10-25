@@ -74,7 +74,7 @@ class SigmoidStatic2DBoxObstacle(BoxObstacle):
 
     @classmethod
     def from_object(cls, obj: DynamicObject, ego: EgoState, k: float, offset: float, time_samples: np.ndarray,
-                    predictor: Type[Predictor], navigation_plan: NavigationPlanMsg):
+                    predictor: Type[Predictor]):
         """
         Additional constructor that takes a ObjectState from the State object and wraps it
         :param obj: ObjectState object from State object (in global coordinates)
@@ -84,7 +84,7 @@ class SigmoidStatic2DBoxObstacle(BoxObstacle):
         :return: new SigmoidStatic2DBoxObstacle instance
         """
         # get predictions of the dynamic object in global coordinates
-        predictions = predictor.predict_object_trajectories(obj, time_samples, navigation_plan)
+        predictions = predictor.predict_object_trajectories(obj, time_samples)
         return cls(predictions, obj.size.length, obj.size.width, k, offset)
 
     def compute_cost(self, points: np.ndarray) -> np.ndarray:

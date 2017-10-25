@@ -17,30 +17,27 @@ class Predictor:
     def __init__(self, map_api: MapAPI):
         self._map_api = map_api
 
-    def predict_object_trajectories(self, dynamic_object: Type[DynamicObject], prediction_timestamps: np.ndarray,
-                                    nav_plan: NavigationPlanMsg) -> np.ndarray:
+    def predict_object_trajectories(self, dynamic_object: Type[DynamicObject],
+                                    prediction_timestamps: np.ndarray) -> np.ndarray:
         """
         Method to compute future locations, yaw, and velocities for dynamic objects. Returns the np.array used by the
          trajectory planner.
         :param dynamic_object: in map coordinates
         :param prediction_timestamps: np array of timestamps to predict_object_trajectories for. In ascending order.
         Global, not relative
-        :param nav_plan: predicted navigation plan of the object
         :return: predicted object's locations in global map coordinates np.array([x, y, theta, vel])
         """
         pass
 
-    def predict_ego_trajectories(self, ego_state: EgoState, prediction_timestamps: np.ndarray,
-                                 nav_plan: NavigationPlanMsg) -> np.ndarray:
+    def predict_ego_trajectories(self, ego_state: EgoState, prediction_timestamps: np.ndarray) -> np.ndarray:
         """
         Method to compute future locations, yaw, and velocities for ego vehicle. Returns the np.array used by the
          trajectory planner.
         :param ego_state: in map coordinates
         :param prediction_timestamps: np array of timestamps to predict_object_trajectories for. In ascending order.
-        :param nav_plan: predicted navigation plan of ego
         :return: ego's predicted locations in global map coordinates np.array([x, y, theta, vel])
         """
-        return self.predict_object_trajectories(ego_state, prediction_timestamps, nav_plan)
+        return self.predict_object_trajectories(ego_state, prediction_timestamps)
 
     def _convert_predictions_to_dynamic_objects(self, dynamic_object: DynamicObject, predictions: np.ndarray,
                                                 prediction_timestamps: np.ndarray):
@@ -64,42 +61,37 @@ class Predictor:
 
         return predicted_object_states
 
-    def _predict_object_state(self, dynamic_object: Type[DynamicObject], prediction_timestamps: np.ndarray,
-                              nav_plan: NavigationPlanMsg) -> List[Type[DynamicObject]]:
+    def _predict_object_state(self, dynamic_object: Type[DynamicObject],
+                              prediction_timestamps: np.ndarray) -> List[Type[DynamicObject]]:
         """
         Wrapper method that uses the predict_object_trajectories method, and creates the dynamic object list.
         :param dynamic_object: in map coordinates
         :param prediction_timestamps: np array of timestamps to predict_object_trajectories for. In ascending order.
-        :param nav_plan: predicted navigation plan of the object
         :return: List of predicted states of the dynamic object where pos/yaw/vel values are predicted using
         predict_object_trajectories. IMPORTANT - returned list must be in the same order as prediction_timestamps.
         """
-        predictions = self.predict_object_trajectories(dynamic_object, prediction_timestamps, nav_plan)
+        predictions = self.predict_object_trajectories(dynamic_object, prediction_timestamps)
         return self._convert_predictions_to_dynamic_objects(dynamic_object, predictions, prediction_timestamps)
 
-    def _predict_ego_state(self, ego_state: EgoState, prediction_timestamps: np.ndarray,
-                           nav_plan: NavigationPlanMsg) -> List[EgoState]:
+    def _predict_ego_state(self, ego_state: EgoState, prediction_timestamps: np.ndarray) -> List[EgoState]:
         """
         Wrapper method that uses the predict_ego_trajectories method, and creates the list of predicted ego states.
         :param ego_state: initial ego state
         :param prediction_timestamps: np array of timestamps to predict_object_trajectories for. In ascending order.
-        :param nav_plan: predicted navigation plan of the object
         :return: List of predicted states of ego where pos/yaw/vel values are predicted using
         predict_ego_trajectories. IMPORTANT - returned list must be in the same order as prediction_timestamps.
         """
         # TODO: update EgoState attributes that are copied and are not part of DynamicObject (as steering_angle)
-        predictions = self.predict_ego_trajectories(ego_state, prediction_timestamps, nav_plan)
+        predictions = self.predict_ego_trajectories(ego_state, prediction_timestamps)
         return self._convert_predictions_to_dynamic_objects(ego_state, predictions, prediction_timestamps)
 
-    def predict_state(self, state: State, prediction_timestamps: np.ndarray,
-                      nav_plan: NavigationPlanMsg) -> List[State]:
+    def predict_state(self, state: State, prediction_timestamps: np.ndarray) -> List[State]:
         """
          Wrapper method that uses the _predict_ego_state and _predict_object_state, and creates a list containing the
          complete predicted states.
         :param state: State object
         :param prediction_timestamps: np array of timestamps to predict_object_trajectories for. In ascending order.
         Global, not relative
-        :param nav_plan: predicted navigation plan of the object
         :return: a list of predicted states.
         """
 
@@ -112,13 +104,13 @@ class Predictor:
 
         ego_state = initial_state.ego_state
         dynamic_objects = initial_state.dynamic_objects
-        predicted_ego_states = self._predict_ego_state(ego_state, prediction_timestamps, nav_plan)
+        predicted_ego_states = self._predict_ego_state(ego_state, prediction_timestamps)
         for t_ind in range(len(prediction_timestamps)):
             predicted_states[t_ind].ego_state = predicted_ego_states[t_ind]  # updating ego_state
             predicted_states[t_ind].dynamic_objects.clear()  # clearing dynamic object lists of copied states
 
         for dynamic_object in dynamic_objects:
-            predicted_obj_states = self._predict_object_state(dynamic_object, prediction_timestamps, nav_plan)
+            predicted_obj_states = self._predict_object_state(dynamic_object, prediction_timestamps)
             for t_ind in range(len(prediction_timestamps)):
                 predicted_states[t_ind].dynamic_objects.append(
                     predicted_obj_states[t_ind])  # adding predicted obj_state

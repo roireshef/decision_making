@@ -2,12 +2,11 @@ from decision_making.src.prediction.road_following_predictor import RoadFollowin
 from decision_making.src.state.state import DynamicObject, ObjectSize, EgoState, State, OccupancyState
 from decision_making.src.state.state_module import StateModule
 import numpy as np
-from mapping.test.model.testable_map_fixtures import testable_map_api, navigation_fixture
+from mapping.test.model.testable_map_fixtures import testable_map_api
 
 
-def test_predictObjectTrajectories_precisePrediction(testable_map_api, navigation_fixture):
+def test_predictObjectTrajectories_precisePrediction(testable_map_api):
     map_api = testable_map_api
-    nav_plan = navigation_fixture
 
     predictor = RoadFollowingPredictor(map_api=map_api)
     size = ObjectSize(1, 1, 1)
@@ -17,14 +16,13 @@ def test_predictObjectTrajectories_precisePrediction(testable_map_api, navigatio
                             v_x = 10, v_y = 0,
                             acceleration_lon=0, omega_yaw=0, road_localization=road_localization)
     pred_timestamps = np.arange(5.0, 12.0, 0.1)
-    traj = predictor.predict_object_trajectories(dyn_obj, pred_timestamps, nav_plan)
+    traj = predictor.predict_object_trajectories(dyn_obj, pred_timestamps)
     assert np.isclose(traj[0][0],540.) and np.isclose(traj[0][1], 0.) and \
            np.isclose(traj[-1][0], 600.) and np.isclose(traj[-1][1], 9.)
 
 
-def test_predictState_precisePrediction(testable_map_api, navigation_fixture):
+def test_predictState_precisePrediction(testable_map_api):
     map_api = testable_map_api
-    nav_plan = navigation_fixture
 
     predictor = RoadFollowingPredictor(map_api=map_api)
     size = ObjectSize(1, 1, 1)
@@ -46,7 +44,7 @@ def test_predictState_precisePrediction(testable_map_api, navigation_fixture):
     state = State(occupancy_state=occupancy_state, dynamic_objects=[dyn_obj], ego_state=ego)
 
     pred_timestamps = np.arange(5.0, 12.0, 0.1)
-    predicted_states = predictor.predict_state(state=state, prediction_timestamps=pred_timestamps, nav_plan=nav_plan)
+    predicted_states = predictor.predict_state(state=state, prediction_timestamps=pred_timestamps)
 
     assert np.isclose(predicted_states[0].dynamic_objects[0].x, 540.) and \
            np.isclose(predicted_states[0].dynamic_objects[0].y, 0.) and \

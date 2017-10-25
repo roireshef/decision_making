@@ -20,8 +20,7 @@ class TrajectoryPlanner(metaclass=ABCMeta):
     @abstractmethod
     @raises(NoValidTrajectoriesFound)
     def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, time: float,
-             cost_params: TrajectoryCostParams,
-             navigation_plan: NavigationPlanMsg) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
+             cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
         """
         Plans a trajectory according to the specifications in the arguments
         :param time: the time-window to plan for (time to get from initial state to goal state)

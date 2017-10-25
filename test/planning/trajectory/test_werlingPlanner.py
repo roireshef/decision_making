@@ -62,7 +62,7 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api, navigation_fix
 
     planner = WerlingPlanner(None, predictor)
     _, _, debug = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
-                               time=T, cost_params=cost_params, navigation_plan=nav_plan)
+                               time=T, cost_params=cost_params)
 
     assert True
 
@@ -74,7 +74,7 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api, navigation_fix
     time_samples = np.arange(0.0, T, 0.1)
     plottable_obs = [PlottableSigmoidStatic2DBoxObstacle.from_object(o, ego, cost_params.obstacle_cost.k,
                                                                      cost_params.obstacle_cost.offset, time_samples,
-                                                                     predictor, nav_plan)
+                                                                     predictor)
                      for o in state.dynamic_objects]
     WerlingVisualizer.plot_obstacles(p1, plottable_obs)
     WerlingVisualizer.plot_obstacles(p2, plottable_obs)
