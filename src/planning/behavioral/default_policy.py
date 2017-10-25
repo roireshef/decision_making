@@ -46,6 +46,12 @@ class RoadSemanticOccupancyGrid:
     def __init__(self, road_occupancy_grid: Dict[Tuple[float], List[DynamicObjectOnRoad]]):
         """
         :param road_occupancy_grid: A dictionary that maps a partition to a list of dynamic objects.
+        Dictionary of Tuple( relative_lane, longitudinal_index ) -> List [ DynamicObjectOnRoad ]
+         - relative_lane is a float that describes the lane number, relative to ego. For example: {-1.0, 0.0, 1.0}
+         - longitudinal_index is a float that describes the longitudinal partition of the grid.
+            For example, the grid can be partitioned in the following way:
+            {-1.0: behind ego, 0.0: aside, 1.0: infront of ego}.
+
         """
         self.road_occupancy_grid = road_occupancy_grid
 
@@ -55,6 +61,9 @@ class SemanticActionGrid:
     This class holds semantic actions (reference routes) that are associated to the road occupancy grid.
     The road is partitioned into semantic areas, each holds feasible actions that the ego vehicle can
     execute towards these cells.
+    Dictionary of Tuple( relative_lane, longitudinal_index ) -> List [ trajectories ]
+     - relative_lane, longitudinal_index as defined in RoadSemanticOccupancyGrid class
+     - trajectory is a numpy array of floats, of size Nx4. Each row is (x, y, yaw, v)
     """
 
     def __init__(self, semantic_actions_grid: Dict[Tuple[float], List[np.ndarray]]):
