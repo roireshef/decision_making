@@ -1,12 +1,11 @@
 import numpy as np
 from typing import Type
 
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.prediction.predictor import Predictor
 
 from decision_making.src.prediction.columns import PREDICT_X, PREDICT_Y, PREDICT_YAW, PREDICT_VEL
 from decision_making.src.state.state import DynamicObject, EgoState, State
-from decision_making.test.planning.custom_fixtures import state_fix, navigation_plan
+from decision_making.test.planning.custom_fixtures import state_fix
 from mapping.test.model.testable_map_fixtures import testable_map_api
 
 

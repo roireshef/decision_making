@@ -11,14 +11,14 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.test.dds.mock_ddspubsub import DdsPubSubMock
-from decision_making.test.planning.custom_fixtures import state_module, behavioral_facade, navigation_plan, dds_pubsub
+from decision_making.test.planning.custom_fixtures import state_module, behavioral_facade, dds_pubsub
 from mapping.test.model.testable_map_fixtures import testable_map_api
 
 from rte.python.logger.AV_logger import AV_Logger
 
 
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(
-        dds_pubsub: DdsPubSubMock, state_module, behavioral_facade, testable_map_api, navigation_plan):
+        dds_pubsub: DdsPubSubMock, state_module, behavioral_facade, testable_map_api):
     logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
     trajectory_publish_mock = MagicMock()
     predictor = Predictor(testable_map_api)
@@ -29,8 +29,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(
                          TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
     trajectory_planning_module = TrajectoryPlanningFacade(dds=dds_pubsub, logger=logger,
-                                                          strategy_handlers=strategy_handlers,
-                                                          navigation_plan=navigation_plan)
+                                                          strategy_handlers=strategy_handlers)
 
     dds_pubsub.subscribe(TRAJECTORY_PUBLISH_TOPIC, trajectory_publish_mock)
 

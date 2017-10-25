@@ -105,8 +105,7 @@ class DmInitialization:
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
         trajectory_planning_module = TrajectoryPlanningFacade(dds=dds, logger=logger,
-                                                              strategy_handlers=strategy_handlers,
-                                                              navigation_plan=init_navigation_plan)
+                                                              strategy_handlers=strategy_handlers)
         return trajectory_planning_module
 
 

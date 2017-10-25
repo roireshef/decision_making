@@ -1,6 +1,5 @@
 import numpy as np
 
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.prediction.constants import LOOKAHEAD_MARGIN_DUE_TO_ROUTE_LINEARIZATION_APPROXIMATION
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject

@@ -6,7 +6,6 @@ import numpy as np
 
 from decision_making.src.exceptions import NoValidTrajectoriesFound
 from decision_making.src.global_constants import *
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.cost_function import SigmoidStatic2DBoxObstacle
