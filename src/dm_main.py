@@ -13,7 +13,8 @@ from decision_making.src.manager.dm_trigger import *
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.behavioral.default_policy import DefaultPolicy, DefaultBehavioralState
+from decision_making.src.planning.behavioral.default_policy import DefaultPolicy, DefaultBehavioralState, \
+    RoadSemanticOccupancyGrid
 from decision_making.src.planning.behavioral.default_policy_config import DefaultPolicyConfig
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
@@ -76,7 +77,9 @@ class DmInitialization:
                                   RoadLocalization(0, 0, 0.0, 0.0, 0.0, 0.0))
 
         # Init policy
-        behavioral_state = DefaultBehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [])
+        road_semantic_occupancy_grid = RoadSemanticOccupancyGrid({})
+        behavioral_state = DefaultBehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [],
+                                                  road_semantic_occupancy_grid)
         policy_config = DefaultPolicyConfig()
         policy = DefaultPolicy(logger, policy_config, behavioral_state, None, map_api)
 
