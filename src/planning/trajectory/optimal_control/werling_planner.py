@@ -101,7 +101,7 @@ class WerlingPlanner(TrajectoryPlanner):
         #                   .format(goal_theta_diff, actual_end_theta_diff,
         #                           goal[EGO_THETA], ctrajectories[sorted_idxs[0], -1, EGO_THETA]))
 
-        return ctrajectories[sorted_idxs[0], :, :EGO_V], trajectory_costs[sorted_idxs[0]], debug_results
+        return ctrajectories[sorted_idxs[0], :, :EGO_V+1], trajectory_costs[sorted_idxs[0]], debug_results
 
     @staticmethod
     def _filter_limits(ftrajectories: np.ndarray, cost_params: TrajectoryCostParams) -> np.ndarray:
