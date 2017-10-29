@@ -220,10 +220,10 @@ class DefaultBehavioralState(BehavioralState):
 
 class DefaultPolicyFeatures:
     @staticmethod
-    def generate_reference_trajectories_towards_object(ego_state: EgoState, dynamic_object: DynamicObjectOnRoad,
-                                                       desired_speed: float, map_api: MapAPI,
-                                                       nav_plan: NavigationPlanMsg,
-                                                       predictor: Predictor, logger: Logger) -> List[
+    def generate_object_following_trajectory(ego_state: EgoState, dynamic_object: DynamicObjectOnRoad,
+                                             desired_speed: float, map_api: MapAPI,
+                                             nav_plan: NavigationPlanMsg,
+                                             predictor: Predictor, logger: Logger) -> List[
         np.ndarray]:
         """
         Uses prediction to generates semantic actions that are related to a certain dynamic object on road.
@@ -245,27 +245,63 @@ class DefaultPolicyFeatures:
                                                                             nav_plan=nav_plan)
 
         # Get the relative position to ego at the objects' final state
-        object_final_state = predictor.convert_predictions_to_dynamic_objects(dynamic_object=dynamic_object,
-                                                                              predictions=predicted_object_trajectory[
-                                                                                  -1], prediction_timestamps=
-                                                                              prediction_timestamps[-1])[0]
-        object_final_state_relative_road_localization = object_final_state.get_relative_road_localization(
+        object_predicted_state = predictor.convert_predictions_to_dynamic_objects(dynamic_object=dynamic_object,
+                                                                                  predictions=
+                                                                                  predicted_object_trajectory[
+                                                                                      -1], prediction_timestamps=
+                                                                                  prediction_timestamps[-1])[0]
+        object_final_state_relative_road_localization = object_predicted_state.get_relative_road_localization(
             ego_road_localization=ego_state.road_localization, ego_nav_plan=nav_plan, map_api=map_api, logger=logger)
 
-        lat_dist = object_final_state_relative_road_localization.rel_lat
-        lon_dist = object_final_state_relative_road_localization.rel_lon
+        object_predicted_lat = object_final_state_relative_road_localization.rel_lat
+        object_predicted_lon = object_final_state_relative_road_localization.rel_lon
+        ego_predicted_lon = ego_state.road_longitudinal_speed * BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON
 
-        target_speed = np.min([desired_speed, object_final_state.road_longitudinal_speed])
-        target_lon = lon_dist - target_speed * TIME_GAP
+        target_speed = np.min([desired_speed, object_predicted_state.road_longitudinal_speed])
 
-        # TODO: generate a reference route that will achieve target speed / target lon with some trade-off.
-        # Divide into cases, depending on the desired acceleration induced by condition
-
-        # TODO: add ACDA and safety checks
-        # TODO: we might need to add the predicted states as input, so we could evaluate the ACDA of this specific trajectory using the predicted states
-        #safe_distance = AcdaApi.calc_forward_sight_distance(static_objects=[dynamic_object], ego_state=ego_state)
+        safe_distance = AcdaApi.calc_forward_sight_distance(static_objects=[object_predicted_state],
+                                                            ego_state=ego_state)
 
         # Generate reference trajectory towards the rear of the objects final state
+        if object_predicted_lon - ego_predicted_lon < safe_distance:
+            pass
+
+
+
+
+    @staticmethod
+    def _generate_safe_brake_trajectory(ego_state: EgoState, predicted_object: DynamicObjectOnRoad):
+        """
+        Decelerate down to a safe speed with short lookahead distance (to ensure safety)
+        :param ego_state:
+        :param predicted_object:
+        :return: list of numpy arrays (Nx4) describing the reference trajectories. each row is (x,y,yaw,v)
+        """
+        pass
+
+    @staticmethod
+    def _contract_following_distance(ego_state: EgoState, predicted_object: DynamicObjectOnRoad):
+        """
+        When following distance is greater than the target following distance, generate
+        a long-term plan that will narrow the distance between ego and the object to be followed
+        :param ego_state:
+        :param predicted_object:
+        :return: list of numpy arrays (Nx4) describing the reference trajectories. each row is (x,y,yaw,v)
+        """
+        pass
+
+    @staticmethod
+    def _enlarge_following_distance(ego_state: EgoState, predicted_object: DynamicObjectOnRoad):
+        """
+        When following distance is smaller than the target following distance (but still safe), generate
+        a long-term plan that will enlarge the distance between ego and the object to be followed.
+        Later, we can call the contract following distance
+        :param ego_state:
+        :param predicted_object:
+        :return: list of numpy arrays (Nx4) describing the reference trajectories. each row is (x,y,yaw,v)
+        """
+        pass
+        pass
 
     @staticmethod
     def generate_reference_trajectory_towards_location(ego_state: EgoState, target_road_offset: np.ndarray,
@@ -421,7 +457,7 @@ class DefaultPolicy(Policy):
 
             if len(dynamic_objects_in_cell) > 0:
                 # Create reference trajectories towards the front / back of objects at each cell
-                semantic_actions_towards_object = DefaultPolicyFeatures.generate_reference_trajectories_towards_object(
+                semantic_actions_towards_object = DefaultPolicyFeatures.generate_object_following_trajectory(
                     ego_state=behavioral_state.ego_state,
                     dynamic_object=dynamic_objects_in_cell[0], desired_speed=desired_speed_in_cell,
                     map_api=self._map_api, nav_plan=behavioral_state.navigation_plan,
