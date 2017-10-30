@@ -40,7 +40,15 @@ class Predictor:
         return self.predict_object_trajectories(ego_state, prediction_timestamps)
 
     def _convert_predictions_to_dynamic_objects(self, dynamic_object: DynamicObject, predictions: np.ndarray,
-                                                prediction_timestamps: np.ndarray):
+                                                prediction_timestamps: np.ndarray)->List[Type[DynamicObject]]:
+        """
+        given original dynamic objects, predictions, and with their respective time stamps, creates a list of dynamic
+         objects corresponding to the predicted objects in those timestamps.
+        :param dynamic_object:
+        :param predictions:
+        :param prediction_timestamps:
+        :return:
+        """
         # Initiate array of DynamicObject at predicted times
         predicted_object_states: List[Type[DynamicObject]] = [copy.deepcopy(dynamic_object) for x in
                                                         range(len(prediction_timestamps))]
