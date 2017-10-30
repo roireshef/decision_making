@@ -42,8 +42,8 @@ class Predictor:
     def _convert_predictions_to_dynamic_objects(self, dynamic_object: DynamicObject, predictions: np.ndarray,
                                                 prediction_timestamps: np.ndarray)->List[Type[DynamicObject]]:
         """
-        given original dynamic objects, predictions, and with their respective time stamps, creates a list of dynamic
-         objects corresponding to the predicted objects in those timestamps.
+        given original dynamic object, its predictions, and their respective time stamps, creates a list of dynamic
+         objects corresponding to the predicted object in those timestamps.
         :param dynamic_object:
         :param predictions:
         :param prediction_timestamps:
