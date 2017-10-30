@@ -22,8 +22,8 @@ class PolicyConfig(DDSTypedMsg):
 
 
 class Policy(metaclass=ABCMeta):
-    def __init__(self, logger: Logger, policy_config: PolicyConfig, behavioral_state: Type[BehavioralState],
-                 predictor: Type[Predictor], map_api: MapAPI):
+    def __init__(self, logger: Logger, policy_config: PolicyConfig, behavioral_state: BehavioralState,
+                 predictor: Predictor, map_api: MapAPI):
         """
         Receives configuration and logger
         :param logger: logger

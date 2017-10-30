@@ -23,23 +23,11 @@ class DynamicObjectOnRoad(DynamicObject):
 
 
 class BehavioralState:
-    def __init__(self, logger: Logger, map_api: MapAPI, navigation_plan: NavigationPlanMsg, ego_state: EgoState,
-                 dynamic_objects_on_road: List[DynamicObjectOnRoad]) -> None:
-        """
-        Behavioral state generates and stores relevant state features that will be used for planning
-        :param logger: logger
-        :param map_api: map API
-        :param navigation_plan: car's navigation plan
-        :param ego_state: updated ego state
-        """
-        pass
 
-
-    def update_behavioral_state(self, state: State, navigation_plan: NavigationPlanMsg):
+    def update_behavioral_state(self, state: State):
         """
         This method updates the behavioral state according to the new world state and navigation plan.
          It fetches relevant features that will be used for the decision-making process.
-        :param navigation_plan: new navigation plan of vehicle
         :param state: new world state
         :return: a new and updated BehavioralState
         """
