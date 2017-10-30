@@ -12,7 +12,7 @@ from logging import Logger
 
 
 class TrajectoryPlanner(metaclass=ABCMeta):
-    def __init__(self, logger: Logger, predictor: Type[Predictor]):
+    def __init__(self, logger: Logger, predictor: Predictor):
         self._logger = logger
         self._predictor = predictor
 

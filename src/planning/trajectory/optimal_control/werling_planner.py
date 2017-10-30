@@ -8,7 +8,7 @@ from decision_making.src.exceptions import NoValidTrajectoriesFound
 from decision_making.src.global_constants import *
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
-from decision_making.src.planning.trajectory.cost_function import SigmoidStatic2DBoxObstacle
+from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils as OC
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.planning.utils.columns import *
@@ -19,7 +19,7 @@ from decision_making.src.planning.utils.frenet_moving_frame import FrenetMovingF
 
 
 class WerlingPlanner(TrajectoryPlanner):
-    def __init__(self, logger: Logger, predictor: Type[Predictor], dt=WERLING_TIME_RESOLUTION):
+    def __init__(self, logger: Logger, predictor: Predictor, dt=WERLING_TIME_RESOLUTION):
         super().__init__(logger, predictor)
         self._dt = dt
 
@@ -87,14 +87,15 @@ class WerlingPlanner(TrajectoryPlanner):
         ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
 
         # compute trajectory costs
-        global_time_samples_in_sec = time_samples + state.ego_state.timestamp_in_sec
         trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, cost_params,
-                                              global_time_samples_in_sec, self._predictor)
+                                              time_samples, self._predictor)
+
         sorted_idxs = trajectory_costs.argsort()
 
         alternative_ids_skip_range = range(0, len(ctrajectories),
                                            max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
 
+        #TODO: move this to visualizer
         predicted_state_at_end_of_traj_execution = self._predictor.predict_state(state=state,
                                       prediction_timestamps=np.array([state.ego_state.timestamp_in_sec + time]))[0]
         debug_results = TrajectoryVisualizationMsg(frenet.curve,
@@ -130,7 +131,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
     @staticmethod
     def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: State,
-                      params: TrajectoryCostParams, time_samples: np.ndarray, predictor: Type[Predictor]):
+                      params: TrajectoryCostParams, time_samples: np.ndarray, predictor: Predictor):
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
@@ -138,6 +139,7 @@ class WerlingPlanner(TrajectoryPlanner):
         :param state: the state object (that includes obstacles, etc.)
         :param params: parameters for the cost function (from behavioral layer)
         :param time_samples: [sec] time samples for prediction (global, not relative)
+        :param predictor:
         :return:
         """
         # TODO: add jerk cost
@@ -146,9 +148,12 @@ class WerlingPlanner(TrajectoryPlanner):
         # TODO: max instead of sum? what if close_obstacles is empty?
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
         # TODO: validate that both obstacles and ego are in world coordinates. if not, change the filter cond.
+
+        absolute_time_samples_in_sec = time_samples + state.ego_state.timestamp_in_sec
+
         close_obstacles = \
-            [SigmoidStatic2DBoxObstacle.from_object(obs, state.ego_state, params.obstacle_cost.k,
-                                                    params.obstacle_cost.offset, time_samples, predictor)
+            [SigmoidDynamicBoxObstacle.from_object(obs, params.obstacle_cost.k, params.obstacle_cost.offset,
+                                                   absolute_time_samples_in_sec, predictor)
              for obs in state.dynamic_objects
              if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
 

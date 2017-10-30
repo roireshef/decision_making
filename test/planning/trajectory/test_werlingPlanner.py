@@ -1,4 +1,5 @@
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
+from decision_making.src.planning.trajectory.cost_function import SigmoidStaticBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.utils.columns import R_X, R_Y, R_THETA
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
@@ -72,9 +73,8 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api, navigation_fix
     p1 = fig.add_subplot(211)
     p2 = fig.add_subplot(212)
     time_samples = np.arange(0.0, T, 0.1)
-    plottable_obs = [PlottableSigmoidStatic2DBoxObstacle.from_object(o, ego, cost_params.obstacle_cost.k,
-                                                                     cost_params.obstacle_cost.offset, time_samples,
-                                                                     predictor)
+    plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost.k,
+                                                        cost_params.obstacle_cost.offset, time_samples, predictor)
                      for o in state.dynamic_objects]
     WerlingVisualizer.plot_obstacles(p1, plottable_obs)
     WerlingVisualizer.plot_obstacles(p2, plottable_obs)
