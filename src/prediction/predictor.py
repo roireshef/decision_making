@@ -105,7 +105,7 @@ class Predictor:
 
         # TODO - consider adding reference route so that this method will be able to project the current
         #  state to the reference route, for example to a different lane.
-
+        # TODO - no need to deepcopy states which we clear afterwards. deep copy only what you need.
         initial_state = copy.deepcopy(state)  # protecting the state input from changes
         predicted_states = [copy.deepcopy(state) for x in
                             range(prediction_timestamps.shape[0])]  # creating copies to populate
