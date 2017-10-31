@@ -1,4 +1,5 @@
 from enum import Enum
+from logging import Logger
 
 import numpy as np
 from typing import Dict, List, Optional, Tuple
@@ -9,6 +10,7 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.policy import Policy
 from decision_making.src.state.state import State, DynamicObject
+from mapping.src.model.map_api import MapAPI
 
 
 class SemanticActionType(Enum):
@@ -45,7 +47,7 @@ class SemanticBehavioralState(BehavioralState):
         self.road_occupancy_grid = road_occupancy_grid
 
     @classmethod
-    def create_from_state(cls, state: State):
+    def create_from_state(cls, state: State, map_api: MapAPI, logger: Logger):
         """
         :return: a new and updated BehavioralState
         """
