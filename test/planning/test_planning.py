@@ -21,7 +21,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(
         dds_pubsub: DdsPubSubMock, state_module, behavioral_facade, testable_map_api):
     logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
     trajectory_publish_mock = MagicMock()
-    predictor = Predictor(testable_map_api)
+    predictor = RoadFollowingPredictor(testable_map_api)
 
     planner = WerlingPlanner(logger, predictor)
     strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
