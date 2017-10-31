@@ -1,6 +1,8 @@
 import numpy as np
 
-from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidStatic2DBoxObstacle
+from decision_making.src.state.state import ObjectSize
+from decision_making.test.planning.trajectory.utils import *
+from decision_making.src.planning.trajectory.cost_function import *
 
 
 def test_computeCost_threeSRoutesOneObstacle_validScore():
@@ -8,7 +10,10 @@ def test_computeCost_threeSRoutesOneObstacle_validScore():
                        RouteFixture.get_route(lng=200, k=.05, step=10, lat=100, offset=-50.0),
                        RouteFixture.get_route(lng=200, k=.05, step=10, lat=100, offset=-100.0)])
 
-    obs = PlottableSigmoidStatic2DBoxObstacle(x=200, y=-40, theta=np.pi / 8, length=40, width=20, k=100, margin=10)
+    pose = np.array([200, -40, np.pi / 8])
+    obj = DynamicObject(None, None, pose[0], pose[1], 0, pose[2], ObjectSize(length=40, width=20, height=20),
+                        1.0, 0.0, 0.0, 0, 0, None)
+    obs = PlottableSigmoidStaticBoxObstacle(obj, k=100, margin=10)
 
     costs = obs.compute_cost(routes)
 

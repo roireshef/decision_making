@@ -2,6 +2,8 @@ import pickle
 from logging import Logger
 
 import numpy as np
+
+from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from mapping.src.service.map_service import MapService
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
@@ -76,7 +78,7 @@ class DmInitialization:
                                   RoadLocalization(0, 0, 0.0, 0.0, 0.0, 0.0))
 
         # Init policy
-        behavioral_state = DefaultBehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [])
+        behavioral_state = DefaultBehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [], None)
         policy_config = DefaultPolicyConfig()
         policy = DefaultPolicy(logger, policy_config, behavioral_state, None, map_api)
 
@@ -88,11 +90,20 @@ class DmInitialization:
     def create_trajectory_planner() -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
         dds = DdsPubSub(TRAJECTORY_PLANNER_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
+
+        # Init map
+        MapService.initialize()
+        map_api = MapService.get_instance()
+        init_navigation_plan = NAVIGATION_PLAN
+
+        predictor = RoadFollowingPredictor(map_api)
+
         # TODO: fill the strategy handlers
-        planner = WerlingPlanner(logger)
+        planner = WerlingPlanner(logger, predictor)
         strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
                              TrajectoryPlanningStrategy.PARKING: planner,
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
+
         trajectory_planning_module = TrajectoryPlanningFacade(dds=dds, logger=logger,
                                                               strategy_handlers=strategy_handlers)
         return trajectory_planning_module

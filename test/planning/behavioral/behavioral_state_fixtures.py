@@ -8,4 +8,5 @@ from rte.python.logger.AV_logger import AV_Logger
 def default_policy_behavioral_state(navigation_fixture, testable_map_api, state):
     logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
     yield DefaultBehavioralState(logger=logger, map_api=testable_map_api, navigation_plan=navigation_fixture,
-                                 ego_state=state.ego_state, dynamic_objects_on_road=state.dynamic_objects)
+                                 ego_state=state.ego_state, dynamic_objects_on_road=state.dynamic_objects,
+                                 road_semantic_occupancy_grid=None)
