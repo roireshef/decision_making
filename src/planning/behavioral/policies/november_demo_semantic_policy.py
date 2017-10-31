@@ -188,7 +188,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
                                        semantic_action: SemanticAction) -> SemanticActionSpec:
 
         # Get object's location
-        default_navigation_plan = self.map_api.get_road_based_navigation_plan(
+        default_navigation_plan = self._map_api.get_road_based_navigation_plan(
             current_road_id=behavioral_state.ego_state.road_localization.road_id)
 
         object_relative_road_localization = semantic_action.target_obj.get_relative_road_localization(
