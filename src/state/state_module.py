@@ -81,10 +81,6 @@ class StateModule(DmModule):
                 is_predicted = dyn_obj_dict["tracking_status"]["is_predicted"]
                 in_fov = dyn_obj_dict["tracking_status"]["in_fov"]
                 omega_yaw = dyn_obj_dict["velocity"]["omega_yaw"]
-
-                # TODO - temporary! conversion to global coords, until perception delivers the global coords.
-                #global_coordinates, global_yaw = CartesianFrame.convert_relative_to_global_frame(
-                #    np.array([x, y, z]), yaw, ego_pos, ego_yaw)
                 global_coordinates = np.array([x, y, z])
                 global_yaw = yaw
 
