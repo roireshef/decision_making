@@ -17,10 +17,10 @@ SemanticGridCell = Tuple[int, int]
 """
 We assume that the road is partitioned into semantic areas, each area is defined as a cell.
 The keys are:
-- relative_lane: describes the lane number, relative to ego. For example: {-1.0, 0.0, 1.0}
+- relative_lane: describes the lane number, relative to ego. For example: {-1, 0, 1}
 - relative_lon:  describes the longitudinal partition of the grid.
   For example, the grid can be partitioned in the following way:
-  {-1.0: behind ego, 0.0: aside, 1.0: infront of ego}.
+  {-1: behind ego, 0: aside, 1: infront of ego}.
 
 """
 
