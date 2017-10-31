@@ -7,10 +7,9 @@ from decision_making.src.state.state import State, ObjectSize, EgoState, Dynamic
 from decision_making.src.state.state_module import StateModule
 from decision_making.test.planning.trajectory.utils import *
 from mapping.src.transformations.geometry_utils import *
-from mapping.test.model.testable_map_fixtures import testable_map_api, navigation_fixture
 
 
-def test_werlingPlanner_toyScenario_noException(testable_map_api, navigation_fixture):
+def test_werlingPlanner_toyScenario_noException(testable_map_api):
     route_points = CartesianFrame.add_yaw_and_derivatives(
         RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5))
 
@@ -23,7 +22,6 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api, navigation_fix
     T = 3.5
 
     map_api = testable_map_api
-    nav_plan = navigation_fixture
     predictor = RoadFollowingPredictor(map_api=map_api)
 
     goal = np.concatenate((route_points[len(route_points) // 2, [R_X, R_Y, R_THETA]], [vT]))
