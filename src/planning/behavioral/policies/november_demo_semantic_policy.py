@@ -204,6 +204,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
         target_relative_d = BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT * BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON
 
         # TODO: Define safe distance from object using ACDA
+        # TODO: add prediction
         safe_distance = 10.0
 
         # Clip target longitudinal location between 0.0 and the safe distance behind the car
