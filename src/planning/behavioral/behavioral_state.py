@@ -1,17 +1,6 @@
 from decision_making.src.state.state import State, DynamicObject, RelativeRoadLocalization
 
 
-class DynamicObjectOnRoad(DynamicObject):
-    def __init__(self, dynamic_object_properties: DynamicObject, relative_road_localization: RelativeRoadLocalization):
-        """
-        This object hold the dynamic object and it's relative (to ego) localization on road
-        :param dynamic_object_properties: the dynamic object state
-        :param relative_road_localization: a relative road localization (relative to ego)
-        """
-        super().__init__(**dynamic_object_properties.__dict__)
-        self.relative_road_localization = relative_road_localization
-
-
 class BehavioralState:
 
     @classmethod

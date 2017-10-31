@@ -89,7 +89,7 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
 
     # WerlingVisualizer.plot_route(p1, route_points)
 
-    #fig.show()
-    #fig.clear()
+    fig.show()
+    fig.clear()
 
 

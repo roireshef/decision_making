@@ -4,6 +4,8 @@ import numpy as np
 from typing import Dict, List, Optional, Tuple
 
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.messages.trajectory_parameters import TrajectoryParams
+from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.policy import Policy
 from decision_making.src.state.state import State, DynamicObject
@@ -13,6 +15,8 @@ class SemanticActionType(Enum):
     FOLLOW = 1
 
 
+# Define semantic cell
+SEMANTIC_CELL_LANE, SEMANTIC_CELL_LON = 0, 1
 SemanticGridCell = Tuple[int, int]
 """
 We assume that the road is partitioned into semantic areas, each area is defined as a cell.
@@ -24,7 +28,7 @@ The keys are:
 
 """
 
-
+# Define semantic occupancy grid
 RoadSemanticOccupancyGrid = Dict[SemanticGridCell, List[DynamicObject]]
 """
 This type holds a semantic occupancy grid, that maps dynamic objects in the scene
@@ -85,8 +89,14 @@ class SemanticActionSpec:
 
 class SemanticActionsPolicy(Policy):
 
-    def plan(self, state: State, nav_plan: NavigationPlanMsg):
-        self._behavioral_state = self._behavioral_state.update_behavioral_state(state, nav_plan)
+    def plan(self, state: State, nav_plan: NavigationPlanMsg) -> (TrajectoryParams, BehavioralVisualizationMsg):
+        """
+        Generate plan from given state
+        :param state:
+        :param nav_plan:
+        :return:
+        """
+        pass
 
     def _enumerate_actions(self, behavioral_state: SemanticBehavioralState) -> List[SemanticAction]:
         """

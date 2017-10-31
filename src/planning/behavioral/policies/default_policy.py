@@ -9,7 +9,7 @@ from decision_making.src.messages.navigation_plan_message import NavigationPlanM
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.behavioral_state import BehavioralState, DynamicObjectOnRoad
+from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.constants import POLICY_ACTION_SPACE_ADDITIVE_LATERAL_OFFSETS_IN_LANES, \
     LATERAL_SAFETY_MARGIN_FROM_OBJECT, MAX_PLANNING_DISTANCE_FORWARD, MAX_PLANNING_DISTANCE_BACKWARD
 from decision_making.src.planning.behavioral.policies.default_policy_config import DefaultPolicyConfig
@@ -17,34 +17,28 @@ from decision_making.src.planning.behavioral.policy import Policy, PolicyConfig
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.acda import AcdaApi
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import EgoState, State
+from decision_making.src.state.state import EgoState, State, DynamicObject, RelativeRoadLocalization
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.model.map_api import MapAPI
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
+
+
+class DynamicObjectOnRoad(DynamicObject):
+    def __init__(self, dynamic_object_properties: DynamicObject, relative_road_localization: RelativeRoadLocalization):
+        """
+        This object hold the dynamic object and it's relative (to ego) localization on road
+        :param dynamic_object_properties: the dynamic object state
+        :param relative_road_localization: a relative road localization (relative to ego)
+        """
+        super().__init__(**dynamic_object_properties.__dict__)
+        self.relative_road_localization = relative_road_localization
+
+
+
 ######################################################################################################
 #################   Default Policy Behavioral State
 ######################################################################################################
-
-SEMANTIC_GRID_FRONT, SEMANTIC_GRID_ASIDE, SEMANTIC_GRID_BEHIND = 1.0, 0.0, -1.0
-GRID_MID = 10
-
-# The margin that we take from the front/read of the vehicle to define the front/rear partitions
-SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO = 1.0
-
-
-class RoadSemanticOccupancyGrid:
-    """
-    This class holds a semantic occupancy grid. We assume that the road is partitioned into semantic areas,
-     and the class holds an occupancy grid that associates object to these areas.
-    """
-
-    def __init__(self, road_occupancy_grid: Dict[Tuple[float], List[DynamicObjectOnRoad]]):
-        """
-        :param road_occupancy_grid: A dictionary that maps a partition to a list of dynamic objects.
-        """
-        self.road_occupancy_grid = road_occupancy_grid
-
 
 class DefaultBehavioralState(BehavioralState):
     def __init__(self, logger: Logger, map_api: MapAPI, navigation_plan: NavigationPlanMsg, ego_state: EgoState,

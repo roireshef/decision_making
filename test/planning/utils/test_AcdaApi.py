@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.behavioral.behavioral_state import DynamicObjectOnRoad
 from decision_making.src.planning.utils.acda import AcdaApi
 from decision_making.src.planning.utils.acda_constants import SENSOR_OFFSET_FROM_FRONT
 from decision_making.src.state.state import EgoState, ObjectSize, DynamicObject, RoadLocalization, \
