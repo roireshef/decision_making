@@ -1,4 +1,4 @@
-from decision_making.src.planning.behavioral.default_policy import DefaultBehavioralState
+from decision_making.src.planning.behavioral.policies.default_policy import DefaultBehavioralState
 from decision_making.test.planning.custom_fixtures import *
 from mapping.test.model.testable_map_fixtures import *
 from rte.python.logger.AV_logger import AV_Logger

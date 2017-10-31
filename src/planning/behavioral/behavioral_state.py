@@ -1,14 +1,4 @@
-from logging import Logger
-from typing import List
-
-import numpy as np
-
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.behavioral.constants import MAX_PLANNING_DISTANCE_BACKWARD, \
-    MAX_PLANNING_DISTANCE_FORWARD
-from decision_making.src.state.state import State, EgoState, DynamicObject, RelativeRoadLocalization
-from mapping.src.model.map_api import MapAPI
-from mapping.src.transformations.geometry_utils import CartesianFrame
+from decision_making.src.state.state import State, DynamicObject, RelativeRoadLocalization
 
 
 class DynamicObjectOnRoad(DynamicObject):

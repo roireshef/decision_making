@@ -5,12 +5,13 @@ from typing import List
 import numpy as np
 
 from decision_making.src.global_constants import ACDA_NAME_FOR_LOGGING
-from decision_making.src.planning.behavioral.behavioral_state import DynamicObjectOnRoad
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.acda_constants import SIN_ROAD_INCLINE, MU, G, TPRT, HIDDEN_PEDESTRIAN_VEL, \
     FORWARD_LOS_MAX_RANGE, SENSOR_OFFSET_FROM_FRONT, LATERAL_MARGIN_FROM_OBJECTS, HORIZONTAL_LOS_MAX_RANGE, \
     BEHAVIORAL_PLANNING_LOOKAHEAD_DISTANCE, MODERATE_DECELERATION, SAFETY_MIN_LOOKAHEAD_DIST, \
     TRAJECTORY_PLANNING_LOOKAHEAD_DISTANCE, LARGEST_CURVE_RADIUS, TIME_GAP
 from decision_making.src.state.state import DynamicObject, EgoState
+from mapping.src.model.map_api import MapAPI
 from rte.python.logger.AV_logger import AV_Logger
 
 
@@ -22,17 +23,22 @@ class AcdaApi:
         AcdaApi._logger = logger
 
     @staticmethod
-    def compute_acda(objects_on_road: List[DynamicObjectOnRoad], ego_state: EgoState,
+    def compute_acda(objects_on_road: List[DynamicObject], ego_state: EgoState,
+                     navigation_plan: NavigationPlanMsg, map_api: MapAPI,
                      lookahead_path: np.ndarray) -> float:
         set_safety_lookahead_dist_by_ego_vel = False
 
         # get min long of static objects in my lane
         min_static_object_long = AcdaApi.calc_forward_sight_distance(static_objects=objects_on_road,
-                                                                     ego_state=ego_state)
+                                                                     ego_state=ego_state,
+                                                                     navigation_plan=navigation_plan,
+                                                                     map_api=map_api)
         # compute safe speed for forward line of sight
         safe_speed_forward_los = AcdaApi.calc_safe_speed_forward_line_of_sight(min_static_object_long)
 
-        min_horizontal_distance_in_trajectory_range = AcdaApi.calc_horizontal_sight_distance(objects_on_road, ego_state,
+        min_horizontal_distance_in_trajectory_range = AcdaApi.calc_horizontal_sight_distance(objects_on_road,
+                                                                                             ego_state,
+                                                                                             navigation_plan, map_api,
                                                                                              set_safety_lookahead_dist_by_ego_vel)
         safe_speed_horizontal_los = AcdaApi.calc_safe_speed_horizontal_distance_original_acda(
             min_horizontal_distance_in_trajectory_range)
@@ -130,10 +136,13 @@ class AcdaApi:
         return object_horizontal_distance <= lateral_safety_margin
 
     @staticmethod
-    def calc_forward_sight_distance(static_objects: List[DynamicObjectOnRoad], ego_state: EgoState,
+    def calc_forward_sight_distance(static_objects: List[DynamicObject], ego_state: EgoState,
+                                    navigation_plan: NavigationPlanMsg, map_api: MapAPI,
                                     dyn_objects: List[DynamicObject] = None) -> float:
         """
         Calculating the minimal distance of something that is in my lane
+        :param map_api: map API
+        :param navigation_plan: navigation plan of ego, to search relation to other objects on map
         :param static_objects: list of static objects, each is DynamicObject
         :param ego_state: our car's state. Type EnrichedEgoState
         :param dyn_objects: TODO not used in July Milestone
@@ -144,9 +153,13 @@ class AcdaApi:
         min_static_object_long = FORWARD_LOS_MAX_RANGE
         for static_obj in static_objects:
 
-            obj_lon = static_obj.relative_road_localization.rel_lon
-            obj_lat = static_obj.relative_road_localization.rel_lat
-            # TODO: use proper conventions to describe distance from front / back
+            relative_road_localization = static_obj.get_relative_road_localization(
+                ego_road_localization=ego_state.road_localization, ego_nav_plan=navigation_plan,
+                map_api=map_api, logger=AcdaApi._logger)
+
+            obj_lon = relative_road_localization.rel_lon
+            obj_lat = relative_road_localization.rel_lat
+
             obj_lon = obj_lon - SENSOR_OFFSET_FROM_FRONT
 
             if obj_lon > 0 and AcdaApi.is_in_ego_trajectory(obj_lat=obj_lat, obj_width=static_obj.size.width,
@@ -158,13 +171,16 @@ class AcdaApi:
         return min_static_object_long
 
     @staticmethod
-    def calc_horizontal_sight_distance(static_objects: List[DynamicObjectOnRoad], ego_state: EgoState,
+    def calc_horizontal_sight_distance(static_objects: List[DynamicObject], ego_state: EgoState,
+                                       navigation_plan: NavigationPlanMsg, map_api: MapAPI,
                                        set_safety_lookahead_dist_by_ego_vel: bool = False) -> float:
         """
         calculates the minimal horizontal distance of static objects that are within a certain range tbd by
         set_safety_lookahead_dist_by_ego_vel
         :param static_objects: list of static objects, each is a dictionary
         :param ego_state: our car's state. Type EnrichedEgoState
+        :param map_api: map API
+        :param navigation_plan: navigation plan of ego, to search relation to other objects on map
         :param set_safety_lookahead_dist_by_ego_vel: parameter determining whether we use the trajectory length or the
         current breaking distance as the lookahead range
         :return: float - minimal horizontal distance. If nothing is there, returns HORIZONTAL_LOS_MAX_RANGE
@@ -181,9 +197,12 @@ class AcdaApi:
             lookahead_distance = TRAJECTORY_PLANNING_LOOKAHEAD_DISTANCE
 
         for static_obj in static_objects:
+            relative_road_localization = static_obj.get_relative_road_localization(
+                ego_road_localization=ego_state.road_localization, ego_nav_plan=navigation_plan, map_api=map_api,
+                logger=AcdaApi._logger)
             obj_width = static_obj.size.width
-            obj_lat = static_obj.relative_road_localization.rel_lat
-            obj_lon = static_obj.relative_road_localization.rel_lon
+            obj_lat = relative_road_localization.rel_lat
+            obj_lon = relative_road_localization.rel_lon
             obj_lon = obj_lon - SENSOR_OFFSET_FROM_FRONT
 
             if obj_lon <= lookahead_distance and not AcdaApi.is_in_ego_trajectory(obj_lat=obj_lat, obj_width=obj_width,

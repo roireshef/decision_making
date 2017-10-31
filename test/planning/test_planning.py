@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock
 
 from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
-from decision_making.src.planning.behavioral.default_policy import DefaultPolicy
-from decision_making.src.planning.behavioral.default_policy_config import DefaultPolicyConfig
+from decision_making.src.planning.behavioral.policies.default_policy import DefaultPolicy
+from decision_making.src.planning.behavioral.policies.default_policy_config import DefaultPolicyConfig
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import *

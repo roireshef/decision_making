@@ -17,7 +17,7 @@ class Predictor:
     def __init__(self, map_api: MapAPI):
         self._map_api = map_api
 
-    def predict_object_trajectories(self, dynamic_object: Type[DynamicObject], prediction_timestamps: np.ndarray,
+    def predict_object_trajectories(self, dynamic_object: DynamicObject, prediction_timestamps: np.ndarray,
                                     nav_plan: NavigationPlanMsg) -> np.ndarray:
         """
         Method to compute future locations, yaw, and velocities for dynamic objects. Returns the np.array used by the
@@ -42,7 +42,7 @@ class Predictor:
         return self.predict_object_trajectories(ego_state, prediction_timestamps, nav_plan)
 
     @staticmethod
-    def convert_predictions_to_dynamic_objects(dynamic_object: Type[DynamicObject], predictions: np.ndarray,
+    def convert_predictions_to_dynamic_objects(dynamic_object: DynamicObject, predictions: np.ndarray,
                                                prediction_timestamps: np.ndarray) -> List[DynamicObject]:
         # Initiate array of DynamicObject at predicted times
         predicted_object_states = [copy.deepcopy(dynamic_object) for x in range(len(prediction_timestamps))]
@@ -59,8 +59,8 @@ class Predictor:
                 predictions[t_ind, PREDICT_YAW])
         return predicted_object_states
 
-    def _predict_object_state(self, dynamic_object: Type[DynamicObject], prediction_timestamps: np.ndarray,
-                              nav_plan: NavigationPlanMsg) -> List[Type[DynamicObject]]:
+    def _predict_object_state(self, dynamic_object: DynamicObject, prediction_timestamps: np.ndarray,
+                              nav_plan: NavigationPlanMsg) -> List[DynamicObject]:
         """
         Wrapper method that uses the predict_object_trajectories method, and creates the dynamic object list.
         :param dynamic_object: in map coordinates

@@ -1,27 +1,23 @@
-import pickle
 from logging import Logger
 
 import numpy as np
-from mapping.src.service.map_service import MapService
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
-from decision_making.paths import Paths
 from decision_making.src.global_constants import *
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import *
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
-from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.behavioral.default_policy import DefaultPolicy, DefaultBehavioralState, \
-    RoadSemanticOccupancyGrid
-from decision_making.src.planning.behavioral.default_policy_config import DefaultPolicyConfig
+from decision_making.src.planning.behavioral.policies.default_policy import DefaultPolicy, DefaultBehavioralState
+from decision_making.src.planning.behavioral.policies.default_policy_config import DefaultPolicyConfig
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.state.state import EgoState, ObjectSize, RoadLocalization, OccupancyState
 from decision_making.src.state.state_module import StateModule
+from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))
@@ -77,9 +73,7 @@ class DmInitialization:
                                   RoadLocalization(0, 0, 0.0, 0.0, 0.0, 0.0))
 
         # Init policy
-        road_semantic_occupancy_grid = RoadSemanticOccupancyGrid({})
-        behavioral_state = DefaultBehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [],
-                                                  road_semantic_occupancy_grid)
+        behavioral_state = DefaultBehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [])
         policy_config = DefaultPolicyConfig()
         policy = DefaultPolicy(logger, policy_config, behavioral_state, None, map_api)
 

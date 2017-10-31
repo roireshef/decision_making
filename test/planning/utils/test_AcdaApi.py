@@ -102,10 +102,6 @@ def test_AcdaFeaturesInComplexScenraio_successful(testable_map_api, testable_nav
                                        size=ObjectSize(length=2.5, width=1.5, height=1.0),
                                        confidence=1.0, v_x=0.0, v_y=0.0,
                                        acceleration_lon=0.0, omega_yaw=0.0, road_localization=road_localization)
-    near_static_object = DynamicObjectOnRoad(dynamic_object_properties=near_static_object,
-                                             relative_road_localization=near_static_object.get_relative_road_localization(
-                                                 ego_road_localization=ego_state.road_localization,
-                                                 ego_nav_plan=navigation_plan, map_api=map_api, logger=logger))
 
     # obstacle at (15,2.5,0)
     road_localization = RoadLocalization(road_id=1, lane_num=0, full_lat=2.5, intra_lane_lat=2.5, road_lon=15.0,
@@ -117,11 +113,6 @@ def test_AcdaFeaturesInComplexScenraio_successful(testable_map_api, testable_nav
                                       confidence=1.0, v_x=0.0, v_y=0.0,
                                       acceleration_lon=0.0, omega_yaw=0.0, road_localization=road_localization)
 
-    far_static_object = DynamicObjectOnRoad(dynamic_object_properties=far_static_object,
-                                            relative_road_localization=far_static_object.get_relative_road_localization(
-                                                ego_road_localization=ego_state.road_localization,
-                                                ego_nav_plan=navigation_plan, map_api=map_api, logger=logger))
-
     objects_on_road = list()
     objects_on_road.append(near_static_object)
     objects_on_road.append(far_static_object)
@@ -130,17 +121,20 @@ def test_AcdaFeaturesInComplexScenraio_successful(testable_map_api, testable_nav
 
     # test calc_forward_sight_distance
     forward_distance = 10.0
-    assert np.abs(AcdaApi.calc_forward_sight_distance(static_objects=objects_on_road, ego_state=ego_state) - (
-        forward_distance - SENSOR_OFFSET_FROM_FRONT)) < 0.001
+    assert np.abs(AcdaApi.calc_forward_sight_distance(static_objects=objects_on_road,
+                                                      ego_state=ego_state, navigation_plan=navigation_plan,
+                                                      map_api=map_api) - (
+                      forward_distance - SENSOR_OFFSET_FROM_FRONT)) < 0.001
     # test calc_horizontal_sight_distance
     horizontal_dist = 2.5 - 0.5 * (ego_state.size.width + far_static_object.size.width)
     assert np.abs(AcdaApi.calc_horizontal_sight_distance(static_objects=objects_on_road, ego_state=ego_state,
+                                                         navigation_plan=navigation_plan, map_api=map_api,
                                                          set_safety_lookahead_dist_by_ego_vel=True) - horizontal_dist) < 0.001
 
     # test compute_acda
     lookahead_path = np.zeros(shape=[2, 20])
     lookahead_path[0, :] = np.linspace(0, 10, 20)
-    safe_speed = AcdaApi.compute_acda(objects_on_road=objects_on_road, ego_state=ego_state,
-                                      lookahead_path=lookahead_path)
+    safe_speed = AcdaApi.compute_acda(objects_on_road=objects_on_road, ego_state=ego_state, navigation_plan=navigation_plan,
+                         map_api=map_api, lookahead_path=lookahead_path)
 
     assert safe_speed > 0.0

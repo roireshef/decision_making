@@ -2,8 +2,9 @@ import numpy as np
 
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.behavioral_state import DynamicObjectOnRoad
-from decision_making.src.planning.behavioral.default_policy import DefaultBehavioralState, DefaultPolicyFeatures
-from decision_making.src.planning.behavioral.default_policy_config import DefaultPolicyConfig
+from decision_making.src.planning.behavioral.policies.default_policy import DefaultBehavioralState, \
+    DefaultPolicyFeatures
+from decision_making.src.planning.behavioral.policies.default_policy_config import DefaultPolicyConfig
 from decision_making.src.state.state import EgoState, RoadLocalization, RelativeRoadLocalization, DynamicObject, \
     ObjectSize
 from mapping.src.model.map_api import MapAPI
