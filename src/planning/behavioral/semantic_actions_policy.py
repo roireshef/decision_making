@@ -1,7 +1,7 @@
 from enum import Enum
 
 import numpy as np
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
@@ -13,35 +13,35 @@ class SemanticActionType(Enum):
     FOLLOW = 1
 
 
-class SemanticGridCell:
-    """
-    We assume that the road is partitioned into semantic areas, each area is defined as a cell.
-    """
+SemanticGridCell = Tuple[int, int]
+"""
+We assume that the road is partitioned into semantic areas, each area is defined as a cell.
+The keys are:
+- relative_lane: describes the lane number, relative to ego. For example: {-1.0, 0.0, 1.0}
+- relative_lon:  describes the longitudinal partition of the grid.
+  For example, the grid can be partitioned in the following way:
+  {-1.0: behind ego, 0.0: aside, 1.0: infront of ego}.
 
-    def __init__(self, relative_lane: int, relative_lon: int):
-        """
-        :param relative_lane: describes the lane number, relative to ego. For example: {-1.0, 0.0, 1.0}
-        :param relative_lon:  describes the longitudinal partition of the grid.
-            For example, the grid can be partitioned in the following way:
-            {-1.0: behind ego, 0.0: aside, 1.0: infront of ego}.
-        """
-        self.relative_lane = relative_lane
-        self.relative_lon = relative_lon
+"""
+
+
+RoadSemanticOccupancyGrid = Dict[SemanticGridCell, List[DynamicObject]]
+"""
+This type holds a semantic occupancy grid, that maps dynamic objects in the scene
+to cells (partitions) of the state space.
+"""
 
 
 class SemanticBehavioralState(BehavioralState):
-    """
-    This class holds a semantic occupancy grid, that maps dynamic objects in the scene
-    to cells (partitions) of the state space.
-    """
 
-    def __init__(self, road_occupancy_grid: Dict[SemanticGridCell, List[DynamicObject]]):
+    def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid):
         """
         :param road_occupancy_grid: A dictionary that maps semantic cells to list of dynamic objects.
         """
         self.road_occupancy_grid = road_occupancy_grid
 
-    def update_behavioral_state(self, state: State):
+    @classmethod
+    def create_from_state(cls, state: State):
         """
         :return: a new and updated BehavioralState
         """

@@ -14,7 +14,8 @@ class DynamicObjectOnRoad(DynamicObject):
 
 class BehavioralState:
 
-    def update_behavioral_state(self, state: State):
+    @classmethod
+    def create_from_state(cls, state: State):
         """
         This method updates the behavioral state according to the new world state and navigation plan.
          It fetches relevant features that will be used for the decision-making process.
