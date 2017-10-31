@@ -2,7 +2,7 @@ from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import *
 from decision_making.src.state.state import *
 from decision_making.src.state.state_module import StateModule
-from mapping.src.model.naive_cache_map import NaiveCacheMap
+from mapping.src.service.map_service import MapService
 
 
 class StateModuleMock(StateModule):
@@ -17,7 +17,9 @@ class StateModuleMock(StateModule):
         :param state: the state message to publish periodically
         """
         self._state = state
-        super().__init__(dds, logger, NaiveCacheMap(None, logger), None, None, None)
+        MapService.initialize()
+        map_api = MapService.get_instance()
+        super().__init__(dds, logger, map_api, None, None, None)
 
     def _periodic_action_impl(self):
         self.dds.publish(STATE_PUBLISH_TOPIC, self._state.serialize())

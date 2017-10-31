@@ -76,7 +76,7 @@ class SemanticActionGrid:
 class DefaultBehavioralState(BehavioralState):
     def __init__(self, logger: Logger, map_api: MapAPI, navigation_plan: NavigationPlanMsg, ego_state: EgoState,
                  dynamic_objects_on_road: List[DynamicObjectOnRoad],
-                 road_semantic_occupancy_grid: RoadSemanticOccupancyGrid) -> None:
+                 road_semantic_occupancy_grid: RoadSemanticOccupancyGrid=None) -> None:
         """
         Behavioral state generates and stores relevant state features that will be used for planning
         :param logger: logger
