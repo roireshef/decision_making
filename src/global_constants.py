@@ -45,7 +45,7 @@ SX_OFFSET_MIN, SX_OFFSET_MAX = -3, 0.1
 SV_OFFSET_MIN, SV_OFFSET_MAX = -2, 2.1
 
 # [m] Range for grid search in werling planner (lat. position)
-DX_OFFSET_MIN, DX_OFFSET_MAX = -3, 2.3
+DX_OFFSET_MIN, DX_OFFSET_MAX = -2.6, 2.6
 
 # Linspace number of steps in the constraints parameters grid-search
 SX_STEPS, SV_STEPS, DX_STEPS = 3, 5, 5

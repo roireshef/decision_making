@@ -2,6 +2,9 @@ from logging import Logger
 
 import numpy as np
 
+from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
+from mapping.src.service.map_service import MapService
+
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import *
 from decision_making.src.manager.dm_manager import DmManager
@@ -17,7 +20,6 @@ from decision_making.src.planning.trajectory.trajectory_planning_facade import T
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.state.state import EgoState, ObjectSize, RoadLocalization, OccupancyState
 from decision_making.src.state.state_module import StateModule
-from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))
@@ -85,11 +87,20 @@ class DmInitialization:
     def create_trajectory_planner() -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
         dds = DdsPubSub(TRAJECTORY_PLANNER_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
+
+        # Init map
+        MapService.initialize()
+        map_api = MapService.get_instance()
+        init_navigation_plan = NAVIGATION_PLAN
+
+        predictor = RoadFollowingPredictor(map_api)
+
         # TODO: fill the strategy handlers
-        planner = WerlingPlanner(logger)
+        planner = WerlingPlanner(logger, predictor)
         strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
                              TrajectoryPlanningStrategy.PARKING: planner,
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
+
         trajectory_planning_module = TrajectoryPlanningFacade(dds=dds, logger=logger,
                                                               strategy_handlers=strategy_handlers)
         return trajectory_planning_module

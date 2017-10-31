@@ -81,12 +81,14 @@ class StateModule(DmModule):
                 omega_yaw = dyn_obj_dict["velocity"]["omega_yaw"]
 
                 # TODO - temporary! conversion to global coords, until perception delivers the global coords.
-                global_coordinates, global_yaw = CartesianFrame.convert_relative_to_global_frame(
-                    np.array([x, y, z]), yaw, ego_pos, ego_yaw)
+                #global_coordinates, global_yaw = CartesianFrame.convert_relative_to_global_frame(
+                #    np.array([x, y, z]), yaw, ego_pos, ego_yaw)
+                global_coordinates = np.array([x, y, z])
+                global_yaw = yaw
 
                 try:
                     # Try to localize object on road. If not successful, warn.
-                    road_localtization = StateModule._compute_road_localization(global_coordinates, global_yaw,
+                    road_localtization = DynamicObject.compute_road_localization(global_coordinates, global_yaw,
                                                                                 self._map_api)
 
                     dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
@@ -118,7 +120,7 @@ class StateModule(DmModule):
             v_y = ego_localization["velocity"]["v_y"]
             size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
-            road_localization = StateModule._compute_road_localization(np.array([x, y, z]), yaw, self._map_api)
+            road_localization = DynamicObject.compute_road_localization(np.array([x, y, z]), yaw, self._map_api)
 
             with self._ego_state_lock:
                 # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
