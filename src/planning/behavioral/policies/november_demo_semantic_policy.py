@@ -3,3 +3,4 @@ from decision_making.src.planning.behavioral.semantic_actions_policy import Sema
 
 class NovDemoPolicy(SemanticActionsPolicy):
     pass
+

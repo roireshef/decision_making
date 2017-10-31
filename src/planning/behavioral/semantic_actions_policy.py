@@ -89,19 +89,41 @@ class SemanticActionsPolicy(Policy):
         self._behavioral_state = self._behavioral_state.update_behavioral_state(state, nav_plan)
 
     def _enumerate_actions(self, behavioral_state: SemanticBehavioralState) -> List[SemanticAction]:
+        """
+        Enumerate the list of possible semantic actions to be generated.
+        :param behavioral_state:
+        :return:
+        """
         pass
 
-    def _specify_actions(self, behavioral_state: SemanticBehavioralState,
-                         semantic_actions: SemanticAction) -> SemanticActionSpec:
+    def _specify_action(self, behavioral_state: SemanticBehavioralState,
+                         semantic_action: SemanticAction) -> SemanticActionSpec:
+        """
+        For each semantic actions, generate a trajectory specifications that will be passed through to the TP
+        :param behavioral_state:
+        :param semantic_action:
+        :return: semantic action spec
+        """
         pass
 
-    def _eval_actions(self, state: State, action_spec: SemanticActionSpec) -> float:
+    def _eval_actions(self, state: State, actions_spec: List[SemanticActionSpec]) -> np.ndarray:
         """
         Evaluate the generated actions using the full state.
+        Gets a list of actions to evaluate so and returns a vector representing their costs.
+        A set of actions is provided, enabling assessing them dependently.
         Note: the semantic actions were generated using the behavioral state which isn't necessarily captures
          all relevant details in the scene. Therefore the evaluation is done using the full state.
         :param state: world state
         :param action_spec: specification of semantic action
-        :return: cost of semantic action
+        :return: numpy array of costs of semantic actions
         """
         pass
+
+    def select_best(self, action_specs: List[SemanticActionSpec], costs: np.ndarray) -> int:
+        """
+        Select the best action out of the possible actions specs considering their cost
+        :param action_specs:
+        :param costs:
+        :return:
+        """
+        return int(np.argmax(costs)[0])

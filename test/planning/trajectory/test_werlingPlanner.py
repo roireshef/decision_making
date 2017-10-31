@@ -1,12 +1,15 @@
+import numpy as np
+
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
-from decision_making.src.planning.trajectory.cost_function import SigmoidStaticBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.utils.columns import R_X, R_Y, R_THETA
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject, RoadLocalization
+from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.state.state_module import StateModule
-from decision_making.test.planning.trajectory.utils import *
-from mapping.src.transformations.geometry_utils import *
+from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidDynamicBoxObstacle, \
+    WerlingVisualizer
+from mapping.src.transformations.geometry_utils import CartesianFrame
+from mapping.test.model.testable_map_fixtures import testable_map_api
 
 
 def test_werlingPlanner_toyScenario_noException(testable_map_api):
@@ -86,7 +89,7 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
 
     # WerlingVisualizer.plot_route(p1, route_points)
 
-    fig.show()
-    fig.clear()
+    #fig.show()
+    #fig.clear()
 
 
