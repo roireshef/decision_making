@@ -42,6 +42,13 @@ def state_fix():
     ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0, road_localization)
     yield State(occupancy_state, dynamic_objects, ego_state)
 
+@pytest.fixture(scope='function')
+def ego_state_fix():
+    size = ObjectSize(0, 0, 0)
+    # TODO - decouple from navigation plan below (1 is the road id). Make this dependency explicit.
+    road_localization = RoadLocalization(1, 0, 0, 0, 0, 0)
+    ego_state = EgoState(0, 5, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0, road_localization)
+    yield ego_state
 
 @pytest.fixture(scope='function')
 def trajectory_params():

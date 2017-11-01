@@ -61,53 +61,7 @@ class StateModule(DmModule):
                     "are given in ego-vehicle's coordinate frame this is impossible. Aborting.")
                 return
 
-            ego = self._ego_state
-            ego_pos = np.array([ego.x, ego.y, ego.z])
-            ego_yaw = ego.yaw
-
-            timestamp = objects["timestamp"]
-            dyn_obj_list_dict = objects["dynamic_objects"]
-
-            dyn_obj_list = []
-            for dyn_obj_dict in dyn_obj_list_dict:
-                in_fov = dyn_obj_dict["tracking_status"]["in_fov"]
-                id = dyn_obj_dict["id"]
-                if in_fov:
-                    # object is in FOV, so we take its latest detection.
-                    x = dyn_obj_dict["location"]["x"]
-                    y = dyn_obj_dict["location"]["y"]
-                    z = DEFAULT_OBJECT_Z_VALUE
-                    yaw = dyn_obj_dict["bbox"]["yaw"]
-                    confidence = dyn_obj_dict["location"]["confidence"]
-                    length = dyn_obj_dict["bbox"]["length"]
-                    width = dyn_obj_dict["bbox"]["width"]
-                    height = dyn_obj_dict["bbox"]["height"]
-                    size = ObjectSize(length, width, height)
-                    v_x = dyn_obj_dict["velocity"]["v_x"]
-                    v_y = dyn_obj_dict["velocity"]["v_y"]
-                    is_predicted = dyn_obj_dict["tracking_status"]["is_predicted"]
-                    omega_yaw = dyn_obj_dict["velocity"]["omega_yaw"]
-                    global_coordinates = np.array([x, y, z])
-                    global_yaw = yaw
-
-                    try:
-                        # Try to localize object on road. If not successful, warn.
-                        road_localtization = DynamicObject.compute_road_localization(global_coordinates, global_yaw,
-                                                                                     self._map_api)
-                        dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
-                                                global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
-                                                self.UNKNWON_DEFAULT_VAL, omega_yaw, road_localtization)
-                        dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
-                        self._dynamic_objects_memory_map[id] = dyn_obj
-
-                    except MapCellNotFound:
-                        self.logger.warning(
-                            "Couldn't localize object id {} on road. Object location: ({}, {}, {})".format(id, x, y, z))
-                else:
-                    # object is out of FOV, using its last known location and timestamp.
-                    dyn_obj = self._dynamic_objects_memory_map.get(id)
-                    if dyn_obj is not None:
-                        dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
+            dyn_obj_list = self.create_dyn_obj_list(objects)
 
             with self._dynamic_objects_lock:
                 self._dynamic_objects = dyn_obj_list
@@ -115,6 +69,58 @@ class StateModule(DmModule):
             self._publish_state_if_full()
         except Exception as e:
             self.logger.error("StateModule._dynamic_obj_callback failed due to {}".format(e))
+
+    def create_dyn_obj_list(self, objects)->List[DynamicObject]:
+        ego = self._ego_state
+        ego_pos = np.array([ego.x, ego.y, ego.z])
+        ego_yaw = ego.yaw
+        timestamp = objects["timestamp"]
+        dyn_obj_list_dict = objects["dynamic_objects"]
+        dyn_obj_list = []
+        for dyn_obj_dict in dyn_obj_list_dict:
+            in_fov = dyn_obj_dict["tracking_status"]["in_fov"]
+            id = dyn_obj_dict["id"]
+            if in_fov:
+                # object is in FOV, so we take its latest detection.
+                x = dyn_obj_dict["location"]["x"]
+                y = dyn_obj_dict["location"]["y"]
+                z = DEFAULT_OBJECT_Z_VALUE
+                confidence = dyn_obj_dict["location"]["confidence"]
+
+                yaw = dyn_obj_dict["bbox"]["yaw"]
+                length = dyn_obj_dict["bbox"]["length"]
+                width = dyn_obj_dict["bbox"]["width"]
+                height = dyn_obj_dict["bbox"]["height"]
+                size = ObjectSize(length, width, height)
+
+                v_x = dyn_obj_dict["velocity"]["v_x"]
+                v_y = dyn_obj_dict["velocity"]["v_y"]
+                omega_yaw = dyn_obj_dict["velocity"]["omega_yaw"]
+
+                is_predicted = dyn_obj_dict["tracking_status"]["is_predicted"]
+
+                global_coordinates = np.array([x, y, z])
+                global_yaw = yaw
+
+                try:
+                    # Try to localize object on road. If not successful, warn.
+                    road_localtization = DynamicObject.compute_road_localization(global_coordinates, global_yaw,
+                                                                                 self._map_api)
+                    dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
+                                            global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
+                                            self.UNKNWON_DEFAULT_VAL, omega_yaw, road_localtization)
+                    dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
+                    self._dynamic_objects_memory_map[id] = dyn_obj
+
+                except MapCellNotFound:
+                    self.logger.warning(
+                        "Couldn't localize object id {} on road. Object location: ({}, {}, {})".format(id, x, y, z))
+            else:
+                # object is out of FOV, using its last known location and timestamp.
+                dyn_obj = self._dynamic_objects_memory_map.get(id)
+                if dyn_obj is not None:
+                    dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
+        return dyn_obj_list
 
     def _self_localization_callback(self, ego_localization: dict):
         try:
@@ -182,7 +188,7 @@ class StateModule(DmModule):
         calculate road coordinates for global coordinates for ego
         :param global_pos: 1D numpy array of ego vehicle's [x,y,z] in global coordinate-frame
         :param global_yaw: in global coordinate-frame
-        :param map_api: MapAPI instance
+        :param map_api:BEHAVIORAL_STATE_READER_TOPIC MapAPI instance
         :return: the road localization
         """
         closest_road_id, lon, lat, global_yaw, is_on_road = map_api.convert_global_to_road_coordinates(global_pos[0],
