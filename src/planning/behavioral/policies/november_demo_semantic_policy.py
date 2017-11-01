@@ -31,19 +31,22 @@ class NovDemoPolicy(SemanticActionsPolicy):
         follow_right_lane_ind = [i for i, action in enumerate(semantic_actions)
                                  if action.cell[SEMANTIC_CELL_LANE] == -1]
 
-        if follow_current_lane_ind is not None and
-            (follow_right_lane_ind is None or
-             max_velocity - actions_spec[follow_right_lane_ind].v > MIN_OVERTAKE_VEL or  # if right lane is slow
-             max_velocity - actions_spec[follow_current_lane_ind].v > MIN_OVERTAKE_VEL) and
-            (follow_left_lane_ind is None or
-             max_velocity - actions_spec[follow_left_lane_ind].v < MIN_OVERTAKE_VEL or
-             actions_spec[follow_left_lane_ind].v - actions_spec[follow_current_lane_ind].v < MIN_OVERTAKE_VEL):
-            costs[follow_current_lane_ind] = 1.  # continue on the current lane
-        elif follow_right_lane_ind is not None:
-            costs[follow_right_lane_ind] = 1.  # move to right
-        elif follow_left_lane_ind is not None and
-            max_velocity - actions_spec[follow_left_lane_ind].v > MIN_OVERTAKE_VEL and
-            actions_spec[follow_left_lane_ind].v - actions_spec[follow_current_lane_ind].v > MIN_OVERTAKE_VEL:
-            costs[follow_left_lane_ind] = 1.  # move to left
+        if follow_current_lane_ind is None:
+            raise error
+
+        move_right = follow_right_lane_ind is not None and \
+                     max_velocity - actions_spec[follow_right_lane_ind].v < MIN_OVERTAKE_VEL and \
+                     max_velocity - actions_spec[follow_current_lane_ind].v < MIN_OVERTAKE_VEL
+
+        move_left = follow_left_lane_ind is not None and \
+                    max_velocity - actions_spec[follow_current_lane_ind].v >= MIN_OVERTAKE_VEL and \
+                    actions_spec[follow_left_lane_ind].v - actions_spec[follow_current_lane_ind].v >= MIN_OVERTAKE_VEL
+
+        if move_right:
+            costs[follow_right_lane_ind] = 1.
+        elif move_left:
+            costs[follow_left_lane_ind] = 1.
+        else:
+            costs[follow_current_lane_ind] = 1.
 
         return costs
