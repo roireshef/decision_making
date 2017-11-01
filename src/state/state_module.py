@@ -1,12 +1,16 @@
+from logging import Logger
 from threading import Lock
-from typing import Optional, Tuple
+from typing import Optional, List
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
-from decision_making.src.global_constants import *
+from decision_making.src.global_constants import DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, SELF_LOCALIZATION_SUBSCRIBE_TOPIC, \
+    DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, STATE_PUBLISH_TOPIC
 from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.state.state import *
+from decision_making.src.state.state import OccupancyState, EgoState, DynamicObject, ObjectSize, State, RoadLocalization
 from mapping.src.exceptions import MapCellNotFound
-from mapping.src.transformations.geometry_utils import CartesianFrame
+from mapping.src.model.map_api import MapAPI
+
+import numpy as np
 
 
 class StateModule(DmModule):
@@ -16,7 +20,7 @@ class StateModule(DmModule):
     # TODO: implement double-buffer mechanism for locks wherever needed
     def __init__(self, dds: DdsPubSub, logger: Logger, map_api: MapAPI, occupancy_state: Optional[OccupancyState],
                  dynamic_objects: Optional[List[DynamicObject]], ego_state: Optional[EgoState],
-                 dynamic_objects_average_location: dict = {}, dynamic_objects_history: dict = {}):
+                 dynamic_objects_memory_map: dict = {}):
         super().__init__(dds, logger)
         self._map_api = map_api
 
@@ -29,8 +33,8 @@ class StateModule(DmModule):
         self._ego_state = ego_state
         self._ego_state_lock = Lock()
 
-        self._dynamic_objects_average_location = dynamic_objects_average_location
-        self._dynamic_objects_history = dynamic_objects_history
+        self._dynamic_objects_memory_map = dynamic_objects_memory_map
+
 
     def _start_impl(self):
         self.dds.subscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, self._dynamic_obj_callback)
@@ -66,36 +70,44 @@ class StateModule(DmModule):
 
             dyn_obj_list = []
             for dyn_obj_dict in dyn_obj_list_dict:
-                id = dyn_obj_dict["id"]
-                x = dyn_obj_dict["location"]["x"]
-                y = dyn_obj_dict["location"]["y"]
-                z = DEFAULT_OBJECT_Z_VALUE
-                yaw = dyn_obj_dict["bbox"]["yaw"]
-                confidence = dyn_obj_dict["location"]["confidence"]
-                length = dyn_obj_dict["bbox"]["length"]
-                width = dyn_obj_dict["bbox"]["width"]
-                height = dyn_obj_dict["bbox"]["height"]
-                size = ObjectSize(length, width, height)
-                v_x = dyn_obj_dict["velocity"]["v_x"]
-                v_y = dyn_obj_dict["velocity"]["v_y"]
-                is_predicted = dyn_obj_dict["tracking_status"]["is_predicted"]
                 in_fov = dyn_obj_dict["tracking_status"]["in_fov"]
-                omega_yaw = dyn_obj_dict["velocity"]["omega_yaw"]
-                global_coordinates = np.array([x, y, z])
-                global_yaw = yaw
+                id = dyn_obj_dict["id"]
+                if in_fov:
+                    # object is in FOV, so we take its latest detection.
+                    x = dyn_obj_dict["location"]["x"]
+                    y = dyn_obj_dict["location"]["y"]
+                    z = DEFAULT_OBJECT_Z_VALUE
+                    yaw = dyn_obj_dict["bbox"]["yaw"]
+                    confidence = dyn_obj_dict["location"]["confidence"]
+                    length = dyn_obj_dict["bbox"]["length"]
+                    width = dyn_obj_dict["bbox"]["width"]
+                    height = dyn_obj_dict["bbox"]["height"]
+                    size = ObjectSize(length, width, height)
+                    v_x = dyn_obj_dict["velocity"]["v_x"]
+                    v_y = dyn_obj_dict["velocity"]["v_y"]
+                    is_predicted = dyn_obj_dict["tracking_status"]["is_predicted"]
+                    omega_yaw = dyn_obj_dict["velocity"]["omega_yaw"]
+                    global_coordinates = np.array([x, y, z])
+                    global_yaw = yaw
 
-                try:
-                    # Try to localize object on road. If not successful, warn.
-                    road_localtization = DynamicObject.compute_road_localization(global_coordinates, global_yaw,
-                                                                                self._map_api)
+                    try:
+                        # Try to localize object on road. If not successful, warn.
+                        road_localtization = DynamicObject.compute_road_localization(global_coordinates, global_yaw,
+                                                                                     self._map_api)
+                        dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
+                                                global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
+                                                self.UNKNWON_DEFAULT_VAL, omega_yaw, road_localtization)
+                        dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
+                        self._dynamic_objects_memory_map[id] = dyn_obj
 
-                    dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
-                                            global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
-                                            self.UNKNWON_DEFAULT_VAL, omega_yaw, road_localtization)
-                    dyn_obj_list.append(dyn_obj)
-                except MapCellNotFound:
-                    self.logger.warning(
-                        "Couldn't localize object id {} on road. Object location: ({}, {}, {})".format(id, x, y, z))
+                    except MapCellNotFound:
+                        self.logger.warning(
+                            "Couldn't localize object id {} on road. Object location: ({}, {}, {})".format(id, x, y, z))
+                else:
+                    # object is out of FOV, using its last known location and timestamp.
+                    dyn_obj = self._dynamic_objects_memory_map.get(id)
+                    if dyn_obj is not None:
+                        dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
 
             with self._dynamic_objects_lock:
                 self._dynamic_objects = dyn_obj_list

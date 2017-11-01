@@ -95,14 +95,16 @@ class WerlingPlanner(TrajectoryPlanner):
         alternative_ids_skip_range = range(0, len(ctrajectories),
                                            max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
 
-        #TODO: move this to visualizer
-        predicted_state_at_end_of_traj_execution = self._predictor.predict_state(state=state,
-                                      prediction_timestamps=np.array([state.ego_state.timestamp_in_sec + time]))[0]
+        #TODO: move this to visualizer. Curently we are predicting the state at ego's timestamp and at the end of the traj execution time.
+        predicted_states = self._predictor.predict_state(state=state, prediction_timestamps=np.array(
+            [state.ego_state.timestamp_in_sec, state.ego_state.timestamp_in_sec + time]))
+        # predicted_states[0] is the current state
+        # predicted_states[1] is the predicted state in the end of the execution of traj.
         debug_results = TrajectoryVisualizationMsg(frenet.curve,
                                                    ctrajectories[sorted_idxs[alternative_ids_skip_range], :, :EGO_V],
                                                    trajectory_costs[sorted_idxs[alternative_ids_skip_range]],
-                                                   state,
-                                                   predicted_state_at_end_of_traj_execution,
+                                                   predicted_states[0],
+                                                   predicted_states[1],
                                                    time)
 
         actual_end_theta_diff = ctrajectories[sorted_idxs[0], -1, EGO_THETA] - frenet.curve[
