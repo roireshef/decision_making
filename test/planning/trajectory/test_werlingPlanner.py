@@ -33,8 +33,8 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
     yaw1 = 0
     pos2 = np.array([11, 1.5])
     yaw2 = np.pi / 4
-    road_localization1 = StateModule._compute_road_localization(pos1, yaw1, map_api)
-    road_localization2 = StateModule._compute_road_localization(pos2, yaw2, map_api)
+    road_localization1 = DynamicObject.compute_road_localization(pos1, yaw1, map_api)
+    road_localization2 = DynamicObject.compute_road_localization(pos2, yaw2, map_api)
 
     obs = list([
         DynamicObject(obj_id=0, timestamp=0, x=pos1[0], y=pos1[1], z=0, yaw=yaw1, size=ObjectSize(1.5, 0.5, 0),
