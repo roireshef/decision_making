@@ -46,7 +46,7 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
     ])
 
     ego = EgoState(obj_id=-1, timestamp=0, x=0, y=0, z=0, yaw=0, size=None,
-                   road_localization=StateModule._compute_road_localization(np.array([0, 0]),0.0,map_api),
+                   road_localization=DynamicObject.compute_road_localization(np.array([0, 0]),0.0,map_api),
                    confidence=1.0, v_x=v0, v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
     state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
