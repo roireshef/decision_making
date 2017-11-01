@@ -114,7 +114,7 @@ class NovDemoBehavioralState(SemanticBehavioralState):
                         # replace object the the closer one
                         semantic_occupancy_dict[occupancy_index][0] = dynamic_object
 
-        return RoadSemanticOccupancyGrid(semantic_occupancy_dict)
+        return semantic_occupancy_dict
 
 class NovDemoPolicy(SemanticActionsPolicy):
     pass
