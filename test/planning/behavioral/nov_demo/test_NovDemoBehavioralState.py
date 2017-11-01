@@ -81,7 +81,7 @@ def test_generate_semantic_occupancy_grid_ComplexStateWithFullGrid_carsAreInRigh
 
     # Assertion tests of objects in grid:
 
-    # Closest cars behind ego:
+    # Closest cars behind ego: (cars 1-3 are ignored because they are far)
     lane = -1
     lon = -1
     obj_id = 4
@@ -119,7 +119,7 @@ def test_generate_semantic_occupancy_grid_ComplexStateWithFullGrid_carsAreInRigh
     assert cell in occupancy_grid.road_occupancy_grid and occupancy_grid.road_occupancy_grid[cell][0].obj_id == obj_id
 
 
-    # Closest cars in front of ego:
+    # Closest cars in front of ego: (cars 12-14 are ignored because they are far)
     lane = -1
     lon = 1
     obj_id = 9
