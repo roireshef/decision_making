@@ -9,5 +9,41 @@ SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO = 1
 
 
 class NovDemoPolicy(SemanticActionsPolicy):
-    pass
 
+    def _eval_actions(self, state: State, semantic_actions: List[SemanticAction],
+                      actions_spec: List[SemanticActionSpec]) -> np.ndarray:
+        """
+        Evaluate the generated actions using the full state.
+        Gets a list of actions to evaluate so and returns a vector representing their costs.
+        A set of actions is provided, enabling assessing them dependently.
+        Note: the semantic actions were generated using the behavioral state which isn't necessarily captures
+         all relevant details in the scene. Therefore the evaluation is done using the full state.
+        :param state: world state
+        :param semantic_actions: semantic actions list
+        :param actions_spec: specifications of semantic actions
+        :return: numpy array of costs of semantic actions
+        """
+        costs = np.zeros(len(semantic_actions))
+        follow_current_lane_ind = [i for i, action in enumerate(semantic_actions)
+                                   if action.cell[SEMANTIC_CELL_LANE] == 0]
+        follow_left_lane_ind = [i for i, action in enumerate(semantic_actions)
+                                if action.cell[SEMANTIC_CELL_LANE] == 1]
+        follow_right_lane_ind = [i for i, action in enumerate(semantic_actions)
+                                 if action.cell[SEMANTIC_CELL_LANE] == -1]
+
+        if follow_current_lane_ind is not None and
+            (follow_right_lane_ind is None or
+             max_velocity - actions_spec[follow_right_lane_ind].v > MIN_OVERTAKE_VEL or  # if right lane is slow
+             max_velocity - actions_spec[follow_current_lane_ind].v > MIN_OVERTAKE_VEL) and
+            (follow_left_lane_ind is None or
+             max_velocity - actions_spec[follow_left_lane_ind].v < MIN_OVERTAKE_VEL or
+             actions_spec[follow_left_lane_ind].v - actions_spec[follow_current_lane_ind].v < MIN_OVERTAKE_VEL):
+            costs[follow_current_lane_ind] = 1.  # continue on the current lane
+        elif follow_right_lane_ind is not None:
+            costs[follow_right_lane_ind] = 1.  # move to right
+        elif follow_left_lane_ind is not None and
+            max_velocity - actions_spec[follow_left_lane_ind].v > MIN_OVERTAKE_VEL and
+            actions_spec[follow_left_lane_ind].v - actions_spec[follow_current_lane_ind].v > MIN_OVERTAKE_VEL:
+            costs[follow_left_lane_ind] = 1.  # move to left
+
+        return costs
