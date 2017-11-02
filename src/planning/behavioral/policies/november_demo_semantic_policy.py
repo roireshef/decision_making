@@ -139,6 +139,9 @@ class NovDemoPolicy(SemanticActionsPolicy):
         :return: numpy array of costs of semantic actions
         """
 
+        if len(semantic_actions) != len(actions_spec):
+            self.logger.error("Length of semantic_actions is different from length of actions_spec")
+
         straight_lane_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec, 0)
         left_lane_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec, 1)
         right_lane_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec, -1)
