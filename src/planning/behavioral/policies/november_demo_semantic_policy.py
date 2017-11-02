@@ -2,7 +2,7 @@ from logging import Logger
 from typing import List
 
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticActionsPolicy, \
-    SemanticBehavioralState, RoadSemanticOccupancyGrid
+    SemanticBehavioralState, RoadSemanticOccupancyGrid, SemanticAction, SemanticActionType
 from decision_making.src.state.state import EgoState, State, DynamicObject
 from mapping.src.model.map_api import MapAPI
 
