@@ -18,7 +18,6 @@ class NovDemoBehavioralState(SemanticBehavioralState):
         super().__init__(road_occupancy_grid=road_occupancy_grid)
         self.ego_state = ego_state
 
-
     @classmethod
     def create_from_state(cls, state: State, map_api: MapAPI, logger: Logger):
         """
@@ -116,9 +115,9 @@ class NovDemoBehavioralState(SemanticBehavioralState):
 
         return semantic_occupancy_dict
 
-class NovDemoPolicy(SemanticActionsPolicy):
 
-    def _enumerate_actions(self, behavioral_state: SemanticBehavioralState) -> List[SemanticAction]:
+class NovDemoPolicy(SemanticActionsPolicy):
+    def _enumerate_actions(self, behavioral_state: NovDemoBehavioralState) -> List[SemanticAction]:
         """
         Enumerate the list of possible semantic actions to be generated.
         :param behavioral_state:
@@ -127,8 +126,14 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         semantic_actions: List[SemanticAction] = list()
 
+        ego_lane = behavioral_state.ego_state.road_localization.lane_num
+        optional_lane_keys = [-1, 0, 1]
+        lanes_in_road = self._map_api.get_road(behavioral_state.ego_state.road_localization.road_id).lanes_num
+        filtered_lane_keys = list(
+            filter(lambda relative_lane: 0 <= ego_lane + relative_lane < lanes_in_road, optional_lane_keys))
+
         # Generate actions towards each of the cells in front of ego
-        for relative_lane_key in [-1, 0, 1]:
+        for relative_lane_key in filtered_lane_keys:
             for longitudinal_key in [SEMANTIC_GRID_FRONT]:
                 semantic_cell = (relative_lane_key, longitudinal_key)
                 if semantic_cell in behavioral_state.road_occupancy_grid:
@@ -144,4 +149,3 @@ class NovDemoPolicy(SemanticActionsPolicy):
                 semantic_actions.append(semantic_action)
 
         return semantic_actions
-
