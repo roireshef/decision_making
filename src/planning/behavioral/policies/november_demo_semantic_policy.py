@@ -16,7 +16,7 @@ SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO = 1
 
 MIN_OVERTAKE_VEL = 2  # [m/s]
 MIN_CHANGE_LANE_TIME = 4  # sec
-LONG_ACHEIVING_TIME = 10  # sec
+# LONG_ACHEIVING_TIME = 10  # sec
 
 
 class NovDemoBehavioralState(SemanticBehavioralState):
