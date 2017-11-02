@@ -36,18 +36,18 @@ def test_novDemoEvalSemanticActions(testable_map_api):
         size = ObjectSize(1.5, 0.5, 0)
         obs = list([
             DynamicObject(obj_id=0, timestamp=0, x=pos1[0], y=pos1[1], z=0, yaw=0, size=size,
-                          road_localization=StateModule._compute_road_localization(pos1, 0, testable_map_api),
+                          road_localization=DynamicObject.compute_road_localization(pos1, 0, testable_map_api),
                           confidence=1.0, v_x=vel1, v_y=0, acceleration_lon=0.0, omega_yaw=0.0),
             DynamicObject(obj_id=1, timestamp=0, x=pos2[0], y=pos2[1], z=0, yaw=0, size=size,
-                          road_localization=StateModule._compute_road_localization(pos2, 0, testable_map_api),
+                          road_localization=DynamicObject.compute_road_localization(pos2, 0, testable_map_api),
                           confidence=1.0, v_x=vel2, v_y=0, acceleration_lon=0.0, omega_yaw=0.0),
             DynamicObject(obj_id=2, timestamp=0, x=pos3[0], y=pos3[1], z=0, yaw=0, size=size,
-                          road_localization=StateModule._compute_road_localization(pos3, 0, testable_map_api),
+                          road_localization=DynamicObject.compute_road_localization(pos3, 0, testable_map_api),
                           confidence=1.0, v_x=vel3, v_y=0, acceleration_lon=0.0, omega_yaw=0.0)
         ])
 
         ego = EgoState(obj_id=-1, timestamp=0, x=ego_x, y=0, z=0, yaw=0, size=size,
-                       road_localization=StateModule._compute_road_localization(np.array([ego_x, 0]), 0.0, testable_map_api),
+                       road_localization=DynamicObject.compute_road_localization(np.array([ego_x, 0]), 0.0, testable_map_api),
                        confidence=1.0, v_x=ego_v, v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
         # state = State(occupancy_state=OccupancyState(0, np.array([]), np.array([])), dynamic_objects=obs, ego_state=ego)
