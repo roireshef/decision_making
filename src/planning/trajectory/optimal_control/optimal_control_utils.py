@@ -26,3 +26,27 @@ class OptimalControlUtils:
 
             return np.concatenate((poly_coefs, poly_dot_coefs, poly_dotdot_coefs), axis=1)
 
+        @staticmethod
+        def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
+            return np.array(
+                [[[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],                                   # x(0)
+                  [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],                                   # x_dot(0)
+                  [0.0, 0.0, 2.0, 0.0, 0.0, 0.0],                                   # x_dotdot(0)
+                  [1.0, T, T ** 2, T ** 3, T ** 4, T ** 5],                         # x(T)
+                  [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],    # x_dot(T)
+                  [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]]           # x_dotdot(T)
+                 for T in terminal_times], dtype=np.float16)
+
+        @staticmethod
+        def time_constraints_matrix(T: float) -> np.ndarray:
+            return OptimalControlUtils.QuinticPoly1D.time_constraints_tensor(np.array([T]))[0]
+
+        @staticmethod
+        def find_second_der_extrema(poly_coefs: np.ndarray) -> np.ndarray:
+            """
+            find the extremas of the second derivative of the quintic-polynom, by finding the roots of the 3rd
+            derivative (which is itself a 2nd degree polynomial)
+            :param poly_coefs: 1D numpy array corresponds to coefficients of [x**5, x**4, ..., 1]
+            :return: numpy array with two values corresponds to the x-values of the extremas
+            """
+            return np.roots(np.array([60.0, 24.0, 6.0]) * poly_coefs[:3])

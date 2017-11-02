@@ -109,7 +109,7 @@ class SemanticActionsPolicy(Policy):
         pass
 
     def _specify_action(self, behavioral_state: SemanticBehavioralState,
-                         semantic_action: SemanticAction) -> SemanticActionSpec:
+                        semantic_action: SemanticAction) -> SemanticActionSpec:
         """
         For each semantic actions, generate a trajectory specifications that will be passed through to the TP
         :param behavioral_state:

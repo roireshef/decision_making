@@ -17,3 +17,21 @@ BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON = 2.0
 # Used for prediction resolution, i.e. the resolution of states along the path to be used for acda computations:
 # This may have an effect on efficiency if the acda computation is costly.
 BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
+
+# Planning horizon for the TP query sent by BP [sec]
+# Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
+BP_SPECIFICATION_T_MIN = 0.1
+BP_SPECIFICATION_T_MAX = 20.0
+BP_SPECIFICATION_T_RES = 0.25
+
+# Longitudinal Acceleration Limits [m/sec^2]
+A_LON_MIN = -3
+A_LON_MAX = 3
+
+# Latitudinal Acceleration Limits [m/sec^2]
+A_LAT_MIN = -2
+A_LAT_MAX = 2
+
+# Assumed response delay on road [sec]
+# Used to compute safe distance from other agents on road
+SAFE_DIST_TIME_DELAY = 0.5

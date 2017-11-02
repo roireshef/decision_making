@@ -190,13 +190,16 @@ class WerlingPlanner(TrajectoryPlanner):
         :param time_samples: [sec] from 0 to T with step=self.dt
         :return: a matrix of rows of the form [sx, sv, sa, dx, dv, da]
         """
-        A = np.array([[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],  # dx0/sx0
-                      [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],  # dv0/sv0
-                      [0.0, 0.0, 2.0, 0.0, 0.0, 0.0],  # da0/sa0
-                      [1.0, T, T ** 2, T ** 3, T ** 4, T ** 5],  # dxT/sxT
-                      [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],  # dvT/svT
-                      [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]],  # daT/saT
-                     dtype=np.float64)
+        # TODO: remove this once tested and working (this code block was moved to OC.QuinticPoly1D)
+        # A = np.array([[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],  # dx0/sx0
+        #               [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],  # dv0/sv0
+        #               [0.0, 0.0, 2.0, 0.0, 0.0, 0.0],  # da0/sa0
+        #               [1.0, T, T ** 2, T ** 3, T ** 4, T ** 5],  # dxT/sxT
+        #               [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],  # dvT/svT
+        #               [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]],  # daT/saT
+        #              dtype=np.float64)
+
+        A = OC.QuinticPoly1D.time_constraints_matrix(T)
 
         A_inv = np.linalg.inv(A)
 
