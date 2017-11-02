@@ -116,6 +116,7 @@ class SemanticActionsPolicy(Policy):
         """
         pass
 
+    @staticmethod
     def _eval_actions(self, behavioral_state: BehavioralState, semantic_actions: List[SemanticAction],
                       actions_spec: List[SemanticActionSpec]) -> np.ndarray:
         """
