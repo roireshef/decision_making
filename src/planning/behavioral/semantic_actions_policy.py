@@ -116,20 +116,22 @@ class SemanticActionsPolicy(Policy):
         """
         pass
 
-    def _eval_actions(self, state: State, actions_spec: List[SemanticActionSpec]) -> np.ndarray:
+    def _eval_actions(self, behavioral_state: BehavioralState, semantic_actions: List[SemanticAction],
+                      actions_spec: List[SemanticActionSpec]) -> np.ndarray:
         """
         Evaluate the generated actions using the full state.
         Gets a list of actions to evaluate so and returns a vector representing their costs.
         A set of actions is provided, enabling assessing them dependently.
         Note: the semantic actions were generated using the behavioral state which isn't necessarily captures
          all relevant details in the scene. Therefore the evaluation is done using the full state.
-        :param state: world state
-        :param action_spec: specification of semantic action
+        :param semantic_actions:
+        :param behavioral_state: behavioral state
+        :param actions_spec: specification of semantic action
         :return: numpy array of costs of semantic actions
         """
         pass
 
-    def select_best(self, action_specs: List[SemanticActionSpec], costs: np.ndarray) -> int:
+    def _select_best(self, action_specs: List[SemanticActionSpec], costs: np.ndarray) -> int:
         """
         Select the best action out of the possible actions specs considering their cost
         :param action_specs:
