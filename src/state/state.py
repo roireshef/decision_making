@@ -102,6 +102,10 @@ class DynamicObject(DDSNonTypedMsg):
     def timestamp_in_sec(self):
         return self.timestamp * 1e-9
 
+    @timestamp_in_sec.setter
+    def timestamp_in_sec(self, value):
+        self.timestamp = int(value * 1e9)
+
 
     @property
     def road_longitudinal_speed(self) -> float:
@@ -117,7 +121,23 @@ class DynamicObject(DDSNonTypedMsg):
         """
         return np.linalg.norm([self.v_x, self.v_y]) * np.sin(self.road_localization.intra_lane_yaw)
 
+    @staticmethod
+    def compute_road_localization(global_pos: np.ndarray, global_yaw: float, map_api: MapAPI) -> RoadLocalization:
+        """
+        calculate road coordinates for global coordinates for ego
+        :param global_pos: 1D numpy array of ego vehicle's [x,y,z] in global coordinate-frame
+        :param global_yaw: in global coordinate-frame
+        :param map_api: MapAPI instance
+        :return: the road localization
+        """
+        closest_road_id, lon, lat, global_yaw, is_on_road = map_api.convert_global_to_road_coordinates(global_pos[0],
+                                                                                                       global_pos[1],
+                                                                                                       global_yaw)
+        lane_width = map_api.get_road(closest_road_id).lane_width
+        lane = np.math.floor(lat / lane_width)
+        intra_lane_lat = lat - lane * lane_width
 
+        return RoadLocalization(closest_road_id, int(lane), lat, intra_lane_lat, lon, global_yaw)
 
     def get_relative_road_localization(self, ego_road_localization, ego_nav_plan, map_api, logger):
         # type: (RoadLocalization, NavigationPlanMsg, MapAPI, Logger) -> Union[RelativeRoadLocalization, None]
