@@ -3,7 +3,7 @@ from decision_making.src.planning.behavioral.policies.default_policy import Defa
 from decision_making.test.planning.custom_fixtures import state_fix, navigation_plan
 from mapping.test.model.testable_map_fixtures import testable_map_api
 from rte.python.logger.AV_logger import AV_Logger
-
+import pytest
 
 @pytest.fixture(scope='function')
 def default_policy_behavioral_state(navigation_plan, testable_map_api, state_fix):
