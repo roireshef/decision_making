@@ -22,6 +22,8 @@ class TrajectoryCostParams(DDSTypedMsg):
                  left_road_cost: SigmoidFunctionParams, right_road_cost: SigmoidFunctionParams,
                  left_shoulder_cost: SigmoidFunctionParams, right_shoulder_cost: SigmoidFunctionParams,
                  obstacle_cost: SigmoidFunctionParams, dist_from_ref_sq_cost_coef: float,
+                 dist_from_goal_lon_sq_cost: float, dist_from_goal_lat_sq_cost: float,
+                 dist_from_goal_yaw_sq_cost: float, dist_from_goal_vel_sq_cost: float,
                  velocity_limits: np.ndarray, acceleration_limits: np.ndarray):
         """
         This class holds all the parameters used to build the cost function of the trajectory planner.
@@ -53,6 +55,10 @@ class TrajectoryCostParams(DDSTypedMsg):
         self.left_road_cost = left_road_cost
         self.right_road_cost = right_road_cost
         self.dist_from_ref_sq_cost_coef = dist_from_ref_sq_cost_coef
+        self.dist_from_goal_lon_sq_cost = dist_from_goal_lon_sq_cost
+        self.dist_from_goal_lat_sq_cost = dist_from_goal_lat_sq_cost
+        self.dist_from_goal_yaw_sq_cost = dist_from_goal_yaw_sq_cost
+        self.dist_from_goal_vel_sq_cost = dist_from_goal_vel_sq_cost
         self.velocity_limits = velocity_limits
         self.acceleration_limits = acceleration_limits
 
