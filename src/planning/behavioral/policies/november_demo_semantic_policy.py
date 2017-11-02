@@ -2,6 +2,7 @@ import numpy as np
 from logging import Logger
 from typing import List
 
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticActionsPolicy, \
     SemanticBehavioralState, RoadSemanticOccupancyGrid, SemanticActionSpec, SemanticAction, SEMANTIC_CELL_LANE
 from decision_making.src.state.state import EgoState, State, DynamicObject
@@ -124,9 +125,8 @@ class NovDemoBehavioralState(SemanticBehavioralState):
 
 class NovDemoPolicy(SemanticActionsPolicy):
 
-    @staticmethod
-    def _eval_actions(behavioral_state: NovDemoBehavioralState, semantic_actions: List[SemanticAction],
-                      actions_spec: List[SemanticActionSpec], max_velocity: float) -> np.ndarray:
+    def _eval_actions(self, behavioral_state: NovDemoBehavioralState, semantic_actions: List[SemanticAction],
+                      actions_spec: List[SemanticActionSpec]) -> np.ndarray:
         """
         Evaluate the generated actions using the full state.
         Gets a list of actions to evaluate so and returns a vector representing their costs.
@@ -143,7 +143,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
         left_lane_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec, 1)
         right_lane_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec, -1)
 
-        desired_vel = max_velocity
+        desired_vel = BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
 
         right_is_fast = right_lane_ind is not None and desired_vel - actions_spec[right_lane_ind].v < MIN_OVERTAKE_VEL
         right_is_occupied = len(behavioral_state.road_occupancy_grid[(-1, 0)]) > 0
