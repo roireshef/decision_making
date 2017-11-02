@@ -45,6 +45,8 @@ class RoadFollowingPredictor(Predictor):
 
         # resample the route to prediction_timestamps
         predicted_distances_from_start = object_velocity * (prediction_timestamps - dynamic_object.timestamp_in_sec) # assuming constant velocity
+        # TODO: Handle negative prediction times. For now, we take only t >= 0
+        predicted_distances_from_start = np.maximum(predicted_distances_from_start, 0.0)
         route_xy, _ = CartesianFrame.resample_curve(curve=lookahead_route,
                                                  arbitrary_curve_sampling_points=predicted_distances_from_start)
         # add yaw and velocity

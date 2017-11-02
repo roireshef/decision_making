@@ -181,21 +181,3 @@ class StateModule(DmModule):
     def _actuator_status_callback(self, actuator: dict):
         self.logger.debug("got actuator status %s", actuator)
         pass  # TODO: update self._ego_state.steering_angle. Don't forget to lock self._ego_state!
-
-    @staticmethod
-    def _compute_road_localization(global_pos: np.ndarray, global_yaw: float, map_api: MapAPI) -> RoadLocalization:
-        """
-        calculate road coordinates for global coordinates for ego
-        :param global_pos: 1D numpy array of ego vehicle's [x,y,z] in global coordinate-frame
-        :param global_yaw: in global coordinate-frame
-        :param map_api:BEHAVIORAL_STATE_READER_TOPIC MapAPI instance
-        :return: the road localization
-        """
-        closest_road_id, lon, lat, global_yaw, is_on_road = map_api.convert_global_to_road_coordinates(global_pos[0],
-                                                                                                       global_pos[1],
-                                                                                                       global_yaw)
-        lane_width = map_api.get_road(closest_road_id).lane_width
-        lane = np.math.floor(lat / lane_width)
-        intra_lane_lat = lat - lane * lane_width
-
-        return RoadLocalization(closest_road_id, int(lane), lat, intra_lane_lat, lon, global_yaw)

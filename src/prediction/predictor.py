@@ -55,7 +55,7 @@ class Predictor:
         for t_ind, predicted_object_state in enumerate(predicted_object_states):
             predicted_pos = np.array([predictions[t_ind, PREDICT_X], predictions[t_ind, PREDICT_Y], 0.0])
             predicted_yaw = predictions[t_ind, PREDICT_YAW]
-            predicted_object_state.timestamp = prediction_timestamps[t_ind]
+            predicted_object_state.timestamp_in_sec = prediction_timestamps[t_ind]
             predicted_object_state.x = predicted_pos[0]
             predicted_object_state.y = predicted_pos[1]
             predicted_object_state.yaw = predicted_yaw
