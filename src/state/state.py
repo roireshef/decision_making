@@ -102,6 +102,10 @@ class DynamicObject(DDSNonTypedMsg):
     def timestamp_in_sec(self):
         return self.timestamp * 1e-9
 
+    @timestamp_in_sec.setter
+    def timestamp_in_sec(self, value):
+        self.timestamp = int(value * 1e9)
+
 
     @property
     def road_longitudinal_speed(self) -> float:
