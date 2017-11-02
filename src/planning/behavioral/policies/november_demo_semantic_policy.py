@@ -8,9 +8,8 @@ from decision_making.src.messages.trajectory_parameters import SigmoidFunctionPa
     TrajectoryParams
 from decision_making.src.planning.behavioral.constants import LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticActionsPolicy, \
-    SemanticBehavioralState, RoadSemanticOccupancyGrid, SemanticActionSpec
+    SemanticBehavioralState, RoadSemanticOccupancyGrid, SemanticActionSpec, SemanticAction, SemanticActionType
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-    SemanticBehavioralState, RoadSemanticOccupancyGrid, SemanticAction, SemanticActionType
 from decision_making.src.state.state import EgoState, State, DynamicObject
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.model.map_api import MapAPI
@@ -41,8 +40,8 @@ class NovDemoBehavioralState(SemanticBehavioralState):
         return NovDemoBehavioralState(road_occupancy_grid=semantic_occupancy_grid, ego_state=state.ego_state)
 
     @staticmethod
-    def _generate_semantic_occupancy_grid(ego_state: EgoState, dynamic_objects: List[
-        DynamicObject], map_api: MapAPI, logger: Logger) -> RoadSemanticOccupancyGrid:
+    def _generate_semantic_occupancy_grid(ego_state: EgoState, dynamic_objects: List[DynamicObject], map_api: MapAPI,
+                                          logger: Logger) -> RoadSemanticOccupancyGrid:
         """
         Occupy the occupancy grid.
         This method iterates over all dynamic objects, and fits them into the relevant cell
@@ -172,8 +171,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
                                                                navigation_plan=nav_plan)
 
         trajectory_parameters = self._generate_trajectory_specs(behavioral_state=behavioral_state,
-                                                            action_spec=selected_action_spec,
-                                                            reference_route=reference_trajectory)
+                                                                action_spec=selected_action_spec,
+                                                                reference_route=reference_trajectory)
 
         return trajectory_parameters
 
@@ -181,7 +180,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
                                    navigation_plan: NavigationPlanMsg) -> np.ndarray:
         """
         :param behavioral_state: processed behavioral state
-        :param target_lane_latitude: road latitude of reference route in [m]
+        :param action_spec: the goal of the action
         :return: [nx3] array of reference_route (x,y,yaw) [m,m,rad] in global coordinates
         """
 

@@ -48,7 +48,7 @@ class SemanticBehavioralState(BehavioralState):
         self.road_occupancy_grid = road_occupancy_grid
 
     @classmethod
-    def create_from_state(cls, state: State):
+    def create_from_state(cls, state: State, map_api: MapAPI, logger: Logger):
         """
         :return: a new and updated BehavioralState
         """

@@ -1,14 +1,19 @@
-from decision_making.src.state.state import State, DynamicObject, RelativeRoadLocalization
+from logging import Logger
+
+from decision_making.src.state.state import State
+from mapping.src.model.map_api import MapAPI
 
 
 class BehavioralState:
 
     @classmethod
-    def create_from_state(cls, state: State):
+    def create_from_state(cls, state: State, map_api: MapAPI, logger: Logger):
         """
         This method updates the behavioral state according to the new world state and navigation plan.
          It fetches relevant features that will be used for the decision-making process.
         :param state: new world state
+        :param map_api: our map
+        :param logger
         :return: a new and updated BehavioralState
         """
         pass
