@@ -73,12 +73,3 @@ class OptimalControlUtils:
             """
             return OptimalControlUtils.QuinticPoly1D.time_constraints_tensor(np.array([T]))[0]
 
-        @staticmethod
-        def find_second_der_extrema(poly_coefs: np.ndarray) -> np.ndarray:
-            """
-            find the extremas of the second derivative of the quintic-polynom, by finding the roots of the 3rd
-            derivative (which is itself a 2nd degree polynomial)
-            :param poly_coefs: 1D numpy array corresponds to coefficients of [x**5, x**4, ..., 1]
-            :return: numpy array with two values corresponds to the x-values of the extremas
-            """
-            return np.roots(np.array([60.0, 24.0, 6.0]) * poly_coefs[:3])
