@@ -248,7 +248,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
             costs[right_lane_action_ind] = 1.
         # move left if straight is slow and the left is faster than straight
         elif not is_forward_fast and (
-            is_forward_left_faster or current_lane_action_ind is None) and not is_left_occupied:
+                    is_forward_left_faster or current_lane_action_ind is None) and not is_left_occupied:
             costs[left_lane_action_ind] = 1.
         else:
             costs[current_lane_action_ind] = 1.
@@ -414,7 +414,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
             safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
 
             # set of 6 constraints RHS values for quintic polynomial solution (S DIM)
-            constraints_s = np.array([ego_sx0, ego_sv0, ego_sa0, obj_sxT - safe_lon_dist - obj_long_margin, obj_svT, obj_saT])
+            constraints_s = np.array(
+                [ego_sx0, ego_sv0, ego_sa0, obj_sxT - safe_lon_dist - obj_long_margin, obj_svT, obj_saT])
             constraints_d = np.array([ego_dx0, ego_dv0, ego_da0, obj_dxT, 0.0, 0.0])
 
             # solve for s(t) and d(t)
@@ -423,7 +424,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
             # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
             if NovDemoPolicy._is_acceleration_in_limits(poly_all_coefs_s, T, A_LON_MIN, A_LON_MAX) and \
-               NovDemoPolicy._is_acceleration_in_limits(poly_all_coefs_d, T, A_LAT_MIN, A_LAT_MAX):
+                    NovDemoPolicy._is_acceleration_in_limits(poly_all_coefs_d, T, A_LAT_MIN, A_LAT_MAX):
                 return SemanticActionSpec(t=T, v=obj_svT, s_rel=obj_sxT - ego_sx0, d_rel=obj_dxT - ego_dx0)
 
         raise NoValidTrajectoriesFound("No valid trajectories found. state: {}, action: {}"
