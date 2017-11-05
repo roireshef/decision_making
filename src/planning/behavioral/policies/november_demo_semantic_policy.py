@@ -3,10 +3,10 @@ from typing import List
 
 import numpy as np
 
-from decision_making.src import global_constants
 from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, TRAJECTORY_ARCLEN_RESOLUTION, \
+    REFERENCE_TRAJECTORY_LENGTH
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
@@ -449,7 +449,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
         :param max_acc_threshold: maximal allowed value of acceleration/deceleration [m/sec^2]
         :return: True if restrictions are met, False otherwise
         """
-        # TODO: boundary values are redundant if they are provided by the user!
+        # TODO: a(0) and a(T) checks are redundant if they are provided by the user!
         # compute extrema points (add 0,T boundaries as well)
         acc_suspected_points_s = np.concatenate((
             OptimalControlUtils.QuinticPoly1D.find_second_der_extrema(poly_all_coefs[:6]),
@@ -498,17 +498,15 @@ class NovDemoPolicy(SemanticActionsPolicy):
             road_id=behavioral_state.ego_state.road_localization.road_id,
             lat_shift=target_lane_latitude,
             starting_lon=behavioral_state.ego_state.road_localization.road_lon,
-            lon_step=global_constants.TRAJECTORY_ARCLEN_RESOLUTION,
-            steps_num=int(np.round(target_relative_longitude /
-                                   global_constants.TRAJECTORY_ARCLEN_RESOLUTION)),
+            lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
+            steps_num=int(np.round(target_relative_longitude / TRAJECTORY_ARCLEN_RESOLUTION)),
             navigation_plan=navigation_plan)
         reference_route_xy = lookahead_path
 
         # interpolate and create uniformly spaced path
-        reference_route_xy_resampled, _ = \
-            CartesianFrame.resample_curve(curve=reference_route_xy,
-                                          step_size=global_constants.TRAJECTORY_ARCLEN_RESOLUTION,
-                                          desired_curve_len=global_constants.REFERENCE_TRAJECTORY_LENGTH,
-                                          preserve_step_size=False)
+        reference_route_xy_resampled, _ = CartesianFrame.resample_curve(curve=reference_route_xy,
+                                                                        step_size=TRAJECTORY_ARCLEN_RESOLUTION,
+                                                                        desired_curve_len=REFERENCE_TRAJECTORY_LENGTH,
+                                                                        preserve_step_size=False)
 
         return reference_route_xy_resampled
