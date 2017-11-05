@@ -1,46 +1,30 @@
-import numpy as np
 from logging import Logger
 from typing import List
 
-from decision_making.src.exceptions import BehavioralPlanningException
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
+import numpy as np
+
 from decision_making.src import global_constants
+from decision_making.src.exceptions import BehavioralPlanningException
+from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
+from decision_making.src.planning.behavioral.constants import BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON, \
+    BP_SPECIFICATION_T_MIN, BP_SPECIFICATION_T_MAX, BP_SPECIFICATION_T_RES, A_LON_MIN, \
+    A_LON_MAX, A_LAT_MIN, A_LAT_MAX, SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_REAR, \
+    SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL, \
+    SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO
 from decision_making.src.planning.behavioral.constants import LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticActionsPolicy, \
-    SemanticBehavioralState, RoadSemanticOccupancyGrid, SemanticActionSpec, SemanticAction, SEMANTIC_CELL_LANE, \
-    SemanticActionType, SEMANTIC_CELL_CURRENT_LANE, SEMANTIC_CELL_LEFT_LANE, SEMANTIC_CELL_RIGHT_LANE, \
-    SEMANTIC_CELL_CURRENT_LON
+    SemanticBehavioralState, RoadSemanticOccupancyGrid, SemanticAction, SemanticActionSpec, SemanticActionType, \
+    LAT_CELL
+from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.state.state import EgoState, State, DynamicObject
+from decision_making.src.state.state import EgoState, State
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.model.map_api import MapAPI
 from mapping.src.transformations.geometry_utils import CartesianFrame
-
-from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
-from decision_making.src.planning.behavioral.constants import BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON, \
-    BP_SPECIFICATION_T_MIN, BP_SPECIFICATION_T_MAX, BP_SPECIFICATION_T_RES, A_LON_MIN, \
-    A_LON_MAX, A_LAT_MIN, A_LAT_MAX, SAFE_DIST_TIME_DELAY
-from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticActionsPolicy, \
-    SemanticBehavioralState, RoadSemanticOccupancyGrid, SemanticAction, SemanticActionSpec, \
-    SEMANTIC_CELL_LANE
-from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils
-from decision_making.src.state.state import EgoState, State
-from mapping.src.model.map_api import MapAPI
-
-SEMANTIC_GRID_FRONT, SEMANTIC_GRID_ASIDE, SEMANTIC_GRID_BEHIND = 1, 0, -1
-GRID_MID = 10
-
-# The margin that we take from the front/read of the vehicle to define the front/rear partitions
-SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO = 1
-
-
-MIN_OVERTAKE_VEL = 2  # [m/s]
-MIN_CHANGE_LANE_TIME = 4  # sec
-# LONG_ACHEIVING_TIME = 10  # sec
 
 
 class NovDemoBehavioralState(SemanticBehavioralState):
@@ -59,8 +43,6 @@ class NovDemoBehavioralState(SemanticBehavioralState):
          (e.g. in the cells in front of ego, we keep objects with minimal longitudinal distance
          relative to ego front, while in all other cells we keep the object with the maximal longitudinal distance from
          ego front).
-        :param ego_state:
-        :param dynamic_objects:
         :return: road semantic occupancy grid
         """
         ego_state = state.ego_state
@@ -86,26 +68,26 @@ class NovDemoBehavioralState(SemanticBehavioralState):
                 # Object is on same lane as ego
                 if object_dist_from_front > 0.0:
                     # Object in front of vehicle
-                    occupancy_index = (object_relative_lane, SEMANTIC_GRID_FRONT)
+                    occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_FRONT)
 
                 else:
                     # Object behind vehicle
-                    occupancy_index = (object_relative_lane, SEMANTIC_GRID_BEHIND)
+                    occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_REAR)
 
             elif object_relative_lane == 1 or object_relative_lane == -1:
                 # Object is one lane on the left/right
 
                 if object_dist_from_front > SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO:
                     # Object in front of vehicle
-                    occupancy_index = (object_relative_lane, SEMANTIC_GRID_FRONT)
+                    occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_FRONT)
 
                 elif object_lon_dist > -1 * SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO:
                     # Object vehicle aside of ego
-                    occupancy_index = (object_relative_lane, SEMANTIC_GRID_ASIDE)
+                    occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_SAME)
 
                 else:
                     # Object behind rear of vehicle
-                    occupancy_index = (object_relative_lane, SEMANTIC_GRID_BEHIND)
+                    occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_REAR)
 
             # Add object to occupancy grid
             # keeping only a single dynamic object per cell. List is used for future dev.
@@ -120,7 +102,7 @@ class NovDemoBehavioralState(SemanticBehavioralState):
                     map_api=map_api, logger=logger).rel_lon
                 object_in_grid_dist_from_front = object_in_grid_lon_dist - ego_state.size.length
 
-                if occupancy_index[1] == SEMANTIC_GRID_FRONT:
+                if occupancy_index[1] == SEMANTIC_CELL_LON_FRONT:
                     # take the object with least lon
                     if object_lon_dist < object_in_grid_dist_from_front:
                         # replace object the the closer one
@@ -135,7 +117,6 @@ class NovDemoBehavioralState(SemanticBehavioralState):
         return cls(semantic_occupancy_dict, ego_state)
 
 
-
 class NovDemoPolicy(SemanticActionsPolicy):
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
         behavioral_state = NovDemoBehavioralState.create_from_state(state=state, map_api=self._map_api,
@@ -143,10 +124,10 @@ class NovDemoPolicy(SemanticActionsPolicy):
         semantic_actions = self._enumerate_actions(behavioral_state=behavioral_state)
         actions_spec = [self._specify_action(behavioral_state=behavioral_state, semantic_action=semantic_actions[x]) for
                         x in range(len(semantic_actions))]
-        action_values = self._eval_actions(behavioral_state=behavioral_state, semantic_actions=semantic_actions,
-                                           actions_spec=actions_spec)
+        action_costs = self._eval_actions(behavioral_state=behavioral_state, semantic_actions=semantic_actions,
+                                          actions_spec=actions_spec)
 
-        selected_action_index = self._select_best(action_specs=actions_spec, costs=action_values)
+        selected_action_index = int(np.argmax(action_costs)[0])
         selected_action_spec = actions_spec[selected_action_index]
 
         reference_trajectory = self.__generate_reference_route(behavioral_state=behavioral_state,
@@ -170,7 +151,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         # Generate actions towards each of the cells in front of ego
         for relative_lane_key in [-1, 0, 1]:
-            for longitudinal_key in [SEMANTIC_GRID_FRONT]:
+            for longitudinal_key in [SEMANTIC_CELL_LON_FRONT]:
                 semantic_cell = (relative_lane_key, longitudinal_key)
                 if semantic_cell in behavioral_state.road_occupancy_grid:
                     # Select first (closest) object in cell
@@ -226,11 +207,11 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         # get indices of semantic_actions array for 3 actions: goto-right, straight, goto-left
         current_lane_action_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec,
-                                                                        SEMANTIC_CELL_CURRENT_LANE)
+                                                                        SEMANTIC_CELL_LAT_SAME)
         left_lane_action_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec,
-                                                                     SEMANTIC_CELL_LEFT_LANE)
+                                                                     SEMANTIC_CELL_LAT_LEFT)
         right_lane_action_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec,
-                                                                      SEMANTIC_CELL_RIGHT_LANE)
+                                                                      SEMANTIC_CELL_LAT_RIGHT)
 
         # The cost for each action is assigned so that the preferred policy would be:
         # Go to right if right and current lanes are fast enough.
@@ -244,8 +225,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
         is_forward_right_fast = right_lane_action_ind is not None and \
                                 desired_vel - actions_spec[right_lane_action_ind].v < MIN_OVERTAKE_VEL
         # boolean whether the right cell near ego is occupied
-        is_right_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_RIGHT_LANE,
-                                                                      SEMANTIC_CELL_CURRENT_LON)]) > 0
+        is_right_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_RIGHT,
+                                                                      SEMANTIC_CELL_LON_SAME)]) > 0
 
         # boolean whether the forward cell is fast enough (may be empty grid cell)
         is_forward_fast = current_lane_action_ind is not None and \
@@ -257,8 +238,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
                                                                        actions_spec[
                                                                            current_lane_action_ind].v >= MIN_OVERTAKE_VEL)
         # boolean whether the left cell near ego is occupied
-        is_left_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LEFT_LANE,
-                                                                     SEMANTIC_CELL_CURRENT_LON)]) > 0
+        is_left_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_LEFT,
+                                                                     SEMANTIC_CELL_LON_SAME)]) > 0
 
         costs = np.zeros(len(semantic_actions))
 
@@ -278,8 +259,6 @@ class NovDemoPolicy(SemanticActionsPolicy):
         """
         Generate trajectory specification (cost) for trajectory planner
         :param behavioral_state: processed behavioral state
-        :param target_path_latitude: road latitude of reference route in [m] from right-side of road
-        :param safe_speed: safe speed in [m/s] (ACDA)
         :param reference_route: [nx3] numpy array of (x, y, z, yaw) states
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
@@ -372,7 +351,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
         """
         road_lane_latitudes = self._map_api.get_center_lanes_latitudes(
             road_id=behavioral_state.ego_state.road_localization.road_id)
-        target_lane = behavioral_state.ego_state.road_localization.lane_num + semantic_action.cell[SEMANTIC_CELL_LANE]
+        target_lane = behavioral_state.ego_state.road_localization.lane_num + semantic_action.cell[LAT_CELL]
         target_lane_latitude = road_lane_latitudes[target_lane]
 
         target_relative_s = target_lane_latitude - behavioral_state.ego_state.road_localization.full_lat
@@ -435,7 +414,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
             safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
 
             # set of 6 constraints RHS values for quintic polynomial solution (S DIM)
-            constraints_s = np.array([ego_sx0, ego_sv0, ego_sa0, obj_sxT, obj_svT, obj_saT - safe_lon_dist - obj_long_margin])
+            constraints_s = np.array([ego_sx0, ego_sv0, ego_sa0, obj_sxT - safe_lon_dist - obj_long_margin, obj_svT, obj_saT])
             constraints_d = np.array([ego_dx0, ego_dv0, ego_da0, obj_dxT, 0.0, 0.0])
 
             # solve for s(t) and d(t)
@@ -447,8 +426,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
                NovDemoPolicy._is_acceleration_in_limits(poly_all_coefs_d, T, A_LAT_MIN, A_LAT_MAX):
                 return SemanticActionSpec(t=T, v=obj_svT, s_rel=obj_sxT - ego_sx0, d_rel=obj_dxT - ego_dx0)
 
-            raise NoValidTrajectoriesFound("No valid trajectories found. state: {}, action: {}"
-                                           .format(behavioral_state, semantic_action))
+        raise NoValidTrajectoriesFound("No valid trajectories found. state: {}, action: {}"
+                                       .format(behavioral_state, semantic_action))
 
     @staticmethod
     def _is_acceleration_in_limits(poly_all_coefs: np.ndarray, T: float,
@@ -489,10 +468,9 @@ class NovDemoPolicy(SemanticActionsPolicy):
         :param cell_lane: the relative lane index (-1 right ,0 straight, 1 left)
         :return: the action index or None if the action does not exist
         """
-        action_ind = [i for i, action in enumerate(semantic_actions) if action.cell[SEMANTIC_CELL_LANE] == cell_lane]
+        action_ind = [i for i, action in enumerate(semantic_actions) if action.cell[LAT_CELL] == cell_lane]
         # verify that change lane time is large enough
-        if len(action_ind) > 0 and (cell_lane == SEMANTIC_CELL_CURRENT_LANE or actions_spec[action_ind[0]].t >=
-            MIN_CHANGE_LANE_TIME):
+        if len(action_ind) > 0:
             return action_ind[0]
         else:
             return None

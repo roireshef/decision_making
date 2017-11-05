@@ -1,10 +1,12 @@
 from typing import Tuple, Dict, List
 
+from decision_making.src.planning.behavioral.constants import SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LAT_LEFT, \
+    SEMANTIC_CELL_LON_FRONT
 from decision_making.src.planning.behavioral.policies.november_demo_semantic_policy import NovDemoPolicy, \
     NovDemoBehavioralState
 from decision_making.src.planning.behavioral.policy import PolicyConfig
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction, SemanticActionType, \
-    SemanticActionSpec, SEMANTIC_CELL_RIGHT_LANE, SEMANTIC_CELL_FORWARD_LON, SEMANTIC_CELL_LEFT_LANE
+    SemanticActionSpec
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, EgoState, DynamicObject, ObjectSize
 from decision_making.src.state.state_module import StateModule, Logger
@@ -86,13 +88,10 @@ def test_novDemoEvalSemanticActions(testable_map_api):
     # print(costs)
 
 def test_get_actionIndByLane(testable_map_api):
-    semantic_action = SemanticAction((SEMANTIC_CELL_RIGHT_LANE, SEMANTIC_CELL_FORWARD_LON), None, SemanticActionType(1))
+    semantic_action = SemanticAction((SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT), None, SemanticActionType(1))
     spec1 = SemanticActionSpec(t=5, v=10, s_rel=30, d_rel=-3)
-    spec2 = SemanticActionSpec(t=3, v=10, s_rel=30, d_rel=-3)
     policy = NovDemoPolicy(Logger("NovDemoTest"), PolicyConfig(), Predictor(testable_map_api), testable_map_api)
-    action_ind = policy._get_action_ind_by_lane([semantic_action], [spec1], SEMANTIC_CELL_RIGHT_LANE)
+    action_ind = policy._get_action_ind_by_lane([semantic_action], [spec1], SEMANTIC_CELL_LAT_RIGHT)
     assert action_ind == 0
-    action_ind = policy._get_action_ind_by_lane([semantic_action], [spec1], SEMANTIC_CELL_LEFT_LANE)
-    assert action_ind is None
-    action_ind = policy._get_action_ind_by_lane([semantic_action], [spec2], SEMANTIC_CELL_RIGHT_LANE)
+    action_ind = policy._get_action_ind_by_lane([semantic_action], [spec1], SEMANTIC_CELL_LAT_LEFT)
     assert action_ind is None

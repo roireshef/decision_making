@@ -19,16 +19,11 @@ class SemanticActionType(Enum):
 
 
 # Define semantic cell
-SEMANTIC_CELL_LANE, SEMANTIC_CELL_LON = 0, 1
 SemanticGridCell = Tuple[int, int]
 
-SEMANTIC_CELL_BACKWARD_LON = -1
-SEMANTIC_CELL_CURRENT_LON = 0
-SEMANTIC_CELL_FORWARD_LON = 1
+# tuple indices
+LAT_CELL, LON_CELL = 0, 1
 
-SEMANTIC_CELL_RIGHT_LANE = -1
-SEMANTIC_CELL_CURRENT_LANE = 0
-SEMANTIC_CELL_LEFT_LANE = 1
 
 """
 We assume that the road is partitioned into semantic areas, each area is defined as a cell.
@@ -154,12 +149,3 @@ class SemanticActionsPolicy(Policy):
         :return: numpy array of costs of semantic actions
         """
         pass
-
-    def _select_best(self, action_specs: List[SemanticActionSpec], costs: np.ndarray) -> int:
-        """
-        Select the best action out of the possible actions specs considering their cost
-        :param action_specs:
-        :param costs:
-        :return:
-        """
-        return int(np.argmax(costs)[0])

@@ -35,3 +35,13 @@ A_LAT_MAX = 2
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
 SAFE_DIST_TIME_DELAY = 0.5
+
+# Semantic Grid indices
+SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR = 1, 0, -1
+SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_RIGHT = 1, 0, -1
+
+# [m/sec] Minimal difference of velocities to justify an overtake
+MIN_OVERTAKE_VEL = 2
+
+# [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
+SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO = 1

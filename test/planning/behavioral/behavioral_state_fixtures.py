@@ -1,20 +1,18 @@
 from typing import List
 
+import numpy as np
+import pytest
+
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.policies.default_policy import DefaultBehavioralState
 from decision_making.src.planning.behavioral.policies.november_demo_semantic_policy import NovDemoBehavioralState, \
     NovDemoPolicy
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction, SemanticActionType
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.test.planning.custom_fixtures import *
-from mapping.test.model.testable_map_fixtures import *
+from decision_making.src.state.state import OccupancyState, State, EgoState, DynamicObject, ObjectSize, RoadLocalization
+from mapping.src.model.map_api import MapAPI
 from rte.python.logger.AV_logger import AV_Logger
-
-
-@pytest.fixture(scope='function')
-def default_policy_behavioral_state(navigation_fixture, testable_map_api, state):
-    logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
-    yield DefaultBehavioralState(logger=logger, map_api=testable_map_api, navigation_plan=navigation_fixture,
-                                 ego_state=state.ego_state, dynamic_objects_on_road=state.dynamic_objects)
 
 
 @pytest.fixture(scope='function')
@@ -98,10 +96,7 @@ def nov_demo_semantic_follow_action(nov_demo_semantic_behavioral_state: NovDemoB
 
 
 @pytest.fixture(scope='function')
-def nov_demo_policy(nov_demo_semantic_behavioral_state: NovDemoBehavioralState, testable_map_api: MapAPI):
+def nov_demo_policy(testable_map_api: MapAPI):
     logger = AV_Logger.get_logger('Nov demo - semantic occupancy grid')
-
-    policy = NovDemoPolicy(logger, None, nov_demo_semantic_behavioral_state,
-                           RoadFollowingPredictor(testable_map_api), testable_map_api)
-
+    policy = NovDemoPolicy(logger, None, RoadFollowingPredictor(testable_map_api), testable_map_api)
     yield policy
