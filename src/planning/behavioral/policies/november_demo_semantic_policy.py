@@ -443,36 +443,34 @@ class NovDemoPolicy(SemanticActionsPolicy):
             constraints_d = np.array([ego_dx0, ego_dv0, ego_da0, obj_dxT, 0.0, 0.0])
 
             # solve for s(t) and d(t)
-            poly_all_coefs_s = OptimalControlUtils.QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
-            poly_all_coefs_d = OptimalControlUtils.QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
+            poly_coefs_s = OptimalControlUtils.QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
+            poly_coefs_d = OptimalControlUtils.QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
 
             # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
-            if NovDemoPolicy._is_acceleration_in_limits(poly_all_coefs_s, T, A_LON_MIN, A_LON_MAX) and \
-                    NovDemoPolicy._is_acceleration_in_limits(poly_all_coefs_d, T, A_LAT_MIN, A_LAT_MAX):
+            if NovDemoPolicy._is_acceleration_in_limits(poly_coefs_s, T, A_LON_MIN, A_LON_MAX) and \
+                    NovDemoPolicy._is_acceleration_in_limits(poly_coefs_d, T, A_LAT_MIN, A_LAT_MAX):
                 return SemanticActionSpec(t=T, v=obj_svT, s_rel=obj_sxT - ego_sx0, d_rel=obj_dxT - ego_dx0)
 
         raise NoValidTrajectoriesFound("No valid trajectories found. state: {}, action: {}"
                                        .format(behavioral_state, semantic_action))
 
     @staticmethod
-    def _is_acceleration_in_limits(poly_all_coefs: np.ndarray, T: float,
+    def _is_acceleration_in_limits(poly_coefs: np.ndarray, T: float,
                                    min_acc_threshold: float, max_acc_threshold: float) -> bool:
         """
         given a quintic polynomial coefficients vector, and restrictions
         on the acceleration values, return True if restrictions are met, False otherwise
-        :param poly_all_coefs: 1D numpy array with s(t), s_dot(t) s_dotdot(t) concatenated
+        :param poly_coefs: 1D numpy array with s(t), s_dot(t) s_dotdot(t) concatenated
         :param T: planning time horizon [sec]
         :param min_acc_threshold: minimal allowed value of acceleration/deceleration [m/sec^2]
         :param max_acc_threshold: maximal allowed value of acceleration/deceleration [m/sec^2]
         :return: True if restrictions are met, False otherwise
         """
-        # TODO: a(0) and a(T) checks are redundant if they are provided by the user!
-        # compute extrema points (add 0,T boundaries as well)
-        acc_suspected_points_s = np.concatenate((
-            OptimalControlUtils.QuinticPoly1D.find_second_der_extrema(poly_all_coefs[:6]),
-            np.array([0.0, T])
-        ))
-        acc_suspected_values_s = np.polyval(poly_all_coefs[11:15], acc_suspected_points_s)
+        # TODO: a(0) and a(T) checks are omitted as they they are provided by the user.
+        # compute extrema points, by finding the roots of the 3rd derivative (which is itself a 2nd degree polynomial)
+        acc_suspected_points_s = np.roots(np.polyder(poly_coefs, m=3))
+        acceleration_poly_coefs = np.polyder(poly_coefs, m=2)
+        acc_suspected_values_s = np.polyval(acceleration_poly_coefs, acc_suspected_points_s)
 
         # filter out extrema points out of [0, T]
         acc_inlimit_suspected_values_s = acc_suspected_values_s[np.greater_equal(acc_suspected_points_s, 0) &
