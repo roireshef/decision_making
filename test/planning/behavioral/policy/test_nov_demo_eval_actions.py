@@ -4,7 +4,7 @@ from decision_making.src.planning.behavioral.policies.november_demo_semantic_pol
     NovDemoBehavioralState
 from decision_making.src.planning.behavioral.policy import PolicyConfig
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction, SemanticActionType, \
-    SemanticActionSpec
+    SemanticActionSpec, SEMANTIC_CELL_RIGHT_LANE, SEMANTIC_CELL_FORWARD_LON, SEMANTIC_CELL_LEFT_LANE
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, EgoState, DynamicObject, ObjectSize
 from decision_making.src.state.state_module import StateModule, Logger
@@ -52,8 +52,6 @@ def test_novDemoEvalSemanticActions(testable_map_api):
                        road_localization=DynamicObject.compute_road_localization(np.array([ego_x, 0]), 0.0, testable_map_api),
                        confidence=1.0, v_x=ego_v, v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
-        # state = State(occupancy_state=OccupancyState(0, np.array([]), np.array([])), dynamic_objects=obs, ego_state=ego)
-
         grid = {}
         grid[(-1, -1)] = []
         grid[(0, -1)] = []
@@ -80,10 +78,21 @@ def test_novDemoEvalSemanticActions(testable_map_api):
         costs = policy._eval_actions(behav_state, semantic_actions, actions_spec)
         assert(costs[result[test]] == 1)
 
-
     # from bokeh.plotting import figure, show, output_file
     # p1 = figure(x_axis_type="datetime", title="Stock Closing Prices")
     # p1.circle(pos1[0], pos1[1])
     # output_file("legend.html", title="legend.py example")
     # show(p1)  # open a browser
     # print(costs)
+
+def test_get_actionIndByLane(testable_map_api):
+    semantic_action = SemanticAction((SEMANTIC_CELL_RIGHT_LANE, SEMANTIC_CELL_FORWARD_LON), None, SemanticActionType(1))
+    spec1 = SemanticActionSpec(t=5, v=10, s_rel=30, d_rel=-3)
+    spec2 = SemanticActionSpec(t=3, v=10, s_rel=30, d_rel=-3)
+    policy = NovDemoPolicy(Logger("NovDemoTest"), PolicyConfig(), Predictor(testable_map_api), testable_map_api)
+    action_ind = policy._get_action_ind_by_lane([semantic_action], [spec1], SEMANTIC_CELL_RIGHT_LANE)
+    assert action_ind == 0
+    action_ind = policy._get_action_ind_by_lane([semantic_action], [spec1], SEMANTIC_CELL_LEFT_LANE)
+    assert action_ind is None
+    action_ind = policy._get_action_ind_by_lane([semantic_action], [spec2], SEMANTIC_CELL_RIGHT_LANE)
+    assert action_ind is None

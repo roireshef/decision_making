@@ -21,6 +21,15 @@ class SemanticActionType(Enum):
 # Define semantic cell
 SEMANTIC_CELL_LANE, SEMANTIC_CELL_LON = 0, 1
 SemanticGridCell = Tuple[int, int]
+
+SEMANTIC_CELL_BACKWARD_LON = -1
+SEMANTIC_CELL_CURRENT_LON = 0
+SEMANTIC_CELL_FORWARD_LON = 1
+
+SEMANTIC_CELL_RIGHT_LANE = -1
+SEMANTIC_CELL_CURRENT_LANE = 0
+SEMANTIC_CELL_LEFT_LANE = 1
+
 """
 We assume that the road is partitioned into semantic areas, each area is defined as a cell.
 The keys are:
