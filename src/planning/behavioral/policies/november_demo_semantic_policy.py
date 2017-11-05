@@ -9,8 +9,8 @@ from decision_making.src.messages.trajectory_parameters import SigmoidFunctionPa
     TrajectoryParams
 from decision_making.src.planning.behavioral.constants import LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticActionsPolicy, \
-    SemanticBehavioralState, RoadSemanticOccupancyGrid, SemanticActionSpec, SemanticAction, SEMANTIC_CELL_LANE
-    SemanticBehavioralState, RoadSemanticOccupancyGrid, SemanticActionSpec, SemanticAction, SemanticActionType
+    SemanticBehavioralState, RoadSemanticOccupancyGrid, SemanticActionSpec, SemanticAction, SEMANTIC_CELL_LANE,\
+    SemanticActionType
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.state.state import EgoState, State, DynamicObject
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
@@ -301,7 +301,6 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         return trajectory_parameters
 
-
     def _eval_actions(self, behavioral_state: NovDemoBehavioralState, semantic_actions: List[SemanticAction],
                       actions_spec: List[SemanticActionSpec]) -> np.ndarray:
         """
@@ -315,28 +314,30 @@ class NovDemoPolicy(SemanticActionsPolicy):
         :param actions_spec: specifications of semantic actions
         :return: numpy array of costs of semantic actions
         """
-
+        # TODO - add constants for -1,0,1
         straight_lane_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec, 0)
         left_lane_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec, 1)
         right_lane_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec, -1)
 
+        # TODO - this needs to come from map
         desired_vel = BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
 
-        right_is_fast = right_lane_ind is not None and desired_vel - actions_spec[right_lane_ind].v < MIN_OVERTAKE_VEL
+        forward_right_is_fast = right_lane_ind is not None and \
+            desired_vel - actions_spec[right_lane_ind].v < MIN_OVERTAKE_VEL
         right_is_occupied = len(behavioral_state.road_occupancy_grid[(-1, 0)]) > 0
-        straight_is_fast = straight_lane_ind is not None and \
-                           desired_vel - actions_spec[straight_lane_ind].v < MIN_OVERTAKE_VEL
-        left_is_faster = left_lane_ind is not None and (straight_lane_ind is None or
+        forward_is_fast = straight_lane_ind is not None and \
+            desired_vel - actions_spec[straight_lane_ind].v < MIN_OVERTAKE_VEL
+        forward_left_is_faster = left_lane_ind is not None and (straight_lane_ind is None or
                             actions_spec[left_lane_ind].v - actions_spec[straight_lane_ind].v >= MIN_OVERTAKE_VEL)
         left_is_occupied = len(behavioral_state.road_occupancy_grid[(1, 0)]) > 0
 
         costs = np.zeros(len(semantic_actions))
         # move right if both straight and right lanes are fast
-        if right_is_fast and (straight_is_fast or straight_lane_ind is None) and not right_is_occupied:
+        if forward_right_is_fast and (forward_is_fast or straight_lane_ind is None) and not right_is_occupied:
             costs[right_lane_ind] = 1.
             return costs
         # move left if straight is slow and the left is faster than straight
-        if not straight_is_fast and (left_is_faster or straight_lane_ind is None) and not left_is_occupied:
+        if not forward_is_fast and (forward_left_is_faster or straight_lane_ind is None) and not left_is_occupied:
             costs[left_lane_ind] = 1.
             return costs
         costs[straight_lane_ind] = 1.

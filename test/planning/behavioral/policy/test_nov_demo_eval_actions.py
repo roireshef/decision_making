@@ -66,7 +66,7 @@ def test_novDemoEvalSemanticActions(testable_map_api):
         grid[(1, 1)] = [obs[2]]
         behav_state = NovDemoBehavioralState(grid, ego)
         predictor = Predictor(testable_map_api)
-        policy = NovDemoPolicy(Logger("NovDemoTest"), PolicyConfig(), behav_state, predictor, testable_map_api)
+        policy = NovDemoPolicy(Logger("NovDemoTest"), PolicyConfig(), predictor, testable_map_api)
 
         semantic_actions = []
         semantic_actions.append(SemanticAction((-1, 1), obs[0], SemanticActionType.FOLLOW))
