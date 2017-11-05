@@ -109,8 +109,8 @@ class StateModule(DmModule):
                     dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
                                             global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
                                             self.UNKNWON_DEFAULT_VAL, omega_yaw, road_localtization)
-                    dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
                     self._dynamic_objects_memory_map[id] = dyn_obj
+                    dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
 
                 except MapCellNotFound:
                     self.logger.warning(
@@ -120,6 +120,8 @@ class StateModule(DmModule):
                 dyn_obj = self._dynamic_objects_memory_map.get(id)
                 if dyn_obj is not None:
                     dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
+                else:
+                    self.logger.warning("received out of FOV object which is not in memory.")
         return dyn_obj_list
 
     def _self_localization_callback(self, ego_localization: dict):
