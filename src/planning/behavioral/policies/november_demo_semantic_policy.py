@@ -2,6 +2,7 @@ import numpy as np
 from logging import Logger
 from typing import List
 
+from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
 from decision_making.src import global_constants
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -308,8 +309,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
         Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
         Gets a list of actions to evaluate so and returns a vector representing their costs.
         A set of actions is provided, enabling assessing them dependently.
-        Note: the semantic actions were generated using the behavioral state which isn't necessarily captures
-         all relevant details in the scene. Therefore the evaluation is done using the full state.
+        Note: the semantic actions were generated using the behavioral state and don't necessarily captures
+         all relevant details in the scene. Therefore the evaluation is done using the behavioral state.
         :param behavioral_state: semantic behavioral state state, containing the semantic grid
         :param semantic_actions: semantic actions list
         :param actions_spec: specifications of semantic actions
@@ -317,44 +318,56 @@ class NovDemoPolicy(SemanticActionsPolicy):
         """
 
         if len(semantic_actions) != len(actions_spec):
-            self.logger.error("Length of semantic_actions is different from length of actions_spec")
+            self.logger.error("The input arrays have different sizes: len(semantic_actions)=%d, len(actions_spec)=%d",
+                                              len(semantic_actions), len(actions_spec))
+            raise BehavioralPlanningException(
+                "The input arrays have different sizes: len(semantic_actions)=%d, len(actions_spec)=%d",
+                                              len(semantic_actions), len(actions_spec))
 
         # get indices of semantic_actions array for 3 actions: goto-right, straight, goto-left
-        straight_lane_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec,
+        current_lane_action_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec,
                                                                   SEMANTIC_CELL_CURRENT_LANE)
-        left_lane_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec,
+        left_lane_action_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec,
                                                               SEMANTIC_CELL_LEFT_LANE)
-        right_lane_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec,
+        right_lane_action_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec,
                                                                SEMANTIC_CELL_RIGHT_LANE)
+
+        # The cost for each action is assigned so that the preferred policy would be:
+        # Go to right if right and current lanes are fast enough.
+        # Go to left if the current lane is slow and the left lane is faster than the current.
+        # Otherwise remain on the current lane.
 
         # TODO - this needs to come from map
         desired_vel = BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
 
         # boolean whether the forward-right cell is fast enough (may be empty grid cell)
-        forward_right_is_fast = right_lane_ind is not None and \
-            desired_vel - actions_spec[right_lane_ind].v < MIN_OVERTAKE_VEL
+        is_forward_right_fast = right_lane_action_ind is not None and \
+            desired_vel - actions_spec[right_lane_action_ind].v < MIN_OVERTAKE_VEL
         # boolean whether the right cell near ego is occupied
-        right_is_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_RIGHT_LANE,
+        is_right_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_RIGHT_LANE,
                                                                       SEMANTIC_CELL_CURRENT_LON)]) > 0
+
         # boolean whether the forward cell is fast enough (may be empty grid cell)
-        forward_is_fast = straight_lane_ind is not None and \
-            desired_vel - actions_spec[straight_lane_ind].v < MIN_OVERTAKE_VEL
+        is_forward_fast = current_lane_action_ind is not None and \
+            desired_vel - actions_spec[current_lane_action_ind].v < MIN_OVERTAKE_VEL
+
         # boolean whether the forward-left cell is faster than the forward cell
-        forward_left_is_faster = left_lane_ind is not None and (straight_lane_ind is None or
-            actions_spec[left_lane_ind].v - actions_spec[straight_lane_ind].v >= MIN_OVERTAKE_VEL)
+        is_forward_left_faster = left_lane_action_ind is not None and (current_lane_action_ind is None or
+            actions_spec[left_lane_action_ind].v - actions_spec[current_lane_action_ind].v >= MIN_OVERTAKE_VEL)
         # boolean whether the left cell near ego is occupied
-        left_is_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LEFT_LANE,
+        is_left_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LEFT_LANE,
                                                                      SEMANTIC_CELL_CURRENT_LON)]) > 0
 
         costs = np.zeros(len(semantic_actions))
+
         # move right if both straight and right lanes are fast
-        if forward_right_is_fast and (forward_is_fast or straight_lane_ind is None) and not right_is_occupied:
-            costs[right_lane_ind] = 1.
+        if is_forward_right_fast and (is_forward_fast or current_lane_action_ind is None) and not is_right_occupied:
+            costs[right_lane_action_ind] = 1.
         # move left if straight is slow and the left is faster than straight
-        elif not forward_is_fast and (forward_left_is_faster or straight_lane_ind is None) and not left_is_occupied:
-            costs[left_lane_ind] = 1.
+        elif not is_forward_fast and (is_forward_left_faster or current_lane_action_ind is None) and not is_left_occupied:
+            costs[left_lane_action_ind] = 1.
         else:
-            costs[straight_lane_ind] = 1.
+            costs[current_lane_action_ind] = 1.
         return costs
 
     @staticmethod
@@ -366,7 +379,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
         :param semantic_actions: array of semantic actions
         :param actions_spec: array of actions spec
         :param cell_lane: the relative lane index (-1 right ,0 straight, 1 left)
-        :return: the action index or None
+        :return: the action index or None if the action does not exist
         """
         action_ind = [i for i, action in enumerate(semantic_actions) if action.cell[SEMANTIC_CELL_LANE] == cell_lane]
         # verify that change lane time is large enough
