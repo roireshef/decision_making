@@ -140,7 +140,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         return trajectory_parameters
 
-    def _enumerate_actions(self, behavioral_state: SemanticBehavioralState) -> List[SemanticAction]:
+    def _enumerate_actions(self, behavioral_state: NovDemoBehavioralState) -> List[SemanticAction]:
         """
         Enumerate the list of possible semantic actions to be generated.
         :param behavioral_state:
