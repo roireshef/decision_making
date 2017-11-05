@@ -4,7 +4,7 @@ from decision_making.src.planning.utils.columns import R_X, R_Y, R_THETA
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
 from decision_making.test.planning.trajectory.utils import *
 from mapping.src.transformations.geometry_utils import *
-
+import time
 
 def test_werlingPlanner_toyScenario_noException():
     route_points = CartesianFrame.add_yaw_and_derivatives(
@@ -44,8 +44,13 @@ def test_werlingPlanner_toyScenario_noException():
                                        acceleration_limits=np.array([a_min, a_max]))
 
     planner = WerlingPlanner(None)
-    _, _, debug = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
+
+    start_time = time.time()
+
+    _, _, samplable, debug = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
                                time=T, cost_params=cost_params)
+
+    end_time = time.time() - start_time
 
     assert True
 
