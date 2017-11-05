@@ -11,9 +11,9 @@ class BehavioralState:
         """
         This method updates the behavioral state according to the new world state and navigation plan.
          It fetches relevant features that will be used for the decision-making process.
-        :param logger:
-        :param map_api:
         :param state: new world state
+        :param map_api: our map
+        :param logger
         :return: a new and updated BehavioralState
         """
         pass

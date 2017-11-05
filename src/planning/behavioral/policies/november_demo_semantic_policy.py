@@ -1,6 +1,23 @@
-from logging import Logger
-
 import numpy as np
+from logging import Logger
+from typing import List
+
+from decision_making.src.exceptions import BehavioralPlanningException
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
+from decision_making.src import global_constants
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
+    TrajectoryParams
+from decision_making.src.planning.behavioral.constants import LATERAL_SAFETY_MARGIN_FROM_OBJECT
+from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticActionsPolicy, \
+    SemanticBehavioralState, RoadSemanticOccupancyGrid, SemanticActionSpec, SemanticAction, SEMANTIC_CELL_LANE, \
+    SemanticActionType, SEMANTIC_CELL_CURRENT_LANE, SEMANTIC_CELL_LEFT_LANE, SEMANTIC_CELL_RIGHT_LANE, \
+    SEMANTIC_CELL_CURRENT_LON
+from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
+from decision_making.src.state.state import EgoState, State, DynamicObject
+from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
+from mapping.src.model.map_api import MapAPI
+from mapping.src.transformations.geometry_utils import CartesianFrame
 
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
@@ -19,6 +36,11 @@ GRID_MID = 10
 
 # The margin that we take from the front/read of the vehicle to define the front/rear partitions
 SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO = 1
+
+
+MIN_OVERTAKE_VEL = 2  # [m/s]
+MIN_CHANGE_LANE_TIME = 4  # sec
+# LONG_ACHEIVING_TIME = 10  # sec
 
 
 class NovDemoBehavioralState(SemanticBehavioralState):
@@ -113,7 +135,57 @@ class NovDemoBehavioralState(SemanticBehavioralState):
         return cls(semantic_occupancy_dict, ego_state)
 
 
+
 class NovDemoPolicy(SemanticActionsPolicy):
+    def plan(self, state: State, nav_plan: NavigationPlanMsg):
+        behavioral_state = NovDemoBehavioralState.create_from_state(state=state, map_api=self._map_api,
+                                                                    logger=self.logger)
+        semantic_actions = self._enumerate_actions(behavioral_state=behavioral_state)
+        actions_spec = [self._specify_action(behavioral_state=behavioral_state, semantic_action=semantic_actions[x]) for
+                        x in range(len(semantic_actions))]
+        action_values = self._eval_actions(behavioral_state=behavioral_state, semantic_actions=semantic_actions,
+                                           actions_spec=actions_spec)
+
+        selected_action_index = self._select_best(action_specs=actions_spec, costs=action_values)
+        selected_action_spec = actions_spec[selected_action_index]
+
+        reference_trajectory = self.__generate_reference_route(behavioral_state=behavioral_state,
+                                                               action_spec=selected_action_spec,
+                                                               navigation_plan=nav_plan)
+
+        trajectory_parameters = self._generate_trajectory_specs(behavioral_state=behavioral_state,
+                                                                action_spec=selected_action_spec,
+                                                                reference_route=reference_trajectory)
+
+        return trajectory_parameters
+
+    def _enumerate_actions(self, behavioral_state: SemanticBehavioralState) -> List[SemanticAction]:
+        """
+        Enumerate the list of possible semantic actions to be generated.
+        :param behavioral_state:
+        :return:
+        """
+
+        semantic_actions: List[SemanticAction] = list()
+
+        # Generate actions towards each of the cells in front of ego
+        for relative_lane_key in [-1, 0, 1]:
+            for longitudinal_key in [SEMANTIC_GRID_FRONT]:
+                semantic_cell = (relative_lane_key, longitudinal_key)
+                if semantic_cell in behavioral_state.road_occupancy_grid:
+                    # Select first (closest) object in cell
+                    target_obj = behavioral_state.road_occupancy_grid[semantic_cell][0]
+                else:
+                    # There are no objects in cell
+                    target_obj = None
+
+                semantic_action = SemanticAction(cell=semantic_cell, target_obj=target_obj,
+                                                 action_type=SemanticActionType.FOLLOW)
+
+                semantic_actions.append(semantic_action)
+
+        return semantic_actions
+
     def _specify_action(self, behavioral_state: NovDemoBehavioralState,
                         semantic_action: SemanticAction) -> SemanticActionSpec:
         """
@@ -129,6 +201,165 @@ class NovDemoPolicy(SemanticActionsPolicy):
         else:
             return self._specify_action_towards_object(behavioral_state=behavioral_state,
                                                        semantic_action=semantic_action)
+
+    def _eval_actions(self, behavioral_state: NovDemoBehavioralState, semantic_actions: List[SemanticAction],
+                      actions_spec: List[SemanticActionSpec]) -> np.ndarray:
+        """
+        Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
+        Gets a list of actions to evaluate so and returns a vector representing their costs.
+        A set of actions is provided, enabling assessing them dependently.
+        Note: the semantic actions were generated using the behavioral state and don't necessarily captures
+         all relevant details in the scene. Therefore the evaluation is done using the behavioral state.
+        :param behavioral_state: semantic behavioral state state, containing the semantic grid
+        :param semantic_actions: semantic actions list
+        :param actions_spec: specifications of semantic actions
+        :return: numpy array of costs of semantic actions. Only one action is 1, the rest are zero.
+        """
+
+        if len(semantic_actions) != len(actions_spec):
+            self.logger.error(
+                "The input arrays have different sizes: len(semantic_actions)=%d, len(actions_spec)=%d",
+                len(semantic_actions), len(actions_spec))
+            raise BehavioralPlanningException(
+                "The input arrays have different sizes: len(semantic_actions)=%d, len(actions_spec)=%d",
+                len(semantic_actions), len(actions_spec))
+
+        # get indices of semantic_actions array for 3 actions: goto-right, straight, goto-left
+        current_lane_action_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec,
+                                                                        SEMANTIC_CELL_CURRENT_LANE)
+        left_lane_action_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec,
+                                                                     SEMANTIC_CELL_LEFT_LANE)
+        right_lane_action_ind = NovDemoPolicy._get_action_ind_by_lane(semantic_actions, actions_spec,
+                                                                      SEMANTIC_CELL_RIGHT_LANE)
+
+        # The cost for each action is assigned so that the preferred policy would be:
+        # Go to right if right and current lanes are fast enough.
+        # Go to left if the current lane is slow and the left lane is faster than the current.
+        # Otherwise remain on the current lane.
+
+        # TODO - this needs to come from map
+        desired_vel = BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
+
+        # boolean whether the forward-right cell is fast enough (may be empty grid cell)
+        is_forward_right_fast = right_lane_action_ind is not None and \
+                                desired_vel - actions_spec[right_lane_action_ind].v < MIN_OVERTAKE_VEL
+        # boolean whether the right cell near ego is occupied
+        is_right_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_RIGHT_LANE,
+                                                                      SEMANTIC_CELL_CURRENT_LON)]) > 0
+
+        # boolean whether the forward cell is fast enough (may be empty grid cell)
+        is_forward_fast = current_lane_action_ind is not None and \
+                          desired_vel - actions_spec[current_lane_action_ind].v < MIN_OVERTAKE_VEL
+
+        # boolean whether the forward-left cell is faster than the forward cell
+        is_forward_left_faster = left_lane_action_ind is not None and (current_lane_action_ind is None or
+                                                                       actions_spec[left_lane_action_ind].v -
+                                                                       actions_spec[
+                                                                           current_lane_action_ind].v >= MIN_OVERTAKE_VEL)
+        # boolean whether the left cell near ego is occupied
+        is_left_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LEFT_LANE,
+                                                                     SEMANTIC_CELL_CURRENT_LON)]) > 0
+
+        costs = np.zeros(len(semantic_actions))
+
+        # move right if both straight and right lanes are fast
+        if is_forward_right_fast and (is_forward_fast or current_lane_action_ind is None) and not is_right_occupied:
+            costs[right_lane_action_ind] = 1.
+        # move left if straight is slow and the left is faster than straight
+        elif not is_forward_fast and (
+            is_forward_left_faster or current_lane_action_ind is None) and not is_left_occupied:
+            costs[left_lane_action_ind] = 1.
+        else:
+            costs[current_lane_action_ind] = 1.
+        return costs
+
+    def _generate_trajectory_specs(self, behavioral_state: NovDemoBehavioralState, action_spec: SemanticActionSpec,
+                                   reference_route: np.ndarray) -> TrajectoryParams:
+        """
+        Generate trajectory specification (cost) for trajectory planner
+        :param behavioral_state: processed behavioral state
+        :param target_path_latitude: road latitude of reference route in [m] from right-side of road
+        :param safe_speed: safe speed in [m/s] (ACDA)
+        :param reference_route: [nx3] numpy array of (x, y, z, yaw) states
+        :return: Trajectory cost specifications [TrajectoryParameters]
+        """
+
+        # Get road details
+        road_width = self._map_api.get_road(behavioral_state.ego_state.ego_road_id).road_width
+
+        # Create target state
+        target_path_latitude = action_spec.d_rel + behavioral_state.ego_state.road_localization.full_lat
+
+        reference_route_x_y_yaw = CartesianFrame.add_yaw(reference_route)
+        target_state_x_y_yaw = reference_route_x_y_yaw[-1, :]
+        target_state_velocity = action_spec.v
+        target_state = np.array(
+            [target_state_x_y_yaw[0], target_state_x_y_yaw[1], target_state_x_y_yaw[2], target_state_velocity])
+
+        # Define cost parameters
+        # TODO: assign proper cost parameters
+        infinite_sigmoid_cost = 5000.0  # not a constant because it might be learned. TBD
+        deviation_from_road_cost = 10 ** -3  # not a constant because it might be learned. TBD
+        deviation_to_shoulder_cost = 10 ** -3  # not a constant because it might be learned. TBD
+        zero_sigmoid_cost = 0.0  # not a constant because it might be learned. TBD
+        sigmoid_k_param = 10.0
+
+        # lateral distance in [m] from ref. path to rightmost edge of lane
+        left_margin = right_margin = behavioral_state.ego_state.size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
+        right_lane_offset = target_path_latitude - right_margin
+        # lateral distance in [m] from ref. path to rightmost edge of lane
+        left_lane_offset = (road_width - target_path_latitude) - left_margin
+        # as stated above, for shoulders
+        right_shoulder_offset = target_path_latitude - right_margin
+        # as stated above, for shoulders
+        left_shoulder_offset = (road_width - target_path_latitude) - left_margin
+        # as stated above, for whole road including shoulders
+        right_road_offset = right_shoulder_offset + ROAD_SHOULDERS_WIDTH
+        # as stated above, for whole road including shoulders
+        left_road_offset = left_shoulder_offset + ROAD_SHOULDERS_WIDTH
+
+        # Set road-structure-based cost parameters
+        right_lane_cost = SigmoidFunctionParams(w=zero_sigmoid_cost, k=sigmoid_k_param,
+                                                offset=right_lane_offset)  # Zero cost
+        left_lane_cost = SigmoidFunctionParams(w=zero_sigmoid_cost, k=sigmoid_k_param,
+                                               offset=left_lane_offset)  # Zero cost
+        right_shoulder_cost = SigmoidFunctionParams(w=deviation_to_shoulder_cost, k=sigmoid_k_param,
+                                                    offset=right_shoulder_offset)  # Very high cost
+        left_shoulder_cost = SigmoidFunctionParams(w=deviation_to_shoulder_cost, k=sigmoid_k_param,
+                                                   offset=left_shoulder_offset)  # Very high cost
+        right_road_cost = SigmoidFunctionParams(w=deviation_from_road_cost, k=sigmoid_k_param,
+                                                offset=right_road_offset)  # Very high cost
+        left_road_cost = SigmoidFunctionParams(w=deviation_from_road_cost, k=sigmoid_k_param,
+                                               offset=left_road_offset)  # Very high cost
+
+        # Set objects parameters
+        # dilate each object by cars length + safety margin
+        objects_dilation_size = behavioral_state.ego_state.size.length + LATERAL_SAFETY_MARGIN_FROM_OBJECT
+        objects_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
+                                             offset=objects_dilation_size)  # Very high (inf) cost
+
+        distance_from_reference_route_sq_factor = 0.4
+        # TODO: set velocity and acceleration limits properly
+        velocity_limits = np.array([0.0, 50.0])  # [m/s]. not a constant because it might be learned. TBD
+        acceleration_limits = np.array([-5.0, 5.0])  # [m/s^2]. not a constant because it might be learned. TBD
+        cost_params = TrajectoryCostParams(left_lane_cost=left_lane_cost,
+                                           right_lane_cost=right_lane_cost,
+                                           left_road_cost=left_road_cost,
+                                           right_road_cost=right_road_cost,
+                                           left_shoulder_cost=left_shoulder_cost,
+                                           right_shoulder_cost=right_shoulder_cost,
+                                           obstacle_cost=objects_cost,
+                                           dist_from_ref_sq_cost_coef=distance_from_reference_route_sq_factor,
+                                           velocity_limits=velocity_limits,
+                                           acceleration_limits=acceleration_limits)
+
+        trajectory_parameters = TrajectoryParams(reference_route=reference_route,
+                                                 time=action_spec.t,
+                                                 target_state=target_state,
+                                                 cost_params=cost_params,
+                                                 strategy=TrajectoryPlanningStrategy.HIGHWAY)
+
+        return trajectory_parameters
 
     # TODO: modify into a working+tested version
     def _specify_action_to_empty_cell(self, behavioral_state: NovDemoBehavioralState,
@@ -246,3 +477,52 @@ class NovDemoPolicy(SemanticActionsPolicy):
         # check if extrema values are within [a_min, a_max] limits
         return np.all(np.greater_equal(acc_inlimit_suspected_values_s, min_acc_threshold) &
                       np.less_equal(acc_inlimit_suspected_values_s, max_acc_threshold))
+
+    @staticmethod
+    def _get_action_ind_by_lane(semantic_actions: List[SemanticAction], actions_spec: List[SemanticActionSpec],
+                                cell_lane: int):
+        """
+        Given semantic actions array and relative lane index, return index of action matching to the given lane.
+        For lane change action, verify that the action time is not smaller than MIN_CHANGE_LANE_TIME.
+        :param semantic_actions: array of semantic actions
+        :param actions_spec: array of actions spec
+        :param cell_lane: the relative lane index (-1 right ,0 straight, 1 left)
+        :return: the action index or None if the action does not exist
+        """
+        action_ind = [i for i, action in enumerate(semantic_actions) if action.cell[SEMANTIC_CELL_LANE] == cell_lane]
+        # verify that change lane time is large enough
+        if len(action_ind) > 0 and (cell_lane == SEMANTIC_CELL_CURRENT_LANE or actions_spec[action_ind[0]].t >=
+            MIN_CHANGE_LANE_TIME):
+            return action_ind[0]
+        else:
+            return None
+
+    def __generate_reference_route(self, behavioral_state: NovDemoBehavioralState, action_spec: SemanticActionSpec,
+                                   navigation_plan: NavigationPlanMsg) -> np.ndarray:
+        """
+        :param behavioral_state: processed behavioral state
+        :param action_spec: the goal of the action
+        :return: [nx3] array of reference_route (x,y,yaw) [m,m,rad] in global coordinates
+        """
+
+        target_lane_latitude = action_spec.d_rel + behavioral_state.ego_state.road_localization.full_lat
+        target_relative_longitude = action_spec.s_rel
+
+        lookahead_path = self._map_api.get_uniform_path_lookahead(
+            road_id=behavioral_state.ego_state.road_localization.road_id,
+            lat_shift=target_lane_latitude,
+            starting_lon=behavioral_state.ego_state.road_localization.road_lon,
+            lon_step=global_constants.TRAJECTORY_ARCLEN_RESOLUTION,
+            steps_num=int(np.round(target_relative_longitude /
+                                   global_constants.TRAJECTORY_ARCLEN_RESOLUTION)),
+            navigation_plan=navigation_plan)
+        reference_route_xy = lookahead_path
+
+        # interpolate and create uniformly spaced path
+        reference_route_xy_resampled, _ = \
+            CartesianFrame.resample_curve(curve=reference_route_xy,
+                                          step_size=global_constants.TRAJECTORY_ARCLEN_RESOLUTION,
+                                          desired_curve_len=global_constants.REFERENCE_TRAJECTORY_LENGTH,
+                                          preserve_step_size=False)
+
+        return reference_route_xy_resampled

@@ -8,7 +8,8 @@ from decision_making.src.messages.navigation_plan_message import NavigationPlanM
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.behavioral.policy import Policy
+from decision_making.src.planning.behavioral.policy import Policy, PolicyConfig
+from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, DynamicObject
 from mapping.src.model.map_api import MapAPI
 
@@ -20,6 +21,15 @@ class SemanticActionType(Enum):
 # Define semantic cell
 SEMANTIC_CELL_LANE, SEMANTIC_CELL_LON = 0, 1
 SemanticGridCell = Tuple[int, int]
+
+SEMANTIC_CELL_BACKWARD_LON = -1
+SEMANTIC_CELL_CURRENT_LON = 0
+SEMANTIC_CELL_FORWARD_LON = 1
+
+SEMANTIC_CELL_RIGHT_LANE = -1
+SEMANTIC_CELL_CURRENT_LANE = 0
+SEMANTIC_CELL_LEFT_LANE = 1
+
 """
 We assume that the road is partitioned into semantic areas, each area is defined as a cell.
 The keys are:
@@ -90,6 +100,18 @@ class SemanticActionSpec:
 
 
 class SemanticActionsPolicy(Policy):
+    def __init__(self, logger: Logger, policy_config: PolicyConfig, predictor: Predictor, map_api: MapAPI):
+        """
+        Receives configuration and logger
+        :param logger: logger
+        :param policy_config: parameters configuration class, loaded from parameter server
+        :param predictor: used for predicting ego and other dynamic objects in future states
+        :param map_api: Map API
+        """
+        self._map_api = map_api
+        self._policy_config = policy_config
+        self._predictor = predictor
+        self.logger = logger
 
     def plan(self, state: State, nav_plan: NavigationPlanMsg) -> (TrajectoryParams, BehavioralVisualizationMsg):
         """
@@ -118,7 +140,8 @@ class SemanticActionsPolicy(Policy):
         """
         pass
 
-    def _eval_actions(self, state: State, actions_spec: List[SemanticActionSpec]) -> np.ndarray:
+    def _eval_actions(self, behavioral_state: SemanticBehavioralState, semantic_actions: List[SemanticAction],
+                      actions_spec: List[SemanticActionSpec]) -> np.ndarray:
         """
         Evaluate the generated actions using the full state.
         Gets a list of actions to evaluate so and returns a vector representing their costs.
@@ -126,12 +149,13 @@ class SemanticActionsPolicy(Policy):
         Note: the semantic actions were generated using the behavioral state which isn't necessarily captures
          all relevant details in the scene. Therefore the evaluation is done using the full state.
         :param state: world state
-        :param action_spec: specification of semantic action
+        :param semantic_actions: semantic actions list
+        :param actions_spec: specifications of semantic actions
         :return: numpy array of costs of semantic actions
         """
         pass
 
-    def select_best(self, action_specs: List[SemanticActionSpec], costs: np.ndarray) -> int:
+    def _select_best(self, action_specs: List[SemanticActionSpec], costs: np.ndarray) -> int:
         """
         Select the best action out of the possible actions specs considering their cost
         :param action_specs:
