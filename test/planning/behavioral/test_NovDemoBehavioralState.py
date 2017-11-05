@@ -1,7 +1,14 @@
-from decision_making.src.planning.behavioral.policies.november_demo_semantic_policy import NovDemoBehavioralState
+from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils
 from rte.python.logger.AV_logger import AV_Logger
-from decision_making.test.planning.behavioral.behavioral_state_fixtures import state_with_sorrounding_objects, testable_map_api
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import state_with_sorrounding_objects, \
+    testable_map_api, nov_demo_policy, nov_demo_semantic_follow_action, nov_demo_semantic_behavioral_state, nov_demo_state
+from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction
+from decision_making.src.planning.behavioral.policies.november_demo_semantic_policy import NovDemoBehavioralState, \
+    NovDemoPolicy
 
+import numpy as np
+
+import time
 
 def test_generateSemanticOccupancyGrid_ComplexStateWithFullGrid_carsAreInRightCells(state_with_sorrounding_objects,
                                                                                     testable_map_api):
@@ -81,5 +88,18 @@ def test_generateSemanticOccupancyGrid_ComplexStateWithFullGrid_carsAreInRightCe
     cell = (lane, lon)
     assert cell in occupancy_grid.road_occupancy_grid and occupancy_grid.road_occupancy_grid[cell][0].obj_id == obj_id
 
-def test_specifyAction_followOtherCar_wellSpecified(state_with_sorrounding_objects):
-    state_with_sorrounding_objects
+
+def test_specifyAction_followOtherCar_wellSpecified(nov_demo_semantic_follow_action: SemanticAction,
+                                                    nov_demo_semantic_behavioral_state: NovDemoBehavioralState,
+                                                    nov_demo_policy: NovDemoPolicy):
+    specify = nov_demo_policy._specify_action(nov_demo_semantic_behavioral_state, nov_demo_semantic_follow_action)
+
+    # A = OptimalControlUtils.QuinticPoly1D.time_constraints_matrix(specify.t)
+    # A_inv = np.linalg.inv(A)
+    #
+    # constraints_s = np.array([ego_sx0, ego_sv0, ego_sa0, obj_sxT - safe_lon_dist - obj_long_margin, obj_svT, obj_saT])
+    # constraints_d = np.array([ego_dx0, ego_dv0, ego_da0, obj_dxT, 0.0, 0.0])
+    #
+    # poly_all_coefs_s = OptimalControlUtils.QuinticPoly1D.solve(A_inv, [constraints_s])[0]
+
+    assert True

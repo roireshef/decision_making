@@ -28,6 +28,11 @@ class OptimalControlUtils:
 
         @staticmethod
         def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
+            """
+
+            :param terminal_times:
+            :return:
+            """
             return np.array(
                 [[[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],                                   # x(0)
                   [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],                                   # x_dot(0)
@@ -35,10 +40,15 @@ class OptimalControlUtils:
                   [1.0, T, T ** 2, T ** 3, T ** 4, T ** 5],                         # x(T)
                   [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],    # x_dot(T)
                   [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]]           # x_dotdot(T)
-                 for T in terminal_times], dtype=np.float16)
+                 for T in terminal_times], dtype=np.float)
 
         @staticmethod
         def time_constraints_matrix(T: float) -> np.ndarray:
+            """
+
+            :param T:
+            :return:
+            """
             return OptimalControlUtils.QuinticPoly1D.time_constraints_tensor(np.array([T]))[0]
 
         @staticmethod

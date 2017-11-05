@@ -22,11 +22,11 @@ BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
 BP_SPECIFICATION_T_MIN = 0.1
 BP_SPECIFICATION_T_MAX = 20.0
-BP_SPECIFICATION_T_RES = 0.25
+BP_SPECIFICATION_T_RES = 0.2
 
 # Longitudinal Acceleration Limits [m/sec^2]
-A_LON_MIN = -3
-A_LON_MAX = 3
+A_LON_MIN = -5
+A_LON_MAX = 5
 
 # Latitudinal Acceleration Limits [m/sec^2]
 A_LAT_MIN = -2
