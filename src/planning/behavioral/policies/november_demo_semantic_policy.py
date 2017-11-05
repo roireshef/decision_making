@@ -14,7 +14,7 @@ from decision_making.src.planning.behavioral.constants import BEHAVIORAL_PLANNIN
     BP_SPECIFICATION_T_MIN, BP_SPECIFICATION_T_MAX, BP_SPECIFICATION_T_RES, A_LON_MIN, \
     A_LON_MAX, A_LAT_MIN, A_LAT_MAX, SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_REAR, \
     SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL, \
-    SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO
+    LON_MARGIN_FROM_EGO
 from decision_making.src.planning.behavioral.constants import LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticActionsPolicy, \
     SemanticBehavioralState, RoadSemanticOccupancyGrid, SemanticAction, SemanticActionSpec, SemanticActionType, \
@@ -77,11 +77,11 @@ class NovDemoBehavioralState(SemanticBehavioralState):
             elif object_relative_lane == 1 or object_relative_lane == -1:
                 # Object is one lane on the left/right
 
-                if object_dist_from_front > SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO:
+                if object_dist_from_front > LON_MARGIN_FROM_EGO:
                     # Object in front of vehicle
                     occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_FRONT)
 
-                elif object_lon_dist > -1 * SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO:
+                elif object_lon_dist > -1 * LON_MARGIN_FROM_EGO:
                     # Object vehicle aside of ego
                     occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_SAME)
 

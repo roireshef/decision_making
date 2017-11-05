@@ -44,4 +44,4 @@ SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_RIGHT = 1, 0, 
 MIN_OVERTAKE_VEL = 2
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
-SEMANTIC_OCCUPANCY_GRID_PARTITIONS_MARGIN_FROM_EGO = 1
+LON_MARGIN_FROM_EGO = 1
