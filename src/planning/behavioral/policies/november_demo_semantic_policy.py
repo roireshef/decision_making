@@ -118,6 +118,7 @@ class NovDemoBehavioralState(SemanticBehavioralState):
 
 
 class NovDemoPolicy(SemanticActionsPolicy):
+
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
         behavioral_state = NovDemoBehavioralState.create_from_state(state=state, map_api=self._map_api,
                                                                     logger=self.logger)
@@ -149,8 +150,14 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         semantic_actions: List[SemanticAction] = list()
 
+        ego_lane = behavioral_state.ego_state.road_localization.lane_num
+        optional_lane_keys = [-1, 0, 1]
+        lanes_in_road = self._map_api.get_road(behavioral_state.ego_state.road_localization.road_id).lanes_num
+        filtered_lane_keys = list(
+            filter(lambda relative_lane: 0 <= ego_lane + relative_lane < lanes_in_road, optional_lane_keys))
+
         # Generate actions towards each of the cells in front of ego
-        for relative_lane_key in [-1, 0, 1]:
+        for relative_lane_key in filtered_lane_keys:
             for longitudinal_key in [SEMANTIC_CELL_LON_FRONT]:
                 semantic_cell = (relative_lane_key, longitudinal_key)
                 if semantic_cell in behavioral_state.road_occupancy_grid:
