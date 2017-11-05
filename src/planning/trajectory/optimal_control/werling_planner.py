@@ -87,7 +87,7 @@ class WerlingPlanner(TrajectoryPlanner):
         ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
 
         # compute trajectory costs
-        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, cost_params,
+        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, goal, cost_params,
                                               time_samples, self._predictor)
 
         sorted_idxs = trajectory_costs.argsort()
@@ -130,7 +130,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return ftrajectories[conforms]
 
     @staticmethod
-    def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: State,
+    def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: State, goal: np.ndarray,
                       params: TrajectoryCostParams, time_samples: np.ndarray, predictor: Predictor):
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
@@ -160,8 +160,17 @@ class WerlingPlanner(TrajectoryPlanner):
         cost_per_obstacle = [obs.compute_cost(ctrajectories[:, :, 0:2]) for obs in close_obstacles]
         obstacles_costs = params.obstacle_cost.w * np.sum(cost_per_obstacle, axis=0)
 
-        ''' DISTANCE FROM REFERENCE ROUTE ( DX ^ 2 ) '''
-        dist_from_ref_costs = params.dist_from_ref_sq_cost_coef * np.sum(np.power(ftrajectories[:, :, F_DX], 2), axis=1)
+        ''' SQUARED DISTANCE FROM GOAL SCORE '''
+        # make theta_diff to be in [-pi, pi]
+        last_cpoints = ctrajectories[:, -1, :]
+        theta_diff = (last_cpoints[:, EGO_THETA] - goal[EGO_THETA] + 3*np.pi) % (2*np.pi) - np.pi
+        dist_from_goal_costs = \
+            params.dist_from_lon_sq_cost_coef * np.square(last_cpoints[:, EGO_X] - goal[EGO_X]) + \
+            params.dist_from_lat_sq_cost_coef * np.square(last_cpoints[:, EGO_Y] - goal[EGO_Y]) + \
+            params.dist_from_yaw_sq_cost_coef * np.square(theta_diff) + \
+            params.dist_from_vel_sq_cost_coef * np.square(last_cpoints[:, EGO_V] - goal[EGO_V])
+        # dist_from_ref_costs = params.dist_from_ref_sq_cost_coef * np.sum(np.power(ctrajectories[:, -1, F_DX], 2),
+        # axis=1)
 
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
         deviations_costs = np.zeros(ftrajectories.shape[0])
@@ -177,7 +186,7 @@ class WerlingPlanner(TrajectoryPlanner):
             deviations_costs += np.mean(Math.clipped_exponent(right_offsets, exp.w, exp.k), axis=1)
 
         ''' TOTAL '''
-        return obstacles_costs + dist_from_ref_costs + deviations_costs
+        return obstacles_costs + dist_from_goal_costs + deviations_costs
 
     def _solve_optimization(self, fconst_0, fconst_t, T, time_samples):
         """
