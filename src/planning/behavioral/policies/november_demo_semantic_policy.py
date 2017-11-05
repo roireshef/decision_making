@@ -53,9 +53,22 @@ class NovDemoBehavioralState(SemanticBehavioralState):
 
         ego_lane = ego_state.road_localization.lane_num
 
+        # Generate grid cells
         semantic_occupancy_dict: RoadSemanticOccupancyGrid = dict()
-        for dynamic_object in dynamic_objects:
+        optional_lane_keys = [-1, 0, 1]
+        lanes_in_road = map_api.get_road(state.ego_state.road_localization.road_id).lanes_num
+        filtered_lane_keys = list(
+            filter(lambda relative_lane: 0 <= ego_lane + relative_lane < lanes_in_road, optional_lane_keys))
 
+        optional_lon_keys = [SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR]
+        for lon_key in optional_lon_keys:
+            for lane_key in filtered_lane_keys:
+                occupancy_index = (lane_key, lon_key)
+                semantic_occupancy_dict[occupancy_index] = []
+
+
+        # Allocate dynamic objects
+        for dynamic_object in dynamic_objects:
             object_relative_localization = dynamic_object.get_relative_road_localization(
                 ego_road_localization=ego_state.road_localization, ego_nav_plan=default_navigation_plan,
                 map_api=map_api, logger=logger)
@@ -91,9 +104,9 @@ class NovDemoBehavioralState(SemanticBehavioralState):
 
             # Add object to occupancy grid
             # keeping only a single dynamic object per cell. List is used for future dev.
-            if occupancy_index not in semantic_occupancy_dict:
+            if len(semantic_occupancy_dict[occupancy_index]) == 0:
                 # add to occupancy grid
-                semantic_occupancy_dict[occupancy_index] = [dynamic_object]
+                semantic_occupancy_dict[occupancy_index].append(dynamic_object)
             else:
                 object_in_cell = semantic_occupancy_dict[occupancy_index][0]
                 object_in_grid_lon_dist = object_in_cell.get_relative_road_localization(
@@ -160,7 +173,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
         for relative_lane_key in filtered_lane_keys:
             for longitudinal_key in [SEMANTIC_CELL_LON_FRONT]:
                 semantic_cell = (relative_lane_key, longitudinal_key)
-                if semantic_cell in behavioral_state.road_occupancy_grid:
+                if len(behavioral_state.road_occupancy_grid[semantic_cell]) > 0:
                     # Select first (closest) object in cell
                     target_obj = behavioral_state.road_occupancy_grid[semantic_cell][0]
                 else:
@@ -232,8 +245,10 @@ class NovDemoPolicy(SemanticActionsPolicy):
         is_forward_right_fast = right_lane_action_ind is not None and \
                                 desired_vel - actions_spec[right_lane_action_ind].v < MIN_OVERTAKE_VEL
         # boolean whether the right cell near ego is occupied
-        is_right_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_RIGHT,
-                                                                      SEMANTIC_CELL_LON_SAME)]) > 0
+        is_right_occupied = True
+        if (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid:
+            is_right_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_RIGHT,
+                                                                          SEMANTIC_CELL_LON_SAME)]) > 0
 
         # boolean whether the forward cell is fast enough (may be empty grid cell)
         is_forward_fast = current_lane_action_ind is not None and \
@@ -245,8 +260,10 @@ class NovDemoPolicy(SemanticActionsPolicy):
                                                                        actions_spec[
                                                                            current_lane_action_ind].v >= MIN_OVERTAKE_VEL)
         # boolean whether the left cell near ego is occupied
-        is_left_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_LEFT,
-                                                                     SEMANTIC_CELL_LON_SAME)]) > 0
+        is_left_occupied = True
+        if (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid:
+            is_left_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_LEFT,
+                                                                         SEMANTIC_CELL_LON_SAME)]) > 0
 
         costs = np.zeros(len(semantic_actions))
 
