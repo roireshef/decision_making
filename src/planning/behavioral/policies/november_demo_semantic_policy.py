@@ -396,6 +396,11 @@ class NovDemoPolicy(SemanticActionsPolicy):
         :param semantic_action:
         :return:
         """
+        # Define target latitude
+        road_lane_latitudes = self._map_api.get_center_lanes_latitudes(
+            road_id=behavioral_state.ego_state.road_localization.road_id)
+        target_lane = behavioral_state.ego_state.road_localization.lane_num + semantic_action.cell[LAT_CELL]
+        target_lane_latitude = road_lane_latitudes[target_lane]
 
         # Extract relevant details from state on Ego
         ego_v_x = behavioral_state.ego_state.v_x
@@ -436,7 +441,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
             obj_saT = obj_sa0
             obj_svT = obj_sv0 + obj_sa0 * T
             obj_sxT = obj_sx0 + obj_sv0 * T + obj_sa0 * T ** 2 / 2
-            obj_dxT = obj_dx0  # assuming no agent's lateral movement
+            #obj_dxT = obj_dx0  # assuming no agent's lateral movement
 
             # TODO: account for acc<>0 (from MobilEye's paper)
             safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
@@ -444,7 +449,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
             # set of 6 constraints RHS values for quintic polynomial solution (S DIM)
             constraints_s = np.array(
                 [ego_sx0, ego_sv0, ego_sa0, obj_sxT - safe_lon_dist - obj_long_margin, obj_svT, obj_saT])
-            constraints_d = np.array([ego_dx0, ego_dv0, ego_da0, obj_dxT, 0.0, 0.0])
+            constraints_d = np.array([ego_dx0, ego_dv0, ego_da0, target_lane_latitude, 0.0, 0.0])
 
             # solve for s(t) and d(t)
             poly_coefs_s = OptimalControlUtils.QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
@@ -453,7 +458,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
             # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
             if NovDemoPolicy._is_acceleration_in_limits(poly_coefs_s, T, A_LON_MIN, A_LON_MAX) and \
                     NovDemoPolicy._is_acceleration_in_limits(poly_coefs_d, T, A_LAT_MIN, A_LAT_MAX):
-                return SemanticActionSpec(t=T, v=obj_svT, s_rel=obj_sxT - ego_sx0, d_rel=obj_dxT - ego_dx0)
+                return SemanticActionSpec(t=T, v=obj_svT, s_rel=obj_sxT - ego_sx0, d_rel=target_lane_latitude - ego_dx0)
 
         raise NoValidTrajectoriesFound("No valid trajectories found. state: {}, action: {}"
                                        .format(behavioral_state, semantic_action))
