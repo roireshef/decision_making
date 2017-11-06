@@ -208,8 +208,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
                                                       behavioral_state=behavioral_state,
                                                       semantic_action=semantic_action)
         else:
-            return self._specify_action_towards_object(map_api=self._map_api,
-                                                       behavioral_state=behavioral_state,
+            return self._specify_action_towards_object(behavioral_state=behavioral_state,
                                                        semantic_action=semantic_action)
 
     def _eval_actions(self, behavioral_state: NovDemoBehavioralState, semantic_actions: List[SemanticAction],
