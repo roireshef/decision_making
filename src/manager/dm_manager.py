@@ -2,7 +2,6 @@ from typing import List
 
 from decision_making.src.manager.dm_process import DmProcess
 from logging import Logger
-from rte.python.os import catch_interrupt_signals
 
 
 class DmManager:
@@ -18,7 +17,6 @@ class DmManager:
         start all the configured modules one by one in new processes
         :return: None
         """
-        catch_interrupt_signals()       # applies to all child processes
         for dm_process in self._dm_process_list:
             self._logger.debug('starting DM module %s', dm_process.name)
             dm_process.start_process()

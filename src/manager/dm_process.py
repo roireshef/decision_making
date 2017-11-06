@@ -3,6 +3,7 @@ from multiprocessing import Queue, Process
 from typing import Callable
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTimerTrigger, DmNullTrigger
+from rte.python.os import catch_interrupt_signals
 
 
 class DmProcess:
@@ -63,6 +64,9 @@ class DmProcess:
 
         # create the sub module
         self._module_instance.start()
+
+        # stop process if an interrupt OS signal is received
+        catch_interrupt_signals(self.stop_process)
 
         # activate method can be blocking, depending on the trigger type
         self._trigger.activate()
