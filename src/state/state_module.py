@@ -7,6 +7,7 @@ from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.state.state import *
 from mapping.src.exceptions import MapCellNotFound
 from mapping.src.transformations.geometry_utils import CartesianFrame
+import rte.python.profiler as prof
 
 
 class StateModule(DmModule):
@@ -47,6 +48,7 @@ class StateModule(DmModule):
     def _periodic_action_impl(self):
         pass
 
+    @prof.ProfileFunction()
     def _dynamic_obj_callback(self, objects: dict) -> None:
         try:
             self.logger.info("got dynamic objects %s", objects)
@@ -104,6 +106,7 @@ class StateModule(DmModule):
         except Exception as e:
             self.logger.error("StateModule._dynamic_obj_callback failed due to {}".format(e))
 
+    @prof.ProfileFunction()
     def _self_localization_callback(self, ego_localization: dict):
         try:
             self.logger.debug("got self localization %s", ego_localization)
@@ -131,6 +134,7 @@ class StateModule(DmModule):
             self.logger.error("StateModule._self_localization_callback failed due to {}".format(e))
 
     # TODO: handle invalid data
+    @prof.ProfileFunction()
     def _occupancy_state_callback(self, occupancy: dict):
         try:
             self.logger.debug("got occupancy status %s", occupancy)

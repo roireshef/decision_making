@@ -4,6 +4,8 @@ from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.navigation.navigation_planner import NavigationPlanner
 from logging import Logger
+from logging import Logger
+import rte.python.profiler as prof
 
 
 # TODO - must think about what the input to the navigation computation is, and where it comes from
@@ -18,6 +20,7 @@ class NavigationFacade(DmModule):
     def _start_impl(self):
         pass
 
+    @prof.ProfileFunction("NavigationFacade")
     def _periodic_action_impl(self):
         self._publish_navigation_plan(self.handler.plan())
 

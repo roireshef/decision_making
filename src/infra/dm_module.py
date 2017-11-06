@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from logging import Logger
+import rte.python.profiler as prof
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 
@@ -27,6 +28,7 @@ class DmModule:
         self._stop_impl()
 
     @abstractmethod
+    @prof.ProfileFunction("DmModule")
     def _periodic_action_impl(self):
         pass
 
