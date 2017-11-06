@@ -22,19 +22,7 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.state.state import EgoState, ObjectSize, RoadLocalization, OccupancyState
 from decision_making.src.state.state_module import StateModule
 from rte.python.logger.AV_logger import AV_Logger
-import rte.python.profiler as prof
-import signal
-import cupy
 
-
-def __signal_handler_ignore(signal, frame):
-    pass
-    
-    
-def __signal_handler(signal, frame):
-    logger = AV_Logger.get_logger("interrupt handler")
-    logger.error("%d: interrupted by signal %d", os.getpid(), signal)       
-    raise KeyboardInterrupt
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))
 
@@ -44,7 +32,6 @@ class NavigationFacadeMock(NavigationFacade):
         super().__init__(dds=dds, logger=logger, handler=None)
         self.plan = plan
 
-    @prof.ProfileFunction("NavigationFacadeMock")
     def _periodic_action_impl(self):
         self._publish_navigation_plan(self.plan)
 
@@ -56,7 +43,7 @@ class DmInitialization:
 
     @staticmethod
     def create_state_module() -> StateModule:
-        logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)    
+        logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         dds = DdsPubSub(STATE_MODULE_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
         MapService.initialize()
         map_api = MapService.get_instance()
@@ -135,17 +122,14 @@ def main():
         ]
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
     manager = DmManager(logger, modules_list)
-    # signal.signal(signal.SIGINT, __signal_handler_ignore)
-    # signal.signal(signal.SIGTERM, __signal_handler_ignore)
     manager.start_modules()
     try:
-        # signal.signal(signal.SIGINT, __signal_handler)
-        # signal.signal(signal.SIGTERM, __signal_handler)
         manager.wait_for_submodules()
     except KeyboardInterrupt:
-        logger.error('%d (main) Interrupted! Shutting down.', os.getpid())
+        logger.info('Interrupted by signal!')
         pass
     finally:
         manager.stop_modules()
+
 
 main()
