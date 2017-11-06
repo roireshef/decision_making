@@ -33,7 +33,6 @@ class TrajectoryPlanningFacade(DmModule):
     def _start_impl(self):
         pass
 
-    @prof.ProfileFunction("TrajectoryPlanningFacade: _stop_impl")
     def _stop_impl(self):
         pass
 
