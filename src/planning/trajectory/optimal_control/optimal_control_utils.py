@@ -4,6 +4,13 @@ from decision_making.src.planning.utils.math import Math
 
 class OptimalControlUtils:
     class QuinticPoly1D:
+        """
+        In the quintic polynomial setting we model our 2P-BVP problem as linear system of constraints Ax=b where
+        x is a vector of the quintic polynomial coefficients; b is a vector of the values (p[t] is the value of the
+        polynomial at time t): [p[0], p_dot[0], p_dotdot[0], p[T], p_dot[T], p_dotdot[T]]; A's rows are the
+        polynomial elements at time 0 (first 3 rows) and T (last 3 rows) - the 3 rows in each block correspond to
+        p, p_dot, p_dotdot.
+        """
         @staticmethod
         def solve(A_inv: np.ndarray, constraints: np.ndarray) -> np.ndarray:
             """
@@ -51,9 +58,10 @@ class OptimalControlUtils:
         @staticmethod
         def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
             """
-
-            :param terminal_times:
-            :return:
+            Given the quintic polynomial setting, this function returns A as a tensor with the first dimension iterating
+            over different values of T (time-horizon) provided in <terminal_times>
+            :param terminal_times: 1D numpy array of different values for T
+            :return: 3D numpy array of shape [len(terminal_times), 6, 6]
             """
             return np.array(
                 [[[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],                                   # x(0)
@@ -67,7 +75,7 @@ class OptimalControlUtils:
         @staticmethod
         def time_constraints_matrix(T: float) -> np.ndarray:
             """
-
+            Given the quintic polynomial setting, this function returns A for a specific value of T
             :param T:
             :return:
             """
