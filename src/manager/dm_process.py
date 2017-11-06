@@ -46,6 +46,9 @@ class DmProcess:
         """
         self._queue.put(0)
 
+    def interrupt_signal_handler(self, signal: int, frame) -> None:
+        self.stop_process()
+
     def _module_process_entry(self) -> None:
         """
         Entry method to the process created for the DM module.
@@ -66,7 +69,7 @@ class DmProcess:
         self._module_instance.start()
 
         # stop process if an interrupt OS signal is received
-        catch_interrupt_signals(self.stop_process)
+        catch_interrupt_signals(self.interrupt_signal_handler)
 
         # activate method can be blocking, depending on the trigger type
         self._trigger.activate()
