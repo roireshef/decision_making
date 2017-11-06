@@ -4,8 +4,10 @@ from typing import Callable
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTimerTrigger, DmNullTrigger
 from rte.python.os import catch_interrupt_signals
+from rte.python.profiler import cleanup as profiler_cleanup
 from rte.python.logger.AV_logger import AV_Logger
-import os #dbg
+from os import getpid
+
 
 class DmProcess:
 
@@ -29,7 +31,7 @@ class DmProcess:
         self._trigger = None
         self._module_instance = None
 
-        self.logger = AV_Logger.get_logger(__name__)   #dbg
+        self.logger = AV_Logger.get_logger(process_name)
 
     @property
     def name(self) -> str:
@@ -50,7 +52,7 @@ class DmProcess:
         self._queue.put(0)
 
     def interrupt_signal_handler(self, signal: int, frame) -> None:
-        self.logger.debug('%d: caught signal %d', os.getpid(), signal)
+        self.logger.debug('%d: caught signal %d', self._pid, signal)
         self.stop_process()
 
     def _module_process_entry(self) -> None:
@@ -60,6 +62,10 @@ class DmProcess:
         until it receives a stop signal.
         :return: None
         """
+
+        # store process id (pid) used for tracking process activity in log
+        self._pid = getpid()
+        self.logger.debug('%d: started "%s"', self._pid, self.name)
 
         # create the trigger and activate it.
         if self._trigger_type == DmTriggerType.DM_TRIGGER_PERIODIC:
@@ -73,7 +79,6 @@ class DmProcess:
         self._module_instance.start()
 
         # stop process if an interrupt OS signal is received
-        self.logger.debug('%d: registered signal handler', os.getpid())
         catch_interrupt_signals(self.interrupt_signal_handler)
 
         # activate method can be blocking, depending on the trigger type
@@ -87,6 +92,7 @@ class DmProcess:
 
     def _module_process_wait_for_signal(self) -> None:
         self._queue.get()
+        self.logger.debug('%d: stop signal received', self._pid)
 
     def _module_process_exit(self) -> None:
         """
@@ -95,6 +101,7 @@ class DmProcess:
         """
         if self._trigger.is_active():
             self._trigger.deactivate()
+        profiler_cleanup()
         self._module_instance.stop()
 
     def _trigger_callback(self) -> None:
