@@ -4,7 +4,8 @@ from typing import Callable
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTimerTrigger, DmNullTrigger
 from rte.python.os import catch_interrupt_signals
-
+from rte.python.logger.AV_logger import AV_Logger
+import os #dbg
 
 class DmProcess:
 
@@ -28,6 +29,8 @@ class DmProcess:
         self._trigger = None
         self._module_instance = None
 
+        self.logger = AV_Logger.get_logger(__name__)   #dbg
+
     @property
     def name(self) -> str:
         return self._module_creation_method.__name__
@@ -47,6 +50,7 @@ class DmProcess:
         self._queue.put(0)
 
     def interrupt_signal_handler(self, signal: int, frame) -> None:
+        self.logger.debug('%d: caught signal %d', os.getpid(), signal)
         self.stop_process()
 
     def _module_process_entry(self) -> None:
@@ -69,6 +73,7 @@ class DmProcess:
         self._module_instance.start()
 
         # stop process if an interrupt OS signal is received
+        self.logger.debug('%d: registered signal handler', os.getpid())
         catch_interrupt_signals(self.interrupt_signal_handler)
 
         # activate method can be blocking, depending on the trigger type
