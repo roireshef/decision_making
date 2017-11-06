@@ -10,17 +10,19 @@ from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPE
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
+from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.constants import BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON, \
     BP_SPECIFICATION_T_MIN, BP_SPECIFICATION_T_MAX, BP_SPECIFICATION_T_RES, A_LON_MIN, \
     A_LON_MAX, A_LAT_MIN, A_LAT_MAX, SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_REAR, \
     SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL, \
-    LON_MARGIN_FROM_EGO
+    LON_MARGIN_FROM_EGO, BEHAVIORAL_PLANNING_HORIZON
 from decision_making.src.planning.behavioral.constants import LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticActionsPolicy, \
     SemanticBehavioralState, RoadSemanticOccupancyGrid, SemanticAction, SemanticActionSpec, SemanticActionType, \
     LAT_CELL
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
+from decision_making.src.prediction.constants import LOOKAHEAD_MARGIN_DUE_TO_ROUTE_LINEARIZATION_APPROXIMATION
 from decision_making.src.state.state import EgoState, State
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.model.map_api import MapAPI
@@ -66,7 +68,6 @@ class NovDemoBehavioralState(SemanticBehavioralState):
                 occupancy_index = (lane_key, lon_key)
                 semantic_occupancy_dict[occupancy_index] = []
 
-
         # Allocate dynamic objects
         for dynamic_object in dynamic_objects:
             object_relative_localization = dynamic_object.get_relative_road_localization(
@@ -104,28 +105,30 @@ class NovDemoBehavioralState(SemanticBehavioralState):
 
             # Add object to occupancy grid
             # keeping only a single dynamic object per cell. List is used for future dev.
-            if len(semantic_occupancy_dict[occupancy_index]) == 0:
-                # add to occupancy grid
-                semantic_occupancy_dict[occupancy_index].append(dynamic_object)
-            else:
-                object_in_cell = semantic_occupancy_dict[occupancy_index][0]
-                object_in_grid_lon_dist = object_in_cell.get_relative_road_localization(
-                    ego_road_localization=ego_state.road_localization,
-                    ego_nav_plan=default_navigation_plan,
-                    map_api=map_api, logger=logger).rel_lon
-                object_in_grid_dist_from_front = object_in_grid_lon_dist - ego_state.size.length
-
-                if occupancy_index[1] == SEMANTIC_CELL_LON_FRONT:
-                    # take the object with least lon
-                    if object_lon_dist < object_in_grid_dist_from_front:
-                        # replace object the the closer one
-                        semantic_occupancy_dict[occupancy_index][0] = dynamic_object
+            # TODO: treat objects out of road
+            if occupancy_index in semantic_occupancy_dict:
+                if len(semantic_occupancy_dict[occupancy_index]) == 0:
+                    # add to occupancy grid
+                    semantic_occupancy_dict[occupancy_index].append(dynamic_object)
                 else:
-                    # Assumption - taking the object with the largest long even in the ASIDE cells
-                    # take the object with largest lon
-                    if object_lon_dist > object_in_grid_dist_from_front:
-                        # replace object the the closer one
-                        semantic_occupancy_dict[occupancy_index][0] = dynamic_object
+                    object_in_cell = semantic_occupancy_dict[occupancy_index][0]
+                    object_in_grid_lon_dist = object_in_cell.get_relative_road_localization(
+                        ego_road_localization=ego_state.road_localization,
+                        ego_nav_plan=default_navigation_plan,
+                        map_api=map_api, logger=logger).rel_lon
+                    object_in_grid_dist_from_front = object_in_grid_lon_dist - ego_state.size.length
+
+                    if occupancy_index[1] == SEMANTIC_CELL_LON_FRONT:
+                        # take the object with least lon
+                        if object_lon_dist < object_in_grid_dist_from_front:
+                            # replace object the the closer one
+                            semantic_occupancy_dict[occupancy_index][0] = dynamic_object
+                    else:
+                        # Assumption - taking the object with the largest long even in the ASIDE cells
+                        # take the object with largest lon
+                        if object_lon_dist > object_in_grid_dist_from_front:
+                            # replace object the the closer one
+                            semantic_occupancy_dict[occupancy_index][0] = dynamic_object
 
         return cls(semantic_occupancy_dict, ego_state)
 
@@ -148,7 +151,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
                                           actions_spec=actions_spec)
 
         # select an action-specification with minimal cost
-        selected_action_index = int(np.argmax(action_costs)[0])
+        selected_action_index = int(np.argmax(action_costs))
         selected_action_spec = actions_spec[selected_action_index]
 
         # translate the selected action-specification into a full specification for the TP
@@ -159,7 +162,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
                                                                 action_spec=selected_action_spec,
                                                                 reference_route=reference_trajectory)
 
-        return trajectory_parameters
+        visualization_message = BehavioralVisualizationMsg(reference_route=reference_trajectory)
+        return trajectory_parameters, visualization_message
 
     def _enumerate_actions(self, behavioral_state: NovDemoBehavioralState) -> List[SemanticAction]:
         """
@@ -297,7 +301,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
         """
 
         # Get road details
-        road_width = map_api.get_road(behavioral_state.ego_state.ego_road_id).road_width
+        road_width = map_api.get_road(behavioral_state.ego_state.road_localization.road_id).road_width
 
         # Create target state
         target_path_latitude = action_spec.d_rel + behavioral_state.ego_state.road_localization.full_lat
@@ -309,6 +313,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
             [target_state_x_y_yaw[0], target_state_x_y_yaw[1], target_state_x_y_yaw[2], target_state_velocity])
 
         # Define cost parameters
+        # TODO: assign proper cost parameters
         infinite_sigmoid_cost = 5000.0  # TODO: move to constants file
         deviation_from_road_cost = 10 ** -3  # TODO: move to constants file
         deviation_to_shoulder_cost = 10 ** -3  # TODO: move to constants file
@@ -387,10 +392,10 @@ class NovDemoPolicy(SemanticActionsPolicy):
         target_lane = behavioral_state.ego_state.road_localization.lane_num + semantic_action.cell[LAT_CELL]
         target_lane_latitude = road_lane_latitudes[target_lane]
 
-        target_relative_s = target_lane_latitude - behavioral_state.ego_state.road_localization.full_lat
-        target_relative_d = BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT * BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON
+        target_relative_s = BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT * BEHAVIORAL_PLANNING_HORIZON
+        target_relative_d = target_lane_latitude - behavioral_state.ego_state.road_localization.full_lat
 
-        return SemanticActionSpec(t=BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON, v=BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT,
+        return SemanticActionSpec(t=BEHAVIORAL_PLANNING_HORIZON, v=BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT,
                                   s_rel=target_relative_s, d_rel=target_relative_d)
 
     @staticmethod
@@ -421,12 +426,13 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         # Extract relevant details from state on Reference-Object
         obj_on_road = semantic_action.target_obj.road_localization
-        obj_v_x = semantic_action.target_obj.v_x
-        obj_v_y = semantic_action.target_obj.v_y
-        obj_theta_diff = obj_on_road.intra_lane_yaw  # relative to road
+        # TODO: rotate speed v_x, v_y to road coordinated to get the actual lon/lat speed
+        # obj_v_x = semantic_action.target_obj.road_longitudinal_speed
+        # obj_v_y = semantic_action.target_obj.road_lateral_speed
+        # obj_theta_diff = obj_on_road.intra_lane_yaw  # relative to road
 
         obj_sx0 = obj_on_road.road_lon  # TODO: handle different road_ids
-        obj_sv0 = np.cos(obj_theta_diff) * obj_v_x + np.sin(obj_theta_diff) * obj_v_y
+        obj_sv0 = semantic_action.target_obj.road_longitudinal_speed
         obj_sa0 = 0.0  # TODO: to be changed to include acc
 
         obj_dx0 = obj_on_road.full_lat
@@ -520,19 +526,21 @@ class NovDemoPolicy(SemanticActionsPolicy):
         target_lane_latitude = action_spec.d_rel + behavioral_state.ego_state.road_localization.full_lat
         target_relative_longitude = action_spec.s_rel
 
+        lookahead_distance = target_relative_longitude + LOOKAHEAD_MARGIN_DUE_TO_ROUTE_LINEARIZATION_APPROXIMATION
+
         lookahead_path = map_api.get_uniform_path_lookahead(
             road_id=behavioral_state.ego_state.road_localization.road_id,
             lat_shift=target_lane_latitude,
             starting_lon=behavioral_state.ego_state.road_localization.road_lon,
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
-            steps_num=int(np.round(target_relative_longitude / TRAJECTORY_ARCLEN_RESOLUTION)),
+            steps_num=int(np.round(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
             navigation_plan=navigation_plan)
         reference_route_xy = lookahead_path
 
         # interpolate and create uniformly spaced path
         reference_route_xy_resampled, _ = CartesianFrame.resample_curve(curve=reference_route_xy,
                                                                         step_size=TRAJECTORY_ARCLEN_RESOLUTION,
-                                                                        desired_curve_len=REFERENCE_TRAJECTORY_LENGTH,
+                                                                        desired_curve_len=target_relative_longitude,
                                                                         preserve_step_size=False)
 
         return reference_route_xy_resampled
