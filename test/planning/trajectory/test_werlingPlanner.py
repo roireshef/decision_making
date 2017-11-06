@@ -1,4 +1,5 @@
 import numpy as np
+import time
 
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
@@ -63,8 +64,13 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
                                        acceleration_limits=np.array([a_min, a_max]))
 
     planner = WerlingPlanner(None, predictor)
+
+    start_time = time.time()
+
     _, _, debug = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
                                time=T, cost_params=cost_params)
+
+    end_time = time.time() - start_time
 
     assert True
 
@@ -89,7 +95,7 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
 
     # WerlingVisualizer.plot_route(p1, route_points)
 
-    fig.show()
-    fig.clear()
+    # fig.show()
+    # fig.clear()
 
 

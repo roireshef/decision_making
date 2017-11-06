@@ -110,6 +110,7 @@ class DynamicObject(DDSNonTypedMsg):
     @property
     def road_longitudinal_speed(self) -> float:
         """
+        Assuming no lateral slip
         :return: Longitudinal speed (relative to road)
         """
         return np.linalg.norm([self.v_x, self.v_y]) * np.cos(self.road_localization.intra_lane_yaw)
@@ -117,6 +118,7 @@ class DynamicObject(DDSNonTypedMsg):
     @property
     def road_lateral_speed(self) -> float:
         """
+        Assuming no lateral slip
         :return: Longitudinal speed (relative to road)
         """
         return np.linalg.norm([self.v_x, self.v_y]) * np.sin(self.road_localization.intra_lane_yaw)

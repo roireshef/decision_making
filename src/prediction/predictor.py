@@ -16,7 +16,6 @@ class Predictor:
     def __init__(self, map_api: MapAPI):
         self._map_api = map_api
 
-    # TODO - check if Type hint works - general for all the code
     def predict_object_trajectories(self, dynamic_object: DynamicObject,
                                     prediction_timestamps: np.ndarray) -> np.ndarray:
         """

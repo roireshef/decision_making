@@ -17,3 +17,31 @@ BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON = 2.0
 # Used for prediction resolution, i.e. the resolution of states along the path to be used for acda computations:
 # This may have an effect on efficiency if the acda computation is costly.
 BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
+
+# Planning horizon for the TP query sent by BP [sec]
+# Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
+BP_SPECIFICATION_T_MIN = 0.1
+BP_SPECIFICATION_T_MAX = 20.0
+BP_SPECIFICATION_T_RES = 0.2
+
+# Longitudinal Acceleration Limits [m/sec^2]
+A_LON_MIN = -5
+A_LON_MAX = 5
+
+# Latitudinal Acceleration Limits [m/sec^2]
+A_LAT_MIN = -2
+A_LAT_MAX = 2
+
+# Assumed response delay on road [sec]
+# Used to compute safe distance from other agents on road
+SAFE_DIST_TIME_DELAY = 0.5
+
+# Semantic Grid indices
+SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR = 1, 0, -1
+SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_RIGHT = 1, 0, -1
+
+# [m/sec] Minimal difference of velocities to justify an overtake
+MIN_OVERTAKE_VEL = 2
+
+# [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
+LON_MARGIN_FROM_EGO = 1
