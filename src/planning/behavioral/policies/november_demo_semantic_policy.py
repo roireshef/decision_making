@@ -47,6 +47,7 @@ class NovDemoBehavioralState(SemanticBehavioralState):
          ego front).
         :return: road semantic occupancy grid
         """
+
         ego_state = state.ego_state
         dynamic_objects = state.dynamic_objects
 
@@ -135,6 +136,12 @@ class NovDemoBehavioralState(SemanticBehavioralState):
 
 class NovDemoPolicy(SemanticActionsPolicy):
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
+
+        # Update state
+        predicted_state = self._predictor.predict_state(state=state, prediction_timestamps=np.array(
+            [state.ego_state.timestamp_in_sec]))
+        state = predicted_state[0]
+
         behavioral_state = NovDemoBehavioralState.create_from_state(state=state, map_api=self._map_api,
                                                                     logger=self.logger)
         semantic_actions = self._enumerate_actions(behavioral_state=behavioral_state)
@@ -388,20 +395,16 @@ class NovDemoPolicy(SemanticActionsPolicy):
                                   s_rel=target_relative_s, d_rel=target_relative_d)
 
     @raises(NoValidTrajectoriesFound)
-    def _specify_action_towards_object(self, behavioral_state: NovDemoBehavioralState,
-                                       semantic_action: SemanticAction) -> SemanticActionSpec:
+    @staticmethod
+    def _specify_action_towards_object(behavioral_state: NovDemoBehavioralState,
+                                       semantic_action: SemanticAction, map_api: MapAPI) -> SemanticActionSpec:
         """
         given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec
+        :type map_api:
         :param behavioral_state:
         :param semantic_action:
         :return:
         """
-        # Define target latitude
-        road_lane_latitudes = self._map_api.get_center_lanes_latitudes(
-            road_id=behavioral_state.ego_state.road_localization.road_id)
-        target_lane = behavioral_state.ego_state.road_localization.lane_num + semantic_action.cell[LAT_CELL]
-        target_lane_latitude = road_lane_latitudes[target_lane]
-
         # Extract relevant details from state on Ego
         ego_v_x = behavioral_state.ego_state.v_x
         ego_v_y = behavioral_state.ego_state.v_y
@@ -419,6 +422,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         # Extract relevant details from state on Reference-Object
         obj_on_road = semantic_action.target_obj.road_localization
+        road_lane_latitudes = map_api.get_center_lanes_latitudes(road_id=obj_on_road.road_id)
+        obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
         # TODO: rotate speed v_x, v_y to road coordinated to get the actual lon/lat speed
         # obj_v_x = semantic_action.target_obj.road_longitudinal_speed
         # obj_v_y = semantic_action.target_obj.road_lateral_speed
@@ -441,7 +446,6 @@ class NovDemoPolicy(SemanticActionsPolicy):
             obj_saT = obj_sa0
             obj_svT = obj_sv0 + obj_sa0 * T
             obj_sxT = obj_sx0 + obj_sv0 * T + obj_sa0 * T ** 2 / 2
-            #obj_dxT = obj_dx0  # assuming no agent's lateral movement
 
             # TODO: account for acc<>0 (from MobilEye's paper)
             safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
@@ -449,7 +453,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
             # set of 6 constraints RHS values for quintic polynomial solution (S DIM)
             constraints_s = np.array(
                 [ego_sx0, ego_sv0, ego_sa0, obj_sxT - safe_lon_dist - obj_long_margin, obj_svT, obj_saT])
-            constraints_d = np.array([ego_dx0, ego_dv0, ego_da0, target_lane_latitude, 0.0, 0.0])
+            constraints_d = np.array([ego_dx0, ego_dv0, ego_da0, obj_center_lane_latitude, 0.0, 0.0])
 
             # solve for s(t) and d(t)
             poly_coefs_s = OptimalControlUtils.QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
@@ -458,7 +462,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
             # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
             if NovDemoPolicy._is_acceleration_in_limits(poly_coefs_s, T, A_LON_MIN, A_LON_MAX) and \
                     NovDemoPolicy._is_acceleration_in_limits(poly_coefs_d, T, A_LAT_MIN, A_LAT_MAX):
-                return SemanticActionSpec(t=T, v=obj_svT, s_rel=obj_sxT - ego_sx0, d_rel=target_lane_latitude - ego_dx0)
+                return SemanticActionSpec(t=T, v=obj_svT, s_rel=obj_sxT - ego_sx0,
+                                          d_rel=obj_center_lane_latitude - ego_dx0)
 
         raise NoValidTrajectoriesFound("No valid trajectories found. state: {}, action: {}"
                                        .format(behavioral_state, semantic_action))
