@@ -137,7 +137,8 @@ class NovDemoBehavioralState(SemanticBehavioralState):
 class NovDemoPolicy(SemanticActionsPolicy):
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
 
-        # Update state
+        # TODO: this update is intended for visualization and should be moved to the Viz process
+        # Update state: align all object to ego timestamp
         predicted_state = self._predictor.predict_state(state=state, prediction_timestamps=np.array(
             [state.ego_state.timestamp_in_sec]))
         state = predicted_state[0]
