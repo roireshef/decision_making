@@ -18,6 +18,9 @@ REFERENCE_TRAJECTORY_LENGTH_EXTENDED = 31.0
 # [m] Resolution for the interpolation of the reference route
 TRAJECTORY_ARCLEN_RESOLUTION = 0.1
 
+# [seconds] Resolution for the visualization of predicted dynamic objects
+VISUALIZATION_PREDICTION_RESOLUTION = 1.0
+
 # Time to remember object after it disappears from perception (in nanoseconds)
 OBJECT_HISTORY_TIMEOUT = 1000*1000*1000*2
 
