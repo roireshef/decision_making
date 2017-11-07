@@ -133,6 +133,7 @@ class WerlingPlanner(TrajectoryPlanner):
         :param params: parameters for the cost function (from behavioral layer)
         :param time_samples: [sec] time samples for prediction (global, not relative)
         :param predictor:
+        :param goal: target state of ego: (x, y, theta, yaw)
         :return:
         """
         # TODO: add jerk cost
@@ -156,12 +157,9 @@ class WerlingPlanner(TrajectoryPlanner):
         ''' SQUARED DISTANCE FROM GOAL SCORE '''
         # make theta_diff to be in [-pi, pi]
         last_cpoints = ctrajectories[:, -1, :]
-        theta_diff = (last_cpoints[:, EGO_THETA] - goal[EGO_THETA] + 3*np.pi) % (2*np.pi) - np.pi
         dist_from_goal_costs = \
-            params.dist_from_lon_sq_cost_coef * np.square(last_cpoints[:, EGO_X] - goal[EGO_X]) + \
-            params.dist_from_lat_sq_cost_coef * np.square(last_cpoints[:, EGO_Y] - goal[EGO_Y]) + \
-            params.dist_from_yaw_sq_cost_coef * np.square(theta_diff) + \
-            params.dist_from_vel_sq_cost_coef * np.square(last_cpoints[:, EGO_V] - goal[EGO_V])
+            params.dist_from_goal_lon_sq_cost * np.square(last_cpoints[:, EGO_X] - goal[EGO_X]) + \
+            params.dist_from_goal_lat_sq_cost * np.square(last_cpoints[:, EGO_Y] - goal[EGO_Y])
         # dist_from_ref_costs = params.dist_from_ref_sq_cost_coef * np.sum(np.power(ctrajectories[:, -1, F_DX], 2),
         # axis=1)
 

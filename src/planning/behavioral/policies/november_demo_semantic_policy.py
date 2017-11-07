@@ -325,11 +325,11 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         # Define cost parameters
         # TODO: assign proper cost parameters
-        infinite_sigmoid_cost = 5000.0  # TODO: move to constants file
-        deviation_from_road_cost = 10 ** -3  # TODO: move to constants file
-        deviation_to_shoulder_cost = 10 ** -3  # TODO: move to constants file
+        infinite_sigmoid_cost = 5.0*1e4  # TODO: move to constants file
+        deviation_from_road_cost = 1.0*1e3  # TODO: move to constants file
+        deviation_to_shoulder_cost = 1.0*1e3  # TODO: move to constants file
         zero_sigmoid_cost = 0.0  # TODO: move to constants file
-        sigmoid_k_param = 10.0  # TODO: move to constants file
+        sigmoid_k_param = 20.0  # TODO: move to constants file
 
         # lateral distance in [m] from ref. path to rightmost edge of lane
         left_margin = right_margin = behavioral_state.ego_state.size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
@@ -365,10 +365,13 @@ class NovDemoPolicy(SemanticActionsPolicy):
         objects_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
                                              offset=objects_dilation_size)  # Very high (inf) cost
 
-        distance_from_reference_route_sq_factor = 0.4  # TODO: move to constants file
+        dist_from_goal_lon_sq_cost = 1.0 * 1e2
+        dist_from_goal_lat_sq_cost = 1.0 * 1e3
+        dist_from_ref_sq_cost = 0.0
+
         # TODO: set velocity and acceleration limits properly
-        velocity_limits = np.array([0.0, 50.0])  # [m/s] # TODO: move to constants file
-        acceleration_limits = np.array([-5.0, 5.0])  # [m/s^2] # TODO: move to constants file
+        velocity_limits = np.array([0.0, 50.0])  # [m/s]. not a constant because it might be learned. TBD
+        acceleration_limits = np.array([-5.0, 5.0])  # [m/s^2]. not a constant because it might be learned. TBD
         cost_params = TrajectoryCostParams(left_lane_cost=left_lane_cost,
                                            right_lane_cost=right_lane_cost,
                                            left_road_cost=left_road_cost,
@@ -376,7 +379,9 @@ class NovDemoPolicy(SemanticActionsPolicy):
                                            left_shoulder_cost=left_shoulder_cost,
                                            right_shoulder_cost=right_shoulder_cost,
                                            obstacle_cost=objects_cost,
-                                           dist_from_ref_sq_cost_coef=distance_from_reference_route_sq_factor,
+                                           dist_from_goal_lon_sq_cost=dist_from_goal_lon_sq_cost,
+                                           dist_from_goal_lat_sq_cost=dist_from_goal_lat_sq_cost,
+                                           dist_from_ref_sq_cost=dist_from_ref_sq_cost,
                                            velocity_limits=velocity_limits,
                                            acceleration_limits=acceleration_limits)
 
