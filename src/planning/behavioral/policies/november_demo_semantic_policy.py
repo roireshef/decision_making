@@ -103,6 +103,8 @@ class NovDemoBehavioralState(SemanticBehavioralState):
                 else:
                     # Object behind rear of vehicle
                     occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_REAR)
+            else:
+                continue
 
             # Add object to occupancy grid
             # keeping only a single dynamic object per cell. List is used for future dev.
