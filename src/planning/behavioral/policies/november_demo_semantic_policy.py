@@ -217,12 +217,13 @@ class NovDemoPolicy(SemanticActionsPolicy):
         """
 
         if semantic_action.target_obj is None:
-            return self._specify_action_to_empty_cell(map_api=self._map_api,
-                                                      behavioral_state=behavioral_state,
-                                                      semantic_action=semantic_action)
+            return NovDemoPolicy._specify_action_to_empty_cell(map_api=self._map_api,
+                                                               behavioral_state=behavioral_state,
+                                                               semantic_action=semantic_action)
         else:
-            return self._specify_action_towards_object(behavioral_state=behavioral_state,
-                                                       semantic_action=semantic_action)
+            return NovDemoPolicy._specify_action_towards_object(map_api=self._map_api,
+                                                                behavioral_state=behavioral_state,
+                                                                semantic_action=semantic_action)
 
     def _eval_actions(self, behavioral_state: NovDemoBehavioralState, semantic_actions: List[SemanticAction],
                       actions_spec: List[SemanticActionSpec]) -> np.ndarray:
@@ -407,8 +408,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
         return SemanticActionSpec(t=BEHAVIORAL_PLANNING_HORIZON, v=BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT,
                                   s_rel=target_relative_s, d_rel=target_relative_d)
 
-    @raises(NoValidTrajectoriesFound)
     @staticmethod
+    @raises(NoValidTrajectoriesFound)
     def _specify_action_towards_object(behavioral_state: NovDemoBehavioralState,
                                        semantic_action: SemanticAction, map_api: MapAPI) -> SemanticActionSpec:
         """
