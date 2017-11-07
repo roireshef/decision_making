@@ -142,24 +142,34 @@ class NovDemoPolicy(SemanticActionsPolicy):
             [state.ego_state.timestamp_in_sec]))
         state = predicted_state[0]
 
+        # create road semantic grid from the raw State object
         behavioral_state = NovDemoBehavioralState.create_from_state(state=state, map_api=self._map_api,
                                                                     logger=self.logger)
+
+        # iterate over the semantic grid and enumerate all relevant HL actions
         semantic_actions = self._enumerate_actions(behavioral_state=behavioral_state)
-        actions_spec = [self._specify_action(behavioral_state=behavioral_state, semantic_action=semantic_actions[x]) for
-                        x in range(len(semantic_actions))]
+
+        # iterate over all HL actions and generate a specification (desired terminal: position, velocity, time-horizon)
+        actions_spec = [self._specify_action(behavioral_state=behavioral_state, semantic_action=semantic_actions[idx])
+                        for idx in range(len(semantic_actions))]
+
+        # evaluate all action-specifications by computing a cost for each
         action_costs = self._eval_actions(behavioral_state=behavioral_state, semantic_actions=semantic_actions,
                                           actions_spec=actions_spec)
 
+        # select an action-specification with minimal cost
         selected_action_index = int(np.argmax(action_costs))
         selected_action_spec = actions_spec[selected_action_index]
 
-        reference_trajectory = self.__generate_reference_route(behavioral_state=behavioral_state,
-                                                               action_spec=selected_action_spec,
-                                                               navigation_plan=nav_plan)
-
-        trajectory_parameters = self._generate_trajectory_specs(behavioral_state=behavioral_state,
-                                                                action_spec=selected_action_spec,
-                                                                reference_route=reference_trajectory)
+        # translate the selected action-specification into a full specification for the TP
+        reference_trajectory = NovDemoPolicy._generate_reference_route(map_api=self._map_api,
+                                                                       behavioral_state=behavioral_state,
+                                                                       action_spec=selected_action_spec,
+                                                                       navigation_plan=nav_plan)
+        trajectory_parameters = NovDemoPolicy._generate_trajectory_specs(map_api=self._map_api,
+                                                                         behavioral_state=behavioral_state,
+                                                                         action_spec=selected_action_spec,
+                                                                         reference_route=reference_trajectory)
 
         visualization_message = BehavioralVisualizationMsg(reference_route=reference_trajectory)
         return trajectory_parameters, visualization_message
@@ -207,7 +217,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
         """
 
         if semantic_action.target_obj is None:
-            return self._specify_action_to_empty_cell(behavioral_state=behavioral_state,
+            return self._specify_action_to_empty_cell(map_api=self._map_api,
+                                                      behavioral_state=behavioral_state,
                                                       semantic_action=semantic_action)
         else:
             return self._specify_action_towards_object(behavioral_state=behavioral_state,
@@ -219,7 +230,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
         Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
         Gets a list of actions to evaluate so and returns a vector representing their costs.
         A set of actions is provided, enabling assessing them dependently.
-        Note: the semantic actions were generated using the behavioral state and don't necessarily captures
+        Note: the semantic actions were generated using the behavioral state and don't necessarily capture
          all relevant details in the scene. Therefore the evaluation is done using the behavioral state.
         :param behavioral_state: semantic behavioral state state, containing the semantic grid
         :param semantic_actions: semantic actions list
@@ -288,17 +299,18 @@ class NovDemoPolicy(SemanticActionsPolicy):
             costs[current_lane_action_ind] = 1.
         return costs
 
-    def _generate_trajectory_specs(self, behavioral_state: NovDemoBehavioralState, action_spec: SemanticActionSpec,
-                                   reference_route: np.ndarray) -> TrajectoryParams:
+    @staticmethod
+    def _generate_trajectory_specs(map_api: MapAPI, behavioral_state: NovDemoBehavioralState,
+                                   action_spec: SemanticActionSpec, reference_route: np.ndarray) -> TrajectoryParams:
         """
-        Generate trajectory specification (cost) for trajectory planner
+        Generate trajectory specification (cost parameters) for trajectory planner
         :param behavioral_state: processed behavioral state
         :param reference_route: [nx3] numpy array of (x, y, z, yaw) states
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
 
         # Get road details
-        road_width = self._map_api.get_road(behavioral_state.ego_state.road_localization.road_id).road_width
+        road_width = map_api.get_road(behavioral_state.ego_state.road_localization.road_id).road_width
 
         # Create target state
         target_path_latitude = action_spec.d_rel + behavioral_state.ego_state.road_localization.full_lat
@@ -311,11 +323,11 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         # Define cost parameters
         # TODO: assign proper cost parameters
-        infinite_sigmoid_cost = 5000.0  # not a constant because it might be learned. TBD
-        deviation_from_road_cost = 10 ** -3  # not a constant because it might be learned. TBD
-        deviation_to_shoulder_cost = 10 ** -3  # not a constant because it might be learned. TBD
-        zero_sigmoid_cost = 0.0  # not a constant because it might be learned. TBD
-        sigmoid_k_param = 10.0
+        infinite_sigmoid_cost = 5000.0  # TODO: move to constants file
+        deviation_from_road_cost = 10 ** -3  # TODO: move to constants file
+        deviation_to_shoulder_cost = 10 ** -3  # TODO: move to constants file
+        zero_sigmoid_cost = 0.0  # TODO: move to constants file
+        sigmoid_k_param = 10.0  # TODO: move to constants file
 
         # lateral distance in [m] from ref. path to rightmost edge of lane
         left_margin = right_margin = behavioral_state.ego_state.size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
@@ -351,10 +363,10 @@ class NovDemoPolicy(SemanticActionsPolicy):
         objects_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
                                              offset=objects_dilation_size)  # Very high (inf) cost
 
-        distance_from_reference_route_sq_factor = 0.4
+        distance_from_reference_route_sq_factor = 0.4  # TODO: move to constants file
         # TODO: set velocity and acceleration limits properly
-        velocity_limits = np.array([0.0, 50.0])  # [m/s]. not a constant because it might be learned. TBD
-        acceleration_limits = np.array([-5.0, 5.0])  # [m/s^2]. not a constant because it might be learned. TBD
+        velocity_limits = np.array([0.0, 50.0])  # [m/s] # TODO: move to constants file
+        acceleration_limits = np.array([-5.0, 5.0])  # [m/s^2] # TODO: move to constants file
         cost_params = TrajectoryCostParams(left_lane_cost=left_lane_cost,
                                            right_lane_cost=right_lane_cost,
                                            left_road_cost=left_road_cost,
@@ -374,8 +386,9 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         return trajectory_parameters
 
-    # TODO: modify into a working+tested version
-    def _specify_action_to_empty_cell(self, behavioral_state: NovDemoBehavioralState,
+    # TODO: rethink the design of this function
+    @staticmethod
+    def _specify_action_to_empty_cell(map_api: MapAPI, behavioral_state: NovDemoBehavioralState,
                                       semantic_action: SemanticAction) -> SemanticActionSpec:
         """
         Generate trajectory specification towards a target location in given cell considering ego speed, location.
@@ -383,7 +396,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
         :param semantic_action:
         :return:
         """
-        road_lane_latitudes = self._map_api.get_center_lanes_latitudes(
+        road_lane_latitudes = map_api.get_center_lanes_latitudes(
             road_id=behavioral_state.ego_state.road_localization.road_id)
         target_lane = behavioral_state.ego_state.road_localization.lane_num + semantic_action.cell[LAT_CELL]
         target_lane_latitude = road_lane_latitudes[target_lane]
@@ -512,8 +525,9 @@ class NovDemoPolicy(SemanticActionsPolicy):
         else:
             return None
 
-    def __generate_reference_route(self, behavioral_state: NovDemoBehavioralState, action_spec: SemanticActionSpec,
-                                   navigation_plan: NavigationPlanMsg) -> np.ndarray:
+    @staticmethod
+    def _generate_reference_route(map_api: MapAPI, behavioral_state: NovDemoBehavioralState,
+                                  action_spec: SemanticActionSpec, navigation_plan: NavigationPlanMsg) -> np.ndarray:
         """
         :param behavioral_state: processed behavioral state
         :param action_spec: the goal of the action
@@ -525,7 +539,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         lookahead_distance = target_relative_longitude + LOOKAHEAD_MARGIN_DUE_TO_ROUTE_LINEARIZATION_APPROXIMATION
 
-        lookahead_path = self._map_api.get_uniform_path_lookahead(
+        lookahead_path = map_api.get_uniform_path_lookahead(
             road_id=behavioral_state.ego_state.road_localization.road_id,
             lat_shift=target_lane_latitude,
             starting_lon=behavioral_state.ego_state.road_localization.road_lon,
