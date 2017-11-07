@@ -27,7 +27,7 @@ class WerlingPlanner(TrajectoryPlanner):
     def dt(self):
         return self._dt
 
-    def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, time: float,
+    def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, global_goal_time: float,
              cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
         """ see base class """
         # create road coordinate-frame
@@ -70,6 +70,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         fconstraints_tT = FrenetConstraints(sx_range, sv_range, 0, dx_range, dv, 0)
 
+        time = global_goal_time - state.ego_state.timestamp_in_sec
         time_samples = np.arange(0.0, time, self.dt)
         # solve problem in frenet-frame
         ftrajectories = self._solve_optimization(fconstraints_t0, fconstraints_tT, time, time_samples)

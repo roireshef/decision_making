@@ -465,7 +465,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
             # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
             if NovDemoPolicy._is_acceleration_in_limits(poly_coefs_s, T, A_LON_MIN, A_LON_MAX) and \
                     NovDemoPolicy._is_acceleration_in_limits(poly_coefs_d, T, A_LAT_MIN, A_LAT_MAX):
-                return SemanticActionSpec(t=T, v=obj_svT, s_rel=obj_sxT - ego_sx0, d_rel=obj_dxT - ego_dx0)
+                return SemanticActionSpec(t=T + behavioral_state.ego_state.timestamp_in_sec,
+                                          v=obj_svT, s_rel=obj_sxT - ego_sx0, d_rel=obj_dxT - ego_dx0)
 
         raise NoValidTrajectoriesFound("No valid trajectories found. state: {}, action: {}"
                                        .format(behavioral_state, semantic_action))
