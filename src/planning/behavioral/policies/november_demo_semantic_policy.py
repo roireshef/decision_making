@@ -155,12 +155,14 @@ class NovDemoPolicy(SemanticActionsPolicy):
         selected_action_spec = actions_spec[selected_action_index]
 
         # translate the selected action-specification into a full specification for the TP
-        reference_trajectory = self._generate_reference_route(behavioral_state=behavioral_state,
-                                                              action_spec=selected_action_spec,
-                                                              navigation_plan=nav_plan)
-        trajectory_parameters = self._generate_trajectory_specs(behavioral_state=behavioral_state,
-                                                                action_spec=selected_action_spec,
-                                                                reference_route=reference_trajectory)
+        reference_trajectory = NovDemoPolicy._generate_reference_route(map_api=self._map_api,
+                                                                       behavioral_state=behavioral_state,
+                                                                       action_spec=selected_action_spec,
+                                                                       navigation_plan=nav_plan)
+        trajectory_parameters = NovDemoPolicy._generate_trajectory_specs(map_api=self._map_api,
+                                                                         behavioral_state=behavioral_state,
+                                                                         action_spec=selected_action_spec,
+                                                                         reference_route=reference_trajectory)
 
         visualization_message = BehavioralVisualizationMsg(reference_route=reference_trajectory)
         return trajectory_parameters, visualization_message
@@ -354,7 +356,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
         objects_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
                                              offset=objects_dilation_size)  # Very high (inf) cost
 
-        distance_from_reference_route_sq_factor = 0.4   # TODO: move to constants file
+        distance_from_reference_route_sq_factor = 0.4  # TODO: move to constants file
         # TODO: set velocity and acceleration limits properly
         velocity_limits = np.array([0.0, 50.0])  # [m/s] # TODO: move to constants file
         acceleration_limits = np.array([-5.0, 5.0])  # [m/s^2] # TODO: move to constants file
