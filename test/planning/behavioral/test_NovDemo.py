@@ -1,3 +1,4 @@
+from decision_making.src.planning.behavioral.constants import SAFE_DIST_TIME_DELAY
 from decision_making.src.planning.behavioral.policies.november_demo_semantic_policy import NovDemoPolicy, \
     NovDemoBehavioralState
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction
@@ -187,4 +188,15 @@ def test_specifyAction_followOtherCar_wellSpecified(nov_demo_semantic_follow_act
     #
     # poly_all_coefs_s = OptimalControlUtils.QuinticPoly1D.solve(A_inv, [constraints_s])[0]
 
-    assert True
+    ego_on_road = nov_demo_semantic_behavioral_state.ego_state.road_localization
+    ego_s0 = ego_on_road.road_lon
+
+    obj = nov_demo_semantic_follow_action.target_obj
+    obj_on_road = obj.road_localization
+    obj_s0 = obj_on_road.road_lon
+    obj_v = obj.road_longitudinal_speed
+    obj_sT = obj_s0 + specify.t * obj_v
+    obj_length = obj.size.length
+
+    assert specify.v == obj_v
+    assert specify.s_rel + ego_s0 == obj_sT - obj_length - SAFE_DIST_TIME_DELAY * obj_v
