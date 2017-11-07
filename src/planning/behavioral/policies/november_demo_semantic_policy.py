@@ -344,7 +344,11 @@ class NovDemoPolicy(SemanticActionsPolicy):
         objects_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
                                              offset=objects_dilation_size)  # Very high (inf) cost
 
-        distance_from_reference_route_sq_factor = 0.4
+        dist_from_goal_lon_sq_cost = 1
+        dist_from_goal_lat_sq_cost = 2
+        dist_from_goal_yaw_sq_cost = 4
+        dist_from_goal_vel_sq_cost = 0.5
+
         # TODO: set velocity and acceleration limits properly
         velocity_limits = np.array([0.0, 50.0])  # [m/s]. not a constant because it might be learned. TBD
         acceleration_limits = np.array([-5.0, 5.0])  # [m/s^2]. not a constant because it might be learned. TBD
@@ -355,7 +359,10 @@ class NovDemoPolicy(SemanticActionsPolicy):
                                            left_shoulder_cost=left_shoulder_cost,
                                            right_shoulder_cost=right_shoulder_cost,
                                            obstacle_cost=objects_cost,
-                                           dist_from_ref_sq_cost_coef=distance_from_reference_route_sq_factor,
+                                           dist_from_goal_lon_sq_cost=dist_from_goal_lon_sq_cost,
+                                           dist_from_goal_lat_sq_cost=dist_from_goal_lat_sq_cost,
+                                           dist_from_goal_yaw_sq_cost=dist_from_goal_yaw_sq_cost,
+                                           dist_from_goal_vel_sq_cost=dist_from_goal_vel_sq_cost,
                                            velocity_limits=velocity_limits,
                                            acceleration_limits=acceleration_limits)
 
