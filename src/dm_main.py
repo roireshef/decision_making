@@ -8,6 +8,7 @@ from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, 
     TRAJECTORY_PLANNER_DDS_PARTICIPANT, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
     DM_MANAGER_NAME_FOR_LOGGING
 from decision_making.src.manager.dm_trigger import DmTriggerType
+from decision_making.src.planning.behavioral.policies.november_demo_semantic_policy import NovDemoPolicy
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from mapping.src.service.map_service import MapService
 
@@ -79,10 +80,13 @@ class DmInitialization:
                                   RoadLocalization(0, 0, 0.0, 0.0, 0.0, 0.0))
 
         # Init policy
-        behavioral_state = DefaultBehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [])
-        policy_config = DefaultPolicyConfig()
-        policy = DefaultPolicy(logger, policy_config, behavioral_state, None, map_api)
+        # behavioral_state = DefaultBehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [])
+        # policy_config = DefaultPolicyConfig()
+        # policy = DefaultPolicy(logger, policy_config, behavioral_state, None, map_api)
 
+        # NOV DEMO POLICY
+        predictor = RoadFollowingPredictor(map_api)
+        policy = NovDemoPolicy(logger=logger, policy_config=None, predictor=predictor, map_api=map_api)
 
         behavioral_module = BehavioralFacade(dds=dds, logger=logger, policy=policy)
         return behavioral_module

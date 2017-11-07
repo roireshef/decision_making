@@ -55,7 +55,7 @@ class RoadFollowingPredictor(Predictor):
 
         if route_len > 1:
             route_x_y_theta_v = np.c_[CartesianFrame.add_yaw(route_xy), velocity_column]
-            route_x_y_theta_v[:,2] += initial_yaw
+            # route_x_y_theta_v[:,2] += initial_yaw
         else:
             yaw_vector = np.ones(shape=[route_len, 1]) * initial_yaw
             route_x_y_theta_v = np.concatenate((route_xy, yaw_vector, velocity_column), axis=1)
