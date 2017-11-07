@@ -21,8 +21,9 @@ class TrajectoryCostParams(DDSTypedMsg):
     def __init__(self, left_lane_cost: SigmoidFunctionParams, right_lane_cost: SigmoidFunctionParams,
                  left_road_cost: SigmoidFunctionParams, right_road_cost: SigmoidFunctionParams,
                  left_shoulder_cost: SigmoidFunctionParams, right_shoulder_cost: SigmoidFunctionParams,
-                 obstacle_cost: SigmoidFunctionParams, dist_from_ref_sq_cost_coef: float,
-                 velocity_limits: np.ndarray, acceleration_limits: np.ndarray):
+                 obstacle_cost: SigmoidFunctionParams,
+                 dist_from_goal_lon_sq_cost: float, dist_from_goal_lat_sq_cost: float,
+                 dist_from_ref_sq_cost: float, velocity_limits: np.ndarray, acceleration_limits: np.ndarray):
         """
         This class holds all the parameters used to build the cost function of the trajectory planner.
         It is dynamically set and sent by the behavioral planner.
@@ -41,7 +42,9 @@ class TrajectoryCostParams(DDSTypedMsg):
         :param left_shoulder_cost: defines the sigmoid cost of the left-shoulder of the road (physical boundary)
         :param right_shoulder_cost: defines the sigmoid cost of the right-shoulder of the road (physical boundary)
         :param obstacle_cost: defines the sigmoid cost of obstacles
-        :param dist_from_ref_sq_cost_coef: if cost of distance from the reference route is C(x) = a*x^2, this is a.
+        :param dist_from_goal_lon_sq_cost: cost of distance from the target longitude is C(x) = a*x^2, this is a.
+        :param dist_from_goal_lat_sq_cost: cost of distance from the target latitude is C(x) = a*x^2, this is a.
+        :param dist_from_ref_sq_cost: if cost of distance from the reference route is C(x) = a*x^2, this is a.
         :param velocity_limits: 1D numpy array of [min allowed velocity, max allowed velocity] in [m/sec]
         :param acceleration_limits: 1D numpy array of [min allowed acceleration, max allowed acceleration] in [m/sec^2]
         """
@@ -52,7 +55,9 @@ class TrajectoryCostParams(DDSTypedMsg):
         self.right_shoulder_cost = right_shoulder_cost
         self.left_road_cost = left_road_cost
         self.right_road_cost = right_road_cost
-        self.dist_from_ref_sq_cost_coef = dist_from_ref_sq_cost_coef
+        self.dist_from_goal_lon_sq_cost = dist_from_goal_lon_sq_cost
+        self.dist_from_goal_lat_sq_cost = dist_from_goal_lat_sq_cost
+        self.dist_from_ref_sq_cost = dist_from_ref_sq_cost
         self.velocity_limits = velocity_limits
         self.acceleration_limits = acceleration_limits
 
