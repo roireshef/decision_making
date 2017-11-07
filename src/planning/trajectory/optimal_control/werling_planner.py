@@ -55,7 +55,8 @@ class WerlingPlanner(TrajectoryPlanner):
 
         goal_theta_diff = goal[EGO_THETA] - frenet.curve[frenet.sx_to_s_idx(goal_sx), R_THETA]
 
-        sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_sx, 0)),
+        # TODO: remove /2
+        sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_sx / 2, 0)),
                                np.min((SX_OFFSET_MAX + goal_sx, frenet.length * frenet.resolution)),
                                SX_STEPS)
         sv_range = np.linspace(
@@ -78,7 +79,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # filter resulting trajectories by velocity and acceleration
         ftrajectories_filtered = self._filter_limits(ftrajectories, cost_params)
 
-        if len(ftrajectories_filtered) == 0:
+        if ftrajectories_filtered is None or len(ftrajectories_filtered) == 0:
             raise NoValidTrajectoriesFound("No valid trajectories found. time: {}, goal: {}, state: {}"
                                            .format(time, goal, state))
 
@@ -170,12 +171,12 @@ class WerlingPlanner(TrajectoryPlanner):
         # add to deviations_costs the costs of deviations from the left [lane, shoulder, road]
         for exp in [params.left_lane_cost, params.left_shoulder_cost, params.left_road_cost]:
             left_offsets = ftrajectories[:, :, F_DX] - exp.offset
-            deviations_costs += np.mean(Math.clipped_exponent(left_offsets, exp.w, exp.k), axis=1)
+            deviations_costs += np.mean(Math.clipped_sigmoid(left_offsets, exp.w, exp.k), axis=1)
 
         # add to deviations_costs the costs of deviations from the right [lane, shoulder, road]
         for exp in [params.right_lane_cost, params.right_shoulder_cost, params.right_road_cost]:
             right_offsets = np.negative(ftrajectories[:, :, F_DX]) - exp.offset
-            deviations_costs += np.mean(Math.clipped_exponent(right_offsets, exp.w, exp.k), axis=1)
+            deviations_costs += np.mean(Math.clipped_sigmoid(right_offsets, exp.w, exp.k), axis=1)
 
         ''' TOTAL '''
         return obstacles_costs + dist_from_ref_costs + dist_from_goal_costs + deviations_costs

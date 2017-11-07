@@ -25,7 +25,7 @@ OBJECT_HISTORY_TIMEOUT = 1000*1000*1000*2
 TRAJECTORY_CURVE_INTERP_TYPE = 'cubic'
 
 # [m] Do not consider obstacles that are distant than this threshold
-TRAJECTORY_OBSTACLE_LOOKAHEAD = 40.0
+TRAJECTORY_OBSTACLE_LOOKAHEAD = 100.0
 
 # [m] Cost function clips higher distances before exponentiation
 EXP_CLIP_TH = 50.0
@@ -42,13 +42,13 @@ WERLING_TIME_RESOLUTION = 0.1
 SX_OFFSET_MIN, SX_OFFSET_MAX = -3, 0.1
 
 # [m] Range for grid search in werling planner (long. velocity)
-SV_OFFSET_MIN, SV_OFFSET_MAX = -2, 2.1
+SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
 
 # [m] Range for grid search in werling planner (lat. position)
-DX_OFFSET_MIN, DX_OFFSET_MAX = -2.6, 2.6
+DX_OFFSET_MIN, DX_OFFSET_MAX = -2, 2
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 3, 5, 5
+SX_STEPS, SV_STEPS, DX_STEPS = 7, 1, 7
 
 # State #
 
@@ -60,7 +60,7 @@ EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 5.0, 2.0, 2.0
 DEFAULT_OBJECT_Z_VALUE = 0.
 
 ### DM Manager configuration ###
-BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.8
+BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.2
 TRAJECTORY_PLANNING_MODULE_PERIOD = 0.2
 
 ### DDS Constants ###
