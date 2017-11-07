@@ -11,6 +11,12 @@ class Math:
     @staticmethod
     def clipped_exponent(x: np.ndarray, w: float, k: float,
                          min_clip: float = -EXP_CLIP_TH, max_clip: float = EXP_CLIP_TH) -> np.ndarray:
+
+        return np.multiply(w, np.exp(np.clip(k * x, min_clip, max_clip)))
+
+    @staticmethod
+    def clipped_sigmoid(x: np.ndarray, w: float, k: float,
+                         min_clip: float = -EXP_CLIP_TH, max_clip: float = EXP_CLIP_TH) -> np.ndarray:
         """
         compute sigmoid with clipping the exponent between [-EXP_CLIP_TH, EXP_CLIP_TH]
         :param x: sigmoid function is f(x) = w / (1 + exp(k * x))
@@ -20,7 +26,7 @@ class Math:
         :param max_clip: clips the (k * x) part for too high values. default threshold is EXP_CLIP_TH
         :return: numpy array of exponentiated values
         """
-        return np.multiply(w, np.exp(np.clip(k * x, min_clip, max_clip)))
+        return np.divide(w, np.add(1.0, Math.clipped_exponent(x, 1, -k, min_clip, max_clip)))
 
     @staticmethod
     def polyval2d(p, x):

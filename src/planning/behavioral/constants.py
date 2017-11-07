@@ -20,7 +20,7 @@ BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
-BP_SPECIFICATION_T_MIN = 0.1
+BP_SPECIFICATION_T_MIN = 2.0
 BP_SPECIFICATION_T_MAX = 10.0
 BP_SPECIFICATION_T_RES = 0.2
 
