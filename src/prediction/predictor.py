@@ -39,10 +39,12 @@ class Predictor:
         return self.predict_object_trajectories(ego_state, prediction_timestamps)
 
     def _convert_predictions_to_dynamic_objects(self, dynamic_object: DynamicObject, predictions: np.ndarray,
-                                                prediction_timestamps: np.ndarray)->List[Type[DynamicObject]]:
+                                                prediction_timestamps: np.ndarray,
+                                                project_velocity_to_global: bool)->List[DynamicObject]:
         """
         given original dynamic object, its predictions, and their respective time stamps, creates a list of dynamic
          objects corresponding to the predicted object in those timestamps.
+        :param project_velocity_to_global: whether th predicted velocity should be converted to global frame
         :param dynamic_object:
         :param predictions:
         :param prediction_timestamps:
@@ -60,8 +62,14 @@ class Predictor:
             predicted_object_state.y = predicted_pos[1]
             predicted_object_state.yaw = predicted_yaw
             # TODO: check consistency between diff of (x,y) and v_x, v_y as calculated below:
-            predicted_object_state.v_x = predictions[t_ind, PREDICT_VEL] * np.cos(predicted_yaw)
-            predicted_object_state.v_y = predictions[t_ind, PREDICT_VEL] * np.sin(predicted_yaw)
+            if project_velocity_to_global:
+                predicted_object_state.v_x = predictions[t_ind, PREDICT_VEL] * np.cos(predicted_yaw)
+                predicted_object_state.v_y = predictions[t_ind, PREDICT_VEL] * np.sin(predicted_yaw)
+            else:
+                # We currently assume that the velocity vector is towards object's x axis
+                # TODO: remove assumption
+                predicted_object_state.v_x = predictions[t_ind, PREDICT_VEL]
+                predicted_object_state.v_y = 0.0
             predicted_object_state.road_localization = DynamicObject.compute_road_localization(predicted_pos,
                                                                                                predicted_yaw,
                                                                                                self._map_api)
@@ -78,7 +86,7 @@ class Predictor:
         predict_object_trajectories. IMPORTANT - returned list must be in the same order as prediction_timestamps.
         """
         predictions = self.predict_object_trajectories(dynamic_object, prediction_timestamps)
-        return self._convert_predictions_to_dynamic_objects(dynamic_object, predictions, prediction_timestamps)
+        return self._convert_predictions_to_dynamic_objects(dynamic_object, predictions, prediction_timestamps, True)
 
     def _predict_ego_state(self, ego_state: EgoState, prediction_timestamps: np.ndarray) -> List[EgoState]:
         """
@@ -90,7 +98,7 @@ class Predictor:
         """
         # TODO: update EgoState attributes that are copied and are not part of DynamicObject (as steering_angle)
         predictions = self.predict_ego_trajectories(ego_state, prediction_timestamps)
-        return self._convert_predictions_to_dynamic_objects(ego_state, predictions, prediction_timestamps)
+        return self._convert_predictions_to_dynamic_objects(ego_state, predictions, prediction_timestamps, False)
 
     def predict_state(self, state: State, prediction_timestamps: np.ndarray) -> List[State]:
         """

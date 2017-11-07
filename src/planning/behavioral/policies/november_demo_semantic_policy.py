@@ -47,6 +47,7 @@ class NovDemoBehavioralState(SemanticBehavioralState):
          ego front).
         :return: road semantic occupancy grid
         """
+
         ego_state = state.ego_state
         dynamic_objects = state.dynamic_objects
 
@@ -102,6 +103,8 @@ class NovDemoBehavioralState(SemanticBehavioralState):
                 else:
                     # Object behind rear of vehicle
                     occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_REAR)
+            else:
+                continue
 
             # Add object to occupancy grid
             # keeping only a single dynamic object per cell. List is used for future dev.
@@ -135,6 +138,13 @@ class NovDemoBehavioralState(SemanticBehavioralState):
 
 class NovDemoPolicy(SemanticActionsPolicy):
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
+
+        # TODO: this update is intended for visualization and should be moved to the Viz process
+        # Update state: align all object to ego timestamp
+        predicted_state = self._predictor.predict_state(state=state, prediction_timestamps=np.array(
+            [state.ego_state.timestamp_in_sec]))
+        state = predicted_state[0]
+
         # create road semantic grid from the raw State object
         behavioral_state = NovDemoBehavioralState.create_from_state(state=state, map_api=self._map_api,
                                                                     logger=self.logger)
@@ -155,12 +165,14 @@ class NovDemoPolicy(SemanticActionsPolicy):
         selected_action_spec = actions_spec[selected_action_index]
 
         # translate the selected action-specification into a full specification for the TP
-        reference_trajectory = self._generate_reference_route(behavioral_state=behavioral_state,
-                                                              action_spec=selected_action_spec,
-                                                              navigation_plan=nav_plan)
-        trajectory_parameters = self._generate_trajectory_specs(behavioral_state=behavioral_state,
-                                                                action_spec=selected_action_spec,
-                                                                reference_route=reference_trajectory)
+        reference_trajectory = NovDemoPolicy._generate_reference_route(map_api=self._map_api,
+                                                                       behavioral_state=behavioral_state,
+                                                                       action_spec=selected_action_spec,
+                                                                       navigation_plan=nav_plan)
+        trajectory_parameters = NovDemoPolicy._generate_trajectory_specs(map_api=self._map_api,
+                                                                         behavioral_state=behavioral_state,
+                                                                         action_spec=selected_action_spec,
+                                                                         reference_route=reference_trajectory)
 
         visualization_message = BehavioralVisualizationMsg(reference_route=reference_trajectory)
         return trajectory_parameters, visualization_message
@@ -208,12 +220,13 @@ class NovDemoPolicy(SemanticActionsPolicy):
         """
 
         if semantic_action.target_obj is None:
-            return self._specify_action_to_empty_cell(map_api=self._map_api,
-                                                      behavioral_state=behavioral_state,
-                                                      semantic_action=semantic_action)
+            return NovDemoPolicy._specify_action_to_empty_cell(map_api=self._map_api,
+                                                               behavioral_state=behavioral_state,
+                                                               semantic_action=semantic_action)
         else:
-            return self._specify_action_towards_object(behavioral_state=behavioral_state,
-                                                       semantic_action=semantic_action)
+            return NovDemoPolicy._specify_action_towards_object(map_api=self._map_api,
+                                                                behavioral_state=behavioral_state,
+                                                                semantic_action=semantic_action)
 
     def _eval_actions(self, behavioral_state: NovDemoBehavioralState, semantic_actions: List[SemanticAction],
                       actions_spec: List[SemanticActionSpec]) -> np.ndarray:
@@ -314,11 +327,11 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         # Define cost parameters
         # TODO: assign proper cost parameters
-        infinite_sigmoid_cost = 5000.0  # TODO: move to constants file
-        deviation_from_road_cost = 10 ** -3  # TODO: move to constants file
-        deviation_to_shoulder_cost = 10 ** -3  # TODO: move to constants file
+        infinite_sigmoid_cost = 5.0*1e4  # TODO: move to constants file
+        deviation_from_road_cost = 1.0*1e3  # TODO: move to constants file
+        deviation_to_shoulder_cost = 1.0*1e3  # TODO: move to constants file
         zero_sigmoid_cost = 0.0  # TODO: move to constants file
-        sigmoid_k_param = 10.0  # TODO: move to constants file
+        sigmoid_k_param = 20.0  # TODO: move to constants file
 
         # lateral distance in [m] from ref. path to rightmost edge of lane
         left_margin = right_margin = behavioral_state.ego_state.size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
@@ -354,10 +367,13 @@ class NovDemoPolicy(SemanticActionsPolicy):
         objects_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
                                              offset=objects_dilation_size)  # Very high (inf) cost
 
-        distance_from_reference_route_sq_factor = 0.4   # TODO: move to constants file
+        dist_from_goal_lon_sq_cost = 1.0 * 1e2
+        dist_from_goal_lat_sq_cost = 1.0 * 1e3
+        dist_from_ref_sq_cost = 0.0
+
         # TODO: set velocity and acceleration limits properly
-        velocity_limits = np.array([0.0, 50.0])  # [m/s] # TODO: move to constants file
-        acceleration_limits = np.array([-5.0, 5.0])  # [m/s^2] # TODO: move to constants file
+        velocity_limits = np.array([0.0, 50.0])  # [m/s]. not a constant because it might be learned. TBD
+        acceleration_limits = np.array([-5.0, 5.0])  # [m/s^2]. not a constant because it might be learned. TBD
         cost_params = TrajectoryCostParams(left_lane_cost=left_lane_cost,
                                            right_lane_cost=right_lane_cost,
                                            left_road_cost=left_road_cost,
@@ -365,7 +381,9 @@ class NovDemoPolicy(SemanticActionsPolicy):
                                            left_shoulder_cost=left_shoulder_cost,
                                            right_shoulder_cost=right_shoulder_cost,
                                            obstacle_cost=objects_cost,
-                                           dist_from_ref_sq_cost_coef=distance_from_reference_route_sq_factor,
+                                           dist_from_goal_lon_sq_cost=dist_from_goal_lon_sq_cost,
+                                           dist_from_goal_lat_sq_cost=dist_from_goal_lat_sq_cost,
+                                           dist_from_ref_sq_cost=dist_from_ref_sq_cost,
                                            velocity_limits=velocity_limits,
                                            acceleration_limits=acceleration_limits)
 
@@ -401,14 +419,14 @@ class NovDemoPolicy(SemanticActionsPolicy):
     @staticmethod
     @raises(NoValidTrajectoriesFound)
     def _specify_action_towards_object(behavioral_state: NovDemoBehavioralState,
-                                       semantic_action: SemanticAction) -> SemanticActionSpec:
+                                       semantic_action: SemanticAction, map_api: MapAPI) -> SemanticActionSpec:
         """
         given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec
+        :type map_api:
         :param behavioral_state:
         :param semantic_action:
         :return:
         """
-
         # Extract relevant details from state on Ego
         ego_v_x = behavioral_state.ego_state.v_x
         ego_v_y = behavioral_state.ego_state.v_y
@@ -426,6 +444,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         # Extract relevant details from state on Reference-Object
         obj_on_road = semantic_action.target_obj.road_localization
+        road_lane_latitudes = map_api.get_center_lanes_latitudes(road_id=obj_on_road.road_id)
+        obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
         # TODO: rotate speed v_x, v_y to road coordinated to get the actual lon/lat speed
         # obj_v_x = semantic_action.target_obj.road_longitudinal_speed
         # obj_v_y = semantic_action.target_obj.road_lateral_speed
@@ -448,7 +468,6 @@ class NovDemoPolicy(SemanticActionsPolicy):
             obj_saT = obj_sa0
             obj_svT = obj_sv0 + obj_sa0 * T
             obj_sxT = obj_sx0 + obj_sv0 * T + obj_sa0 * T ** 2 / 2
-            obj_dxT = obj_dx0  # assuming no agent's lateral movement
 
             # TODO: account for acc<>0 (from MobilEye's paper)
             safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
@@ -456,7 +475,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
             # set of 6 constraints RHS values for quintic polynomial solution (S DIM)
             constraints_s = np.array(
                 [ego_sx0, ego_sv0, ego_sa0, obj_sxT - safe_lon_dist - obj_long_margin, obj_svT, obj_saT])
-            constraints_d = np.array([ego_dx0, ego_dv0, ego_da0, obj_dxT, 0.0, 0.0])
+            constraints_d = np.array([ego_dx0, ego_dv0, ego_da0, obj_center_lane_latitude, 0.0, 0.0])
 
             # solve for s(t) and d(t)
             poly_coefs_s = OptimalControlUtils.QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
@@ -465,8 +484,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
             # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
             if NovDemoPolicy._is_acceleration_in_limits(poly_coefs_s, T, A_LON_MIN, A_LON_MAX) and \
                     NovDemoPolicy._is_acceleration_in_limits(poly_coefs_d, T, A_LAT_MIN, A_LAT_MAX):
-                return SemanticActionSpec(t=T + behavioral_state.ego_state.timestamp_in_sec,
-                                          v=obj_svT, s_rel=obj_sxT - ego_sx0, d_rel=obj_dxT - ego_dx0)
+                return SemanticActionSpec(t=T + behavioral_state.ego_state.timestamp_in_sec, v=obj_svT, s_rel=constraints_s[3] - ego_sx0,
+                                          d_rel=constraints_d[3] - ego_dx0)
 
         raise NoValidTrajectoriesFound("No valid trajectories found. state: {}, action: {}"
                                        .format(behavioral_state, semantic_action))

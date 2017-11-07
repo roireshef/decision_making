@@ -21,16 +21,16 @@ BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
 BP_SPECIFICATION_T_MIN = 0.1
-BP_SPECIFICATION_T_MAX = 20.0
+BP_SPECIFICATION_T_MAX = 10.0
 BP_SPECIFICATION_T_RES = 0.2
 
 # Longitudinal Acceleration Limits [m/sec^2]
-A_LON_MIN = -5
-A_LON_MAX = 5
+A_LON_MIN = -5.0
+A_LON_MAX = 5.0
 
 # Latitudinal Acceleration Limits [m/sec^2]
-A_LAT_MIN = -2
-A_LAT_MAX = 2
+A_LAT_MIN = -2.0
+A_LAT_MAX = 2.0
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
