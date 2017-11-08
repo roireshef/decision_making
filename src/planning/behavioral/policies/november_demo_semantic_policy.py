@@ -60,6 +60,8 @@ class NovDemoBehavioralState(SemanticBehavioralState):
         semantic_occupancy_dict: RoadSemanticOccupancyGrid = dict()
         optional_lane_keys = [-1, 0, 1]
         lanes_in_road = map_api.get_road(state.ego_state.road_localization.road_id).lanes_num
+        #TODO: hack for demo
+        lanes_in_road = min(lanes_in_road, 2)
         filtered_lane_keys = list(
             filter(lambda relative_lane: 0 <= ego_lane + relative_lane < lanes_in_road, optional_lane_keys))
 
@@ -110,6 +112,10 @@ class NovDemoBehavioralState(SemanticBehavioralState):
             # keeping only a single dynamic object per cell. List is used for future dev.
             # TODO: treat objects out of road
             if occupancy_index in semantic_occupancy_dict:
+
+                if object_dist_from_front > BP_SPECIFICATION_T_MAX * BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT:
+                    continue
+
                 if len(semantic_occupancy_dict[occupancy_index]) == 0:
                     # add to occupancy grid
                     semantic_occupancy_dict[occupancy_index].append(dynamic_object)
@@ -189,6 +195,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
         ego_lane = behavioral_state.ego_state.road_localization.lane_num
         optional_lane_keys = [-1, 0, 1]
         lanes_in_road = self._map_api.get_road(behavioral_state.ego_state.road_localization.road_id).lanes_num
+        #TODO: hack for demo
+        lanes_in_road = min(lanes_in_road, 2)
         filtered_lane_keys = list(
             filter(lambda relative_lane: 0 <= ego_lane + relative_lane < lanes_in_road, optional_lane_keys))
 

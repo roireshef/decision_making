@@ -45,9 +45,12 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # TODO: translate velocity (better) and acceleration of initial state
         # define constraints for the initial state
-        fconstraints_t0 = FrenetConstraints(0, np.cos(ego_theta_diff) * ego_v_x + np.sin(ego_theta_diff) * ego_v_y, 0,
-                                            ego_in_frenet[1],
-                                            -np.sin(ego_theta_diff) * ego_v_x + np.cos(ego_theta_diff) * ego_v_y, 0)
+        fconstraints_t0 = FrenetConstraints(ego_in_frenet[FP_SX],
+                                            np.cos(ego_theta_diff) * ego_v_x + np.sin(ego_theta_diff) * ego_v_y,
+                                            0,
+                                            ego_in_frenet[FP_DX],
+                                            -np.sin(ego_theta_diff) * ego_v_x + np.cos(ego_theta_diff) * ego_v_y,
+                                            0)
 
         # define constraints for the terminal (goal) state
         goal_in_frenet = frenet.cpoint_to_fpoint(goal[[EGO_X, EGO_Y]])
