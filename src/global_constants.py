@@ -11,7 +11,7 @@ BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT = 10.0
 
 # Trajectory Planner #
 
-# [m] length of reference trajectory provided by behavioral plenner
+# [m] length of reference trajectory provided by behavioral planner
 REFERENCE_TRAJECTORY_LENGTH = 30.0
 REFERENCE_TRAJECTORY_LENGTH_EXTENDED = 31.0
 
@@ -63,7 +63,7 @@ EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 5.0, 2.0, 2.0
 DEFAULT_OBJECT_Z_VALUE = 0.
 
 ### DM Manager configuration ###
-BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.4
+BEHAVIORAL_PLANNING_MODULE_PERIOD = 1.0
 TRAJECTORY_PLANNING_MODULE_PERIOD = 0.2
 
 ### DDS Constants ###
