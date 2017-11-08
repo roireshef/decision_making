@@ -23,7 +23,7 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
     v_max = 10
     a_min = -5
     a_max = 5
-    T = 3.5
+    T = 1.5
 
     map_api = testable_map_api
     predictor = RoadFollowingPredictor(map_api=map_api)
@@ -59,7 +59,9 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
                                        left_shoulder_cost=SigmoidFunctionParams(10, 1.0, 2),
                                        right_shoulder_cost=SigmoidFunctionParams(10, 1.0, 2),
                                        obstacle_cost=SigmoidFunctionParams(100, 10.0, 0.3),
-                                       dist_from_ref_sq_cost_coef=1.0,
+                                       dist_from_ref_sq_cost=1.0,
+                                       dist_from_goal_lat_sq_cost=1.0,
+                                       dist_from_goal_lon_sq_cost=1.0,
                                        velocity_limits=np.array([v_min, v_max]),
                                        acceleration_limits=np.array([a_min, a_max]))
 
@@ -68,7 +70,7 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
     start_time = time.time()
 
     _, _, debug = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
-                               time=T, cost_params=cost_params)
+                               global_goal_time=T, cost_params=cost_params)
 
     end_time = time.time() - start_time
 
@@ -93,9 +95,9 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
 
     print(debug.costs)
 
-    # WerlingVisualizer.plot_route(p1, route_points)
+    WerlingVisualizer.plot_route(p1, route_points)
 
-    # fig.show()
-    # fig.clear()
+    fig.show()
+    fig.clear()
 
 
