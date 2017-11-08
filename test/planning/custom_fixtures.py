@@ -95,7 +95,7 @@ def trajectory_visualization_msg(state, trajectory):
                                      trajectories=np.array([trajectory.chosen_trajectory]),
                                      costs=np.array([0]),
                                      state=state,
-                                     predicted_state=state,
+                                     predicted_states=[state],
                                      plan_time=2.0)
 
 

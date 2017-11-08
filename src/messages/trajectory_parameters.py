@@ -2,6 +2,7 @@ import numpy as np
 
 from decision_making.src.messages.dds_typed_message import DDSTypedMsg
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
+from decision_making.src.planning.utils.columns import EGO_V
 
 
 class SigmoidFunctionParams(DDSTypedMsg):
@@ -80,3 +81,7 @@ class TrajectoryParams(DDSTypedMsg):
         self.cost_params = cost_params
         self.strategy = strategy
         self.time = time
+
+    @property
+    def desired_velocity(self):
+        return self.target_state[EGO_V]

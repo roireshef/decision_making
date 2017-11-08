@@ -27,7 +27,7 @@ class WerlingPlanner(TrajectoryPlanner):
     def dt(self):
         return self._dt
 
-    def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, time: float,
+    def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, global_goal_time: float,
              cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
         """ see base class """
         # create road coordinate-frame
@@ -55,9 +55,12 @@ class WerlingPlanner(TrajectoryPlanner):
 
         goal_theta_diff = goal[EGO_THETA] - frenet.curve[frenet.sx_to_s_idx(goal_sx), R_THETA]
 
-        sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_sx, 0)),
-                               np.min((SX_OFFSET_MAX + goal_sx, frenet.length * frenet.resolution)),
-                               SX_STEPS)
+        # TODO: fix
+        # sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_sx, 0)) / 2,
+        #                        np.min((SX_OFFSET_MAX + goal_sx, frenet.length * frenet.resolution)),
+        #                        SX_STEPS)
+        sx_range = np.linspace(goal_sx / 2, goal_sx, SX_STEPS)
+
         sv_range = np.linspace(
             np.max((SV_OFFSET_MIN + np.cos(goal_theta_diff) * goal[EGO_V], cost_params.velocity_limits[0])),
             np.min((SV_OFFSET_MAX + np.cos(goal_theta_diff) * goal[EGO_V], cost_params.velocity_limits[1])),
@@ -70,6 +73,11 @@ class WerlingPlanner(TrajectoryPlanner):
 
         fconstraints_tT = FrenetConstraints(sx_range, sv_range, 0, dx_range, dv, 0)
 
+        time = global_goal_time - state.ego_state.timestamp_in_sec
+
+        # TODO: remove this assert
+        assert time >= 0
+
         time_samples = np.arange(0.0, time, self.dt)
         # solve problem in frenet-frame
         ftrajectories = self._solve_optimization(fconstraints_t0, fconstraints_tT, time, time_samples)
@@ -77,7 +85,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # filter resulting trajectories by velocity and acceleration
         ftrajectories_filtered = self._filter_limits(ftrajectories, cost_params)
 
-        if len(ftrajectories_filtered) == 0:
+        if ftrajectories_filtered is None or len(ftrajectories_filtered) == 0:
             raise NoValidTrajectoriesFound("No valid trajectories found. time: {}, goal: {}, state: {}"
                                            .format(time, goal, state))
 
@@ -85,24 +93,25 @@ class WerlingPlanner(TrajectoryPlanner):
         ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
 
         # compute trajectory costs
-        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, goal, cost_params,
-                                              time_samples, self._predictor)
+        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, goal_sx, goal_dx,
+                                              cost_params, time_samples, self._predictor)
 
         sorted_idxs = trajectory_costs.argsort()
 
         alternative_ids_skip_range = range(0, len(ctrajectories),
                                            max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
 
+        prediction_timestamps = np.arange(state.ego_state.timestamp_in_sec, state.ego_state.timestamp_in_sec + time,
+                                          VISUALIZATION_PREDICTION_RESOLUTION, float)
         #TODO: move this to visualizer. Curently we are predicting the state at ego's timestamp and at the end of the traj execution time.
-        predicted_states = self._predictor.predict_state(state=state, prediction_timestamps=np.array(
-            [state.ego_state.timestamp_in_sec, state.ego_state.timestamp_in_sec + time]))
+        predicted_states = self._predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps)
         # predicted_states[0] is the current state
         # predicted_states[1] is the predicted state in the end of the execution of traj.
         debug_results = TrajectoryVisualizationMsg(frenet.curve,
                                                    ctrajectories[sorted_idxs[alternative_ids_skip_range], :, :EGO_V],
                                                    trajectory_costs[sorted_idxs[alternative_ids_skip_range]],
                                                    predicted_states[0],
-                                                   predicted_states[1],
+                                                   predicted_states[1:],
                                                    time)
 
         return ctrajectories[sorted_idxs[0], :, :EGO_V+1], trajectory_costs[sorted_idxs[0]], debug_results
@@ -123,7 +132,8 @@ class WerlingPlanner(TrajectoryPlanner):
         return ftrajectories[conforms]
 
     @staticmethod
-    def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: State, goal: np.ndarray,
+    def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: State,
+                      goal_sx: float, goal_dx: float,
                       params: TrajectoryCostParams, time_samples: np.ndarray, predictor: Predictor):
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
@@ -156,12 +166,11 @@ class WerlingPlanner(TrajectoryPlanner):
 
         ''' SQUARED DISTANCE FROM GOAL SCORE '''
         # make theta_diff to be in [-pi, pi]
-        last_cpoints = ctrajectories[:, -1, :]
+        last_fpoints = ftrajectories[:, -1, :]
         dist_from_goal_costs = \
-            params.dist_from_goal_lon_sq_cost * np.square(last_cpoints[:, EGO_X] - goal[EGO_X]) + \
-            params.dist_from_goal_lat_sq_cost * np.square(last_cpoints[:, EGO_Y] - goal[EGO_Y])
-        # dist_from_ref_costs = params.dist_from_ref_sq_cost_coef * np.sum(np.power(ctrajectories[:, -1, F_DX], 2),
-        # axis=1)
+            params.dist_from_goal_lon_sq_cost * np.square(last_fpoints[:, F_SX] - goal_sx) + \
+            params.dist_from_goal_lat_sq_cost * np.square(last_fpoints[:, F_DX] - goal_dx)
+        dist_from_ref_costs = params.dist_from_ref_sq_cost * np.sum(np.power(ftrajectories[:, :, F_DX], 2), axis=1)
 
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
         deviations_costs = np.zeros(ftrajectories.shape[0])
@@ -169,15 +178,15 @@ class WerlingPlanner(TrajectoryPlanner):
         # add to deviations_costs the costs of deviations from the left [lane, shoulder, road]
         for exp in [params.left_lane_cost, params.left_shoulder_cost, params.left_road_cost]:
             left_offsets = ftrajectories[:, :, F_DX] - exp.offset
-            deviations_costs += np.mean(Math.clipped_exponent(left_offsets, exp.w, exp.k), axis=1)
+            deviations_costs += np.mean(Math.clipped_sigmoid(left_offsets, exp.w, exp.k), axis=1)
 
         # add to deviations_costs the costs of deviations from the right [lane, shoulder, road]
         for exp in [params.right_lane_cost, params.right_shoulder_cost, params.right_road_cost]:
             right_offsets = np.negative(ftrajectories[:, :, F_DX]) - exp.offset
-            deviations_costs += np.mean(Math.clipped_exponent(right_offsets, exp.w, exp.k), axis=1)
+            deviations_costs += np.mean(Math.clipped_sigmoid(right_offsets, exp.w, exp.k), axis=1)
 
         ''' TOTAL '''
-        return obstacles_costs + dist_from_goal_costs + deviations_costs
+        return obstacles_costs + dist_from_ref_costs + dist_from_goal_costs + deviations_costs
 
     def _solve_optimization(self, fconst_0, fconst_t, T, time_samples):
         """

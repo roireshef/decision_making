@@ -1,5 +1,5 @@
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
-LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.2
+LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.1
 
 # Define the grid of additive lateral offsets in [lanes] to current car's latitude on road
 POLICY_ACTION_SPACE_ADDITIVE_LATERAL_OFFSETS_IN_LANES = [-2.0, -1.0, 0.0, 1.0, 2.0]
@@ -20,7 +20,7 @@ BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
-BP_SPECIFICATION_T_MIN = 0.1
+BP_SPECIFICATION_T_MIN = 2.0
 BP_SPECIFICATION_T_MAX = 10.0
 BP_SPECIFICATION_T_RES = 0.2
 

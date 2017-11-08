@@ -327,10 +327,11 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         # Define cost parameters
         # TODO: assign proper cost parameters
-        infinite_sigmoid_cost = 5.0*1e4  # TODO: move to constants file
-        deviation_from_road_cost = 1.0*1e3  # TODO: move to constants file
-        deviation_to_shoulder_cost = 1.0*1e3  # TODO: move to constants file
+        infinite_sigmoid_cost = 5.0*1e2  # TODO: move to constants file
+        deviation_from_road_cost = 1.0*1e2  # TODO: move to constants file
+        deviation_to_shoulder_cost = 1.0*1e2  # TODO: move to constants file
         zero_sigmoid_cost = 0.0  # TODO: move to constants file
+        road_sigmoid_k_param = 1000.0  # TODO: move to constants file
         sigmoid_k_param = 20.0  # TODO: move to constants file
 
         # lateral distance in [m] from ref. path to rightmost edge of lane
@@ -348,17 +349,17 @@ class NovDemoPolicy(SemanticActionsPolicy):
         left_road_offset = left_shoulder_offset + ROAD_SHOULDERS_WIDTH
 
         # Set road-structure-based cost parameters
-        right_lane_cost = SigmoidFunctionParams(w=zero_sigmoid_cost, k=sigmoid_k_param,
+        right_lane_cost = SigmoidFunctionParams(w=zero_sigmoid_cost, k=road_sigmoid_k_param,
                                                 offset=right_lane_offset)  # Zero cost
-        left_lane_cost = SigmoidFunctionParams(w=zero_sigmoid_cost, k=sigmoid_k_param,
+        left_lane_cost = SigmoidFunctionParams(w=zero_sigmoid_cost, k=road_sigmoid_k_param,
                                                offset=left_lane_offset)  # Zero cost
-        right_shoulder_cost = SigmoidFunctionParams(w=deviation_to_shoulder_cost, k=sigmoid_k_param,
+        right_shoulder_cost = SigmoidFunctionParams(w=deviation_to_shoulder_cost, k=road_sigmoid_k_param,
                                                     offset=right_shoulder_offset)  # Very high cost
-        left_shoulder_cost = SigmoidFunctionParams(w=deviation_to_shoulder_cost, k=sigmoid_k_param,
+        left_shoulder_cost = SigmoidFunctionParams(w=deviation_to_shoulder_cost, k=road_sigmoid_k_param,
                                                    offset=left_shoulder_offset)  # Very high cost
-        right_road_cost = SigmoidFunctionParams(w=deviation_from_road_cost, k=sigmoid_k_param,
+        right_road_cost = SigmoidFunctionParams(w=deviation_from_road_cost, k=road_sigmoid_k_param,
                                                 offset=right_road_offset)  # Very high cost
-        left_road_cost = SigmoidFunctionParams(w=deviation_from_road_cost, k=sigmoid_k_param,
+        left_road_cost = SigmoidFunctionParams(w=deviation_from_road_cost, k=road_sigmoid_k_param,
                                                offset=left_road_offset)  # Very high cost
 
         # Set objects parameters
@@ -368,7 +369,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
                                              offset=objects_dilation_size)  # Very high (inf) cost
 
         dist_from_goal_lon_sq_cost = 1.0 * 1e2
-        dist_from_goal_lat_sq_cost = 1.0 * 1e3
+        dist_from_goal_lat_sq_cost = 1.0 * 1e2
         dist_from_ref_sq_cost = 0.0
 
         # TODO: set velocity and acceleration limits properly
@@ -388,7 +389,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
                                            acceleration_limits=acceleration_limits)
 
         trajectory_parameters = TrajectoryParams(reference_route=reference_route,
-                                                 time=action_spec.t,
+                                                 time=action_spec.t + behavioral_state.ego_state.timestamp_in_sec,
                                                  target_state=target_state,
                                                  cost_params=cost_params,
                                                  strategy=TrajectoryPlanningStrategy.HIGHWAY)
