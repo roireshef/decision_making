@@ -110,7 +110,7 @@ class StateModule(DmModule):
 
                     # Filter objects out of road:
                     road_width = self._map_api.get_road(road_id=road_localization.road_id).road_width
-                    if road_width + ROAD_SHOULDERS_WIDTH > road_localization.full_lat > -ROAD_SHOULDERS_WIDTH:
+                    if road_width > road_localization.full_lat > 0:
                         dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
                                                 global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
                                                 self.UNKNWON_DEFAULT_VAL, omega_yaw, road_localization)
