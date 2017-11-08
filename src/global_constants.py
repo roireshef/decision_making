@@ -7,7 +7,7 @@ import os
 # [m] high-level behavioral planner lookahead distance
 BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 60.0
 # TODO - get this value from the map
-BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT = 10.0
+BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT = 20.0
 
 # Trajectory Planner #
 
@@ -48,10 +48,12 @@ SX_OFFSET_MIN, SX_OFFSET_MAX = -3, 0.1
 SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
 
 # [m] Range for grid search in werling planner (lat. position)
-DX_OFFSET_MIN, DX_OFFSET_MAX = -2, 2
+# TODO: set lateral offsets
+# DX_OFFSET_MIN, DX_OFFSET_MAX = -1, 1
+DX_OFFSET_MIN, DX_OFFSET_MAX = 0, 0
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 7, 1, 7
+SX_STEPS, SV_STEPS, DX_STEPS = 15, 1, 3
 
 # State #
 
@@ -63,7 +65,7 @@ EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 5.0, 2.0, 2.0
 DEFAULT_OBJECT_Z_VALUE = 0.
 
 ### DM Manager configuration ###
-BEHAVIORAL_PLANNING_MODULE_PERIOD = 1.0
+BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.4
 TRAJECTORY_PLANNING_MODULE_PERIOD = 0.2
 
 ### DDS Constants ###

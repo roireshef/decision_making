@@ -80,6 +80,7 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.warn("NoValidTrajectoriesFound was raised. skipping planning. " +
                              "turn on debug logging level for more details.")
             self.logger.debug(str(e))
+        # TODO: remove this handler
         except Exception as e:
             self.logger.critical("UNHANDLED EXCEPTION in trajectory planning: %s. %s ", e, traceback.format_exc())
 

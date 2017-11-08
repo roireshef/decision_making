@@ -21,7 +21,7 @@ BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
 BP_SPECIFICATION_T_MIN = 2.0
-BP_SPECIFICATION_T_MAX = 10.0
+BP_SPECIFICATION_T_MAX = 20.0
 BP_SPECIFICATION_T_RES = 0.2
 
 # Longitudinal Acceleration Limits [m/sec^2]
@@ -41,7 +41,7 @@ SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR = 1, 0, 
 SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_RIGHT = 1, 0, -1
 
 # [m/sec] Minimal difference of velocities to justify an overtake
-MIN_OVERTAKE_VEL = 2
+MIN_OVERTAKE_VEL = 3
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1

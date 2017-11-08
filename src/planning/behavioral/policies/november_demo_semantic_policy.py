@@ -113,7 +113,8 @@ class NovDemoBehavioralState(SemanticBehavioralState):
             # TODO: treat objects out of road
             if occupancy_index in semantic_occupancy_dict:
 
-                if object_dist_from_front > BP_SPECIFICATION_T_MAX * BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT:
+                if object_dist_from_front > BP_SPECIFICATION_T_MAX * \
+                        0.5 * (ego_state.v_x + BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT):
                     continue
 
                 if len(semantic_occupancy_dict[occupancy_index]) == 0:
@@ -301,7 +302,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
         costs = np.zeros(len(semantic_actions))
 
         # move right if both straight and right lanes are fast
-        if is_forward_right_fast and (is_forward_fast or current_lane_action_ind is None) and not is_right_occupied:
+        #if is_forward_right_fast and (is_forward_fast or current_lane_action_ind is None) and not is_right_occupied:
+        if is_forward_right_fast and not is_right_occupied:
             costs[right_lane_action_ind] = 1.
         # move left if straight is slow and the left is faster than straight
         elif not is_forward_fast and (
@@ -376,8 +378,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
         objects_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
                                              offset=objects_dilation_size)  # Very high (inf) cost
 
-        dist_from_goal_lon_sq_cost = 1.0 * 1e2
-        dist_from_goal_lat_sq_cost = 1.0 * 1e2
+        dist_from_goal_lon_sq_cost = 0.5 * 1e2
+        dist_from_goal_lat_sq_cost = 0.5 * 1e2
         dist_from_ref_sq_cost = 0.0
 
         # TODO: set velocity and acceleration limits properly
@@ -496,8 +498,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
                 return SemanticActionSpec(t=T, v=obj_svT, s_rel=constraints_s[3] - ego_sx0,
                                           d_rel=constraints_d[3] - ego_dx0)
 
-        raise NoValidTrajectoriesFound("No valid trajectories found. state: {}, action: {}"
-                                       .format(behavioral_state, semantic_action))
+        raise NoValidTrajectoriesFound("No valid trajectories found. action: {}, state: {}, "
+                                       .format(semantic_action.__dict__, behavioral_state.__dict__))
 
     @staticmethod
     def _is_acceleration_in_limits(poly_coefs: np.ndarray, T: float,
