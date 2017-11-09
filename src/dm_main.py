@@ -1,20 +1,24 @@
-import pickle
 from logging import Logger
 
 import numpy as np
+
+from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, STATE_MODULE_DDS_PARTICIPANT, \
+    DECISION_MAKING_DDS_FILE, NAVIGATION_PLANNING_NAME_FOR_LOGGING, NAVIGATION_PLANNER_DDS_PARTICIPANT, \
+    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, BEHAVIORAL_PLANNER_DDS_PARTICIPANT, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
+    TRAJECTORY_PLANNER_DDS_PARTICIPANT, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
+    DM_MANAGER_NAME_FOR_LOGGING
+from decision_making.src.manager.dm_trigger import DmTriggerType
+from decision_making.src.planning.behavioral.policies.november_demo_semantic_policy import NovDemoPolicy
+from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from mapping.src.service.map_service import MapService
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
-from decision_making.paths import Paths
-from decision_making.src.global_constants import *
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
-from decision_making.src.manager.dm_trigger import *
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
-from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.behavioral.default_policy import DefaultPolicy, DefaultBehavioralState
-from decision_making.src.planning.behavioral.default_policy_config import DefaultPolicyConfig
+from decision_making.src.planning.behavioral.policies.default_policy import DefaultPolicy, DefaultBehavioralState
+from decision_making.src.planning.behavioral.policies.default_policy_config import DefaultPolicyConfig
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
@@ -79,10 +83,13 @@ class DmInitialization:
                                   RoadLocalization(0, 0, 0.0, 0.0, 0.0, 0.0))
 
         # Init policy
-        behavioral_state = DefaultBehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [])
-        policy_config = DefaultPolicyConfig()
-        policy = DefaultPolicy(logger, policy_config, behavioral_state, None, map_api)
+        # behavioral_state = DefaultBehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [])
+        # policy_config = DefaultPolicyConfig()
+        # policy = DefaultPolicy(logger, policy_config, behavioral_state, None, map_api)
 
+        # NOV DEMO POLICY
+        predictor = RoadFollowingPredictor(map_api)
+        policy = NovDemoPolicy(logger=logger, policy_config=None, predictor=predictor, map_api=map_api)
 
         behavioral_module = BehavioralFacade(dds=dds, logger=logger, policy=policy)
         return behavioral_module
@@ -91,11 +98,20 @@ class DmInitialization:
     def create_trajectory_planner() -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
         dds = DdsPubSub(TRAJECTORY_PLANNER_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
+
+        # Init map
+        MapService.initialize()
+        map_api = MapService.get_instance()
+        init_navigation_plan = NAVIGATION_PLAN
+
+        predictor = RoadFollowingPredictor(map_api)
+
         # TODO: fill the strategy handlers
-        planner = WerlingPlanner(logger)
+        planner = WerlingPlanner(logger, predictor)
         strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
                              TrajectoryPlanningStrategy.PARKING: planner,
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
+
         trajectory_planning_module = TrajectoryPlanningFacade(dds=dds, logger=logger,
                                                               strategy_handlers=strategy_handlers)
         return trajectory_planning_module

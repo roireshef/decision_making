@@ -1,28 +1,39 @@
 import pytest
+import numpy as np
 
-from decision_making.src.global_constants import *
+from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
+    NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.messages.trajectory_parameters import *
+from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
+    TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
+from decision_making.src.planning.behavioral.policies.default_policy import DefaultBehavioralState
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.state.state import OccupancyState, RoadLocalization, ObjectSize, EgoState, State, DynamicObject
+
 from decision_making.test.constants import DDS_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.dds.mock_ddspubsub import DdsPubSubMock
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.test.planning.navigation.mock_navigation_facade import NavigationFacadeMock
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.state.mock_state_module import StateModuleMock
+from mapping.src.model.map_api import MapAPI
 from rte.python.logger.AV_logger import AV_Logger
 
 
 ### MESSAGES ###
 
 @pytest.fixture(scope='function')
+def navigation_plan():
+    yield NavigationPlanMsg(np.array([1, 2]))
+
+
+@pytest.fixture(scope='function')
 def state():
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
-    dyn1 = DynamicObject(1,34, 0.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1,1,1), 1.0, 2.0, 2.0, 0.0, 0.0,
+    dyn1 = DynamicObject(1, 34, 0.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0,
                          RoadLocalization(1, 1, 0.0, 0.0, 10.0, 0.0))
     dyn2 = DynamicObject(1, 35, 10.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0,
                          RoadLocalization(1, 1, 0.0, 0.0, 20.0, 0.0))
@@ -34,9 +45,12 @@ def state():
     yield State(occupancy_state, dynamic_objects, ego_state)
 
 @pytest.fixture(scope='function')
-def navigation_plan():
-    yield NavigationPlanMsg(np.array([1, 2]))
-
+def ego_state_fix():
+    size = ObjectSize(0, 0, 0)
+    # TODO - decouple from navigation plan below (1 is the road id). Make this dependency explicit.
+    road_localization = RoadLocalization(1, 0, 0, 0, 0, 0)
+    ego_state = EgoState(0, 5, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0, road_localization)
+    yield ego_state
 
 @pytest.fixture(scope='function')
 def trajectory_params():
@@ -70,17 +84,19 @@ def trajectory():
 
 ### VIZ MESSAGES ###
 
-
 @pytest.fixture(scope='function')
 def behavioral_visualization_msg(trajectory_params):
     yield BehavioralVisualizationMsg(trajectory_params.reference_route)
 
 
 @pytest.fixture(scope='function')
-def trajectory_visualization_msg(trajectory):
+def trajectory_visualization_msg(state, trajectory):
     yield TrajectoryVisualizationMsg(reference_route=trajectory.reference_route,
-                                     trajectories=np.array([trajectory.chosen_trajectory])
-                                     , costs=np.array([0]))
+                                     trajectories=np.array([trajectory.chosen_trajectory]),
+                                     costs=np.array([0]),
+                                     state=state,
+                                     predicted_states=[state],
+                                     plan_time=2.0)
 
 
 ### MODULES/INFRA ###
@@ -91,7 +107,7 @@ def dds_pubsub():
 
 
 @pytest.fixture(scope='function')
-def state_module(dds_pubsub, state):
+def state_module(state, dds_pubsub):
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
     state_mock = StateModuleMock(dds_pubsub, logger, state)
@@ -133,3 +149,12 @@ def trajectory_planner_facade(dds_pubsub, trajectory, trajectory_visualization_m
     trajectory_planning_module.start()
     yield trajectory_planning_module
     trajectory_planning_module.stop()
+
+
+# MODULE SPECIFIC
+
+@pytest.fixture(scope='function')
+def default_policy_behavioral_state(navigation_plan: NavigationPlanMsg, testable_map_api: MapAPI, state: State):
+    logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
+    yield DefaultBehavioralState(logger=logger, map_api=testable_map_api, navigation_plan=navigation_plan,
+                                 ego_state=state.ego_state, dynamic_objects_on_road=state.dynamic_objects)

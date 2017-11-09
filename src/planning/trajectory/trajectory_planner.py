@@ -6,13 +6,15 @@ import numpy as np
 from decision_making.src.exceptions import raises, NoValidTrajectoriesFound
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
+from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 from logging import Logger
 
 
 class TrajectoryPlanner(metaclass=ABCMeta):
-    def __init__(self, logger: Logger):
+    def __init__(self, logger: Logger, predictor: Predictor):
         self._logger = logger
+        self._predictor = predictor
 
     @abstractmethod
     @raises(NoValidTrajectoriesFound)
