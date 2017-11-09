@@ -58,7 +58,6 @@ class TrajectoryPlanningFacade(DmModule):
             trajectory, cost, debug_results = self._strategy_handlers[params.strategy].plan(
                 state, params.reference_route, params.target_state, params.time, params.cost_params)
 
-
             # TODO: should publish v_x?
             # publish results to the lower DM level
             self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory, reference_route=params.reference_route,

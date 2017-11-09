@@ -10,7 +10,7 @@ MAX_PLANNING_DISTANCE_BACKWARD = -20.0
 MAX_PLANNING_DISTANCE_FORWARD = 80.0
 
 # Planning horizon in [sec]: prediction horizon in the behavioral planner
-BEHAVIORAL_PLANNING_HORIZON = 5.0
+BEHAVIORAL_PLANNING_HORIZON = 7.0
 BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON = 2.0
 
 # Planning resolution in [sec].
@@ -25,8 +25,9 @@ BP_SPECIFICATION_T_MAX = 20.0
 BP_SPECIFICATION_T_RES = 0.2
 
 # Longitudinal Acceleration Limits [m/sec^2]
-A_LON_MIN = -5.0
-A_LON_MAX = 5.0
+A_LON_MIN = -4.0
+A_LON_MAX = 4.0
+A_LON_EPS = 3.0
 
 # Latitudinal Acceleration Limits [m/sec^2]
 A_LAT_MIN = -2.0

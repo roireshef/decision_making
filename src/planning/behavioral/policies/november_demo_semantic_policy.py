@@ -1,6 +1,7 @@
 from logging import Logger
 from typing import List
 
+import math
 import numpy as np
 
 from decision_making.src.exceptions import BehavioralPlanningException
@@ -15,7 +16,7 @@ from decision_making.src.planning.behavioral.constants import BEHAVIORAL_PLANNIN
     BP_SPECIFICATION_T_MIN, BP_SPECIFICATION_T_MAX, BP_SPECIFICATION_T_RES, A_LON_MIN, \
     A_LON_MAX, A_LAT_MIN, A_LAT_MAX, SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_REAR, \
     SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL, \
-    LON_MARGIN_FROM_EGO, BEHAVIORAL_PLANNING_HORIZON
+    LON_MARGIN_FROM_EGO, BEHAVIORAL_PLANNING_HORIZON, A_LON_EPS
 from decision_making.src.planning.behavioral.constants import LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticActionsPolicy, \
     SemanticBehavioralState, RoadSemanticOccupancyGrid, SemanticAction, SemanticActionSpec, SemanticActionType, \
@@ -113,7 +114,7 @@ class NovDemoBehavioralState(SemanticBehavioralState):
             # TODO: treat objects out of road
             if occupancy_index in semantic_occupancy_dict:
 
-                if object_dist_from_front > BP_SPECIFICATION_T_MAX * \
+                if object_dist_from_front > BEHAVIORAL_PLANNING_HORIZON * \
                         0.5 * (ego_state.v_x + BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT):
                     continue
 
@@ -182,6 +183,10 @@ class NovDemoPolicy(SemanticActionsPolicy):
                                                                          reference_route=reference_trajectory)
 
         visualization_message = BehavioralVisualizationMsg(reference_route=reference_trajectory)
+
+        self.logger.debug("Chosen behavioral semantic action is %s, %s",
+                          semantic_actions[selected_action_index].__dict__, selected_action_spec.__dict__)
+
         return trajectory_parameters, visualization_message
 
     def _enumerate_actions(self, behavioral_state: NovDemoBehavioralState) -> List[SemanticAction]:
@@ -337,7 +342,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         # Define cost parameters
         # TODO: assign proper cost parameters
-        infinite_sigmoid_cost = 5.0*1e2  # TODO: move to constants file
+        infinite_sigmoid_cost = 2.0*1e2  # TODO: move to constants file
         deviation_from_road_cost = 1.0*1e2  # TODO: move to constants file
         deviation_to_shoulder_cost = 1.0*1e2  # TODO: move to constants file
         zero_sigmoid_cost = 0.0  # TODO: move to constants file
@@ -378,13 +383,13 @@ class NovDemoPolicy(SemanticActionsPolicy):
         objects_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
                                              offset=objects_dilation_size)  # Very high (inf) cost
 
-        dist_from_goal_lon_sq_cost = 0.5 * 1e2
-        dist_from_goal_lat_sq_cost = 0.5 * 1e2
+        dist_from_goal_lon_sq_cost = 1.0 * 1e2
+        dist_from_goal_lat_sq_cost = 1.5 * 1e2
         dist_from_ref_sq_cost = 0.0
 
         # TODO: set velocity and acceleration limits properly
-        velocity_limits = np.array([0.0, 50.0])  # [m/s]. not a constant because it might be learned. TBD
-        acceleration_limits = np.array([-5.0, 5.0])  # [m/s^2]. not a constant because it might be learned. TBD
+        velocity_limits = np.array([0.0, 60.0])  # [m/s]. not a constant because it might be learned. TBD
+        acceleration_limits = np.array([A_LON_MIN - A_LON_EPS, A_LON_MAX + A_LON_EPS])  # [m/s^2]. not a constant because it might be learned. TBD
         cost_params = TrajectoryCostParams(left_lane_cost=left_lane_cost,
                                            right_lane_cost=right_lane_cost,
                                            left_road_cost=left_road_cost,
@@ -421,7 +426,9 @@ class NovDemoPolicy(SemanticActionsPolicy):
         target_lane = behavioral_state.ego_state.road_localization.lane_num + semantic_action.cell[LAT_CELL]
         target_lane_latitude = road_lane_latitudes[target_lane]
 
-        target_relative_s = BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT * BEHAVIORAL_PLANNING_HORIZON
+        # BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT * BEHAVIORAL_PLANNING_HORIZON
+        target_relative_s = BEHAVIORAL_PLANNING_HORIZON * \
+                            0.5 * (behavioral_state.ego_state.v_x + BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT)
         target_relative_d = target_lane_latitude - behavioral_state.ego_state.road_localization.full_lat
 
         return SemanticActionSpec(t=BEHAVIORAL_PLANNING_HORIZON, v=BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT,
