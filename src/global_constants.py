@@ -28,7 +28,7 @@ OBJECT_HISTORY_TIMEOUT = 1000*1000*1000*2
 TRAJECTORY_CURVE_INTERP_TYPE = 'cubic'
 
 # [m] Do not consider obstacles that are distant than this threshold
-TRAJECTORY_OBSTACLE_LOOKAHEAD = 1000.0
+TRAJECTORY_OBSTACLE_LOOKAHEAD = 10.0
 
 # [m] Cost function clips higher distances before exponentiation
 EXP_CLIP_TH = 50.0
