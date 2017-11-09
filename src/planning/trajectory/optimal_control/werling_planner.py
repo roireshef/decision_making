@@ -45,9 +45,12 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # TODO: translate velocity (better) and acceleration of initial state
         # define constraints for the initial state
-        fconstraints_t0 = FrenetConstraints(0, np.cos(ego_theta_diff) * ego_v_x + np.sin(ego_theta_diff) * ego_v_y, 0,
-                                            ego_in_frenet[1],
-                                            -np.sin(ego_theta_diff) * ego_v_x + np.cos(ego_theta_diff) * ego_v_y, 0)
+        fconstraints_t0 = FrenetConstraints(ego_in_frenet[FP_SX],
+                                            np.cos(ego_theta_diff) * ego_v_x + np.sin(ego_theta_diff) * ego_v_y,
+                                            0,
+                                            ego_in_frenet[FP_DX],
+                                            -np.sin(ego_theta_diff) * ego_v_x + np.cos(ego_theta_diff) * ego_v_y,
+                                            0)
 
         # define constraints for the terminal (goal) state
         goal_in_frenet = frenet.cpoint_to_fpoint(goal[[EGO_X, EGO_Y]])
@@ -85,6 +88,8 @@ class WerlingPlanner(TrajectoryPlanner):
         # filter resulting trajectories by velocity and acceleration
         ftrajectories_filtered = self._filter_limits(ftrajectories, cost_params)
 
+        self._logger.debug("TP has found %d valid trajectories to choose from", len(ftrajectories_filtered))
+
         if ftrajectories_filtered is None or len(ftrajectories_filtered) == 0:
             raise NoValidTrajectoriesFound("No valid trajectories found. time: {}, goal: {}, state: {}"
                                            .format(time, goal, state))
@@ -103,6 +108,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         prediction_timestamps = np.arange(state.ego_state.timestamp_in_sec, state.ego_state.timestamp_in_sec + time,
                                           VISUALIZATION_PREDICTION_RESOLUTION, float)
+
         #TODO: move this to visualizer. Curently we are predicting the state at ego's timestamp and at the end of the traj execution time.
         predicted_states = self._predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps)
         # predicted_states[0] is the current state

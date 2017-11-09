@@ -110,9 +110,15 @@ class StateModule(DmModule):
                     road_localization = DynamicObject.compute_road_localization(global_coordinates, global_yaw,
                                                                                  self._map_api)
 
+                    # TODO: Remove, only for demo purposes
+                    velocity = np.linalg.norm([v_x, v_y])
+                    if velocity > 20.0:
+                        v_x = v_x * 20.0 / velocity
+                        v_y = v_y * 20.0 / velocity
+
                     # Filter objects out of road:
                     road_width = self._map_api.get_road(road_id=road_localization.road_id).road_width
-                    if road_width + ROAD_SHOULDERS_WIDTH > road_localization.full_lat > -ROAD_SHOULDERS_WIDTH:
+                    if road_width > road_localization.full_lat > 0:
                         dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
                                                 global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
                                                 self.UNKNWON_DEFAULT_VAL, omega_yaw, road_localization)

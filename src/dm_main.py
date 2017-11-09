@@ -88,7 +88,7 @@ class DmInitialization:
         # policy = DefaultPolicy(logger, policy_config, behavioral_state, None, map_api)
 
         # NOV DEMO POLICY
-        predictor = RoadFollowingPredictor(map_api)
+        predictor = RoadFollowingPredictor(map_api, logger)
         policy = NovDemoPolicy(logger=logger, policy_config=None, predictor=predictor, map_api=map_api)
 
         behavioral_module = BehavioralFacade(dds=dds, logger=logger, policy=policy)
@@ -104,7 +104,7 @@ class DmInitialization:
         map_api = MapService.get_instance()
         init_navigation_plan = NAVIGATION_PLAN
 
-        predictor = RoadFollowingPredictor(map_api)
+        predictor = RoadFollowingPredictor(map_api, logger)
 
         # TODO: fill the strategy handlers
         planner = WerlingPlanner(logger, predictor)

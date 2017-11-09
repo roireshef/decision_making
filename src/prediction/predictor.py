@@ -1,10 +1,13 @@
+import traceback
 import copy
+from logging import Logger
 from typing import List, Type
 
 import numpy as np
 
 from decision_making.src.prediction.columns import PREDICT_X, PREDICT_Y, PREDICT_YAW, PREDICT_VEL
 from decision_making.src.state.state import DynamicObject, EgoState, State
+from mapping.src.exceptions import LongitudeOutOfRoad
 from mapping.src.model.map_api import MapAPI
 
 
@@ -13,8 +16,9 @@ class Predictor:
     Base class for predictors of dynamic objects
     """
 
-    def __init__(self, map_api: MapAPI):
+    def __init__(self, map_api: MapAPI, logger: Logger):
         self._map_api = map_api
+        self._logger = logger
 
     def predict_object_trajectories(self, dynamic_object: DynamicObject,
                                     prediction_timestamps: np.ndarray) -> np.ndarray:
@@ -40,7 +44,7 @@ class Predictor:
 
     def _convert_predictions_to_dynamic_objects(self, dynamic_object: DynamicObject, predictions: np.ndarray,
                                                 prediction_timestamps: np.ndarray,
-                                                project_velocity_to_global: bool)->List[DynamicObject]:
+                                                project_velocity_to_global: bool) -> List[DynamicObject]:
         """
         given original dynamic object, its predictions, and their respective time stamps, creates a list of dynamic
          objects corresponding to the predicted object in those timestamps.
@@ -125,9 +129,16 @@ class Predictor:
             predicted_states[t_ind].dynamic_objects.clear()  # clearing dynamic object lists of copied states
 
         for dynamic_object in dynamic_objects:
-            predicted_obj_states = self._predict_object_state(dynamic_object, prediction_timestamps)
-            for t_ind in range(len(prediction_timestamps)):
-                predicted_states[t_ind].dynamic_objects.append(
-                    predicted_obj_states[t_ind])  # adding predicted obj_state
+            try:
+                predicted_obj_states = self._predict_object_state(dynamic_object, prediction_timestamps)
+                for t_ind in range(len(prediction_timestamps)):
+                    predicted_states[t_ind].dynamic_objects.append(
+                        predicted_obj_states[t_ind])  # adding predicted obj_state
+            except LongitudeOutOfRoad as e:
+                self._logger.warning("Prediction of object id %d is out of road. %s", dynamic_object.obj_id,
+                                     dynamic_object.__dict__)
+            except Exception as e:
+                # TODO: remove and handle
+                self._logger.error("Prediction of object failed: %s. Trace: %s", e, traceback.format_exc())
 
         return predicted_states
