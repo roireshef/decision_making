@@ -113,7 +113,7 @@ class WerlingPlanner(TrajectoryPlanner):
         predicted_states = self._predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps)
         # predicted_states[0] is the current state
         # predicted_states[1] is the predicted state in the end of the execution of traj.
-        debug_results = TrajectoryVisualizationMsg(frenet.curve,
+        debug_results = TrajectoryVisualizationMsg(reference_route,
                                                    ctrajectories[sorted_idxs[alternative_ids_skip_range], :, :EGO_V],
                                                    trajectory_costs[sorted_idxs[alternative_ids_skip_range]],
                                                    predicted_states[0],
