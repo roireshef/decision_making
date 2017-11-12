@@ -12,7 +12,6 @@ from decision_making.src.messages.visualization.trajectory_visualization_message
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.state.state import State
-import rte.python.profiler as prof
 import time
 
 
@@ -38,7 +37,6 @@ class TrajectoryPlanningFacade(DmModule):
         pass
 
     # TODO: implement. call plan with the configured strategy
-    @prof.ProfileFunction("TrajectoryPlanningFacade")
     def _periodic_action_impl(self):
         """
         will execute planning with using the implementation for the desired planning-strategy provided

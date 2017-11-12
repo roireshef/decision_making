@@ -4,7 +4,6 @@ from typing import Callable
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTimerTrigger, DmNullTrigger
 from rte.python.os import catch_interrupt_signals
-from rte.python.profiler import cleanup as profiler_cleanup
 from rte.python.logger.AV_logger import AV_Logger
 from os import getpid
 
@@ -101,7 +100,6 @@ class DmProcess:
         """
         if self._trigger.is_active():
             self._trigger.deactivate()
-        profiler_cleanup()
         self._module_instance.stop()
 
     def _trigger_callback(self) -> None:

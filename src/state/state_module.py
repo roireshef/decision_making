@@ -10,7 +10,6 @@ from decision_making.src.state.state import OccupancyState, EgoState, DynamicObj
 from mapping.src.exceptions import MapCellNotFound
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.model.map_api import MapAPI
-import rte.python.profiler as prof
 
 import numpy as np
 
@@ -53,7 +52,6 @@ class StateModule(DmModule):
     def _periodic_action_impl(self):
         pass
 
-    @prof.ProfileFunction()
     def _dynamic_obj_callback(self, objects: dict) -> None:
         try:
             self.logger.info("got dynamic objects %s", objects)
@@ -133,7 +131,6 @@ class StateModule(DmModule):
                     self.logger.warning("received out of FOV object which is not in memory.")
         return dyn_obj_list
 
-    @prof.ProfileFunction()
     def _self_localization_callback(self, ego_localization: dict):
         try:
             self.logger.debug("got self localization %s", ego_localization)
@@ -161,7 +158,6 @@ class StateModule(DmModule):
             self.logger.error("StateModule._self_localization_callback failed due to {}".format(e))
 
     # TODO: handle invalid data
-    @prof.ProfileFunction()
     def _occupancy_state_callback(self, occupancy: dict):
         try:
             self.logger.debug("got occupancy status %s", occupancy)
