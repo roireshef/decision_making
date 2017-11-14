@@ -106,10 +106,17 @@ class WerlingPlanner(TrajectoryPlanner):
         alternative_ids_skip_range = range(0, len(ctrajectories),
                                            max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
 
-        prediction_timestamps = np.arange(state.ego_state.timestamp_in_sec, state.ego_state.timestamp_in_sec + time,
+        # TODO: we might want to replace the most recent timestamp with the current machine timestamp
+        ego_timestamp_in_sec = state.ego_state.timestamp_in_sec
+        objects_timestamp_in_sec = [state.dynamic_objects[x].timestamp_in_sec for x in
+                                    range(len(state.dynamic_objects))]
+        objects_timestamp_in_sec.append(ego_timestamp_in_sec)
+        most_recent_timestamp = np.max(objects_timestamp_in_sec)
+
+        prediction_timestamps = np.arange(most_recent_timestamp, state.ego_state.timestamp_in_sec + time,
                                           VISUALIZATION_PREDICTION_RESOLUTION, float)
 
-        #TODO: move this to visualizer. Curently we are predicting the state at ego's timestamp and at the end of the traj execution time.
+        # TODO: move this to visualizer. Curently we are predicting the state at ego's timestamp and at the end of the traj execution time.
         predicted_states = self._predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps)
         # predicted_states[0] is the current state
         # predicted_states[1] is the predicted state in the end of the execution of traj.
@@ -120,7 +127,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                                    predicted_states[1:],
                                                    time)
 
-        return ctrajectories[sorted_idxs[0], :, :EGO_V+1], trajectory_costs[sorted_idxs[0]], debug_results
+        return ctrajectories[sorted_idxs[0], :, :EGO_V + 1], trajectory_costs[sorted_idxs[0]], debug_results
 
     @staticmethod
     def _filter_limits(ftrajectories: np.ndarray, cost_params: TrajectoryCostParams) -> (np.ndarray, np.ndarray):
@@ -226,8 +233,7 @@ class WerlingPlanner(TrajectoryPlanner):
         mat1_shape_for_tile = np.ones_like(mat1.shape)
         mat1_shape_for_tile[0] = len(mat1)
         return np.concatenate((np.repeat(mat1, len(mat2), axis=0), np.tile(mat2, tuple(mat1_shape_for_tile))),
-                              axis=len(mat1.shape)-1)
-
+                              axis=len(mat1.shape) - 1)
 
 
 class FrenetConstraints:
