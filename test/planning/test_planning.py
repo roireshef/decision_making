@@ -3,8 +3,6 @@ from unittest.mock import MagicMock
 from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PUBLISH_TOPIC, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PARAMS_READER_TOPIC
 from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
-from decision_making.src.planning.behavioral.policies.default_policy import DefaultPolicy
-from decision_making.src.planning.behavioral.policies.default_policy_config import DefaultPolicyConfig
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -47,7 +45,7 @@ def test_behavioralPlanningFacade_defaultPolicy_anyResult(dds_pubsub: DdsPubSubM
     logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
     behavioral_publish_mock = MagicMock()
     policy_config = DefaultPolicyConfig()
-    policy = DefaultPolicy(logger, policy_config, default_policy_behavioral_state, None, None)
+    policy = DefaultPolicy(logger, policy_config, None, None)
 
     state_module.periodic_action()
     navigation_facade.periodic_action()

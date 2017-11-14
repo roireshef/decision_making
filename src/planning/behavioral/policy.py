@@ -22,20 +22,17 @@ class PolicyConfig(DDSTypedMsg):
 
 
 class Policy(metaclass=ABCMeta):
-    def __init__(self, logger: Logger, policy_config: PolicyConfig, behavioral_state: BehavioralState,
-                 predictor: Predictor, map_api: MapAPI):
+    def __init__(self, logger: Logger, policy_config: PolicyConfig, predictor: Predictor, map_api: MapAPI):
         """
         Receives configuration and logger
         :param logger: logger
         :param policy_config: parameters configuration class, loaded from parameter server
-        :param behavioral_state: initial state of the system. Can be empty, i.e. initialized with default values.
         :param predictor: used for predicting ego and other dynamic objects in future states
         :param map_api: Map API
         """
         self._map_api = map_api
         self._policy_config = policy_config
         self._predictor = predictor
-        self._behavioral_state = behavioral_state
         self.logger = logger
 
     @abstractmethod

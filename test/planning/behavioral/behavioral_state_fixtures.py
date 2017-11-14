@@ -3,9 +3,6 @@ from typing import List
 import numpy as np
 import pytest
 
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.behavioral.policies.default_policy import DefaultBehavioralState
 from decision_making.src.planning.behavioral.policies.november_demo_semantic_policy import NovDemoBehavioralState, \
     NovDemoPolicy
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction, SemanticActionType

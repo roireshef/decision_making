@@ -9,7 +9,6 @@ from decision_making.src.messages.trajectory_parameters import SigmoidFunctionPa
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
-from decision_making.src.planning.behavioral.policies.default_policy import DefaultBehavioralState
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.state.state import OccupancyState, RoadLocalization, ObjectSize, EgoState, State, DynamicObject
 
@@ -19,7 +18,6 @@ from decision_making.test.planning.behavioral.mock_behavioral_facade import Beha
 from decision_making.test.planning.navigation.mock_navigation_facade import NavigationFacadeMock
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.state.mock_state_module import StateModuleMock
-from mapping.src.model.map_api import MapAPI
 from rte.python.logger.AV_logger import AV_Logger
 
 
@@ -150,11 +148,3 @@ def trajectory_planner_facade(dds_pubsub, trajectory, trajectory_visualization_m
     yield trajectory_planning_module
     trajectory_planning_module.stop()
 
-
-# MODULE SPECIFIC
-
-@pytest.fixture(scope='function')
-def default_policy_behavioral_state(navigation_plan: NavigationPlanMsg, testable_map_api: MapAPI, state: State):
-    logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
-    yield DefaultBehavioralState(logger=logger, map_api=testable_map_api, navigation_plan=navigation_plan,
-                                 ego_state=state.ego_state, dynamic_objects_on_road=state.dynamic_objects)

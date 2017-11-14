@@ -95,7 +95,7 @@ class SemanticActionSpec:
 
 
 class SemanticActionsPolicy(Policy):
-    def __init__(self, logger: Logger, policy_config: PolicyConfig, predictor: Predictor, map_api: MapAPI):
+    def __init__(self, logger: Logger, policy_config: PolicyConfig, predictor: MapAPI):
         """
         Receives configuration and logger
         :param logger: logger
