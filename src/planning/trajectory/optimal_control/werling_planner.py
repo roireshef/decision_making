@@ -76,7 +76,10 @@ class WerlingPlanner(TrajectoryPlanner):
 
         fconstraints_tT = FrenetConstraints(sx_range, sv_range, 0, dx_range, dv, 0)
 
-        time = global_goal_time - state.ego_state.timestamp_in_sec
+        # TODO: subtract the ego state seen by the behavioral planner. The planning horizon dictated by the BP
+        # TODO: is relative to an older timestamp than the ego timestamp that is seen by the TP
+        # TODO: also, handle delays and cases when time could be negative?
+        time = global_goal_time - state.ego_state.timestamp_in_sec    # Fix that
 
         # TODO: remove this assert
         assert time >= 0
@@ -166,6 +169,9 @@ class WerlingPlanner(TrajectoryPlanner):
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
         # TODO: validate that both obstacles and ego are in world coordinates. if not, change the filter cond.
 
+
+        # TODO: verigy that we add the right timestamp. The planning horizon dictated by the BP
+        # TODO: is relative to an older timestamp than the ego timestamp that is seen by the TP
         absolute_time_samples_in_sec = time_samples + state.ego_state.timestamp_in_sec
 
         close_obstacles = \
