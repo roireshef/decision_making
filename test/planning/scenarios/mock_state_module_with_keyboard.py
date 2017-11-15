@@ -15,7 +15,8 @@ class StateModuleMockWithKeyboard(StateModule):
 
         :param dds: communication layer (DDS) instance
         :param logger: logger
-        :param state: the state message to publish periodically
+        :param state_list: the state_list specifying the messages to publish periodically. When the object is instantiated
+                            it sends state_list[0] and key presses (right or left) traverse through the list.
         """
         self._state_list=state_list
         self._state_idx=0
@@ -33,8 +34,10 @@ class StateModuleMockWithKeyboard(StateModule):
     def on_press(self,key):
         if key==Key.left:
             self._state_idx -= 1
+            print("left...")
         elif key==Key.right:
             self._state_idx += 1
+            print("right...")
 
         if self._state_idx >= self._state_list_len:
             self._state_idx = 0

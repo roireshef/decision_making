@@ -117,34 +117,32 @@ class DmInitialization:
         return trajectory_planning_module
 
 
-class RunDMProcesses:
+def run_processes(state_list) -> None:
+    # Run DM processes. state module is run in periodic mode so as to broadcast the selected state repeatedly to the viz tool.
+     modules_list = \
+         [
+             DmProcess(DmInitialization.create_navigation_planner,
+                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
+                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
-    @staticmethod
-    def run_processes(state) -> None:
-        modules_list = \
-            [
-                DmProcess(DmInitialization.create_navigation_planner,
-                          trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                          trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
+             DmProcess(lambda: DmInitialization.create_state_module(state_list),
+                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
+                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
-                DmProcess(lambda: DmInitialization.create_state_module(state),
-                          trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                          trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
+             DmProcess(DmInitialization.create_behavioral_planner,
+                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
+                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
-                DmProcess(DmInitialization.create_behavioral_planner,
-                          trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                          trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
-
-                DmProcess(DmInitialization.create_trajectory_planner,
-                          trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                          trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD})
-            ]
-        logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
-        manager = DmManager(logger, modules_list)
-        manager.start_modules()
-        try:
-            manager.wait_for_submodules()
-        except KeyboardInterrupt:
-            pass
-        finally:
-            manager.stop_modules()
+             DmProcess(DmInitialization.create_trajectory_planner,
+                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
+                       trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD})
+         ]
+     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
+     manager = DmManager(logger, modules_list)
+     manager.start_modules()
+     try:
+         manager.wait_for_submodules()
+     except KeyboardInterrupt:
+         pass
+     finally:
+         manager.stop_modules()
