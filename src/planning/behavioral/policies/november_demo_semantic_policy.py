@@ -145,10 +145,16 @@ class NovDemoBehavioralState(SemanticBehavioralState):
 class NovDemoPolicy(SemanticActionsPolicy):
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
 
-        # TODO: this update is intended for visualization and should be moved to the Viz process
-        # Update state: align all object to ego timestamp
+        # Update state: align all object to most recent timestamp
+        # TODO: we might want to replace it with the current machine timestamp
+        ego_timestamp_in_sec = state.ego_state.timestamp_in_sec
+        objects_timestamp_in_sec = [state.dynamic_objects[x].timestamp_in_sec for x in
+                                    range(len(state.dynamic_objects))]
+        objects_timestamp_in_sec.append(ego_timestamp_in_sec)
+        most_recent_timestamp = np.max(objects_timestamp_in_sec)
+
         predicted_state = self._predictor.predict_state(state=state, prediction_timestamps=np.array(
-            [state.ego_state.timestamp_in_sec]))
+            [most_recent_timestamp]))
         state = predicted_state[0]
 
         # create road semantic grid from the raw State object
