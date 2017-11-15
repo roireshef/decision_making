@@ -151,5 +151,5 @@ def nov_demo_semantic_follow_action(nov_demo_semantic_behavioral_state: NovDemoB
 @pytest.fixture(scope='function')
 def nov_demo_policy(testable_map_api: MapAPI):
     logger = AV_Logger.get_logger('Nov demo - semantic occupancy grid')
-    policy = NovDemoPolicy(logger, None, RoadFollowingPredictor(testable_map_api), testable_map_api)
+    policy = NovDemoPolicy(logger, None, RoadFollowingPredictor(testable_map_api, logger=logger), testable_map_api)
     yield policy

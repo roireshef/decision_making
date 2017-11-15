@@ -61,8 +61,6 @@ class NovDemoBehavioralState(SemanticBehavioralState):
         semantic_occupancy_dict: RoadSemanticOccupancyGrid = dict()
         optional_lane_keys = [-1, 0, 1]
         lanes_in_road = map_api.get_road(state.ego_state.road_localization.road_id).lanes_num
-        #TODO: hack for demo
-        lanes_in_road = min(lanes_in_road, 2)
         filtered_lane_keys = list(
             filter(lambda relative_lane: 0 <= ego_lane + relative_lane < lanes_in_road, optional_lane_keys))
 
@@ -201,8 +199,6 @@ class NovDemoPolicy(SemanticActionsPolicy):
         ego_lane = behavioral_state.ego_state.road_localization.lane_num
         optional_lane_keys = [-1, 0, 1]
         lanes_in_road = self._map_api.get_road(behavioral_state.ego_state.road_localization.road_id).lanes_num
-        #TODO: hack for demo
-        lanes_in_road = min(lanes_in_road, 2)
         filtered_lane_keys = list(
             filter(lambda relative_lane: 0 <= ego_lane + relative_lane < lanes_in_road, optional_lane_keys))
 
@@ -210,7 +206,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
         for relative_lane_key in filtered_lane_keys:
             for longitudinal_key in [SEMANTIC_CELL_LON_FRONT]:
                 semantic_cell = (relative_lane_key, longitudinal_key)
-                if len(behavioral_state.road_occupancy_grid[semantic_cell]) > 0:
+                if semantic_cell in behavioral_state.road_occupancy_grid and len(
+                        behavioral_state.road_occupancy_grid[semantic_cell]) > 0:
                     # Select first (closest) object in cell
                     target_obj = behavioral_state.road_occupancy_grid[semantic_cell][0]
                 else:
@@ -307,7 +304,7 @@ class NovDemoPolicy(SemanticActionsPolicy):
         costs = np.zeros(len(semantic_actions))
 
         # move right if both straight and right lanes are fast
-        #if is_forward_right_fast and (is_forward_fast or current_lane_action_ind is None) and not is_right_occupied:
+        # if is_forward_right_fast and (is_forward_fast or current_lane_action_ind is None) and not is_right_occupied:
         if is_forward_right_fast and not is_right_occupied:
             costs[right_lane_action_ind] = 1.
         # move left if straight is slow and the left is faster than straight
@@ -342,9 +339,9 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         # Define cost parameters
         # TODO: assign proper cost parameters
-        infinite_sigmoid_cost = 2.0*1e2  # TODO: move to constants file
-        deviation_from_road_cost = 1.0*1e2  # TODO: move to constants file
-        deviation_to_shoulder_cost = 1.0*1e2  # TODO: move to constants file
+        infinite_sigmoid_cost = 2.0 * 1e2  # TODO: move to constants file
+        deviation_from_road_cost = 1.0 * 1e2  # TODO: move to constants file
+        deviation_to_shoulder_cost = 1.0 * 1e2  # TODO: move to constants file
         zero_sigmoid_cost = 0.0  # TODO: move to constants file
         road_sigmoid_k_param = 1000.0  # TODO: move to constants file
         sigmoid_k_param = 20.0  # TODO: move to constants file
@@ -389,7 +386,8 @@ class NovDemoPolicy(SemanticActionsPolicy):
 
         # TODO: set velocity and acceleration limits properly
         velocity_limits = np.array([0.0, 60.0])  # [m/s]. not a constant because it might be learned. TBD
-        acceleration_limits = np.array([A_LON_MIN - A_LON_EPS, A_LON_MAX + A_LON_EPS])  # [m/s^2]. not a constant because it might be learned. TBD
+        acceleration_limits = np.array(
+            [A_LON_MIN - A_LON_EPS, A_LON_MAX + A_LON_EPS])  # [m/s^2]. not a constant because it might be learned. TBD
         cost_params = TrajectoryCostParams(left_lane_cost=left_lane_cost,
                                            right_lane_cost=right_lane_cost,
                                            left_road_cost=left_road_cost,

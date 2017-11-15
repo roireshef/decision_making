@@ -3,6 +3,9 @@ from unittest.mock import MagicMock
 from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PUBLISH_TOPIC, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PARAMS_READER_TOPIC
 from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
+from decision_making.src.planning.behavioral.policies.november_demo_semantic_policy import NovDemoPolicy
+from decision_making.src.planning.behavioral.policy import PolicyConfig
+from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticActionsPolicy
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -20,7 +23,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(
         dds_pubsub: DdsPubSubMock, behavioral_facade, testable_map_api, state_module):
     logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
     trajectory_publish_mock = MagicMock()
-    predictor = RoadFollowingPredictor(testable_map_api)
+    predictor = RoadFollowingPredictor(testable_map_api, logger)
 
     planner = WerlingPlanner(logger, predictor)
     strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
@@ -40,12 +43,12 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(
     trajectory_publish_mock.assert_called_once()
 
 
-def test_behavioralPlanningFacade_defaultPolicy_anyResult(dds_pubsub: DdsPubSubMock, state_module, navigation_facade,
-                                                          default_policy_behavioral_state):
+def test_behavioralPlanningFacade_semanticPolicy_anyResult(dds_pubsub: DdsPubSubMock, state_module, navigation_facade, testable_map_api):
     logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
     behavioral_publish_mock = MagicMock()
-    policy_config = DefaultPolicyConfig()
-    policy = DefaultPolicy(logger, policy_config, None, None)
+    policy_config = PolicyConfig()
+    predictor = RoadFollowingPredictor(map_api=testable_map_api, logger=logger)
+    policy = NovDemoPolicy(logger, policy_config, predictor, testable_map_api)
 
     state_module.periodic_action()
     navigation_facade.periodic_action()

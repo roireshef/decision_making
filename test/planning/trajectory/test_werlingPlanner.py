@@ -11,9 +11,11 @@ from decision_making.test.planning.trajectory.utils import RouteFixture, Plottab
     WerlingVisualizer
 from mapping.src.transformations.geometry_utils import CartesianFrame
 from mapping.test.model.testable_map_fixtures import testable_map_api
+from rte.python.logger.AV_logger import AV_Logger
 
 
 def test_werlingPlanner_toyScenario_noException(testable_map_api):
+    logger = AV_Logger.get_logger('test_werlingPlanner_toyScenario_noException')
     route_points = CartesianFrame.add_yaw_and_derivatives(
         RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5))
 
@@ -26,7 +28,7 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
     T = 1.5
 
     map_api = testable_map_api
-    predictor = RoadFollowingPredictor(map_api=map_api)
+    predictor = RoadFollowingPredictor(map_api=map_api, logger=logger)
 
     goal = np.concatenate((route_points[len(route_points) // 2, [R_X, R_Y, R_THETA]], [vT]))
 

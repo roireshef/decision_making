@@ -16,7 +16,7 @@ def test_enumerate_actions_egoAtRoadEdge_filterOnlyValidActions(state_with_sorro
                                                                 state_with_ego_on_left_lane):
     logger = AV_Logger.get_logger('Nov demo - semantic occupancy grid')
     map_api = testable_map_api
-    predictor = RoadFollowingPredictor(map_api=map_api)
+    predictor = RoadFollowingPredictor(map_api=map_api, logger=logger)
 
     policy = NovDemoPolicy(logger=logger, policy_config=None, predictor=predictor, map_api=map_api)
 
@@ -63,7 +63,7 @@ def test_enumerate_actions_gridFull_allActionsEnumerated(state_with_sorrounding_
     logger = AV_Logger.get_logger('Nov demo - semantic occupancy grid')
     map_api = testable_map_api
     state = state_with_sorrounding_objects
-    predictor = RoadFollowingPredictor(map_api=map_api)
+    predictor = RoadFollowingPredictor(map_api=map_api, logger=logger)
 
     policy = NovDemoPolicy(logger=logger, policy_config=None, predictor=predictor, map_api=map_api)
 

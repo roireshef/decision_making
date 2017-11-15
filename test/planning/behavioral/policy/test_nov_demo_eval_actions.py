@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, List
+import numpy as np
 
 from decision_making.src.planning.behavioral.constants import SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LAT_LEFT, \
     SEMANTIC_CELL_LON_FRONT
@@ -10,7 +10,8 @@ from decision_making.src.planning.behavioral.semantic_actions_policy import Sema
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, EgoState, DynamicObject, ObjectSize
 from decision_making.src.state.state_module import StateModule, Logger
-from mapping.test.model.testable_map_fixtures import *
+from mapping.test.model.testable_map_fixtures import testable_map_api
+from rte.python.logger.AV_logger import AV_Logger
 
 
 def test_novDemoEvalSemanticActions(testable_map_api):
@@ -89,9 +90,10 @@ def test_novDemoEvalSemanticActions(testable_map_api):
     # print(costs)
 
 def test_get_actionIndByLane(testable_map_api):
+    logger = AV_Logger.get_logger('test_get_actionIndByLane')
     semantic_action = SemanticAction((SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT), None, SemanticActionType(1))
     spec1 = SemanticActionSpec(t=5, v=10, s_rel=30, d_rel=-3)
-    policy = NovDemoPolicy(Logger("NovDemoTest"), PolicyConfig(), Predictor(testable_map_api), testable_map_api)
+    policy = NovDemoPolicy(Logger("NovDemoTest"), PolicyConfig(), Predictor(testable_map_api, logger=logger), testable_map_api)
     action_ind = policy._get_action_ind_by_lane([semantic_action], [spec1], SEMANTIC_CELL_LAT_RIGHT)
     assert action_ind == 0
     action_ind = policy._get_action_ind_by_lane([semantic_action], [spec1], SEMANTIC_CELL_LAT_LEFT)
