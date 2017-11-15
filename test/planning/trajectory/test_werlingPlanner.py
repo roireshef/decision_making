@@ -67,7 +67,7 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
                                        velocity_limits=np.array([v_min, v_max]),
                                        acceleration_limits=np.array([a_min, a_max]))
 
-    planner = WerlingPlanner(None, predictor)
+    planner = WerlingPlanner(logger, predictor)
 
     start_time = time.time()
 
@@ -99,7 +99,7 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
 
     WerlingVisualizer.plot_route(p1, route_points)
 
-    fig.show()
-    fig.clear()
+    #fig.show()
+    #fig.clear()
 
 
