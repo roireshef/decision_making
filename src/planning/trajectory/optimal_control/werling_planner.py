@@ -40,7 +40,7 @@ class WerlingPlanner(TrajectoryPlanner):
     def dt(self):
         return self._dt
 
-    def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, global_goal_time: float,
+    def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, time: float,
              cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, SamplableWerlingTrajectory,
                                                          TrajectoryVisualizationMsg]:
         """ see base class """
@@ -72,6 +72,7 @@ class WerlingPlanner(TrajectoryPlanner):
         sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_sx, 0)),
                                np.min((SX_OFFSET_MAX + goal_sx, frenet.length * frenet.resolution)),
                                SX_STEPS)
+
         sv_range = np.linspace(
             np.max((SV_OFFSET_MIN + np.cos(goal_theta_diff) * goal[EGO_V], cost_params.velocity_limits[0])),
             np.min((SV_OFFSET_MAX + np.cos(goal_theta_diff) * goal[EGO_V], cost_params.velocity_limits[1])),

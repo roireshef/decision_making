@@ -17,6 +17,7 @@ import time
 import numpy as np
 import copy
 
+
 class TrajectoryPlanningFacade(DmModule):
     def __init__(self, dds: DdsPubSub, logger: Logger,
                  strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner],
