@@ -3,7 +3,7 @@ import pytest
 
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.utils.acda import AcdaApi
-from decision_making.src.planning.utils.acda_constants import *
+from decision_making.src.planning.utils.acda_constants import SENSOR_OFFSET_FROM_FRONT
 from decision_making.src.state.state import EgoState, ObjectSize, DynamicObject, RoadLocalization, \
     RelativeRoadLocalization
 from mapping.src.model.map_api import MapAPI
@@ -75,6 +75,8 @@ def test_calc_safe_speed_forward_line_of_sight_CheckSpeed_successful():
 
 
 def test_AcdaFeaturesInComplexScenraio_successful(testable_map_api, testable_navigation_plan):
+    logger = AV_Logger.get_logger('acda_test')
+
     # Prepare scenario for test
 
     # Prepare cached map

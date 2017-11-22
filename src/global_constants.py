@@ -18,6 +18,9 @@ REFERENCE_TRAJECTORY_LENGTH_EXTENDED = 31.0
 # [m] Resolution for the interpolation of the reference route
 TRAJECTORY_ARCLEN_RESOLUTION = 0.1
 
+# [seconds] Resolution for the visualization of predicted dynamic objects
+VISUALIZATION_PREDICTION_RESOLUTION = 1.0
+
 # Time to remember object after it disappears from perception (in nanoseconds)
 OBJECT_HISTORY_TIMEOUT = 1000*1000*1000*2
 
@@ -25,7 +28,7 @@ OBJECT_HISTORY_TIMEOUT = 1000*1000*1000*2
 TRAJECTORY_CURVE_INTERP_TYPE = 'cubic'
 
 # [m] Do not consider obstacles that are distant than this threshold
-TRAJECTORY_OBSTACLE_LOOKAHEAD = 40.0
+TRAJECTORY_OBSTACLE_LOOKAHEAD = 100.0
 
 # [m] Cost function clips higher distances before exponentiation
 EXP_CLIP_TH = 50.0
@@ -47,19 +50,19 @@ WERLING_TIME_RESOLUTION = 0.1
 SX_OFFSET_MIN, SX_OFFSET_MAX = -3, 0.1
 
 # [m] Range for grid search in werling planner (long. velocity)
-SV_OFFSET_MIN, SV_OFFSET_MAX = -2, 2.1
+SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
 
 # [m] Range for grid search in werling planner (lat. position)
-DX_OFFSET_MIN, DX_OFFSET_MAX = -3, 2.3
+DX_OFFSET_MIN, DX_OFFSET_MAX = -2, 2
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 3, 5, 5
+SX_STEPS, SV_STEPS, DX_STEPS = 7, 1, 7
 
 # State #
 
 # TODO: set real values
 # [m] Bounding box size around ego vehicle
-EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 0, 0, 0
+EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 5.0, 2.0, 2.0
 
 # [m] Default height for objects - State Module
 DEFAULT_OBJECT_Z_VALUE = 0.

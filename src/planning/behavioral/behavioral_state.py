@@ -1,46 +1,19 @@
 from logging import Logger
-from typing import List
 
-import numpy as np
-
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.behavioral.constants import MIN_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING, \
-    MAX_DISTANCE_OF_OBJECT_FROM_EGO_FOR_FILTERING
-from decision_making.src.state.state import State, EgoState, DynamicObject, RelativeRoadLocalization
+from decision_making.src.state.state import State, DynamicObject, RelativeRoadLocalization
 from mapping.src.model.map_api import MapAPI
-from mapping.src.transformations.geometry_utils import CartesianFrame
-
-
-class DynamicObjectOnRoad(DynamicObject):
-    def __init__(self, dynamic_object_properties: DynamicObject, relative_road_localization: RelativeRoadLocalization):
-        """
-        This object hold the dynamic object and it's relative (to ego) localization on road
-        :param dynamic_object_properties: the dynamic object state
-        :param relative_road_localization: a relative road localization (relative to ego)
-        """
-        super().__init__(**dynamic_object_properties.__dict__)
-        self.relative_road_localization = relative_road_localization
 
 
 class BehavioralState:
-    def __init__(self, logger: Logger, map_api: MapAPI, navigation_plan: NavigationPlanMsg, ego_state: EgoState,
-                 dynamic_objects_on_road: List[DynamicObjectOnRoad]) -> None:
-        """
-        Behavioral state generates and stores relevant state features that will be used for planning
-        :param logger: logger
-        :param map_api: map API
-        :param navigation_plan: car's navigation plan
-        :param ego_state: updated ego state
-        """
-        pass
 
-
-    def update_behavioral_state(self, state: State, navigation_plan: NavigationPlanMsg):
+    @classmethod
+    def create_from_state(cls, state: State, map_api: MapAPI, logger: Logger):
         """
         This method updates the behavioral state according to the new world state and navigation plan.
          It fetches relevant features that will be used for the decision-making process.
-        :param navigation_plan: new navigation plan of vehicle
         :param state: new world state
+        :param map_api: our map
+        :param logger
         :return: a new and updated BehavioralState
         """
         pass

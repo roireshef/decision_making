@@ -4,6 +4,13 @@ from decision_making.src.planning.utils.math import Math
 
 class OptimalControlUtils:
     class QuinticPoly1D:
+        """
+        In the quintic polynomial setting we model our 2P-BVP problem as linear system of constraints Ax=b where
+        x is a vector of the quintic polynomial coefficients; b is a vector of the values (p[t] is the value of the
+        polynomial at time t): [p[0], p_dot[0], p_dotdot[0], p[T], p_dot[T], p_dotdot[T]]; A's rows are the
+        polynomial elements at time 0 (first 3 rows) and T (last 3 rows) - the 3 rows in each block correspond to
+        p, p_dot, p_dotdot.
+        """
         @staticmethod
         def solve(A_inv: np.ndarray, constraints: np.ndarray) -> np.ndarray:
             """
@@ -47,3 +54,30 @@ class OptimalControlUtils:
             x_dotdot_vals = Math.polyval2d(poly_dotdot_coefs, time_samples)
 
             return np.dstack((x_vals, x_dot_vals, x_dotdot_vals))
+
+        @staticmethod
+        def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
+            """
+            Given the quintic polynomial setting, this function returns A as a tensor with the first dimension iterating
+            over different values of T (time-horizon) provided in <terminal_times>
+            :param terminal_times: 1D numpy array of different values for T
+            :return: 3D numpy array of shape [len(terminal_times), 6, 6]
+            """
+            return np.array(
+                [[[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],                                   # x(0)
+                  [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],                                   # x_dot(0)
+                  [0.0, 0.0, 2.0, 0.0, 0.0, 0.0],                                   # x_dotdot(0)
+                  [1.0, T, T ** 2, T ** 3, T ** 4, T ** 5],                         # x(T)
+                  [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],    # x_dot(T)
+                  [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]]           # x_dotdot(T)
+                 for T in terminal_times], dtype=np.float)
+
+        @staticmethod
+        def time_constraints_matrix(T: float) -> np.ndarray:
+            """
+            Given the quintic polynomial setting, this function returns A for a specific value of T
+            :param T:
+            :return:
+            """
+            return OptimalControlUtils.QuinticPoly1D.time_constraints_tensor(np.array([T]))[0]
+

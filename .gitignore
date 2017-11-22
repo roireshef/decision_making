@@ -18,3 +18,5 @@
 /CPackSourceConfig.cmake
 /decision_making.version
 /install_manifest.txt
+**/__pycache__
+
