@@ -226,7 +226,10 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         target_path_latitude = action_spec.d_rel + behavioral_state.ego_state.road_localization.full_lat
 
         reference_route_x_y_yaw = CartesianFrame.add_yaw(reference_route)
-        target_state = np.concatenate((reference_route_x_y_yaw[-1], action_spec.v))
+        target_state_x_y_yaw = reference_route_x_y_yaw[-1, :]
+        target_state_velocity = action_spec.v
+        target_state = np.array(
+            [target_state_x_y_yaw[0], target_state_x_y_yaw[1], target_state_x_y_yaw[2], target_state_velocity])
 
         # Define cost parameters
         # TODO: assign proper cost parameters
