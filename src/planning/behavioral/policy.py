@@ -12,26 +12,15 @@ from decision_making.src.state.state import State
 from mapping.src.model.map_api import MapAPI
 
 
-class PolicyConfig(DDSTypedMsg):
-    """
-    Parameters configuration class, loaded from parameter server
-    """
-
-    def __init__(self):
-        pass
-
-
 class Policy(metaclass=ABCMeta):
-    def __init__(self, logger: Logger, policy_config: PolicyConfig, predictor: Predictor, map_api: MapAPI):
+    def __init__(self, logger: Logger, predictor: Predictor, map_api: MapAPI):
         """
         Receives configuration and logger
         :param logger: logger
-        :param policy_config: parameters configuration class, loaded from parameter server
         :param predictor: used for predicting ego and other dynamic objects in future states
         :param map_api: Map API
         """
         self._map_api = map_api
-        self._policy_config = policy_config
         self._predictor = predictor
         self.logger = logger
 

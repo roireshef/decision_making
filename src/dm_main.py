@@ -13,7 +13,7 @@ from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
-from decision_making.src.planning.behavioral.policies.november_demo_semantic_policy import NovDemoPolicy
+from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
@@ -83,7 +83,7 @@ class DmInitialization:
 
         # NOV DEMO POLICY
         predictor = RoadFollowingPredictor(map_api, logger)
-        policy = NovDemoPolicy(logger=logger, policy_config=None, predictor=predictor, map_api=map_api)
+        policy = SemanticActionsGridPolicy(logger=logger, policy_config=None, predictor=predictor, map_api=map_api)
 
         behavioral_module = BehavioralFacade(dds=dds, logger=logger, policy=policy)
         return behavioral_module

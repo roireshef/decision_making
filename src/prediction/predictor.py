@@ -142,3 +142,18 @@ class Predictor:
                 self._logger.error("Prediction of object failed: %s. Trace: %s", e, traceback.format_exc())
 
         return predicted_states
+
+    def align_objects_to_most_recent_timestamp(self, state: State) -> State:
+        """
+        Returnes state with all objects aligned to the most recent timestamp
+        :param state: state containing objects with different timestamps
+        :return: new state with all objects aligned
+        """
+        # TODO: we might want to replace it with the current machine timestamp
+        ego_timestamp_in_sec = state.ego_state.timestamp_in_sec
+        objects_timestamp_in_sec = [state.dynamic_objects[x].timestamp_in_sec for x in
+                                    range(len(state.dynamic_objects))]
+        objects_timestamp_in_sec.append(ego_timestamp_in_sec)
+        most_recent_timestamp = np.max(objects_timestamp_in_sec)
+
+        return self.predict_state(state=state, prediction_timestamps=np.array([most_recent_timestamp]))[0]
