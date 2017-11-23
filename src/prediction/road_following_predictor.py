@@ -1,6 +1,6 @@
 import numpy as np
 
-from decision_making.src.prediction.constants import LOOKAHEAD_MARGIN_DUE_TO_ROUTE_LINEARIZATION_APPROXIMATION
+from decision_making.src.prediction.constants import PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject
 from mapping.src.transformations.geometry_utils import CartesianFrame
@@ -30,7 +30,7 @@ class RoadFollowingPredictor(Predictor):
 
         # we assume the objects is travelling with a constant velocity, therefore the lookahead distance is
         lookahead_distance = (prediction_timestamps[-1] - dynamic_object.timestamp_in_sec) * object_velocity
-        lookahead_distance += LOOKAHEAD_MARGIN_DUE_TO_ROUTE_LINEARIZATION_APPROXIMATION
+        lookahead_distance += PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
 
         # TODO: Handle negative prediction times. For now, we take only t >= 0
         lookahead_distance = np.maximum(lookahead_distance, 0.0)
