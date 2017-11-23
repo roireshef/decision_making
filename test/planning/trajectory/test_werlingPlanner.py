@@ -34,8 +34,8 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
     yaw1 = 0
     pos2 = np.array([11, 1.5])
     yaw2 = np.pi / 4
-    road_localization1 = DynamicObject.compute_road_localization(pos1, yaw1, map_api)
-    road_localization2 = DynamicObject.compute_road_localization(pos2, yaw2, map_api)
+    road_localization1 = testable_map_api.compute_road_localization(pos1, yaw1)
+    road_localization2 = testable_map_api.compute_road_localization(pos2, yaw2)
 
     obs = list([
         DynamicObject(obj_id=0, timestamp=0, x=pos1[0], y=pos1[1], z=0, yaw=yaw1, size=ObjectSize(1.5, 0.5, 0),
@@ -47,7 +47,7 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
     ])
 
     ego = EgoState(obj_id=-1, timestamp=0, x=0, y=0, z=0, yaw=0, size=None,
-                   road_localization=DynamicObject.compute_road_localization(np.array([0, 0]),0.0,map_api),
+                   road_localization=testable_map_api.compute_road_localization(np.array([0, 0]), 0.0),
                    confidence=1.0, v_x=v0, v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
     state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)

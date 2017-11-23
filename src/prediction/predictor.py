@@ -6,6 +6,7 @@ import numpy as np
 from decision_making.src.prediction.columns import PREDICT_X, PREDICT_Y, PREDICT_YAW, PREDICT_VEL
 from decision_making.src.state.state import DynamicObject, EgoState, State
 from mapping.src.model.map_api import MapAPI
+from mapping.src.service.map_service import MapService
 
 
 class Predictor:
@@ -70,9 +71,8 @@ class Predictor:
                 # TODO: remove assumption
                 predicted_object_state.v_x = predictions[t_ind, PREDICT_VEL]
                 predicted_object_state.v_y = 0.0
-            predicted_object_state.road_localization = DynamicObject.compute_road_localization(predicted_pos,
-                                                                                               predicted_yaw,
-                                                                                               self._map_api)
+            predicted_object_state.road_localization = \
+                MapService.get_instance().compute_road_localization(predicted_pos, predicted_yaw)
 
         return predicted_object_states
 

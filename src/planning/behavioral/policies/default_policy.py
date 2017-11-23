@@ -20,6 +20,7 @@ from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import EgoState, State, DynamicObject, RelativeRoadLocalization
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.model.map_api import MapAPI
+from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
@@ -87,9 +88,11 @@ class DefaultBehavioralState(BehavioralState):
         dynamic_objects_on_road = []
         for dynamic_obj in state.dynamic_objects:
             # Get object's relative road localization
-            relative_road_localization = dynamic_obj.get_relative_road_localization(
-                ego_road_localization=ego_state.road_localization, ego_nav_plan=navigation_plan,
-                map_api=self.map, logger=self.logger)
+            relative_road_localization = MapService.get_instance().get_relative_road_localization(
+                reference_localization=ego_state.road_localization,
+                object_localization=dynamic_obj.road_localization,
+                navigation_plan=navigation_plan
+            )
 
             # filter objects with out of decision-making range
             if MAX_PLANNING_DISTANCE_FORWARD > \

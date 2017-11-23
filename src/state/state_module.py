@@ -13,6 +13,8 @@ from mapping.src.model.map_api import MapAPI
 
 import numpy as np
 
+from mapping.src.service.map_service import MapService
+
 
 class StateModule(DmModule):
     # TODO: temporary solution for unknown class members on initialization
@@ -105,8 +107,7 @@ class StateModule(DmModule):
 
                 try:
                     # Try to localize object on road. If not successful, warn.
-                    road_localization = DynamicObject.compute_road_localization(global_coordinates, global_yaw,
-                                                                                 self._map_api)
+                    road_localization = MapService.get_instance().compute_road_localization(global_coordinates, global_yaw)
 
                     # Filter objects out of road:
                     road_width = self._map_api.get_road(road_id=road_localization.road_id).road_width
@@ -145,7 +146,7 @@ class StateModule(DmModule):
             v_y = ego_localization["velocity"]["v_y"]
             size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
-            road_localization = DynamicObject.compute_road_localization(np.array([x, y, z]), yaw, self._map_api)
+            road_localization = MapService.get_instance().compute_road_localization(np.array([x, y, z]), yaw)
 
             with self._ego_state_lock:
                 # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation

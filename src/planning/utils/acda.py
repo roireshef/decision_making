@@ -12,6 +12,7 @@ from decision_making.src.planning.utils.acda_constants import SIN_ROAD_INCLINE, 
     TRAJECTORY_PLANNING_LOOKAHEAD_DISTANCE, LARGEST_CURVE_RADIUS, TIME_GAP
 from decision_making.src.state.state import DynamicObject, EgoState
 from mapping.src.model.map_api import MapAPI
+from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
 
@@ -152,10 +153,10 @@ class AcdaApi:
         """
         min_static_object_long = FORWARD_LOS_MAX_RANGE
         for static_obj in static_objects:
-
-            relative_road_localization = static_obj.get_relative_road_localization(
-                ego_road_localization=ego_state.road_localization, ego_nav_plan=navigation_plan,
-                map_api=map_api, logger=AcdaApi._logger)
+            relative_road_localization = MapService.get_instance().get_relative_road_localization(
+                reference_localization=ego_state.road_localization,
+                object_localization=static_obj.road_localization,
+                navigation_plan=navigation_plan)
 
             obj_lon = relative_road_localization.rel_lon
             obj_lat = relative_road_localization.rel_lat
@@ -197,9 +198,11 @@ class AcdaApi:
             lookahead_distance = TRAJECTORY_PLANNING_LOOKAHEAD_DISTANCE
 
         for static_obj in static_objects:
-            relative_road_localization = static_obj.get_relative_road_localization(
-                ego_road_localization=ego_state.road_localization, ego_nav_plan=navigation_plan, map_api=map_api,
-                logger=AcdaApi._logger)
+            relative_road_localization = MapService.get_instance().get_relative_road_localization(
+                reference_localization=ego_state.road_localization,
+                object_localization=static_obj.road_localization,
+                navigation_plan=navigation_plan
+            )
             obj_width = static_obj.size.width
             obj_lat = relative_road_localization.rel_lat
             obj_lon = relative_road_localization.rel_lon

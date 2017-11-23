@@ -26,6 +26,7 @@ from decision_making.src.prediction.constants import LOOKAHEAD_MARGIN_DUE_TO_ROU
 from decision_making.src.state.state import EgoState, State
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.model.map_api import MapAPI
+from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
@@ -71,9 +72,11 @@ class NovDemoBehavioralState(SemanticBehavioralState):
 
         # Allocate dynamic objects
         for dynamic_object in dynamic_objects:
-            object_relative_localization = dynamic_object.get_relative_road_localization(
-                ego_road_localization=ego_state.road_localization, ego_nav_plan=default_navigation_plan,
-                map_api=map_api, logger=logger)
+            object_relative_localization = MapService.get_instance().get_relative_road_localization(
+                reference_localization=ego_state.road_localization,
+                object_localization=dynamic_object.road_localization,
+                navigation_plan=default_navigation_plan
+            )
             object_lon_dist = object_relative_localization.rel_lon
             object_dist_from_front = object_lon_dist - ego_state.size.length
             object_relative_lane = int(dynamic_object.road_localization.lane_num - ego_lane)
@@ -115,10 +118,12 @@ class NovDemoBehavioralState(SemanticBehavioralState):
                     semantic_occupancy_dict[occupancy_index].append(dynamic_object)
                 else:
                     object_in_cell = semantic_occupancy_dict[occupancy_index][0]
-                    object_in_grid_lon_dist = object_in_cell.get_relative_road_localization(
-                        ego_road_localization=ego_state.road_localization,
-                        ego_nav_plan=default_navigation_plan,
-                        map_api=map_api, logger=logger).rel_lon
+                    object_in_grid_lon_dist = MapService.get_instance().get_relative_road_localization(
+                        reference_localization=ego_state.road_localization,
+                        object_localization=object_in_cell.road_localization,
+                        navigation_plan=default_navigation_plan
+                    ).rel_lon
+
                     object_in_grid_dist_from_front = object_in_grid_lon_dist - ego_state.size.length
 
                     if occupancy_index[1] == SEMANTIC_CELL_LON_FRONT:
