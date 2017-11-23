@@ -1,5 +1,6 @@
 import numpy as np
 
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
 from decision_making.src.planning.behavioral.constants import SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LAT_LEFT, \
     SEMANTIC_CELL_LON_FRONT
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
@@ -15,17 +16,17 @@ from rte.python.logger.AV_logger import AV_Logger
 
 
 def test_novDemoEvalSemanticActions(testable_map_api):
-    max_velocity = 10  # m/s
+    max_velocity = v = BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT  # m/s
 
     ego_v = max_velocity
     pos1 = np.array([33, -3])
     pos2 = np.array([41, 0])
     pos3 = np.array([39, 3])
 
-    vel1_list = [13, 10, 7, 13, 7, 10, 7, 7, 10, 7]
-    vel2_list = [10, 13, 10, 7, 13, 7, 7, 10, 7, 7]
-    vel3_list = [7, 7, 13, 10, 10, 13, 10, 7, 7, 7]
-    result = [0, 0, 1, 2, 1, 2, 2, 1, 1, 1]
+    vel1_list = [v+3, v+0, v-3, v+3, v-3, v+0, v-3, v-3, v+0, v-3]
+    vel2_list = [v+0, v+3, v+0, v-3, v+3, v-3, v-3, v+0, v-3, v-3]
+    vel3_list = [v-3, v-3, v+3, v+0, v+0, v+3, v+0, v-3, v-3, v-3]
+    result =    [  0,   0,   1,   0,   1,   0,   2,   1,   0,   1]
 
     for test in range(len(vel1_list)):
         vel1 = vel1_list[test]
