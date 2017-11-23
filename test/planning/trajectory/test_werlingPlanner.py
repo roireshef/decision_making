@@ -67,8 +67,10 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
 
     start_time = time.time()
 
-    _, _, samplable, debug = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
+    samplable,_ ,debug = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
                                time=T, cost_params=cost_params)
+
+    samplable.sample()
 
     end_time = time.time() - start_time
 

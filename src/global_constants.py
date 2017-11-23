@@ -41,6 +41,12 @@ NUM_ALTERNATIVE_TRAJECTORIES = 10
 # currently in the desired location and not in its actual location.
 NEGLIGIBLE_LOCATION_DIFF = 0.3
 
+# [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
+TRAJECTORY_TIME_RESOLUTION = 0.1
+
+# Number of trajectory points to send out (to controller) from the TP
+TRAJECTORY_NUM_POINTS = 10
+
 # Werling Planner #
 
 # [sec] Time-Resolution for planning

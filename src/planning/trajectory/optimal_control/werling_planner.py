@@ -19,14 +19,22 @@ from decision_making.src.planning.utils.frenet_moving_frame import FrenetMovingF
 
 
 class SamplableWerlingTrajectory(SamplableTrajectory):
-    def __init__(self, frenet_frame: FrenetMovingFrame, poly_coefs: np.ndarray):
+    def __init__(self, timestamp: float, frenet_frame: FrenetMovingFrame, poly_coefs: np.ndarray):
+        """To represent a trajectory that is a result of Werling planner, we store the frenet frame used and
+        two polynomial coefficients vectors (for dimensions s and d)"""
+        super().__init__(timestamp)
         self.frenet_frame = frenet_frame
         self.poly_s_coefs = poly_coefs[:6]
         self.poly_d_coefs = poly_coefs[6:]
 
     def sample(self, time_points: np.ndarray) -> np.ndarray:
+        """ see base method """
         poly_s_d = np.array([self.poly_s_coefs, self.poly_d_coefs])
-        fpoints = OC.QuinticPoly1D.polyval_with_derivatives(poly_s_d, time_points)[:, :, 0]  # extract dx, sx only
+
+        # assign values from <time_points> in both s and d polynomials
+        fpoints = OC.QuinticPoly1D.polyval_with_derivatives(poly_s_d, time_points)[:, :, 0]  # [dx, sx] only
+
+        # project from road coordinates to cartesian coordinate frame
         cpoints = np.apply_along_axis(func1d=self.frenet_frame.fpoint_to_cpoint, axis=1, arr=fpoints.transpose())
         return cpoints
 
@@ -41,8 +49,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return self._dt
 
     def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, time: float,
-             cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, SamplableWerlingTrajectory,
-                                                         TrajectoryVisualizationMsg]:
+             cost_params: TrajectoryCostParams) -> Tuple[SamplableWerlingTrajectory, float, TrajectoryVisualizationMsg]:
         """ see base class """
         # create road coordinate-frame
         frenet = FrenetMovingFrame(reference_route)
@@ -85,12 +92,12 @@ class WerlingPlanner(TrajectoryPlanner):
 
         fconstraints_tT = FrenetConstraints(sx_range, sv_range, 0, dx_range, dv, 0)
 
-        time = global_goal_time - state.ego_state.timestamp_in_sec
+        relative_time = time - state.ego_state.timestamp_in_sec
 
         # TODO: remove this assert
-        assert time >= 0
+        assert relative_time >= 0
 
-        time_samples = np.arange(0.0, time, self.dt)
+        time_samples = np.arange(0.0, relative_time, self.dt)
         # solve problem in frenet-frame
         ftrajectories, poly_coefs = self._solve_optimization(fconstraints_t0, fconstraints_tT, time_samples)
 
@@ -99,7 +106,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         if ftrajectories_filtered is None or len(ftrajectories_filtered) == 0:
             raise NoValidTrajectoriesFound("No valid trajectories found. time: {}, goal: {}, state: {}"
-                                           .format(time, goal, state))
+                                           .format(relative_time, goal, state))
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
@@ -110,12 +117,20 @@ class WerlingPlanner(TrajectoryPlanner):
 
         sorted_idxs = trajectory_costs.argsort()
 
+        samplable_trajectory = SamplableWerlingTrajectory(
+            timestamp=state.ego_state.timestamp_in_sec,
+            frenet_frame=frenet,
+            poly_coefs=poly_coefs[filtered_indices[sorted_idxs[0]]]
+        )
+
+        #TODO: move this to visualizer. Curently we are predicting the state at ego's timestamp and at the end of the traj execution time.
+        ## VIZ BLOCK ##
         alternative_ids_skip_range = range(0, len(ctrajectories),
                                            max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
 
-        prediction_timestamps = np.arange(state.ego_state.timestamp_in_sec, state.ego_state.timestamp_in_sec + time,
+        prediction_timestamps = np.arange(state.ego_state.timestamp_in_sec, state.ego_state.timestamp_in_sec + relative_time,
                                           VISUALIZATION_PREDICTION_RESOLUTION, float)
-        #TODO: move this to visualizer. Curently we are predicting the state at ego's timestamp and at the end of the traj execution time.
+
         predicted_states = self._predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps)
         # predicted_states[0] is the current state
         # predicted_states[1] is the predicted state in the end of the execution of traj.
@@ -124,12 +139,10 @@ class WerlingPlanner(TrajectoryPlanner):
                                                    trajectory_costs[sorted_idxs[alternative_ids_skip_range]],
                                                    predicted_states[0],
                                                    predicted_states[1:],
-                                                   time)
+                                                   relative_time)
+        ## END OF VIZ BLOCK ##
 
-        return ctrajectories[sorted_idxs[0], :, :(EGO_V+1)], \
-               trajectory_costs[sorted_idxs[0]], \
-               SamplableWerlingTrajectory(frenet, poly_coefs[filtered_indices[sorted_idxs[0]]]), \
-               debug_results
+        return samplable_trajectory, trajectory_costs[sorted_idxs[0]], debug_results
 
     @staticmethod
     def _filter_limits(ftrajectories: np.ndarray, cost_params: TrajectoryCostParams) -> (np.ndarray, np.ndarray):
@@ -203,7 +216,7 @@ class WerlingPlanner(TrajectoryPlanner):
         ''' TOTAL '''
         return obstacles_costs + dist_from_ref_costs + dist_from_goal_costs + deviations_costs
 
-    def _solve_optimization(self, fconst_0, fconst_t, T, time_samples):
+    def _solve_optimization(self, fconst_0, fconst_t, T, time_samples) -> Tuple[np.ndarray, np.ndarray]:
         """
         Solves the two-point boundary value problem, given a set of constraints over the initial state
         and a set of constraints over the terminal state. The solution is a cartesian product of the solutions returned

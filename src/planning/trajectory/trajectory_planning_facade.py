@@ -21,8 +21,7 @@ import copy
 class TrajectoryPlanningFacade(DmModule):
     def __init__(self, dds: DdsPubSub, logger: Logger,
                  strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner],
-                 last_trajectory: SamplableTrajectory=None,
-                 last_state_time: SamplableTrajectory=None):
+                 last_trajectory: SamplableTrajectory=None):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param dds: communication layer (DDS) instance
@@ -30,14 +29,12 @@ class TrajectoryPlanningFacade(DmModule):
         :param strategy_handlers: a dictionary of trajectory planners as strategy handlers -
         types are {TrajectoryPlanningStrategy: TrajectoryPlanner}
         :param last_trajectory: last chosen trajectory's representation
-        :param last_state_time: last iteration's processed state timestamp
         """
         super().__init__(dds=dds, logger=logger)
 
         self._strategy_handlers = strategy_handlers
         self._validate_strategy_handlers()
         self._last_trajectory = last_trajectory
-        self._last_state_time = last_state_time
 
     def _start_impl(self):
         pass
@@ -63,14 +60,19 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.info("state: {} objects detected".format(len(state.dynamic_objects)))
 
             # TODO: this currently applies to location only (not yaw, velocities, accelerations, etc.)
-            if self._is_actual_state_close_to_previous_plan(state):
-                updated_state = self._get_modified_state(state)
-            else:
+            if self._is_actual_state_close_to_expected_state(state.ego_state):
                 updated_state = state
+            else:
+                updated_state = self._get_state_with_expected_ego(state)
 
             # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
-            trajectory_points, cost, samplable_trajectory, debug_results = self._strategy_handlers[params.strategy].\
+            samplable_trajectory, cost, debug_results = self._strategy_handlers[params.strategy].\
                 plan(updated_state, params.reference_route, params.target_state, params.time, params.cost_params)
+
+            trajectory_points = samplable_trajectory.sample(
+                np.linspace(start=TRAJECTORY_TIME_RESOLUTION,
+                            stop=TRAJECTORY_NUM_POINTS*TRAJECTORY_TIME_RESOLUTION,
+                            num=TRAJECTORY_NUM_POINTS))
 
             # TODO: should publish v_x?
             # publish results to the lower DM level
@@ -78,7 +80,7 @@ class TrajectoryPlanningFacade(DmModule):
                                                        reference_route=params.reference_route,
                                                        current_speed=state.ego_state.v_x))
 
-            self._last_state_time = state.ego_state.timestamp
+            self._last_trajectory = samplable_trajectory
 
             # TODO: publish cost to behavioral layer?
 
@@ -122,19 +124,25 @@ class TrajectoryPlanningFacade(DmModule):
     def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
         self.dds.publish(TRAJECTORY_VISUALIZATION_TOPIC, debug_msg.serialize())
 
-    def _is_actual_state_close_to_previous_plan(self, current_state: State):
-        if self._last_state_time is None or self._last_trajectory is None:
+    def _is_actual_state_close_to_expected_state(self, current_ego_state: EgoState) -> bool:
+        """
+        checks if the actual ego state at time t[current] is close (currently in terms of Euclidean distance of position
+        [x,y] only) to the desired state at t[current] according to the plan of the last trajectory.
+        :param current_ego_state: the current EgoState object representing the actual state of ego vehicle
+        :return: true if actual state is closer than NEGLIGIBLE_LOCATION_DIFF to the planned state. false otherwise
+        """
+        if self._last_trajectory is None:
             return False
 
-        time_diff = current_state.ego_state.timestamp - self._last_state_time
+        time_diff = current_ego_state.timestamp - self._last_trajectory.timestamp
         current_expected_location = self._last_trajectory.sample(np.array([time_diff]))
-        current_actual_location = np.array([current_state.ego_state.x, current_state.ego_state.y])
+        current_actual_location = np.array([current_ego_state.x, current_ego_state.y])
         euclidean_distance = np.linalg.norm(np.subtract(current_expected_location, current_actual_location))
 
         return euclidean_distance <= NEGLIGIBLE_LOCATION_DIFF
 
-    def _get_modified_state(self, state: State):
-        time_diff = state.ego_state.timestamp - self._last_state_time
+    def _get_state_with_expected_ego(self, state: State):
+        time_diff = state.ego_state.timestamp - self._last_trajectory.timestamp
         expected_state = self._last_trajectory.sample(np.array([time_diff]))[0]
 
         updated_state = copy.deepcopy(state)
