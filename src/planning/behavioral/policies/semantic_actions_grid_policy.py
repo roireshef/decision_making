@@ -23,7 +23,7 @@ from decision_making.src.planning.behavioral.semantic_actions_policy import Sema
     LAT_CELL, LON_CELL, SemanticGridCell
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.prediction.constants import LOOKAHEAD_MARGIN_DUE_TO_ROUTE_LINEARIZATION_APPROXIMATION
+from decision_making.src.prediction.constants import PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
 from decision_making.src.state.state import State
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.model.map_api import MapAPI
@@ -452,6 +452,10 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
     def _generate_reference_route(map_api: MapAPI, behavioral_state: SemanticActionsGridBehavioralState,
                                   action_spec: SemanticActionSpec, navigation_plan: NavigationPlanMsg) -> np.ndarray:
         """
+        Generate the reference route that will be provided to the trajectory planner.
+         Given the target longitude and latitude, we create a reference route in global coordinates, where:
+         latitude is constant and equal to the target latitude;
+         longitude starts from ego current longitude, and end in the target longitude.
         :param behavioral_state: processed behavioral state
         :param action_spec: the goal of the action
         :return: [nx3] array of reference_route (x,y,yaw) [m,m,rad] in global coordinates
@@ -460,7 +464,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         target_lane_latitude = action_spec.d_rel + behavioral_state.ego_state.road_localization.full_lat
         target_relative_longitude = action_spec.s_rel
 
-        lookahead_distance = target_relative_longitude + LOOKAHEAD_MARGIN_DUE_TO_ROUTE_LINEARIZATION_APPROXIMATION
+        # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
+        # caused by the curve linearization approximation in the resampling process
+        lookahead_distance = target_relative_longitude + PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
 
         lookahead_path = map_api.get_uniform_path_lookahead(
             road_id=behavioral_state.ego_state.road_localization.road_id,
