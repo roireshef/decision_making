@@ -61,8 +61,7 @@ class TrajectoryPlanningFacade(DmModule):
 
             # TODO: should publish v_x?
             # publish results to the lower DM level
-            self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory, reference_route=params.reference_route,
-                                                       current_speed=state.ego_state.v_x))
+            self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory, current_speed=state.ego_state.v_x))
 
             # TODO: publish cost to behavioral layer?
 
