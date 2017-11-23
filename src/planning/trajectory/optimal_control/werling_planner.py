@@ -101,7 +101,7 @@ class WerlingPlanner(TrajectoryPlanner):
         ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
 
         # compute trajectory costs
-        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, goal_sx, goal_dx,
+        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, goal_in_frenet,
                                               cost_params, time_samples, self._predictor)
 
         sorted_idxs = trajectory_costs.argsort()
@@ -148,8 +148,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return ftrajectories[conforms]
 
     @staticmethod
-    def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: State,
-                      goal_sx: float, goal_dx: float,
+    def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: State, goal_in_frenet: np.ndarray,
                       params: TrajectoryCostParams, time_samples: np.ndarray, predictor: Predictor):
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
@@ -187,8 +186,8 @@ class WerlingPlanner(TrajectoryPlanner):
         # make theta_diff to be in [-pi, pi]
         last_fpoints = ftrajectories[:, -1, :]
         dist_from_goal_costs = \
-            params.dist_from_goal_lon_sq_cost * np.square(last_fpoints[:, F_SX] - goal_sx) + \
-            params.dist_from_goal_lat_sq_cost * np.square(last_fpoints[:, F_DX] - goal_dx)
+            params.dist_from_goal_lon_sq_cost * np.square(last_fpoints[:, F_SX] - goal_in_frenet[FP_SX]) + \
+            params.dist_from_goal_lat_sq_cost * np.square(last_fpoints[:, F_DX] - goal_in_frenet[FP_DX])
         dist_from_ref_costs = params.dist_from_ref_sq_cost * np.sum(np.power(ftrajectories[:, :, F_DX], 2), axis=1)
 
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
