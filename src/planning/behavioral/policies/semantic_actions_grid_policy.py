@@ -13,7 +13,8 @@ from decision_making.src.planning.behavioral.constants import BP_SPECIFICATION_T
     BP_SPECIFICATION_T_RES, A_LON_MIN, \
     A_LON_MAX, A_LAT_MIN, A_LAT_MAX, SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL, \
-    BEHAVIORAL_PLANNING_HORIZON, A_LON_EPS
+    BEHAVIORAL_PLANNING_HORIZON, A_LON_EPS, INFINITE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
+    OUT_OF_LANE_COST, ROAD_SIGMOID_K_PARAM, OBJECTS_SIGMOID_K_PARAM
 from decision_making.src.planning.behavioral.constants import LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_behavioral_state import \
     SemanticActionsGridBehavioralState
@@ -233,12 +234,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # Define cost parameters
         # TODO: assign proper cost parameters
-        infinite_sigmoid_cost = 2.0 * 1e2  # TODO: move to constants file
-        deviation_from_road_cost = 1.0 * 1e2  # TODO: move to constants file
-        deviation_to_shoulder_cost = 1.0 * 1e2  # TODO: move to constants file
-        zero_sigmoid_cost = 0.0  # TODO: move to constants file
-        road_sigmoid_k_param = 1000.0  # TODO: move to constants file
-        sigmoid_k_param = 20.0  # TODO: move to constants file
+        infinite_sigmoid_cost = INFINITE_SIGMOID_COST
+        deviation_from_road_cost = DEVIATION_FROM_ROAD_COST
+        deviation_to_shoulder_cost = DEVIATION_TO_SHOULDER_COST
+        out_of_lane_cost = OUT_OF_LANE_COST
+        road_sigmoid_k_param = ROAD_SIGMOID_K_PARAM
+        objects_sigmoid_k_param = OBJECTS_SIGMOID_K_PARAM
 
         # lateral distance in [m] from ref. path to rightmost edge of lane
         left_margin = right_margin = behavioral_state.ego_state.size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
@@ -255,9 +256,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         left_road_offset = left_shoulder_offset + ROAD_SHOULDERS_WIDTH
 
         # Set road-structure-based cost parameters
-        right_lane_cost = SigmoidFunctionParams(w=zero_sigmoid_cost, k=road_sigmoid_k_param,
+        right_lane_cost = SigmoidFunctionParams(w=out_of_lane_cost, k=road_sigmoid_k_param,
                                                 offset=right_lane_offset)  # Zero cost
-        left_lane_cost = SigmoidFunctionParams(w=zero_sigmoid_cost, k=road_sigmoid_k_param,
+        left_lane_cost = SigmoidFunctionParams(w=out_of_lane_cost, k=road_sigmoid_k_param,
                                                offset=left_lane_offset)  # Zero cost
         right_shoulder_cost = SigmoidFunctionParams(w=deviation_to_shoulder_cost, k=road_sigmoid_k_param,
                                                     offset=right_shoulder_offset)  # Very high cost
@@ -271,7 +272,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # Set objects parameters
         # dilate each object by cars length + safety margin
         objects_dilation_size = behavioral_state.ego_state.size.length + LATERAL_SAFETY_MARGIN_FROM_OBJECT
-        objects_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=sigmoid_k_param,
+        objects_cost = SigmoidFunctionParams(w=infinite_sigmoid_cost, k=objects_sigmoid_k_param,
                                              offset=objects_dilation_size)  # Very high (inf) cost
 
         dist_from_goal_lon_sq_cost = 1.0 * 1e2
@@ -308,7 +309,11 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
     def _specify_action_to_empty_cell(map_api: MapAPI, behavioral_state: SemanticActionsGridBehavioralState,
                                       semantic_action: SemanticAction) -> SemanticActionSpec:
         """
-        Generate trajectory specification towards a target location in given cell considering ego speed, location.
+        This method's purpose is to specify the enumerated actions that the agent can take.
+        Each semantic action is translated to a trajectory of the agent.
+        The trajectory specification is created towards a target location/object in given cell,
+         considering ego speed, location.
+
         :param behavioral_state:
         :param semantic_action:
         :return:
