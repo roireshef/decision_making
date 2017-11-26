@@ -16,9 +16,8 @@ def test_predictObjectTrajectories_precisePrediction():
     predictor = RoadFollowingPredictor(logger)
     size = ObjectSize(1, 1, 1)
     global_pos = np.array([500.0, 0.0, 0.0])
-    # road_localization = testable_map_api.compute_road_localization(global_pos=global_pos, global_yaw=0)
     dyn_obj = DynamicObject(obj_id=1, timestamp=1e9, x=global_pos[0], y=global_pos[1], z=0, yaw=0, size=size, confidence=0,
-                            v_x = 10, v_y = 0, acceleration_lon=0, omega_yaw=0) #, road_localization=road_localization)
+                            v_x = 10, v_y = 0, acceleration_lon=0, omega_yaw=0)
     pred_timestamps = np.arange(5.0, 12.0, 0.1)
     traj = predictor.predict_object_trajectories(dyn_obj, pred_timestamps)
     assert np.isclose(traj[0][0],540.) and np.isclose(traj[0][1], 0.) and \
@@ -31,14 +30,12 @@ def test_predictState_precisePrediction():
     predictor = RoadFollowingPredictor(logger)
     size = ObjectSize(1, 1, 1)
     dyn_global_pos = np.array([500.0, 0.0, 0.0])
-    # dyn_road_localization = testable_map_api.compute_road_localization(global_pos=dyn_global_pos, global_yaw=0)
     dyn_obj = DynamicObject(obj_id=1, timestamp=1e9, x=dyn_global_pos[0], y=dyn_global_pos[1], z=0, yaw=0, size=size,
-                            confidence=0, v_x = 10, v_y = 0,acceleration_lon=0, omega_yaw=0) #, road_localization=dyn_road_localization)
+                            confidence=0, v_x = 10, v_y = 0,acceleration_lon=0, omega_yaw=0)
 
     ego_global_pos = np.array([450.0, 0.0, 0.0])
-    # ego_road_localization = testable_map_api.compute_road_localization(global_pos=ego_global_pos, global_yaw=0)
     ego = EgoState(obj_id=0, timestamp=2e9, x=ego_global_pos[0], y=ego_global_pos[1], z=0, yaw=0, size=size,
-                   confidence=0, v_x = 20, v_y = 0, acceleration_lon=0, omega_yaw=0, steering_angle=0) #, road_localization=ego_road_localization)
+                   confidence=0, v_x = 20, v_y = 0, acceleration_lon=0, omega_yaw=0, steering_angle=0)
 
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     state = State(occupancy_state=occupancy_state, dynamic_objects=[dyn_obj], ego_state=ego)

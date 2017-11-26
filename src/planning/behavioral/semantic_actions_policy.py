@@ -11,7 +11,6 @@ from decision_making.src.planning.behavioral.behavioral_state import BehavioralS
 from decision_making.src.planning.behavioral.policy import Policy
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, DynamicObject
-from mapping.src.model.map_api import MapAPI
 
 
 class SemanticActionType(Enum):
@@ -100,7 +99,6 @@ class SemanticActionsPolicy(Policy):
         Receives configuration and logger
         :param logger: logger
         :param predictor: used for predicting ego and other dynamic objects in future states
-        :param map_api: Map API
         """
         super().__init__(logger=logger, predictor=predictor)
 

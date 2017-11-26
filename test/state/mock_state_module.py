@@ -19,7 +19,6 @@ class StateModuleMock(StateModule):
         """
         self._state = state
         MapService.initialize()
-        map_api = MapService.get_instance()
         super().__init__(dds, logger, None, None, None)
 
     def _periodic_action_impl(self):

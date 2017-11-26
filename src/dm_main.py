@@ -76,8 +76,7 @@ class DmInitialization:
 
         # Init states
         init_navigation_plan = NavigationPlanMsg(np.array([]))
-        init_ego_state = EgoState(0, None, 0.0, 0.0, 0.0, 0.0, ObjectSize(0.0, 0.0, 0.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                  RoadLocalization(0, 0, 0.0, 0.0, 0.0, 0.0))
+        init_ego_state = EgoState(0, None, 0.0, 0.0, 0.0, 0.0, ObjectSize(0.0, 0.0, 0.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
         # Init policy
         # behavioral_state = DefaultBehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [])
@@ -86,7 +85,7 @@ class DmInitialization:
 
         # NOV DEMO POLICY
         predictor = RoadFollowingPredictor(logger)
-        policy = SemanticActionsGridPolicy(logger=logger, predictor=predictor, map_api=map_api)
+        policy = SemanticActionsGridPolicy(logger=logger, predictor=predictor)
 
         behavioral_module = BehavioralFacade(dds=dds, logger=logger, policy=policy)
         return behavioral_module
@@ -98,7 +97,6 @@ class DmInitialization:
 
         # Init map
         MapService.initialize()
-        map_api = MapService.get_instance()
         init_navigation_plan = NAVIGATION_PLAN
 
         predictor = RoadFollowingPredictor(logger)

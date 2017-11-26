@@ -8,8 +8,6 @@ import numpy as np
 from decision_making.src.prediction.columns import PREDICT_X, PREDICT_Y, PREDICT_YAW, PREDICT_VEL
 from decision_making.src.state.state import DynamicObject, EgoState, State
 from mapping.src.exceptions import LongitudeOutOfRoad
-from mapping.src.model.map_api import MapAPI
-from mapping.src.service.map_service import MapService
 
 
 class Predictor:

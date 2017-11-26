@@ -6,7 +6,6 @@ from decision_making.src.planning.behavioral.constants import SEMANTIC_CELL_LON_
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticBehavioralState, \
     RoadSemanticOccupancyGrid, LON_CELL
 from decision_making.src.state.state import EgoState, State
-from mapping.src.model.map_api import MapAPI
 from mapping.src.service.map_service import MapService
 
 

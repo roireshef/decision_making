@@ -9,7 +9,6 @@ from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.state.state import OccupancyState, EgoState, DynamicObject, ObjectSize, State, RoadLocalization
 from mapping.src.exceptions import MapCellNotFound
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
-from mapping.src.model.map_api import MapAPI
 
 import numpy as np
 
@@ -144,13 +143,11 @@ class StateModule(DmModule):
             v_y = ego_localization["velocity"]["v_y"]
             size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
-            road_localization = MapService.get_instance().compute_road_localization(np.array([x, y, z]), yaw)
-
             with self._ego_state_lock:
                 # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
                 self._ego_state = EgoState(0, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
                                            self.UNKNWON_DEFAULT_VAL,
-                                           self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localization)
+                                           self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL)
 
             self._publish_state_if_full()
         except Exception as e:

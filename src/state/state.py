@@ -60,16 +60,16 @@ class DynamicObject(DDSNonTypedMsg):
         self.v_y = v_y
         self.acceleration_lon = acceleration_lon
         self.omega_yaw = omega_yaw
-        self.cached_road_localization: RoadLocalization = None
+        self._cached_road_localization: RoadLocalization = None
 
     @property
     def road_localization(self):
-        if self.cached_road_localization is None:
-            self.cached_road_localization = MapService.get_instance().compute_road_localization(
+        if self._cached_road_localization is None:
+            self._cached_road_localization = MapService.get_instance().compute_road_localization(
                 np.array([self.x, self.y, self.z]),
                 self.yaw
             )
-        return self.cached_road_localization
+        return self._cached_road_localization
 
     @property
     def timestamp_in_sec(self):

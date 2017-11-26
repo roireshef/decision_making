@@ -9,7 +9,6 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
-from mapping.src.model.map_api import MapAPI
 
 
 class Policy(metaclass=ABCMeta):
