@@ -51,8 +51,6 @@ class DDSNonTypedMsg(DDSMsg):
                         message_copy[key] = real_type[val['name']]
                     elif issubclass(real_type, DDSMsg):
                         message_copy[key] = real_type.deserialize(val)
-                # if val == 'None':
-                #     message_copy[key] = None
             return cls(**message_copy)
         except Exception as e:
             raise MsgDeserializationError("MsgDeserializationError error: could not deserialize into " +
