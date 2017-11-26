@@ -32,7 +32,7 @@ class SemanticActionsGridState(SemanticBehavioralState):
         ego_state = state.ego_state
         dynamic_objects = state.dynamic_objects
 
-        default_navigation_plan = map_api.get_road_based_navigation_plan(
+        default_navigation_plan = MapService.get_instance().get_road_based_navigation_plan(
             current_road_id=ego_state.road_localization.road_id)
 
         ego_lane = ego_state.road_localization.lane_num
@@ -40,7 +40,7 @@ class SemanticActionsGridState(SemanticBehavioralState):
         # Generate grid cells
         semantic_occupancy_dict: RoadSemanticOccupancyGrid = dict()
         optional_lane_keys = [-1, 0, 1]
-        lanes_in_road = map_api.get_road(state.ego_state.road_localization.road_id).lanes_num
+        lanes_in_road = MapService.get_instance().get_road(state.ego_state.road_localization.road_id).lanes_num
         filtered_lane_keys = list(
             filter(lambda relative_lane: 0 <= ego_lane + relative_lane < lanes_in_road, optional_lane_keys))
 

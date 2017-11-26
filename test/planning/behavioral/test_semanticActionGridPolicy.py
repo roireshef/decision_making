@@ -5,21 +5,22 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_grid_stat
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from mapping.test.model.testable_map_fixtures import testable_map_api
+from mapping.test.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
-
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import state_with_sorrounding_objects, \
+    state_with_ego_on_right_lane, state_with_ego_on_left_lane, nov_demo_semantic_follow_action, \
+    nov_demo_semantic_behavioral_state, nov_demo_policy, nov_demo_state
 from unittest.mock import patch
 
 
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new_callable=testable_map_api())
-def test_enumerate_actions_egoAtRoadEdge_filterOnlyValidActions(testable_map_api, state_with_sorrounding_objects,
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+def test_enumerate_actions_egoAtRoadEdge_filterOnlyValidActions(state_with_sorrounding_objects,
                                                                 state_with_ego_on_right_lane,
                                                                 state_with_ego_on_left_lane):
     logger = AV_Logger.get_logger('Nov demo - semantic occupancy grid')
-    map_api = testable_map_api
     predictor = RoadFollowingPredictor(logger)
 
-    policy = SemanticActionsGridPolicy(logger=logger, predictor=predictor, map_api=map_api)
+    policy = SemanticActionsGridPolicy(logger=logger, predictor=predictor)
 
     # Check that when car is on right lane we get only 2 valid actions
     state = state_with_ego_on_right_lane
@@ -60,13 +61,13 @@ def test_enumerate_actions_egoAtRoadEdge_filterOnlyValidActions(testable_map_api
     assert len(actions) == 2
 
 
-def test_enumerate_actions_gridFull_allActionsEnumerated(state_with_sorrounding_objects, testable_map_api):
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+def test_enumerate_actions_gridFull_allActionsEnumerated(state_with_sorrounding_objects):
     logger = AV_Logger.get_logger('Nov demo - semantic occupancy grid')
-    map_api = testable_map_api
     state = state_with_sorrounding_objects
     predictor = RoadFollowingPredictor(logger)
 
-    policy = SemanticActionsGridPolicy(logger=logger, predictor=predictor, map_api=map_api)
+    policy = SemanticActionsGridPolicy(logger=logger, predictor=predictor)
 
     behavioral_state = SemanticActionsGridState.create_from_state(state=state, logger=logger)
     actions = policy._enumerate_actions(behavioral_state=behavioral_state)
@@ -99,8 +100,8 @@ def test_enumerate_actions_gridFull_allActionsEnumerated(state_with_sorrounding_
            and actions[action_index].target_obj.obj_id == obj_id
 
 
-def test_generateSemanticOccupancyGrid_ComplexStateWithFullGrid_carsAreInRightCells(state_with_sorrounding_objects,
-                                                                                    testable_map_api):
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+def test_generateSemanticOccupancyGrid_ComplexStateWithFullGrid_carsAreInRightCells(state_with_sorrounding_objects):
     """
     Here we generate a state with ego and dynamic obejcts, and verify that
     each object is mapped to the right cell in the grid.
@@ -110,7 +111,6 @@ def test_generateSemanticOccupancyGrid_ComplexStateWithFullGrid_carsAreInRightCe
     """
     logger = AV_Logger.get_logger('Nov demo - semantic occupancy grid')
 
-    map_api = testable_map_api
     state = state_with_sorrounding_objects
     occupancy_grid = SemanticActionsGridState.create_from_state(state=state, logger=logger)
 

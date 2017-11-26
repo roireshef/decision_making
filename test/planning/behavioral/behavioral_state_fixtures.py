@@ -8,13 +8,13 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_grid_stat
     SemanticActionsGridState
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction, SemanticActionType
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state import OccupancyState, State, EgoState, DynamicObject, ObjectSize, RoadLocalization
-from mapping.src.model.map_api import MapAPI
+from decision_making.src.state.state import OccupancyState, State, EgoState, DynamicObject, ObjectSize
+from mapping.test.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
-import pytest
+
 
 @pytest.fixture(scope='function')
-def state_with_sorrounding_objects(testable_map_api: MapAPI):
+def state_with_sorrounding_objects():
     # Stub of occupancy grid
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
 
@@ -25,11 +25,9 @@ def state_with_sorrounding_objects(testable_map_api: MapAPI):
     ego_road_lon = 15.0
     ego_road_lat = 4.5
 
-    ego_pos, ego_yaw = testable_map_api.convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
+    ego_pos, ego_yaw = map_api_mock()._convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
                                                                             lat=ego_road_lat)
 
-    # road_localization = DynamicObject.compute_road_localization(global_pos=ego_pos, global_yaw=ego_yaw,
-    #                                                             map_api=testable_map_api)
     ego_state = EgoState(obj_id=0, timestamp=0, x=ego_pos[0], y=ego_pos[1], z=ego_pos[2], yaw=ego_yaw,
                          size=car_size, confidence=1.0, v_x=0.0, v_y=0.0, steering_angle=0.0,
                          acceleration_lon=0.0, omega_yaw=0.0)
@@ -48,12 +46,10 @@ def state_with_sorrounding_objects(testable_map_api: MapAPI):
                 # Don't create an object where the ego is
                 continue
 
-            obj_pos, obj_yaw = testable_map_api.convert_road_to_global_coordinates(road_id=obj_road_id,
+            obj_pos, obj_yaw = map_api_mock()._convert_road_to_global_coordinates(road_id=obj_road_id,
                                                                                     lon=obj_road_lon,
                                                                                     lat=obj_road_lat)
 
-            # road_localization = DynamicObject.compute_road_localization(global_pos=obj_pos, global_yaw=obj_yaw,
-            #                                                             map_api=testable_map_api)
             dynamic_object = DynamicObject(obj_id=obj_id, timestamp=0, x=obj_pos[0], y=obj_pos[1], z=obj_pos[2],
                                            yaw=obj_yaw, size=car_size, confidence=1.0, v_x=0.0, v_y=0.0,
                                            acceleration_lon=0.0, omega_yaw=0.0)
@@ -65,9 +61,7 @@ def state_with_sorrounding_objects(testable_map_api: MapAPI):
 
 
 @pytest.fixture(scope='function')
-def state_with_ego_on_right_lane(testable_map_api: MapAPI):
-    map_api = testable_map_api
-
+def state_with_ego_on_right_lane():
     # Stub of occupancy grid
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
 
@@ -78,7 +72,7 @@ def state_with_ego_on_right_lane(testable_map_api: MapAPI):
     ego_road_lon = 15.0
     ego_road_lat = 1.5
 
-    ego_pos, ego_yaw = map_api.convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
+    ego_pos, ego_yaw = map_api_mock()._convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
                                                                    lat=ego_road_lat)
 
     # road_localization = DynamicObject.compute_road_localization(global_pos=ego_pos, global_yaw=ego_yaw,
@@ -93,9 +87,7 @@ def state_with_ego_on_right_lane(testable_map_api: MapAPI):
 
 
 @pytest.fixture(scope='function')
-def state_with_ego_on_left_lane(testable_map_api: MapAPI):
-    map_api = testable_map_api
-
+def state_with_ego_on_left_lane():
     # Stub of occupancy grid
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
 
@@ -106,7 +98,7 @@ def state_with_ego_on_left_lane(testable_map_api: MapAPI):
     ego_road_lon = 15.0
     ego_road_lat = 7.5
 
-    ego_pos, ego_yaw = map_api.convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
+    ego_pos, ego_yaw = map_api_mock()._convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
                                                                    lat=ego_road_lat)
 
     # road_localization = DynamicObject.compute_road_localization(global_pos=ego_pos, global_yaw=ego_yaw,
@@ -150,8 +142,7 @@ def nov_demo_semantic_follow_action(nov_demo_semantic_behavioral_state: Semantic
 
 
 @pytest.fixture(scope='function')
-def nov_demo_policy(testable_map_api: MapAPI):
+def nov_demo_policy():
     logger = AV_Logger.get_logger('Nov demo - semantic occupancy grid')
-    # TODO: override MapService.get_instance with testable_map_api
-    policy = SemanticActionsGridPolicy(logger, RoadFollowingPredictor(logger=logger), testable_map_api)
+    policy = SemanticActionsGridPolicy(logger, RoadFollowingPredictor(logger=logger))
     yield policy

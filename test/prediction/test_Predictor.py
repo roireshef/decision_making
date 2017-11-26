@@ -7,10 +7,11 @@ from decision_making.src.prediction.columns import PREDICT_X, PREDICT_Y, PREDICT
 from decision_making.src.state.state import DynamicObject, EgoState, State
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.planning.custom_fixtures import state
-from mapping.test.model.testable_map_fixtures import testable_map_api
+from mapping.test.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
 
 from unittest.mock import patch
+
 
 class TestPredictorMock(Predictor):
     def predict_object_trajectories(self, dynamic_object: Type[DynamicObject],
@@ -22,8 +23,8 @@ class TestPredictorMock(Predictor):
         return traj
 
 
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new_callable=testable_map_api)
-def test_predictEgoState_apiTest_returnsEgoStatesList(testable_map_api, state):
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+def test_predictEgoState_apiTest_returnsEgoStatesList(state):
     ego_state = state.ego_state
     logger = AV_Logger.get_logger("test_predictEgoState_apiTest_returnsEgoStatesList")
     predicted_timestamps = np.array([0.0, 0.2, 0.4, 0.6, 0.8])
@@ -35,8 +36,8 @@ def test_predictEgoState_apiTest_returnsEgoStatesList(testable_map_api, state):
     assert len(predicted_states) == len(predicted_timestamps)
 
 
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new_callable=testable_map_api)
-def test_predictState_apiTest_returnsStatesList(testable_map_api, state):
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+def test_predictState_apiTest_returnsStatesList(state):
     predicted_timestamps = np.array([0.0, 0.2, 0.4, 0.6, 0.8])
     logger = AV_Logger.get_logger("test_predictEgoState_apiTest_returnsEgoStatesList")
     test_predictor_mock = TestPredictorMock(logger=logger)
