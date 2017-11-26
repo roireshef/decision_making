@@ -3,6 +3,9 @@ from multiprocessing import Queue, Process
 from typing import Callable
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTimerTrigger, DmNullTrigger
+from rte.python.os import catch_interrupt_signals
+from rte.python.logger.AV_logger import AV_Logger
+from os import getpid
 
 
 class DmProcess:
@@ -27,6 +30,8 @@ class DmProcess:
         self._trigger = None
         self._module_instance = None
 
+        self.logger = AV_Logger.get_logger(process_name)
+
     @property
     def name(self) -> str:
         return self._module_creation_method.__name__
@@ -45,6 +50,10 @@ class DmProcess:
         """
         self._queue.put(0)
 
+    def interrupt_signal_handler(self, signal: int, frame) -> None:
+        self.logger.debug('%d: caught signal %d', self._pid, signal)
+        self.stop_process()
+
     def _module_process_entry(self) -> None:
         """
         Entry method to the process created for the DM module.
@@ -52,6 +61,10 @@ class DmProcess:
         until it receives a stop signal.
         :return: None
         """
+
+        # store process id (pid) used for tracking process activity in log
+        self._pid = getpid()
+        self.logger.debug('%d: started "%s"', self._pid, self.name)
 
         # create the trigger and activate it.
         if self._trigger_type == DmTriggerType.DM_TRIGGER_PERIODIC:
@@ -64,6 +77,9 @@ class DmProcess:
         # create the sub module
         self._module_instance.start()
 
+        # stop process if an interrupt OS signal is received
+        catch_interrupt_signals(self.interrupt_signal_handler)
+
         # activate method can be blocking, depending on the trigger type
         self._trigger.activate()
 
@@ -75,6 +91,7 @@ class DmProcess:
 
     def _module_process_wait_for_signal(self) -> None:
         self._queue.get()
+        self.logger.debug('%d: stop signal received', self._pid)
 
     def _module_process_exit(self) -> None:
         """

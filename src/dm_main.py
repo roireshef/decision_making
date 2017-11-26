@@ -26,6 +26,9 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.state.state import EgoState, ObjectSize, RoadLocalization, OccupancyState
 from decision_making.src.state.state_module import StateModule
 from rte.python.logger.AV_logger import AV_Logger
+from rte.python.os import catch_interrupt_signals
+from os import getpid
+
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))
 
@@ -115,6 +118,7 @@ class DmInitialization:
 
 
 def main():
+
     modules_list = \
         [
 
@@ -135,11 +139,14 @@ def main():
                       trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD})
         ]
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
+    logger.debug('%d: (main) registered signal handler', getpid())
+    catch_interrupt_signals()
     manager = DmManager(logger, modules_list)
     manager.start_modules()
     try:
         manager.wait_for_submodules()
     except KeyboardInterrupt:
+        logger.info('%d: (main) Interrupted by signal!', getpid())
         pass
     finally:
         manager.stop_modules()
