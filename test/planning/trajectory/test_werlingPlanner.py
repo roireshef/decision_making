@@ -6,7 +6,6 @@ from decision_making.src.planning.trajectory.optimal_control.werling_planner imp
 from decision_making.src.planning.utils.columns import R_X, R_Y, R_THETA
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
-from decision_making.src.state.state_module import StateModule
 from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidDynamicBoxObstacle, \
     WerlingVisualizer
 from mapping.src.transformations.geometry_utils import CartesianFrame
@@ -36,20 +35,22 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
     yaw1 = 0
     pos2 = np.array([11, 1.5])
     yaw2 = np.pi / 4
-    road_localization1 = testable_map_api.compute_road_localization(pos1, yaw1)
-    road_localization2 = testable_map_api.compute_road_localization(pos2, yaw2)
+
+    # TODO: override MapService.get_instance with testable_map_api
+    # road_localization1 = testable_map_api.compute_road_localization(pos1, yaw1)
+    # road_localization2 = testable_map_api.compute_road_localization(pos2, yaw2)
 
     obs = list([
         DynamicObject(obj_id=0, timestamp=0, x=pos1[0], y=pos1[1], z=0, yaw=yaw1, size=ObjectSize(1.5, 0.5, 0),
-                      road_localization=road_localization1, confidence=1.0, v_x=2.2, v_y=0, acceleration_lon=0.0,
-                      omega_yaw=0.0),
+                      # road_localization=road_localization1,
+                      confidence=1.0, v_x=2.2, v_y=0, acceleration_lon=0.0, omega_yaw=0.0),
         DynamicObject(obj_id=0, timestamp=0, x=pos2[0], y=pos2[1], z=0, yaw=yaw2, size=ObjectSize(1.5, 0.5, 0),
-                      road_localization=road_localization2, confidence=1.0, v_x=1.1, v_y=0, acceleration_lon=0.0,
-                      omega_yaw=0.0)
+                      # road_localization=road_localization2,
+                      confidence=1.0, v_x=1.1, v_y=0, acceleration_lon=0.0, omega_yaw=0.0)
     ])
 
     ego = EgoState(obj_id=-1, timestamp=0, x=0, y=0, z=0, yaw=0, size=None,
-                   road_localization=testable_map_api.compute_road_localization(np.array([0, 0]), 0.0),
+                   # road_localization=testable_map_api.compute_road_localization(np.array([0, 0]), 0.0),
                    confidence=1.0, v_x=v0, v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
     state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
