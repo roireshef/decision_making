@@ -17,8 +17,7 @@ class Predictor:
     Base class for predictors of dynamic objects
     """
 
-    def __init__(self, map_api: MapAPI, logger: Logger):
-        self._map_api = map_api
+    def __init__(self, logger: Logger):
         self._logger = logger
 
     def predict_object_trajectories(self, dynamic_object: DynamicObject,
@@ -75,8 +74,6 @@ class Predictor:
                 # TODO: remove assumption
                 predicted_object_state.v_x = predictions[t_ind, PREDICT_VEL]
                 predicted_object_state.v_y = 0.0
-            predicted_object_state.road_localization = \
-                MapService.get_instance().compute_road_localization(predicted_pos, predicted_yaw)
 
         return predicted_object_states
 

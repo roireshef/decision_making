@@ -52,7 +52,7 @@ class SemanticBehavioralState(BehavioralState):
         self.road_occupancy_grid = road_occupancy_grid
 
     @classmethod
-    def create_from_state(cls, state: State, map_api: MapAPI, logger: Logger):
+    def create_from_state(cls, state: State, logger: Logger):
         """
         :return: a new and updated BehavioralState
         """
@@ -95,14 +95,14 @@ class SemanticActionSpec:
 
 
 class SemanticActionsPolicy(Policy):
-    def __init__(self, logger: Logger, predictor: Predictor, map_api: MapAPI):
+    def __init__(self, logger: Logger, predictor: Predictor):
         """
         Receives configuration and logger
         :param logger: logger
         :param predictor: used for predicting ego and other dynamic objects in future states
         :param map_api: Map API
         """
-        super().__init__(logger=logger, predictor=predictor, map_api=map_api)
+        super().__init__(logger=logger, predictor=predictor)
 
     def plan(self, state: State, nav_plan: NavigationPlanMsg) -> (TrajectoryParams, BehavioralVisualizationMsg):
         """

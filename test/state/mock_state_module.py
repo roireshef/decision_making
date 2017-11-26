@@ -20,7 +20,7 @@ class StateModuleMock(StateModule):
         self._state = state
         MapService.initialize()
         map_api = MapService.get_instance()
-        super().__init__(dds, logger, map_api, None, None, None)
+        super().__init__(dds, logger, None, None, None)
 
     def _periodic_action_impl(self):
         self.dds.publish(STATE_PUBLISH_TOPIC, self._state.serialize())

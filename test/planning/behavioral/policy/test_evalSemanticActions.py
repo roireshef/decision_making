@@ -11,10 +11,14 @@ from decision_making.src.planning.behavioral.semantic_actions_policy import Sema
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import EgoState, DynamicObject, ObjectSize
 from decision_making.src.state.state_module import Logger
+from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from mapping.test.model.testable_map_fixtures import testable_map_api
 from rte.python.logger.AV_logger import AV_Logger
 
+from unittest.mock import patch
 
+
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new_callable=testable_map_api)
 def test_novDemoEvalSemanticActions(testable_map_api):
     max_velocity = v = BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT  # m/s
 
@@ -68,8 +72,8 @@ def test_novDemoEvalSemanticActions(testable_map_api):
         grid[(1, 1)] = [obs[2]]
         behav_state = SemanticActionsGridState(grid, ego)
         logger = Logger("NovDemoTest")
-        predictor = Predictor(testable_map_api, logger)
-        policy = SemanticActionsGridPolicy(logger, predictor, testable_map_api)
+        predictor = Predictor(logger)
+        policy = SemanticActionsGridPolicy(logger, predictor)
 
         semantic_actions = []
         semantic_actions.append(SemanticAction((-1, 1), obs[0], SemanticActionType.FOLLOW))
@@ -91,12 +95,12 @@ def test_novDemoEvalSemanticActions(testable_map_api):
         # print(costs)
 
 
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new_callable=testable_map_api)
 def test_get_actionIndByLane(testable_map_api):
     logger = AV_Logger.get_logger('test_get_actionIndByLane')
     semantic_action = SemanticAction((SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT), None, SemanticActionType(1))
     spec1 = SemanticActionSpec(t=5, v=10, s_rel=30, d_rel=-3)
-    policy = SemanticActionsGridPolicy(Logger("NovDemoTest"), Predictor(testable_map_api, logger=logger),
-                                       testable_map_api)
+    policy = SemanticActionsGridPolicy(Logger("NovDemoTest"), Predictor(logger=logger))
     action_ind = policy._get_action_ind([semantic_action], (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT))
     assert action_ind == 0
     action_ind = policy._get_action_ind([semantic_action], (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_FRONT))

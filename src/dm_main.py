@@ -52,7 +52,7 @@ class DmInitialization:
         map_api = MapService.get_instance()
         default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
                                                  np.array([0.1], dtype=np.float))
-        state_module = StateModule(dds, logger, map_api, default_occupancy_state, None, None)
+        state_module = StateModule(dds, logger, default_occupancy_state, None, None)
         return state_module
 
     @staticmethod
@@ -85,7 +85,7 @@ class DmInitialization:
         # policy = DefaultPolicy(logger, policy_config, behavioral_state, None, map_api)
 
         # NOV DEMO POLICY
-        predictor = RoadFollowingPredictor(map_api, logger)
+        predictor = RoadFollowingPredictor(logger)
         policy = SemanticActionsGridPolicy(logger=logger, predictor=predictor, map_api=map_api)
 
         behavioral_module = BehavioralFacade(dds=dds, logger=logger, policy=policy)
@@ -101,7 +101,7 @@ class DmInitialization:
         map_api = MapService.get_instance()
         init_navigation_plan = NAVIGATION_PLAN
 
-        predictor = RoadFollowingPredictor(map_api, logger)
+        predictor = RoadFollowingPredictor(logger)
 
         # TODO: fill the strategy handlers
         planner = WerlingPlanner(logger, predictor)

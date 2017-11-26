@@ -6,14 +6,18 @@ from decision_making.src.planning.trajectory.optimal_control.werling_planner imp
 from decision_making.src.planning.utils.columns import R_X, R_Y, R_THETA
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
+from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidDynamicBoxObstacle, \
     WerlingVisualizer
 from mapping.src.transformations.geometry_utils import CartesianFrame
-from mapping.test.model.testable_map_fixtures import testable_map_api
+from mapping.test.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
 
+from unittest.mock import patch
 
-def test_werlingPlanner_toyScenario_noException(testable_map_api):
+
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+def test_werlingPlanner_toyScenario_noException():
     logger = AV_Logger.get_logger('test_werlingPlanner_toyScenario_noException')
     route_points = CartesianFrame.add_yaw_and_derivatives(
         RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5))
@@ -26,8 +30,7 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
     a_max = 5
     T = 1.5
 
-    map_api = testable_map_api
-    predictor = RoadFollowingPredictor(map_api=map_api, logger=logger)
+    predictor = RoadFollowingPredictor(logger)
 
     goal = np.concatenate((route_points[len(route_points) // 2, [R_X, R_Y, R_THETA]], [vT]))
 

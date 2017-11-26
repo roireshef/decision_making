@@ -3,6 +3,7 @@ import numpy as np
 from decision_making.src.prediction.constants import PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject
+from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
@@ -35,9 +36,9 @@ class RoadFollowingPredictor(Predictor):
         # TODO: Handle negative prediction times. For now, we take only t >= 0
         lookahead_distance = np.maximum(lookahead_distance, 0.0)
 
-        map_based_nav_plan = self._map_api.get_road_based_navigation_plan(dynamic_object.road_localization.road_id)
+        map_based_nav_plan = MapService.get_instance().get_road_based_navigation_plan(dynamic_object.road_localization.road_id)
 
-        lookahead_route, initial_yaw = self._map_api.get_lookahead_points(dynamic_object.road_localization.road_id,
+        lookahead_route, initial_yaw = MapService.get_instance().get_lookahead_points(dynamic_object.road_localization.road_id,
                                                                           dynamic_object.road_localization.road_lon,
                                                                           lookahead_distance,
                                                                           dynamic_object.road_localization.full_lat,

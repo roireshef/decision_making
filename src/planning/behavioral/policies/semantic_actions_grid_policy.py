@@ -26,7 +26,7 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.prediction.constants import PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
 from decision_making.src.state.state import State
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
-from mapping.src.model.map_api import MapAPI
+from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
@@ -39,7 +39,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # create road semantic grid from the raw State object
         behavioral_state = SemanticActionsGridState.create_from_state(state=state_aligned,
-                                                                      map_api=self._map_api,
                                                                       logger=self.logger)
 
         # iterate over the semantic grid and enumerate all relevant HL actions
@@ -63,12 +62,10 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         selected_action_spec = actions_spec[selected_action_index]
 
         # translate the selected action-specification into a full specification for the TP
-        reference_trajectory = SemanticActionsGridPolicy._generate_reference_route(map_api=self._map_api,
-                                                                                   behavioral_state=behavioral_state,
+        reference_trajectory = SemanticActionsGridPolicy._generate_reference_route(behavioral_state=behavioral_state,
                                                                                    action_spec=selected_action_spec,
                                                                                    navigation_plan=nav_plan)
-        trajectory_parameters = SemanticActionsGridPolicy._generate_trajectory_specs(map_api=self._map_api,
-                                                                                     behavioral_state=behavioral_state,
+        trajectory_parameters = SemanticActionsGridPolicy._generate_trajectory_specs(behavioral_state=behavioral_state,
                                                                                      action_spec=selected_action_spec,
                                                                                      reference_route=reference_trajectory)
 
@@ -123,12 +120,10 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         try:
             if semantic_action.target_obj is None:
-                return SemanticActionsGridPolicy._specify_action_to_empty_cell(map_api=self._map_api,
-                                                                               behavioral_state=behavioral_state,
+                return SemanticActionsGridPolicy._specify_action_to_empty_cell(behavioral_state=behavioral_state,
                                                                                semantic_action=semantic_action)
             else:
-                return SemanticActionsGridPolicy._specify_action_towards_object(map_api=self._map_api,
-                                                                                behavioral_state=behavioral_state,
+                return SemanticActionsGridPolicy._specify_action_towards_object(behavioral_state=behavioral_state,
                                                                                 semantic_action=semantic_action)
         except NoValidTrajectoriesFound as e:
             return None
@@ -212,7 +207,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         return costs
 
     @staticmethod
-    def _generate_trajectory_specs(map_api: MapAPI, behavioral_state: SemanticActionsGridState,
+    def _generate_trajectory_specs(behavioral_state: SemanticActionsGridState,
                                    action_spec: SemanticActionSpec, reference_route: np.ndarray) -> TrajectoryParams:
         """
         Generate trajectory specification (cost parameters) for trajectory planner
@@ -222,7 +217,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         """
 
         # Get road details
-        road_width = map_api.get_road(behavioral_state.ego_state.road_localization.road_id).road_width
+        road_width = MapService.get_instance().get_road(behavioral_state.ego_state.road_localization.road_id).road_width
 
         # Create target state
         target_path_latitude = action_spec.d_rel + behavioral_state.ego_state.road_localization.full_lat
@@ -306,7 +301,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
     # TODO: rethink the design of this function
     @staticmethod
-    def _specify_action_to_empty_cell(map_api: MapAPI, behavioral_state: SemanticActionsGridState,
+    def _specify_action_to_empty_cell(behavioral_state: SemanticActionsGridState,
                                       semantic_action: SemanticAction) -> SemanticActionSpec:
         """
         This method's purpose is to specify the enumerated actions that the agent can take.
@@ -317,7 +312,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         :param semantic_action:
         :return:
         """
-        road_lane_latitudes = map_api.get_center_lanes_latitudes(
+        road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(
             road_id=behavioral_state.ego_state.road_localization.road_id)
         target_lane = behavioral_state.ego_state.road_localization.lane_num + semantic_action.cell[LAT_CELL]
         target_lane_latitude = road_lane_latitudes[target_lane]
@@ -334,10 +329,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
     @staticmethod
     @raises(NoValidTrajectoriesFound)
     def _specify_action_towards_object(behavioral_state: SemanticActionsGridState,
-                                       semantic_action: SemanticAction, map_api: MapAPI) -> SemanticActionSpec:
+                                       semantic_action: SemanticAction) -> SemanticActionSpec:
         """
         given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec
-        :type map_api:
         :param behavioral_state:
         :param semantic_action:
         :return:
@@ -359,7 +353,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # Extract relevant details from state on Reference-Object
         obj_on_road = semantic_action.target_obj.road_localization
-        road_lane_latitudes = map_api.get_center_lanes_latitudes(road_id=obj_on_road.road_id)
+        road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id=obj_on_road.road_id)
         obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
         # TODO: rotate speed v_x, v_y to road coordinated to get the actual lon/lat speed
         # obj_v_x = semantic_action.target_obj.road_longitudinal_speed
@@ -448,7 +442,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
 
     @staticmethod
-    def _generate_reference_route(map_api: MapAPI, behavioral_state: SemanticActionsGridState,
+    def _generate_reference_route(behavioral_state: SemanticActionsGridState,
                                   action_spec: SemanticActionSpec, navigation_plan: NavigationPlanMsg) -> np.ndarray:
         """
         Generate the reference route that will be provided to the trajectory planner.
@@ -467,7 +461,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # caused by the curve linearization approximation in the resampling process
         lookahead_distance = target_relative_longitude + PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
 
-        lookahead_path = map_api.get_uniform_path_lookahead(
+        lookahead_path = MapService.get_instance().get_uniform_path_lookahead(
             road_id=behavioral_state.ego_state.road_localization.road_id,
             lat_shift=target_lane_latitude,
             starting_lon=behavioral_state.ego_state.road_localization.road_lon,

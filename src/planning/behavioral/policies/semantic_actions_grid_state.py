@@ -16,7 +16,7 @@ class SemanticActionsGridState(SemanticBehavioralState):
         self.ego_state = ego_state
 
     @classmethod
-    def create_from_state(cls, state: State, map_api: MapAPI, logger: Logger):
+    def create_from_state(cls, state: State, logger: Logger):
         """
         Occupy the occupancy grid.
         This method iterates over all dynamic objects, and fits them into the relevant cell

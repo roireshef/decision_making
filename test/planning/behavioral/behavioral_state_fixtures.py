@@ -152,5 +152,6 @@ def nov_demo_semantic_follow_action(nov_demo_semantic_behavioral_state: Semantic
 @pytest.fixture(scope='function')
 def nov_demo_policy(testable_map_api: MapAPI):
     logger = AV_Logger.get_logger('Nov demo - semantic occupancy grid')
-    policy = SemanticActionsGridPolicy(logger, RoadFollowingPredictor(testable_map_api, logger=logger), testable_map_api)
+    # TODO: override MapService.get_instance with testable_map_api
+    policy = SemanticActionsGridPolicy(logger, RoadFollowingPredictor(logger=logger), testable_map_api)
     yield policy

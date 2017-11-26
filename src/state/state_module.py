@@ -21,11 +21,10 @@ class StateModule(DmModule):
     UNKNWON_DEFAULT_VAL = 0.0
 
     # TODO: implement double-buffer mechanism for locks wherever needed
-    def __init__(self, dds: DdsPubSub, logger: Logger, map_api: MapAPI, occupancy_state: Optional[OccupancyState],
+    def __init__(self, dds: DdsPubSub, logger: Logger, occupancy_state: Optional[OccupancyState],
                  dynamic_objects: Optional[List[DynamicObject]], ego_state: Optional[EgoState],
                  dynamic_objects_memory_map: dict = {}):
         super().__init__(dds, logger)
-        self._map_api = map_api
 
         self._occupancy_state = occupancy_state
         self._occupancy_state_lock = Lock()
@@ -37,7 +36,6 @@ class StateModule(DmModule):
         self._ego_state_lock = Lock()
 
         self._dynamic_objects_memory_map = dynamic_objects_memory_map
-
 
     def _start_impl(self):
         self.dds.subscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, self._dynamic_obj_callback)
@@ -110,11 +108,11 @@ class StateModule(DmModule):
                     road_localization = MapService.get_instance().compute_road_localization(global_coordinates, global_yaw)
 
                     # Filter objects out of road:
-                    road_width = self._map_api.get_road(road_id=road_localization.road_id).road_width
+                    road_width = MapService.get_instance().get_road(road_id=road_localization.road_id).road_width
                     if road_width + ROAD_SHOULDERS_WIDTH > road_localization.full_lat > -ROAD_SHOULDERS_WIDTH:
                         dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
                                                 global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
-                                                self.UNKNWON_DEFAULT_VAL, omega_yaw, road_localization)
+                                                self.UNKNWON_DEFAULT_VAL, omega_yaw)
                         self._dynamic_objects_memory_map[id] = dyn_obj
                         dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
                     else:
