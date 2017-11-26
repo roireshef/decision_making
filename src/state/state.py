@@ -1,13 +1,10 @@
 import copy
-from logging import Logger
-from typing import List, Union
+from typing import List
 
 import numpy as np
 
 from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from mapping.src.model.localization import RoadLocalization
-from mapping.src.model.map_api import MapAPI
 from mapping.src.service.map_service import MapService
 
 
@@ -81,7 +78,6 @@ class DynamicObject(DDSNonTypedMsg):
     @timestamp_in_sec.setter
     def timestamp_in_sec(self, value):
         self.timestamp = int(value * 1e9)
-
 
     @property
     def road_longitudinal_speed(self) -> float:

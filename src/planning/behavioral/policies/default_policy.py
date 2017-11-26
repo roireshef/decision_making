@@ -1,5 +1,5 @@
 from logging import Logger
-from typing import List, Dict, Tuple
+from typing import List
 
 import numpy as np
 
@@ -17,12 +17,12 @@ from decision_making.src.planning.behavioral.policy import Policy, PolicyConfig
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.acda import AcdaApi
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import EgoState, State, DynamicObject, RelativeRoadLocalization
+from decision_making.src.state.state import EgoState, State, DynamicObject
+from mapping.src.model.localization import RelativeRoadLocalization
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.model.map_api import MapAPI
 from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
-
 
 
 class DynamicObjectOnRoad(DynamicObject):

@@ -1,6 +1,6 @@
 from logging import Logger
 
-from decision_making.src.state.state import State, DynamicObject, RelativeRoadLocalization
+from decision_making.src.state.state import State
 from mapping.src.model.map_api import MapAPI
 
 
