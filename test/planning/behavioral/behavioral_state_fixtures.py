@@ -25,7 +25,7 @@ def state_with_sorrounding_objects():
     ego_road_lon = 15.0
     ego_road_lat = 4.5
 
-    ego_pos, ego_yaw = map_api_mock()._convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
+    ego_pos, ego_yaw = map_api_mock().convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
                                                                             lat=ego_road_lat)
 
     ego_state = EgoState(obj_id=0, timestamp=0, x=ego_pos[0], y=ego_pos[1], z=ego_pos[2], yaw=ego_yaw,
@@ -46,7 +46,7 @@ def state_with_sorrounding_objects():
                 # Don't create an object where the ego is
                 continue
 
-            obj_pos, obj_yaw = map_api_mock()._convert_road_to_global_coordinates(road_id=obj_road_id,
+            obj_pos, obj_yaw = map_api_mock().convert_road_to_global_coordinates(road_id=obj_road_id,
                                                                                     lon=obj_road_lon,
                                                                                     lat=obj_road_lat)
 
@@ -72,7 +72,7 @@ def state_with_ego_on_right_lane():
     ego_road_lon = 15.0
     ego_road_lat = 1.5
 
-    ego_pos, ego_yaw = map_api_mock()._convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
+    ego_pos, ego_yaw = map_api_mock().convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
                                                                    lat=ego_road_lat)
 
     ego_state = EgoState(obj_id=0, timestamp=0, x=ego_pos[0], y=ego_pos[1], z=ego_pos[2], yaw=ego_yaw,
@@ -96,7 +96,7 @@ def state_with_ego_on_left_lane():
     ego_road_lon = 15.0
     ego_road_lat = 7.5
 
-    ego_pos, ego_yaw = map_api_mock()._convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
+    ego_pos, ego_yaw = map_api_mock().convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
                                                                    lat=ego_road_lat)
 
     ego_state = EgoState(obj_id=0, timestamp=0, x=ego_pos[0], y=ego_pos[1], z=ego_pos[2], yaw=ego_yaw,
