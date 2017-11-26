@@ -152,7 +152,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return ftrajectories[conforms]
 
     @staticmethod
-    def _compute_cost(ctrajectories: CartesianTrajectories, ftrajectories: np.ndarray, state: State,
+    def _compute_cost(ctrajectories: CartesianTrajectories, ftrajectories: FrenetTrajectories, state: State,
                       goal_in_frenet: FrenetPoint, params: TrajectoryCostParams, global_time_samples: np.ndarray,
                       predictor: Predictor):
         """
@@ -168,12 +168,8 @@ class WerlingPlanner(TrajectoryPlanner):
         """
         # TODO: add jerk cost
         # TODO: handle dynamic objects?
-
         # TODO: max instead of sum? what if close_obstacles is empty?
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
-        # TODO: validate that both obstacles and ego are in world coordinates. if not, change the filter cond.
-
-
         close_obstacles = \
             [SigmoidDynamicBoxObstacle.from_object(obs, params.obstacle_cost.k, params.obstacle_cost.offset,
                                                    global_time_samples, predictor)
