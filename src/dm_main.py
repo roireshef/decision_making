@@ -83,7 +83,7 @@ class DmInitialization:
 
         # NOV DEMO POLICY
         predictor = RoadFollowingPredictor(map_api, logger)
-        policy = SemanticActionsGridPolicy(logger=logger, policy_config=None, predictor=predictor, map_api=map_api)
+        policy = SemanticActionsGridPolicy(logger=logger, predictor=predictor, map_api=map_api)
 
         behavioral_module = BehavioralFacade(dds=dds, logger=logger, policy=policy)
         return behavioral_module
