@@ -8,3 +8,6 @@ R_X, R_Y, R_THETA, R_K, R_K_TAG = 0, 1, 2, 3, 4
 
 # Column indices for frenet-frame [s, s-dot, s-dotdot, d, d-dot, d-dotdot]
 F_SX, F_SV, F_SA, F_DX, F_DV, F_DA = 0, 1, 2, 3, 4, 5
+
+# Column indices for a frenet-point [sx, dx]
+FP_SX, FP_DX = 0, 1

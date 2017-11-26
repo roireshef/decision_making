@@ -10,7 +10,7 @@ MAX_PLANNING_DISTANCE_BACKWARD = -20.0
 MAX_PLANNING_DISTANCE_FORWARD = 80.0
 
 # Planning horizon in [sec]: prediction horizon in the behavioral planner
-BEHAVIORAL_PLANNING_HORIZON = 5.0
+BEHAVIORAL_PLANNING_HORIZON = 7.0
 BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON = 2.0
 
 # Planning resolution in [sec].
@@ -21,12 +21,13 @@ BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
 BP_SPECIFICATION_T_MIN = 2.0
-BP_SPECIFICATION_T_MAX = 10.0
+BP_SPECIFICATION_T_MAX = 20.0
 BP_SPECIFICATION_T_RES = 0.2
 
 # Longitudinal Acceleration Limits [m/sec^2]
-A_LON_MIN = -5.0
-A_LON_MAX = 5.0
+A_LON_MIN = -4.0
+A_LON_MAX = 4.0
+A_LON_EPS = 3.0
 
 # Latitudinal Acceleration Limits [m/sec^2]
 A_LAT_MIN = -2.0
@@ -41,7 +42,15 @@ SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR = 1, 0, 
 SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_RIGHT = 1, 0, -1
 
 # [m/sec] Minimal difference of velocities to justify an overtake
-MIN_OVERTAKE_VEL = 2
+MIN_OVERTAKE_VEL = 3
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
+
+# Trajectory cost parameters
+INFINITE_SIGMOID_COST = 2.0 * 1e2           # cost around obstacles (sigmoid)
+DEVIATION_FROM_ROAD_COST = 1.0 * 1e2        # cost of deviation from road (sigmoid)
+DEVIATION_TO_SHOULDER_COST = 1.0 * 1e2      # cost of deviation to shoulders (sigmoid)
+OUT_OF_LANE_COST = 0.0                      # cost of deviation from lane (sigmoid)
+ROAD_SIGMOID_K_PARAM = 1000.0               # sigmoid k (slope) param of going out-of-road
+OBJECTS_SIGMOID_K_PARAM = 20.0              # sigmoid k (slope) param of objects on road
