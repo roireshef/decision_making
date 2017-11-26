@@ -3,6 +3,7 @@ from decision_making.src.global_constants import *
 from decision_making.src.state.state import *
 from decision_making.src.state.state_module import StateModule
 from mapping.src.service.map_service import MapService
+from logging import Logger
 
 
 class StateModuleMock(StateModule):

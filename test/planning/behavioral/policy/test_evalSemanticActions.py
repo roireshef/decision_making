@@ -4,8 +4,8 @@ from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPE
 from decision_making.src.planning.behavioral.constants import SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LAT_LEFT, \
     SEMANTIC_CELL_LON_FRONT
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
-from decision_making.src.planning.behavioral.policies.semantic_actions_grid_behavioral_state import \
-    SemanticActionsGridBehavioralState
+from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import \
+    SemanticActionsGridState
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction, SemanticActionType, \
     SemanticActionSpec
 from decision_making.src.prediction.predictor import Predictor
@@ -66,7 +66,7 @@ def test_novDemoEvalSemanticActions(testable_map_api):
         grid[(-1, 1)] = [obs[0]]
         grid[(0, 1)] = [obs[1]]
         grid[(1, 1)] = [obs[2]]
-        behav_state = SemanticActionsGridBehavioralState(grid, ego)
+        behav_state = SemanticActionsGridState(grid, ego)
         logger = Logger("NovDemoTest")
         predictor = Predictor(testable_map_api, logger)
         policy = SemanticActionsGridPolicy(logger, predictor, testable_map_api)

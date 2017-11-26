@@ -102,9 +102,7 @@ class SemanticActionsPolicy(Policy):
         :param predictor: used for predicting ego and other dynamic objects in future states
         :param map_api: Map API
         """
-        self._map_api = map_api
-        self._predictor = predictor
-        self.logger = logger
+        super().__init__(logger=logger, predictor=predictor, map_api=map_api)
 
     def plan(self, state: State, nav_plan: NavigationPlanMsg) -> (TrajectoryParams, BehavioralVisualizationMsg):
         """

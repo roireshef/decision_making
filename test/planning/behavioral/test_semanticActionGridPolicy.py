@@ -1,15 +1,10 @@
 from decision_making.src.planning.behavioral.constants import SAFE_DIST_TIME_DELAY
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
-from decision_making.src.planning.behavioral.policies.semantic_actions_grid_behavioral_state import \
-    SemanticActionsGridBehavioralState
+from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import \
+    SemanticActionsGridState
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from rte.python.logger.AV_logger import AV_Logger
-
-from decision_making.test.planning.behavioral.behavioral_state_fixtures import state_with_sorrounding_objects, \
-    nov_demo_semantic_follow_action, nov_demo_semantic_behavioral_state, nov_demo_state, nov_demo_policy, \
-    state_with_ego_on_left_lane, state_with_ego_on_right_lane
-from mapping.test.model.testable_map_fixtures import testable_map_api
 
 
 def test_enumerate_actions_egoAtRoadEdge_filterOnlyValidActions(state_with_sorrounding_objects, testable_map_api,
@@ -23,7 +18,7 @@ def test_enumerate_actions_egoAtRoadEdge_filterOnlyValidActions(state_with_sorro
 
     # Check that when car is on right lane we get only 2 valid actions
     state = state_with_ego_on_right_lane
-    behavioral_state = SemanticActionsGridBehavioralState.create_from_state(state=state, map_api=map_api, logger=logger)
+    behavioral_state = SemanticActionsGridState.create_from_state(state=state, map_api=map_api, logger=logger)
     actions = policy._enumerate_actions(behavioral_state=behavioral_state)
 
     action_index = 0
@@ -42,7 +37,7 @@ def test_enumerate_actions_egoAtRoadEdge_filterOnlyValidActions(state_with_sorro
 
     # Check that when car is on left lane we get only 2 valid actions
     state = state_with_ego_on_left_lane
-    behavioral_state = SemanticActionsGridBehavioralState.create_from_state(state=state, map_api=map_api, logger=logger)
+    behavioral_state = SemanticActionsGridState.create_from_state(state=state, map_api=map_api, logger=logger)
     actions = policy._enumerate_actions(behavioral_state=behavioral_state)
 
     action_index = 0
@@ -68,7 +63,7 @@ def test_enumerate_actions_gridFull_allActionsEnumerated(state_with_sorrounding_
 
     policy = SemanticActionsGridPolicy(logger=logger, predictor=predictor, map_api=map_api)
 
-    behavioral_state = SemanticActionsGridBehavioralState.create_from_state(state=state, map_api=map_api, logger=logger)
+    behavioral_state = SemanticActionsGridState.create_from_state(state=state, map_api=map_api, logger=logger)
     actions = policy._enumerate_actions(behavioral_state=behavioral_state)
 
     action_index = 0
@@ -112,7 +107,7 @@ def test_generateSemanticOccupancyGrid_ComplexStateWithFullGrid_carsAreInRightCe
 
     map_api = testable_map_api
     state = state_with_sorrounding_objects
-    occupancy_grid = SemanticActionsGridBehavioralState.create_from_state(state=state, map_api=map_api, logger=logger)
+    occupancy_grid = SemanticActionsGridState.create_from_state(state=state, map_api=map_api, logger=logger)
 
     # Assertion tests of objects in grid:
 
@@ -177,7 +172,7 @@ def test_generateSemanticOccupancyGrid_ComplexStateWithFullGrid_carsAreInRightCe
 
 
 def test_specifyAction_followOtherCar_wellSpecified(nov_demo_semantic_follow_action: SemanticAction,
-                                                    nov_demo_semantic_behavioral_state: SemanticActionsGridBehavioralState,
+                                                    nov_demo_semantic_behavioral_state: SemanticActionsGridState,
                                                     nov_demo_policy: SemanticActionsGridPolicy):
     specify = nov_demo_policy._specify_action(nov_demo_semantic_behavioral_state, nov_demo_semantic_follow_action)
 

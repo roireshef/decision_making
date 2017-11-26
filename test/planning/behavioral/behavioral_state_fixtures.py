@@ -4,8 +4,8 @@ import numpy as np
 import pytest
 
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
-from decision_making.src.planning.behavioral.policies.semantic_actions_grid_behavioral_state import \
-    SemanticActionsGridBehavioralState
+from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import \
+    SemanticActionsGridState
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction, SemanticActionType
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import OccupancyState, State, EgoState, DynamicObject, ObjectSize, RoadLocalization
@@ -140,11 +140,11 @@ def nov_demo_state():
 @pytest.fixture(scope='function')
 def nov_demo_semantic_behavioral_state(nov_demo_state: State):
     obj = nov_demo_state.dynamic_objects[0]
-    yield SemanticActionsGridBehavioralState({(-1, 1): [obj]}, nov_demo_state.ego_state)
+    yield SemanticActionsGridState({(-1, 1): [obj]}, nov_demo_state.ego_state)
 
 
 @pytest.fixture(scope='function')
-def nov_demo_semantic_follow_action(nov_demo_semantic_behavioral_state: SemanticActionsGridBehavioralState):
+def nov_demo_semantic_follow_action(nov_demo_semantic_behavioral_state: SemanticActionsGridState):
     obj = nov_demo_semantic_behavioral_state.road_occupancy_grid[(-1, 1)][0]
     yield SemanticAction((-1, 1), obj, SemanticActionType.FOLLOW)
 

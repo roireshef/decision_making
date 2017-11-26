@@ -1,9 +1,12 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABCMeta
 from logging import Logger
+
+import six
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 
 
+@six.add_metaclass(ABCMeta)
 class DmModule:
     def __init__(self, dds: DdsPubSub, logger: Logger):
         self.dds = dds
