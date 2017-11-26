@@ -1,8 +1,7 @@
 import numpy as np
 
-from decision_making.src.state.state import ObjectSize
-from decision_making.test.planning.trajectory.utils import *
-from decision_making.src.planning.trajectory.cost_function import *
+from decision_making.src.state.state import ObjectSize, DynamicObject
+from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidStaticBoxObstacle
 
 
 def test_computeCost_threeSRoutesOneObstacle_validScore():

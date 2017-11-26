@@ -18,11 +18,12 @@ class TrajectoryPlanner(metaclass=ABCMeta):
 
     @abstractmethod
     @raises(NoValidTrajectoriesFound)
-    def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, time: float,
+    def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, global_goal_time: float,
              cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
         """
         Plans a trajectory according to the specifications in the arguments
-        :param time: the time-window to plan for (time to get from initial state to goal state)
+        :param global_goal_time: defines the global time in [sec] of the goal. Enables the target state and time
+            to be determined in the behavioral planner, so that any re-planning iteration is consistent in the TP.
         :param state: environment & ego state object
         :param reference_route: a reference route (often the center of lane). A numpy array of the shape [-1, 2] where
         each row is a point (x, y) in world coordinates.

@@ -8,7 +8,7 @@ from decision_making.src.planning.utils.columns import EGO_V
 class SigmoidFunctionParams(DDSTypedMsg):
     def __init__(self, w: float, k: float, offset: float):
         """
-        A data class that corresponds to a parameterization of a sigmoid function
+        A data class that corresponds to a parametrization of a sigmoid function
         :param w: considering sigmoid is: f(x) = w / (1 + exp(k * (x-offset)))
         :param k: considering sigmoid is: f(x) = w / (1 + exp(k * (x-offset)))
         :param offset: considering sigmoid is: f(x) = w / (1 + exp(k * (x-offset)))
@@ -17,6 +17,10 @@ class SigmoidFunctionParams(DDSTypedMsg):
         self.k = k
         self.offset = offset
 
+TRAJ_PARAMS_VEL_MIN = 0
+TRAJ_PARAMS_VEL_MAX = 1
+TRAJ_PARAMS_ACC_MIN = 0
+TRAJ_PARAMS_ACC_MAX = 0
 
 class TrajectoryCostParams(DDSTypedMsg):
     def __init__(self, left_lane_cost: SigmoidFunctionParams, right_lane_cost: SigmoidFunctionParams,

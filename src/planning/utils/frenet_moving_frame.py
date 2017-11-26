@@ -1,8 +1,42 @@
 import numpy as np
 
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_INTERP_TYPE
+from decision_making.src.planning.utils.columns import F_SX, F_SV, F_SA, F_DX, F_DV, F_DA, R_THETA, R_K, R_K_TAG, FP_SX, \
+    FP_DX
 from mapping.src.transformations.geometry_utils import CartesianFrame
-from decision_making.src.planning.utils.columns import *
+
+FrenetPoint: np.ndarray
+"""
+A point in Frenet-frame: a numpy vector of the form [sx, dx]
+"""
+
+FrenetTrajectory: np.ndarray
+"""
+A Frenet-Frame trajectory: a numpy matrix of rows of the form [sx, sv, sa, dx, dv, da]
+"""
+
+CartesianTrajectory: np.ndarray
+"""
+A Cartesian-Frame trajectory: a numpy matrix of rows of the form [x, y, theta, v, a, k]
+"""
+
+FrenetTrajectories: np.ndarray
+"""
+An array of Frenet-Frame trajectories: a numpy tensor with dimensions
+0 - trajectories
+1 - trajectory points,
+2 - frenet-state [sx, sv, sa, dx, dv, da])
+"""
+
+CartesianTrajectories: np.ndarray
+"""
+An array of Cartesian-Frame trajectories: a numpy tensor with dimensions
+0 - trajectories
+1 - trajectory points,
+2 - cartesian-state [x, y, theta, v, a, k]) in car's coordinate frame
+"""
+
+
 
 class FrenetMovingFrame:
     """
@@ -46,7 +80,7 @@ class FrenetMovingFrame:
         else:
             raise ValueError('index ' + str(s_idx) + 'is not found in __h_tensor (probably __h_tensor is not cached)')
 
-    def cpoint_to_fpoint(self, cpoint: np.ndarray) -> np.ndarray:
+    def cpoint_to_fpoint(self, cpoint: np.ndarray) -> FrenetPoint:
         """
         Transforms cartesian-frame point [x, y] to frenet-frame point (using self.curve) \n
         :param cpoint: cartesian coordinate frame state-vector [x, y, ...]
@@ -78,7 +112,7 @@ class FrenetMovingFrame:
         :param fpoint: numpy array of frenet-point [sx, dx]
         :return: cartesian-frame point [x, y]
         """
-        sx, dx = fpoint[0], fpoint[1]
+        sx, dx = fpoint[FP_SX], fpoint[FP_DX]
         s_idx = self.sx_to_s_idx(sx)
         h = self.get_homo_matrix_2d(s_idx)  # projection from global coord-frame to the Frenet-origin
         abs_point = np.dot(h, [0, dx, 1])[:2]
@@ -87,21 +121,19 @@ class FrenetMovingFrame:
 
     # currently this is implemented. We should implement the next method and make this one wrap a single trajectory
     # and send it to the next method.
-    def ftrajectory_to_ctrajectory(self, ftrajectory: np.ndarray) -> np.ndarray:
+    def ftrajectory_to_ctrajectory(self, ftrajectory: FrenetTrajectory) -> CartesianTrajectory:
         """
         Transforms Frenet-frame trajectory to cartesian-frame trajectory, using tensor operations
-        :param ftrajectory: a numpy matrix of rows of the form [sx, sv, sa, dx, dv, da]
-        :return: a numpy matrix of rows of the form [x, y, theta, v, a, k] in car's coordinate frame
+        :param ftrajectory: a frenet-frame trajectory
+        :return: a cartesian-frame trajectory in car's coordinate frame
         """
         return self.ftrajectories_to_ctrajectories(np.array([ftrajectory]))[0]
 
-    def ftrajectories_to_ctrajectories(self, ftrajectories: np.ndarray) -> np.ndarray:
+    def ftrajectories_to_ctrajectories(self, ftrajectories: FrenetTrajectories) -> CartesianTrajectories:
         """
         Transforms Frenet-frame trajectories to cartesian-frame trajectories, using tensor operations
-        :param ftrajectories: a numpy tensor with dimensions [0 - trajectories, 1 - trajectory points,
-            2 - frenet-state [sx, sv, sa, dx, dv, da])
-        :return: a numpy tensor with dimensions [0 - trajectories, 1 - trajectory points,
-            2 - cartesian-state [x, y, theta, v, a, k]) in car's coordinate frame
+        :param ftrajectories: Frenet-frame trajectories (tensor)
+        :return: Cartesian-frame trajectories (tensor)
         """
         num_t = ftrajectories.shape[0]
         num_p = ftrajectories.shape[1]

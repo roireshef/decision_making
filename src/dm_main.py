@@ -16,7 +16,8 @@ from decision_making.src.planning.behavioral.behavioral_facade import Behavioral
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
-from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
+from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade, \
+    StrategyHandlersDict
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import EgoState, ObjectSize, RoadLocalization, OccupancyState
@@ -25,7 +26,6 @@ from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 from os import getpid
-
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))
 
@@ -105,9 +105,9 @@ class DmInitialization:
 
         # TODO: fill the strategy handlers
         planner = WerlingPlanner(logger, predictor)
-        strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
-                             TrajectoryPlanningStrategy.PARKING: planner,
-                             TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
+        strategy_handlers: StrategyHandlersDict = {TrajectoryPlanningStrategy.HIGHWAY: planner,
+                                                   TrajectoryPlanningStrategy.PARKING: planner,
+                                                   TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
         trajectory_planning_module = TrajectoryPlanningFacade(dds=dds, logger=logger,
                                                               strategy_handlers=strategy_handlers)
@@ -115,7 +115,6 @@ class DmInitialization:
 
 
 def main():
-
     modules_list = \
         [
 
