@@ -14,7 +14,8 @@ class DDSNonTypedMsg(DDSMsg):
         :return: dict containing all the fields of the class
         """
         ser_dict = {}
-        for key, val in self.__dict__.items():
+        self_fields = {k: v for k, v in self.__dict__.items() if k[0] != '_'}
+        for key, val in self_fields.items():
             if issubclass(type(val), np.ndarray):
                 ser_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': list(val.shape),
                                  'type': 'numpy.ndarray'}
