@@ -9,12 +9,12 @@ from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 @six.add_metaclass(ABCMeta)
 class DmModule:
     """
-    Abstract class which is implemented in functional DM modules and Facades.
+    Abstract class which is implemented in functional DM modules and facades.
     """
     def __init__(self, dds: DdsPubSub, logger: Logger) -> None:
         """
-        :param dds: Inter-process communication interface
-        :param logger: Loging interface
+        :param dds: Inter-process communication interface.
+        :param logger: Loging interface.
         """
         self.dds = dds
         self.logger = logger
@@ -23,7 +23,7 @@ class DmModule:
     @abstractmethod
     def _start_impl(self) -> None:
         """
-        Implementation specific start script
+        Implementation specific start script.
         """
         pass
 
@@ -34,7 +34,7 @@ class DmModule:
     @abstractmethod
     def _stop_impl(self) -> None:
         """
-        Implementation specific stop script
+        Implementation specific stop script.
         """
         pass
 
@@ -45,13 +45,13 @@ class DmModule:
     @abstractmethod
     def _periodic_action_impl(self) -> None:
         """
-        Implementation specific script for execution upon event
+        Implementation specific script for execution upon event.
         """
         pass
 
     def periodic_action(self) -> None:
         """
-        Perform triggered action and write logging messages
+        Perform triggered action and write logging messages.
         """
         self.logger.debug("executing periodic action at module: " + self.__class__.__name__)
         self._periodic_action_impl()
