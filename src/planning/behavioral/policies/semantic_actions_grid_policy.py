@@ -34,7 +34,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
 
         # Update state: align all object to most recent timestamp
-        # TODO: why is this for? (ROI)
         state_aligned = self._predictor.align_objects_to_most_recent_timestamp(state=state)
 
         # create road semantic grid from the raw State object
