@@ -60,7 +60,7 @@ class PlottableSigmoidDynamicBoxObstacle(SigmoidDynamicBoxObstacle, PlottableSig
     def __init__(self, obj: DynamicObject, k: float, margin: float,
                  time_samples: np.ndarray, predictor: Predictor):
         # get predictions of the dynamic object in global coordinates
-        poses = predictor.predict_object_trajectories(obj, time_samples)
+        poses = predictor.predict_object(obj, time_samples)
         super().__init__(poses, obj.size.length, obj.size.width, k, margin)
         self.poses = poses
 
