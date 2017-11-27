@@ -1,5 +1,5 @@
 import copy
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 
@@ -60,7 +60,7 @@ class DynamicObject(DDSNonTypedMsg):
         self.v_y = v_y
         self.acceleration_lon = acceleration_lon
         self.omega_yaw = omega_yaw
-        self._cached_road_localization: RoadLocalization = None
+        self._cached_road_localization: Optional[RoadLocalization] = None
 
     @property
     def road_localization(self):
