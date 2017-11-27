@@ -5,22 +5,22 @@ from decision_making.src.planning.utils.columns import F_SX, F_SV, F_SA, F_DX, F
     FP_DX
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
-FrenetPoint: np.ndarray
+FrenetPoint = np.ndarray
 """
 A point in Frenet-frame: a numpy vector of the form [sx, dx]
 """
 
-FrenetTrajectory: np.ndarray
+FrenetTrajectory = np.ndarray
 """
 A Frenet-Frame trajectory: a numpy matrix of rows of the form [sx, sv, sa, dx, dv, da]
 """
 
-CartesianTrajectory: np.ndarray
+CartesianTrajectory = np.ndarray
 """
 A Cartesian-Frame trajectory: a numpy matrix of rows of the form [x, y, theta, v, a, k]
 """
 
-FrenetTrajectories: np.ndarray
+FrenetTrajectories = np.ndarray
 """
 An array of Frenet-Frame trajectories: a numpy tensor with dimensions
 0 - trajectories
@@ -28,7 +28,7 @@ An array of Frenet-Frame trajectories: a numpy tensor with dimensions
 2 - frenet-state [sx, sv, sa, dx, dv, da])
 """
 
-CartesianTrajectories: np.ndarray
+CartesianTrajectories = np.ndarray
 """
 An array of Cartesian-Frame trajectories: a numpy tensor with dimensions
 0 - trajectories

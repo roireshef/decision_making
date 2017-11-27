@@ -20,7 +20,7 @@ class SigmoidFunctionParams(DDSTypedMsg):
 TRAJ_PARAMS_VEL_MIN = 0
 TRAJ_PARAMS_VEL_MAX = 1
 TRAJ_PARAMS_ACC_MIN = 0
-TRAJ_PARAMS_ACC_MAX = 0
+TRAJ_PARAMS_ACC_MAX = 1
 
 class TrajectoryCostParams(DDSTypedMsg):
     def __init__(self, left_lane_cost: SigmoidFunctionParams, right_lane_cost: SigmoidFunctionParams,
