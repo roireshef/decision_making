@@ -26,10 +26,10 @@ class StateModule(DmModule):
         """
         :param dds: Inter-process communication interface.
         :param logger: Logging module.
-        :param occupancy_state: Initial state occupancy object
-        :param dynamic_objects: Initial state dynamic objects
-        :param ego_state: Initial ego-state object
-        :param dynamic_objects_memory_map: Initial memory object
+        :param occupancy_state: Initial state occupancy object.
+        :param dynamic_objects: Initial state dynamic objects.
+        :param ego_state: Initial ego-state object.
+        :param dynamic_objects_memory_map: Initial memory object.
         """
         super().__init__(dds, logger)
         self._map_api = map_api
@@ -48,7 +48,7 @@ class StateModule(DmModule):
 
     def _start_impl(self) -> None:
         """
-        When starting the State Module, subscribe to dynamic objects, ego state and occupancy state messages.
+        When starting the State Module, subscribe to dynamic objects, ego state and occupancy state services.
         """
         self.dds.subscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, self._dynamic_obj_callback)
         self.dds.subscribe(SELF_LOCALIZATION_SUBSCRIBE_TOPIC, self._self_localization_callback)
@@ -57,7 +57,7 @@ class StateModule(DmModule):
 
     def _stop_impl(self) -> None:
         """
-        Unsubscribe from process communication services
+        Unsubscribe from process communication services.
         """
         self.dds.unsubscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC)
         self.dds.unsubscribe(SELF_LOCALIZATION_SUBSCRIBE_TOPIC)
@@ -93,8 +93,8 @@ class StateModule(DmModule):
 
     def create_dyn_obj_list(self, objects) -> List[DynamicObject]:
         """
-        :param objects: Serialized dynamic objects list
-        :return: List of dynamic object in DM format
+        :param objects: Serialized dynamic objects list.
+        :return: List of dynamic object in DM format.
         """
         ego = self._ego_state
         ego_pos = np.array([ego.x, ego.y, ego.z])
@@ -157,8 +157,8 @@ class StateModule(DmModule):
 
     def _self_localization_callback(self, ego_localization: dict) -> None:
         """
-        Deserialize localization information, convert to road coordinates and update state information
-        :param ego_localization: Serialized ego localization message
+        Deserialize localization information, convert to road coordinates and update state information.
+        :param ego_localization: Serialized ego localization message.
         """
         try:
             # de-serialize relevant fields
@@ -190,8 +190,8 @@ class StateModule(DmModule):
     # TODO: handle invalid data
     def _occupancy_state_callback(self, occupancy: dict) -> None:
         """
-        De-serialize occupancy message and update state information
-        :param occupancy: Serialized occupancy state message
+        De-serialize occupancy message and update state information.
+        :param occupancy: Serialized occupancy state message.
         """
         try:
             self.logger.debug("got occupancy status %s", occupancy)
@@ -232,9 +232,8 @@ class StateModule(DmModule):
     # TODO: solve the fact that actuator status can be outdated and no one will ever know
     def _actuator_status_callback(self, actuator: dict) -> None:
         """
-        Placeholder for future utilization of actuator information (e.g., steering and gas pedal)
-        :param actuator: Serialized actuator message
-        :return:
+        Placeholder for future utilization of actuator information (e.g., steering and gas pedal).
+        :param actuator: Serialized actuator message.
         """
         self.logger.debug("got actuator status %s", actuator)
         pass  # TODO: update self._ego_state.steering_angle. Don't forget to lock self._ego_state!
