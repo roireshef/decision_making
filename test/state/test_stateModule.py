@@ -12,7 +12,20 @@ import numpy as np
 def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(dds_pubsub, dynamic_objects_in_fov,
                                                                      dynamic_objects_not_in_fov, ego_state_fix,
                                                                      testable_map_api):
+    """
 
+    :param dds_pubsub: Interprocess communication interface.
+    :param dynamic_objects_in_fov: Fixture of a serialized dynamic object data which is place within the field of view
+            (FOV).
+    :param dynamic_objects_not_in_fov: Fixture of a serialized dynamic oject with the same id as above but now its located
+                                        out of the field of view.
+    :param ego_state_fix: Fixture of an ego state compatible with the above two fixtures.
+    :param testable_map_api: An interface to a test map.
+
+    This test checks the memory functionality of the StateModule. It initially sends into the StateModule a dynamic object
+    in the FOV followed by a message indicating that the object is out of FOV. The test then asserts that the last known
+    object properties have been "remembered"
+    """
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
     state_module = StateModule(dds=dds_pubsub, logger=logger, map_api=testable_map_api,
