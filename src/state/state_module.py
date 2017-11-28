@@ -6,7 +6,7 @@ import numpy as np
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, SELF_LOCALIZATION_SUBSCRIBE_TOPIC, \
-    DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, STATE_PUBLISH_TOPIC
+    DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, STATE_PUBLISH_TOPIC, EGO_ID
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.state.state import OccupancyState, EgoState, DynamicObject, ObjectSize, State
 from mapping.src.exceptions import MapCellNotFound
@@ -168,7 +168,7 @@ class StateModule(DmModule):
             timestamp = ego_localization["timestamp"]
             x = ego_localization["location"]["x"]
             y = ego_localization["location"]["y"]
-            z = 0.0
+            z = DEFAULT_OBJECT_Z_VALUE
             yaw = ego_localization["yaw"]
             v_x = ego_localization["velocity"]["v_x"]
             v_y = ego_localization["velocity"]["v_y"]
@@ -179,7 +179,7 @@ class StateModule(DmModule):
             # Update state information under lock
             with self._ego_state_lock:
                 # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
-                self._ego_state = EgoState(0, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
+                self._ego_state = EgoState(EGO_ID, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
                                            self.UNKNWON_DEFAULT_VAL,
                                            self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL, road_localization)
 
@@ -187,7 +187,7 @@ class StateModule(DmModule):
         except Exception as e:
             self.logger.error("StateModule._self_localization_callback failed due to {}".format(e))
 
-    # TODO: handle invalid data
+    # TODO: handle invalid data - occupancy is currently unused throughout the system
     def _occupancy_state_callback(self, occupancy: dict) -> None:
         """
         De-serialize occupancy message and update state information.
