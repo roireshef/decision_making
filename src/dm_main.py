@@ -1,4 +1,5 @@
 from logging import Logger
+from os import getpid
 
 import numpy as np
 
@@ -19,17 +20,14 @@ from decision_making.src.planning.trajectory.optimal_control.werling_planner imp
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state import EgoState, ObjectSize, RoadLocalization, OccupancyState
+from decision_making.src.state.state import OccupancyState
 from decision_making.src.state.state_module import StateModule
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
-from os import getpid
 
-
+# TODO: move this into test package
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))
-
-
 class NavigationFacadeMock(NavigationFacade):
     def __init__(self, dds: DdsPubSub, logger: Logger, plan: NavigationPlanMsg):
         super().__init__(dds=dds, logger=logger, handler=None)
