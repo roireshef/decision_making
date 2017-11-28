@@ -66,9 +66,12 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # TODO: translate velocity (better) and acceleration of initial state
         # define constraints for the initial state
-        fconstraints_t0 = FrenetConstraints(0, np.cos(ego_theta_diff) * ego_v_x + np.sin(ego_theta_diff) * ego_v_y, 0,
-                                            ego_in_frenet[1],
-                                            -np.sin(ego_theta_diff) * ego_v_x + np.cos(ego_theta_diff) * ego_v_y, 0)
+        fconstraints_t0 = FrenetConstraints(ego_in_frenet[FP_SX],
+                                            np.cos(ego_theta_diff) * ego_v_x + np.sin(ego_theta_diff) * ego_v_y,
+                                            0,
+                                            ego_in_frenet[FP_DX],
+                                            -np.sin(ego_theta_diff) * ego_v_x + np.cos(ego_theta_diff) * ego_v_y,
+                                            0)
 
         # define constraints for the terminal (goal) state
         goal_in_frenet = frenet.cpoint_to_fpoint(goal[[EGO_X, EGO_Y]])
@@ -76,9 +79,11 @@ class WerlingPlanner(TrajectoryPlanner):
 
         goal_theta_diff = goal[EGO_THETA] - frenet.curve[frenet.sx_to_s_idx(goal_sx), R_THETA]
 
-        sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_sx, 0)),
-                               np.min((SX_OFFSET_MAX + goal_sx, frenet.length * frenet.resolution)),
-                               SX_STEPS)
+        # TODO: fix
+        # sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_sx, 0)) / 2,
+        #                        np.min((SX_OFFSET_MAX + goal_sx, frenet.length * frenet.resolution)),
+        #                        SX_STEPS)
+        sx_range = np.linspace(goal_sx / 2, goal_sx, SX_STEPS)
 
         sv_range = np.linspace(
             np.max((SV_OFFSET_MIN + np.cos(goal_theta_diff) * goal[EGO_V], cost_params.velocity_limits[0])),
@@ -92,6 +97,9 @@ class WerlingPlanner(TrajectoryPlanner):
 
         fconstraints_tT = FrenetConstraints(sx_range, sv_range, 0, dx_range, dv, 0)
 
+        # TODO: subtract the ego state seen by the behavioral planner. The planning horizon dictated by the BP
+        # TODO: is relative to an older timestamp than the ego timestamp that is seen by the TP
+        # TODO: also, handle delays and cases when time could be negative?
         relative_time = time - state.ego_state.timestamp_in_sec
 
         # TODO: remove this assert
@@ -104,6 +112,8 @@ class WerlingPlanner(TrajectoryPlanner):
         # filter resulting trajectories by velocity and acceleration
         ftrajectories_filtered, filtered_indices = self._filter_limits(ftrajectories, cost_params)
 
+        self._logger.debug("TP has found %d valid trajectories to choose from", len(ftrajectories_filtered))
+
         if ftrajectories_filtered is None or len(ftrajectories_filtered) == 0:
             raise NoValidTrajectoriesFound("No valid trajectories found. time: {}, goal: {}, state: {}"
                                            .format(relative_time, goal, state))
@@ -112,7 +122,7 @@ class WerlingPlanner(TrajectoryPlanner):
         ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
 
         # compute trajectory costs
-        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, goal_sx, goal_dx,
+        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, goal_in_frenet,
                                               cost_params, time_samples, self._predictor)
 
         sorted_idxs = trajectory_costs.argsort()
@@ -128,13 +138,21 @@ class WerlingPlanner(TrajectoryPlanner):
         alternative_ids_skip_range = range(0, len(ctrajectories),
                                            max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
 
-        prediction_timestamps = np.arange(state.ego_state.timestamp_in_sec, state.ego_state.timestamp_in_sec + relative_time,
+        # TODO: we might want to replace the most recent timestamp with the current machine timestamp
+        ego_timestamp_in_sec = state.ego_state.timestamp_in_sec
+        objects_timestamp_in_sec = [state.dynamic_objects[x].timestamp_in_sec for x in
+                                    range(len(state.dynamic_objects))]
+        objects_timestamp_in_sec.append(ego_timestamp_in_sec)
+        most_recent_timestamp = np.max(objects_timestamp_in_sec)
+
+        prediction_timestamps = np.arange(most_recent_timestamp, state.ego_state.timestamp_in_sec + relative_time,
                                           VISUALIZATION_PREDICTION_RESOLUTION, float)
 
+        # TODO: move this to visualizer. Curently we are predicting the state at ego's timestamp and at the end of the traj execution time.
         predicted_states = self._predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps)
         # predicted_states[0] is the current state
         # predicted_states[1] is the predicted state in the end of the execution of traj.
-        debug_results = TrajectoryVisualizationMsg(frenet.curve,
+        debug_results = TrajectoryVisualizationMsg(reference_route,
                                                    ctrajectories[sorted_idxs[alternative_ids_skip_range], :, :EGO_V],
                                                    trajectory_costs[sorted_idxs[alternative_ids_skip_range]],
                                                    predicted_states[0],
@@ -160,8 +178,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return ftrajectories[conforms], np.argwhere(conforms).flatten()
 
     @staticmethod
-    def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: State,
-                      goal_sx: float, goal_dx: float,
+    def _compute_cost(ctrajectories: np.ndarray, ftrajectories: np.ndarray, state: State, goal_in_frenet: np.ndarray,
                       params: TrajectoryCostParams, time_samples: np.ndarray, predictor: Predictor):
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
@@ -181,6 +198,9 @@ class WerlingPlanner(TrajectoryPlanner):
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
         # TODO: validate that both obstacles and ego are in world coordinates. if not, change the filter cond.
 
+
+        # TODO: verigy that we add the right timestamp. The planning horizon dictated by the BP
+        # TODO: is relative to an older timestamp than the ego timestamp that is seen by the TP
         absolute_time_samples_in_sec = time_samples + state.ego_state.timestamp_in_sec
 
         close_obstacles = \
@@ -196,8 +216,8 @@ class WerlingPlanner(TrajectoryPlanner):
         # make theta_diff to be in [-pi, pi]
         last_fpoints = ftrajectories[:, -1, :]
         dist_from_goal_costs = \
-            params.dist_from_goal_lon_sq_cost * np.square(last_fpoints[:, F_SX] - goal_sx) + \
-            params.dist_from_goal_lat_sq_cost * np.square(last_fpoints[:, F_DX] - goal_dx)
+            params.dist_from_goal_lon_sq_cost * np.square(last_fpoints[:, F_SX] - goal_in_frenet[FP_SX]) + \
+            params.dist_from_goal_lat_sq_cost * np.square(last_fpoints[:, F_DX] - goal_in_frenet[FP_DX])
         dist_from_ref_costs = params.dist_from_ref_sq_cost * np.sum(np.power(ftrajectories[:, :, F_DX], 2), axis=1)
 
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
@@ -248,8 +268,7 @@ class WerlingPlanner(TrajectoryPlanner):
         mat1_shape_for_tile = np.ones_like(mat1.shape)
         mat1_shape_for_tile[0] = len(mat1)
         return np.concatenate((np.repeat(mat1, len(mat2), axis=0), np.tile(mat2, tuple(mat1_shape_for_tile))),
-                              axis=len(mat1.shape)-1)
-
+                              axis=len(mat1.shape) - 1)
 
 
 class FrenetConstraints:
