@@ -12,7 +12,7 @@ CartesianExtendedState = np.ndarray  # [C_X, C_Y, C_THETA, C_V, C_A, C_K]
 CartesianExtendedTrajectory = np.ndarray  # A Cartesian-Frame trajectory: a numpy matrix of CartesianExtendedState
 CartesianExtendedTrajectories = np.ndarray  # Cartesian-Frame trajectories: a tensor of CartesianExtendedTrajectory
 
-C_X, C_Y, C_THETA, C_V, C_A, C_K = 0, 1, 2, 3, 4, 5  # Column indices for cartesian-state [x, y, theta, v, a, k]
+C_X, C_Y, C_THETA, C_V, C_A, C_K = 0, 1, 2, 3, 4, 5  # Column indices for cartesian-state [x, y, yaw, v, a, k]
 
 
 Curve = np.ndarray  # [CURVE_X, CURVE_Y, CURVE_THETA]
