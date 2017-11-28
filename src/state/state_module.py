@@ -1,6 +1,6 @@
 from logging import Logger
 from threading import Lock
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import numpy as np
 
@@ -9,7 +9,7 @@ from decision_making.src.global_constants import DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC
     DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, STATE_PUBLISH_TOPIC, EGO_ID
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.state.state import OccupancyState, EgoState, DynamicObject, ObjectSize, State
-from mapping.src.exceptions import MapCellNotFound
+from mapping.src.exceptions import MapCellNotFound, raises
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.model.map_api import MapAPI
 
@@ -19,13 +19,14 @@ class StateModule(DmModule):
     UNKNWON_DEFAULT_VAL = 0.0
 
     # TODO: implement double-buffer mechanism for locks wherever needed. Current lock mechanism may slow the
-    # TODO(cont): processing when multiple events come in consecutively.
+    # TODO(cont): processing when multiple events come in concurrently.
     def __init__(self, dds: DdsPubSub, logger: Logger, map_api: MapAPI, occupancy_state: Optional[OccupancyState],
                  dynamic_objects: Optional[List[DynamicObject]], ego_state: Optional[EgoState],
-                 dynamic_objects_memory_map: dict = {}) -> None:
+                 dynamic_objects_memory_map: Dict[str,DynamicObject] = {}) -> None:
         """
         :param dds: Inter-process communication interface.
         :param logger: Logging module.
+        :param map_api: pointer to map service.
         :param occupancy_state: Initial state occupancy object.
         :param dynamic_objects: Initial state dynamic objects.
         :param ego_state: Initial ego-state object.
@@ -91,8 +92,12 @@ class StateModule(DmModule):
         except Exception as e:
             self.logger.error("StateModule._dynamic_obj_callback failed due to {}".format(e))
 
-    def create_dyn_obj_list(self, objects) -> List[DynamicObject]:
+    @raises(MapCellNotFound)
+    def create_dyn_obj_list(self, objects : dict) -> List[DynamicObject]:
         """
+        Convert serialized object perception and global localization data into a DM object (This also includes computation
+        of the object's road localization). Additionally the object is stored in memory as preparation for the case where it will leave
+        the field of view.
         :param objects: Serialized dynamic objects list.
         :return: List of dynamic object in DM format.
         """

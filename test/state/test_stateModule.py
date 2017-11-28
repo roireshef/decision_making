@@ -1,7 +1,8 @@
-from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING
-from decision_making.src.state.state import OccupancyState
+from decision_making.src.state.state import OccupancyState, EgoState
 from decision_making.src.state.state_module import StateModule
+from decision_making.test.dds.mock_ddspubsub import DdsPubSubMock
+from mapping.src.model.map_api import MapAPI
 from rte.python.logger.AV_logger import AV_Logger
 from spcog.decision_making_sim.test.fixtures import dynamic_objects_not_in_fov, dynamic_objects_in_fov
 from mapping.test.model.testable_map_fixtures import testable_map_api
@@ -9,9 +10,9 @@ from decision_making.test.planning.custom_fixtures import dds_pubsub, ego_state_
 import numpy as np
 
 
-def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(dds_pubsub, dynamic_objects_in_fov,
-                                                                     dynamic_objects_not_in_fov, ego_state_fix,
-                                                                     testable_map_api):
+def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(dds_pubsub : DdsPubSubMock, dynamic_objects_in_fov : dict,
+                                                                     dynamic_objects_not_in_fov : dict, ego_state_fix : EgoState,
+                                                                     testable_map_api : MapAPI):
     """
 
     :param dds_pubsub: Inter-process communication interface.
