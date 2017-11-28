@@ -140,8 +140,8 @@ class TrajectoryPlanningFacade(DmModule):
         time_diff = current_ego_state.timestamp - self._last_trajectory.timestamp
         current_expected_location = self._last_trajectory.sample(np.array([time_diff]))
         current_actual_location = np.array([current_ego_state.x, current_ego_state.y])
-        errors = np.abs(np.subtract(current_expected_location, current_actual_location))
 
+        # TODO: sides should be switched (this should be in terms of expected coordinate frame)
         errors_in_ego_frame, _ = CartesianFrame.convert_global_to_relative_frame(
             global_pos=np.append(current_expected_location, [0.0]),
             global_yaw=0.0, # irrelevant since we don't care about relative yaw
