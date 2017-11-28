@@ -16,6 +16,7 @@ from decision_making.src.state.state import State, EgoState
 import time
 import numpy as np
 import copy
+from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
 class TrajectoryPlanningFacade(DmModule):
@@ -61,14 +62,15 @@ class TrajectoryPlanningFacade(DmModule):
 
             # TODO: this currently applies to location only (not yaw, velocities, accelerations, etc.)
             if self._is_actual_state_close_to_expected_state(state.ego_state):
-                updated_state = state
-            else:
                 updated_state = self._get_state_with_expected_ego(state)
+            else:
+                updated_state = state
 
             # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
             samplable_trajectory, cost, debug_results = self._strategy_handlers[params.strategy].\
                 plan(updated_state, params.reference_route, params.target_state, params.time, params.cost_params)
 
+            # TODO: validate that sampling is consistent with controller!
             trajectory_points = samplable_trajectory.sample(
                 np.linspace(start=TRAJECTORY_TIME_RESOLUTION,
                             stop=TRAJECTORY_NUM_POINTS*TRAJECTORY_TIME_RESOLUTION,
@@ -138,9 +140,20 @@ class TrajectoryPlanningFacade(DmModule):
         time_diff = current_ego_state.timestamp - self._last_trajectory.timestamp
         current_expected_location = self._last_trajectory.sample(np.array([time_diff]))
         current_actual_location = np.array([current_ego_state.x, current_ego_state.y])
-        euclidean_distance = np.linalg.norm(np.subtract(current_expected_location, current_actual_location))
+        errors = np.abs(np.subtract(current_expected_location, current_actual_location))
 
-        return euclidean_distance <= NEGLIGIBLE_LOCATION_DIFF
+        errors_in_ego_frame, _ = CartesianFrame.convert_global_to_relative_frame(
+            global_pos=np.append(current_expected_location, [0.0]),
+            global_yaw=0.0, # irrelevant since we don't care about relative yaw
+            frame_position=current_actual_location,
+            frame_orientation=current_ego_state.yaw
+        )
+
+        distances_in_ego_frame = np.abs(errors_in_ego_frame)
+
+        # TODO: change 0,1 indices to X and Y column constants (when merged with other branches in v1.5.3)
+        return distances_in_ego_frame[0] <= NEGLIGIBLE_DISPOSITION_LON and \
+               distances_in_ego_frame[1] <= NEGLIGIBLE_DISPOSITION_LAT
 
     def _get_state_with_expected_ego(self, state: State):
         time_diff = state.ego_state.timestamp - self._last_trajectory.timestamp

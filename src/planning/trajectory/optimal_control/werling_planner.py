@@ -107,7 +107,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         time_samples = np.arange(0.0, relative_time, self.dt)
         # solve problem in frenet-frame
-        ftrajectories, poly_coefs = self._solve_optimization(fconstraints_t0, fconstraints_tT, time_samples)
+        ftrajectories, poly_coefs = self._solve_optimization(fconstraints_t0, fconstraints_tT, relative_time, time_samples)
 
         # filter resulting trajectories by velocity and acceleration
         ftrajectories_filtered, filtered_indices = self._filter_limits(ftrajectories, cost_params)

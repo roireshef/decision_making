@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PUBLISH_TOPIC, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PARAMS_READER_TOPIC
@@ -17,7 +17,7 @@ from mapping.test.model.testable_map_fixtures import testable_map_api
 
 from rte.python.logger.AV_logger import AV_Logger
 
-
+# TODO: need to add a logger-mock here because facades catch exceptions and redirect them to logger
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(
         dds_pubsub: DdsPubSubMock, behavioral_facade, testable_map_api, state_module):
     logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)

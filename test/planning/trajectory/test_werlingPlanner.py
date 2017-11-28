@@ -40,15 +40,15 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
     road_localization2 = DynamicObject.compute_road_localization(pos2, yaw2, map_api)
 
     obs = list([
-        DynamicObject(obj_id=0, timestamp=0, x=pos1[0], y=pos1[1], z=0, yaw=yaw1, size=ObjectSize(1.5, 0.5, 0),
+        DynamicObject(obj_id=0, timestamp=950, x=pos1[0], y=pos1[1], z=0, yaw=yaw1, size=ObjectSize(1.5, 0.5, 0),
                       road_localization=road_localization1, confidence=1.0, v_x=2.2, v_y=0, acceleration_lon=0.0,
                       omega_yaw=0.0),
-        DynamicObject(obj_id=0, timestamp=0, x=pos2[0], y=pos2[1], z=0, yaw=yaw2, size=ObjectSize(1.5, 0.5, 0),
+        DynamicObject(obj_id=0, timestamp=950, x=pos2[0], y=pos2[1], z=0, yaw=yaw2, size=ObjectSize(1.5, 0.5, 0),
                       road_localization=road_localization2, confidence=1.0, v_x=1.1, v_y=0, acceleration_lon=0.0,
                       omega_yaw=0.0)
     ])
 
-    ego = EgoState(obj_id=-1, timestamp=0, x=0, y=0, z=0, yaw=0, size=None,
+    ego = EgoState(obj_id=-1, timestamp=1000, x=0, y=0, z=0, yaw=0, size=None,
                    road_localization=DynamicObject.compute_road_localization(np.array([0, 0]),0.0,map_api),
                    confidence=1.0, v_x=v0, v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
@@ -74,7 +74,7 @@ def test_werlingPlanner_toyScenario_noException(testable_map_api):
     samplable,_ ,debug = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
                                       time=T, cost_params=cost_params)
 
-    samplable.sample()
+    samplable.sample(np.arange(0, 1, 0.1))
 
     end_time = time.time() - start_time
 
