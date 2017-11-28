@@ -105,7 +105,7 @@ class DmInitialization:
 
         # TODO: fill the strategy handlers
         planner = WerlingPlanner(logger, predictor)
-        strategy_handlers: StrategyHandlersDict = {TrajectoryPlanningStrategy.HIGHWAY: planner,
+        strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
                                                    TrajectoryPlanningStrategy.PARKING: planner,
                                                    TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
