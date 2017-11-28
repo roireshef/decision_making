@@ -82,15 +82,9 @@ class Predictor:
             predicted_object_state.x = predicted_pos[0]
             predicted_object_state.y = predicted_pos[1]
             predicted_object_state.yaw = predicted_yaw
-            # TODO: check consistency between diff of (x,y) and v_x, v_y as calculated below:
-            if project_velocity_to_global:
-                predicted_object_state.v_x = predictions[t_ind, PREDICT_VEL] * np.cos(predicted_yaw)
-                predicted_object_state.v_y = predictions[t_ind, PREDICT_VEL] * np.sin(predicted_yaw)
-            else:
-                # We currently assume that the velocity vector is towards object's x axis
-                # TODO: remove assumption
-                predicted_object_state.v_x = predictions[t_ind, PREDICT_VEL]
-                predicted_object_state.v_y = 0.0
+            # the velocity vector is towards object's x axis
+            predicted_object_state.v_x = predictions[t_ind, PREDICT_VEL]
+            predicted_object_state.v_y = 0.0
             predicted_object_state.road_localization = DynamicObject.compute_road_localization(predicted_pos,
                                                                                                predicted_yaw,
                                                                                                self._map_api)

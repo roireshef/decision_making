@@ -79,8 +79,8 @@ class DynamicObject(DDSNonTypedMsg):
         :param yaw: for ego 0 means along X axis, for the rest 0 means forward direction relatively to ego
         :param size: class ObjectSize
         :param confidence: of object's existence
-        :param v_x: in m/sec; for ego in world coordinates, for the rest relatively to ego
-        :param v_y: in m/sec
+        :param v_x: in m/sec; relatively to its own yaw
+        :param v_y: in m/sec; relatively to its own yaw (usually close to zero)
         :param acceleration_lon: acceleration in longitude axis
         :param omega_yaw: 0 for straight motion, positive for CCW (yaw increases), negative for CW
         """
@@ -132,14 +132,13 @@ class DynamicObject(DDSNonTypedMsg):
         :param map_api: MapAPI instance
         :return: the road localization
         """
-        closest_road_id, lon, lat, global_yaw, is_on_road = map_api.convert_global_to_road_coordinates(global_pos[0],
-                                                                                                       global_pos[1],
-                                                                                                       global_yaw)
+        closest_road_id, lon, lat, intra_road_yaw, is_on_road = \
+            map_api.convert_global_to_road_coordinates(global_pos[0], global_pos[1], global_yaw)
         lane_width = map_api.get_road(closest_road_id).lane_width
         lane = np.math.floor(lat / lane_width)
         intra_lane_lat = lat - lane * lane_width
 
-        return RoadLocalization(closest_road_id, int(lane), lat, intra_lane_lat, lon, global_yaw)
+        return RoadLocalization(closest_road_id, int(lane), lat, intra_lane_lat, lon, intra_road_yaw)
 
     def get_relative_road_localization(self, ego_road_localization, ego_nav_plan, map_api, logger):
         # type: (RoadLocalization, NavigationPlanMsg, MapAPI, Logger) -> Union[RelativeRoadLocalization, None]
@@ -165,25 +164,6 @@ class DynamicObject(DDSNonTypedMsg):
             relative_lat = self.road_localization.full_lat - ego_road_localization.full_lat
             relative_yaw = self.road_localization.intra_lane_yaw - ego_road_localization.intra_lane_yaw
             return RelativeRoadLocalization(rel_lat=relative_lat, rel_lon=relative_lon, rel_yaw=relative_yaw)
-
-    @staticmethod
-    def compute_road_localization(global_pos: np.ndarray, global_yaw: float, map_api: MapAPI) -> RoadLocalization:
-        """
-        calculate road coordinates for global coordinates for ego
-        :param global_pos: 1D numpy array of ego vehicle's [x,y,z] in global coordinate-frame
-        :param global_yaw: in global coordinate-frame
-        :param map_api: MapAPI instance
-        :return: the road localization
-        """
-        closest_road_id, lon, lat, global_yaw, is_on_road = map_api.convert_global_to_road_coordinates(global_pos[0],
-                                                                                                       global_pos[1],
-                                                                                                       global_yaw)
-        lane_width = map_api.get_road(closest_road_id).lane_width
-        lane = np.math.floor(lat / lane_width)
-        intra_lane_lat = lat - lane * lane_width
-
-        return RoadLocalization(closest_road_id, int(lane), lat, intra_lane_lat, lon, global_yaw)
-
 
 
 class EgoState(DynamicObject, DDSNonTypedMsg):

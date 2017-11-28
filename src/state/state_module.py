@@ -94,9 +94,13 @@ class StateModule(DmModule):
                 height = dyn_obj_dict["bbox"]["height"]
                 size = ObjectSize(length, width, height)
 
-                v_x = dyn_obj_dict["velocity"]["v_x"]
-                v_y = dyn_obj_dict["velocity"]["v_y"]
+                glob_v_x = dyn_obj_dict["velocity"]["v_x"]
+                glob_v_y = dyn_obj_dict["velocity"]["v_y"]
                 omega_yaw = dyn_obj_dict["velocity"]["omega_yaw"]
+
+                # convert velocity from map coordinates to relative to its own yaw
+                v_x = np.cos(yaw) * glob_v_x + np.sin(yaw) * glob_v_y
+                v_y = -np.sin(yaw) * glob_v_x + np.cos(yaw) * glob_v_y
 
                 is_predicted = dyn_obj_dict["tracking_status"]["is_predicted"]
 
