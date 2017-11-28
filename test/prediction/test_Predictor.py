@@ -11,8 +11,8 @@ from rte.python.logger.AV_logger import AV_Logger
 
 
 class TestPredictorMock(Predictor):
-    def predict_object_trajectories(self, dynamic_object: Type[DynamicObject],
-                                    prediction_timestamps: np.ndarray) -> np.ndarray:
+    def predict_object(self, dynamic_object: Type[DynamicObject],
+                       prediction_timestamps: np.ndarray) -> np.ndarray:
         traj = np.array([[0.0, 0.0, np.pi / 4, x] for x in range(len(prediction_timestamps))])
         traj[:, PREDICT_X] = np.cumsum(traj[:, PREDICT_VEL] * np.cos(traj[:, PREDICT_YAW]))
         traj[:, PREDICT_Y] = np.cumsum(traj[:, PREDICT_VEL] * np.sin(traj[:, PREDICT_YAW]))
