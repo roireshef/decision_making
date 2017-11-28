@@ -14,7 +14,7 @@ from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.dds.mock_ddspubsub import DdsPubSubMock
 from decision_making.test.planning.custom_fixtures import *
 
-from mapping.test.model.testable_map_fixtures import map_api_mock
+from mapping.test.model.testable_map_fixtures import map_api_mock, testable_map_api
 
 from rte.python.logger.AV_logger import AV_Logger
 

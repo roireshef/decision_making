@@ -49,7 +49,6 @@ class DmInitialization:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         dds = DdsPubSub(STATE_MODULE_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
         MapService.initialize()
-        map_api = MapService.get_instance()
         default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
                                                  np.array([0.1], dtype=np.float))
         state_module = StateModule(dds, logger, default_occupancy_state, None, None)
@@ -72,18 +71,6 @@ class DmInitialization:
         # TODO: fill the policy
         # Init map
         MapService.initialize()
-        map_api = MapService.get_instance()
-
-        # Init states
-        init_navigation_plan = NavigationPlanMsg(np.array([]))
-        init_ego_state = EgoState(0, None, 0.0, 0.0, 0.0, 0.0, ObjectSize(0.0, 0.0, 0.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-
-        # Init policy
-        # behavioral_state = DefaultBehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [])
-        # policy_config = DefaultPolicyConfig()
-        # policy = DefaultPolicy(logger, policy_config, behavioral_state, None, map_api)
-
-        # NOV DEMO POLICY
         predictor = RoadFollowingPredictor(logger)
         policy = SemanticActionsGridPolicy(logger=logger, predictor=predictor)
 
@@ -97,8 +84,6 @@ class DmInitialization:
 
         # Init map
         MapService.initialize()
-        init_navigation_plan = NAVIGATION_PLAN
-
         predictor = RoadFollowingPredictor(logger)
 
         # TODO: fill the strategy handlers

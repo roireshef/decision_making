@@ -14,13 +14,13 @@ from decision_making.src.state.state import EgoState, DynamicObject, ObjectSize
 from decision_making.src.state.state_module import Logger
 from decision_making.test.prediction.test_Predictor import TestPredictorMock
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from mapping.test.model.testable_map_fixtures import map_api_mock
+from mapping.test.model.testable_map_fixtures import testable_map_api
 from rte.python.logger.AV_logger import AV_Logger
 
 from unittest.mock import patch
 
 
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=testable_map_api)
 def test_novDemoEvalSemanticActions():
     max_velocity = v = BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT  # m/s
 
@@ -94,7 +94,7 @@ def test_novDemoEvalSemanticActions():
         # print(costs)
 
 
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=testable_map_api)
 def test_get_actionIndByLane():
     logger = AV_Logger.get_logger('test_get_actionIndByLane')
     semantic_action = SemanticAction((SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT), None, SemanticActionType(1))

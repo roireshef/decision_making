@@ -5,7 +5,7 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_grid_stat
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from mapping.test.model.testable_map_fixtures import map_api_mock
+from mapping.test.model.testable_map_fixtures import map_api_mock, testable_map_api
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import state_with_sorrounding_objects, \
     state_with_ego_on_right_lane, state_with_ego_on_left_lane, nov_demo_semantic_follow_action, \

@@ -34,6 +34,7 @@ class DynamicObject(DDSNonTypedMsg):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, acceleration_lon, omega_yaw):
         # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float) -> None
         """
+        IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
         both ego and other dynamic objects
         :param obj_id: object id
         :param timestamp: time of perception
@@ -66,9 +67,7 @@ class DynamicObject(DDSNonTypedMsg):
     def road_localization(self):
         if self._cached_road_localization is None:
             self._cached_road_localization = MapService.get_instance().compute_road_localization(
-                np.array([self.x, self.y, self.z]),
-                self.yaw
-            )
+                np.array([self.x, self.y, self.z]), self.yaw)
         return self._cached_road_localization
 
     @property
@@ -101,6 +100,7 @@ class EgoState(DynamicObject, DDSNonTypedMsg):
                  v_x, v_y, acceleration_lon, omega_yaw, steering_angle):
         # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float, float) -> None
         """
+        IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
         :param obj_id:
         :param timestamp:
         :param x:

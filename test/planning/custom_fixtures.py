@@ -32,9 +32,7 @@ def navigation_plan():
 def state():
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     dyn1 = DynamicObject(1, 34, 0.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
-                         # RoadLocalization(1, 1, 0.0, 0.0, 10.0, 0.0))
     dyn2 = DynamicObject(1, 35, 10.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
-                         # RoadLocalization(1, 1, 0.0, 0.0, 20.0, 0.0))
     dynamic_objects = [dyn1, dyn2]
     size = ObjectSize(0, 0, 0)
     # TODO - decouple from navigation plan below (1 is the road id). Make this dependency explicit.

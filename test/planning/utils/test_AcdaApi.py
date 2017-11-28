@@ -8,7 +8,6 @@ from decision_making.src.planning.utils.acda import AcdaApi
 from decision_making.src.planning.utils.acda_constants import SENSOR_OFFSET_FROM_FRONT
 from decision_making.src.state.state import EgoState, ObjectSize, DynamicObject
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from mapping.src.model.localization import RelativeRoadLocalization
 from mapping.src.model.map_api import MapAPI
 from mapping.test.model.map_model_utils import TestMapModelUtils
 from rte.python.logger.AV_logger import AV_Logger
@@ -18,17 +17,13 @@ NUM_LANES = 3
 LANE_WIDTH = 3.0
 
 
-class MapMock(MapAPI):
-    pass
-
-
 @pytest.fixture()
 def testable_navigation_plan():
     yield NavigationPlanMsg(road_ids=np.array([1, 2]))
 
 
 @pytest.fixture()
-def map_api_mock():
+def testable_map_api_for_acda():
     # Create a rectangle test map
     road_coordinates_1 = np.array([[0., 0.],
                                    [1., 0.],
@@ -47,7 +42,7 @@ def map_api_mock():
                                                                         road_name='def',
                                                                         lanes_num=NUM_LANES, lane_width=LANE_WIDTH)
 
-    return MapMock(map_model=test_map_model, logger=AV_Logger.get_logger('test_map_acda'))
+    return MapAPI(map_model=test_map_model, logger=AV_Logger.get_logger('test_map_acda'))
 
 
 def test_calc_road_turn_radius_TurnOnCircle_successful():
@@ -77,7 +72,7 @@ def test_calc_safe_speed_forward_line_of_sight_CheckSpeed_successful():
     assert AcdaApi.calc_safe_speed_forward_line_of_sight(forward_sight_distance=10.0) > 0
 
 
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=testable_map_api_for_acda)
 def test_AcdaFeaturesInComplexScenraio_successful(testable_navigation_plan):
     logger = AV_Logger.get_logger('acda_test')
 
