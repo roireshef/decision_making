@@ -1,10 +1,10 @@
 import numpy as np
-from typing import Type
+from typing import Type, List
 
 from decision_making.src.prediction.predictor import Predictor
 
 from decision_making.src.prediction.columns import PREDICT_X, PREDICT_Y, PREDICT_YAW, PREDICT_VEL
-from decision_making.src.state.state import DynamicObject, EgoState, State
+from decision_making.src.state.state import DynamicObject, EgoState, State, RoadLocalization
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.planning.custom_fixtures import state
 from mapping.test.model.testable_map_fixtures import map_api_mock
@@ -13,15 +13,18 @@ from rte.python.logger.AV_logger import AV_Logger
 from unittest.mock import patch
 
 
+# TODO: Move to fixtures, so that other tests will be able to use it
 class TestPredictorMock(Predictor):
-    def predict_object_trajectories(self, dynamic_object: Type[DynamicObject],
-                                    prediction_timestamps: np.ndarray) -> np.ndarray:
+    def predict_object(self, dynamic_object: Type[DynamicObject],
+                       prediction_timestamps: np.ndarray) -> np.ndarray:
         traj = np.array([[0.0, 0.0, np.pi / 4, x] for x in range(len(prediction_timestamps))])
         traj[:, PREDICT_X] = np.cumsum(traj[:, PREDICT_VEL] * np.cos(traj[:, PREDICT_YAW]))
         traj[:, PREDICT_Y] = np.cumsum(traj[:, PREDICT_VEL] * np.sin(traj[:, PREDICT_YAW]))
 
         return traj
-
+    def predict_object_on_road(self, road_localization: RoadLocalization, localization_timestamp: float,
+                               prediction_timestamps: np.ndarray) -> List[RoadLocalization]:
+        pass
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_predictEgoState_apiTest_returnsEgoStatesList(state):

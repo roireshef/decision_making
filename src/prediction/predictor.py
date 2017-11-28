@@ -1,5 +1,6 @@
 import traceback
 import copy
+from abc import ABCMeta, abstractmethod
 from logging import Logger
 from typing import List, Type
 
@@ -9,7 +10,12 @@ from decision_making.src.prediction.columns import PREDICT_X, PREDICT_Y, PREDICT
 from decision_making.src.state.state import DynamicObject, EgoState, State
 from mapping.src.exceptions import LongitudeOutOfRoad
 
+import six
 
+from mapping.src.model.localization import RoadLocalization
+
+
+@six.add_metaclass(ABCMeta)
 class Predictor:
     """
     Base class for predictors of dynamic objects
@@ -18,8 +24,9 @@ class Predictor:
     def __init__(self, logger: Logger):
         self._logger = logger
 
-    def predict_object_trajectories(self, dynamic_object: DynamicObject,
-                                    prediction_timestamps: np.ndarray) -> np.ndarray:
+    @abstractmethod
+    def predict_object(self, dynamic_object: DynamicObject,
+                       prediction_timestamps: np.ndarray) -> np.ndarray:
         """
         Method to compute future locations, yaw, and velocities for dynamic objects. Returns the np.array used by the
          trajectory planner.
@@ -30,7 +37,7 @@ class Predictor:
         """
         pass
 
-    def predict_ego_trajectories(self, ego_state: EgoState, prediction_timestamps: np.ndarray) -> np.ndarray:
+    def predict_ego(self, ego_state: EgoState, prediction_timestamps: np.ndarray) -> np.ndarray:
         """
         Method to compute future locations, yaw, and velocities for ego vehicle. Returns the np.array used by the
          trajectory planner.
@@ -38,7 +45,18 @@ class Predictor:
         :param prediction_timestamps: np array of timestamps to predict_object_trajectories for. In ascending order.
         :return: ego's predicted locations in global map coordinates np.array([x, y, theta, vel])
         """
-        return self.predict_object_trajectories(ego_state, prediction_timestamps)
+        return self.predict_object(ego_state, prediction_timestamps)
+
+    @abstractmethod
+    def predict_object_on_road(self, road_localization: RoadLocalization, localization_timestamp: float,
+                               prediction_timestamps: np.ndarray) -> List[RoadLocalization]:
+        """
+        computes future locations, yaw and velocities for an object directly in the road coordinates-frame
+        :param road_localization: object's road localization
+        :param localization_timestamp: the timestamp of road_localization argument (units are the same as DynamicObject.timestamp)
+        :param prediction_timestamps: np array of timestamps to predict future localizations for. In ascending order.
+        :return: a list of future localizations that correspond to prediction_timestamps
+        """
 
     def _convert_predictions_to_dynamic_objects(self, dynamic_object: DynamicObject, predictions: np.ndarray,
                                                 prediction_timestamps: np.ndarray,
@@ -84,7 +102,7 @@ class Predictor:
         :return: List of predicted states of the dynamic object where pos/yaw/vel values are predicted using
         predict_object_trajectories. IMPORTANT - returned list must be in the same order as prediction_timestamps.
         """
-        predictions = self.predict_object_trajectories(dynamic_object, prediction_timestamps)
+        predictions = self.predict_object(dynamic_object, prediction_timestamps)
         return self._convert_predictions_to_dynamic_objects(dynamic_object, predictions, prediction_timestamps, True)
 
     def _predict_ego_state(self, ego_state: EgoState, prediction_timestamps: np.ndarray) -> List[EgoState]:
@@ -96,7 +114,7 @@ class Predictor:
         predict_ego_trajectories. IMPORTANT - returned list must be in the same order as prediction_timestamps.
         """
         # TODO: update EgoState attributes that are copied and are not part of DynamicObject (as steering_angle)
-        predictions = self.predict_ego_trajectories(ego_state, prediction_timestamps)
+        predictions = self.predict_ego(ego_state, prediction_timestamps)
         return self._convert_predictions_to_dynamic_objects(ego_state, predictions, prediction_timestamps, False)
 
     def predict_state(self, state: State, prediction_timestamps: np.ndarray) -> List[State]:

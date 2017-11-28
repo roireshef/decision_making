@@ -19,7 +19,7 @@ def test_predictObjectTrajectories_precisePrediction():
     dyn_obj = DynamicObject(obj_id=1, timestamp=1e9, x=global_pos[0], y=global_pos[1], z=0, yaw=0, size=size, confidence=0,
                             v_x = 10, v_y = 0, acceleration_lon=0, omega_yaw=0)
     pred_timestamps = np.arange(5.0, 12.0, 0.1)
-    traj = predictor.predict_object_trajectories(dyn_obj, pred_timestamps)
+    traj = predictor.predict_object(dyn_obj, pred_timestamps)
     assert np.isclose(traj[0][0],540.) and np.isclose(traj[0][1], 0.) and \
            np.isclose(traj[-1][0], 600.) and np.isclose(traj[-1][1], 9.)
 
