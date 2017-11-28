@@ -9,8 +9,10 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_grid_beha
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction, SemanticActionType, \
     SemanticActionSpec
 from decision_making.src.prediction.predictor import Predictor
+from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, EgoState, DynamicObject, ObjectSize
 from decision_making.src.state.state_module import StateModule, Logger
+from decision_making.test.prediction.test_Predictor import TestPredictorMock
 from mapping.test.model.testable_map_fixtures import testable_map_api
 from rte.python.logger.AV_logger import AV_Logger
 
@@ -69,7 +71,8 @@ def test_novDemoEvalSemanticActions(testable_map_api):
         grid[(1, 1)] = [obs[2]]
         behav_state = SemanticActionsGridBehavioralState(grid, ego)
         logger = Logger("NovDemoTest")
-        predictor = Predictor(testable_map_api, logger)
+        # TODO: move TestPredictorMock to fixtures
+        predictor = TestPredictorMock(testable_map_api, logger)
         policy = SemanticActionsGridPolicy(logger, predictor, testable_map_api)
 
         semantic_actions = []
@@ -96,7 +99,8 @@ def test_get_actionIndByLane(testable_map_api):
     logger = AV_Logger.get_logger('test_get_actionIndByLane')
     semantic_action = SemanticAction((SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT), None, SemanticActionType(1))
     spec1 = SemanticActionSpec(t=5, v=10, s_rel=30, d_rel=-3)
-    policy = SemanticActionsGridPolicy(Logger("NovDemoTest"), Predictor(testable_map_api, logger=logger),
+    # TODO: move TestPredictorMock to fixtures
+    policy = SemanticActionsGridPolicy(Logger("NovDemoTest"), TestPredictorMock(testable_map_api, logger=logger),
                                        testable_map_api)
     action_ind = policy._get_action_ind([semantic_action], (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT))
     assert action_ind == 0

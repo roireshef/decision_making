@@ -1,15 +1,15 @@
 import numpy as np
-from typing import Type
+from typing import Type, List
 
 from decision_making.src.prediction.predictor import Predictor
 
 from decision_making.src.prediction.columns import PREDICT_X, PREDICT_Y, PREDICT_YAW, PREDICT_VEL
-from decision_making.src.state.state import DynamicObject, EgoState, State
+from decision_making.src.state.state import DynamicObject, EgoState, State, RoadLocalization
 from decision_making.test.planning.custom_fixtures import state
 from mapping.test.model.testable_map_fixtures import testable_map_api
 from rte.python.logger.AV_logger import AV_Logger
 
-
+# TODO: Move to fixtures, so that other tests will be able to use it
 class TestPredictorMock(Predictor):
     def predict_object(self, dynamic_object: Type[DynamicObject],
                        prediction_timestamps: np.ndarray) -> np.ndarray:
@@ -18,7 +18,9 @@ class TestPredictorMock(Predictor):
         traj[:, PREDICT_Y] = np.cumsum(traj[:, PREDICT_VEL] * np.sin(traj[:, PREDICT_YAW]))
 
         return traj
-
+    def predict_object_on_road(self, road_localization: RoadLocalization, localization_timestamp: float,
+                               prediction_timestamps: np.ndarray) -> List[RoadLocalization]:
+        pass
 
 def test_predictEgoState_apiTest_returnsEgoStatesList(state, testable_map_api):
     ego_state = state.ego_state
