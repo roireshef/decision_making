@@ -9,7 +9,7 @@ import numpy as np
 from decision_making.src.prediction.columns import PREDICT_X, PREDICT_Y, PREDICT_YAW, PREDICT_VEL
 from decision_making.src.state.state import DynamicObject, EgoState, State
 from mapping.src.exceptions import LongitudeOutOfRoad
-from mapping.src.model.localization import RoadLocalization
+from decision_making.src.state.state import RoadLocalization
 from mapping.src.model.map_api import MapAPI
 
 import six
@@ -38,7 +38,6 @@ class Predictor:
         """
         pass
 
-    @abstractmethod
     def predict_ego(self, ego_state: EgoState, prediction_timestamps: np.ndarray) -> np.ndarray:
         """
         Method to compute future locations, yaw, and velocities for ego vehicle. Returns the np.array used by the
