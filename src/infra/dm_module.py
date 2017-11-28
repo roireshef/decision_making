@@ -14,7 +14,7 @@ class DmModule:
     def __init__(self, dds: DdsPubSub, logger: Logger) -> None:
         """
         :param dds: Inter-process communication interface.
-        :param logger: Loging interface.
+        :param logger: Logging interface.
         """
         self.dds = dds
         self.logger = logger
