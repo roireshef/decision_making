@@ -1,9 +1,8 @@
 import numpy as np
 from typing import Type, List
 
+from decision_making.src.planning.types import C_X, C_THETA, C_V, C_Y, CartesianTrajectory
 from decision_making.src.prediction.predictor import Predictor
-
-from decision_making.src.prediction.columns import PREDICT_X, PREDICT_Y, PREDICT_YAW, PREDICT_VEL
 from decision_making.src.state.state import DynamicObject, EgoState, State, RoadLocalization
 from decision_making.test.planning.custom_fixtures import state
 from mapping.test.model.testable_map_fixtures import testable_map_api
@@ -13,9 +12,9 @@ from rte.python.logger.AV_logger import AV_Logger
 class TestPredictorMock(Predictor):
     def predict_object(self, dynamic_object: Type[DynamicObject],
                        prediction_timestamps: np.ndarray) -> np.ndarray:
-        traj = np.array([[0.0, 0.0, np.pi / 4, x] for x in range(len(prediction_timestamps))])
-        traj[:, PREDICT_X] = np.cumsum(traj[:, PREDICT_VEL] * np.cos(traj[:, PREDICT_YAW]))
-        traj[:, PREDICT_Y] = np.cumsum(traj[:, PREDICT_VEL] * np.sin(traj[:, PREDICT_YAW]))
+        traj: CartesianTrajectory = np.array([[0.0, 0.0, np.pi / 4, x] for x in range(len(prediction_timestamps))])
+        traj[:, C_X] = np.cumsum(traj[:, C_V] * np.cos(traj[:, C_THETA]))
+        traj[:, C_Y] = np.cumsum(traj[:, C_V] * np.sin(traj[:, C_THETA]))
 
         return traj
     def predict_object_on_road(self, road_localization: RoadLocalization, localization_timestamp: float,
