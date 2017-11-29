@@ -219,7 +219,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         road_width = MapService.get_instance().get_road(behavioral_state.ego_state.road_localization.road_id).road_width
 
         # Create target state
-        target_path_latitude = action_spec.d_rel + behavioral_state.ego_state.road_localization.full_lat
+        target_path_latitude = action_spec.d_rel + behavioral_state.ego_state.road_localization.intra_road_lat
 
         reference_route_x_y_yaw = CartesianFrame.add_yaw(reference_route)
         target_state_x_y_yaw = reference_route_x_y_yaw[-1, :]
@@ -320,7 +320,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # would have travelled for the planning horizon in the average speed between current and target vel.
         target_relative_s = BEHAVIORAL_PLANNING_HORIZON * \
                             0.5 * (behavioral_state.ego_state.v_x + BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT)
-        target_relative_d = target_lane_latitude - behavioral_state.ego_state.road_localization.full_lat
+        target_relative_d = target_lane_latitude - behavioral_state.ego_state.road_localization.intra_road_lat
 
         return SemanticActionSpec(t=BEHAVIORAL_PLANNING_HORIZON, v=BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT,
                                   s_rel=target_relative_s, d_rel=target_relative_d)
@@ -340,13 +340,13 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         ego_v_y = behavioral_state.ego_state.v_y
 
         ego_on_road = behavioral_state.ego_state.road_localization
-        ego_theta_diff = ego_on_road.intra_lane_yaw  # relative to road
+        ego_theta_diff = ego_on_road.intra_road_yaw  # relative to road
 
         ego_sx0 = ego_on_road.road_lon
         ego_sv0 = np.cos(ego_theta_diff) * ego_v_x + np.sin(ego_theta_diff) * ego_v_y
         ego_sa0 = 0.0  # TODO: to be changed to include acc
 
-        ego_dx0 = ego_on_road.full_lat
+        ego_dx0 = ego_on_road.intra_road_lat
         ego_dv0 = -np.sin(ego_theta_diff) * ego_v_x + np.cos(ego_theta_diff) * ego_v_y
         ego_da0 = 0.0  # TODO: to be changed to include acc
 
@@ -357,13 +357,13 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # TODO: rotate speed v_x, v_y to road coordinated to get the actual lon/lat speed
         # obj_v_x = semantic_action.target_obj.road_longitudinal_speed
         # obj_v_y = semantic_action.target_obj.road_lateral_speed
-        # obj_theta_diff = obj_on_road.intra_lane_yaw  # relative to road
+        # obj_theta_diff = obj_on_road.intra_road_yaw  # relative to road
 
         obj_sx0 = obj_on_road.road_lon  # TODO: handle different road_ids
         obj_sv0 = semantic_action.target_obj.road_longitudinal_speed
         obj_sa0 = 0.0  # TODO: to be changed to include acc
 
-        obj_dx0 = obj_on_road.full_lat
+        obj_dx0 = obj_on_road.intra_road_lat
 
         obj_long_margin = semantic_action.target_obj.size.length
 
@@ -453,7 +453,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         :return: [nx3] array of reference_route (x,y,yaw) [m,m,rad] in global coordinates
         """
 
-        target_lane_latitude = action_spec.d_rel + behavioral_state.ego_state.road_localization.full_lat
+        target_lane_latitude = action_spec.d_rel + behavioral_state.ego_state.road_localization.intra_road_lat
         target_relative_longitude = action_spec.s_rel
 
         # Add a margin to the lookahead path of dynamic objects to avoid extrapolation

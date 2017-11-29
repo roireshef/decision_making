@@ -48,7 +48,7 @@ class RoadFollowingPredictor(Predictor):
         lookahead_route, initial_yaw = MapService.get_instance().get_lookahead_points(dynamic_object.road_localization.road_id,
                                                                           dynamic_object.road_localization.road_lon,
                                                                           lookahead_distance,
-                                                                          dynamic_object.road_localization.full_lat,
+                                                                          dynamic_object.road_localization.intra_road_lat,
                                                                           map_based_nav_plan)
 
         # resample the route to prediction_timestamps
