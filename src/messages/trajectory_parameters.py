@@ -47,8 +47,8 @@ class TrajectoryCostParams(DDSTypedMsg):
         :param dist_from_goal_lon_sq_cost: cost of distance from the target longitude is C(x) = a*x^2, this is a.
         :param dist_from_goal_lat_sq_cost: cost of distance from the target latitude is C(x) = a*x^2, this is a.
         :param dist_from_ref_sq_cost: if cost of distance from the reference route is C(x) = a*x^2, this is a.
-        :param velocity_limits: 1D numpy array of [min allowed velocity, max allowed velocity] in [m/sec]
-        :param acceleration_limits: 1D numpy array of [min allowed acceleration, max allowed acceleration] in [m/sec^2]
+        :param velocity_limits: Limits of allowed velocity in [m/sec]
+        :param acceleration_limits: Limits of allowed acceleration in [m/sec^2]
         """
         self.obstacle_cost = obstacle_cost
         self.left_lane_cost = left_lane_cost

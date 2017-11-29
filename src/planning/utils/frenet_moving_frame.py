@@ -13,7 +13,12 @@ class FrenetMovingFrame:
     cpoint, cstate, and ctrajectory are in cartesian coordinate frame
     """
 
-    def __init__(self, curve_xy: ExtendedCurve, resolution=TRAJECTORY_ARCLEN_RESOLUTION):
+    def __init__(self, curve_xy: ExtendedCurve, resolution: float = TRAJECTORY_ARCLEN_RESOLUTION):
+        """
+        Resamples curve_xy to desired resolution, and convert curve to Frenet moving frame
+        :param curve_xy: original curve in extended Cartesian frame
+        :param resolution: sapling resolution in [m] of curve_xy
+        """
         # TODO: consider moving curve-interpolation outside of this class
         resampled_curve, self._ds = CartesianFrame.resample_curve(curve=curve_xy, step_size=resolution / 4,
                                                                   interp_type=TRAJECTORY_CURVE_INTERP_TYPE)
