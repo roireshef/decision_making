@@ -148,7 +148,7 @@ class AcdaApi:
         """
         min_static_object_long = FORWARD_LOS_MAX_RANGE
         for static_obj in static_objects:
-            relative_road_localization = MapService.get_instance().get_relative_road_localization(
+            relative_road_localization = MapService.get_instance().compute_road_localizations_diff(
                 reference_localization=ego_state.road_localization,
                 object_localization=static_obj.road_localization,
                 navigation_plan=navigation_plan)
@@ -192,7 +192,7 @@ class AcdaApi:
             lookahead_distance = TRAJECTORY_PLANNING_LOOKAHEAD_DISTANCE
 
         for static_obj in static_objects:
-            relative_road_localization = MapService.get_instance().get_relative_road_localization(
+            relative_road_localization = MapService.get_instance().compute_road_localizations_diff(
                 reference_localization=ego_state.road_localization,
                 object_localization=static_obj.road_localization,
                 navigation_plan=navigation_plan

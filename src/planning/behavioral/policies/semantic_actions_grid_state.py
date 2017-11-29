@@ -51,7 +51,7 @@ class SemanticActionsGridState(SemanticBehavioralState):
 
         # Allocate dynamic objects
         for dynamic_object in dynamic_objects:
-            object_relative_localization = MapService.get_instance().get_relative_road_localization(
+            object_relative_localization = MapService.get_instance().compute_road_localizations_diff(
                 reference_localization=ego_state.road_localization,
                 object_localization=dynamic_object.road_localization,
                 navigation_plan=default_navigation_plan
@@ -99,7 +99,7 @@ class SemanticActionsGridState(SemanticBehavioralState):
                 else:
                     # get first objects in list of objects in cell as reference
                     object_in_cell = semantic_occupancy_dict[occupancy_index][0]
-                    object_in_grid_lon_dist = MapService.get_instance().get_relative_road_localization(
+                    object_in_grid_lon_dist = MapService.get_instance().compute_road_localizations_diff(
                         reference_localization=ego_state.road_localization,
                         object_localization=object_in_cell.road_localization,
                         navigation_plan=default_navigation_plan
