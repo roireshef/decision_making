@@ -40,8 +40,16 @@ def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(dds_pubsub 
     assert new_dyn_obj_list[0].timestamp == dynamic_objects_in_fov["timestamp"]
     assert new_dyn_obj_list[0].x == dynamic_objects_in_fov["dynamic_objects"][0]["location"]["x"]
     assert new_dyn_obj_list[0].y == dynamic_objects_in_fov["dynamic_objects"][0]["location"]["y"]
-    assert new_dyn_obj_list[0].v_x == dynamic_objects_in_fov["dynamic_objects"][0]["velocity"]["v_x"]
-    assert new_dyn_obj_list[0].v_y == dynamic_objects_in_fov["dynamic_objects"][0]["velocity"]["v_y"]
+    glob_v_x = dynamic_objects_in_fov["dynamic_objects"][0]["velocity"]["v_x"]
+    glob_v_y = dynamic_objects_in_fov["dynamic_objects"][0]["velocity"]["v_y"]
+    yaw = dynamic_objects_in_fov["dynamic_objects"][0]["bbox"]["yaw"]
+
+    # convert velocity from map coordinates to relative to its own yaw
+    v_x = np.cos(yaw) * glob_v_x + np.sin(yaw) * glob_v_y
+    v_y = -np.sin(yaw) * glob_v_x + np.cos(yaw) * glob_v_y
+
+    assert new_dyn_obj_list[0].v_x == v_x
+    assert new_dyn_obj_list[0].v_y == v_y
 
 
 
