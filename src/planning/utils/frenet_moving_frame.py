@@ -1,41 +1,10 @@
 import numpy as np
 
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_INTERP_TYPE
-from decision_making.src.planning.utils.columns import F_SX, F_SV, F_SA, F_DX, F_DV, F_DA, R_THETA, R_K, R_K_TAG, FP_SX, \
-    FP_DX
+from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, CURVE_THETA, CURVE_K, CURVE_K_TAG, \
+    FP_SX, \
+    FP_DX, FrenetPoint, FrenetTrajectory, CartesianExtendedTrajectory, FrenetTrajectories, CartesianExtendedTrajectories, ExtendedCurve
 from mapping.src.transformations.geometry_utils import CartesianFrame
-
-FrenetPoint = np.ndarray
-"""
-A point in Frenet-frame: a numpy vector of the form [sx, dx]
-"""
-
-FrenetTrajectory = np.ndarray
-"""
-A Frenet-Frame trajectory: a numpy matrix of rows of the form [sx, sv, sa, dx, dv, da]
-"""
-
-CartesianTrajectory = np.ndarray
-"""
-A Cartesian-Frame trajectory: a numpy matrix of rows of the form [x, y, theta, v, a, k]
-"""
-
-FrenetTrajectories = np.ndarray
-"""
-An array of Frenet-Frame trajectories: a numpy tensor with dimensions
-0 - trajectories
-1 - trajectory points,
-2 - frenet-state [sx, sv, sa, dx, dv, da])
-"""
-
-CartesianTrajectories = np.ndarray
-"""
-An array of Cartesian-Frame trajectories: a numpy tensor with dimensions
-0 - trajectories
-1 - trajectory points,
-2 - cartesian-state [x, y, theta, v, a, k]) in car's coordinate frame
-"""
-
 
 
 class FrenetMovingFrame:
@@ -44,7 +13,12 @@ class FrenetMovingFrame:
     cpoint, cstate, and ctrajectory are in cartesian coordinate frame
     """
 
-    def __init__(self, curve_xy: np.ndarray, resolution=TRAJECTORY_ARCLEN_RESOLUTION):
+    def __init__(self, curve_xy: ExtendedCurve, resolution: float = TRAJECTORY_ARCLEN_RESOLUTION):
+        """
+        Resamples curve_xy to desired resolution, and convert curve to Frenet moving frame
+        :param curve_xy: original curve in extended Cartesian frame
+        :param resolution: sapling resolution in [m] of curve_xy
+        """
         # TODO: consider moving curve-interpolation outside of this class
         resampled_curve, self._ds = CartesianFrame.resample_curve(curve=curve_xy, step_size=resolution / 4,
                                                                   interp_type=TRAJECTORY_CURVE_INTERP_TYPE)
@@ -121,7 +95,7 @@ class FrenetMovingFrame:
 
     # currently this is implemented. We should implement the next method and make this one wrap a single trajectory
     # and send it to the next method.
-    def ftrajectory_to_ctrajectory(self, ftrajectory: FrenetTrajectory) -> CartesianTrajectory:
+    def ftrajectory_to_ctrajectory(self, ftrajectory: FrenetTrajectory) -> CartesianExtendedTrajectory:
         """
         Transforms Frenet-frame trajectory to cartesian-frame trajectory, using tensor operations
         :param ftrajectory: a frenet-frame trajectory
@@ -129,7 +103,7 @@ class FrenetMovingFrame:
         """
         return self.ftrajectories_to_ctrajectories(np.array([ftrajectory]))[0]
 
-    def ftrajectories_to_ctrajectories(self, ftrajectories: FrenetTrajectories) -> CartesianTrajectories:
+    def ftrajectories_to_ctrajectories(self, ftrajectories: FrenetTrajectories) -> CartesianExtendedTrajectories:
         """
         Transforms Frenet-frame trajectories to cartesian-frame trajectories, using tensor operations
         :param ftrajectories: Frenet-frame trajectories (tensor)
@@ -138,17 +112,17 @@ class FrenetMovingFrame:
         num_t = ftrajectories.shape[0]
         num_p = ftrajectories.shape[1]
 
-        s_x = ftrajectories[:, :, F_SX]
-        s_v = ftrajectories[:, :, F_SV]
-        s_a = ftrajectories[:, :, F_SA]
-        d_x = ftrajectories[:, :, F_DX]
-        d_v = ftrajectories[:, :, F_DV]
-        d_a = ftrajectories[:, :, F_DA]
+        s_x = ftrajectories[:, :, FS_SX]
+        s_v = ftrajectories[:, :, FS_SV]
+        s_a = ftrajectories[:, :, FS_SA]
+        d_x = ftrajectories[:, :, FS_DX]
+        d_v = ftrajectories[:, :, FS_DV]
+        d_a = ftrajectories[:, :, FS_DA]
 
         s_idx = np.array(np.divide(s_x, self._ds), dtype=int)  # index of frenet-origin
-        theta_r = self._curve[s_idx, R_THETA]  # yaw of frenet-origin
-        k_r = self._curve[s_idx, R_K]  # curvature of frenet-origin
-        k_r_tag = self._curve[s_idx, R_K_TAG]  # derivative by distance (curvature is already in ds units)
+        theta_r = self._curve[s_idx, CURVE_THETA]  # yaw of frenet-origin
+        k_r = self._curve[s_idx, CURVE_K]  # curvature of frenet-origin
+        k_r_tag = self._curve[s_idx, CURVE_K_TAG]  # derivative by distance (curvature is already in ds units)
 
         # pre-compute terms to use below
         term1 = (1 - k_r * d_x)

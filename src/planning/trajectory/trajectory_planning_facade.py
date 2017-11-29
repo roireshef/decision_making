@@ -16,13 +16,9 @@ from decision_making.src.state.state import State
 import time
 
 
-# Define a dictionary of trajectory planners as strategy handlers
-StrategyHandlersDict = Dict[TrajectoryPlanningStrategy, TrajectoryPlanner]
-
-
 class TrajectoryPlanningFacade(DmModule):
     def __init__(self, dds: DdsPubSub, logger: Logger,
-                 strategy_handlers: StrategyHandlersDict):
+                 strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner]):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param dds: communication layer (DDS) instance

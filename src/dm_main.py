@@ -16,8 +16,7 @@ from decision_making.src.planning.behavioral.behavioral_facade import Behavioral
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
-from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade, \
-    StrategyHandlersDict
+from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import EgoState, ObjectSize, RoadLocalization, OccupancyState
@@ -105,7 +104,7 @@ class DmInitialization:
 
         # TODO: fill the strategy handlers
         planner = WerlingPlanner(logger, predictor)
-        strategy_handlers: StrategyHandlersDict = {TrajectoryPlanningStrategy.HIGHWAY: planner,
+        strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
                                                    TrajectoryPlanningStrategy.PARKING: planner,
                                                    TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 

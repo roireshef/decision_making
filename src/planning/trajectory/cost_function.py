@@ -3,7 +3,7 @@ from abc import abstractmethod
 import numpy as np
 
 from decision_making.src.global_constants import EXP_CLIP_TH
-from decision_making.src.planning.utils.columns import R_THETA
+from decision_making.src.planning.types import CartesianTrajectory, C_THETA, CartesianState, C_Y, C_X
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject
 from mapping.src.transformations.geometry_utils import CartesianFrame
@@ -35,8 +35,7 @@ class SigmoidBoxObstacle:
     def compute_cost(self, points: np.ndarray) -> np.ndarray:
         """
         Takes a list of points in vehicle's coordinate frame and returns cost of proximity (to self) for each point
-        :param points: either a numpy matrix of trajectory points of shape [p, 2] ( p points, [x, y] in each point),
-        or a numpy tensor of trajectories of shape [t, p, 2] (t trajectories, p points, [x, y] in each point)
+        :param points: either a CartesianTrajectory or CartesianTrajectories
         :return: numpy vector of corresponding trajectory-costs
         """
         if len(points.shape) == 2:
@@ -46,7 +45,7 @@ class SigmoidBoxObstacle:
         ones = np.ones(points.shape[:2])
         points_ext = np.dstack((points, ones))
 
-        points_proj = self.convert_to_obstacle_coordinate_frame(points_ext)[:, :, :2]
+        points_proj = self.convert_to_obstacle_coordinate_frame(points_ext)[:, :, :(C_Y+1)]
 
         # subtract from the distances: 1. the box dimensions (height, width) and the margin
         points_offset = np.subtract(points_proj, [self.length / 2 + self.margin, self.width / 2 + self.margin])
@@ -54,7 +53,7 @@ class SigmoidBoxObstacle:
         # compute a sigmoid for each dimension [x, y] of each point (in each trajectory)
         logit_costs = np.divide(1.0, (1.0 + np.exp(np.clip(np.multiply(self.k, points_offset), -np.inf, EXP_CLIP_TH))))
 
-        return np.sum(logit_costs[:, :, 0] * logit_costs[:, :, 1], axis=1)
+        return np.sum(logit_costs[:, :, C_X] * logit_costs[:, :, C_Y], axis=1)
 
     @abstractmethod
     def convert_to_obstacle_coordinate_frame(self, homo_trajectories_points: np.ndarray):
@@ -71,9 +70,8 @@ class SigmoidBoxObstacle:
 
 
 class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
-    def __init__(self, poses: np.ndarray, length: float, width: float, k: float, margin: float):
+    def __init__(self, poses: CartesianTrajectory, length: float, width: float, k: float, margin: float):
         """
-
         :param poses: array of the object's predicted poses, each pose is np.array([x, y, theta, vel])
         :param length: length of the box in its own longitudinal axis (box's x)
         :param width: length of the box in its own lateral axis (box's y)
@@ -83,7 +81,7 @@ class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
         # conversion matrices from global to relative to obstacle
         # TODO: make this more efficient by removing for loop
         for pose_ind in range(poses.shape[0]):
-            H = CartesianFrame.homo_matrix_2d(poses[pose_ind, R_THETA], poses[pose_ind, :R_THETA])
+            H = CartesianFrame.homo_matrix_2d(poses[pose_ind, C_THETA], poses[pose_ind, :C_THETA])
             self._H_inv[pose_ind] = np.linalg.inv(H).transpose()
 
     def convert_to_obstacle_coordinate_frame(self, homo_trajectories_points: np.ndarray):
@@ -112,7 +110,7 @@ class SigmoidStaticBoxObstacle(SigmoidBoxObstacle):
     """
 
     # width is on y, length is on x
-    def __init__(self, pose: np.ndarray, length: float, width: float, k: float, margin: float):
+    def __init__(self, pose: CartesianState, length: float, width: float, k: float, margin: float):
         """
         :param pose: 1D numpy array [x, y, theta, vel] that represents object's pose
         :param length: length of the box in its own longitudinal axis (box's x)
@@ -121,7 +119,7 @@ class SigmoidStaticBoxObstacle(SigmoidBoxObstacle):
         :param margin: center of sigmoid offset
         """
         super().__init__(length, width, k, margin)
-        H = CartesianFrame.homo_matrix_2d(pose[R_THETA], pose[:R_THETA])
+        H = CartesianFrame.homo_matrix_2d(pose[C_THETA], pose[:C_THETA])
         self._H_inv = np.linalg.inv(H).transpose()
 
     def convert_to_obstacle_coordinate_frame(self, homo_trajectories_points: np.ndarray):

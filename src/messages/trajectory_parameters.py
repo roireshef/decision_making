@@ -1,8 +1,8 @@
 import numpy as np
 
 from decision_making.src.messages.dds_typed_message import DDSTypedMsg
+from decision_making.src.planning.types import C_V, Limits
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.utils.columns import EGO_V
 
 
 class SigmoidFunctionParams(DDSTypedMsg):
@@ -17,10 +17,7 @@ class SigmoidFunctionParams(DDSTypedMsg):
         self.k = k
         self.offset = offset
 
-TRAJ_PARAMS_VEL_MIN = 0
-TRAJ_PARAMS_VEL_MAX = 1
-TRAJ_PARAMS_ACC_MIN = 0
-TRAJ_PARAMS_ACC_MAX = 1
+
 
 class TrajectoryCostParams(DDSTypedMsg):
     def __init__(self, left_lane_cost: SigmoidFunctionParams, right_lane_cost: SigmoidFunctionParams,
@@ -28,7 +25,7 @@ class TrajectoryCostParams(DDSTypedMsg):
                  left_shoulder_cost: SigmoidFunctionParams, right_shoulder_cost: SigmoidFunctionParams,
                  obstacle_cost: SigmoidFunctionParams,
                  dist_from_goal_lon_sq_cost: float, dist_from_goal_lat_sq_cost: float,
-                 dist_from_ref_sq_cost: float, velocity_limits: np.ndarray, acceleration_limits: np.ndarray):
+                 dist_from_ref_sq_cost: float, velocity_limits: Limits, acceleration_limits: Limits):
         """
         This class holds all the parameters used to build the cost function of the trajectory planner.
         It is dynamically set and sent by the behavioral planner.
@@ -50,8 +47,8 @@ class TrajectoryCostParams(DDSTypedMsg):
         :param dist_from_goal_lon_sq_cost: cost of distance from the target longitude is C(x) = a*x^2, this is a.
         :param dist_from_goal_lat_sq_cost: cost of distance from the target latitude is C(x) = a*x^2, this is a.
         :param dist_from_ref_sq_cost: if cost of distance from the reference route is C(x) = a*x^2, this is a.
-        :param velocity_limits: 1D numpy array of [min allowed velocity, max allowed velocity] in [m/sec]
-        :param acceleration_limits: 1D numpy array of [min allowed acceleration, max allowed acceleration] in [m/sec^2]
+        :param velocity_limits: Limits of allowed velocity in [m/sec]
+        :param acceleration_limits: Limits of allowed acceleration in [m/sec^2]
         """
         self.obstacle_cost = obstacle_cost
         self.left_lane_cost = left_lane_cost
@@ -75,7 +72,7 @@ class TrajectoryParams(DDSTypedMsg):
         :param reference_route: a reference route (often the center of lane). A numpy array of the shape [-1, 2] where
         each row is a point (x, y) relative to the ego-coordinate-frame.
         :param target_state: A 1D numpy array of the desired ego-state to plan towards, represented in current
-        ego-coordinate-frame (see EGO_* in planning.utils.columns.py for the fields)
+        ego-coordinate-frame (see EGO_* in planning.utils.types.py for the fields)
         :param cost_params: list of parameters for the cost function of trajectory planner.
         :param strategy: trajectory planning strategy.
         :param time: trajectory planning time-frame
@@ -88,4 +85,4 @@ class TrajectoryParams(DDSTypedMsg):
 
     @property
     def desired_velocity(self):
-        return self.target_state[EGO_V]
+        return self.target_state[C_V]
