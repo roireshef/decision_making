@@ -9,6 +9,7 @@ from decision_making.src.state.state import State, ObjectSize, EgoState, Dynamic
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidDynamicBoxObstacle, \
     WerlingVisualizer
+from mapping.test.model.testable_map_fixtures import testable_map_api
 from mapping.src.transformations.geometry_utils import CartesianFrame
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger

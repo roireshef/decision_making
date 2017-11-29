@@ -10,7 +10,8 @@ from decision_making.src.planning.behavioral.semantic_actions_policy import Sema
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import OccupancyState, State, EgoState, DynamicObject, ObjectSize
 from rte.python.logger.AV_logger import AV_Logger
-
+import pytest
+from mapping.test.model.testable_map_fixtures import testable_map_api
 
 @pytest.fixture(scope='function')
 def state_with_sorrounding_objects(testable_map_api):

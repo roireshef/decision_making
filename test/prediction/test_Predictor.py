@@ -1,6 +1,7 @@
 import numpy as np
 from typing import Type, List
 
+from decision_making.src.planning.types import C_X, C_THETA, C_V, C_Y, CartesianTrajectory
 from decision_making.src.prediction.predictor import Predictor
 
 from decision_making.src.planning.types import C_X, C_Y, C_THETA, C_V
@@ -17,7 +18,7 @@ from unittest.mock import patch
 class TestPredictorMock(Predictor):
     def predict_object(self, dynamic_object: Type[DynamicObject],
                        prediction_timestamps: np.ndarray) -> np.ndarray:
-        traj = np.array([[0.0, 0.0, np.pi / 4, x] for x in range(len(prediction_timestamps))])
+        traj: CartesianTrajectory = np.array([[0.0, 0.0, np.pi / 4, x] for x in range(len(prediction_timestamps))])
         traj[:, C_X] = np.cumsum(traj[:, C_V] * np.cos(traj[:, C_THETA]))
         traj[:, C_Y] = np.cumsum(traj[:, C_V] * np.sin(traj[:, C_THETA]))
 

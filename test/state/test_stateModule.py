@@ -4,7 +4,7 @@ from decision_making.src.state.state_module import StateModule
 from decision_making.test.dds.mock_ddspubsub import DdsPubSubMock
 from mapping.src.model.map_api import MapAPI
 from rte.python.logger.AV_logger import AV_Logger
-from spcog.decision_making_sim.test.fixtures import dynamic_objects_not_in_fov, dynamic_objects_in_fov
+from decision_making.test.planning.custom_fixtures import dynamic_objects_not_in_fov, dynamic_objects_in_fov
 from mapping.test.model.testable_map_fixtures import testable_map_api
 from decision_making.test.planning.custom_fixtures import dds_pubsub, ego_state_fix
 import numpy as np

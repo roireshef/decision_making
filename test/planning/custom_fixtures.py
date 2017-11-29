@@ -28,6 +28,76 @@ def navigation_plan():
     yield NavigationPlanMsg(np.array([1, 2]))
 
 
+
+@pytest.fixture(scope='function')
+def dynamic_objects_in_fov():
+    objects = dict()
+
+    objects["timestamp"] = 1
+    objects["dynamic_objects"] = []
+
+    dyn_obj_dict = dict()
+    dyn_obj_dict["id"] = 1
+
+    dyn_obj_dict["location"] = dict()
+    dyn_obj_dict["location"]["x"] = 5
+    dyn_obj_dict["location"]["y"] = 1
+    dyn_obj_dict["location"]["confidence"] = 1.0
+
+    dyn_obj_dict["bbox"] = dict()
+    dyn_obj_dict["bbox"]["yaw"] = 0
+    dyn_obj_dict["bbox"]["length"] = 2
+    dyn_obj_dict["bbox"]["width"] = 2
+    dyn_obj_dict["bbox"]["height"] = 2
+
+    dyn_obj_dict["velocity"] = dict()
+    dyn_obj_dict["velocity"]["v_x"] = 1
+    dyn_obj_dict["velocity"]["v_y"] = 2
+    dyn_obj_dict["velocity"]["omega_yaw"] = 0
+
+    dyn_obj_dict["tracking_status"]= dict()
+    dyn_obj_dict["tracking_status"]["in_fov"] = True
+    dyn_obj_dict["tracking_status"]["is_predicted"] = False
+
+    objects["dynamic_objects"].append(dyn_obj_dict)
+
+    yield objects
+
+@pytest.fixture(scope='function')
+def dynamic_objects_not_in_fov():
+    objects = dict()
+
+    objects["timestamp"] = 3
+    objects["dynamic_objects"] = []
+
+    dyn_obj_dict = dict()
+    dyn_obj_dict["id"] = 1
+
+    dyn_obj_dict["location"] = dict()
+    dyn_obj_dict["location"]["x"] = 5
+    dyn_obj_dict["location"]["y"] = 1
+    dyn_obj_dict["location"]["confidence"] = 1.0
+
+    dyn_obj_dict["bbox"] = dict()
+    dyn_obj_dict["bbox"]["yaw"] = 0
+    dyn_obj_dict["bbox"]["length"] = 2
+    dyn_obj_dict["bbox"]["width"] = 2
+    dyn_obj_dict["bbox"]["height"] = 2
+
+    dyn_obj_dict["velocity"] = dict()
+    dyn_obj_dict["velocity"]["v_x"] = 2
+    dyn_obj_dict["velocity"]["v_y"] = 3
+    dyn_obj_dict["velocity"]["omega_yaw"] = 0
+
+    dyn_obj_dict["tracking_status"] = dict()
+    dyn_obj_dict["tracking_status"]["in_fov"] = False
+    dyn_obj_dict["tracking_status"]["is_predicted"] = False
+
+    objects["dynamic_objects"].append(dyn_obj_dict)
+
+    yield objects
+
+
 @pytest.fixture(scope='function')
 def state():
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
