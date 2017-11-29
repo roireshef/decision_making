@@ -3,11 +3,9 @@ from typing import List
 import numpy as np
 import pytest
 
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.behavioral.policies.default_policy import DefaultBehavioralState
-from decision_making.src.planning.behavioral.policies.november_demo_semantic_policy import NovDemoBehavioralState, \
-    NovDemoPolicy
+from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
+from decision_making.src.planning.behavioral.policies.semantic_actions_grid_behavioral_state import \
+    SemanticActionsGridBehavioralState
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction, SemanticActionType
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import OccupancyState, State, EgoState, DynamicObject, ObjectSize, RoadLocalization
@@ -27,7 +25,7 @@ def state_with_sorrounding_objects(testable_map_api: MapAPI):
     ego_road_lon = 15.0
     ego_road_lat = 4.5
 
-    ego_pos, ego_yaw = testable_map_api._convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
+    ego_pos, ego_yaw = testable_map_api.convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
                                                                             lat=ego_road_lat)
 
     road_localization = DynamicObject.compute_road_localization(global_pos=ego_pos, global_yaw=ego_yaw,
@@ -50,7 +48,7 @@ def state_with_sorrounding_objects(testable_map_api: MapAPI):
                 # Don't create an object where the ego is
                 continue
 
-            obj_pos, obj_yaw = testable_map_api._convert_road_to_global_coordinates(road_id=obj_road_id,
+            obj_pos, obj_yaw = testable_map_api.convert_road_to_global_coordinates(road_id=obj_road_id,
                                                                                     lon=obj_road_lon,
                                                                                     lat=obj_road_lat)
 
@@ -80,7 +78,7 @@ def state_with_ego_on_right_lane(testable_map_api: MapAPI):
     ego_road_lon = 15.0
     ego_road_lat = 1.5
 
-    ego_pos, ego_yaw = map_api._convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
+    ego_pos, ego_yaw = map_api.convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
                                                                    lat=ego_road_lat)
 
     road_localization = DynamicObject.compute_road_localization(global_pos=ego_pos, global_yaw=ego_yaw,
@@ -108,7 +106,7 @@ def state_with_ego_on_left_lane(testable_map_api: MapAPI):
     ego_road_lon = 15.0
     ego_road_lat = 7.5
 
-    ego_pos, ego_yaw = map_api._convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
+    ego_pos, ego_yaw = map_api.convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
                                                                    lat=ego_road_lat)
 
     road_localization = DynamicObject.compute_road_localization(global_pos=ego_pos, global_yaw=ego_yaw,
@@ -142,11 +140,11 @@ def nov_demo_state():
 @pytest.fixture(scope='function')
 def nov_demo_semantic_behavioral_state(nov_demo_state: State):
     obj = nov_demo_state.dynamic_objects[0]
-    yield NovDemoBehavioralState({(-1, 1): [obj]}, nov_demo_state.ego_state)
+    yield SemanticActionsGridBehavioralState({(-1, 1): [obj]}, nov_demo_state.ego_state)
 
 
 @pytest.fixture(scope='function')
-def nov_demo_semantic_follow_action(nov_demo_semantic_behavioral_state: NovDemoBehavioralState):
+def nov_demo_semantic_follow_action(nov_demo_semantic_behavioral_state: SemanticActionsGridBehavioralState):
     obj = nov_demo_semantic_behavioral_state.road_occupancy_grid[(-1, 1)][0]
     yield SemanticAction((-1, 1), obj, SemanticActionType.FOLLOW)
 
@@ -154,5 +152,5 @@ def nov_demo_semantic_follow_action(nov_demo_semantic_behavioral_state: NovDemoB
 @pytest.fixture(scope='function')
 def nov_demo_policy(testable_map_api: MapAPI):
     logger = AV_Logger.get_logger('Nov demo - semantic occupancy grid')
-    policy = NovDemoPolicy(logger, None, RoadFollowingPredictor(testable_map_api), testable_map_api)
+    policy = SemanticActionsGridPolicy(logger, RoadFollowingPredictor(testable_map_api, logger=logger), testable_map_api)
     yield policy

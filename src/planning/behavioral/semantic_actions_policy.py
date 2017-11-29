@@ -8,7 +8,7 @@ from decision_making.src.messages.navigation_plan_message import NavigationPlanM
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.behavioral.policy import Policy, PolicyConfig
+from decision_making.src.planning.behavioral.policy import Policy
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, DynamicObject
 from mapping.src.model.map_api import MapAPI
@@ -95,16 +95,14 @@ class SemanticActionSpec:
 
 
 class SemanticActionsPolicy(Policy):
-    def __init__(self, logger: Logger, policy_config: PolicyConfig, predictor: Predictor, map_api: MapAPI):
+    def __init__(self, logger: Logger, predictor: Predictor, map_api: MapAPI):
         """
         Receives configuration and logger
         :param logger: logger
-        :param policy_config: parameters configuration class, loaded from parameter server
         :param predictor: used for predicting ego and other dynamic objects in future states
         :param map_api: Map API
         """
         self._map_api = map_api
-        self._policy_config = policy_config
         self._predictor = predictor
         self.logger = logger
 

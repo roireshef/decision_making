@@ -58,7 +58,6 @@ class TrajectoryPlanningFacade(DmModule):
             trajectory, cost, debug_results = self._strategy_handlers[params.strategy].plan(
                 state, params.reference_route, params.target_state, params.time, params.cost_params)
 
-
             # TODO: should publish v_x?
             # publish results to the lower DM level
             self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory, current_speed=state.ego_state.v_x))
@@ -79,6 +78,7 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.warn("NoValidTrajectoriesFound was raised. skipping planning. " +
                              "turn on debug logging level for more details.")
             self.logger.debug(str(e))
+        # TODO: remove this handler
         except Exception as e:
             self.logger.critical("UNHANDLED EXCEPTION in trajectory planning: %s. %s ", e, traceback.format_exc())
 
