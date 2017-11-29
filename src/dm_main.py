@@ -96,7 +96,6 @@ class DmInitialization:
 
 
 def main():
-
     modules_list = \
         [
 

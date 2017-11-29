@@ -6,7 +6,8 @@ from typing import List, Type
 
 import numpy as np
 
-from decision_making.src.prediction.columns import PREDICT_X, PREDICT_Y, PREDICT_YAW, PREDICT_VEL
+from decision_making.src.planning.types import CartesianTrajectory
+from decision_making.src.planning.types import C_X, C_Y, C_THETA, C_V
 from decision_making.src.state.state import DynamicObject, EgoState, State
 from mapping.src.exceptions import LongitudeOutOfRoad
 
@@ -37,7 +38,7 @@ class Predictor:
         """
         pass
 
-    def predict_ego(self, ego_state: EgoState, prediction_timestamps: np.ndarray) -> np.ndarray:
+    def predict_ego(self, ego_state: EgoState, prediction_timestamps: np.ndarray) -> CartesianTrajectory:
         """
         Method to compute future locations, yaw, and velocities for ego vehicle. Returns the np.array used by the
          trajectory planner.
@@ -75,20 +76,20 @@ class Predictor:
                                                         range(len(prediction_timestamps))]
         # Fill with predicted state
         for t_ind, predicted_object_state in enumerate(predicted_object_states):
-            predicted_pos = np.array([predictions[t_ind, PREDICT_X], predictions[t_ind, PREDICT_Y], 0.0])
-            predicted_yaw = predictions[t_ind, PREDICT_YAW]
+            predicted_pos = np.array([predictions[t_ind, C_X], predictions[t_ind, C_Y], 0.0])
+            predicted_yaw = predictions[t_ind, C_THETA]
             predicted_object_state.timestamp_in_sec = prediction_timestamps[t_ind]
-            predicted_object_state.x = predicted_pos[0]
-            predicted_object_state.y = predicted_pos[1]
+            predicted_object_state.x = predicted_pos[C_X]
+            predicted_object_state.y = predicted_pos[C_Y]
             predicted_object_state.yaw = predicted_yaw
             # TODO: check consistency between diff of (x,y) and v_x, v_y as calculated below:
             if project_velocity_to_global:
-                predicted_object_state.v_x = predictions[t_ind, PREDICT_VEL] * np.cos(predicted_yaw)
-                predicted_object_state.v_y = predictions[t_ind, PREDICT_VEL] * np.sin(predicted_yaw)
+                predicted_object_state.v_x = predictions[t_ind, C_V] * np.cos(predicted_yaw)
+                predicted_object_state.v_y = predictions[t_ind, C_V] * np.sin(predicted_yaw)
             else:
                 # We currently assume that the velocity vector is towards object's x axis
                 # TODO: remove assumption
-                predicted_object_state.v_x = predictions[t_ind, PREDICT_VEL]
+                predicted_object_state.v_x = predictions[t_ind, C_V]
                 predicted_object_state.v_y = 0.0
 
         return predicted_object_states

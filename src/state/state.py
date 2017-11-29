@@ -44,8 +44,8 @@ class DynamicObject(DDSNonTypedMsg):
         :param yaw: for ego 0 means along X axis, for the rest 0 means forward direction relatively to ego
         :param size: class ObjectSize
         :param confidence: of object's existence
-        :param v_x: in m/sec; for ego in world coordinates, for the rest relatively to ego
-        :param v_y: in m/sec
+        :param v_x: velocity in object's heading direction [m/sec]
+        :param v_y: velocity in object's side (left) direction [m/sec] (usually close to zero)
         :param acceleration_lon: acceleration in longitude axis
         :param omega_yaw: 0 for straight motion, positive for CCW (yaw increases), negative for CW
         """
@@ -109,8 +109,8 @@ class EgoState(DynamicObject, DDSNonTypedMsg):
         :param yaw:
         :param size:
         :param confidence:
-        :param v_x: in m/sec
-        :param v_y: in m/sec
+        :param v_x: velocity in ego's heading direction [m/sec]
+        :param v_y: velocity in ego's side (left) direction [m/sec]
         :param acceleration_lon: in m/s^2
         :param omega_yaw: radius of turning of the ego
         :param steering_angle: equivalent to knowing of turn_radius
