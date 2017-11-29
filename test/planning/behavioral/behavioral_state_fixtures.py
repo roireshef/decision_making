@@ -12,6 +12,7 @@ from decision_making.src.state.state import OccupancyState, State, EgoState, Dyn
 from mapping.src.model.map_api import MapAPI
 from rte.python.logger.AV_logger import AV_Logger
 import pytest
+from mapping.test.model.testable_map_fixtures import testable_map_api
 
 @pytest.fixture(scope='function')
 def state_with_sorrounding_objects(testable_map_api: MapAPI):

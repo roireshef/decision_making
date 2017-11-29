@@ -9,6 +9,7 @@ from decision_making.src.prediction.road_following_predictor import RoadFollowin
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
 from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidDynamicBoxObstacle, \
     WerlingVisualizer
+from mapping.test.model.testable_map_fixtures import testable_map_api
 from mapping.src.transformations.geometry_utils import CartesianFrame
 from rte.python.logger.AV_logger import AV_Logger
 
