@@ -22,7 +22,7 @@ class StateModule(DmModule):
     # TODO(cont): processing when multiple events come in concurrently.
     def __init__(self, dds: DdsPubSub, logger: Logger, map_api: MapAPI, occupancy_state: Optional[OccupancyState],
                  dynamic_objects: Optional[List[DynamicObject]], ego_state: Optional[EgoState],
-                 dynamic_objects_memory_map: Dict[str,DynamicObject] = {}) -> None:
+                 dynamic_objects_memory_map: Dict[int,DynamicObject] = {}) -> None:
         """
         :param dds: Inter-process communication interface.
         :param logger: Logging module.
@@ -30,7 +30,7 @@ class StateModule(DmModule):
         :param occupancy_state: Initial state occupancy object.
         :param dynamic_objects: Initial state dynamic objects.
         :param ego_state: Initial ego-state object.
-        :param dynamic_objects_memory_map: Initial memory object.
+        :param dynamic_objects_memory_map: Initial memory dict.
         """
         super().__init__(dds, logger)
         self._map_api = map_api
@@ -96,7 +96,7 @@ class StateModule(DmModule):
     def create_dyn_obj_list(self, objects : dict) -> List[DynamicObject]:
         """
         Convert serialized object perception and global localization data into a DM object (This also includes computation
-        of the object's road localization). Additionally the object is stored in memory as preparation for the case where it will leave
+        of the object's road localization). Additionally store the object in memory as preparation for the case where it will leave
         the field of view.
         :param objects: Serialized dynamic objects list.
         :return: List of dynamic object in DM format.
