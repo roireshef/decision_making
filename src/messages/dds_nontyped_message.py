@@ -14,7 +14,8 @@ class DDSNonTypedMsg(DDSMsg):
         :return: dict containing all the fields of the class
         """
         ser_dict = {}
-        for key, val in self.__dict__.items():
+        self_fields = {k: v for k, v in self.__dict__.items() if k[0] != '_'}
+        for key, val in self_fields.items():
             if issubclass(type(val), np.ndarray):
                 ser_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': list(val.shape),
                                  'type': 'numpy.ndarray'}
@@ -51,6 +52,6 @@ class DDSNonTypedMsg(DDSMsg):
                     elif issubclass(real_type, DDSMsg):
                         message_copy[key] = real_type.deserialize(val)
             return cls(**message_copy)
-        except:
+        except Exception as e:
             raise MsgDeserializationError("MsgDeserializationError error: could not deserialize into " +
-                                          cls.__name__ + " from " + str(message))
+                                          cls.__name__ + " from " + str(message) + ". " + str(e.__traceback__))

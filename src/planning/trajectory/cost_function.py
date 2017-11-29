@@ -101,7 +101,7 @@ class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
         :return: new instance
         """
         # get predictions of the dynamic object in global coordinates
-        predictions = predictor.predict_object_trajectories(obj, time_samples)
+        predictions = predictor.predict_object(obj, time_samples)
         return cls(predictions, obj.size.length, obj.size.width, k, offset)
 
 
