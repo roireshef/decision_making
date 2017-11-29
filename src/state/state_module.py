@@ -23,13 +23,12 @@ class StateModule(DmModule):
 
     # TODO: implement double-buffer mechanism for locks wherever needed. Current lock mechanism may slow the
     # TODO(cont): processing when multiple events come in concurrently.
-    def __init__(self, dds: DdsPubSub, logger: Logger, map_api: MapAPI, occupancy_state: Optional[OccupancyState],
+    def __init__(self, dds: DdsPubSub, logger: Logger, occupancy_state: Optional[OccupancyState],
                  dynamic_objects: Optional[List[DynamicObject]], ego_state: Optional[EgoState],
                  dynamic_objects_memory_map: Dict[int,DynamicObject] = {}) -> None:
         """
         :param dds: Inter-process communication interface.
         :param logger: Logging module.
-        :param map_api: pointer to map service.
         :param occupancy_state: Initial state occupancy object.
         :param dynamic_objects: Initial state dynamic objects.
         :param ego_state: Initial ego-state object.
