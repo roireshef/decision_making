@@ -29,7 +29,7 @@ def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(dds_pubsub 
     """
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
-    state_module = StateModule(dds=dds_pubsub, logger=logger, map_api=testable_map_api,
+    state_module = StateModule(dds=dds_pubsub, logger=logger,
                                occupancy_state=OccupancyState(0, np.array([]), np.array([])),
                                dynamic_objects=None, ego_state=ego_state_fix)
     state_module.start()

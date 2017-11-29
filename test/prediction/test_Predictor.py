@@ -9,6 +9,7 @@ from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject, EgoState, State
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from mapping.test.model.testable_map_fixtures import testable_map_api
+from decision_making.test.planning.custom_fixtures import state
 from rte.python.logger.AV_logger import AV_Logger
 
 from mapping.test.model.testable_map_fixtures import testable_map_api
