@@ -1,17 +1,18 @@
-import numpy as np
 from typing import Type, List
+from unittest.mock import patch
 
-from decision_making.src.planning.types import C_X, C_THETA, C_V, C_Y, CartesianTrajectory
-from decision_making.src.prediction.predictor import Predictor
+import numpy as np
 
 from decision_making.src.planning.types import C_X, C_Y, C_THETA, C_V
-from decision_making.src.state.state import DynamicObject, EgoState, State, RoadLocalization
+from decision_making.src.planning.types import CartesianTrajectory
+from decision_making.src.prediction.predictor import Predictor
+from decision_making.src.state.state import DynamicObject, EgoState, State
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from decision_making.test.planning.custom_fixtures import state
 from mapping.test.model.testable_map_fixtures import testable_map_api
 from rte.python.logger.AV_logger import AV_Logger
 
-from unittest.mock import patch
+from mapping.test.model.testable_map_fixtures import testable_map_api
+from mapping.src.model.localization import RoadLocalization
 
 
 # TODO: Move to fixtures, so that other tests will be able to use it
@@ -23,9 +24,11 @@ class TestPredictorMock(Predictor):
         traj[:, C_Y] = np.cumsum(traj[:, C_V] * np.sin(traj[:, C_THETA]))
 
         return traj
+
     def predict_object_on_road(self, road_localization: RoadLocalization, localization_timestamp: float,
                                prediction_timestamps: np.ndarray) -> List[RoadLocalization]:
         pass
+
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=testable_map_api)
 def test_predictEgoState_apiTest_returnsEgoStatesList(state):
