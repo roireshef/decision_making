@@ -28,26 +28,92 @@ def navigation_plan():
     yield NavigationPlanMsg(np.array([1, 2]))
 
 
+
+@pytest.fixture(scope='function')
+def dynamic_objects_in_fov():
+    objects = dict()
+
+    objects["timestamp"] = 1
+    objects["dynamic_objects"] = []
+
+    dyn_obj_dict = dict()
+    dyn_obj_dict["id"] = 1
+
+    dyn_obj_dict["location"] = dict()
+    dyn_obj_dict["location"]["x"] = 5
+    dyn_obj_dict["location"]["y"] = 1
+    dyn_obj_dict["location"]["confidence"] = 1.0
+
+    dyn_obj_dict["bbox"] = dict()
+    dyn_obj_dict["bbox"]["yaw"] = 0
+    dyn_obj_dict["bbox"]["length"] = 2
+    dyn_obj_dict["bbox"]["width"] = 2
+    dyn_obj_dict["bbox"]["height"] = 2
+
+    dyn_obj_dict["velocity"] = dict()
+    dyn_obj_dict["velocity"]["v_x"] = 1
+    dyn_obj_dict["velocity"]["v_y"] = 2
+    dyn_obj_dict["velocity"]["omega_yaw"] = 0
+
+    dyn_obj_dict["tracking_status"]= dict()
+    dyn_obj_dict["tracking_status"]["in_fov"] = True
+    dyn_obj_dict["tracking_status"]["is_predicted"] = False
+
+    objects["dynamic_objects"].append(dyn_obj_dict)
+
+    yield objects
+
+@pytest.fixture(scope='function')
+def dynamic_objects_not_in_fov():
+    objects = dict()
+
+    objects["timestamp"] = 3
+    objects["dynamic_objects"] = []
+
+    dyn_obj_dict = dict()
+    dyn_obj_dict["id"] = 1
+
+    dyn_obj_dict["location"] = dict()
+    dyn_obj_dict["location"]["x"] = 5
+    dyn_obj_dict["location"]["y"] = 1
+    dyn_obj_dict["location"]["confidence"] = 1.0
+
+    dyn_obj_dict["bbox"] = dict()
+    dyn_obj_dict["bbox"]["yaw"] = 0
+    dyn_obj_dict["bbox"]["length"] = 2
+    dyn_obj_dict["bbox"]["width"] = 2
+    dyn_obj_dict["bbox"]["height"] = 2
+
+    dyn_obj_dict["velocity"] = dict()
+    dyn_obj_dict["velocity"]["v_x"] = 2
+    dyn_obj_dict["velocity"]["v_y"] = 3
+    dyn_obj_dict["velocity"]["omega_yaw"] = 0
+
+    dyn_obj_dict["tracking_status"] = dict()
+    dyn_obj_dict["tracking_status"]["in_fov"] = False
+    dyn_obj_dict["tracking_status"]["is_predicted"] = False
+
+    objects["dynamic_objects"].append(dyn_obj_dict)
+
+    yield objects
+
+
 @pytest.fixture(scope='function')
 def state():
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
-    dyn1 = DynamicObject(1, 34, 0.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0,
-                         RoadLocalization(1, 1, 0.0, 0.0, 10.0, 0.0))
-    dyn2 = DynamicObject(1, 35, 10.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0,
-                         RoadLocalization(1, 1, 0.0, 0.0, 20.0, 0.0))
+    dyn1 = DynamicObject(1, 34, 0.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
+    dyn2 = DynamicObject(1, 35, 10.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
     dynamic_objects = [dyn1, dyn2]
     size = ObjectSize(0, 0, 0)
     # TODO - decouple from navigation plan below (1 is the road id). Make this dependency explicit.
-    road_localization = RoadLocalization(1, 0, 0, 0, 0, 0)
-    ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0, road_localization)
+    ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
     yield State(occupancy_state, dynamic_objects, ego_state)
 
 @pytest.fixture(scope='function')
 def ego_state_fix():
     size = ObjectSize(0, 0, 0)
     # TODO - decouple from navigation plan below (1 is the road id). Make this dependency explicit.
-    road_localization = RoadLocalization(1, 0, 0, 0, 0, 0)
-    ego_state = EgoState(0, 5, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0, road_localization)
+    ego_state = EgoState(0, 5, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
     yield ego_state
 
 @pytest.fixture(scope='function')
@@ -77,7 +143,7 @@ def trajectory():
          [6.0, -2.0, 0.0],
          [7.0, -2.0, 0.0], [8.0, -2.0, 0.0], [9.0, -2.0, 0.0], [10.0, -2.0, 0.0], [11.0, -2.0, 0.0],
          [12.0, -2.0, 0.0], [13.0, -2.0, 0.0], [14.0, -2.0, 0.0], [15.0, -2.0, 0.0], [16.0, -2.0, 0.0]])
-    yield TrajectoryPlanMsg(trajectory=chosen_trajectory, reference_route=ref_route, current_speed=5.0)
+    yield TrajectoryPlanMsg(trajectory=chosen_trajectory, current_speed=5.0)
 
 
 ### VIZ MESSAGES ###

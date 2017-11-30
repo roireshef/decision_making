@@ -72,6 +72,9 @@ SX_STEPS, SV_STEPS, DX_STEPS = 15, 1, 5
 # [m] Bounding box size around ego vehicle
 EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 5.0, 2.0, 2.0
 
+#The id of the ego object
+EGO_ID = 0.0
+
 # [m] Default height for objects - State Module
 DEFAULT_OBJECT_Z_VALUE = 0.
 

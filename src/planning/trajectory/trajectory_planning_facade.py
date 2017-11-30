@@ -4,15 +4,16 @@ from typing import Dict
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
-from decision_making.src.global_constants import *
+from decision_making.src.global_constants import TRAJECTORY_STATE_READER_TOPIC, TRAJECTORY_PARAMS_READER_TOPIC, \
+    TRAJECTORY_PUBLISH_TOPIC, TRAJECTORY_VISUALIZATION_TOPIC, TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
+    NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.utils.columns import EGO_X, EGO_Y
-from decision_making.src.state.state import State, EgoState
+from decision_making.src.state.state import State
 import time
 import numpy as np
 import copy
@@ -29,7 +30,6 @@ class TrajectoryPlanningFacade(DmModule):
         :param logger: logger
         :param strategy_handlers: a dictionary of trajectory planners as strategy handlers -
         types are {TrajectoryPlanningStrategy: TrajectoryPlanner}
-        :param last_trajectory: last chosen trajectory's representation
         """
         super().__init__(dds=dds, logger=logger)
 
@@ -45,20 +45,22 @@ class TrajectoryPlanningFacade(DmModule):
 
     def _periodic_action_impl(self):
         """
-        will execute planning with using the implementation for the desired planning-strategy provided
+        will execute planning using the implementation for the desired planning-strategy provided
         :return: no return value. results are published in self.__publish_results()
         """
         try:
+            # TODO: Read time from central time module to support also simulation & recording time.
+            # TODO: If it is done only for measuring RT performance, then add documentation and change name accordingly
             start_time = time.time()
 
             state = self._get_current_state()
             params = self._get_mission_params()
 
-            self.logger.debug("input: target_state:{}".format(params.target_state))
-            self.logger.debug("input: reference_route[0]:{}".format(params.reference_route[0]))
-            self.logger.debug("input: ego: pos: (x: {} y: {})".format(state.ego_state.x, state.ego_state.y))
-            self.logger.debug("input: ego: v_x: {}, v_y: {}".format(state.ego_state.v_x, state.ego_state.v_y))
-            self.logger.info("state: {} objects detected".format(len(state.dynamic_objects)))
+            self.logger.debug("input: target_state: %s ", params.target_state)
+            self.logger.debug("input: reference_route[0]: %s", params.reference_route[0])
+            self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
+            self.logger.debug("input: ego: v_x: %f, v_y: %f", state.ego_state.v_x, state.ego_state.v_y)
+            self.logger.info("state: %d objects detected", len(state.dynamic_objects))
 
             # TODO: this currently applies to location only (not yaw, velocities, accelerations, etc.)
             if self._is_actual_state_close_to_expected_state(state.ego_state):
@@ -77,15 +79,12 @@ class TrajectoryPlanningFacade(DmModule):
                             num=TRAJECTORY_NUM_POINTS))
 
             # TODO: should publish v_x?
-            # publish results to the lower DM level
-            self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory_points,
-                                                       reference_route=params.reference_route,
-                                                       current_speed=state.ego_state.v_x))
+            # publish results to the lower DM level (Control)
+            self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory_points, current_speed=state.ego_state.v_x))
 
             self._last_trajectory = samplable_trajectory
 
             # TODO: publish cost to behavioral layer?
-
             # publish visualization/debug data
             self._publish_debug(debug_results)
 
@@ -112,11 +111,23 @@ class TrajectoryPlanningFacade(DmModule):
                 raise ValueError('strategy_handlers does not contain a TrajectoryPlanner impl. for ' + elem)
 
     def _get_current_state(self) -> State:
+        """
+        Returns the last received world state.
+        We assume that if no updates have been received since the last call,
+        then we will output the last received state.
+        :return: deserialized State
+        """
         input_state = self.dds.get_latest_sample(topic=TRAJECTORY_STATE_READER_TOPIC, timeout=1)
         self.logger.debug('Received state: %s', input_state)
         return State.deserialize(input_state)
 
     def _get_mission_params(self) -> TrajectoryParams:
+        """
+        Returns the last received mission (trajectory) parameters.
+        We assume that if no updates have been received since the last call,
+        then we will output the last received trajectory parameters.
+        :return: deserialized trajectory parameters
+        """
         input_params = self.dds.get_latest_sample(topic=TRAJECTORY_PARAMS_READER_TOPIC, timeout=1)
         self.logger.debug('Received state: %s', input_params)
         return TrajectoryParams.deserialize(input_params)

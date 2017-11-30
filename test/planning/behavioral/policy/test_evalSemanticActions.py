@@ -4,20 +4,24 @@ from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPE
 from decision_making.src.planning.behavioral.constants import SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LAT_LEFT, \
     SEMANTIC_CELL_LON_FRONT
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
-from decision_making.src.planning.behavioral.policies.semantic_actions_grid_behavioral_state import \
-    SemanticActionsGridBehavioralState
+from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import \
+    SemanticActionsGridState
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction, SemanticActionType, \
     SemanticActionSpec
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state import State, EgoState, DynamicObject, ObjectSize
-from decision_making.src.state.state_module import StateModule, Logger
+from decision_making.src.state.state import EgoState, DynamicObject, ObjectSize
+from decision_making.src.state.state_module import Logger
 from decision_making.test.prediction.test_Predictor import TestPredictorMock
+from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from mapping.test.model.testable_map_fixtures import testable_map_api
 from rte.python.logger.AV_logger import AV_Logger
 
+from unittest.mock import patch
 
-def test_novDemoEvalSemanticActions(testable_map_api):
+
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=testable_map_api)
+def test_novDemoEvalSemanticActions():
     max_velocity = v = BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT  # m/s
 
     ego_v = max_velocity
@@ -44,19 +48,14 @@ def test_novDemoEvalSemanticActions(testable_map_api):
         size = ObjectSize(1.5, 0.5, 0)
         obs = list([
             DynamicObject(obj_id=0, timestamp=0, x=pos1[0], y=pos1[1], z=0, yaw=0, size=size,
-                          road_localization=DynamicObject.compute_road_localization(pos1, 0, testable_map_api),
                           confidence=1.0, v_x=vel1, v_y=0, acceleration_lon=0.0, omega_yaw=0.0),
             DynamicObject(obj_id=1, timestamp=0, x=pos2[0], y=pos2[1], z=0, yaw=0, size=size,
-                          road_localization=DynamicObject.compute_road_localization(pos2, 0, testable_map_api),
                           confidence=1.0, v_x=vel2, v_y=0, acceleration_lon=0.0, omega_yaw=0.0),
             DynamicObject(obj_id=2, timestamp=0, x=pos3[0], y=pos3[1], z=0, yaw=0, size=size,
-                          road_localization=DynamicObject.compute_road_localization(pos3, 0, testable_map_api),
                           confidence=1.0, v_x=vel3, v_y=0, acceleration_lon=0.0, omega_yaw=0.0)
         ])
 
         ego = EgoState(obj_id=-1, timestamp=0, x=ego_x, y=0, z=0, yaw=0, size=size,
-                       road_localization=DynamicObject.compute_road_localization(np.array([ego_x, 0]), 0.0,
-                                                                                 testable_map_api),
                        confidence=1.0, v_x=ego_v, v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
         grid = {}
@@ -69,11 +68,11 @@ def test_novDemoEvalSemanticActions(testable_map_api):
         grid[(-1, 1)] = [obs[0]]
         grid[(0, 1)] = [obs[1]]
         grid[(1, 1)] = [obs[2]]
-        behav_state = SemanticActionsGridBehavioralState(grid, ego)
+        behav_state = SemanticActionsGridState(grid, ego)
         logger = Logger("NovDemoTest")
         # TODO: move TestPredictorMock to fixtures
-        predictor = TestPredictorMock(testable_map_api, logger)
-        policy = SemanticActionsGridPolicy(logger, predictor, testable_map_api)
+        predictor = TestPredictorMock(logger)
+        policy = SemanticActionsGridPolicy(logger, predictor)
 
         semantic_actions = []
         semantic_actions.append(SemanticAction((-1, 1), obs[0], SemanticActionType.FOLLOW))
@@ -95,13 +94,13 @@ def test_novDemoEvalSemanticActions(testable_map_api):
         # print(costs)
 
 
-def test_get_actionIndByLane(testable_map_api):
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=testable_map_api)
+def test_get_actionIndByLane():
     logger = AV_Logger.get_logger('test_get_actionIndByLane')
     semantic_action = SemanticAction((SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT), None, SemanticActionType(1))
     spec1 = SemanticActionSpec(t=5, v=10, s_rel=30, d_rel=-3)
     # TODO: move TestPredictorMock to fixtures
-    policy = SemanticActionsGridPolicy(Logger("NovDemoTest"), TestPredictorMock(testable_map_api, logger=logger),
-                                       testable_map_api)
+    policy = SemanticActionsGridPolicy(Logger("NovDemoTest"), TestPredictorMock(logger=logger))
     action_ind = policy._get_action_ind([semantic_action], (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT))
     assert action_ind == 0
     action_ind = policy._get_action_ind([semantic_action], (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_FRONT))

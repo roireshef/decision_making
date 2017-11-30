@@ -9,18 +9,15 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
-from mapping.src.model.map_api import MapAPI
 
 
 class Policy(metaclass=ABCMeta):
-    def __init__(self, logger: Logger, predictor: Predictor, map_api: MapAPI):
+    def __init__(self, logger: Logger, predictor: Predictor):
         """
         Receives configuration and logger
         :param logger: logger
         :param predictor: used for predicting ego and other dynamic objects in future states
-        :param map_api: Map API
         """
-        self._map_api = map_api
         self._predictor = predictor
         self.logger = logger
 

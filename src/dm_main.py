@@ -1,4 +1,5 @@
 from logging import Logger
+from os import getpid
 
 import numpy as np
 
@@ -19,17 +20,14 @@ from decision_making.src.planning.trajectory.optimal_control.werling_planner imp
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state import EgoState, ObjectSize, RoadLocalization, OccupancyState
+from decision_making.src.state.state import OccupancyState
 from decision_making.src.state.state_module import StateModule
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
-from os import getpid
 
-
+# TODO: move this into test package
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))
-
-
 class NavigationFacadeMock(NavigationFacade):
     def __init__(self, dds: DdsPubSub, logger: Logger, plan: NavigationPlanMsg):
         super().__init__(dds=dds, logger=logger, handler=None)
@@ -49,10 +47,9 @@ class DmInitialization:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         dds = DdsPubSub(STATE_MODULE_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
         MapService.initialize()
-        map_api = MapService.get_instance()
         default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
                                                  np.array([0.1], dtype=np.float))
-        state_module = StateModule(dds, logger, map_api, default_occupancy_state, None, None)
+        state_module = StateModule(dds, logger, default_occupancy_state, None, None)
         return state_module
 
     @staticmethod
@@ -72,21 +69,8 @@ class DmInitialization:
         # TODO: fill the policy
         # Init map
         MapService.initialize()
-        map_api = MapService.get_instance()
-
-        # Init states
-        init_navigation_plan = NavigationPlanMsg(np.array([]))
-        init_ego_state = EgoState(0, None, 0.0, 0.0, 0.0, 0.0, ObjectSize(0.0, 0.0, 0.0), 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                                  RoadLocalization(0, 0, 0.0, 0.0, 0.0, 0.0))
-
-        # Init policy
-        # behavioral_state = DefaultBehavioralState(logger, map_api, init_navigation_plan, init_ego_state, [])
-        # policy_config = DefaultPolicyConfig()
-        # policy = DefaultPolicy(logger, policy_config, behavioral_state, None, map_api)
-
-        # NOV DEMO POLICY
-        predictor = RoadFollowingPredictor(map_api, logger)
-        policy = SemanticActionsGridPolicy(logger=logger, predictor=predictor, map_api=map_api)
+        predictor = RoadFollowingPredictor(logger)
+        policy = SemanticActionsGridPolicy(logger=logger, predictor=predictor)
 
         behavioral_module = BehavioralFacade(dds=dds, logger=logger, policy=policy)
         return behavioral_module
@@ -98,10 +82,7 @@ class DmInitialization:
 
         # Init map
         MapService.initialize()
-        map_api = MapService.get_instance()
-        init_navigation_plan = NAVIGATION_PLAN
-
-        predictor = RoadFollowingPredictor(map_api, logger)
+        predictor = RoadFollowingPredictor(logger)
 
         # TODO: fill the strategy handlers
         planner = WerlingPlanner(logger, predictor)
@@ -115,7 +96,6 @@ class DmInitialization:
 
 
 def main():
-
     modules_list = \
         [
 

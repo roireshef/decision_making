@@ -6,17 +6,19 @@ import numpy as np
 from decision_making.src.exceptions import raises, NoValidTrajectoriesFound
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
+from decision_making.src.planning.types import CartesianPath, CartesianTrajectory, CartesianState
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 from logging import Logger
 
 
-# TODO: Document, fill
+# TODO: fill the units in timestamps
 class SamplableTrajectory(metaclass=ABCMeta):
-    """
-    Abstract class that holds all the statistics to sample points on a specific planned trajectory
-    """
     def __init__(self, timestamp: float):
+        """
+        Abstract class that holds all the statistics to sample points on a specific planned trajectory
+        :param timestamp: global timestamp to use as a reference (other timestamps will be given relative to it)
+        """
         self.timestamp = timestamp
 
     @abstractmethod
@@ -36,16 +38,16 @@ class TrajectoryPlanner(metaclass=ABCMeta):
 
     @abstractmethod
     @raises(NoValidTrajectoriesFound)
-    def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, time: float,
+    def plan(self, state: State, reference_route: CartesianPath, goal: CartesianState, goal_time: float,
              cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, float, TrajectoryVisualizationMsg]:
         """
         Plans a trajectory according to the specifications in the arguments
-        :param time: the time-window to plan for (time to get from initial state to goal state)
+        :param goal_time: defines the global time in [sec] of the goal. Enables the target state and time
+            to be determined in the behavioral planner, so that any re-planning iteration is consistent in the TP.
         :param state: environment & ego state object
-        :param reference_route: a reference route (often the center of lane). A numpy array of the shape [-1, 2] where
-        each row is a point (x, y) in world coordinates.
+        :param reference_route: a reference route (often the center of lane).
         :param goal: A 1D numpy array of the desired ego-state to plan towards, represented in current
-        global-coordinate-frame (see EGO_* in planning.utils.columns.py for the fields)
+        global-coordinate-frame (see EGO_* in planning.utils.types.py for the fields)
         :param cost_params: Data object with parameters that specify how to build the planning's cost function
         :return: a tuple of: (samplable represantation of the chosen trajectory, trajectory cost, debug results)
         """

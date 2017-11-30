@@ -6,16 +6,16 @@ from decision_making.src.planning.behavioral.constants import SEMANTIC_CELL_LON_
 from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticBehavioralState, \
     RoadSemanticOccupancyGrid, LON_CELL
 from decision_making.src.state.state import EgoState, State
-from mapping.src.model.map_api import MapAPI
+from mapping.src.service.map_service import MapService
 
 
-class SemanticActionsGridBehavioralState(SemanticBehavioralState):
+class SemanticActionsGridState(SemanticBehavioralState):
     def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState):
         super().__init__(road_occupancy_grid=road_occupancy_grid)
         self.ego_state = ego_state
 
     @classmethod
-    def create_from_state(cls, state: State, map_api: MapAPI, logger: Logger):
+    def create_from_state(cls, state: State, logger: Logger):
         """
         Occupy the occupancy grid.
         This method iterates over all dynamic objects, and fits them into the relevant cell
@@ -31,7 +31,7 @@ class SemanticActionsGridBehavioralState(SemanticBehavioralState):
         ego_state = state.ego_state
         dynamic_objects = state.dynamic_objects
 
-        default_navigation_plan = map_api.get_road_based_navigation_plan(
+        default_navigation_plan = MapService.get_instance().get_road_based_navigation_plan(
             current_road_id=ego_state.road_localization.road_id)
 
         ego_lane = ego_state.road_localization.lane_num
@@ -39,7 +39,7 @@ class SemanticActionsGridBehavioralState(SemanticBehavioralState):
         # Generate grid cells
         semantic_occupancy_dict: RoadSemanticOccupancyGrid = dict()
         optional_lane_keys = [-1, 0, 1]
-        lanes_in_road = map_api.get_road(state.ego_state.road_localization.road_id).lanes_num
+        lanes_in_road = MapService.get_instance().get_road(state.ego_state.road_localization.road_id).lanes_num
         filtered_lane_keys = list(
             filter(lambda relative_lane: 0 <= ego_lane + relative_lane < lanes_in_road, optional_lane_keys))
 
@@ -51,9 +51,11 @@ class SemanticActionsGridBehavioralState(SemanticBehavioralState):
 
         # Allocate dynamic objects
         for dynamic_object in dynamic_objects:
-            object_relative_localization = dynamic_object.get_relative_road_localization(
-                ego_road_localization=ego_state.road_localization, ego_nav_plan=default_navigation_plan,
-                map_api=map_api, logger=logger)
+            object_relative_localization = MapService.get_instance().compute_road_localizations_diff(
+                reference_localization=ego_state.road_localization,
+                object_localization=dynamic_object.road_localization,
+                navigation_plan=default_navigation_plan
+            )
             object_lon_dist = object_relative_localization.rel_lon
             object_dist_from_front = object_lon_dist - ego_state.size.length
             object_relative_lane = int(dynamic_object.road_localization.lane_num - ego_lane)
@@ -97,10 +99,12 @@ class SemanticActionsGridBehavioralState(SemanticBehavioralState):
                 else:
                     # get first objects in list of objects in cell as reference
                     object_in_cell = semantic_occupancy_dict[occupancy_index][0]
-                    object_in_grid_lon_dist = object_in_cell.get_relative_road_localization(
-                        ego_road_localization=ego_state.road_localization,
-                        ego_nav_plan=default_navigation_plan,
-                        map_api=map_api, logger=logger).rel_lon
+                    object_in_grid_lon_dist = MapService.get_instance().compute_road_localizations_diff(
+                        reference_localization=ego_state.road_localization,
+                        object_localization=object_in_cell.road_localization,
+                        navigation_plan=default_navigation_plan
+                    ).rel_lon
+
                     object_in_grid_dist_from_front = object_in_grid_lon_dist - ego_state.size.length
 
                     if occupancy_index[LON_CELL] == SEMANTIC_CELL_LON_FRONT:
