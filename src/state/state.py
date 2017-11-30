@@ -87,15 +87,20 @@ class DynamicObject(DDSNonTypedMsg):
         v_x = cartesian_state[C_V]
         v_y = 0.0
 
-        fields = self.__dict__
+        # Fetch object's public fields
+        object_fields = {k: v for k, v in self.__dict__.items() if k[0] != '_'}
 
-        # obj_id = cls.obj_id, timestamp = timestamp, x = x, y = y, z = z,
-        # yaw = yaw, size = cls.size,
-        # confidence = cls.confidence, v_x = v_x, v_y = v_y,
-        # acceleration_lon = cls.acceleration_lon, omega_yaw = cls.omega_yaw
+        # Overwrite object fields
+        object_fields['timestamp'] = timestamp
+        object_fields['x'] = x
+        object_fields['y'] = y
+        object_fields['z'] = z
+        object_fields['yaw'] = yaw
+        object_fields['v_x'] = v_x
+        object_fields['v_y'] = v_y
+
         # Construct a new object
-
-        return self.__class__(**fields)
+        return self.__class__(**object_fields)
 
     @property
     def road_localization(self):

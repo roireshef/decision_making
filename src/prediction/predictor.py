@@ -82,18 +82,6 @@ class Predictor:
         predictions = self.predict_object(dynamic_object, prediction_timestamps)
         return self._convert_predictions_to_dynamic_objects(dynamic_object, predictions, prediction_timestamps)
 
-    def _predict_ego_state(self, ego_state: EgoState, prediction_timestamps: np.ndarray) -> List[EgoState]:
-        """
-        Wrapper method that uses the predict_ego_trajectories method, and creates the list of predicted ego states.
-        :param ego_state: initial ego state
-        :param prediction_timestamps: np array of timestamps to predict_object_trajectories for. In ascending order.
-        :return: List of predicted states of ego where pos/yaw/vel values are predicted using
-        predict_ego_trajectories. IMPORTANT - returned list must be in the same order as prediction_timestamps.
-        """
-        # TODO: update EgoState attributes that are copied and are not part of DynamicObject (as steering_angle)
-        predictions = self.predict_object(ego_state, prediction_timestamps)
-        return self._convert_predictions_to_dynamic_objects(ego_state, predictions, prediction_timestamps)
-
     def predict_state(self, state: State, prediction_timestamps: np.ndarray) -> List[State]:
         """
          Wrapper method that uses the _predict_ego_state and _predict_object_state, and creates a list containing the
@@ -113,7 +101,7 @@ class Predictor:
 
         ego_state = initial_state.ego_state
         dynamic_objects = initial_state.dynamic_objects
-        predicted_ego_states = self._predict_ego_state(ego_state, prediction_timestamps)
+        predicted_ego_states = self._predict_object_state(ego_state, prediction_timestamps)
         for t_ind in range(len(prediction_timestamps)):
             predicted_states[t_ind].ego_state = predicted_ego_states[t_ind]  # updating ego_state
             predicted_states[t_ind].dynamic_objects.clear()  # clearing dynamic object lists of copied states

@@ -37,7 +37,7 @@ def test_predictEgoState_apiTest_returnsEgoStatesList(state):
     logger = AV_Logger.get_logger("test_predictEgoState_apiTest_returnsEgoStatesList")
     predicted_timestamps = np.array([0.0, 0.2, 0.4, 0.6, 0.8])
     test_predictor_mock = TestPredictorMock(logger=logger)
-    predicted_states = test_predictor_mock._predict_ego_state(ego_state=ego_state,
+    predicted_states = test_predictor_mock._predict_object_state(dynamic_object=ego_state,
                                                               prediction_timestamps=predicted_timestamps)
 
     assert np.all([isinstance(predicted_states[x], EgoState) for x in range(len(predicted_states))])
