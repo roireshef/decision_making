@@ -10,8 +10,8 @@ from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STE
     TRAJECTORY_OBSTACLE_LOOKAHEAD
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
-from decision_making.src.planning.types import FP_SX, CURVE_THETA, FP_DX, C_X, C_Y, C_THETA, C_V, FS_SV, \
-    FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX
+from decision_making.src.planning.types import FP_SX, CURVE_YAW, FP_DX, C_X, C_Y, C_YAW, C_V, FS_SV, \
+    FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianState, CartesianTrajectory, CartesianExtendedTrajectory
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils as OC
@@ -25,24 +25,28 @@ from decision_making.src.state.state import State
 
 
 class SamplableWerlingTrajectory(SamplableTrajectory):
-    def __init__(self, timestamp: float, frenet_frame: FrenetMovingFrame, poly_coefs: np.ndarray):
+    def __init__(self, timestamp: float, frenet_frame: FrenetMovingFrame,
+                 poly_s_coefs: np.ndarray, poly_d_coefs: np.ndarray):
         """To represent a trajectory that is a result of Werling planner, we store the frenet frame used and
         two polynomial coefficients vectors (for dimensions s and d)"""
         super().__init__(timestamp)
         self.frenet_frame = frenet_frame
-        self.poly_s_coefs = poly_coefs[:6]
-        self.poly_d_coefs = poly_coefs[6:]
+        self.poly_s_coefs = poly_s_coefs
+        self.poly_d_coefs = poly_d_coefs
 
-    def sample(self, time_points: np.ndarray) -> np.ndarray:
+    def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
         """ see base method """
-        poly_s_d = np.array([self.poly_s_coefs, self.poly_d_coefs])
-
         # assign values from <time_points> in both s and d polynomials
-        fpoints = OC.QuinticPoly1D.polyval_with_derivatives(poly_s_d, time_points)[:, :, 0]  # [dx, sx] only
+        fstates_s = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), time_points)[0]
+        fstates_d = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]), time_points)[0]
+        fstates = np.hstack((fstates_s, fstates_d))
 
         # project from road coordinates to cartesian coordinate frame
-        cpoints = np.apply_along_axis(func1d=self.frenet_frame.fpoint_to_cpoint, axis=1, arr=fpoints.transpose())
-        return cpoints
+        # TODO: currently acceleration is computed in ftrajectory_to_ctrajectory as pseudo-derivative
+        # TODO (cont.): so acceleration values here are wrong
+        cstates = self.frenet_frame.ftrajectory_to_ctrajectory(fstates)
+
+        return cstates
 
 
 class WerlingPlanner(TrajectoryPlanner):
@@ -63,7 +67,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
         # The vehicle doesn't need to lay parallel to the road.
         ego_in_frenet = frenet.cpoint_to_fpoint(np.array([state.ego_state.x, state.ego_state.y]))
-        ego_theta_diff = frenet.curve[0, CURVE_THETA] - state.ego_state.yaw
+        ego_theta_diff = frenet.curve[0, CURVE_YAW] - state.ego_state.yaw
 
         # TODO: translate acceleration of initial state
         # define constraints for the initial state
@@ -80,7 +84,7 @@ class WerlingPlanner(TrajectoryPlanner):
         goal_in_frenet = frenet.cpoint_to_fpoint(goal[[C_X, C_Y]])
         goal_sx, goal_dx = goal_in_frenet[FP_SX], goal_in_frenet[FP_DX]
 
-        goal_theta_diff = goal[C_THETA] - frenet.curve[frenet.sx_to_s_idx(goal_sx), CURVE_THETA]
+        goal_theta_diff = goal[C_YAW] - frenet.curve[frenet.sx_to_s_idx(goal_sx), CURVE_YAW]
 
         # TODO: Determine desired final state search grid - this should be fixed with introducing different T_s, T_d
         # sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_sx, 0)) / 2,
@@ -133,11 +137,12 @@ class WerlingPlanner(TrajectoryPlanner):
         samplable_trajectory = SamplableWerlingTrajectory(
             timestamp=state.ego_state.timestamp_in_sec,
             frenet_frame=frenet,
-            poly_coefs=poly_coefs[filtered_indices[sorted_idxs[0]]]
+            poly_s_coefs=poly_coefs[filtered_indices[sorted_idxs[0]]][:6],
+            poly_d_coefs=poly_coefs[filtered_indices[sorted_idxs[0]]][6:]
         )
 
-        #TODO: move this to visualizer. Curently we are predicting the state at ego's timestamp and at the end of the traj execution time.
         ## VIZ BLOCK ##
+        #TODO: move this to visualizer. Curently we are predicting the state at ego's timestamp and at the end of the traj execution time.
         alternative_ids_skip_range = range(0, len(ctrajectories),
                                            max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
 
@@ -162,7 +167,6 @@ class WerlingPlanner(TrajectoryPlanner):
                                                    predicted_states[0],
                                                    predicted_states[1:],
                                                    planning_horizon)
-
         ## END OF VIZ BLOCK ##
 
         return samplable_trajectory, trajectory_costs[sorted_idxs[0]], debug_results

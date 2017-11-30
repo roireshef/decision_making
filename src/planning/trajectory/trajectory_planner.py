@@ -6,7 +6,8 @@ import numpy as np
 from decision_making.src.exceptions import raises, NoValidTrajectoriesFound
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
-from decision_making.src.planning.types import CartesianPath, CartesianTrajectory, CartesianState
+from decision_making.src.planning.types import CartesianPath, CartesianTrajectory, CartesianState, \
+    CartesianExtendedTrajectory
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 from logging import Logger
@@ -22,11 +23,12 @@ class SamplableTrajectory(metaclass=ABCMeta):
         self.timestamp = timestamp
 
     @abstractmethod
-    def sample(self, time_points: np.ndarray) -> np.ndarray:
+    def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
         """
-        This function takes an array of time stamps and returns an array of points <x, y, theta, v> along the trajectory
+        This function takes an array of time stamps and returns an array of points <x, y, theta, v, acceleration,
+        curvature> along the trajectory
         :param time_points: 1D numpy array of time stamps (relative to self.timestamp)
-        :return: 2D numpy array with every row having the format of <x, y, yaw, velocity>
+        :return: 2D numpy array with every row having the format of <x, y, yaw, velocity, a, k>
         """
         pass
 

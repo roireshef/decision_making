@@ -6,14 +6,16 @@ from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_STATE_READER_TOPIC, TRAJECTORY_PARAMS_READER_TOPIC, \
     TRAJECTORY_PUBLISH_TOPIC, TRAJECTORY_VISUALIZATION_TOPIC, TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
-    NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT
+    NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, DEFAULT_OBJECT_Z_VALUE
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.state.state import State
+from decision_making.src.planning.types import CartesianState, C_Y, C_X, C_YAW, FP_SX, FP_DX, FrenetPoint, \
+    CartesianExtendedState, C_V, C_A
+from decision_making.src.state.state import State, EgoState
 import time
 import numpy as np
 import copy
@@ -23,7 +25,7 @@ from mapping.src.transformations.geometry_utils import CartesianFrame
 class TrajectoryPlanningFacade(DmModule):
     def __init__(self, dds: DdsPubSub, logger: Logger,
                  strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner],
-                 last_trajectory: SamplableTrajectory=None):
+                 last_trajectory: SamplableTrajectory = None):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param dds: communication layer (DDS) instance
@@ -69,13 +71,13 @@ class TrajectoryPlanningFacade(DmModule):
                 updated_state = state
 
             # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
-            samplable_trajectory, cost, debug_results = self._strategy_handlers[params.strategy].\
+            samplable_trajectory, cost, debug_results = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, params.target_state, params.time, params.cost_params)
 
             # TODO: validate that sampling is consistent with controller!
             trajectory_points = samplable_trajectory.sample(
                 np.linspace(start=TRAJECTORY_TIME_RESOLUTION,
-                            stop=TRAJECTORY_NUM_POINTS*TRAJECTORY_TIME_RESOLUTION,
+                            stop=TRAJECTORY_NUM_POINTS * TRAJECTORY_TIME_RESOLUTION,
                             num=TRAJECTORY_NUM_POINTS))
 
             # TODO: should publish v_x?
@@ -88,7 +90,7 @@ class TrajectoryPlanningFacade(DmModule):
             # publish visualization/debug data
             self._publish_debug(debug_results)
 
-            self.logger.info("TrajectoryPlanningFacade._periodic_action_impl time %f", time.time()-start_time)
+            self.logger.info("TrajectoryPlanningFacade._periodic_action_impl time %f", time.time() - start_time)
 
         except MsgDeserializationError as e:
             self.logger.warn("MsgDeserializationError was raised. skipping planning. " +
@@ -149,38 +151,37 @@ class TrajectoryPlanningFacade(DmModule):
             return False
 
         time_diff = current_ego_state.timestamp - self._last_trajectory.timestamp
-        current_expected_location = self._last_trajectory.sample(np.array([time_diff]))
-        current_actual_location = np.array([current_ego_state.x, current_ego_state.y])
+        current_expected_state: CartesianExtendedState = self._last_trajectory.sample(np.array([time_diff]))[0]
+        current_actual_location = np.array([current_ego_state.x, current_ego_state.y, DEFAULT_OBJECT_Z_VALUE])
 
-        # TODO: sides should be switched (this should be in terms of expected coordinate frame)
-        errors_in_ego_frame, _ = CartesianFrame.convert_global_to_relative_frame(
-            global_pos=np.append(current_expected_location, [0.0]),
-            global_yaw=0.0, # irrelevant since we don't care about relative yaw
-            frame_position=current_actual_location,
-            frame_orientation=current_ego_state.yaw
+        errors_in_expected_frame, _ = CartesianFrame.convert_global_to_relative_frame(
+            global_translation=current_actual_location,
+            global_orientation=0.0,
+            frame_translation=current_expected_state[[C_X, C_Y]].append([DEFAULT_OBJECT_Z_VALUE]),
+            frame_orientation=current_expected_state[C_YAW]
         )
 
-        distances_in_ego_frame = np.abs(errors_in_ego_frame)
+        distances_in_expected_frame: FrenetPoint = np.abs(errors_in_expected_frame)
 
         # TODO: change 0,1 indices to X and Y column constants (when merged with other branches in v1.5.3)
-        return distances_in_ego_frame[0] <= NEGLIGIBLE_DISPOSITION_LON and \
-               distances_in_ego_frame[1] <= NEGLIGIBLE_DISPOSITION_LAT
+        return distances_in_expected_frame[FP_SX] <= NEGLIGIBLE_DISPOSITION_LON and \
+               distances_in_expected_frame[FP_DX] <= NEGLIGIBLE_DISPOSITION_LAT
 
     def _get_state_with_expected_ego(self, state: State):
         time_diff = state.ego_state.timestamp - self._last_trajectory.timestamp
-        expected_state = self._last_trajectory.sample(np.array([time_diff]))[0]
+        expected_state: CartesianExtendedState = self._last_trajectory.sample(np.array([time_diff]))[0]
 
         updated_state = copy.deepcopy(state)
         updated_state.ego_state = EgoState(obj_id=state.ego_state.obj_id,
                                            timestamp=state.ego_state.timestamp,
-                                           x=expected_state[EGO_X], y=expected_state[EGO_Y], z=state.ego_state.z,
+                                           x=expected_state[C_X], y=expected_state[C_Y], z=state.ego_state.z,
                                            yaw=state.ego_state.yaw, size=state.ego_state.size,
                                            confidence=state.ego_state.confidence,
-                                           v_x=state.ego_state.v_x, v_y=state.ego_state.v_y,
-                                           acceleration_lon=state.ego_state.acceleration_lon,
-                                           omega_yaw=state.ego_state.omega_yaw,
+                                           v_x=expected_state[C_V],
+                                           v_y=0.0,  # this is ok because we don't PLAN for drift velocity
+                                           acceleration_lon=expected_state[C_A],
+                                           omega_yaw=state.ego_state.omega_yaw, # TODO: fill this properly
                                            steering_angle=state.ego_state.steering_angle,
-                                           road_localization=None
                                            )
 
         return updated_state
