@@ -35,7 +35,7 @@ A_LAT_MAX = 2.0
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
-SAFE_DIST_TIME_DELAY = 0.5
+SAFE_DIST_TIME_DELAY = 1.0
 
 # Semantic Grid indices
 SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR = 1, 0, -1
@@ -46,6 +46,9 @@ MIN_OVERTAKE_VEL = 3
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
+
+# [m] The distance from ego frame origin to ego rear
+EGO_ORIGIN_LON_FROM_REAR = 4
 
 # Trajectory cost parameters
 INFINITE_SIGMOID_COST = 2.0 * 1e2           # cost around obstacles (sigmoid)

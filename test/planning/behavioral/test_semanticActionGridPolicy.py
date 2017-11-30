@@ -1,15 +1,17 @@
-from decision_making.src.planning.behavioral.constants import SAFE_DIST_TIME_DELAY
+from unittest.mock import patch
+
+from decision_making.src.planning.behavioral.constants import SAFE_DIST_TIME_DELAY, EGO_ORIGIN_LON_FROM_REAR
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import \
     SemanticActionsGridState
-from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction
+from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticAction
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from mapping.test.model.testable_map_fixtures import map_api_mock, testable_map_api
-from rte.python.logger.AV_logger import AV_Logger
-from decision_making.test.planning.behavioral.behavioral_state_fixtures import state_with_sorrounding_objects, \
+from decision_making.test.planning.behavioral.behavioral_state_fixtures import semantic_actions_state, \
+    semantic_follow_action, semantic_state, semantic_grid_policy, state_with_sorrounding_objects, \
     state_with_ego_on_right_lane, state_with_ego_on_left_lane
-from unittest.mock import patch
+from mapping.test.model.testable_map_fixtures import map_api_mock, navigation_fixture, testable_map_api
+from rte.python.logger.AV_logger import AV_Logger
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
@@ -158,13 +160,13 @@ def test_generateSemanticOccupancyGrid_ComplexStateWithFullGrid_carsAreInRightCe
     cell = (lane, lon)
     assert cell in occupancy_grid.road_occupancy_grid and occupancy_grid.road_occupancy_grid[cell][0].obj_id == obj_id
 
-
-def test_specifyAction_followOtherCar_wellSpecified(semantic_grid_follow_action: SemanticAction,
-                                                    semantic_grid_behavioral_state: SemanticActionsGridState,
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+def test_specifyAction_followOtherCar_wellSpecified(semantic_follow_action: SemanticAction,
+                                                    semantic_actions_state: SemanticActionsGridState,
                                                     semantic_grid_policy: SemanticActionsGridPolicy,
                                                     navigation_fixture):
 
-    specify = semantic_grid_policy._specify_action(semantic_actions_grid_state, semantic_follow_action,
+    specify = semantic_grid_policy._specify_action(semantic_actions_state, semantic_follow_action,
                                                    navigation_fixture)
 
     # A = OptimalControlUtils.QuinticPoly1D.time_constraints_matrix(specify.t)
@@ -175,15 +177,15 @@ def test_specifyAction_followOtherCar_wellSpecified(semantic_grid_follow_action:
     #
     # poly_all_coefs_s = OptimalControlUtils.QuinticPoly1D.solve(A_inv, [constraints_s])[0]
 
-    ego_on_road = semantic_grid_behavioral_state.ego_state.road_localization
+    ego_on_road = semantic_actions_state.ego_state.road_localization
     ego_s0 = ego_on_road.road_lon
 
-    obj = semantic_grid_follow_action.target_obj
+    obj = semantic_follow_action.target_obj
     obj_on_road = obj.road_localization
     obj_s0 = obj_on_road.road_lon
     obj_v = obj.road_longitudinal_speed
     obj_sT = obj_s0 + specify.t * obj_v
-    obj_length = obj.size.length
+    lon_margin = semantic_actions_state.ego_state.size.length - EGO_ORIGIN_LON_FROM_REAR + obj.size.length / 2
 
     assert specify.v == obj_v
-    assert specify.s_rel + ego_s0 == obj_sT - obj_length - SAFE_DIST_TIME_DELAY * obj_v
+    assert specify.s_rel + ego_s0 == obj_sT - lon_margin - SAFE_DIST_TIME_DELAY * obj_v

@@ -6,12 +6,11 @@ import pytest
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import \
     SemanticActionsGridState
-from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction, SemanticActionType
+from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticAction, SemanticActionType
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import OccupancyState, State, EgoState, DynamicObject, ObjectSize
 from rte.python.logger.AV_logger import AV_Logger
-import pytest
-from mapping.test.model.testable_map_fixtures import testable_map_api
+
 
 @pytest.fixture(scope='function')
 def state_with_sorrounding_objects(testable_map_api):
@@ -109,7 +108,7 @@ def state_with_ego_on_left_lane(testable_map_api):
 
 
 @pytest.fixture(scope='function')
-def semantic_grid_state():
+def semantic_state():
     ego_state = EgoState(obj_id=0, timestamp=0, x=15.0, y=0.0, z=0.0, yaw=0.0,
                          size=ObjectSize(length=2.5, width=1.5, height=1.0), confidence=1.0, v_x=7.0, v_y=0.0,
                          acceleration_lon=0.0, omega_yaw=0.0, steering_angle=0.0)
@@ -118,7 +117,8 @@ def semantic_grid_state():
                         size=ObjectSize(height=1.0, length=2.5, width=1.5), timestamp=0, v_x=10.0, v_y=0.0, x=20.0,
                         y=-3.0, yaw=0.0, z=0.0)
 
-    yield State(None, [obj], ego_state)
+    occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+    yield State(occupancy_state, [obj], ego_state)
 
 
 @pytest.fixture(scope='function')

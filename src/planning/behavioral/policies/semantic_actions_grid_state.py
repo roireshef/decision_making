@@ -6,7 +6,7 @@ from decision_making.src.planning.behavioral.constants import SEMANTIC_CELL_LON_
     SEMANTIC_CELL_LON_REAR, LON_MARGIN_FROM_EGO, BEHAVIORAL_PLANNING_HORIZON, EGO_ORIGIN_LON_FROM_REAR
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticBehavioralState, \
     RoadSemanticOccupancyGrid, LON_CELL
-from decision_making.src.state.state import EgoState, State
+from decision_making.src.state.state import EgoState, State, DynamicObject
 from mapping.src.service.map_service import MapService
 
 
@@ -126,7 +126,7 @@ class SemanticActionsGridState(SemanticBehavioralState):
                         reference_localization=ego_state.road_localization,
                         object_localization=object_in_cell.road_localization,
                         navigation_plan=default_navigation_plan
-                    ).rel_lon
+                    )
         object_lon_dist = object_relative_localization.rel_lon
         dist_from_object_rear_to_ego_front = object_lon_dist - object_in_cell.size.length / 2 - \
                                              (ego_state.size.length - EGO_ORIGIN_LON_FROM_REAR)

@@ -18,7 +18,7 @@ from decision_making.src.planning.behavioral.constants import BP_SPECIFICATION_T
 from decision_making.src.planning.behavioral.constants import LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import \
     SemanticActionsGridState
-from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticActionsPolicy, \
+from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticActionsPolicy, \
     SemanticAction, SemanticActionSpec, SemanticActionType, \
     LAT_CELL, LON_CELL, SemanticGridCell
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils
@@ -127,7 +127,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                                                semantic_action=semantic_action)
             else:
                 return SemanticActionsGridPolicy._specify_action_towards_object(behavioral_state=behavioral_state,
-                                                                                semantic_action=semantic_action)
+                                                                                semantic_action=semantic_action,
+                                                                                navigation_plan=nav_plan,
+                                                                                predictor=self._predictor)
         except NoValidTrajectoriesFound as e:
             return None
 

@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import numpy as np
 
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
@@ -6,18 +8,14 @@ from decision_making.src.planning.behavioral.constants import SEMANTIC_CELL_LAT_
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import \
     SemanticActionsGridState
-from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction, SemanticActionType, \
+from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticAction, SemanticActionType, \
     SemanticActionSpec
-from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import EgoState, DynamicObject, ObjectSize
 from decision_making.src.state.state_module import Logger
-from decision_making.test.prediction.test_Predictor import TestPredictorMock
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
+from decision_making.test.prediction.test_Predictor import TestPredictorMock
 from mapping.test.model.testable_map_fixtures import testable_map_api
 from rte.python.logger.AV_logger import AV_Logger
-
-from unittest.mock import patch
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=testable_map_api)
