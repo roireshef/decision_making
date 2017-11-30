@@ -142,6 +142,7 @@ class FrenetMovingFrame:
         theta_x = theta_r + theta_diff
 
         # compute a (acceleration) via pseudo derivative
+        # TODO: compute this analytically from Werling's appendix instead of pseudo-derivative
         a = np.diff(v, axis=1)
         a_col = np.concatenate((a, np.array([a[:, -1]]).reshape(num_t, 1)), axis=1)
 
