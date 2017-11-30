@@ -109,7 +109,7 @@ def state_with_ego_on_left_lane(testable_map_api):
 
 
 @pytest.fixture(scope='function')
-def nov_demo_state():
+def semantic_grid_state():
     ego_state = EgoState(obj_id=0, timestamp=0, x=15.0, y=0.0, z=0.0, yaw=0.0,
                          size=ObjectSize(length=2.5, width=1.5, height=1.0), confidence=1.0, v_x=7.0, v_y=0.0,
                          acceleration_lon=0.0, omega_yaw=0.0, steering_angle=0.0)
@@ -122,19 +122,19 @@ def nov_demo_state():
 
 
 @pytest.fixture(scope='function')
-def nov_demo_semantic_behavioral_state(nov_demo_state: State):
-    obj = nov_demo_state.dynamic_objects[0]
-    yield SemanticActionsGridState({(-1, 1): [obj]}, nov_demo_state.ego_state)
+def semantic_actions_state(semantic_state: State):
+    obj = semantic_state.dynamic_objects[0]
+    yield SemanticActionsGridState({(-1, 1): [obj]}, semantic_state.ego_state)
 
 
 @pytest.fixture(scope='function')
-def nov_demo_semantic_follow_action(nov_demo_semantic_behavioral_state: SemanticActionsGridState):
-    obj = nov_demo_semantic_behavioral_state.road_occupancy_grid[(-1, 1)][0]
+def semantic_follow_action(semantic_actions_state: SemanticActionsGridState):
+    obj = semantic_actions_state.road_occupancy_grid[(-1, 1)][0]
     yield SemanticAction((-1, 1), obj, SemanticActionType.FOLLOW)
 
 
 @pytest.fixture(scope='function')
-def nov_demo_policy():
-    logger = AV_Logger.get_logger('Nov demo - semantic occupancy grid')
+def semantic_grid_policy():
+    logger = AV_Logger.get_logger('Semantic occupancy grid')
     policy = SemanticActionsGridPolicy(logger, RoadFollowingPredictor(logger=logger))
     yield policy

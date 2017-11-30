@@ -8,8 +8,7 @@ from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from mapping.test.model.testable_map_fixtures import map_api_mock, testable_map_api
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import state_with_sorrounding_objects, \
-    state_with_ego_on_right_lane, state_with_ego_on_left_lane, nov_demo_semantic_follow_action, \
-    nov_demo_semantic_behavioral_state, nov_demo_policy, nov_demo_state
+    state_with_ego_on_right_lane, state_with_ego_on_left_lane
 from unittest.mock import patch
 
 
@@ -109,36 +108,20 @@ def test_generateSemanticOccupancyGrid_ComplexStateWithFullGrid_carsAreInRightCe
     class documentation, therefore we expect to see only the relevant cars assigned.
     :return:
     """
-    logger = AV_Logger.get_logger('Nov demo - semantic occupancy grid')
+    logger = AV_Logger.get_logger('Semantic occupancy grid')
 
     state = state_with_sorrounding_objects
     occupancy_grid = SemanticActionsGridState.create_from_state(state=state, logger=logger)
 
     # Assertion tests of objects in grid:
 
-    # Closest cars behind ego: (cars 1-3 are ignored because they are far)
     lane = -1
     lon = -1
-    obj_id = 4
+    obj_id = 1
 
     cell = (lane, lon)
     assert cell in occupancy_grid.road_occupancy_grid and occupancy_grid.road_occupancy_grid[cell][0].obj_id == obj_id
 
-    lane = 0
-    lon = -1
-    obj_id = 5
-
-    cell = (lane, lon)
-    assert cell in occupancy_grid.road_occupancy_grid and occupancy_grid.road_occupancy_grid[cell][0].obj_id == obj_id
-
-    lane = 1
-    lon = -1
-    obj_id = 6
-
-    cell = (lane, lon)
-    assert cell in occupancy_grid.road_occupancy_grid and occupancy_grid.road_occupancy_grid[cell][0].obj_id == obj_id
-
-    # Cars aside ego:
     lane = -1
     lon = 0
     obj_id = 7
@@ -176,10 +159,13 @@ def test_generateSemanticOccupancyGrid_ComplexStateWithFullGrid_carsAreInRightCe
     assert cell in occupancy_grid.road_occupancy_grid and occupancy_grid.road_occupancy_grid[cell][0].obj_id == obj_id
 
 
-def test_specifyAction_followOtherCar_wellSpecified(nov_demo_semantic_follow_action: SemanticAction,
-                                                    nov_demo_semantic_behavioral_state: SemanticActionsGridState,
-                                                    nov_demo_policy: SemanticActionsGridPolicy):
-    specify = nov_demo_policy._specify_action(nov_demo_semantic_behavioral_state, nov_demo_semantic_follow_action)
+def test_specifyAction_followOtherCar_wellSpecified(semantic_grid_follow_action: SemanticAction,
+                                                    semantic_grid_behavioral_state: SemanticActionsGridState,
+                                                    semantic_grid_policy: SemanticActionsGridPolicy,
+                                                    navigation_fixture):
+
+    specify = semantic_grid_policy._specify_action(semantic_actions_grid_state, semantic_follow_action,
+                                                   navigation_fixture)
 
     # A = OptimalControlUtils.QuinticPoly1D.time_constraints_matrix(specify.t)
     # A_inv = np.linalg.inv(A)
@@ -189,10 +175,10 @@ def test_specifyAction_followOtherCar_wellSpecified(nov_demo_semantic_follow_act
     #
     # poly_all_coefs_s = OptimalControlUtils.QuinticPoly1D.solve(A_inv, [constraints_s])[0]
 
-    ego_on_road = nov_demo_semantic_behavioral_state.ego_state.road_localization
+    ego_on_road = semantic_grid_behavioral_state.ego_state.road_localization
     ego_s0 = ego_on_road.road_lon
 
-    obj = nov_demo_semantic_follow_action.target_obj
+    obj = semantic_grid_follow_action.target_obj
     obj_on_road = obj.road_localization
     obj_s0 = obj_on_road.road_lon
     obj_v = obj.road_longitudinal_speed

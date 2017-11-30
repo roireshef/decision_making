@@ -21,7 +21,7 @@ from unittest.mock import patch
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=testable_map_api)
-def test_novDemoEvalSemanticActions():
+def test_evalSemanticActions():
     max_velocity = v = BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT  # m/s
 
     ego_v = max_velocity
@@ -84,7 +84,7 @@ def test_novDemoEvalSemanticActions():
         actions_spec.append(SemanticActionSpec(t=t, v=vel3, s_rel=obs[2].x - ego.x, d_rel=obs[2].y - ego.y))
 
         costs = policy._eval_actions(behav_state, semantic_actions, actions_spec)
-        assert (costs[result[test]] == 1)
+        assert (costs[result[test]] == 0)
 
         # from bokeh.plotting import figure, show, output_file
         # p1 = figure(x_axis_type="datetime", title="Stock Closing Prices")
@@ -100,7 +100,7 @@ def test_get_actionIndByLane():
     semantic_action = SemanticAction((SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT), None, SemanticActionType(1))
     spec1 = SemanticActionSpec(t=5, v=10, s_rel=30, d_rel=-3)
     # TODO: move TestPredictorMock to fixtures
-    policy = SemanticActionsGridPolicy(Logger("NovDemoTest"), TestPredictorMock(logger=logger))
+    policy = SemanticActionsGridPolicy(Logger("SemanticActionsTest"), TestPredictorMock(logger=logger))
     action_ind = policy._get_action_ind([semantic_action], (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT))
     assert action_ind == 0
     action_ind = policy._get_action_ind([semantic_action], (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_FRONT))
