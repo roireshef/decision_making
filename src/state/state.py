@@ -5,6 +5,8 @@ import numpy as np
 
 from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
 from mapping.src.model.localization import RoadLocalization
+
+from decision_making.src.planning.types import CartesianState, C_X, C_THETA, C_Y, C_V
 from mapping.src.service.map_service import MapService
 
 
@@ -62,6 +64,38 @@ class DynamicObject(DDSNonTypedMsg):
         self.acceleration_lon = acceleration_lon
         self.omega_yaw = omega_yaw
         self._cached_road_localization: Optional[RoadLocalization] = None
+
+    def update_cartesian_state(self, timestamp_in_sec: float, cartesian_state: CartesianState):
+        """
+        Return a new DynamicObject instance with updated timestamp and cartesian state.
+        Enables creating new instances of object from predicted trajectories
+        :param timestamp_in_sec: global timestamp in [sec] of updated object
+        :param cartesian_state: object cartesian state
+        :return:
+        """
+
+        # TODO: set other attributes, as:
+        # TODO: z coordinate, acceleration
+
+        timestamp = int(timestamp_in_sec * 1e9)
+        x = cartesian_state[C_X]
+        y = cartesian_state[C_Y]
+        z = 0.0
+        yaw = cartesian_state[C_THETA]
+
+        # Assume that object's speed is only in the x axis
+        v_x = cartesian_state[C_V]
+        v_y = 0.0
+
+        fields = self.__dict__
+
+        # obj_id = cls.obj_id, timestamp = timestamp, x = x, y = y, z = z,
+        # yaw = yaw, size = cls.size,
+        # confidence = cls.confidence, v_x = v_x, v_y = v_y,
+        # acceleration_lon = cls.acceleration_lon, omega_yaw = cls.omega_yaw
+        # Construct a new object
+
+        return self.__class__(**fields)
 
     @property
     def road_localization(self):

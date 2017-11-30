@@ -27,7 +27,7 @@ class Predictor:
 
     @abstractmethod
     def predict_object(self, dynamic_object: DynamicObject,
-                       prediction_timestamps: np.ndarray) -> np.ndarray:
+                       prediction_timestamps: np.ndarray) -> CartesianTrajectory:
         """
         Method to compute future locations, yaw, and velocities for dynamic objects. Returns the np.array used by the
          trajectory planner.
@@ -37,16 +37,6 @@ class Predictor:
         :return: predicted object's locations in global map coordinates np.array([x, y, theta, vel])
         """
         pass
-
-    def predict_ego(self, ego_state: EgoState, prediction_timestamps: np.ndarray) -> CartesianTrajectory:
-        """
-        Method to compute future locations, yaw, and velocities for ego vehicle. Returns the np.array used by the
-         trajectory planner.
-        :param ego_state: in map coordinates
-        :param prediction_timestamps: np array of timestamps to predict_object_trajectories for. In ascending order.
-        :return: ego's predicted locations in global map coordinates np.array([x, y, theta, vel])
-        """
-        return self.predict_object(ego_state, prediction_timestamps)
 
     @abstractmethod
     def predict_object_on_road(self, road_localization: RoadLocalization, localization_timestamp: float,
@@ -59,38 +49,24 @@ class Predictor:
         :return: a list of future localizations that correspond to prediction_timestamps
         """
 
-    def _convert_predictions_to_dynamic_objects(self, dynamic_object: DynamicObject, predictions: np.ndarray,
-                                                prediction_timestamps: np.ndarray,
-                                                project_velocity_to_global: bool) -> List[DynamicObject]:
+    def _convert_predictions_to_dynamic_objects(self, dynamic_object: DynamicObject, predictions: CartesianTrajectory,
+                                                prediction_timestamps: np.ndarray) -> List[DynamicObject]:
         """
         given original dynamic object, its predictions, and their respective time stamps, creates a list of dynamic
          objects corresponding to the predicted object in those timestamps.
-        :param project_velocity_to_global: whether th predicted velocity should be converted to global frame
         :param dynamic_object:
         :param predictions:
         :param prediction_timestamps:
         :return:
         """
         # Initiate array of DynamicObject at predicted times
-        predicted_object_states: List[DynamicObject] = [copy.deepcopy(dynamic_object) for x in
-                                                        range(len(prediction_timestamps))]
+        predicted_object_states: List[DynamicObject] = list()
+
         # Fill with predicted state
-        for t_ind, predicted_object_state in enumerate(predicted_object_states):
-            predicted_pos = np.array([predictions[t_ind, C_X], predictions[t_ind, C_Y], 0.0])
-            predicted_yaw = predictions[t_ind, C_THETA]
-            predicted_object_state.timestamp_in_sec = prediction_timestamps[t_ind]
-            predicted_object_state.x = predicted_pos[C_X]
-            predicted_object_state.y = predicted_pos[C_Y]
-            predicted_object_state.yaw = predicted_yaw
-            # TODO: check consistency between diff of (x,y) and v_x, v_y as calculated below:
-            if project_velocity_to_global:
-                predicted_object_state.v_x = predictions[t_ind, C_V] * np.cos(predicted_yaw)
-                predicted_object_state.v_y = predictions[t_ind, C_V] * np.sin(predicted_yaw)
-            else:
-                # We currently assume that the velocity vector is towards object's x axis
-                # TODO: remove assumption
-                predicted_object_state.v_x = predictions[t_ind, C_V]
-                predicted_object_state.v_y = 0.0
+        for t_ind in range(len(prediction_timestamps)):
+            predicted_object_states.append(
+                dynamic_object.update_cartesian_state(timestamp_in_sec=prediction_timestamps[t_ind],
+                                                      cartesian_state=predictions[t_ind]))
 
         return predicted_object_states
 
@@ -104,7 +80,7 @@ class Predictor:
         predict_object_trajectories. IMPORTANT - returned list must be in the same order as prediction_timestamps.
         """
         predictions = self.predict_object(dynamic_object, prediction_timestamps)
-        return self._convert_predictions_to_dynamic_objects(dynamic_object, predictions, prediction_timestamps, True)
+        return self._convert_predictions_to_dynamic_objects(dynamic_object, predictions, prediction_timestamps)
 
     def _predict_ego_state(self, ego_state: EgoState, prediction_timestamps: np.ndarray) -> List[EgoState]:
         """
@@ -115,8 +91,8 @@ class Predictor:
         predict_ego_trajectories. IMPORTANT - returned list must be in the same order as prediction_timestamps.
         """
         # TODO: update EgoState attributes that are copied and are not part of DynamicObject (as steering_angle)
-        predictions = self.predict_ego(ego_state, prediction_timestamps)
-        return self._convert_predictions_to_dynamic_objects(ego_state, predictions, prediction_timestamps, False)
+        predictions = self.predict_object(ego_state, prediction_timestamps)
+        return self._convert_predictions_to_dynamic_objects(ego_state, predictions, prediction_timestamps)
 
     def predict_state(self, state: State, prediction_timestamps: np.ndarray) -> List[State]:
         """
@@ -146,8 +122,7 @@ class Predictor:
             try:
                 predicted_obj_states = self._predict_object_state(dynamic_object, prediction_timestamps)
                 for t_ind in range(len(prediction_timestamps)):
-                    predicted_states[t_ind].dynamic_objects.append(
-                        predicted_obj_states[t_ind])  # adding predicted obj_state
+                    predicted_states[t_ind].dynamic_objects.append(predicted_obj_states[t_ind])  # adding predicted obj_state
             except LongitudeOutOfRoad as e:
                 self._logger.warning("Prediction of object id %d is out of road. %s", dynamic_object.obj_id,
                                      dynamic_object.__dict__)
