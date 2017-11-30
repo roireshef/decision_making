@@ -1,4 +1,5 @@
 from logging import Logger
+from typing import Optional
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams

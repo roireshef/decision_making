@@ -109,6 +109,10 @@ def state():
     ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
     yield State(occupancy_state, dynamic_objects, ego_state)
 
+
+
+
+
 @pytest.fixture(scope='function')
 def ego_state_fix():
     size = ObjectSize(0, 0, 0)
@@ -118,10 +122,7 @@ def ego_state_fix():
 
 @pytest.fixture(scope='function')
 def trajectory_params():
-    ref_route = np.array(
-        [[1.0, -2.0], [2.0, -2.0], [3.0, -2.0], [4.0, -2.0], [5.0, -2.0], [6.0, -2.0],
-         [7.0, -2.0], [8.0, -2.0], [9.0, -2.0], [10.0, -2.0], [11.0, -2.0],
-         [12.0, -2.0], [13.0, -2.0], [14.0, -2.0], [15.0, -2.0], [16.0, -2.0]])
+    ref_route = np.array([[x, -2.0] for x in range(0, 16)])
     target_state = np.array([16.0, -2.0, 0.0, 1])
     mock_sigmoid = SigmoidFunctionParams(1.0, 2.0, 3.0)
     trajectory_cost_params = TrajectoryCostParams(mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,

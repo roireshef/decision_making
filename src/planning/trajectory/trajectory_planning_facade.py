@@ -150,14 +150,14 @@ class TrajectoryPlanningFacade(DmModule):
         if self._last_trajectory is None:
             return False
 
-        time_diff = current_ego_state.timestamp - self._last_trajectory.timestamp
+        time_diff = current_ego_state.timestamp_in_sec - self._last_trajectory.timestamp
         current_expected_state: CartesianExtendedState = self._last_trajectory.sample(np.array([time_diff]))[0]
         current_actual_location = np.array([current_ego_state.x, current_ego_state.y, DEFAULT_OBJECT_Z_VALUE])
 
         errors_in_expected_frame, _ = CartesianFrame.convert_global_to_relative_frame(
-            global_translation=current_actual_location,
-            global_orientation=0.0,
-            frame_translation=current_expected_state[[C_X, C_Y]].append([DEFAULT_OBJECT_Z_VALUE]),
+            global_pos=current_actual_location,
+            global_yaw=0.0,
+            frame_position=np.append(current_expected_state[[C_X, C_Y]], [DEFAULT_OBJECT_Z_VALUE]),
             frame_orientation=current_expected_state[C_YAW]
         )
 
@@ -168,7 +168,7 @@ class TrajectoryPlanningFacade(DmModule):
                distances_in_expected_frame[FP_DX] <= NEGLIGIBLE_DISPOSITION_LAT
 
     def _get_state_with_expected_ego(self, state: State):
-        time_diff = state.ego_state.timestamp - self._last_trajectory.timestamp
+        time_diff = state.ego_state.timestamp_in_sec - self._last_trajectory.timestamp
         expected_state: CartesianExtendedState = self._last_trajectory.sample(np.array([time_diff]))[0]
 
         updated_state = copy.deepcopy(state)
@@ -180,7 +180,7 @@ class TrajectoryPlanningFacade(DmModule):
                                            v_x=expected_state[C_V],
                                            v_y=0.0,  # this is ok because we don't PLAN for drift velocity
                                            acceleration_lon=expected_state[C_A],
-                                           omega_yaw=state.ego_state.omega_yaw, # TODO: fill this properly
+                                           omega_yaw=state.ego_state.omega_yaw,  # TODO: fill this properly
                                            steering_angle=state.ego_state.steering_angle,
                                            )
 

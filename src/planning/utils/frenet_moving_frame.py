@@ -4,7 +4,7 @@ from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, T
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, CURVE_YAW, CURVE_K, CURVE_K_TAG, \
     FP_SX, \
     FP_DX, FrenetPoint, FrenetTrajectory, CartesianExtendedTrajectory, FrenetTrajectories, CartesianExtendedTrajectories, ExtendedCurve
-from mapping.src.transformations.geometry_utils import CartesianFrame
+from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
 
 class FrenetMovingFrame:
@@ -54,6 +54,7 @@ class FrenetMovingFrame:
         else:
             raise ValueError('index ' + str(s_idx) + 'is not found in __h_tensor (probably __h_tensor is not cached)')
 
+    # TODO: this should be replaced with a continuous variant (based on MapAPI._convert_global_to_road_coordinates)
     def cpoint_to_fpoint(self, cpoint: np.ndarray) -> FrenetPoint:
         """
         Transforms cartesian-frame point [x, y] to frenet-frame point (using self.curve) \n
@@ -65,6 +66,10 @@ class FrenetMovingFrame:
         s_idx = np.argmin(norm_dists)
         if s_idx.size > 1:
             s_idx = s_idx[0]
+
+        # TODO: hack to assert that cpoint can be projected onto the frenet curve and it isn't an extrapolation
+        if s_idx == 0:
+            _ = Euclidean.project_on_segment_2d(cpoint, self._curve[0, :2], self._curve[1, :2])
 
         h = self.get_homo_matrix_2d(s_idx)  # projection from global coord-frame to the Frenet-origin
 
@@ -148,9 +153,12 @@ class FrenetMovingFrame:
         theta_x = theta_r + theta_diff
 
         # compute a (acceleration) via pseudo derivative
-        # TODO: compute this analytically from Werling's appendix instead of pseudo-derivative
-        a = np.diff(v, axis=1)
-        a_col = np.concatenate((a, np.array([a[:, -1]]).reshape(num_t, 1)), axis=1)
+        # TODO: compute this analytically from Werling's appendix instead of pseudo-derivative - fix this
+        try:
+            a = np.diff(v, axis=1)
+            a_col = np.concatenate((a, np.array([a[:, -1]]).reshape(num_t, 1)), axis=1)
+        except IndexError as e:
+            a_col = np.zeros(shape=[num_t, num_p])
 
         return np.concatenate((xy_abs.reshape([num_t, num_p, 2]), theta_x.reshape([num_t, num_p, 1]),
                                v.reshape([num_t, num_p, 1]), a_col.reshape([num_t, num_p, 1]),

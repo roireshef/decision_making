@@ -3,9 +3,7 @@ from logging import Logger
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
-from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
-from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 
 
 class TrajectoryPlanningFacadeMock(TrajectoryPlanningFacade):
