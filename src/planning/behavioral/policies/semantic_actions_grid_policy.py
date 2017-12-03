@@ -382,13 +382,15 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         lon_margin = behavioral_state.ego_state.size.length - EGO_ORIGIN_LON_FROM_REAR + \
                      semantic_action.target_obj.size.length/2
 
-        for T in np.arange(BP_SPECIFICATION_T_MIN, BP_SPECIFICATION_T_MAX, BP_SPECIFICATION_T_RES):
+        prediction_timestamps = np.arange(BP_SPECIFICATION_T_MIN, BP_SPECIFICATION_T_MAX, BP_SPECIFICATION_T_RES)
+        # predicted_localizations_list = predictor.predict_object_on_road(obj_on_road, 0.0, obj_sv0, prediction_timestamps)
+
+        for T in prediction_timestamps:
             # TODO: should be cached in advance using OCU.QP1D.time_constraints_tensor
             A = OptimalControlUtils.QuinticPoly1D.time_constraints_matrix(T)
             A_inv = np.linalg.inv(A)
 
             # TODO: should be swapped with current implementation of Predictor
-            #predicted_localizations_list = predictor.predict_object_on_road(obj_on_road, 0.0, np.array([T]))
             obj_saT = obj_sa0
             obj_svT = obj_sv0 + obj_sa0 * T
             obj_sxT = obj_sx0 + obj_sv0 * T + obj_sa0 * T ** 2 / 2
