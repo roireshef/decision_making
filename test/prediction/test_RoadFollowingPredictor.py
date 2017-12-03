@@ -4,6 +4,7 @@ from decision_making.src.state.state_module import StateModule
 import numpy as np
 
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
+from mapping.src.model.localization import RoadLocalization
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
 
@@ -20,8 +21,27 @@ def test_predictObjectTrajectories_precisePrediction():
                             v_x = 10, v_y = 0, acceleration_lon=0, omega_yaw=0)
     pred_timestamps = np.arange(5.0, 12.0, 0.1)
     traj = predictor.predict_object(dyn_obj, pred_timestamps)
-    assert np.isclose(traj[0][0],540.) and np.isclose(traj[0][1], 0.) and \
+    assert np.isclose(traj[0][0], 540.) and np.isclose(traj[0][1], 0.) and \
            np.isclose(traj[-1][0], 600.) and np.isclose(traj[-1][1], 9.)
+
+
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+def test_predictObjectOnRoad_precisePrediction():
+    logger = AV_Logger.get_logger("test_predictObjectOnRoad_precisePrediction")
+    predictor = RoadFollowingPredictor(logger)
+    size = ObjectSize(1, 1, 1)
+    global_pos = np.array([500.0, 0.0, 0.0])
+    road_localization = RoadLocalization(road_id=1, lane_num=0,
+                                         intra_road_lat=global_pos[1], intra_lane_lat=global_pos[1],
+                                         road_lon=global_pos[0], intra_road_yaw=0)
+    velocity = 10
+    timestamp_in_sec = 1
+    pred_timestamps = np.arange(5.0, 12.0, 0.1)
+    pred_road_localizations = predictor.predict_object_on_road(road_localization, timestamp_in_sec, velocity,
+                                                               pred_timestamps)
+    assert np.isclose(pred_road_localizations[0].road_lon, 540.) and \
+           np.isclose(pred_road_localizations[0].intra_road_lat, global_pos[1]) and \
+           np.isclose(pred_road_localizations[-1].road_lon, 609.)
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
