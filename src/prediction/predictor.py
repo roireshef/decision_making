@@ -40,10 +40,11 @@ class Predictor:
 
     @abstractmethod
     def predict_object_on_road(self, road_localization: RoadLocalization, localization_timestamp: float,
-                               prediction_timestamps: np.ndarray) -> List[RoadLocalization]:
+                               velocity: float, prediction_timestamps: np.ndarray) -> List[RoadLocalization]:
         """
         computes future locations, yaw and velocities for an object directly in the road coordinates-frame
         :param road_localization: object's road localization
+        :param velocity: currently we assume a constant velocity
         :param localization_timestamp: the timestamp of road_localization argument (units are the same as DynamicObject.timestamp)
         :param prediction_timestamps: np array of timestamps to predict future localizations for. In ascending order.
         :return: a list of future localizations that correspond to prediction_timestamps

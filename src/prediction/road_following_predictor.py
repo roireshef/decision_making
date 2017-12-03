@@ -21,8 +21,28 @@ class RoadFollowingPredictor(Predictor):
     """
 
     def predict_object_on_road(self, road_localization: RoadLocalization, localization_timestamp: float,
-                               prediction_timestamps: np.ndarray) -> List[RoadLocalization]:
-        pass
+                               velocity: float, prediction_timestamps: np.ndarray) -> List[RoadLocalization]:
+        # TODO: the argument velocity should be discarded, when RoadLocalization will include velocity/acceleration
+        """
+        computes future locations, yaw and velocities for an object directly in the road coordinates-frame
+        :param road_localization: object's road localization
+        :param velocity: currently we assume a constant velocity
+        :param localization_timestamp: the timestamp of road_localization argument (units are the same as DynamicObject.timestamp)
+        :param prediction_timestamps: np array of timestamps to predict future localizations for. In ascending order.
+        :return: a list of future localizations that correspond to prediction_timestamps
+        """
+        map_based_nav_plan = MapService.get_instance().get_road_based_navigation_plan(road_localization.road_id)
+
+        road_localizations_list = []
+        for prediction_timestamp in prediction_timestamps:
+            predicted_road_localization = road_localization
+            predicted_road_localization.road_id, predicted_road_localization.road_lon = \
+                MapService.get_instance().advance_on_plan(road_localization.road_id, road_localization.road_lon,
+                               (prediction_timestamp - localization_timestamp) * velocity, map_based_nav_plan)
+            road_localizations_list.append(predicted_road_localization)
+
+        return road_localizations_list
+
 
     def predict_object(self, dynamic_object: DynamicObject,
                        prediction_timestamps: np.ndarray) -> np.ndarray:
