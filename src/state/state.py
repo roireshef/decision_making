@@ -65,13 +65,13 @@ class DynamicObject(DDSNonTypedMsg):
         self.omega_yaw = omega_yaw
         self._cached_road_localization: Optional[RoadLocalization] = None
 
-    def update_cartesian_state(self, timestamp_in_sec: float, cartesian_state: CartesianState):
+    def set_cartesian_state(self, timestamp_in_sec: float, cartesian_state: CartesianState):
         """
         Return a new DynamicObject instance with updated timestamp and cartesian state.
         Enables creating new instances of object from predicted trajectories
         :param timestamp_in_sec: global timestamp in [sec] of updated object
         :param cartesian_state: object cartesian state
-        :return:
+        :return: Returns a new DynamicObject with updated state
         """
 
         # TODO: set other attributes, as:
