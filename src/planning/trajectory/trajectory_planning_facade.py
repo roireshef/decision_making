@@ -6,7 +6,7 @@ from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_STATE_READER_TOPIC, TRAJECTORY_PARAMS_READER_TOPIC, \
     TRAJECTORY_PUBLISH_TOPIC, TRAJECTORY_VISUALIZATION_TOPIC, TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
-    NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, DEFAULT_OBJECT_Z_VALUE
+    NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, DEFAULT_OBJECT_Z_VALUE, VISUALIZATION_PREDICTION_RESOLUTION
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
@@ -71,7 +71,7 @@ class TrajectoryPlanningFacade(DmModule):
                 updated_state = state
 
             # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
-            samplable_trajectory, cost, debug_results = self._strategy_handlers[params.strategy]. \
+            samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, params.target_state, params.time, params.cost_params)
 
             # TODO: validate that sampling is consistent with controller!
@@ -83,11 +83,12 @@ class TrajectoryPlanningFacade(DmModule):
             # TODO: should publish v_x?
             # publish results to the lower DM level (Control)
             self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory_points, current_speed=state.ego_state.v_x))
-
             self._last_trajectory = samplable_trajectory
 
             # TODO: publish cost to behavioral layer?
-            # publish visualization/debug data
+            # publish visualization/debug data - based on original state!
+            debug_results = self._prepare_visualization_msg(state, params.reference_route, ctrajectories, costs,
+                                                            params.time - state.ego_state.timestamp_in_sec)
             self._publish_debug(debug_results)
 
             self.logger.info("TrajectoryPlanningFacade._periodic_action_impl time %f", time.time() - start_time)
@@ -163,11 +164,16 @@ class TrajectoryPlanningFacade(DmModule):
 
         distances_in_expected_frame: FrenetPoint = np.abs(errors_in_expected_frame)
 
-        # TODO: change 0,1 indices to X and Y column constants (when merged with other branches in v1.5.3)
         return distances_in_expected_frame[FP_SX] <= NEGLIGIBLE_DISPOSITION_LON and \
                distances_in_expected_frame[FP_DX] <= NEGLIGIBLE_DISPOSITION_LAT
 
     def _get_state_with_expected_ego(self, state: State):
+        """
+        takes a state and overrides its ego vehicle's localization to be the localization expected at the state's
+        timestamp according to the last trajectory cached in the facade's self._last_trajectory
+        :param state: the state to process
+        :return: a new state object with a new ego-vehicle localization
+        """
         time_diff = state.ego_state.timestamp_in_sec - self._last_trajectory.timestamp
         expected_state: CartesianExtendedState = self._last_trajectory.sample(np.array([time_diff]))[0]
 
@@ -185,3 +191,34 @@ class TrajectoryPlanningFacade(DmModule):
                                            )
 
         return updated_state
+
+    def _prepare_visualization_msg(self, state, reference_route, ctrajectories, costs, planning_horizon):
+        """
+        prepares visualization message for visualization purposes
+        :param state: the original (raw, unedited) state got by this facade
+        :param reference_route: the reference route got from BP
+        :param ctrajectories: alternative trajectories in cartesian-frame
+        :param costs: costs computed for each alternative trajectory
+        :param planning_horizon: the (relative) planning-horizon used for planning
+        :return:
+        """
+        # TODO: remove this section and solve timestamps-sync in StateModule
+        objects_timestamp_in_sec = [dyn_obj.timestamp_in_sec for dyn_obj in state.dynamic_objects]
+        objects_timestamp_in_sec.append(state.ego_state.timestamp_in_sec)
+        most_recent_timestamp = np.max(objects_timestamp_in_sec)
+
+        prediction_timestamps = np.arange(most_recent_timestamp, state.ego_state.timestamp_in_sec + planning_horizon,
+                                          VISUALIZATION_PREDICTION_RESOLUTION, float)
+
+        # Curently we are predicting the state at ego's timestamp and at the end of the traj execution time.
+        # predicted_states[0] is the current state
+        # predicted_states[1] is the predicted state in the end of the execution of traj.
+        # TODO: move this to visualizer!
+        predicted_states = self._predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps)
+
+        return TrajectoryVisualizationMsg(reference_route,
+                                          ctrajectories[:, :, :C_V],
+                                          costs,
+                                          predicted_states[0],
+                                          predicted_states[1:],
+                                          planning_horizon)

@@ -69,7 +69,7 @@ def test_werlingPlanner_toyScenario_noException():
 
     start_time = time.time()
 
-    samplable, _, debug = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
+    samplable, ctrajectories, costs = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
                                        goal_time=T, cost_params=cost_params)
 
     samplable.sample(np.arange(0, 1, 0.1))
@@ -89,17 +89,17 @@ def test_werlingPlanner_toyScenario_noException():
                      for o in state.dynamic_objects]
     WerlingVisualizer.plot_obstacles(p1, plottable_obs)
     WerlingVisualizer.plot_obstacles(p2, plottable_obs)
-    WerlingVisualizer.plot_route(p1, debug.reference_route)
-    WerlingVisualizer.plot_route(p2, debug.reference_route)
+    WerlingVisualizer.plot_route(p1, route_points[:, :2])
+    WerlingVisualizer.plot_route(p2, route_points[:, :2])
 
-    WerlingVisualizer.plot_best(p2, debug.trajectories[0])
-    WerlingVisualizer.plot_alternatives(p1, debug.trajectories)
+    WerlingVisualizer.plot_best(p2, ctrajectories[0])
+    WerlingVisualizer.plot_alternatives(p1, ctrajectories)
 
-    print(debug.costs)
+    print(costs)
 
-    # WerlingVisualizer.plot_route(p1, route_points)
+    WerlingVisualizer.plot_route(p1, route_points)
 
-    # fig.show()
-    # fig.clear()
+    fig.show()
+    fig.clear()
 
 

@@ -7,7 +7,7 @@ from decision_making.src.exceptions import raises, NoValidTrajectoriesFound
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.types import CartesianPath, CartesianTrajectory, CartesianState, \
-    CartesianExtendedTrajectory
+    CartesianExtendedTrajectory, CartesianTrajectories
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 from logging import Logger
@@ -42,7 +42,7 @@ class TrajectoryPlanner(metaclass=ABCMeta):
     @abstractmethod
     @raises(NoValidTrajectoriesFound)
     def plan(self, state: State, reference_route: CartesianPath, goal: CartesianState, goal_time: float,
-             cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, float, TrajectoryVisualizationMsg]:
+             cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
         Plans a trajectory according to the specifications in the arguments
         :param goal_time: defines the global time in [sec] of the goal. Enables the target state and time
@@ -52,6 +52,7 @@ class TrajectoryPlanner(metaclass=ABCMeta):
         :param goal: A 1D numpy array of the desired ego-state to plan towards, represented in current
         global-coordinate-frame (see EGO_* in planning.utils.types.py for the fields)
         :param cost_params: Data object with parameters that specify how to build the planning's cost function
-        :return: a tuple of: (samplable represantation of the chosen trajectory, trajectory cost, debug results)
+        :return: a tuple of: (samplable represantation of the chosen trajectory, tensor of trajectory alternatives,
+         trajectories costs correspond to previous output)
         """
         pass

@@ -11,7 +11,8 @@ from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STE
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.types import FP_SX, CURVE_YAW, FP_DX, C_X, C_Y, C_YAW, C_V, FS_SV, \
-    FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianState, CartesianTrajectory, CartesianExtendedTrajectory
+    FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianState, CartesianTrajectory, CartesianExtendedTrajectory, \
+    CartesianTrajectories
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils as OC
@@ -59,7 +60,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return self._dt
 
     def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, goal_time: float,
-             cost_params: TrajectoryCostParams) -> Tuple[SamplableWerlingTrajectory, float, TrajectoryVisualizationMsg]:
+             cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """ see base class """
         # create road coordinate-frame
         frenet = FrenetMovingFrame(reference_route)
@@ -141,35 +142,13 @@ class WerlingPlanner(TrajectoryPlanner):
             poly_d_coefs=poly_coefs[filtered_indices[sorted_idxs[0]]][6:]
         )
 
-        ## VIZ BLOCK ##
-        #TODO: move this to visualizer. Curently we are predicting the state at ego's timestamp and at the end of the traj execution time.
+        # splice alternative trajectories by skipping indices - for visualization
         alternative_ids_skip_range = range(0, len(ctrajectories),
                                            max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
 
-        # TODO: we might want to replace the most recent timestamp with the current machine timestamp
-        ego_timestamp_in_sec = state.ego_state.timestamp_in_sec
-        objects_timestamp_in_sec = [state.dynamic_objects[x].timestamp_in_sec for x in
-                                    range(len(state.dynamic_objects))]
-        objects_timestamp_in_sec.append(ego_timestamp_in_sec)
-        most_recent_timestamp = np.max(objects_timestamp_in_sec)
-
-        prediction_timestamps = np.arange(most_recent_timestamp, state.ego_state.timestamp_in_sec + planning_horizon,
-                                          VISUALIZATION_PREDICTION_RESOLUTION, float)
-
-        # TODO: move this to visualizer.
-        # Curently we are predicting the state at ego's timestamp and at the end of the traj execution time.
-        predicted_states = self._predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps)
-        # predicted_states[0] is the current state
-        # predicted_states[1] is the predicted state in the end of the execution of traj.
-        debug_results = TrajectoryVisualizationMsg(reference_route,
-                                                   ctrajectories[sorted_idxs[alternative_ids_skip_range], :, :C_V],
-                                                   trajectory_costs[sorted_idxs[alternative_ids_skip_range]],
-                                                   predicted_states[0],
-                                                   predicted_states[1:],
-                                                   planning_horizon)
-        ## END OF VIZ BLOCK ##
-
-        return samplable_trajectory, trajectory_costs[sorted_idxs[0]], debug_results
+        return samplable_trajectory, \
+               ctrajectories[sorted_idxs[alternative_ids_skip_range], :, :(C_V+1)], \
+               trajectory_costs[sorted_idxs[alternative_ids_skip_range]]
 
     @staticmethod
     def _filter_limits(ftrajectories: FrenetTrajectories, cost_params: TrajectoryCostParams) -> (FrenetTrajectories, np.ndarray):
