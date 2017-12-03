@@ -66,8 +66,8 @@ class Predictor:
         # Fill with predicted state
         for t_ind in range(len(prediction_timestamps)):
             predicted_object_states.append(
-                dynamic_object.update_cartesian_state(timestamp_in_sec=prediction_timestamps[t_ind],
-                                                      cartesian_state=predictions[t_ind]))
+                dynamic_object.set_cartesian_state(timestamp_in_sec=prediction_timestamps[t_ind],
+                                                   cartesian_state=predictions[t_ind]))
 
         return predicted_object_states
 
