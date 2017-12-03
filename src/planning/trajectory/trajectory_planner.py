@@ -15,12 +15,15 @@ from logging import Logger
 
 # TODO: fill the units in timestamps
 class SamplableTrajectory(metaclass=ABCMeta):
-    def __init__(self, timestamp: float):
+    def __init__(self, timestamp: float, max_sample_time: float):
         """
         Abstract class that holds all the statistics to sample points on a specific planned trajectory
-        :param timestamp: global timestamp *in seconds* to use as a reference
-        (other timestamps will be given relative to it)
+        :param timestamp: [sec] global timestamp *in seconds* to use as a reference
+                (other timestamps will be given relative to it)
+        :param max_sample_time: [sec] global timestamp which is the end of the planning-horizon to prevent extrapolation
+        in sampling from trajectory plan
         """
+        self.max_sample_time = max_sample_time
         self.timestamp = timestamp
 
     @abstractmethod
@@ -28,7 +31,7 @@ class SamplableTrajectory(metaclass=ABCMeta):
         """
         This function takes an array of time stamps and returns an array of points <x, y, theta, v, acceleration,
         curvature> along the trajectory
-        :param time_points: 1D numpy array of time stamps *in seconds* (relative to self.timestamp)
+        :param time_points: 1D numpy array of time stamps *in seconds* (global self.timestamp)
         :return: 2D numpy array with every row having the format of <x, y, yaw, velocity, a, k>
         """
         pass
@@ -38,6 +41,10 @@ class TrajectoryPlanner(metaclass=ABCMeta):
     def __init__(self, logger: Logger, predictor: Predictor):
         self._logger = logger
         self._predictor = predictor
+
+    @property
+    def predictor(self):
+        return self._predictor
 
     @abstractmethod
     @raises(NoValidTrajectoriesFound)

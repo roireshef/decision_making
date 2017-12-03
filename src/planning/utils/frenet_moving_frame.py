@@ -131,6 +131,7 @@ class FrenetMovingFrame:
 
         # pre-compute terms to use below
         term1 = (1 - k_r * d_x)
+
         d_x_tag = d_v / s_v  # 1st derivative of d_x by distance
         d_x_tagtag = (d_a - d_x_tag * s_a) / (s_v ** 2)  # 2nd derivative of d_x by distance
         tan_theta_diff = d_x_tag / term1

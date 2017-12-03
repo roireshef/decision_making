@@ -26,20 +26,22 @@ from decision_making.src.state.state import State
 
 
 class SamplableWerlingTrajectory(SamplableTrajectory):
-    def __init__(self, timestamp: float, frenet_frame: FrenetMovingFrame,
+    def __init__(self, timestamp: float, max_sample_time: float, frenet_frame: FrenetMovingFrame,
                  poly_s_coefs: np.ndarray, poly_d_coefs: np.ndarray):
         """To represent a trajectory that is a result of Werling planner, we store the frenet frame used and
         two polynomial coefficients vectors (for dimensions s and d)"""
-        super().__init__(timestamp)
+        super().__init__(timestamp, max_sample_time)
         self.frenet_frame = frenet_frame
         self.poly_s_coefs = poly_s_coefs
         self.poly_d_coefs = poly_d_coefs
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
         """ see base method """
+        relative_time_points = time_points - self.timestamp
+
         # assign values from <time_points> in both s and d polynomials
-        fstates_s = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), time_points)[0]
-        fstates_d = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]), time_points)[0]
+        fstates_s = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), relative_time_points)[0]
+        fstates_d = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]), relative_time_points)[0]
         fstates = np.hstack((fstates_s, fstates_d))
 
         # project from road coordinates to cartesian coordinate frame
@@ -137,6 +139,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         samplable_trajectory = SamplableWerlingTrajectory(
             timestamp=state.ego_state.timestamp_in_sec,
+            max_sample_time=state.ego_state.timestamp_in_sec + planning_horizon,
             frenet_frame=frenet,
             poly_s_coefs=poly_coefs[filtered_indices[sorted_idxs[0]]][:6],
             poly_d_coefs=poly_coefs[filtered_indices[sorted_idxs[0]]][6:]

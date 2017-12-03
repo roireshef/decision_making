@@ -39,7 +39,7 @@ NUM_ALTERNATIVE_TRAJECTORIES = 10
 # [m] "Negligible distance" threshold between the desired location and the actual location between two TP planning
 # iterations. If the distance is lower than this threshold, the TP plans the trajectory as is the ego vehicle is
 # currently in the desired location and not in its actual location.
-NEGLIGIBLE_DISPOSITION_LON = 0.3  # longitudinal (ego's heading direction) difference threshold
+NEGLIGIBLE_DISPOSITION_LON = 1  # longitudinal (ego's heading direction) difference threshold
 NEGLIGIBLE_DISPOSITION_LAT = 0.3  # lateral (ego's side direction) difference threshold
 
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
