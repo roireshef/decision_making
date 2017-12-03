@@ -1,4 +1,5 @@
 from typing import List
+import copy
 
 import numpy as np
 
@@ -32,10 +33,10 @@ class RoadFollowingPredictor(Predictor):
         :return: a list of future localizations that correspond to prediction_timestamps
         """
         map_based_nav_plan = MapService.get_instance().get_road_based_navigation_plan(road_localization.road_id)
+        predicted_road_localization = copy.deepcopy(road_localization)
 
         road_localizations_list = []
         for prediction_timestamp in prediction_timestamps:
-            predicted_road_localization = road_localization
             predicted_road_localization.road_id, predicted_road_localization.road_lon = \
                 MapService.get_instance().advance_on_plan(road_localization.road_id, road_localization.road_lon,
                                (prediction_timestamp - localization_timestamp) * velocity, map_based_nav_plan)
