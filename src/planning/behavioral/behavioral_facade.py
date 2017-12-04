@@ -1,8 +1,5 @@
 import traceback
-from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException
-from decision_making.src.global_constants import BEHAVIORAL_STATE_READER_TOPIC, \
-    BEHAVIORAL_NAV_PLAN_READER_TOPIC, BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC, BEHAVIORAL_VISUALIZATION_TOPIC
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
@@ -11,17 +8,29 @@ from decision_making.src.planning.behavioral.behavioral_state import BehavioralS
 from decision_making.src.planning.behavioral.policy import Policy
 from decision_making.src.state.state import State
 from logging import Logger
+
+from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
+from common_data.src.communication.pubsub.pubsub import PubSub
+from common_data.lcm.config import config_defs
+from common_data.lcm.config import pubsub_topics
+
+from common_data.lcm.generatedFiles.gm_lcm import LcmState
+from common_data.lcm.generatedFiles.gm_lcm import LcmNavigationPlan
+
 import time
 
 
 class BehavioralFacade(DmModule):
-    def __init__(self, dds: DdsPubSub, logger: Logger, policy: Policy) -> None:
+    def __init__(self, pubsub: PubSub, logger: Logger, policy: Policy) -> None:
         """
         :param policy: decision making component
         """
-        super().__init__(dds=dds, logger=logger)
+        super().__init__(pubsub=pubsub, logger=logger)
         self._policy = policy
         self.logger.info("Initialized Behavioral Planner Facade.")
+
+        self.pubsub.subscribe(pubsub_topics.STATE_TOPIC, None, LcmState)
+        self.pubsub.subscribe(pubsub_topics.NAVIGATION_PLAN_TOPIC, None,  LcmNavigationPlan)
 
     # TODO: implement
     def _start_impl(self):
@@ -71,17 +80,19 @@ class BehavioralFacade(DmModule):
                                  e, traceback.format_exc())
 
     def _get_current_state(self) -> State:
-        input_state = self.dds.get_latest_sample(topic=BEHAVIORAL_STATE_READER_TOPIC, timeout=1)
-        self.logger.debug('Received State:  {}'.format(input_state))
-        return State.deserialize(input_state)
+        input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
+        self.logger.debug('Received State: {}'.format(input_state))
+        return State.from_lcm(input_state)
+
 
     def _get_current_navigation_plan(self) -> NavigationPlanMsg:
-        input_plan = self.dds.get_latest_sample(topic=BEHAVIORAL_NAV_PLAN_READER_TOPIC, timeout=1)
+        input_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.NAVIGATION_PLAN_TOPIC, timeout=1)
         self.logger.debug('Received navigation plan: %s', input_plan)
-        return NavigationPlanMsg.deserialize(input_plan)
+        return NavigationPlanMsg.from_lcm(input_plan)
 
     def _publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
-        self.dds.publish(BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC, trajectory_parameters.serialize())
+        self.pubsub.publish(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, trajectory_parameters.to_lcm())
 
     def _publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
-        self.dds.publish(BEHAVIORAL_VISUALIZATION_TOPIC, visualization_message.serialize())
+        self.pubsub.publish(pubsub_topics.VISUALIZATION_TOPIC, visualization_message.to_lcm())
+

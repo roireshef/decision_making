@@ -1,8 +1,8 @@
-from decision_making.src.messages.dds_typed_message import DDSTypedMsg
 from decision_making.src.state.state import State
+from common_data.lcm.generatedFiles.gm_lcm import LcmStateVisualizationMsg
 
 
-class StateVisualizationMsg(DDSTypedMsg):
+class StateVisualizationMsg:
     def __init__(self, state):
         # type: (State) -> None
         """
@@ -12,4 +12,14 @@ class StateVisualizationMsg(DDSTypedMsg):
         """
         self.state = state
 
+    def to_lcm(self) -> LcmStateVisualizationMsg:
+        lcm_msg = LcmStateVisualizationMsg()
+
+        lcm_msg.state = self.state.to_lcm()
+
+        return lcm_msg
+
+    @classmethod
+    def from_lcm(cls, lcmMsg: LcmStateVisualizationMsg):
+        return cls(State.from_lcm(lcmMsg.state))
 

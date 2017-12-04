@@ -12,20 +12,26 @@ from decision_making.src.state.state import OccupancyState, EgoState, DynamicObj
 from mapping.src.exceptions import MapCellNotFound, raises
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 
-import numpy as np
-
 from mapping.src.service.map_service import MapService
+
+from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
+from common_data.src.communication.pubsub.pubsub import PubSub
+from common_data.lcm.config import config_defs
+from common_data.lcm.config import pubsub_topics
+from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedDynamicObjectList
+from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedSelfLocalization
 
 
 class StateModule(DmModule):
     # TODO: temporary solution for unknown class members on initialization
-    UNKNWON_DEFAULT_VAL = 0.0
+    UNKNOWN_DEFAULT_VAL = 0.0
 
     # TODO: implement double-buffer mechanism for locks wherever needed. Current lock mechanism may slow the
     # TODO(cont): processing when multiple events come in concurrently.
-    def __init__(self, dds: DdsPubSub, logger: Logger, occupancy_state: Optional[OccupancyState],
+    def __init__(self, pubsub: PubSub, logger: Logger, occupancy_state: Optional[OccupancyState],
                  dynamic_objects: Optional[List[DynamicObject]], ego_state: Optional[EgoState],
-                 dynamic_objects_memory_map: Dict[int,DynamicObject] = {}) -> None:
+                 dynamic_objects_memory_map: Dict[int,DynamicObject] = {}) ->  None:
+        super().__init__(pubsub, logger)
         """
         :param dds: Inter-process communication interface.
         :param logger: Logging module.
@@ -34,8 +40,6 @@ class StateModule(DmModule):
         :param ego_state: Initial ego-state object.
         :param dynamic_objects_memory_map: Initial memory dict.
         """
-        super().__init__(dds, logger)
-
         # save initial state and generate type-specific locks
         self._occupancy_state = occupancy_state
         self._occupancy_state_lock = Lock()
@@ -52,31 +56,30 @@ class StateModule(DmModule):
         """
         When starting the State Module, subscribe to dynamic objects, ego state and occupancy state services.
         """
-        self.dds.subscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, self._dynamic_obj_callback)
-        self.dds.subscribe(SELF_LOCALIZATION_SUBSCRIBE_TOPIC, self._self_localization_callback)
-        # TODO: Coordinate interface with perception
-        # self.dds.subscribe(OCCUPANCY_STATE_SUBSCRIBE_TOPIC, self._occupancy_state_callback)
+        self.pubsub.subscribe(pubsub_topics.PERCEIVED_DYNAMIC_OBJECTS_TOPIC
+                            , self._dynamic_obj_callback
+                            , LcmPerceivedDynamicObjectList)
+        self.pubsub.subscribe(pubsub_topics.PERCEIVED_SELF_LOCALIZATION_TOPIC
+                            , self._self_localization_callback
+                            , LcmPerceivedSelfLocalization)
 
     def _stop_impl(self) -> None:
         """
         Unsubscribe from process communication services.
         """
-        self.dds.unsubscribe(DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC)
-        self.dds.unsubscribe(SELF_LOCALIZATION_SUBSCRIBE_TOPIC)
-        # TODO: Coordinate interface with perception
-        # self.dds.unsubscribe(OCCUPANCY_STATE_SUBSCRIBE_TOPIC)
+        self.pubsub.unsubscribe(pubsub_topics.PERCEIVED_DYNAMIC_OBJECTS_TOPIC)
+        self.pubsub.unsubscribe(pubsub_topics.PERCEIVED_SELF_LOCALIZATION_TOPIC)
 
     def _periodic_action_impl(self) -> None:
         pass
 
-    def _dynamic_obj_callback(self, objects: dict) -> None:
+    def _dynamic_obj_callback(self, objects: LcmPerceivedDynamicObjectList):
         """
         Deserialize dynamic objects message and replace pointer reference to dynamic object list under lock
         :param objects: Serialized dynamic object list
-
         """
         try:
-            self.logger.info("got dynamic objects %s", objects)
+            self.logger.info("got perceived dynamic objects {}".format(objects))
 
             if self._ego_state is None:
                 self.logger.warning(
@@ -94,7 +97,7 @@ class StateModule(DmModule):
             self.logger.error("StateModule._dynamic_obj_callback failed due to {}".format(e))
 
     @raises(MapCellNotFound)
-    def create_dyn_obj_list(self, objects : dict) -> List[DynamicObject]:
+    def create_dyn_obj_list(self, dyn_obj_list: LcmPerceivedDynamicObjectList) -> List[DynamicObject]:
         """
         Convert serialized object perception and global localization data into a DM object (This also includes computation
         of the object's road localization). Additionally store the object in memory as preparation for the case where it will leave
@@ -105,34 +108,33 @@ class StateModule(DmModule):
         ego = self._ego_state
         ego_pos = np.array([ego.x, ego.y, ego.z])
         ego_yaw = ego.yaw
-        timestamp = objects["timestamp"]
-        dyn_obj_list_dict = objects["dynamic_objects"]
+        timestamp = dyn_obj_list.timestamp
+        lcm_dyn_obj_list = dyn_obj_list.dynamic_objects
         dyn_obj_list = []
-        for dyn_obj_dict in dyn_obj_list_dict:
-            in_fov = dyn_obj_dict["tracking_status"]["in_fov"]
-            id = dyn_obj_dict["id"]
+        for lcm_dyn_obj in lcm_dyn_obj_list:
+            ''' lcm_dyn_obj is an instance of LcmPerceivedDynamicObject class '''
+            in_fov = lcm_dyn_obj.tracking_status.in_fov
+            id = lcm_dyn_obj.id
             if in_fov:
                 # object is in FOV, so we take its latest detection.
-                x = dyn_obj_dict["location"]["x"]
-                y = dyn_obj_dict["location"]["y"]
-                z = DEFAULT_OBJECT_Z_VALUE
-                confidence = dyn_obj_dict["location"]["confidence"]
-
-                yaw = dyn_obj_dict["bbox"]["yaw"]
-                length = dyn_obj_dict["bbox"]["length"]
-                width = dyn_obj_dict["bbox"]["width"]
-                height = dyn_obj_dict["bbox"]["height"]
+                x = lcm_dyn_obj.location.x
+                y = lcm_dyn_obj.location.y
+                z = DEFAULT_OBJECT_Z_VALUE  # lcm_dyn_obj.location.z ?
+                confidence = lcm_dyn_obj.location.confidence
+                yaw = lcm_dyn_obj.bbox.yaw
+                length = lcm_dyn_obj.bbox.length
+                width = lcm_dyn_obj.bbox.width
+                height = lcm_dyn_obj.bbox.height
                 size = ObjectSize(length, width, height)
-
-                glob_v_x = dyn_obj_dict["velocity"]["v_x"]
-                glob_v_y = dyn_obj_dict["velocity"]["v_y"]
-                omega_yaw = dyn_obj_dict["velocity"]["omega_yaw"]
+                glob_v_x = lcm_dyn_obj.velocity.v_x
+                glob_v_y = lcm_dyn_obj.velocity.v_y
+                omega_yaw = lcm_dyn_obj.velocity.omega_yaw
 
                 # convert velocity from map coordinates to relative to its own yaw
                 v_x = np.cos(yaw) * glob_v_x + np.sin(yaw) * glob_v_y
                 v_y = -np.sin(yaw) * glob_v_x + np.cos(yaw) * glob_v_y
 
-                is_predicted = dyn_obj_dict["tracking_status"]["is_predicted"]
+                is_predicted = lcm_dyn_obj.tracking_status.is_predicted
 
                 global_coordinates = np.array([x, y, z])
                 global_yaw = yaw
@@ -146,7 +148,7 @@ class StateModule(DmModule):
                     if road_width + ROAD_SHOULDERS_WIDTH > road_localization.intra_road_lat > -ROAD_SHOULDERS_WIDTH:
                         dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
                                                 global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
-                                                self.UNKNWON_DEFAULT_VAL, omega_yaw)
+                                                self.UNKNOWN_DEFAULT_VAL, omega_yaw)
                         self._dynamic_objects_memory_map[id] = dyn_obj
                         dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
                     else:
@@ -164,36 +166,35 @@ class StateModule(DmModule):
                     self.logger.warning("received out of FOV object which is not in memory.")
         return dyn_obj_list
 
-    def _self_localization_callback(self, ego_localization: dict) -> None:
+    def _self_localization_callback(self, self_localization: LcmPerceivedSelfLocalization) -> None:
         """
         Deserialize localization information, convert to road coordinates and update state information.
-        :param ego_localization: Serialized ego localization message.
+        :param self_localization: Serialized self localization message.
         """
         try:
-            # de-serialize relevant fields
-            self.logger.debug("got self localization %s", ego_localization)
-
-            confidence = ego_localization["location"]["confidence"]
-            timestamp = ego_localization["timestamp"]
-            x = ego_localization["location"]["x"]
-            y = ego_localization["location"]["y"]
+            self.logger.debug("got perceived self localization {}".format(self_localization))
+            confidence = self_localization.location.confidence
+            timestamp = self_localization.timestamp
+            x = self_localization.location.x
+            y = self_localization.location.y
             z = DEFAULT_OBJECT_Z_VALUE
-            yaw = ego_localization["yaw"]
-            v_x = ego_localization["velocity"]["v_x"]
-            v_y = ego_localization["velocity"]["v_y"]
+            yaw = self_localization.yaw
+            v_x = self_localization.velocity.v_x
+            v_y = self_localization.velocity.v_y
             size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
             # Update state information under lock
             with self._ego_state_lock:
-                # TODO: replace UNKNWON_DEFAULT_VAL with actual implementation
+                # TODO: replace UNKNOWN_DEFAULT_VAL with actual implementation
                 self._ego_state = EgoState(EGO_ID, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
-                                           self.UNKNWON_DEFAULT_VAL,
-                                           self.UNKNWON_DEFAULT_VAL, self.UNKNWON_DEFAULT_VAL)
+                                           self.UNKNOWN_DEFAULT_VAL,
+                                           self.UNKNOWN_DEFAULT_VAL, self.UNKNOWN_DEFAULT_VAL)
 
             self._publish_state_if_full()
         except Exception as e:
             self.logger.error("StateModule._self_localization_callback failed due to {}".format(e))
 
+    # TODO: convert from lcm...
     # TODO: handle invalid data - occupancy is currently unused throughout the system
     def _occupancy_state_callback(self, occupancy: dict) -> None:
         """
@@ -234,7 +235,7 @@ class StateModule(DmModule):
             state = State(self._occupancy_state, self._dynamic_objects, self._ego_state)
         self.logger.debug("publishing state %s", state.serialize())
 
-        self.dds.publish(STATE_PUBLISH_TOPIC, state.serialize())
+        self.pubsub.publish(pubsub_topics.STATE_TOPIC, state.to_lcm())
 
     # TODO: solve the fact that actuator status can be outdated and no one will ever know
     def _actuator_status_callback(self, actuator: dict) -> None:
@@ -244,3 +245,4 @@ class StateModule(DmModule):
         """
         self.logger.debug("got actuator status %s", actuator)
         pass  # TODO: update self._ego_state.steering_angle. Don't forget to lock self._ego_state!
+

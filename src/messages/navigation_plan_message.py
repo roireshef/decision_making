@@ -1,10 +1,10 @@
 import numpy as np
 from typing import Optional, List
 from mapping.src.exceptions import RoadNotFound, raises
-from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
+from common_data.lcm.generatedFiles.gm_lcm import LcmNavigationPlan
+from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedIntNumpyArray
 
-
-class NavigationPlanMsg(DDSNonTypedMsg):
+class NavigationPlanMsg:
     """
         This class hold the navigation plan.
         It also implements function (required by MapAPI) that iterate over the roads list in the navigation plan.
@@ -17,6 +17,26 @@ class NavigationPlanMsg(DDSNonTypedMsg):
         :param road_ids: Numpy array (dtype has to be int) of road ids corresponding to the map.
         """
         self.road_ids = road_ids.astype(np.int)
+
+    def to_lcm(self) -> LcmNavigationPlan:
+        lcm_msg = LcmNavigationPlan()
+
+        lcm_msg.road_ids = LcmNonTypedIntNumpyArray()
+        lcm_msg.road_ids.num_dimensions = len(self.road_ids.shape)
+        lcm_msg.road_ids.shape = list(self.road_ids.shape)
+        lcm_msg.road_ids.length = self.road_ids.size
+        lcm_msg.road_ids.data = self.road_ids.flat.__array__().tolist()
+        lcm_msg.road_ids.type = ""
+
+        lcm_msg.type = ""
+
+        return lcm_msg
+
+    @classmethod
+    def from_lcm(cls, lcmMsg: LcmNavigationPlan):
+        return cls(np.ndarray(shape = tuple(lcmMsg.road_ids.shape)
+                            , buffer = np.array(lcmMsg.road_ids.data)
+                            , dtype = float).astype(np.int))
 
     @raises(RoadNotFound)
     def get_road_index_in_plan(self, road_id, start=None, end=None):
