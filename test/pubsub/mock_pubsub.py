@@ -20,7 +20,8 @@ class PubSubMock(PubSub):
 
     def subscribe(self, topic, callback, message_type = None, max_data_samples = 10) -> None:
         """Set a callback on a topic"""
-        self.topic_callback_mapping[topic].append(callback)
+        if callback is not None:
+            self.topic_callback_mapping[topic].append(callback)
 
     def unsubscribe(self, topic):
         """Unsubscribe (remove a callback) from the given topic"""
@@ -34,7 +35,7 @@ class PubSubMock(PubSub):
         :param topic: Topic to publish message to
         :param msg: the actual message to publish
         """
-        callback_list = self.topic_callback_mapping.get(topic, None)
+        callback_list = self.topic_callback_mapping.get(topic, [])
         for callback in callback_list:
             callback(msg)
         self.topic_msg_mapping[topic] = msg

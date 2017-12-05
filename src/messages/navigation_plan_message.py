@@ -36,7 +36,7 @@ class NavigationPlanMsg:
     def from_lcm(cls, lcmMsg: LcmNavigationPlan):
         return cls(np.ndarray(shape = tuple(lcmMsg.road_ids.shape)
                             , buffer = np.array(lcmMsg.road_ids.data)
-                            , dtype = float).astype(np.int))
+                            , dtype = int))
 
     @raises(RoadNotFound)
     def get_road_index_in_plan(self, road_id, start=None, end=None):
