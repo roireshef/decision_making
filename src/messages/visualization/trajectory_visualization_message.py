@@ -27,7 +27,7 @@ class TrajectoryVisualizationMsg:
         self.predicted_states = predicted_states
         self.plan_time = plan_time
 
-    def to_lcm(self) -> LcmTrajectoryVisualizationMsg:
+    def serialize(self) -> LcmTrajectoryVisualizationMsg:
         lcm_msg = LcmTrajectoryVisualizationMsg()
 
         lcm_msg.reference_route = LcmNonTypedNumpyArray()
@@ -48,15 +48,15 @@ class TrajectoryVisualizationMsg:
         lcm_msg.costs.length = self.costs.size
         lcm_msg.costs.data = self.costs.flat.__array__().tolist()
 
-        lcm_msg.state = self.state.to_lcm()
-        lcm_msg.predicted_states = [predicted_state.to_lcm() for predicted_state in self.predicted_states]
+        lcm_msg.state = self.state.serialize()
+        lcm_msg.predicted_states = [predicted_state.serialize() for predicted_state in self.predicted_states]
         lcm_msg.num_predicted_states = len(lcm_msg.predicted_states)
         lcm_msg.plan_time = self.plan_time
 
         return lcm_msg
 
     @classmethod
-    def from_lcm(cls, lcmMsg: LcmTrajectoryVisualizationMsg):
+    def deserialize(cls, lcmMsg: LcmTrajectoryVisualizationMsg):
         return cls(np.ndarray(shape = tuple(lcmMsg.reference_route.shape)
                             , buffer = np.array(lcmMsg.reference_route.data)
                             , dtype = float)
@@ -66,8 +66,8 @@ class TrajectoryVisualizationMsg:
                  , np.ndarray(shape = tuple(lcmMsg.costs.shape)
                             , buffer = np.array(lcmMsg.costs.data)
                             , dtype = float)
-                 , State.from_lcm(lcmMsg.state)
-                 , [State.from_lcm(predicted_state) for predicted_state in lcmMsg.predicted_states]
+                 , State.deserialize(lcmMsg.state)
+                 , [State.deserialize(predicted_state) for predicted_state in lcmMsg.predicted_states]
                  , lcmMsg.plan_time)
 
     @property

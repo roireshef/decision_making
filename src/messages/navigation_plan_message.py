@@ -18,7 +18,7 @@ class NavigationPlanMsg:
         """
         self.road_ids = road_ids.astype(np.int)
 
-    def to_lcm(self):
+    def serialize(self):
         # type: () -> LcmNavigationPlan
         lcm_msg = LcmNavigationPlan()
 
@@ -34,7 +34,7 @@ class NavigationPlanMsg:
         return lcm_msg
 
     @classmethod
-    def from_lcm(cls, lcmMsg):
+    def deserialize(cls, lcmMsg):
         # type: (LcmNavigationPlan) -> NavigationPlanMsg
         return cls(np.ndarray(shape = tuple(lcmMsg.road_ids.shape)
                             , buffer = np.array(lcmMsg.road_ids.data)

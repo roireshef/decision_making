@@ -12,14 +12,14 @@ class StateVisualizationMsg:
         """
         self.state = state
 
-    def to_lcm(self) -> LcmStateVisualizationMsg:
+    def serialize(self) -> LcmStateVisualizationMsg:
         lcm_msg = LcmStateVisualizationMsg()
 
-        lcm_msg.state = self.state.to_lcm()
+        lcm_msg.state = self.state.serialize()
 
         return lcm_msg
 
     @classmethod
-    def from_lcm(cls, lcmMsg: LcmStateVisualizationMsg):
-        return cls(State.from_lcm(lcmMsg.state))
+    def deserialize(cls, lcmMsg: LcmStateVisualizationMsg):
+        return cls(State.deserialize(lcmMsg.state))
 

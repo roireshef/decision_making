@@ -37,7 +37,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
     trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
                                                           strategy_handlers=strategy_handlers)
 
-    pubsub.subscribe(pubsub_topics.TRAJECTORY_TOPIC, trajectory_publish_mock, LcmTrajectoryData)
+    pubsub.subscribe(pubsub_topics.TRAJECTORY_TOPIC, trajectory_publish_mock)
 
     trajectory_planning_module.start()
     behavioral_facade.periodic_action()
@@ -59,7 +59,7 @@ def test_behavioralPlanningFacade_semanticPolicy_anyResult(pubsub: PubSub, state
     navigation_facade.periodic_action()
     behavioral_planner_module = BehavioralFacade(pubsub=pubsub, logger=logger, policy=policy)
 
-    pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, behavioral_publish_mock, LcmTrajectoryParameters)
+    pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, behavioral_publish_mock)
 
     behavioral_planner_module.start()
     behavioral_planner_module.periodic_action()

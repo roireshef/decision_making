@@ -12,7 +12,7 @@ class BehavioralVisualizationMsg:
         """
         self.reference_route = reference_route
 
-    def to_lcm(self) -> LcmBehavioralVisualizationMsg:
+    def serialize(self) -> LcmBehavioralVisualizationMsg:
         lcm_msg = LcmBehavioralVisualizationMsg()
 
         lcm_msg.reference_route = LcmNonTypedNumpyArray()
@@ -24,7 +24,7 @@ class BehavioralVisualizationMsg:
         return lcm_msg
 
     @classmethod
-    def from_lcm(cls, lcmMsg: LcmBehavioralVisualizationMsg):
+    def deserialize(cls, lcmMsg: LcmBehavioralVisualizationMsg):
         return cls(np.ndarray(shape = tuple(lcmMsg.reference_route.shape)
                             , buffer = np.array(lcmMsg.reference_route.data)
                             , dtype = float))

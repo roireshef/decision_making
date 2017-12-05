@@ -17,7 +17,7 @@ class TrajectoryPlanMsg:
         self.trajectory = trajectory
         self.current_speed = current_speed
 
-    def to_lcm(self) -> LcmTrajectoryData:
+    def serialize(self) -> LcmTrajectoryData:
         lcm_msg = LcmTrajectoryData()
 
         lcm_msg.trajectory = LcmNumpyArray()
@@ -31,7 +31,7 @@ class TrajectoryPlanMsg:
         return lcm_msg
 
     @classmethod
-    def from_lcm(cls, lcmMsg: LcmTrajectoryData):
+    def deserialize(cls, lcmMsg: LcmTrajectoryData):
         return cls(np.ndarray(shape = tuple(lcmMsg.trajectory.shape)
                             , buffer = np.array(lcmMsg.trajectory.data)
                             , dtype = float)

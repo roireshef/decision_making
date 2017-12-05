@@ -4,18 +4,13 @@ from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.policy import Policy
 from decision_making.src.state.state import State
 from logging import Logger
 
-from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from common_data.src.communication.pubsub.pubsub import PubSub
-from common_data.lcm.config import config_defs
 from common_data.lcm.config import pubsub_topics
 
-from common_data.lcm.generatedFiles.gm_lcm import LcmState
-from common_data.lcm.generatedFiles.gm_lcm import LcmNavigationPlan
 
 import time
 
@@ -29,16 +24,14 @@ class BehavioralFacade(DmModule):
         self._policy = policy
         self.logger.info("Initialized Behavioral Planner Facade.")
 
-    # TODO: implement
     def _start_impl(self):
-        self.pubsub.subscribe(pubsub_topics.STATE_TOPIC, None, LcmState)
-        self.pubsub.subscribe(pubsub_topics.NAVIGATION_PLAN_TOPIC, None, LcmNavigationPlan)
+        self.pubsub.subscribe(pubsub_topics.STATE_TOPIC, None)
+        self.pubsub.subscribe(pubsub_topics.NAVIGATION_PLAN_TOPIC, None)
 
     # TODO: unsubscibe once logic is fixed in LCM
     def _stop_impl(self):
         pass
 
-    # TODO: implement
     def _periodic_action_impl(self) -> None:
         """
         The main function of the behavioral planner. It read the most up-to-date state and navigation plan,
@@ -80,17 +73,16 @@ class BehavioralFacade(DmModule):
     def _get_current_state(self) -> State:
         input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
         self.logger.debug('Received State: {}'.format(input_state))
-        return State.from_lcm(input_state)
-
+        return State.deserialize(input_state)
 
     def _get_current_navigation_plan(self) -> NavigationPlanMsg:
         input_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.NAVIGATION_PLAN_TOPIC, timeout=1)
         self.logger.debug('Received navigation plan: %s', input_plan)
-        return NavigationPlanMsg.from_lcm(input_plan)
+        return NavigationPlanMsg.deserialize(input_plan)
 
     def _publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
-        self.pubsub.publish(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, trajectory_parameters.to_lcm())
+        self.pubsub.publish(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, trajectory_parameters.serialize())
 
     def _publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
-        self.pubsub.publish(pubsub_topics.VISUALIZATION_TOPIC, visualization_message.to_lcm())
+        self.pubsub.publish(pubsub_topics.VISUALIZATION_TOPIC, visualization_message.serialize())
 

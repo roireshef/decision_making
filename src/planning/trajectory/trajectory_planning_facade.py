@@ -11,13 +11,9 @@ from decision_making.src.planning.trajectory.trajectory_planner import Trajector
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.state.state import State
 
-from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from common_data.src.communication.pubsub.pubsub import PubSub
-from common_data.lcm.config import config_defs
 from common_data.lcm.config import pubsub_topics
 
-from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryParameters
-from common_data.lcm.generatedFiles.gm_lcm import LcmState
 
 import time
 
@@ -36,11 +32,9 @@ class TrajectoryPlanningFacade(DmModule):
         self._strategy_handlers = strategy_handlers
         self._validate_strategy_handlers()
 
-
-
     def _start_impl(self):
-        self.pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, None, LcmTrajectoryParameters)
-        self.pubsub.subscribe(pubsub_topics.STATE_TOPIC, None, LcmState)
+        self.pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, None)
+        self.pubsub.subscribe(pubsub_topics.STATE_TOPIC, None)
 
     # TODO: unsubscibe once logic is fixed in LCM
     def _stop_impl(self):
@@ -109,7 +103,7 @@ class TrajectoryPlanningFacade(DmModule):
         """
         input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
         self.logger.debug('Received state: {}'.format(input_state))
-        return State.from_lcm(input_state)
+        return State.deserialize(input_state)
 
     def _get_mission_params(self) -> TrajectoryParams:
         """
@@ -120,11 +114,11 @@ class TrajectoryPlanningFacade(DmModule):
         """
         input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_TOPIC, timeout=1)
         self.logger.debug('Received mission params: {}'.format(input_params))
-        return TrajectoryParams.from_lcm(input_params)
+        return TrajectoryParams.deserialize(input_params)
 
     def _publish_trajectory(self, results: TrajectoryPlanMsg) -> None:
-        self.pubsub.publish(pubsub_topics.TRAJECTORY_TOPIC, results.to_lcm())
+        self.pubsub.publish(pubsub_topics.TRAJECTORY_TOPIC, results.serialize())
 
     def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
-        self.pubsub.publish(pubsub_topics.TRAJECTORY_VISUALIZATION_TOPIC, debug_msg.to_lcm())
+        self.pubsub.publish(pubsub_topics.TRAJECTORY_VISUALIZATION_TOPIC, debug_msg.serialize())
 

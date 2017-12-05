@@ -4,8 +4,7 @@ from typing import Optional, List, Dict
 
 import numpy as np
 
-from common_data.dds.python.Communication.ddspubsub import DdsPubSub
-from decision_making.src.global_constants import  DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID
+from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.state.state import OccupancyState, EgoState, DynamicObject, ObjectSize, State
 from mapping.src.exceptions import MapCellNotFound, raises
@@ -13,9 +12,7 @@ from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 
 from mapping.src.service.map_service import MapService
 
-from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from common_data.src.communication.pubsub.pubsub import PubSub
-from common_data.lcm.config import config_defs
 from common_data.lcm.config import pubsub_topics
 from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedDynamicObjectList
 from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedSelfLocalization
@@ -56,18 +53,16 @@ class StateModule(DmModule):
         When starting the State Module, subscribe to dynamic objects, ego state and occupancy state services.
         """
         self.pubsub.subscribe(pubsub_topics.PERCEIVED_DYNAMIC_OBJECTS_TOPIC
-                            , self._dynamic_obj_callback
-                            , LcmPerceivedDynamicObjectList)
+                            , self._dynamic_obj_callback)
         self.pubsub.subscribe(pubsub_topics.PERCEIVED_SELF_LOCALIZATION_TOPIC
-                            , self._self_localization_callback
-                            , LcmPerceivedSelfLocalization)
+                            , self._self_localization_callback)
 
+
+    # TODO - implement unsubscribe only when logic is fixed in LCM
     def _stop_impl(self) -> None:
         """
         Unsubscribe from process communication services.
         """
-        self.pubsub.unsubscribe(pubsub_topics.PERCEIVED_DYNAMIC_OBJECTS_TOPIC)
-        self.pubsub.unsubscribe(pubsub_topics.PERCEIVED_SELF_LOCALIZATION_TOPIC)
 
     def _periodic_action_impl(self) -> None:
         pass
@@ -232,9 +227,9 @@ class StateModule(DmModule):
         # Update state under lock (so that new events will not corrupt the data)
         with self._occupancy_state_lock, self._ego_state_lock, self._dynamic_objects_lock:
             state = State(self._occupancy_state, self._dynamic_objects, self._ego_state)
-        self.logger.debug("publishing state %s", state.to_lcm())
+        self.logger.debug("publishing state %s", state)
 
-        self.pubsub.publish(pubsub_topics.STATE_TOPIC, state.to_lcm())
+        self.pubsub.publish(pubsub_topics.STATE_TOPIC, state.serialize())
 
     # TODO: solve the fact that actuator status can be outdated and no one will ever know
     def _actuator_status_callback(self, actuator: dict) -> None:

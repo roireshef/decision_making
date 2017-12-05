@@ -23,5 +23,5 @@ class NavigationFacade(DmModule):
         self._publish_navigation_plan(self.handler.plan())
 
     def _publish_navigation_plan(self, plan: NavigationPlanMsg):
-        self.pubsub.publish(pubsub_topics.NAVIGATION_PLAN_TOPIC, plan.to_lcm())
+        self.pubsub.publish(pubsub_topics.NAVIGATION_PLAN_TOPIC, plan.serialize())
 
