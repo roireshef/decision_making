@@ -29,14 +29,12 @@ class BehavioralFacade(DmModule):
         self._policy = policy
         self.logger.info("Initialized Behavioral Planner Facade.")
 
-        self.pubsub.subscribe(pubsub_topics.STATE_TOPIC, None, LcmState)
-        self.pubsub.subscribe(pubsub_topics.NAVIGATION_PLAN_TOPIC, None,  LcmNavigationPlan)
-
     # TODO: implement
     def _start_impl(self):
-        pass
+        self.pubsub.subscribe(pubsub_topics.STATE_TOPIC, None, LcmState)
+        self.pubsub.subscribe(pubsub_topics.NAVIGATION_PLAN_TOPIC, None, LcmNavigationPlan)
 
-    # TODO: implement
+    # TODO: unsubscibe once logic is fixed in LCM
     def _stop_impl(self):
         pass
 

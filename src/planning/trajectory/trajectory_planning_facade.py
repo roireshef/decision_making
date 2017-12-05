@@ -36,12 +36,13 @@ class TrajectoryPlanningFacade(DmModule):
         self._strategy_handlers = strategy_handlers
         self._validate_strategy_handlers()
 
+
+
+    def _start_impl(self):
         self.pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, None, LcmTrajectoryParameters)
         self.pubsub.subscribe(pubsub_topics.STATE_TOPIC, None, LcmState)
 
-    def _start_impl(self):
-        pass
-
+    # TODO: unsubscibe once logic is fixed in LCM
     def _stop_impl(self):
         pass
 
