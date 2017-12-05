@@ -1,21 +1,21 @@
+from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING
 from decision_making.src.state.state import OccupancyState, EgoState
 from decision_making.src.state.state_module import StateModule
-from decision_making.test.dds.mock_ddspubsub import DdsPubSubMock
+from gm_lcm import LcmPerceivedDynamicObjectList
 from mapping.src.model.map_api import MapAPI
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.planning.custom_fixtures import dynamic_objects_not_in_fov, dynamic_objects_in_fov
 from mapping.test.model.testable_map_fixtures import testable_map_api
-from decision_making.test.planning.custom_fixtures import dds_pubsub, ego_state_fix
+from decision_making.test.planning.custom_fixtures import ego_state_fix, pubsub
 import numpy as np
 
 
-def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(dds_pubsub : DdsPubSubMock, dynamic_objects_in_fov : dict,
-                                                                     dynamic_objects_not_in_fov : dict, ego_state_fix : EgoState,
-                                                                     testable_map_api : MapAPI):
+def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(pubsub: PubSub, dynamic_objects_in_fov: LcmPerceivedDynamicObjectList,
+                                                                     dynamic_objects_not_in_fov: LcmPerceivedDynamicObjectList, ego_state_fix: EgoState,
+                                                                     testable_map_api: MapAPI):
     """
-
-    :param dds_pubsub: Inter-process communication interface.
+    :param pubsub: Inter-process communication interface.
     :param dynamic_objects_in_fov: Fixture of a serialized dynamic object data located within the field of view
             (FOV).
     :param dynamic_objects_not_in_fov: Fixture of a serialized dynamic object with the same id as above but now it's located
@@ -29,20 +29,22 @@ def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(dds_pubsub 
     """
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
-    state_module = StateModule(dds=dds_pubsub, logger=logger,
+    state_module = StateModule(pubsub=pubsub, logger=logger,
                                occupancy_state=OccupancyState(0, np.array([]), np.array([])),
                                dynamic_objects=None, ego_state=ego_state_fix)
     state_module.start()
-
+    #Inserting a object in_fov in order to remember it.
     state_module.create_dyn_obj_list(dynamic_objects_in_fov)
     new_dyn_obj_list = state_module.create_dyn_obj_list(dynamic_objects_not_in_fov)
     assert len(new_dyn_obj_list) == 1
-    assert new_dyn_obj_list[0].timestamp == dynamic_objects_in_fov["timestamp"]
-    assert new_dyn_obj_list[0].x == dynamic_objects_in_fov["dynamic_objects"][0]["location"]["x"]
-    assert new_dyn_obj_list[0].y == dynamic_objects_in_fov["dynamic_objects"][0]["location"]["y"]
-    glob_v_x = dynamic_objects_in_fov["dynamic_objects"][0]["velocity"]["v_x"]
-    glob_v_y = dynamic_objects_in_fov["dynamic_objects"][0]["velocity"]["v_y"]
-    yaw = dynamic_objects_in_fov["dynamic_objects"][0]["bbox"]["yaw"]
+    assert new_dyn_obj_list[0].timestamp == dynamic_objects_in_fov.timestamp
+
+    # the object should be loaded from memory and this is why its location and speed remains the same as in in_fov fixture
+    assert new_dyn_obj_list[0].x == dynamic_objects_in_fov.dynamic_objects[0].location.x
+    assert new_dyn_obj_list[0].y == dynamic_objects_in_fov.dynamic_objects[0].location.y
+    glob_v_x = dynamic_objects_in_fov.dynamic_objects[0].velocity.v_x
+    glob_v_y = dynamic_objects_in_fov.dynamic_objects[0].velocity.v_y
+    yaw = dynamic_objects_in_fov.dynamic_objects[0].bbox.yaw
 
     # convert velocity from map coordinates to relative to its own yaw
     v_x = np.cos(yaw) * glob_v_x + np.sin(yaw) * glob_v_y
@@ -51,6 +53,5 @@ def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(dds_pubsub 
     assert new_dyn_obj_list[0].v_x == v_x
     assert new_dyn_obj_list[0].v_y == v_y
 
-
-
     state_module.stop()
+

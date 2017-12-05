@@ -74,7 +74,7 @@ class ObjectSize:
 
 class DynamicObject:
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, acceleration_lon, omega_yaw):
-        # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float) -> None
+        # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float) -> DynamicObject
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
         both ego and other dynamic objects

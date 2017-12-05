@@ -1,4 +1,5 @@
-from common_data.dds.python.Communication.ddspubsub import DdsPubSub
+from common_data.src.communication.pubsub.pubsub import PubSub
+from common_data.lcm.config import pubsub_topics
 from decision_making.src.global_constants import *
 from decision_making.src.state.state import *
 from decision_making.src.state.state_module import StateModule
@@ -10,16 +11,16 @@ class StateModuleMock(StateModule):
     """
     Send periodic dummy state message
     """
-    def __init__(self, dds: DdsPubSub, logger: Logger, state: State):
+    def __init__(self, pubsub: PubSub, logger: Logger, state: State):
         """
 
-        :param dds: communication layer (DDS) instance
+        :param pubsub: communication layer (DDS/LCM/...) instance
         :param logger: logger
         :param state: the state message to publish periodically
         """
         self._state = state
-        MapService.initialize()
-        super().__init__(dds, logger, None, None, None)
+        super().__init__(pubsub, logger, None, None, None)
 
     def _periodic_action_impl(self):
-        self.dds.publish(STATE_PUBLISH_TOPIC, self._state.serialize())
+        self.pubsub.publish(pubsub_topics.STATE_TOPIC, self._state.to_lcm())
+

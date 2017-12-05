@@ -5,8 +5,7 @@ from typing import Optional, List, Dict
 import numpy as np
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
-from decision_making.src.global_constants import DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC, SELF_LOCALIZATION_SUBSCRIBE_TOPIC, \
-    DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, STATE_PUBLISH_TOPIC, EGO_ID
+from decision_making.src.global_constants import  DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.state.state import OccupancyState, EgoState, DynamicObject, ObjectSize, State
 from mapping.src.exceptions import MapCellNotFound, raises
@@ -233,7 +232,7 @@ class StateModule(DmModule):
         # Update state under lock (so that new events will not corrupt the data)
         with self._occupancy_state_lock, self._ego_state_lock, self._dynamic_objects_lock:
             state = State(self._occupancy_state, self._dynamic_objects, self._ego_state)
-        self.logger.debug("publishing state %s", state.serialize())
+        self.logger.debug("publishing state %s", state.to_lcm())
 
         self.pubsub.publish(pubsub_topics.STATE_TOPIC, state.to_lcm())
 
