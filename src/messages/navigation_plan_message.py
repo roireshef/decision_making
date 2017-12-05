@@ -18,7 +18,8 @@ class NavigationPlanMsg:
         """
         self.road_ids = road_ids.astype(np.int)
 
-    def to_lcm(self) -> LcmNavigationPlan:
+    def to_lcm(self):
+        # type: () -> LcmNavigationPlan
         lcm_msg = LcmNavigationPlan()
 
         lcm_msg.road_ids = LcmNonTypedIntNumpyArray()
@@ -33,7 +34,8 @@ class NavigationPlanMsg:
         return lcm_msg
 
     @classmethod
-    def from_lcm(cls, lcmMsg: LcmNavigationPlan):
+    def from_lcm(cls, lcmMsg):
+        # type: (LcmNavigationPlan) -> NavigationPlanMsg
         return cls(np.ndarray(shape = tuple(lcmMsg.road_ids.shape)
                             , buffer = np.array(lcmMsg.road_ids.data)
                             , dtype = int))
