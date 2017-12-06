@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Optional, List
+from typing import Optional
 from mapping.src.exceptions import RoadNotFound, raises
 from common_data.lcm.generatedFiles.gm_lcm import LcmNavigationPlan
 from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedIntNumpyArray
@@ -38,7 +38,7 @@ class NavigationPlanMsg:
         # type: (LcmNavigationPlan) -> NavigationPlanMsg
         return cls(np.ndarray(shape = tuple(lcmMsg.road_ids.shape)
                             , buffer = np.array(lcmMsg.road_ids.data)
-                            , dtype = int))
+                            , dtype = float).astype(int))
 
     @raises(RoadNotFound)
     def get_road_index_in_plan(self, road_id, start=None, end=None):
