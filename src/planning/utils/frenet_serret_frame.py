@@ -1,14 +1,10 @@
-from dipy.tracking.metrics import frenet_serret
+import numpy as np
 
-from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_INTERP_TYPE
-from decision_making.src.planning.types import CartesianPath3D, C_X, C_Y, FP_SX, FP_DX, FrenetPoint, CartesianPoint2D, \
-    FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, FS_SX, FS_SV, FS_SA, FS_DV, \
-    FS_DX, FS_DA, CartesianPoint3D
+from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION
+from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
+    FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, CartesianPoint3D
 from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
-import numpy as np
-from scipy import interpolate as interp
-import math
 
 class FrenetSerretFrame:
     def __init__(self, points: CartesianPath2D, s_max: float, ds: float = TRAJECTORY_ARCLEN_RESOLUTION):
@@ -18,10 +14,6 @@ class FrenetSerretFrame:
 
         self.O, _ = CartesianFrame.resample_curve(curve=points, step_size=ds,
                                                   desired_curve_len=s_max, preserve_step_size=True)
-
-        # T, N, _, self.k, _ = frenet_serret(np.c_[self.O, np.zeros(len(self.O))])
-        # self.T = T[:, :(C_Y+1)]
-        # self.N = N[:, :(C_Y+1)]
 
         self.T, self.N, self.k = FrenetSerretFrame.fit_frenet(self.O)
         self.s_cumm = np.linspace(0.0, s_max, len(self.O))
@@ -56,14 +48,6 @@ class FrenetSerretFrame:
     @staticmethod
     def row_wise_normal(mat: np.ndarray):
         return np.c_[-mat[:, 1], mat[:, 0]]
-
-    # @staticmethod
-    # def norm(vec: np.ndarray):
-    #     norm = np.linalg.norm(vec, axis=1)
-    #     is_zero = np.where(norm == 0)
-    #     norm[is_zero] = np.finfo(float).eps
-    #
-    #     return norm
 
     def taylor_interp(self, s: np.ndarray) -> (CartesianPoint2D, CartesianPoint3D, CartesianPoint3D, float):
         """Given arbitrary s in the range [0, self.s_max], this function uses taylor approximation to return
@@ -101,27 +85,10 @@ class FrenetSerretFrame:
         :param fpoint: numpy array of frenet-point [sx, dx]
         :return: cartesian-frame point [x, y]
         """
-        # sx, dx = fpoints[:, FP_SX], fpoints[:, FP_DX]
-        # O_idx, s_leftover = (sx // self._ds).astype(np.int), sx % self._ds
-        #
-        # exact_O = self.O[O_idx, :2] + s_leftover * self.T[O_idx, :2]
-        #
-        # return exact_O + self.N[O_idx, :2] * dx
-
         a_s, _, N_s, _ = self.taylor_interp(fpoints[:, FP_SX])
         return a_s + N_s * fpoints[:, [FP_DX]]
 
     def cpoints_to_fpoints(self, cpoints: CartesianPoint2D) -> FrenetTrajectory:
-        # O_idx, progress = Euclidean.project_on_piecewise_linear_curve(cpoints)
-        # s_leftover = progress * self.segments_longitudes[O_idx]
-        # sx = self._ds * O_idx + s_leftover
-        #
-        # exact_O = self.O[O_idx, :2] + s_leftover * self.T[O_idx, :2]
-        #
-        # # this is an approximation in cases where a point lies in the funnel of two segments
-        # dx = np.linalg.norm(cpoints - exact_O, axis=1)
-        # return np.dstack((sx, dx))
-
         O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(cpoints, self.O)
         s_approx = (O_idx + delta_s) * self.ds
 
