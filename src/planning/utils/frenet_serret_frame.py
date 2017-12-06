@@ -80,7 +80,7 @@ class FrenetSerretFrame:
         O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(cpoints, self.O)
         s_approx = (O_idx + delta_s) * self.ds
 
-        # replace this with GD for finding more accurate s
+        # TODO: replace this with GD for finding more accurate s
         s_exact = s_approx
 
         a_s, _, _, _ = self.taylor_interp(s_exact)
