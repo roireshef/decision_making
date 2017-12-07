@@ -37,16 +37,16 @@ class FrenetSerretFrame:
         dT_norm = np.linalg.norm(dT, axis=1)
 
         # Normal - robust to zero-curvature
-        N = FrenetSerretFrame.row_wise_normal(T)
+        N = FrenetSerretFrame._row_wise_normal(T)
 
         # Curvature
-        cross_norm = np.abs(np.sum(dxy * FrenetSerretFrame.row_wise_normal(ddxy), axis=1))
+        cross_norm = np.abs(np.sum(dxy * FrenetSerretFrame._row_wise_normal(ddxy), axis=1))
         k = np.zeros(len(T))
         k[dxy_norm > 0] = np.c_[cross_norm[dxy_norm > 0]] / (np.c_[dxy_norm[dxy_norm > 0]] ** 3)
         return T, N, np.c_[k]
 
     @staticmethod
-    def row_wise_normal(mat: np.ndarray):
+    def _row_wise_normal(mat: np.ndarray):
         return np.c_[-mat[:, 1], mat[:, 0]]
 
     def taylor_interp(self, s: np.ndarray) -> (CartesianPoint2D, CartesianPoint3D, CartesianPoint3D, float):
@@ -107,5 +107,13 @@ class FrenetSerretFrame:
         Transforms Frenet-frame trajectories to cartesian-frame trajectories, using tensor operations
         :param ftrajectories: Frenet-frame trajectories (tensor)
         :return: Cartesian-frame trajectories (tensor)
+        """
+        pass
+
+    def ctrajectories_to_ftrajectories(self, ctrajectories: CartesianExtendedTrajectories) -> FrenetTrajectories:
+        """
+        Transforms Cartesian-frame trajectories to Frenet-frame trajectories, using tensor operations
+        :param ctrajectories: Cartesian-frame trajectories (tensor)
+        :return: Frenet-frame trajectories (tensor)
         """
         pass
