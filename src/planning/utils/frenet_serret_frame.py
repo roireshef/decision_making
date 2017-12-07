@@ -2,7 +2,8 @@ import numpy as np
 
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
-    FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, CartesianPoint3D
+    FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, CartesianPoint3D, FS_SX, \
+    FS_SV, FS_SA, FS_DX, FS_DV, FS_DA
 from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
 
@@ -49,20 +50,20 @@ class FrenetSerretFrame:
     def _row_wise_normal(mat: np.ndarray):
         return np.c_[-mat[:, 1], mat[:, 0]]
 
-    def taylor_interp(self, s: np.ndarray) -> (CartesianPoint2D, CartesianPoint3D, CartesianPoint3D, float):
-        """Given arbitrary s in the range [0, self.s_max], this function uses taylor approximation to return
-        a(s), T(s), N(s), k(s), where:
-        a(s) is the map to Cartesian-frame (a point on the curve),
-        T(s) is the tangent unit vector
-        N(s) is the normal unit vector
+    def taylor_interp(self, s: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray, float):
+        """Given arbitrary s tensor (of shape D) of values in the range [0, self.s_max], this function uses taylor
+        approximation to return a(s), T(s), N(s), k(s), where:
+        a(s) is the map to Cartesian-frame (a point on the curve. will have shape of Dx2),
+        T(s) is the tangent unit vector (will have shape of Dx2)
+        N(s) is the normal unit vector (will have shape of Dx2)
         k(s) is the curvature (scalar) - assumed to be constant in the neighborhood of the points in self.O and thus
-        taken from the nearest point in self.O
+        taken from the nearest point in self.O (will have shape of D)
         """
         assert np.all(np.bitwise_and(0 <= s, s <= self.s_max))
 
         progress_ds = s / self.ds
         O_idx = np.round(progress_ds).astype(np.int)
-        delta_s = ((progress_ds - O_idx) * self.ds)[:, np.newaxis]
+        delta_s = np.expand_dims((progress_ds - O_idx) * self.ds, axis=len(s.shape))
 
         a_s = self.O[O_idx] + \
               delta_s * self.T[O_idx] + \
@@ -108,7 +109,15 @@ class FrenetSerretFrame:
         :param ftrajectories: Frenet-frame trajectories (tensor)
         :return: Cartesian-frame trajectories (tensor)
         """
-        pass
+        s_x = ftrajectories[:, :, FS_SX]
+        s_v = ftrajectories[:, :, FS_SV]
+        s_a = ftrajectories[:, :, FS_SA]
+        d_x = ftrajectories[:, :, FS_DX]
+        d_v = ftrajectories[:, :, FS_DV]
+        d_a = ftrajectories[:, :, FS_DA]
+
+        pos_r, T_r, N_r, k_r = FrenetSerretFrame.taylor_interp(ftrajectories[:, :, FS_SX])
+        theta_r =
 
     def ctrajectories_to_ftrajectories(self, ctrajectories: CartesianExtendedTrajectories) -> FrenetTrajectories:
         """
