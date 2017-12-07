@@ -74,7 +74,7 @@ class FrenetSerret2DFrame:
         d_v = ftrajectories[:, :, FS_DV]
         d_a = ftrajectories[:, :, FS_DA]
 
-        a_r, T_r, N_r, k_r, k_r_tag = FrenetSerret2DFrame._taylor_interp(ftrajectories[:, :, FS_SX])
+        a_r, T_r, N_r, k_r, k_r_tag = FrenetSerret2DFrame._taylor_interp(s_x)
         theta_r = np.arctan2(T_r[C_Y], T_r[C_X])
 
         cached_term = 1 - k_r * d_x  # pre-compute terms to use below
