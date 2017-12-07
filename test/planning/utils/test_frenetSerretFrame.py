@@ -1,5 +1,5 @@
 from decision_making.src.planning.utils.frenet_moving_frame import FrenetMovingFrame
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerretFrame
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.test.planning.trajectory.utils import RouteFixture
 from mapping.src.transformations.geometry_utils import *
 
@@ -13,7 +13,7 @@ def test_frenetSerretFrame_pointTwoWayConversion_accurate():
                         [370.0, 0.0]
                         ])
 
-    frenet = FrenetSerretFrame(route_points, np.sum(np.linalg.norm(np.diff(route_points, axis=0), axis=1)), ds=1)
+    frenet = FrenetSerret2DFrame(route_points, np.sum(np.linalg.norm(np.diff(route_points, axis=0), axis=1)), ds=1)
 
     fpoints = frenet.cpoints_to_fpoints(cpoints)
     new_cpoints = frenet.fpoints_to_cpoints(fpoints)
