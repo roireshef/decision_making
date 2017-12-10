@@ -1,5 +1,6 @@
 import numpy as np
 
+from decision_making.src.messages.str_serializable import StrSerializable
 from decision_making.src.planning.types import C_V, Limits
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 
@@ -8,7 +9,7 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmSigmoidFunctionParams
 from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryCostParams
 from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
 
-class SigmoidFunctionParams:
+class SigmoidFunctionParams(StrSerializable):
     def __init__(self, w: float, k: float, offset: float):
         """
         A data class that corresponds to a parametrization of a sigmoid function
@@ -34,7 +35,7 @@ class SigmoidFunctionParams:
         return cls(lcmMsg.w, lcmMsg.k, lcmMsg.offset)
 
 
-class TrajectoryCostParams:
+class TrajectoryCostParams(StrSerializable):
     def __init__(self, left_lane_cost: SigmoidFunctionParams, right_lane_cost: SigmoidFunctionParams,
                  left_road_cost: SigmoidFunctionParams, right_road_cost: SigmoidFunctionParams,
                  left_shoulder_cost: SigmoidFunctionParams, right_shoulder_cost: SigmoidFunctionParams,
@@ -127,7 +128,7 @@ class TrajectoryCostParams:
                             , buffer = np.array(lcmMsg.acceleration_limits.data)
                             , dtype = float))
 
-class TrajectoryParams:
+class TrajectoryParams(StrSerializable):
     def __init__(self, strategy: TrajectoryPlanningStrategy, reference_route: np.ndarray,
                  target_state: np.ndarray, cost_params: TrajectoryCostParams, time: float):
         """

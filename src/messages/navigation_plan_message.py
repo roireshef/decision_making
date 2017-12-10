@@ -1,10 +1,12 @@
 import numpy as np
 from typing import Optional
+
+from decision_making.src.messages.str_serializable import StrSerializable
 from mapping.src.exceptions import RoadNotFound, raises
 from common_data.lcm.generatedFiles.gm_lcm import LcmNavigationPlan
 from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedIntNumpyArray
 
-class NavigationPlanMsg:
+class NavigationPlanMsg(StrSerializable):
     """
         This class hold the navigation plan.
         It also implements function (required by MapAPI) that iterate over the roads list in the navigation plan.
