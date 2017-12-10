@@ -28,7 +28,9 @@ class NavigationPlanMsg(StrSerializable):
         lcm_msg.road_ids.num_dimensions = len(self.road_ids.shape)
         lcm_msg.road_ids.shape = list(self.road_ids.shape)
         lcm_msg.road_ids.length = self.road_ids.size
-        lcm_msg.road_ids.data = self.road_ids.flat.__array__().tolist()
+        # TODO: This solves inconsistency between mock and real lcm, since lcm cpp code treats the array as floats.
+        # TODO: cont - need to change if causes time delays.
+        lcm_msg.road_ids.data = self.road_ids.astype(np.float).flat.__array__().tolist()
         lcm_msg.road_ids.type = ""
 
         lcm_msg.type = ""
