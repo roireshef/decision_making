@@ -10,7 +10,7 @@ from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 class FrenetSerret2DFrame:
     def __init__(self, points: CartesianPath2D, ds: float = TRAJECTORY_ARCLEN_RESOLUTION):
         # TODO: move this outside
-        self.s_max = np.sum(np.linalg.norm(np.diff(points, axis=0), axis=1), axis=0)
+        self.s_max = float(np.sum(np.linalg.norm(np.diff(points, axis=0), axis=1), axis=0))
 
         self.O, _ = CartesianFrame.resample_curve(curve=points, step_size=ds,
                                                   desired_curve_len=self.s_max,
