@@ -4,8 +4,8 @@ from decision_making.test.planning.trajectory.utils import RouteFixture
 from mapping.src.transformations.geometry_utils import *
 
 
-def test_frenetSerretFrame_pointTwoWayConversion_accurate():
-    ACCURACY_TH = 10 ** -6
+def test_cpointsToFpointsToCpoints_pointTwoWayConversion_accurate():
+    ACCURACY_TH = 10 ** -3
 
     route_points = RouteFixture.get_route(lng=200, k=0.05, step=40, lat=100, offset=-50.0)
     cpoints = np.array([[220.0, 0.0], [150.0, 0.0],
@@ -38,3 +38,23 @@ def test_frenetSerretFrame_pointTwoWayConversion_accurate():
 
     fig.show()
     fig.clear()
+
+
+def test_ctrajectoryToFtrajectoryToCtrajectory_pointTwoWayConversion_accurate():
+    ACCURACY_TH = 10 ** -3
+
+    route_points = RouteFixture.get_route(lng=200, k=0.05, step=40, lat=100, offset=-50.0)
+    cpoints = np.array([[220.0, 0.0, np.pi/8, 20.0, 1.1, 1e-3], [150.0, 0.0, -np.pi/8, 4.0, 1.0, 1e-2],
+                        [280.0, 40.0, np.pi/7, 10.0, -0.9, -5*1e-3], [320.0, 60.0, np.pi/7, 3, -0.5, -5*1e-4],
+                        [370.0, 0.0, -np.pi/10, 2.5, 0.0, 0.0]
+                        ])
+
+    frenet = FrenetSerret2DFrame(route_points, ds=1)
+
+    fpoints = frenet.ctrajectory_to_ftrajectory(cpoints)
+    new_cpoints = frenet.ftrajectory_to_ctrajectory(fpoints)
+
+    errors = np.linalg.norm(cpoints - new_cpoints, axis=1)
+
+    for error in errors.__iter__():
+        assert error < ACCURACY_TH, 'FrenetMovingFrame point conversions aren\'t accurate enough'

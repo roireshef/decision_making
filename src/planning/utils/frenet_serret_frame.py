@@ -1,6 +1,6 @@
 import numpy as np
 
-from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION
+from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_INTERP_TYPE
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
     FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, CartesianPoint3D, FS_SX, \
     FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint, C_THETA, C_K, C_V, C_A
@@ -14,7 +14,8 @@ class FrenetSerret2DFrame:
 
         self.O, _ = CartesianFrame.resample_curve(curve=points, step_size=ds,
                                                   desired_curve_len=self.s_max,
-                                                  preserve_step_size=True)
+                                                  preserve_step_size=True,
+                                                  interp_type=TRAJECTORY_CURVE_INTERP_TYPE)
 
         self.ds = ds
         self.T, self.N, self.k = FrenetSerret2DFrame._fit_frenet(self.O)
@@ -102,7 +103,7 @@ class FrenetSerret2DFrame:
               k_r * cos_delta_theta / radius_ratio
 
         # compute a_x (curvature)
-        delta_theta_tag = v_x / s_v * k_x - k_r  # derivative of delta_theta (via chain rule: d(sx)->d(t)->d(s))
+        delta_theta_tag = radius_ratio / np.cos(delta_theta) * k_x - k_r  # derivative of delta_theta (via chain rule: d(sx)->d(t)->d(s))
         a_x = s_a * radius_ratio / cos_delta_theta + \
               s_v ** 2 / cos_delta_theta * (radius_ratio * tan_delta_theta * delta_theta_tag - (k_r_tag * k_r * d_tag))
 
@@ -128,10 +129,20 @@ class FrenetSerret2DFrame:
         v_x = ctrajectories[:, :, C_V]
         a_x = ctrajectories[:, :, C_A]
 
-        s_x, a_r, T_r, N_r, k_r, k_r_tag = \
-            np.apply_along_axis(self._project_cartesian_point, 2, pos_x)
+        new_shape = np.append(ctrajectories.shape[:2], [2])
+        s_x = np.zeros(shape=new_shape[:2])
+        a_r = np.zeros(shape=new_shape)
+        T_r = np.zeros(shape=new_shape)
+        N_r = np.zeros(shape=new_shape)
+        k_r = np.zeros(shape=new_shape[:2])
+        k_r_tag = np.zeros(shape=new_shape[:2])
 
-        d_x = np.einsum('tpi,tpi->tp', ctrajectories - a_r, N_r)
+        for i in range(ctrajectories.shape[0]):
+            for j in range(ctrajectories.shape[1]):
+                s_x[i,j], a_r[i,j], T_r[i,j], N_r[i,j], k_r[i,j], k_r_tag[i,j] = \
+                    self._project_cartesian_point(ctrajectories[i,j,[C_X, C_Y]])
+
+        d_x = np.einsum('tpi,tpi->tp', ctrajectories[:, :, [C_X, C_Y]] - a_r, N_r)
 
         radius_ratio = 1 - k_r * d_x  # pre-compute terms to use below
 
@@ -141,7 +152,7 @@ class FrenetSerret2DFrame:
         s_v = v_x * np.cos(delta_theta) / radius_ratio
         d_v = v_x * np.sin(delta_theta)
 
-        delta_theta_tag = v_x / s_v * k_x - k_r  # derivative of delta_theta (via chain rule: d(sx)->d(t)->d(s))
+        delta_theta_tag = radius_ratio / np.cos(delta_theta) * k_x - k_r  # derivative of delta_theta (via chain rule: d(sx)->d(t)->d(s))
 
         d_tag = (radius_ratio * np.sin(delta_theta)) ** 2
         d_tag_tag = -(k_r_tag * d_x + k_r * d_tag) * np.tan(delta_theta) + \
