@@ -133,28 +133,23 @@ class FrenetSerret2DFrame:
         taken from the nearest point in self.O
         k'(s*) is the derivative of the curvature (by distance d(s))
         """
-        # TODO: replace this with GD for finding more accurate s
+        # perform gradient decent to find s_approx
         O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(np.array([point]), self.O)[0]
         s_approx = (O_idx + delta_s) * self.ds
-
-        s_exact = np.zeros(cpoints.shape[0])
-        for cpoint_idx in range(cpoints.shape[0]):
-            step = 1
-            s_approx = (O_idx[cpoint_idx] + delta_s[cpoint_idx]) * self.ds
-            while step > EPSILON:
-                a_s, _, N_s, k_s, _ = self._taylor_interp(np.array([s_approx]))
-                k = k_s[cpoint_idx]
-                if k < EPSILON:
-                    break
-                N = N_s[cpoint_idx]  # normal vector in s_approx
-                A = a_s[cpoint_idx]  # cartesian point of s_approx
-                P = cpoints[cpoint_idx+1][:2]  # input cartesian point
-                radius = 1/k  # circle radius according to the curvature
-                center_to_P = P - A + N * radius  # vector from the circle center to P
-                cos = np.dot(N, center_to_P) / np.linalg.norm(center_to_P)  # cos(angle between N and this vector)
-                step = np.math.acos(cos) * radius  # arc length from A to the new guess point
-                s_approx = s_approx + step  # next s_approx of the current point
-            s_exact[cpoint_idx] = s_approx
+        step = 1
+        while step > 0.01:
+            a_s, T_s, N_s, k_s, _ = self._taylor_interp(np.array([s_approx]))
+            k = k_s[0]
+            if k < EPSILON:
+                break
+            N = N_s[0]  # normal vector in s_approx
+            A = a_s[0]  # cartesian of s_approx
+            radius = 1/k  # circle radius according to the curvature
+            center_to_point = point - A + N*radius  # vector from the circle center to the input point
+            sign = np.sign(np.dot(point - A, T_s))  # sign of the step
+            cos = np.dot(N, center_to_point) / np.linalg.norm(center_to_point)  # cos(angle between N and this vector)
+            step = np.math.acos(cos) * radius  # arc length from A to the new guess point
+            s_approx = s_approx + sign*step  # next s_approx of the current point
 
         a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(np.array([s_approx]))[0]
         return s_approx, a_s, T_s, N_s, k_s, k_s_tag
