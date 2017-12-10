@@ -136,7 +136,7 @@ class FrenetSerret2DFrame:
         O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(np.array([point]), self.O)[0]
         s_approx = (O_idx + delta_s) * self.ds
 
-        a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(np.array[s_approx])[0]
+        a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(np.array([s_approx]))[0]
         return s_approx, a_s, T_s, N_s, k_s, k_s_tag
 
     def _taylor_interp(self, s: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
