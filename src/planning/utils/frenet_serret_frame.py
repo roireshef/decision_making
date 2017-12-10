@@ -102,7 +102,7 @@ class FrenetSerret2DFrame:
               k_r * cos_delta_theta / cached_term
 
         # compute a_x (curvature)
-        delta_theta_tag = k_x / cos_delta_theta - k_r
+        delta_theta_tag = v_x / s_v * k_x - k_r  # derivative of delta_theta (via chain rule: d(sx)->d(t)->d(s))
         a_x = s_a * cached_term / cos_delta_theta + \
               s_v ** 2 / cos_delta_theta * (cached_term * tan_delta_theta * delta_theta_tag - (k_r_tag * k_r * d_tag))
 
