@@ -3,21 +3,25 @@ import numpy as np
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
     FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, CartesianPoint3D, FS_SX, \
-    FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory
+    FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint
 from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
 
 class FrenetSerret2DFrame:
-    def __init__(self, points: CartesianPath2D, s_max: float, ds: float = TRAJECTORY_ARCLEN_RESOLUTION):
+    def __init__(self, points: CartesianPath2D, ds: float = TRAJECTORY_ARCLEN_RESOLUTION):
         # TODO: move this outside
-        self.s_max = s_max
-        self.ds = ds
+        self.s_max = np.sum(np.linalg.norm(np.diff(points, axis=0), axis=1), axis=0)
 
         self.O, _ = CartesianFrame.resample_curve(curve=points, step_size=ds,
-                                                  desired_curve_len=s_max, preserve_step_size=True)
+                                                  desired_curve_len=self.s_max,
+                                                  preserve_step_size=True)
 
+        self.ds = ds
         self.T, self.N, self.k = FrenetSerret2DFrame._fit_frenet(self.O)
-        self.s_cumm = np.linspace(0.0, s_max, len(self.O))
+
+    def get_yaw(self, s: np.ndarray):
+        _, T_r, _, _, _ = self._taylor_interp(s)
+        return np.arctan2(T_r[..., C_Y], T_r[..., C_X])
 
     def ftrajectory_to_ctrajectory(self, ftrajectory: FrenetTrajectory) -> CartesianExtendedTrajectory:
         """
@@ -35,6 +39,12 @@ class FrenetSerret2DFrame:
         """
         return self.ctrajectories_to_ftrajectories(np.array([ctrajectory]))[0]
 
+    def fpoint_to_cpoint(self, fpoints: FrenetPoint) -> CartesianPoint2D:
+        return self.fpoints_to_cpoints(fpoints[np.newaxis, :])[0]
+
+    def cpoint_to_fpoint(self, cpoints: CartesianPoint2D) -> FrenetPoint:
+        return self.cpoints_to_fpoints(cpoints[np.newaxis, :])[0]
+
     def fpoints_to_cpoints(self, fpoints: FrenetTrajectory) -> CartesianPath2D:
         """
         Transforms frenet-frame point to cartesian-frame point (using self.curve) \n
@@ -44,7 +54,7 @@ class FrenetSerret2DFrame:
         a_s, _, N_s, _, _ = self._taylor_interp(fpoints[:, FP_SX])
         return a_s + N_s * fpoints[:, [FP_DX]]
 
-    def cpoints_to_fpoints(self, cpoints: CartesianPoint2D) -> FrenetTrajectory:
+    def cpoints_to_fpoints(self, cpoints: CartesianPath2D) -> FrenetTrajectory:
         O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(cpoints, self.O)
         s_approx = (O_idx + delta_s) * self.ds
 
@@ -74,8 +84,8 @@ class FrenetSerret2DFrame:
         d_v = ftrajectories[:, :, FS_DV]
         d_a = ftrajectories[:, :, FS_DA]
 
-        a_r, T_r, N_r, k_r, k_r_tag = FrenetSerret2DFrame._taylor_interp(s_x)
-        theta_r = np.arctan2(T_r[C_Y], T_r[C_X])
+        a_r, T_r, N_r, k_r, k_r_tag = self._taylor_interp(s_x)
+        theta_r = np.arctan2(T_r[..., C_Y], T_r[..., C_X])
 
         cached_term = 1 - k_r * d_x  # pre-compute terms to use below
         d_tag = d_v / s_v  # 1st derivative of d_x by distance
@@ -97,7 +107,7 @@ class FrenetSerret2DFrame:
               s_v ** 2 / cos_delta_theta * (cached_term * tan_delta_theta * delta_theta_tag - (k_r_tag * k_r * d_tag))
 
         # compute position (cartesian)
-        pos_x = a_r + N_r * d_x
+        pos_x = a_r + N_r * d_x[..., np.newaxis]
 
         # compute theta_x
         theta_x = theta_r + delta_theta
@@ -146,12 +156,12 @@ class FrenetSerret2DFrame:
               delta_s ** 2 / 2 * self.k[O_idx] ** 2 * self.N[O_idx]
 
         k_s = self.k[O_idx] + \
-              delta_s * np.gradient(self.k)[O_idx] + \
-              delta_s ** 2 / 2 * np.gradient(np.gradient(self.k))[O_idx]
+              delta_s * np.gradient(self.k, axis=0)[O_idx] + \
+              delta_s ** 2 / 2 * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
 
-        k_s_tag = np.gradient(self.k)[O_idx] + delta_s * np.gradient(np.gradient(self.k))[O_idx]
+        k_s_tag = np.gradient(self.k, axis=0)[O_idx] + delta_s * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
 
-        return a_s, T_s, N_s, k_s, k_s_tag
+        return a_s, T_s, N_s, k_s[..., 0], k_s_tag[..., 0]
 
     @staticmethod
     def _fit_frenet(xy: CartesianPath2D):
