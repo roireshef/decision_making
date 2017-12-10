@@ -25,7 +25,7 @@ VISUALIZATION_PREDICTION_RESOLUTION = 1.0
 OBJECT_HISTORY_TIMEOUT = 1000*1000*1000*2
 
 # Curve interpolation type (order)
-TRAJECTORY_CURVE_INTERP_TYPE = 'cubic'
+TRAJECTORY_CURVE_INTERP_TYPE = 'linear'
 
 # [m] Do not consider obstacles that are distant than this threshold
 TRAJECTORY_OBSTACLE_LOOKAHEAD = 200.0
