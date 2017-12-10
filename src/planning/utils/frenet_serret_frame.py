@@ -55,7 +55,13 @@ class FrenetSerret2DFrame:
         return a_s + N_s * fpoints[:, [FP_DX]]
 
     def cpoints_to_fpoints(self, cpoints: CartesianPath2D) -> FrenetTrajectory:
-        s, a_s, _, N_s, _, _ = np.apply_along_axis(self._project_cartesian_point, 0, cpoints)
+        s = np.zeros(shape=cpoints.shape[0])
+        a_s = np.zeros(shape=cpoints.shape)
+        N_s = np.zeros(shape=cpoints.shape)
+
+        for i in range(len(cpoints)):
+            s[i], a_s[i], _, N_s[i], _, _ = self._project_cartesian_point(cpoints[i])
+
 
         # project cpoints on the normals at a_s
         d = np.einsum('ij,ij->i', cpoints - a_s, N_s)
@@ -123,7 +129,7 @@ class FrenetSerret2DFrame:
         a_x = ctrajectories[:, :, C_A]
 
         s_x, a_r, T_r, N_r, k_r, k_r_tag = \
-            np.apply_along_axis(self._project_cartesian_point, 2, ctrajectories)
+            np.apply_along_axis(self._project_cartesian_point, 2, pos_x)
 
         d_x = np.einsum('tpi,tpi->tp', ctrajectories - a_r, N_r)
 
@@ -163,11 +169,11 @@ class FrenetSerret2DFrame:
         k'(s*) is the derivative of the curvature (by distance d(s))
         """
         # TODO: replace this with GD for finding more accurate s
-        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(np.array([point]), self.O)[0]
-        s_approx = (O_idx + delta_s) * self.ds
+        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(np.array([point]), self.O)
+        s_approx = (O_idx[0] + delta_s[0]) * self.ds
 
-        a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(np.array([s_approx]))[0]
-        return s_approx, a_s, T_s, N_s, k_s, k_s_tag
+        a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(np.array([s_approx]))
+        return s_approx, a_s[0], T_s[0], N_s[0], k_s[0], k_s_tag[0]
 
     def _taylor_interp(self, s: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
         """Given arbitrary s tensor (of shape D) of values in the range [0, self.s_max], this function uses taylor
