@@ -90,8 +90,8 @@ class WerlingPlanner(TrajectoryPlanner):
         assert planning_horizon >= 0
 
         # solve problem in frenet-frame
-        ftrajectories = self._solve_optimization(fconstraints_t0, fconstraints_tT, planning_horizon,
-                                                 planning_time_points)
+        ftrajectories = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT, planning_horizon,
+                                                           planning_time_points)
 
         # filter resulting trajectories by velocity and acceleration
         ftrajectories_filtered = self._filter_limits(ftrajectories, cost_params)
@@ -206,7 +206,8 @@ class WerlingPlanner(TrajectoryPlanner):
         ''' TOTAL '''
         return obstacles_costs + dist_from_ref_costs + dist_from_goal_costs + deviations_costs
 
-    def _solve_optimization(self, fconst_0: FrenetConstraints, fconst_t: FrenetConstraints, T: float,
+    @staticmethod
+    def _solve_optimization(fconst_0: FrenetConstraints, fconst_t: FrenetConstraints, T: float,
                             time_samples: np.ndarray):
         """
         Solves the two-point boundary value problem, given a set of constraints over the initial state
