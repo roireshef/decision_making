@@ -4,6 +4,7 @@ from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
     FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, CartesianPoint3D, FS_SX, \
     FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory
+from mapping.src.model.constants import EPSILON
 from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
 
@@ -49,7 +50,24 @@ class FrenetSerret2DFrame:
         s_approx = (O_idx + delta_s) * self.ds
 
         # TODO: replace this with GD for finding more accurate s
-        s_exact = s_approx
+        s_exact = np.zeros(cpoints.shape[0])
+        for cpoint_idx in range(cpoints.shape[0]):
+            step = 1
+            s_approx = (O_idx[cpoint_idx] + delta_s[cpoint_idx]) * self.ds
+            while step > EPSILON:
+                a_s, _, N_s, k_s, _ = self._taylor_interp(np.array([s_approx]))
+                k = k_s[cpoint_idx]
+                if k < EPSILON:
+                    break
+                N = N_s[cpoint_idx]  # normal vector in s_approx
+                A = a_s[cpoint_idx]  # cartesian point of s_approx
+                P = cpoints[cpoint_idx+1][:2]  # input cartesian point
+                radius = 1/k  # circle radius according to the curvature
+                center_to_P = P - A + N * radius  # vector from the circle center to P
+                cos = np.dot(N, center_to_P) / np.linalg.norm(center_to_P)  # cos(angle between N and this vector)
+                step = np.math.acos(cos) * radius  # arc length from A to the new guess point
+                s_approx = s_approx + step  # next s_approx of the current point
+            s_exact[cpoint_idx] = s_approx
 
         a_s, _, N_s, _, _ = self._taylor_interp(s_exact)
 
