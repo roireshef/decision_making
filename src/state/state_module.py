@@ -75,12 +75,6 @@ class StateModule(DmModule):
         try:
             self.logger.info("got perceived dynamic objects {}".format(objects))
 
-            if self._ego_state is None:
-                self.logger.warning(
-                    "StateModule is trying to parse dynamic objects with None EgoState. Since objects " +
-                    "are given in ego-vehicle's coordinate frame this is impossible. Aborting.")
-                return
-
             dyn_obj_list = self.create_dyn_obj_list(objects)
 
             with self._dynamic_objects_lock:
@@ -99,9 +93,7 @@ class StateModule(DmModule):
         :param objects: Serialized dynamic objects list.
         :return: List of dynamic object in DM format.
         """
-        ego = self._ego_state
-        ego_pos = np.array([ego.x, ego.y, ego.z])
-        ego_yaw = ego.yaw
+
         timestamp = dyn_obj_list.timestamp
         lcm_dyn_obj_list = dyn_obj_list.dynamic_objects
         dyn_obj_list = []
