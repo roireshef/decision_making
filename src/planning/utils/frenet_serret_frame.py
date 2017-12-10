@@ -10,7 +10,7 @@ from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 class FrenetSerret2DFrame:
     def __init__(self, points: CartesianPath2D, ds: float = TRAJECTORY_ARCLEN_RESOLUTION):
         # TODO: move this outside
-        self.s_max = float(np.sum(np.linalg.norm(np.diff(points, axis=0), axis=1), axis=0))
+        self.s_max = np.sum(np.linalg.norm(np.diff(points, axis=0), axis=1), axis=0)
 
         self.O, _ = CartesianFrame.resample_curve(curve=points, step_size=ds,
                                                   desired_curve_len=self.s_max,
@@ -55,18 +55,12 @@ class FrenetSerret2DFrame:
         return a_s + N_s * fpoints[:, [FP_DX]]
 
     def cpoints_to_fpoints(self, cpoints: CartesianPath2D) -> FrenetTrajectory:
-        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(cpoints, self.O)
-        s_approx = (O_idx + delta_s) * self.ds
-
-        # TODO: replace this with GD for finding more accurate s
-        s_exact = s_approx
-
-        a_s, _, N_s, _, _ = self._taylor_interp(s_exact)
+        s, a_s, _, N_s, _, _ = np.apply_along_axis(self._project_cartesian_point, 0, cpoints)
 
         # project cpoints on the normals at a_s
         d = np.einsum('ij,ij->i', cpoints - a_s, N_s)
 
-        return np.c_[s_exact, d]
+        return np.c_[s, d]
 
     def ftrajectories_to_ctrajectories(self, ftrajectories: FrenetTrajectories) -> CartesianExtendedTrajectories:
         """
@@ -126,9 +120,28 @@ class FrenetSerret2DFrame:
 
     ## UTILITIES ##
 
+    def _project_cartesian_point(self, point: CartesianPoint2D) -> \
+            (float, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
+        """Given a 2D point in cartesian frame (same origin as self.O) this function uses taylor approximation to return
+        s*, a(s*), T(s*), N(s*), k(s*), k'(s*), where:
+        s* is the progress along the curve where the point is projected
+        a(s*) is the Cartesian-coordinates (x,y) of the projection on the curve,
+        T(s*) is the tangent unit vector (dx,dy) of the projection on the curve
+        N(s*) is the normal unit vector (dx,dy) of the projection on the curve
+        k(s*) is the curvature (scalar) - assumed to be constant in the neighborhood of the points in self.O and thus
+        taken from the nearest point in self.O
+        k'(s*) is the derivative of the curvature (by distance d(s))
+        """
+        # TODO: replace this with GD for finding more accurate s
+        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(np.array([point]), self.O)[0]
+        s_approx = (O_idx + delta_s) * self.ds
+
+        a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(np.array[s_approx])[0]
+        return s_approx, a_s, T_s, N_s, k_s, k_s_tag
+
     def _taylor_interp(self, s: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
         """Given arbitrary s tensor (of shape D) of values in the range [0, self.s_max], this function uses taylor
-        approximation to return a(s), T(s), N(s), k(s), where:
+        approximation to return a(s), T(s), N(s), k(s), k'(s), where:
         a(s) is the map to Cartesian-frame (a point on the curve. will have shape of Dx2),
         T(s) is the tangent unit vector (will have shape of Dx2)
         N(s) is the normal unit vector (will have shape of Dx2)
