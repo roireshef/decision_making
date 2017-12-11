@@ -3,7 +3,7 @@ import numpy as np
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
     FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, CartesianPoint3D, FS_SX, \
-    FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint
+    FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint, C_THETA, C_K, C_V, C_A
 from mapping.src.model.constants import EPSILON
 from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
@@ -56,7 +56,13 @@ class FrenetSerret2DFrame:
         return a_s + N_s * fpoints[:, [FP_DX]]
 
     def cpoints_to_fpoints(self, cpoints: CartesianPath2D) -> FrenetTrajectory:
-        s, a_s, _, N_s, _, _ = np.apply_along_axis(self._project_cartesian_point, 0, cpoints)
+        s = np.zeros(shape=cpoints.shape[0])
+        a_s = np.zeros(shape=cpoints.shape)
+        N_s = np.zeros(shape=cpoints.shape)
+
+        for i in range(len(cpoints)):
+            s[i], a_s[i], _, N_s[i], _, _ = self._project_cartesian_point(cpoints[i])
+
 
         # project cpoints on the normals at a_s
         d = np.einsum('ij,ij->i', cpoints - a_s, N_s)
@@ -82,24 +88,24 @@ class FrenetSerret2DFrame:
         a_r, T_r, N_r, k_r, k_r_tag = self._taylor_interp(s_x)
         theta_r = np.arctan2(T_r[..., C_Y], T_r[..., C_X])
 
-        cached_term = 1 - k_r * d_x  # pre-compute terms to use below
+        radius_ratio = 1 - k_r * d_x  # pre-compute terms to use below
         d_tag = d_v / s_v  # 1st derivative of d_x by distance
-        tan_delta_theta = d_tag / cached_term
-        delta_theta = np.arctan2(d_tag, cached_term)
+        tan_delta_theta = d_tag / radius_ratio
+        delta_theta = np.arctan2(d_tag, radius_ratio)
         cos_delta_theta = np.cos(delta_theta)
 
         # compute v_x (velocity in the heading direction)
-        v_x = np.divide(s_v * cached_term, cos_delta_theta)
+        v_x = np.divide(s_v * radius_ratio, cos_delta_theta)
 
         # compute k_x (curvature)
         d_tagtag = (d_a - d_tag * s_a) / (s_v ** 2)  # 2nd derivative of d_x by distance
-        k_x = d_tagtag + (k_r_tag * k_r * d_tag) * tan_delta_theta * cos_delta_theta ** 3 / cached_term ** 2 + \
-              k_r * cos_delta_theta / cached_term
+        k_x = d_tagtag + (k_r_tag * k_r * d_tag) * tan_delta_theta * cos_delta_theta ** 3 / radius_ratio ** 2 + \
+              k_r * cos_delta_theta / radius_ratio
 
         # compute a_x (curvature)
         delta_theta_tag = v_x / s_v * k_x - k_r  # derivative of delta_theta (via chain rule: d(sx)->d(t)->d(s))
-        a_x = s_a * cached_term / cos_delta_theta + \
-              s_v ** 2 / cos_delta_theta * (cached_term * tan_delta_theta * delta_theta_tag - (k_r_tag * k_r * d_tag))
+        a_x = s_a * radius_ratio / cos_delta_theta + \
+              s_v ** 2 / cos_delta_theta * (radius_ratio * tan_delta_theta * delta_theta_tag - (k_r_tag * k_r * d_tag))
 
         # compute position (cartesian)
         pos_x = a_r + N_r * d_x[..., np.newaxis]
@@ -117,7 +123,37 @@ class FrenetSerret2DFrame:
         :param ctrajectories: Cartesian-frame trajectories (tensor)
         :return: Frenet-frame trajectories (tensor)
         """
-        pass
+        pos_x = ctrajectories[:, :, [C_X, C_Y]]
+        theta_x = ctrajectories[:, :, C_THETA]
+        k_x = ctrajectories[:, :, C_K]
+        v_x = ctrajectories[:, :, C_V]
+        a_x = ctrajectories[:, :, C_A]
+
+        s_x, a_r, T_r, N_r, k_r, k_r_tag = \
+            np.apply_along_axis(self._project_cartesian_point, 2, pos_x)
+
+        d_x = np.einsum('tpi,tpi->tp', ctrajectories - a_r, N_r)
+
+        radius_ratio = 1 - k_r * d_x  # pre-compute terms to use below
+
+        theta_r = np.arctan2(T_r[..., C_Y], T_r[..., C_X])
+        delta_theta = theta_x - theta_r
+
+        s_v = v_x * np.cos(delta_theta) / radius_ratio
+        d_v = v_x * np.sin(delta_theta)
+
+        delta_theta_tag = v_x / s_v * k_x - k_r  # derivative of delta_theta (via chain rule: d(sx)->d(t)->d(s))
+
+        d_tag = (radius_ratio * np.sin(delta_theta)) ** 2
+        d_tag_tag = -(k_r_tag * d_x + k_r * d_tag) * np.tan(delta_theta) + \
+                    radius_ratio / np.cos(delta_theta) ** 2 * (k_x * radius_ratio/np.cos(delta_theta) - k_r)
+
+        s_a = (a_x - s_v ** 2 / np.cos(delta_theta) *
+               (radius_ratio * np.tan(delta_theta) * delta_theta_tag - (k_r_tag * d_x + k_r * d_tag))) * \
+              np.cos(delta_theta) / radius_ratio
+        d_a = d_tag_tag * s_v ** 2 + d_tag * s_a
+
+        return np.dstack((s_x, s_v, s_a, d_x, d_v, d_a))
 
     ## UTILITIES ##
 
@@ -134,8 +170,8 @@ class FrenetSerret2DFrame:
         k'(s*) is the derivative of the curvature (by distance d(s))
         """
         # perform gradient decent to find s_approx
-        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(np.array([point]), self.O)[0]
-        s_approx = (O_idx + delta_s) * self.ds
+        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(np.array([point]), self.O)
+        s_approx = (O_idx[0] + delta_s[0]) * self.ds
         step = 1
         while step > 0.01:
             a_s, T_s, N_s, k_s, _ = self._taylor_interp(np.array([s_approx]))
@@ -151,8 +187,8 @@ class FrenetSerret2DFrame:
             step = np.math.acos(cos) * radius  # arc length from A to the new guess point
             s_approx = s_approx + sign*step  # next s_approx of the current point
 
-        a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(np.array([s_approx]))[0]
-        return s_approx, a_s, T_s, N_s, k_s, k_s_tag
+        a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(np.array([s_approx]))
+        return s_approx, a_s[0], T_s[0], N_s[0], k_s[0], k_s_tag[0]
 
     def _taylor_interp(self, s: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
         """Given arbitrary s tensor (of shape D) of values in the range [0, self.s_max], this function uses taylor

@@ -5,7 +5,7 @@ from mapping.src.transformations.geometry_utils import *
 
 
 def test_frenetSerretFrame_pointTwoWayConversion_accurate():
-    ACCURACY_TH = 0.1
+    ACCURACY_TH = 10 ** -6
 
     route_points = RouteFixture.get_route(lng=200, k=0.05, step=40, lat=100, offset=-50.0)
     cpoints = np.array([[220.0, 0.0], [150.0, 0.0],
@@ -13,7 +13,7 @@ def test_frenetSerretFrame_pointTwoWayConversion_accurate():
                         [370.0, 0.0]
                         ])
 
-    frenet = FrenetSerret2DFrame(route_points, np.sum(np.linalg.norm(np.diff(route_points, axis=0), axis=1)), ds=1)
+    frenet = FrenetSerret2DFrame(route_points, ds=1)
 
     fpoints = frenet.cpoints_to_fpoints(cpoints)
     new_cpoints = frenet.fpoints_to_cpoints(fpoints)
