@@ -2,7 +2,7 @@ import numpy as np
 
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_INTERP_TYPE
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
-    FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, CartesianPoint3D, FS_SX, \
+    FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, FS_SX, \
     FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint, C_THETA, C_K, C_V, C_A
 from mapping.src.model.constants import EPSILON
 from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
@@ -64,7 +64,6 @@ class FrenetSerret2DFrame:
 
         for i in range(len(cpoints)):
             s[i], a_s[i], _, N_s[i], _, _ = self._project_cartesian_point(cpoints[i])
-
 
         # project cpoints on the normals at a_s
         d = np.einsum('ij,ij->i', cpoints - a_s, N_s)
@@ -230,8 +229,8 @@ class FrenetSerret2DFrame:
               delta_s ** 2 / 2 * self.k[O_idx] ** 2 * self.N[O_idx]
 
         k_s = self.k[O_idx] + \
-              delta_s * np.gradient(self.k, axis=0)[O_idx] + \
-              delta_s ** 2 / 2 * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
+              delta_s * np.gradient(self.k, axis=0)[O_idx]
+              # delta_s ** 2 / 2 * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
 
         k_s_tag = np.gradient(self.k, axis=0)[O_idx] + delta_s * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
 
@@ -258,8 +257,8 @@ class FrenetSerret2DFrame:
         # Normal - robust to zero-curvature
         N = FrenetSerret2DFrame._row_wise_normal(T)
 
-        # Curvature
-        cross_norm = np.abs(np.sum(dxy * FrenetSerret2DFrame._row_wise_normal(ddxy), axis=1))
+        # SIGNED (!) Curvature
+        cross_norm = np.sum(FrenetSerret2DFrame._row_wise_normal(dxy) * ddxy, axis=1)
         k = np.zeros(len(T))
         k[dxy_norm > 0] = np.c_[cross_norm[dxy_norm > 0]] / (np.c_[dxy_norm[dxy_norm > 0]] ** 3)
         return T, N, np.c_[k]
