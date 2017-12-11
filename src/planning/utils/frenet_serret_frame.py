@@ -9,14 +9,15 @@ from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
 
 class FrenetSerret2DFrame:
-    def __init__(self, points: CartesianPath2D, ds: float = TRAJECTORY_ARCLEN_RESOLUTION):
+    def __init__(self, points: CartesianPath2D, ds: float = TRAJECTORY_ARCLEN_RESOLUTION,
+                 interp_type=TRAJECTORY_CURVE_INTERP_TYPE):
         # TODO: move this outside
         self.s_max = np.sum(np.linalg.norm(np.diff(points, axis=0), axis=1), axis=0)
 
         self.O, _ = CartesianFrame.resample_curve(curve=points, step_size=ds,
                                                   desired_curve_len=self.s_max,
                                                   preserve_step_size=True,
-                                                  interp_type=TRAJECTORY_CURVE_INTERP_TYPE)
+                                                  interp_type=interp_type)
 
         self.ds = ds
         self.T, self.N, self.k = FrenetSerret2DFrame._fit_frenet(self.O)
@@ -183,11 +184,9 @@ class FrenetSerret2DFrame:
         # perform gradient decent to find s_approx
         O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(np.array([point]), self.O)
         s_approx = (O_idx[0] + delta_s[0]) * self.ds
-        #step = 1
-        #while float(step) > 0.01:
         a_s, T_s, N_s, k_s, _ = self._taylor_interp(np.array([s_approx]))
         k = k_s[0]
-        if k > 0:
+        if abs(k) > 0.0001:  # then perform one gradient decent iteration
             N = N_s[0]  # normal vector in s_approx
             A = a_s[0]  # cartesian of s_approx
             radius = 1/k  # signed circle radius according to the curvature
