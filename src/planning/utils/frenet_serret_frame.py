@@ -229,8 +229,8 @@ class FrenetSerret2DFrame:
               delta_s ** 2 / 2 * self.k[O_idx] ** 2 * self.N[O_idx]
 
         k_s = self.k[O_idx] + \
-              delta_s * np.gradient(self.k, axis=0)[O_idx]
-              # delta_s ** 2 / 2 * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
+              delta_s * np.gradient(self.k, axis=0)[O_idx] + \
+              delta_s ** 2 / 2 * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
 
         k_s_tag = np.gradient(self.k, axis=0)[O_idx] + delta_s * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
 
