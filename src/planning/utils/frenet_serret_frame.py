@@ -172,20 +172,20 @@ class FrenetSerret2DFrame:
         # perform gradient decent to find s_approx
         O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(np.array([point]), self.O)
         s_approx = (O_idx[0] + delta_s[0]) * self.ds
-        step = 1
-        while step > 0.01:
-            a_s, T_s, N_s, k_s, _ = self._taylor_interp(np.array([s_approx]))
-            k = k_s[0]
-            if k < EPSILON:
-                break
+        #step = 1
+        #while float(step) > 0.01:
+        a_s, T_s, N_s, k_s, _ = self._taylor_interp(np.array([s_approx]))
+        k = k_s[0]
+        if k > 0:
             N = N_s[0]  # normal vector in s_approx
             A = a_s[0]  # cartesian of s_approx
-            radius = 1/k  # circle radius according to the curvature
-            center_to_point = point - A + N*radius  # vector from the circle center to the input point
-            sign = np.sign(np.dot(point - A, T_s))  # sign of the step
+            radius = 1/k  # signed circle radius according to the curvature
+            center_to_point = point - A - N*radius  # vector from the circle center to the input point
+            step_sign = np.sign(np.dot(point - A, T_s[0]))  # sign of the step
             cos = np.dot(N, center_to_point) / np.linalg.norm(center_to_point)  # cos(angle between N and this vector)
-            step = np.math.acos(cos) * radius  # arc length from A to the new guess point
-            s_approx = s_approx + sign*step  # next s_approx of the current point
+            cos = min(1.0, abs(cos))
+            step = step_sign * np.math.acos(cos) * abs(radius)  # arc length from A to the new guess point
+            s_approx += step  # next s_approx of the current point
 
         a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(np.array([s_approx]))
         return s_approx, a_s[0], T_s[0], N_s[0], k_s[0], k_s_tag[0]
