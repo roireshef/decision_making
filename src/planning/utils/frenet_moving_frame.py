@@ -25,6 +25,8 @@ class FrenetMovingFrame:
         resampled_curve, self._ds = CartesianFrame.resample_curve(curve=resampled_curve, step_size=resolution,
                                                                   interp_type='linear')
         self._curve = CartesianFrame.add_yaw_and_derivatives(resampled_curve)
+
+        # TODO: create this using tensor operations
         self._h_tensor = np.array([CartesianFrame.homo_matrix_2d(self._curve[s_idx, 2], self._curve[s_idx, 0:2])
                                    for s_idx in range(len(self._curve))])
 
