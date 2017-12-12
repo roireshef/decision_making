@@ -160,8 +160,7 @@ class FrenetSerret2DFrame:
                     radius_ratio / np.cos(delta_theta) ** 2 * (k_x * radius_ratio/np.cos(delta_theta) - k_r)
 
         s_a = (a_x - s_v ** 2 / np.cos(delta_theta) *
-               (radius_ratio * np.tan(delta_theta) * delta_theta_tag - (k_r_tag * d_x + k_r * d_tag))) * \
-              np.cos(delta_theta) / radius_ratio
+               (radius_ratio * np.tan(delta_theta) * delta_theta_tag - (k_r_tag * d_x + k_r * d_tag))) * np.cos(delta_theta) / radius_ratio
         d_a = d_tag_tag * s_v ** 2 + d_tag * s_a
 
         return np.dstack((s_x, s_v, s_a, d_x, d_v, d_a))
@@ -199,6 +198,7 @@ class FrenetSerret2DFrame:
         a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(np.array([s_approx]))
         return s_approx, a_s[0], T_s[0], N_s[0], k_s[0], k_s_tag[0]
 
+
     def _taylor_interp(self, s: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
         """Given arbitrary s tensor (of shape D) of values in the range [0, self.s_max], this function uses taylor
         approximation to return a(s), T(s), N(s), k(s), k'(s), where:
@@ -229,8 +229,8 @@ class FrenetSerret2DFrame:
               delta_s ** 2 / 2 * self.k[O_idx] ** 2 * self.N[O_idx]
 
         k_s = self.k[O_idx] + \
-              delta_s * np.gradient(self.k, axis=0)[O_idx] + \
-              delta_s ** 2 / 2 * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
+              delta_s * np.gradient(self.k, axis=0)[O_idx]
+              # delta_s ** 2 / 2 * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
 
         k_s_tag = np.gradient(self.k, axis=0)[O_idx] + delta_s * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
 
