@@ -1,6 +1,8 @@
 import numpy as np
 import time
 
+from decision_making.src.global_constants import EGO_HEIGHT, EGO_WIDTH, EGO_LENGTH, DEFAULT_ACCELERATION, \
+    DEFAULT_CURVATURE
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
@@ -33,7 +35,7 @@ def test_werlingPlanner_toyScenario_noException():
 
     predictor = RoadFollowingPredictor(logger)
 
-    goal = np.concatenate((route_points[len(route_points) // 2, [CURVE_X, CURVE_Y, CURVE_YAW]], [vT]))
+    goal = np.concatenate((route_points[len(route_points) // 2, [CURVE_X, CURVE_Y, CURVE_YAW]], [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
 
     pos1 = np.array([7, -.5])
     yaw1 = 0
@@ -47,7 +49,7 @@ def test_werlingPlanner_toyScenario_noException():
                       confidence=1.0, v_x=1.1, v_y=0, acceleration_lon=0.0, omega_yaw=0.0)
     ])
 
-    ego = EgoState(obj_id=-1, timestamp=1000, x=0, y=0, z=0, yaw=0, size=None,
+    ego = EgoState(obj_id=-1, timestamp=1000, x=0, y=0, z=0, yaw=0, size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
                    confidence=1.0, v_x=v0, v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
     state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
@@ -72,7 +74,7 @@ def test_werlingPlanner_toyScenario_noException():
     samplable, ctrajectories, costs = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
                                        goal_time=T, cost_params=cost_params)
 
-    samplable.sample(np.arange(0, 1, 0.1))
+    samplable.sample(np.arange(0, 1, 0.1) + ego.timestamp_in_sec)
 
     end_time = time.time() - start_time
 

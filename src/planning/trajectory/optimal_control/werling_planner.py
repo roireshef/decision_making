@@ -14,7 +14,7 @@ from decision_making.src.planning.trajectory.optimal_control.optimal_control_uti
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianExtendedTrajectory, \
-    CartesianTrajectories, FS_DV, FS_DA
+    CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState
 from decision_making.src.planning.types import FrenetTrajectories, CartesianExtendedTrajectories, FrenetPoint
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
@@ -59,7 +59,7 @@ class WerlingPlanner(TrajectoryPlanner):
     def dt(self):
         return self._dt
 
-    def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, goal_time: float,
+    def plan(self, state: State, reference_route: np.ndarray, goal: CartesianExtendedState, goal_time: float,
              cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """ see base class """
         # create road coordinate-frame
@@ -71,8 +71,16 @@ class WerlingPlanner(TrajectoryPlanner):
         ego_cartesian_state = np.array([state.ego_state.x, state.ego_state.y, state.ego_state.yaw, state.ego_state.v_x,
                                         state.ego_state.acceleration_lon, state.ego_state.curvature])
 
+        ego_frenet_state = frenet.ctrajectory_to_ftrajectory(np.array([ego_cartesian_state]))[0]
+
+        if np.any(np.isnan(ego_frenet_state)):
+            self._logger.warning("Werling planner tried to convert current EgoState from cartesian-frame (%s)"
+                                 "to frenet-frame (%s) and encoutered nan values. Those values are zeroed by default",
+                                 str(ego_cartesian_state), str(ego_frenet_state))
+            ego_frenet_state[np.isnan(ego_frenet_state)] = 0.0
+
         # define constraints for the initial state
-        fconstraints_t0 = FrenetConstraints.from_state(frenet.ctrajectory_to_ftrajectory(np.array([ego_cartesian_state]))[0])
+        fconstraints_t0 = FrenetConstraints.from_state(ego_frenet_state)
 
         # define constraints for the terminal (goal) state
         goal_frenet_state = frenet.ctrajectory_to_ftrajectory(np.array([goal]))[0]

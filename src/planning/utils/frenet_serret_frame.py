@@ -3,8 +3,7 @@ import numpy as np
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_INTERP_TYPE
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
     FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, FS_SX, \
-    FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint, C_THETA, C_K, C_V, C_A
-from mapping.src.model.constants import EPSILON
+    FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint, C_YAW, C_K, C_V, C_A
 from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
 
@@ -123,7 +122,7 @@ class FrenetSerret2DFrame:
         :return: Frenet-frame trajectories (tensor)
         """
         pos_x = ctrajectories[:, :, [C_X, C_Y]]
-        theta_x = ctrajectories[:, :, C_THETA]
+        theta_x = ctrajectories[:, :, C_YAW]
         k_x = ctrajectories[:, :, C_K]
         v_x = ctrajectories[:, :, C_V]
         a_x = ctrajectories[:, :, C_A]

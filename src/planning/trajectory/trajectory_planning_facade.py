@@ -10,7 +10,8 @@ from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_STATE_READER_TOPIC, TRAJECTORY_PARAMS_READER_TOPIC, \
     TRAJECTORY_PUBLISH_TOPIC, TRAJECTORY_VISUALIZATION_TOPIC, TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
-    NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, DEFAULT_OBJECT_Z_VALUE, VISUALIZATION_PREDICTION_RESOLUTION
+    NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, DEFAULT_OBJECT_Z_VALUE, VISUALIZATION_PREDICTION_RESOLUTION, \
+    DEFAULT_CURVATURE, DEFAULT_ACCELERATION
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
@@ -77,15 +78,18 @@ class TrajectoryPlanningFacade(DmModule):
             else:
                 updated_state = state
 
+            # TODO: currently adding default curvature and acceleration values
+            extended_target_state = np.append(params.target_state, [DEFAULT_ACCELERATION, DEFAULT_CURVATURE])
+
             # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, params.target_state, params.time, params.cost_params)
+                plan(updated_state, params.reference_route, extended_target_state, params.time, params.cost_params)
 
             # TODO: validate that sampling is consistent with controller!
             trajectory_points = samplable_trajectory.sample(
-                np.linspace(start=state.ego_state.timestamp_in_sec + TRAJECTORY_TIME_RESOLUTION,
-                            stop=state.ego_state.timestamp_in_sec + TRAJECTORY_NUM_POINTS * TRAJECTORY_TIME_RESOLUTION,
-                            num=TRAJECTORY_NUM_POINTS))
+                np.linspace(start=TRAJECTORY_TIME_RESOLUTION,
+                            stop= TRAJECTORY_NUM_POINTS * TRAJECTORY_TIME_RESOLUTION,
+                            num=TRAJECTORY_NUM_POINTS) + state.ego_state.timestamp_in_sec)
 
             # TODO: should publish v_x?
             # publish results to the lower DM level (Control)

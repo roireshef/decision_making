@@ -74,6 +74,12 @@ SX_STEPS, SV_STEPS, DX_STEPS = 15, 1, 5
 # [m] Bounding box size around ego vehicle
 EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 5.0, 2.0, 2.0
 
+# [m/sec^2] when acceleration is not specified - TP uses this as goal acceleration
+DEFAULT_ACCELERATION = 0.0
+
+# [-+1/m] when curvature is not specified - TP uses this as goal curvature
+DEFAULT_CURVATURE = 0.0
+
 #The id of the ego object
 EGO_ID = 0.0
 
