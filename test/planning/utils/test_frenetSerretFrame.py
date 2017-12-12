@@ -45,8 +45,8 @@ def test_ctrajectoryToFtrajectoryToCtrajectory_pointTwoWayConversion_accuratePos
     ACCURACY_TH = 10 ** -3
 
     route_points = RouteFixture.get_route(lng=200, k=0.05, step=40, lat=100, offset=-50.0)
-    cpoints = np.array([[220.0, 0.0, np.pi/6, 20.0, 1.1, 1e-3], [150.0, 0.0, -np.pi/8, 4.0, 1.0, 1e-2],
-                        [280.0, 40.0, np.pi/7, 10.0, -0.9, -5*1e-3], [320.0, 60.0, np.pi/7, 3, -0.5, -5*1e-4],
+    cpoints = np.array([[150.0, 0.0, -np.pi/8, 10.0, 1.0, 1e-2], [250.0, 0.0, np.pi/6, 20.0, 1.1, -1e-2],
+                        [280.0, 40.0, np.pi/7, 10.0, -0.9, -5*1e-2], [320.0, 60.0, np.pi/7, 3, -0.5, -5*1e-2],
                         [370.0, 0.0, np.pi/9, 2.5, -2.0, 0.0]
                         ])
 

@@ -20,7 +20,7 @@ class FrenetSerret2DFrame:
                                                   interp_type=interp_type)
 
         self.ds = ds
-        self.T, self.N, self.k = FrenetSerret2DFrame._fit_frenet(self.O)
+        self.T, self.N, self.k, self.k_tag = FrenetSerret2DFrame._fit_frenet(self.O, ds)
 
     def get_yaw(self, s: np.ndarray):
         _, T_r, _, _, _ = self._taylor_interp(s)
@@ -100,13 +100,11 @@ class FrenetSerret2DFrame:
 
         # compute k_x (curvature)
         d_tagtag = (d_a - d_tag * s_a) / (s_v ** 2)  # 2nd derivative of d_x by distance
-        k_x = d_tagtag + (k_r_tag * k_r * d_tag) * tan_delta_theta * cos_delta_theta ** 3 / radius_ratio ** 2 + \
-              k_r * cos_delta_theta / radius_ratio
+        k_x = ((d_tagtag + (k_r_tag * d_x + k_r * d_tag) * np.tan(delta_theta)) * np.cos(delta_theta) ** 2 / radius_ratio + k_r) * np.cos(delta_theta) / radius_ratio
 
         # compute a_x (curvature)
         delta_theta_tag = radius_ratio / np.cos(delta_theta) * k_x - k_r  # derivative of delta_theta (via chain rule: d(sx)->d(t)->d(s))
-        a_x = s_a * radius_ratio / cos_delta_theta + \
-              s_v ** 2 / cos_delta_theta * (radius_ratio * tan_delta_theta * delta_theta_tag - (k_r_tag * k_r * d_tag))
+        a_x = s_v ** 2 / cos_delta_theta * (radius_ratio * tan_delta_theta * delta_theta_tag - (k_r_tag * d_x + k_r * d_tag)) + s_a * radius_ratio / cos_delta_theta
 
         # compute position (cartesian)
         pos_x = a_r + N_r * d_x[..., np.newaxis]
@@ -153,11 +151,11 @@ class FrenetSerret2DFrame:
         s_v = v_x * np.cos(delta_theta) / radius_ratio
         d_v = v_x * np.sin(delta_theta)
 
-        delta_theta_tag = radius_ratio / np.cos(delta_theta) * k_x - k_r  # derivative of delta_theta (via chain rule: d(sx)->d(t)->d(s))
+        # derivative of delta_theta (via chain rule: d(sx)->d(t)->d(s))
+        delta_theta_tag = radius_ratio / np.cos(delta_theta) * k_x - k_r
 
-        d_tag = (radius_ratio * np.sin(delta_theta)) ** 2
-        d_tag_tag = -(k_r_tag * d_x + k_r * d_tag) * np.tan(delta_theta) + \
-                    radius_ratio / np.cos(delta_theta) ** 2 * (k_x * radius_ratio/np.cos(delta_theta) - k_r)
+        d_tag = radius_ratio * np.tan(delta_theta)  # invalid: (radius_ratio * np.sin(delta_theta)) ** 2
+        d_tag_tag = -(k_r_tag * d_x + k_r * d_tag) * np.tan(delta_theta) + radius_ratio / np.cos(delta_theta) ** 2 * (k_x * radius_ratio/np.cos(delta_theta) - k_r)
 
         s_a = (a_x - s_v ** 2 / np.cos(delta_theta) *
                (radius_ratio * np.tan(delta_theta) * delta_theta_tag - (k_r_tag * d_x + k_r * d_tag))) * np.cos(delta_theta) / radius_ratio
@@ -229,20 +227,20 @@ class FrenetSerret2DFrame:
               delta_s ** 2 / 2 * self.k[O_idx] ** 2 * self.N[O_idx]
 
         k_s = self.k[O_idx] + \
-              delta_s * np.gradient(self.k, axis=0)[O_idx]
+              delta_s * self.k_tag[O_idx]
               # delta_s ** 2 / 2 * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
 
-        k_s_tag = np.gradient(self.k, axis=0)[O_idx] + delta_s * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
+        k_s_tag = self.k_tag[O_idx] #+ delta_s * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
 
         return a_s, T_s, N_s, k_s[..., 0], k_s_tag[..., 0]
 
     @staticmethod
-    def _fit_frenet(xy: CartesianPath2D):
+    def _fit_frenet(xy: CartesianPath2D, ds: float):
         if xy.shape[0] == 0:
             raise ValueError('xyz array cannot be empty')
 
-        dxy = np.gradient(xy)[0]
-        ddxy = np.gradient(dxy)[0]
+        dxy = np.divide(np.gradient(xy)[0], ds)
+        ddxy = np.divide(np.gradient(dxy)[0], ds)
 
         # magintudes
         dxy_norm = np.linalg.norm(dxy, axis=1)
@@ -251,7 +249,7 @@ class FrenetSerret2DFrame:
         T = np.divide(dxy, np.c_[dxy_norm])
 
         # Derivative of Tangent
-        dT = np.gradient(T)[0]
+        dT = np.divide(np.gradient(T)[0], ds)
         dT_norm = np.linalg.norm(dT, axis=1)
 
         # Normal - robust to zero-curvature
@@ -261,7 +259,11 @@ class FrenetSerret2DFrame:
         cross_norm = np.sum(FrenetSerret2DFrame._row_wise_normal(dxy) * ddxy, axis=1)
         k = np.zeros(len(T))
         k[dxy_norm > 0] = np.c_[cross_norm[dxy_norm > 0]] / (np.c_[dxy_norm[dxy_norm > 0]] ** 3)
-        return T, N, np.c_[k]
+
+        # derivative of curvature
+        k_tag = np.divide(np.gradient(k), ds)
+
+        return T, N, np.c_[k], np.c_[k_tag]
 
     @staticmethod
     def _row_wise_normal(mat: np.ndarray):
