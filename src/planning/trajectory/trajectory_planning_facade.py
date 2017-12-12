@@ -1,6 +1,10 @@
+import copy
+import time
 import traceback
 from logging import Logger
 from typing import Dict
+
+import numpy as np
 
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
@@ -13,16 +17,10 @@ from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanM
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import CartesianState, C_Y, C_X, C_YAW, FP_SX, FP_DX, FrenetPoint, \
-    CartesianExtendedState, C_V, C_A, CartesianPath, CartesianTrajectories
+from decision_making.src.planning.types import C_Y, C_X, C_YAW, FP_SX, FP_DX, FrenetPoint, \
+    CartesianExtendedState, C_V, C_A, CartesianTrajectories, CartesianPath2D
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, EgoState
-import time
-import numpy as np
-import copy
-
-from mapping.src.model.map_api import MapAPI
-from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
@@ -206,7 +204,7 @@ class TrajectoryPlanningFacade(DmModule):
 
         return updated_state
 
-    def _prepare_visualization_msg(self, state: State, reference_route: CartesianPath,
+    def _prepare_visualization_msg(self, state: State, reference_route: CartesianPath2D,
                                    ctrajectories: CartesianTrajectories, costs: np.ndarray,
                                    planning_horizon: float, predictor: Predictor):
         """

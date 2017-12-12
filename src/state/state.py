@@ -119,6 +119,11 @@ class EgoState(DynamicObject, DDSNonTypedMsg):
                                acceleration_lon, omega_yaw)
         self.steering_angle = steering_angle
 
+    @property
+    def curvature(self):    # curvature is signed (same sign as steering_angle)
+        # TODO: change <length> to the distance between the two axles
+        return np.tan(self.steering_angle) / self.size.length
+
 
 class State(DDSNonTypedMsg):
     def __init__(self, occupancy_state, dynamic_objects, ego_state):
