@@ -13,7 +13,9 @@ BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT = 14.0
 
 # [m] length of reference trajectory provided by behavioral planner
 REFERENCE_TRAJECTORY_LENGTH = 30.0
-REFERENCE_TRAJECTORY_LENGTH_EXTENDED = 31.0
+
+# [m] extra margin (backwards) for the reference-route generation for TP
+REFERENCE_TRAJECTORY_MARGIN = 1.0
 
 # [m] Resolution for the interpolation of the reference route
 TRAJECTORY_ARCLEN_RESOLUTION = 0.1

@@ -4,7 +4,8 @@ import numpy as np
 
 from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, TRAJECTORY_ARCLEN_RESOLUTION
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, TRAJECTORY_ARCLEN_RESOLUTION, \
+    REFERENCE_TRAJECTORY_MARGIN
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
@@ -275,7 +276,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         dist_from_ref_sq_cost = 0.0
 
         # TODO: set velocity and acceleration limits properly
-        velocity_limits = np.array([0.0, 60.0])  # [m/s]. not a constant because it might be learned. TBD
+        velocity_limits = np.array([-1.0, 60.0])  # [m/s]. not a constant because it might be learned. TBD
         acceleration_limits = np.array([A_LON_MIN - A_LON_EPS, A_LON_MAX + A_LON_EPS])
         cost_params = TrajectoryCostParams(left_lane_cost=left_lane_cost,
                                            right_lane_cost=right_lane_cost,
@@ -463,7 +464,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         lookahead_path = MapService.get_instance().get_uniform_path_lookahead(
             road_id=behavioral_state.ego_state.road_localization.road_id,
             lat_shift=target_lane_latitude,
-            starting_lon=behavioral_state.ego_state.road_localization.road_lon,
+            starting_lon=max(behavioral_state.ego_state.road_localization.road_lon - REFERENCE_TRAJECTORY_MARGIN, 0),
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
             steps_num=int(np.round(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
             navigation_plan=navigation_plan)
