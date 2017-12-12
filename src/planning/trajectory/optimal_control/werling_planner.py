@@ -73,6 +73,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         ego_frenet_state = frenet.ctrajectory_to_ftrajectory(np.array([ego_cartesian_state]))[0]
 
+        # THIS HANDLES CURRENT STATES WHERE THE VEHICLE IS STANDING STILL
         if np.any(np.isnan(ego_frenet_state)):
             self._logger.warning("Werling planner tried to convert current EgoState from cartesian-frame (%s)"
                                  "to frenet-frame (%s) and encoutered nan values. Those values are zeroed by default",
