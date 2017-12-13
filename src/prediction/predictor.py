@@ -171,3 +171,4 @@ class Predictor:
         most_recent_timestamp = np.max(objects_timestamp_in_sec)
 
         return self.predict_state(state=state, prediction_timestamps=np.array([most_recent_timestamp]))[0]
+
