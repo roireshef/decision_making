@@ -3,9 +3,9 @@ from typing import List
 import matplotlib.patches as patches
 import numpy as np
 
+from decision_making.src.planning.types import CURVE_THETA
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle, SigmoidStaticBoxObstacle, \
     SigmoidBoxObstacle
-from decision_making.src.planning.utils.columns import R_THETA
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject
 
@@ -45,14 +45,14 @@ class PlottableSigmoidStaticBoxObstacle(SigmoidStaticBoxObstacle, PlottableSigmo
         H_inv = np.linalg.inv(self._H_inv.transpose())
         lower_left_p = np.dot(H_inv, [-self.length / 2, -self.width / 2, 1])
         plt.add_patch(patches.Rectangle(
-            (lower_left_p[0], lower_left_p[1]), self.length, self.width, angle=np.rad2deg(self.pose[R_THETA]),
+            (lower_left_p[0], lower_left_p[1]), self.length, self.width, angle=np.rad2deg(self.pose[CURVE_THETA]),
             hatch='\\', fill=False
         ))
 
         lower_left_p = np.dot(H_inv, [-self.length / 2 - self._margin, -self.width / 2 - self._margin, 1])
         plt.add_patch(patches.Rectangle(
             (lower_left_p[0], lower_left_p[1]), self.length + 2 * self._margin, self.width + 2 * self._margin,
-            angle=np.rad2deg(self.pose[R_THETA]), fill=True, alpha=0.15, color=[0, 0, 0]
+            angle=np.rad2deg(self.pose[CURVE_THETA]), fill=True, alpha=0.15, color=[0, 0, 0]
         ))
 
 
@@ -60,7 +60,7 @@ class PlottableSigmoidDynamicBoxObstacle(SigmoidDynamicBoxObstacle, PlottableSig
     def __init__(self, obj: DynamicObject, k: float, margin: float,
                  time_samples: np.ndarray, predictor: Predictor):
         # get predictions of the dynamic object in global coordinates
-        poses = predictor.predict_object_trajectories(obj, time_samples)
+        poses = predictor.predict_object(obj, time_samples)
         super().__init__(poses, obj.size.length, obj.size.width, k, margin)
         self.poses = poses
 
@@ -70,14 +70,14 @@ class PlottableSigmoidDynamicBoxObstacle(SigmoidDynamicBoxObstacle, PlottableSig
         H_inv = np.linalg.inv(self._H_inv[0].transpose())
         lower_left_p = np.dot(H_inv, [-self.length / 2, -self.width / 2, 1])
         plt.add_patch(patches.Rectangle(
-            (lower_left_p[0], lower_left_p[1]), self.length, self.width, angle=np.rad2deg(self.poses[0][R_THETA]),
+            (lower_left_p[0], lower_left_p[1]), self.length, self.width, angle=np.rad2deg(self.poses[0][CURVE_THETA]),
             hatch='\\', fill=False
         ))
 
         lower_left_p = np.dot(H_inv, [-self.length / 2 - self._margin, -self.width / 2 - self._margin, 1])
         plt.add_patch(patches.Rectangle(
             (lower_left_p[0], lower_left_p[1]), self.length + 2 * self._margin, self.width + 2 * self._margin,
-            angle=np.rad2deg(self.poses[0][R_THETA]), fill=True, alpha=0.15, color=[0, 0, 0]
+            angle=np.rad2deg(self.poses[0][CURVE_THETA]), fill=True, alpha=0.15, color=[0, 0, 0]
         ))
 
 

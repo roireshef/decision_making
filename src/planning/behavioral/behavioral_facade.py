@@ -11,7 +11,6 @@ from decision_making.src.planning.behavioral.behavioral_state import BehavioralS
 from decision_making.src.planning.behavioral.policy import Policy
 from decision_making.src.state.state import State
 from logging import Logger
-import rte.python.profiler as prof
 import time
 
 
@@ -33,7 +32,6 @@ class BehavioralFacade(DmModule):
         pass
 
     # TODO: implement
-    @prof.ProfileFunction("BehavioralFacade")
     def _periodic_action_impl(self) -> None:
         """
         The main function of the behavioral planner. It read the most up-to-date state and navigation plan,

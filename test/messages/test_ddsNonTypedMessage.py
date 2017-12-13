@@ -31,3 +31,4 @@ def test_deserialize_validEnum_successful():
 def test_deserialize_NoneMsg_throwsError():
     with pytest.raises(Exception, message="Trying to deserialize wrong class-types passed without an exception"):
         w_new = Woo.deserialize(None)
+
