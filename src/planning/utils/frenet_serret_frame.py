@@ -10,8 +10,8 @@ from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 class FrenetSerret2DFrame:
     def __init__(self, points: CartesianPath2D, ds: float = TRAJECTORY_ARCLEN_RESOLUTION,
                  interp_type=TRAJECTORY_CURVE_INTERP_TYPE):
-        # TODO: move this outside
-        self.s_max = np.sum(np.linalg.norm(np.diff(points, axis=0), axis=1), axis=0)
+        # TODO: move this outside, understand why simple np.sum doesn't compute the same as np.cumsum()[-1]
+        self.s_max = np.cumsum(np.linalg.norm(np.diff(points, axis=0), axis=1), axis=0)[-1]
 
         self.O, _ = CartesianFrame.resample_curve(curve=points, step_size=ds,
                                                   desired_curve_len=self.s_max,

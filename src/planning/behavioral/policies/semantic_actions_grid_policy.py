@@ -5,7 +5,7 @@ import numpy as np
 from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, TRAJECTORY_ARCLEN_RESOLUTION, \
-    REFERENCE_TRAJECTORY_MARGIN
+    REFERENCE_TRAJECTORY_MARGIN, PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
@@ -24,7 +24,6 @@ from decision_making.src.planning.behavioral.semantic_actions_policy import Sema
     LAT_CELL, LON_CELL, SemanticGridCell
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.prediction.constants import PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
 from decision_making.src.state.state import State
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
@@ -223,7 +222,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         target_path_latitude = action_spec.d_rel + behavioral_state.ego_state.road_localization.intra_road_lat
 
         reference_route_x_y_yaw = CartesianFrame.add_yaw(reference_route)
-        target_state_x_y_yaw = reference_route_x_y_yaw[-1, :]
+        target_state_x_y_yaw = reference_route_x_y_yaw[-2, :]   # TODO: why sending the last point does not work? it is off the rereference route.
         target_state_velocity = action_spec.v
         target_state = np.array(
             [target_state_x_y_yaw[0], target_state_x_y_yaw[1], target_state_x_y_yaw[2], target_state_velocity])

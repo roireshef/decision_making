@@ -2,7 +2,7 @@ from typing import List
 
 import numpy as np
 
-from decision_making.src.prediction.constants import PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
+from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject, RoadLocalization
 from mapping.src.service.map_service import MapService

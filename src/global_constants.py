@@ -9,13 +9,17 @@ BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 60.0
 # TODO - get this value from the map
 BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT = 14.0
 
+# This margin in [m] will be added to the lookahead path of dynamic objects to avoid
+# extrapolation when resampling the curve
+PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN = 5.0
+
 # Trajectory Planner #
 
 # [m] length of reference trajectory provided by behavioral planner
 REFERENCE_TRAJECTORY_LENGTH = 30.0
 
 # [m] extra margin (backwards) for the reference-route generation for TP
-REFERENCE_TRAJECTORY_MARGIN = 1.0
+REFERENCE_TRAJECTORY_MARGIN = PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN / 2
 
 # [m] Resolution for the interpolation of the reference route
 TRAJECTORY_ARCLEN_RESOLUTION = 0.1
@@ -41,8 +45,9 @@ NUM_ALTERNATIVE_TRAJECTORIES = 10
 # [m] "Negligible distance" threshold between the desired location and the actual location between two TP planning
 # iterations. If the distance is lower than this threshold, the TP plans the trajectory as is the ego vehicle is
 # currently in the desired location and not in its actual location.
-NEGLIGIBLE_DISPOSITION_LON = 1  # longitudinal (ego's heading direction) difference threshold
-NEGLIGIBLE_DISPOSITION_LAT = 0.3  # lateral (ego's side direction) difference threshold
+# TODO: fix real values for thresholds. those high values are just for testing
+NEGLIGIBLE_DISPOSITION_LON = 10  # longitudinal (ego's heading direction) difference threshold
+NEGLIGIBLE_DISPOSITION_LAT = 3  # lateral (ego's side direction) difference threshold
 
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
 TRAJECTORY_TIME_RESOLUTION = 0.1
