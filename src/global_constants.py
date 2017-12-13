@@ -9,9 +9,10 @@ BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 60.0
 # TODO - get this value from the map
 BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT = 14.0
 
-# This margin in [m] will be added to the lookahead path of dynamic objects to avoid
-# extrapolation when resampling the curve
-PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN = 5.0
+# When retrieving the lookahead path of a given dynamic object, we will multiply the path length
+# by the following ratio in order to avoid extrapolation when resampling the path (due to path sampling
+# and linearization errors)
+PREDICTION_LOOKAHEAD_COMPENSATION_RATIO = 1.1
 
 # Trajectory Planner #
 
@@ -19,7 +20,7 @@ PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN = 5.0
 REFERENCE_TRAJECTORY_LENGTH = 30.0
 
 # [m] extra margin (backwards) for the reference-route generation for TP
-REFERENCE_TRAJECTORY_MARGIN = PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN / 2
+REFERENCE_TRAJECTORY_MARGIN = PREDICTION_LOOKAHEAD_COMPENSATION_RATIO / 2
 
 # [m] Resolution for the interpolation of the reference route
 TRAJECTORY_ARCLEN_RESOLUTION = 0.1

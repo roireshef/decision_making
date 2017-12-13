@@ -5,7 +5,7 @@ import numpy as np
 from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, TRAJECTORY_ARCLEN_RESOLUTION, \
-    REFERENCE_TRAJECTORY_MARGIN, PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
+    REFERENCE_TRAJECTORY_MARGIN, PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
@@ -458,21 +458,22 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
         # caused by the curve linearization approximation in the resampling process
-        lookahead_distance = target_relative_longitude + PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
+        reference_route_lookahead_distance = target_relative_longitude * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
+        compensated_lookahead_distance = reference_route_lookahead_distance * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
         lookahead_path = MapService.get_instance().get_uniform_path_lookahead(
             road_id=behavioral_state.ego_state.road_localization.road_id,
             lat_shift=target_lane_latitude,
             starting_lon=max(behavioral_state.ego_state.road_localization.road_lon - REFERENCE_TRAJECTORY_MARGIN, 0),
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
-            steps_num=int(np.round(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
+            steps_num=int(np.ceil(compensated_lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
             navigation_plan=navigation_plan)
         reference_route_xy = lookahead_path
 
         # interpolate and create uniformly spaced path
         reference_route_xy_resampled, _ = CartesianFrame.resample_curve(curve=reference_route_xy,
                                                                         step_size=TRAJECTORY_ARCLEN_RESOLUTION,
-                                                                        desired_curve_len=target_relative_longitude,
+                                                                        desired_curve_len=reference_route_lookahead_distance,
                                                                         preserve_step_size=False)
 
         return reference_route_xy_resampled
