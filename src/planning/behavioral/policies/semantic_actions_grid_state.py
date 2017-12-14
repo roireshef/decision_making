@@ -1,9 +1,9 @@
 from logging import Logger
 
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, EGO_ORIGIN_LON_FROM_REAR
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.constants import SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
-    SEMANTIC_CELL_LON_REAR, LON_MARGIN_FROM_EGO, BEHAVIORAL_PLANNING_HORIZON, EGO_ORIGIN_LON_FROM_REAR
+    SEMANTIC_CELL_LON_REAR, LON_MARGIN_FROM_EGO, BEHAVIORAL_PLANNING_HORIZON
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticBehavioralState, \
     RoadSemanticOccupancyGrid, LON_CELL
 from decision_making.src.state.state import EgoState, State, DynamicObject
@@ -56,8 +56,7 @@ class SemanticActionsGridState(SemanticBehavioralState):
         for dynamic_object in dynamic_objects:
 
             dist_from_object_rear_to_ego_front, dist_from_ego_rear_to_object_front = \
-                SemanticActionsGridState.calc_relative_distances(state, logger,
-                                                                 default_navigation_plan, dynamic_object)
+                SemanticActionsGridState.calc_relative_distances(state, default_navigation_plan, dynamic_object)
             object_relative_lane = dynamic_object.road_localization.lane_num - ego_lane
 
             # Determine cell index in occupancy grid (lane and longitudinal location), under the following assumptions:
@@ -100,9 +99,7 @@ class SemanticActionsGridState(SemanticBehavioralState):
                     object_in_cell = semantic_occupancy_dict[occupancy_index][0]
 
                     dist_from_grid_object_rear_to_ego_front, dist_from_ego_rear_to_grid_object_front = \
-                        SemanticActionsGridState.calc_relative_distances(state, logger,
-                                                                         default_navigation_plan,
-                                                                         object_in_cell)
+                        SemanticActionsGridState.calc_relative_distances(state, default_navigation_plan, object_in_cell)
 
                     if occupancy_index[LON_CELL] == SEMANTIC_CELL_LON_FRONT:
                         # take the object with least lon
@@ -118,9 +115,17 @@ class SemanticActionsGridState(SemanticBehavioralState):
         return cls(semantic_occupancy_dict, ego_state)
 
     @staticmethod
-    def calc_relative_distances(state: State, logger: Logger,
+    def calc_relative_distances(state: State,
                                 default_navigation_plan: NavigationPlanMsg,
                                 object_in_cell: DynamicObject) -> [float, float]:
+        """
+        Given dynamic object in a cell, calculate the distance from the object's rear to ego front and
+          from ego rear to the object's front
+        :param state: the State
+        :param default_navigation_plan:
+        :param object_in_cell: dynamic object in some cell
+        :return: two distances: distance from the object's rear to ego front and from ego rear to the object's front
+        """
         ego_state = state.ego_state
         object_relative_localization = MapService.get_instance().compute_road_localizations_diff(
                         reference_localization=ego_state.road_localization,

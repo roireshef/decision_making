@@ -47,9 +47,6 @@ MIN_OVERTAKE_VEL = 3
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
 
-# [m] The distance from ego frame origin to ego rear
-EGO_ORIGIN_LON_FROM_REAR = 4
-
 # Trajectory cost parameters
 INFINITE_SIGMOID_COST = 2.0 * 1e2           # cost around obstacles (sigmoid)
 DEVIATION_FROM_ROAD_COST = 1.0 * 1e2        # cost of deviation from road (sigmoid)
