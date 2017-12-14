@@ -492,3 +492,4 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         reference_route_xy_trimmed = lookahead_path[:route_size]
 
         return reference_route_xy_trimmed
+
