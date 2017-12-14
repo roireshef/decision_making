@@ -1,8 +1,11 @@
-from decision_making.src.messages.dds_typed_message import DDSTypedMsg
 import numpy as np
 
+from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryData
+from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
+from decision_making.src.messages.str_serializable import StrSerializable
 
-class TrajectoryPlanMsg(DDSTypedMsg):
+
+class TrajectoryPlanMsg(StrSerializable):
     def __init__(self, trajectory: np.ndarray, current_speed: float):
         """
         A discrete representation of the trajectory to follow - passed from TrajectoryPlanner to Controller
@@ -15,3 +18,24 @@ class TrajectoryPlanMsg(DDSTypedMsg):
         """
         self.trajectory = trajectory
         self.current_speed = current_speed
+
+    def serialize(self) -> LcmTrajectoryData:
+        lcm_msg = LcmTrajectoryData()
+
+        lcm_msg.trajectory = LcmNumpyArray()
+        lcm_msg.trajectory.num_dimensions = len(self.trajectory.shape)
+        lcm_msg.trajectory.shape = list(self.trajectory.shape)
+        lcm_msg.trajectory.length = self.trajectory.size
+        lcm_msg.trajectory.data = self.trajectory.flat.__array__().tolist()
+
+        lcm_msg.current_speed = self.current_speed
+
+        return lcm_msg
+
+    @classmethod
+    def deserialize(cls, lcmMsg: LcmTrajectoryData):
+        return cls(np.ndarray(shape = tuple(lcmMsg.trajectory.shape)
+                            , buffer = np.array(lcmMsg.trajectory.data)
+                            , dtype = float)
+                 , lcmMsg.current_speed)
+

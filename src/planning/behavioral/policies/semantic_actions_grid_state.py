@@ -120,3 +120,4 @@ class SemanticActionsGridState(SemanticBehavioralState):
                             semantic_occupancy_dict[occupancy_index][0] = dynamic_object
 
         return cls(semantic_occupancy_dict, ego_state)
+
