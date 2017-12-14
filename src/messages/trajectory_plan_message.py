@@ -2,8 +2,10 @@ import numpy as np
 
 from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryData
 from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
+from decision_making.src.messages.str_serializable import StrSerializable
 
-class TrajectoryPlanMsg:
+
+class TrajectoryPlanMsg(StrSerializable):
     def __init__(self, trajectory: np.ndarray, current_speed: float):
         """
         A discrete representation of the trajectory to follow - passed from TrajectoryPlanner to Controller

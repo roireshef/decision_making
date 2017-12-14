@@ -2,13 +2,15 @@ import numpy as np
 
 from common_data.lcm.generatedFiles.gm_lcm import LcmBehavioralVisualizationMsg
 from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedNumpyArray
+from decision_making.src.planning.types import CartesianPath
+
 
 class BehavioralVisualizationMsg:
     def __init__(self, reference_route):
-        # type: (np.ndarray) -> None
+        # type: (CartesianPath) -> None
         """
         The struct used for communicating the behavioral plan to the visualizer.
-        :param reference_route: of type np.ndarray, with rows of [(x ,y, theta)] where x, y, theta are floats
+        :param reference_route: of type CartesianPath
         """
         self.reference_route = reference_route
 

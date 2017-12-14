@@ -73,13 +73,8 @@ class StateModule(DmModule):
         :param objects: Serialized dynamic object list
         """
         try:
+            # TODO: think how to print perceived dynamic objects, since they are not our objects
             self.logger.info("got perceived dynamic objects {}".format(objects))
-
-            if self._ego_state is None:
-                self.logger.warning(
-                    "StateModule is trying to parse dynamic objects with None EgoState. Since objects " +
-                    "are given in ego-vehicle's coordinate frame this is impossible. Aborting.")
-                return
 
             dyn_obj_list = self.create_dyn_obj_list(objects)
 
@@ -99,9 +94,7 @@ class StateModule(DmModule):
         :param objects: Serialized dynamic objects list.
         :return: List of dynamic object in DM format.
         """
-        ego = self._ego_state
-        ego_pos = np.array([ego.x, ego.y, ego.z])
-        ego_yaw = ego.yaw
+
         timestamp = dyn_obj_list.timestamp
         lcm_dyn_obj_list = dyn_obj_list.dynamic_objects
         dyn_obj_list = []
@@ -166,6 +159,7 @@ class StateModule(DmModule):
         :param self_localization: Serialized self localization message.
         """
         try:
+            # TODO: think how to print perceived self localization, since it's not our object
             self.logger.debug("got perceived self localization {}".format(self_localization))
             confidence = self_localization.location.confidence
             timestamp = self_localization.timestamp
@@ -196,6 +190,7 @@ class StateModule(DmModule):
         :param occupancy: Serialized occupancy state message.
         """
         try:
+            # TODO: think how to print occupancy status, since it's not our object
             self.logger.debug("got occupancy status %s", occupancy)
             timestamp = occupancy["timestamp"]
 
@@ -231,6 +226,7 @@ class StateModule(DmModule):
 
         self.pubsub.publish(pubsub_topics.STATE_TOPIC, state.serialize())
 
+    # TODO: LCM?
     # TODO: solve the fact that actuator status can be outdated and no one will ever know
     def _actuator_status_callback(self, actuator: dict) -> None:
         """

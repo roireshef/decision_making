@@ -3,6 +3,7 @@ from typing import List, Optional
 
 import numpy as np
 
+from decision_making.src.messages.str_serializable import StrSerializable
 from mapping.src.model.localization import RoadLocalization
 from mapping.src.service.map_service import MapService
 
@@ -14,7 +15,7 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmEgoState
 from common_data.lcm.generatedFiles.gm_lcm import LcmState
 
 
-class OccupancyState:
+class OccupancyState(StrSerializable):
     def __init__(self, timestamp, free_space, confidence):
         # type: (int, np.ndarray, np.ndarray) -> None
         """
@@ -53,7 +54,7 @@ class OccupancyState:
                             , dtype = float))
 
 
-class ObjectSize:
+class ObjectSize(StrSerializable):
     def __init__(self, length, width, height):
         # type: (float, float, float) -> None
         self.length = length
@@ -72,7 +73,7 @@ class ObjectSize:
         return cls(lcmMsg.length, lcmMsg.width, lcmMsg.height)
 
 
-class DynamicObject:
+class DynamicObject(StrSerializable):
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, acceleration_lon, omega_yaw):
         # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float) -> DynamicObject
         """
@@ -201,7 +202,7 @@ class EgoState(DynamicObject):
                  , dyn_obj.omega_yaw, lcmMsg.steering_angle)
 
 
-class State:
+class State(StrSerializable):
     def __init__(self, occupancy_state, dynamic_objects, ego_state):
         # type: (OccupancyState, List[DynamicObject], EgoState) -> None
         """

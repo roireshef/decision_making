@@ -72,13 +72,15 @@ class BehavioralFacade(DmModule):
 
     def _get_current_state(self) -> State:
         input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
-        self.logger.debug('Received State: {}'.format(input_state))
-        return State.deserialize(input_state)
+        object_state = State.deserialize(input_state)
+        self.logger.debug('Received State: {}'.format(object_state))
+        return object_state
 
     def _get_current_navigation_plan(self) -> NavigationPlanMsg:
         input_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.NAVIGATION_PLAN_TOPIC, timeout=1)
-        self.logger.debug('Received navigation plan: %s', input_plan)
-        return NavigationPlanMsg.deserialize(input_plan)
+        object_plan = NavigationPlanMsg.deserialize(input_plan)
+        self.logger.debug('Received navigation plan: %s', object_plan)
+        return object_plan
 
     def _publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
         self.pubsub.publish(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, trajectory_parameters.serialize())

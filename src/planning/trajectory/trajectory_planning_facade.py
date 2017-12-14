@@ -102,8 +102,9 @@ class TrajectoryPlanningFacade(DmModule):
         :return: deserialized State
         """
         input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
-        self.logger.debug('Received state: {}'.format(input_state))
-        return State.deserialize(input_state)
+        object_state = State.deserialize(input_state)
+        self.logger.debug('Received state: {}'.format(object_state))
+        return object_state
 
     def _get_mission_params(self) -> TrajectoryParams:
         """
@@ -113,8 +114,9 @@ class TrajectoryPlanningFacade(DmModule):
         :return: deserialized trajectory parameters
         """
         input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_TOPIC, timeout=1)
-        self.logger.debug('Received mission params: {}'.format(input_params))
-        return TrajectoryParams.deserialize(input_params)
+        object_params = TrajectoryParams.deserialize(input_params)
+        self.logger.debug('Received mission params: {}'.format(object_params))
+        return object_params
 
     def _publish_trajectory(self, results: TrajectoryPlanMsg) -> None:
         self.pubsub.publish(pubsub_topics.TRAJECTORY_TOPIC, results.serialize())
