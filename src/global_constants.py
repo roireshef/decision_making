@@ -59,7 +59,7 @@ SX_STEPS, SV_STEPS, DX_STEPS = 15, 1, 5
 EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 5.0, 2.0, 2.0
 
 #The id of the ego object
-EGO_ID = 0.0
+EGO_ID = 0
 
 # [m] Default height for objects - State Module
 DEFAULT_OBJECT_Z_VALUE = 0.
