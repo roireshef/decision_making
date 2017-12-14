@@ -118,6 +118,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         For each semantic action, generate a trajectory specifications that will be passed through to the TP
         :param behavioral_state: semantic actions grid behavioral state
         :param semantic_action:
+        :param nav_plan: the navigation plan of ego
         :return: semantic action spec (None if no valid trajectories can be found)
         """
 
@@ -139,7 +140,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         """
         Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
         Gets a list of actions to evaluate and returns a vector representing their costs.
-        A set of actions is provided, enabling us to assess them dependently.
+        A set of actions is provided, enabling us to assess them independently.
         Note: the semantic actions were generated using the behavioral state and don't necessarily capture
          all relevant details in the scene. Therefore the evaluation is done using the behavioral state.
         :param behavioral_state: semantic behavioral state, containing the semantic grid
