@@ -24,6 +24,7 @@ class RoadFollowingPredictor(Predictor):
                                prediction_timestamps: np.ndarray) -> List[RoadLocalization]:
         pass
 
+    # TODO: make this function work with object whose velocity==0 and for prediction_timestamp==dynamic_object.timestamp
     def predict_object(self, dynamic_object: DynamicObject,
                        prediction_timestamps: np.ndarray) -> np.ndarray:
         """
@@ -43,6 +44,11 @@ class RoadFollowingPredictor(Predictor):
         # TODO: Handle negative prediction times. For now, we take only t >= 0
         lookahead_distance = np.maximum(lookahead_distance, 0.0)
 
+        # TODO: this is a temporary hack to solve the TODO above the method's signature
+        if lookahead_distance == 0:
+            current_obj_state = np.array([dynamic_object.x, dynamic_object.y, dynamic_object.yaw, object_velocity])
+            return np.tile(current_obj_state, [len(prediction_timestamps), 1])
+
         map_based_nav_plan = MapService.get_instance().get_road_based_navigation_plan(dynamic_object.road_localization.road_id)
 
         lookahead_route, initial_yaw = MapService.get_instance().get_lookahead_points(dynamic_object.road_localization.road_id,
@@ -52,11 +58,12 @@ class RoadFollowingPredictor(Predictor):
                                                                           map_based_nav_plan)
 
         # resample the route to prediction_timestamps
-        predicted_distances_from_start = object_velocity * (prediction_timestamps - dynamic_object.timestamp_in_sec) # assuming constant velocity
+        # assuming constant velocity
+        predicted_distances_from_start = object_velocity * (prediction_timestamps - dynamic_object.timestamp_in_sec)
         # TODO: Handle negative prediction times. For now, we take only t >= 0
         predicted_distances_from_start = np.maximum(predicted_distances_from_start, 0.0)
         route_xy, _ = CartesianFrame.resample_curve(curve=lookahead_route,
-                                                 arbitrary_curve_sampling_points=predicted_distances_from_start)
+                                                    arbitrary_curve_sampling_points=predicted_distances_from_start)
         # add yaw and velocity
         route_len = route_xy.shape[0]
         velocity_column = np.ones(shape=[route_len, 1]) * object_velocity
