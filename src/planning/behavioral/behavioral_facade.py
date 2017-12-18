@@ -48,7 +48,8 @@ class BehavioralFacade(DmModule):
             if state is not None:
                 # Plan if the behavioral state has valid timestamp
                 trajectory_params, behavioral_visualization_message = self._policy.plan(state, navigation_plan)
-
+                if trajectory_params.reference_route.shape[0] == 540:
+                    trajectory_params.reference_route = trajectory_params.reference_route[0:-2]
                 if trajectory_params is not None:
                     # Send plan to trajectory
                     self._publish_results(trajectory_params)
