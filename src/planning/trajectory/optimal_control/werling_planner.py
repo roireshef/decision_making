@@ -6,7 +6,7 @@ import numpy as np
 from decision_making.src.exceptions import NoValidTrajectoriesFound
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, NUM_ALTERNATIVE_TRAJECTORIES, \
-    TRAJECTORY_OBSTACLE_LOOKAHEAD
+    TRAJECTORY_OBSTACLE_LOOKAHEAD, SX_OFFSET_MIN, SX_OFFSET_MAX
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
@@ -63,7 +63,6 @@ class WerlingPlanner(TrajectoryPlanner):
              cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """ see base class """
         # create road coordinate-frame
-        # frenet = FrenetMovingFrame(reference_route)
         frenet = FrenetSerret2DFrame(reference_route)
 
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
@@ -87,10 +86,10 @@ class WerlingPlanner(TrajectoryPlanner):
         goal_frenet_state = frenet.ctrajectory_to_ftrajectory(np.array([goal]))[0]
 
         # TODO: Determine desired final state search grid - this should be fixed with introducing different T_s, T_d
-        # sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_sx, 0)) / 2,
-        #                        np.min((SX_OFFSET_MAX + goal_sx, frenet.length * frenet.resolution)),
-        #                        SX_STEPS)
-        sx_range = np.linspace(goal_frenet_state[FS_SX] / 2, goal_frenet_state[FS_SX], SX_STEPS)
+        sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_frenet_state[FS_SX], 0)) / 2,
+                               np.min((SX_OFFSET_MAX + goal_frenet_state[FS_SX], len(frenet.O) * frenet.ds)),
+                               SX_STEPS)
+        # sx_range = np.linspace(goal_frenet_state[FS_SX]  / 2, goal_frenet_state[FS_SX], SX_STEPS)
 
         sv_range = np.linspace(
             np.max((SV_OFFSET_MIN + goal_frenet_state[FS_SV], cost_params.velocity_limits[0])),
@@ -121,8 +120,11 @@ class WerlingPlanner(TrajectoryPlanner):
         self._logger.debug("TP has found %d valid trajectories to choose from", len(ftrajectories_filtered))
 
         if ftrajectories_filtered is None or len(ftrajectories_filtered) == 0:
-            raise NoValidTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s",
-                                           planning_horizon, goal, state)
+            min_vel, max_vel = np.min(ftrajectories[:, :, FS_SV]), np.max(ftrajectories[:, :, FS_SV])
+            min_acc, max_acc = np.min(ftrajectories[:, :, FS_SA]), np.max(ftrajectories[:, :, FS_SA])
+            raise NoValidTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s. "
+                                           "planned velocities range [%s, %s]. planned accelerations range [%s, %s]",
+                                           planning_horizon, goal, state, min_vel, max_vel, min_acc, max_acc)
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
@@ -221,7 +223,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
     @staticmethod
     def _solve_optimization(fconst_0: FrenetConstraints, fconst_t: FrenetConstraints, T: float,
-                            time_samples: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+                            time_samples: np.ndarray) -> Tuple[FrenetTrajectories, np.ndarray]:
         """
         Solves the two-point boundary value problem, given a set of constraints over the initial state
         and a set of constraints over the terminal state. The solution is a cartesian product of the solutions returned

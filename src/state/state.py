@@ -65,6 +65,7 @@ class DynamicObject(DDSNonTypedMsg):
 
     @property
     def road_localization(self):
+        # type: () -> RoadLocalization
         if self._cached_road_localization is None:
             self._cached_road_localization = MapService.get_instance().compute_road_localization(
                 np.array([self.x, self.y, self.z]), self.yaw)

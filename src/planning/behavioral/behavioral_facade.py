@@ -1,4 +1,7 @@
+import time
 import traceback
+from logging import Logger
+
 from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException
 from decision_making.src.global_constants import BEHAVIORAL_STATE_READER_TOPIC, \
@@ -7,11 +10,8 @@ from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.policy import Policy
 from decision_making.src.state.state import State
-from logging import Logger
-import time
 
 
 class BehavioralFacade(DmModule):
@@ -83,6 +83,7 @@ class BehavioralFacade(DmModule):
 
     def _publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
         self.dds.publish(BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC, trajectory_parameters.serialize())
+        self.logger.debug("BehavioralPlanningFacade output is %s", str(trajectory_parameters.serialize()))
 
     def _publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
         self.dds.publish(BEHAVIORAL_VISUALIZATION_TOPIC, visualization_message.serialize())

@@ -24,6 +24,7 @@ from decision_making.src.planning.behavioral.semantic_actions_policy import Sema
     LAT_CELL, LON_CELL, SemanticGridCell
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
+from decision_making.src.planning.types import C_Y, C_X
 from decision_making.src.state.state import State
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
@@ -216,16 +217,21 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         """
 
         # Get road details
-        road_width = MapService.get_instance().get_road(behavioral_state.ego_state.road_localization.road_id).road_width
+        road_id = behavioral_state.ego_state.road_localization.road_id
+        road_width = MapService.get_instance().get_road(road_id).road_width
 
         # Create target state
         target_path_latitude = action_spec.d_rel + behavioral_state.ego_state.road_localization.intra_road_lat
 
         reference_route_x_y_yaw = CartesianFrame.add_yaw(reference_route)
-        target_state_x_y_yaw = reference_route_x_y_yaw[-2, :]   # TODO: why sending the last point does not work? it is off the rereference route.
-        target_state_velocity = action_spec.v
-        target_state = np.array(
-            [target_state_x_y_yaw[0], target_state_x_y_yaw[1], target_state_x_y_yaw[2], target_state_velocity])
+
+        # TODO: adjust to work with different target-object's road id (following the same adjustment in SPECIFY)
+        target_state_x_y_z, target_state_yaw = MapService.get_instance().convert_road_to_global_coordinates(
+            road_id,
+            behavioral_state.ego_state.road_localization.road_lon + action_spec.s_rel,
+            behavioral_state.ego_state.road_localization.intra_road_lat + action_spec.d_rel
+        )
+        target_state = np.append(target_state_x_y_z[[C_X, C_Y]], [target_state_yaw, action_spec.v])
 
         # Define cost parameters
         # TODO: assign proper cost parameters
@@ -327,6 +333,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
     @staticmethod
     @raises(NoValidTrajectoriesFound)
+    # TODO: make this work with cross-road actions (target object is on another road id)
     def _specify_action_towards_object(behavioral_state: SemanticActionsGridState,
                                        semantic_action: SemanticAction) -> SemanticActionSpec:
         """

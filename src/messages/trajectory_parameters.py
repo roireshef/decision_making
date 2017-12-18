@@ -72,7 +72,7 @@ class TrajectoryParams(DDSTypedMsg):
         :param reference_route: a reference route (often the center of lane). A numpy array of the shape [-1, 2] where
         each row is a point (x, y) relative to the ego-coordinate-frame.
         :param target_state: A 1D numpy array of the desired ego-state to plan towards, represented in current
-        ego-coordinate-frame (see EGO_* in planning.utils.types.py for the fields)
+        ego-coordinate-frame
         :param cost_params: list of parameters for the cost function of trajectory planner.
         :param strategy: trajectory planning strategy.
         :param time: trajectory planning time-frame
