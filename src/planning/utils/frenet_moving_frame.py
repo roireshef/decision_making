@@ -6,7 +6,7 @@ from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FS_DX, FS_DV
     FP_DX, FrenetPoint, FrenetTrajectory, CartesianExtendedTrajectory, FrenetTrajectories, CartesianExtendedTrajectories, ExtendedCurve
 from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
-
+### DEPRECATED ###
 class FrenetMovingFrame:
     """
     A 2D Frenet moving coordinate frame. Within this class: fpoint, fstate and ftrajectory are in frenet frame;
