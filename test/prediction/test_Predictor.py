@@ -57,3 +57,4 @@ def test_predictState_apiTest_returnsStatesList(state):
     for predicted_state in predicted_states:
         assert np.all([isinstance(predicted_state.dynamic_objects[x], DynamicObject) for x in
                        range(len(predicted_state.dynamic_objects))])
+

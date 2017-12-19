@@ -1,10 +1,12 @@
 import numpy as np
-from typing import Optional, List
+from typing import Optional
+
+from decision_making.src.messages.str_serializable import StrSerializable
 from mapping.src.exceptions import RoadNotFound, raises
-from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
+from common_data.lcm.generatedFiles.gm_lcm import LcmNavigationPlan
+from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedIntNumpyArray
 
-
-class NavigationPlanMsg(DDSNonTypedMsg):
+class NavigationPlanMsg(StrSerializable):
     """
         This class hold the navigation plan.
         It also implements function (required by MapAPI) that iterate over the roads list in the navigation plan.
@@ -17,6 +19,30 @@ class NavigationPlanMsg(DDSNonTypedMsg):
         :param road_ids: Numpy array (dtype has to be int) of road ids corresponding to the map.
         """
         self.road_ids = road_ids.astype(np.int)
+
+    def serialize(self):
+        # type: () -> LcmNavigationPlan
+        lcm_msg = LcmNavigationPlan()
+
+        lcm_msg.road_ids = LcmNonTypedIntNumpyArray()
+        lcm_msg.road_ids.num_dimensions = len(self.road_ids.shape)
+        lcm_msg.road_ids.shape = list(self.road_ids.shape)
+        lcm_msg.road_ids.length = self.road_ids.size
+        # TODO: This solves inconsistency between mock and real lcm, since lcm cpp code treats the array as floats.
+        # TODO: cont - need to change if causes time delays.
+        lcm_msg.road_ids.data = self.road_ids.astype(np.float).flat.__array__().tolist()
+        lcm_msg.road_ids.type = ""
+
+        lcm_msg.type = ""
+
+        return lcm_msg
+
+    @classmethod
+    def deserialize(cls, lcmMsg):
+        # type: (LcmNavigationPlan) -> NavigationPlanMsg
+        return cls(np.ndarray(shape = tuple(lcmMsg.road_ids.shape)
+                            , buffer = np.array(lcmMsg.road_ids.data)
+                            , dtype = float).astype(int))
 
     @raises(RoadNotFound)
     def get_road_index_in_plan(self, road_id, start=None, end=None):

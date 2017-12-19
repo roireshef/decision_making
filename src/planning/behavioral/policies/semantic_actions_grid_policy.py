@@ -476,3 +476,4 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                                         preserve_step_size=False)
 
         return reference_route_xy_resampled
+

@@ -1,4 +1,4 @@
-from decision_making.src.state.state import ObjectSize, OccupancyState, RoadLocalization, DynamicObject, EgoState, State
+from decision_making.src.state.state import ObjectSize, OccupancyState, DynamicObject, EgoState, State
 from mapping.src.transformations.geometry_utils import CartesianFrame
 import numpy as np
 

@@ -123,3 +123,4 @@ def test_AcdaFeaturesInComplexScenraio_successful(testable_navigation_plan):
                                       navigation_plan=navigation_plan, lookahead_path=lookahead_path)
 
     assert safe_speed > 0.0
+
