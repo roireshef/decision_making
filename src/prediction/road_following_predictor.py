@@ -78,20 +78,29 @@ class RoadFollowingPredictor(Predictor):
         # TODO: Handle negative prediction times. For now, we take only t >= 0
         lookahead_distance = np.maximum(lookahead_distance, 0.0)
 
-        map_based_nav_plan = MapService.get_instance().get_road_based_navigation_plan(dynamic_object.road_localization.road_id)
+        map_based_nav_plan = \
+            MapService.get_instance().get_road_based_navigation_plan(dynamic_object.road_localization.road_id)
 
-        lookahead_route, initial_yaw = MapService.get_instance().get_lookahead_points(dynamic_object.road_localization.road_id,
-                                                                          dynamic_object.road_localization.road_lon,
-                                                                          lookahead_distance,
-                                                                          dynamic_object.road_localization.intra_road_lat,
-                                                                          map_based_nav_plan)
+        lookahead_route, initial_yaw = MapService.get_instance().get_lookahead_points(
+                                                    dynamic_object.road_localization.road_id,
+                                                    dynamic_object.road_localization.road_lon,
+                                                    lookahead_distance,
+                                                    dynamic_object.road_localization.intra_road_lat,
+                                                    map_based_nav_plan)
 
-        # resample the route to prediction_timestamps
-        predicted_distances_from_start = object_velocity * (prediction_timestamps - dynamic_object.timestamp_in_sec) # assuming constant velocity
+        # resample the route to prediction_timestamps, assuming constant velocity
+        predicted_distances_from_start = object_velocity * (prediction_timestamps - dynamic_object.timestamp_in_sec)
         # TODO: Handle negative prediction times. For now, we take only t >= 0
         predicted_distances_from_start = np.maximum(predicted_distances_from_start, 0.0)
-        route_xy, _ = CartesianFrame.resample_curve(curve=lookahead_route,
-                                                 arbitrary_curve_sampling_points=predicted_distances_from_start)
+
+        if lookahead_route.shape[0] > 1:
+            route_xy, _ = CartesianFrame.resample_curve(curve=lookahead_route,
+                                                        arbitrary_curve_sampling_points=predicted_distances_from_start)
+        elif lookahead_route.shape[0] == 1:
+            route_xy = np.reshape(np.tile(lookahead_route[0], predicted_distances_from_start.shape[0]), (-1, 2))
+        else:
+            raise Exception('predict object has empty lookahead_route')
+
         # add yaw and velocity
         route_len = route_xy.shape[0]
         velocity_column = np.ones(shape=[route_len, 1]) * object_velocity
