@@ -14,7 +14,7 @@ def test_cpointsToFpointsToCpoints_pointTwoWayConversion_accurate():
                         [370.0, 0.0]
                         ])
 
-    frenet = FrenetSerret2DFrame(route_points, ds=5)
+    frenet = FrenetSerret2DFrame(route_points, ds=1)
 
     fpoints = frenet.cpoints_to_fpoints(cpoints)
     new_cpoints = frenet.fpoints_to_cpoints(fpoints)
@@ -50,7 +50,7 @@ def test_ctrajectoryToFtrajectoryToCtrajectory_pointTwoWayConversion_accuratePos
                         [370.0, 0.0, np.pi/9, 2.5, -2.0, 0.0]
                         ])
 
-    frenet = FrenetSerret2DFrame(route_points, ds=0.1)
+    frenet = FrenetSerret2DFrame(route_points, ds=1)
 
     fpoints = frenet.ctrajectory_to_ftrajectory(cpoints)
     new_cpoints = frenet.ftrajectory_to_ctrajectory(fpoints)

@@ -37,14 +37,12 @@ class WerlingPlanner(TrajectoryPlanner):
              cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
         """ see base class """
         # create road coordinate-frame
-        # frenet = FrenetMovingFrame(reference_route)
-        frenet = FrenetSerret2DFrame(reference_route)
+        frenet = FrenetMovingFrame(reference_route)
 
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
         # The vehicle doesn't need to lay parallel to the road.
         ego_in_frenet = frenet.cpoint_to_fpoint(np.array([state.ego_state.x, state.ego_state.y]))
-        # ego_theta_diff = frenet.curve[0, CURVE_THETA] - state.ego_state.yaw
-        ego_theta_diff = frenet.get_yaw(np.array([0.0])) - state.ego_state.yaw
+        ego_theta_diff = frenet.curve[0, CURVE_THETA] - state.ego_state.yaw
 
         # TODO: translate acceleration of initial state
         # define constraints for the initial state
@@ -61,8 +59,7 @@ class WerlingPlanner(TrajectoryPlanner):
         goal_in_frenet = frenet.cpoint_to_fpoint(goal[[C_X, C_Y]])
         goal_sx, goal_dx = goal_in_frenet[FP_SX], goal_in_frenet[FP_DX]
 
-        # goal_theta_diff = goal[C_THETA] - frenet.curve[frenet.sx_to_s_idx(goal_sx), CURVE_THETA]
-        goal_theta_diff = goal[C_THETA] - frenet.get_yaw(np.array([goal_sx]))
+        goal_theta_diff = goal[C_THETA] - frenet.curve[frenet.sx_to_s_idx(goal_sx), CURVE_THETA]
 
         # TODO: Determine desired final state search grid - this should be fixed with introducing different T_s, T_d
         # sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_sx, 0)) / 2,
@@ -90,8 +87,8 @@ class WerlingPlanner(TrajectoryPlanner):
         assert planning_horizon >= 0
 
         # solve problem in frenet-frame
-        ftrajectories = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT, planning_horizon,
-                                                           planning_time_points)
+        ftrajectories = self._solve_optimization(fconstraints_t0, fconstraints_tT, planning_horizon,
+                                                 planning_time_points)
 
         # filter resulting trajectories by velocity and acceleration
         ftrajectories_filtered = self._filter_limits(ftrajectories, cost_params)
@@ -206,8 +203,7 @@ class WerlingPlanner(TrajectoryPlanner):
         ''' TOTAL '''
         return obstacles_costs + dist_from_ref_costs + dist_from_goal_costs + deviations_costs
 
-    @staticmethod
-    def _solve_optimization(fconst_0: FrenetConstraints, fconst_t: FrenetConstraints, T: float,
+    def _solve_optimization(self, fconst_0: FrenetConstraints, fconst_t: FrenetConstraints, T: float,
                             time_samples: np.ndarray):
         """
         Solves the two-point boundary value problem, given a set of constraints over the initial state
