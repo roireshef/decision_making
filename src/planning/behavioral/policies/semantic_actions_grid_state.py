@@ -1,11 +1,12 @@
 from logging import Logger
 
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, EGO_ORIGIN_LON_FROM_REAR
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.constants import SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LON_REAR, LON_MARGIN_FROM_EGO, BEHAVIORAL_PLANNING_HORIZON
-from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticBehavioralState, \
+from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticBehavioralState, \
     RoadSemanticOccupancyGrid, LON_CELL
-from decision_making.src.state.state import EgoState, State
+from decision_making.src.state.state import EgoState, State, DynamicObject
 from mapping.src.service.map_service import MapService
 
 
@@ -38,58 +39,55 @@ class SemanticActionsGridState(SemanticBehavioralState):
 
         # Generate grid cells
         semantic_occupancy_dict: RoadSemanticOccupancyGrid = dict()
-        optional_lane_keys = [-1, 0, 1]
-        lanes_in_road = MapService.get_instance().get_road(state.ego_state.road_localization.road_id).lanes_num
-        filtered_lane_keys = list(
-            filter(lambda relative_lane: 0 <= ego_lane + relative_lane < lanes_in_road, optional_lane_keys))
+        # We take into consideration only the current and adjacent lanes
+        relative_lane_keys = [-1, 0, 1]
+        num_lanes_in_road = MapService.get_instance().get_road(state.ego_state.road_localization.road_id).lanes_num
+        # TODO: treat objects out of road
+        filtered_absolute_lane_keys = list(
+            filter(lambda relative_lane: 0 <= ego_lane + relative_lane < num_lanes_in_road, relative_lane_keys))
 
         optional_lon_keys = [SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR]
         for lon_key in optional_lon_keys:
-            for lane_key in filtered_lane_keys:
+            for lane_key in filtered_absolute_lane_keys:
                 occupancy_index = (lane_key, lon_key)
                 semantic_occupancy_dict[occupancy_index] = []
 
         # Allocate dynamic objects
         for dynamic_object in dynamic_objects:
-            object_relative_localization = MapService.get_instance().compute_road_localizations_diff(
-                reference_localization=ego_state.road_localization,
-                object_localization=dynamic_object.road_localization,
-                navigation_plan=default_navigation_plan
-            )
-            object_lon_dist = object_relative_localization.rel_lon
-            object_dist_from_front = object_lon_dist - ego_state.size.length
-            object_relative_lane = int(dynamic_object.road_localization.lane_num - ego_lane)
+
+            dist_from_object_rear_to_ego_front, dist_from_ego_rear_to_object_front = \
+                SemanticActionsGridState.calc_relative_distances(state, default_navigation_plan, dynamic_object)
+            object_relative_lane = dynamic_object.road_localization.lane_num - ego_lane
 
             # Determine cell index in occupancy grid (lane and longitudinal location), under the following assumptions:
-            # 1. We filter out objects that are at more one distant from ego
+            # 1. We filter out objects that are more than one lane away from ego
             # 2. Longitudinal location is defined by the grid structure:
             #       - front cells: starting from ego front + LON_MARGIN_FROM_EGO [m] and forward
             #       - back cells: starting from ego back - LON_MARGIN_FROM_EGO[m] and backwards
             if object_relative_lane == 0 or object_relative_lane == 1 or object_relative_lane == -1:
                 # Object is one lane on the left/right
 
-                if object_dist_from_front > LON_MARGIN_FROM_EGO:
+                if dist_from_object_rear_to_ego_front > LON_MARGIN_FROM_EGO:
                     # Object in front of vehicle
                     occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_FRONT)
 
-                elif object_lon_dist > -1 * LON_MARGIN_FROM_EGO:
-                    # Object vehicle aside of ego
-                    occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_SAME)
-
-                else:
+                elif dist_from_ego_rear_to_object_front < -LON_MARGIN_FROM_EGO:
                     # Object behind rear of vehicle
                     occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_REAR)
+
+                else:
+                    # Object vehicle aside of ego
+                    occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_SAME)
             else:
                 continue
 
             # Add object to occupancy grid
             # keeping only a single dynamic object per cell. List is used for future dev.
-            # TODO: treat objects out of road
             if occupancy_index in semantic_occupancy_dict:
 
-                # We treat the object only if its distance is equal to the to the distance we
+                # We treat the object only if its distance is smaller than the distance we
                 # would have travelled for the planning horizon in the average speed between current and target vel.
-                if object_dist_from_front > BEHAVIORAL_PLANNING_HORIZON * \
+                if dist_from_object_rear_to_ego_front > BEHAVIORAL_PLANNING_HORIZON * \
                         0.5 * (ego_state.v_x + BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT):
                     continue
 
@@ -97,26 +95,46 @@ class SemanticActionsGridState(SemanticBehavioralState):
                     # add to occupancy grid
                     semantic_occupancy_dict[occupancy_index].append(dynamic_object)
                 else:
-                    # get first objects in list of objects in cell as reference
+                    # get first object in list of objects in the cell as reference
                     object_in_cell = semantic_occupancy_dict[occupancy_index][0]
-                    object_in_grid_lon_dist = MapService.get_instance().compute_road_localizations_diff(
-                        reference_localization=ego_state.road_localization,
-                        object_localization=object_in_cell.road_localization,
-                        navigation_plan=default_navigation_plan
-                    ).rel_lon
 
-                    object_in_grid_dist_from_front = object_in_grid_lon_dist - ego_state.size.length
+                    dist_from_grid_object_rear_to_ego_front, dist_from_ego_rear_to_grid_object_front = \
+                        SemanticActionsGridState.calc_relative_distances(state, default_navigation_plan, object_in_cell)
 
                     if occupancy_index[LON_CELL] == SEMANTIC_CELL_LON_FRONT:
                         # take the object with least lon
-                        if object_lon_dist < object_in_grid_dist_from_front:
+                        if dist_from_object_rear_to_ego_front < dist_from_grid_object_rear_to_ego_front:
                             # replace first object the the closer one
                             semantic_occupancy_dict[occupancy_index][0] = dynamic_object
                     else:
-                        # Assumption - taking the object with the largest long even in the ASIDE cells
-                        # take the object with largest lon
-                        if object_lon_dist > object_in_grid_dist_from_front:
+                        # Assumption - taking the object with the largest lon even in the ASIDE cells
+                        if dist_from_ego_rear_to_object_front > dist_from_ego_rear_to_grid_object_front:
                             # replace first object the the closer one
                             semantic_occupancy_dict[occupancy_index][0] = dynamic_object
 
         return cls(semantic_occupancy_dict, ego_state)
+
+    @staticmethod
+    def calc_relative_distances(state: State,
+                                default_navigation_plan: NavigationPlanMsg,
+                                object_in_cell: DynamicObject) -> [float, float]:
+        """
+        Given dynamic object in a cell, calculate the distance from the object's rear to ego front and
+          from ego rear to the object's front
+        :param state: the State
+        :param default_navigation_plan:
+        :param object_in_cell: dynamic object in some cell
+        :return: two distances: distance from the object's rear to ego front and from ego rear to the object's front
+        """
+        ego_state = state.ego_state
+        object_relative_localization = MapService.get_instance().compute_road_localizations_diff(
+                        reference_localization=ego_state.road_localization,
+                        object_localization=object_in_cell.road_localization,
+                        navigation_plan=default_navigation_plan
+                    )
+        object_lon_dist = object_relative_localization.rel_lon
+        dist_from_object_rear_to_ego_front = object_lon_dist - object_in_cell.size.length / 2 - \
+                                             (ego_state.size.length - EGO_ORIGIN_LON_FROM_REAR)
+        dist_from_ego_rear_to_object_front = object_lon_dist + object_in_cell.size.length / 2 + \
+                                             EGO_ORIGIN_LON_FROM_REAR
+        return dist_from_object_rear_to_ego_front, dist_from_ego_rear_to_object_front

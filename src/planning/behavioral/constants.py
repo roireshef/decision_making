@@ -35,7 +35,7 @@ A_LAT_MAX = 2.0
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
-SAFE_DIST_TIME_DELAY = 0.5
+SAFE_DIST_TIME_DELAY = 1.0
 
 # Semantic Grid indices
 SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR = 1, 0, -1

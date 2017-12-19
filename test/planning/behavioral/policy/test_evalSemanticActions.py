@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import numpy as np
 
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
@@ -6,22 +8,18 @@ from decision_making.src.planning.behavioral.constants import SEMANTIC_CELL_LAT_
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import \
     SemanticActionsGridState
-from decision_making.src.planning.behavioral.semantic_actions_policy import SemanticAction, SemanticActionType, \
+from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticAction, SemanticActionType, \
     SemanticActionSpec
-from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import EgoState, DynamicObject, ObjectSize
 from decision_making.src.state.state_module import Logger
-from decision_making.test.prediction.test_Predictor import TestPredictorMock
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
+from decision_making.test.prediction.test_Predictor import TestPredictorMock
 from mapping.test.model.testable_map_fixtures import testable_map_api
 from rte.python.logger.AV_logger import AV_Logger
 
-from unittest.mock import patch
-
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=testable_map_api)
-def test_novDemoEvalSemanticActions():
+def test_evalSemanticActions():
     max_velocity = v = BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT  # m/s
 
     ego_v = max_velocity
@@ -84,7 +82,7 @@ def test_novDemoEvalSemanticActions():
         actions_spec.append(SemanticActionSpec(t=t, v=vel3, s_rel=obs[2].x - ego.x, d_rel=obs[2].y - ego.y))
 
         costs = policy._eval_actions(behav_state, semantic_actions, actions_spec)
-        assert (costs[result[test]] == 1)
+        assert (costs[result[test]] == 0)
 
         # from bokeh.plotting import figure, show, output_file
         # p1 = figure(x_axis_type="datetime", title="Stock Closing Prices")
@@ -100,7 +98,7 @@ def test_get_actionIndByLane():
     semantic_action = SemanticAction((SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT), None, SemanticActionType(1))
     spec1 = SemanticActionSpec(t=5, v=10, s_rel=30, d_rel=-3)
     # TODO: move TestPredictorMock to fixtures
-    policy = SemanticActionsGridPolicy(Logger("NovDemoTest"), TestPredictorMock(logger=logger))
+    policy = SemanticActionsGridPolicy(Logger("SemanticActionsTest"), TestPredictorMock(logger=logger))
     action_ind = policy._get_action_ind([semantic_action], (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT))
     assert action_ind == 0
     action_ind = policy._get_action_ind([semantic_action], (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_FRONT))
