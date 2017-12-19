@@ -24,6 +24,10 @@ def test_predictObjectTrajectories_precisePrediction():
     assert np.isclose(traj[0][0], 540.) and np.isclose(traj[0][1], 0.) and \
            np.isclose(traj[-1][0], 600.) and np.isclose(traj[-1][1], 9.)
 
+    dyn_obj.v_x = 0
+    traj = predictor.predict_object(dyn_obj, pred_timestamps)
+    assert np.isclose(traj[0][0], 500.) and np.isclose(traj[0][1], 0.) and np.isclose(traj[-1][0], 500.)
+
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_predictObjectOnRoad_precisePrediction():
