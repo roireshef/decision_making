@@ -3,12 +3,18 @@ from os import getpid
 
 import numpy as np
 
-from common_data.dds.python.Communication.ddspubsub import DdsPubSub
-from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, STATE_MODULE_DDS_PARTICIPANT, \
-    DECISION_MAKING_DDS_FILE, NAVIGATION_PLANNING_NAME_FOR_LOGGING, NAVIGATION_PLANNER_DDS_PARTICIPANT, \
-    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, BEHAVIORAL_PLANNER_DDS_PARTICIPANT, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
-    TRAJECTORY_PLANNER_DDS_PARTICIPANT, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
-    DM_MANAGER_NAME_FOR_LOGGING
+from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
+from common_data.src.communication.pubsub.pubsub import PubSub
+from common_data.lcm.python.Communication.lcmpubsub import LcmPubSub
+from common_data.lcm.config import config_defs
+from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
+                                                 NAVIGATION_PLANNING_NAME_FOR_LOGGING, \
+                                                 BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
+                                                 BEHAVIORAL_PLANNING_MODULE_PERIOD, \
+                                                 TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
+                                                 TRAJECTORY_PLANNING_MODULE_PERIOD, \
+                                                 DM_MANAGER_NAME_FOR_LOGGING
+
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
@@ -29,8 +35,8 @@ from rte.python.os import catch_interrupt_signals
 # TODO: move this into test package
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))
 class NavigationFacadeMock(NavigationFacade):
-    def __init__(self, dds: DdsPubSub, logger: Logger, plan: NavigationPlanMsg):
-        super().__init__(dds=dds, logger=logger, handler=None)
+    def __init__(self, pubsub: PubSub, logger: Logger, plan: NavigationPlanMsg):
+        super().__init__(pubsub=pubsub, logger=logger, handler=None)
         self.plan = plan
 
     def _periodic_action_impl(self):
@@ -45,40 +51,41 @@ class DmInitialization:
     @staticmethod
     def create_state_module() -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
-        dds = DdsPubSub(STATE_MODULE_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
+        pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
         MapService.initialize()
         default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
                                                  np.array([0.1], dtype=np.float))
-        state_module = StateModule(dds, logger, default_occupancy_state, None, None)
+        state_module = StateModule(pubsub, logger, default_occupancy_state, None, None)
         return state_module
 
     @staticmethod
     def create_navigation_planner() -> NavigationFacade:
         logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
-        dds = DdsPubSub(NAVIGATION_PLANNER_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
+        pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
+
         # TODO: fill navigation planning handlers
         # navigator = NavigationPlannerMock(plan)
-        # navigation_module = NavigationFacadeMock(dds=dds, logger=logger, handler=navigator)
-        navigation_module = NavigationFacadeMock(dds=dds, logger=logger, plan=NAVIGATION_PLAN)
+        # navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, handler=navigator)
+        navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, plan=NAVIGATION_PLAN)
         return navigation_module
 
     @staticmethod
     def create_behavioral_planner() -> BehavioralFacade:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
-        dds = DdsPubSub(BEHAVIORAL_PLANNER_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
+        pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
         # TODO: fill the policy
         # Init map
         MapService.initialize()
         predictor = RoadFollowingPredictor(logger)
         policy = SemanticActionsGridPolicy(logger=logger, predictor=predictor)
 
-        behavioral_module = BehavioralFacade(dds=dds, logger=logger, policy=policy)
+        behavioral_module = BehavioralFacade(pubsub=pubsub, logger=logger, policy=policy)
         return behavioral_module
 
     @staticmethod
     def create_trajectory_planner() -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
-        dds = DdsPubSub(TRAJECTORY_PLANNER_DDS_PARTICIPANT, DECISION_MAKING_DDS_FILE)
+        pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
 
         # Init map
         MapService.initialize()
@@ -90,7 +97,7 @@ class DmInitialization:
                              TrajectoryPlanningStrategy.PARKING: planner,
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
-        trajectory_planning_module = TrajectoryPlanningFacade(dds=dds, logger=logger,
+        trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
                                                               strategy_handlers=strategy_handlers)
         return trajectory_planning_module
 
@@ -98,7 +105,6 @@ class DmInitialization:
 def main():
     modules_list = \
         [
-
             DmProcess(DmInitialization.create_navigation_planner,
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
@@ -130,3 +136,4 @@ def main():
 
 
 main()
+

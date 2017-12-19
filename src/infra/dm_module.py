@@ -1,9 +1,8 @@
 from abc import abstractmethod, ABCMeta
 from logging import Logger
 
+from common_data.src.communication.pubsub.pubsub import PubSub
 import six
-
-from common_data.dds.python.Communication.ddspubsub import DdsPubSub
 
 
 @six.add_metaclass(ABCMeta)
@@ -11,12 +10,12 @@ class DmModule:
     """
     Abstract class which is implemented in functional DM modules and facades.
     """
-    def __init__(self, dds: DdsPubSub, logger: Logger) -> None:
+    def __init__(self, pubsub: PubSub, logger: Logger) -> None:
+        self.pubsub = pubsub
         """
         :param dds: Inter-process communication interface.
         :param logger: Logging interface.
         """
-        self.dds = dds
         self.logger = logger
         self.logger.info("initializing module: " + self.__class__.__name__)
 
@@ -56,3 +55,4 @@ class DmModule:
         self.logger.debug("executing periodic action at module: " + self.__class__.__name__)
         self._periodic_action_impl()
         self.logger.debug("finished periodic action at module: " + self.__class__.__name__)
+

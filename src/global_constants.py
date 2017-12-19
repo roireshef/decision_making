@@ -1,7 +1,5 @@
 import os
 
-
-
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
@@ -20,7 +18,7 @@ PREDICTION_LOOKAHEAD_COMPENSATION_RATIO = 1.1
 REFERENCE_TRAJECTORY_LENGTH = 30.0
 
 # [m] extra margin (backwards) for the reference-route generation for TP
-REFERENCE_TRAJECTORY_MARGIN = PREDICTION_LOOKAHEAD_COMPENSATION_RATIO / 2
+#REFERENCE_TRAJECTORY_MARGIN = PREDICTION_LOOKAHEAD_COMPENSATION_RATIO / 2
 
 # [m] Resolution for the interpolation of the reference route
 TRAJECTORY_ARCLEN_RESOLUTION = 0.1
@@ -74,20 +72,23 @@ DX_OFFSET_MIN, DX_OFFSET_MAX = -1, 1
 # Linspace number of steps in the constraints parameters grid-search
 SX_STEPS, SV_STEPS, DX_STEPS = 15, 1, 5
 
-# State #
-
-# TODO: set real values
-# [m] Bounding box size around ego vehicle
-EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 5.0, 2.0, 2.0
-
 # [m/sec^2] when acceleration is not specified - TP uses this as goal acceleration
 DEFAULT_ACCELERATION = 0.0
 
 # [-+1/m] when curvature is not specified - TP uses this as goal curvature
 DEFAULT_CURVATURE = 0.0
 
+# State #
+
+# TODO: set real values
+# [m] Bounding box size around ego vehicle
+EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 5.0, 2.0, 2.0
+
+# [m] The distance from ego frame origin to ego rear
+EGO_ORIGIN_LON_FROM_REAR = 4
+
 #The id of the ego object
-EGO_ID = 0.0
+EGO_ID = 0
 
 # [m] Default height for objects - State Module
 DEFAULT_OBJECT_Z_VALUE = 0.
@@ -95,35 +96,6 @@ DEFAULT_OBJECT_Z_VALUE = 0.
 ### DM Manager configuration ###
 BEHAVIORAL_PLANNING_MODULE_PERIOD = 1.0
 TRAJECTORY_PLANNING_MODULE_PERIOD = 0.2
-
-### DDS Constants ###
-STATE_MODULE_DDS_PARTICIPANT = "DecisionMakingParticipantLibrary::StateModule"
-NAVIGATION_PLANNER_DDS_PARTICIPANT = "DecisionMakingParticipantLibrary::NavigationPlanner"
-BEHAVIORAL_PLANNER_DDS_PARTICIPANT = "DecisionMakingParticipantLibrary::BehavioralPlanner"
-TRAJECTORY_PLANNER_DDS_PARTICIPANT = "DecisionMakingParticipantLibrary::TrajectoryPlanner"
-
-DECISION_MAKING_DDS_FILE = "decisionMakingMain.xml"
-
-# State Module
-DYNAMIC_OBJECTS_SUBSCRIBE_TOPIC = "StateSubscriber::DynamicObjectsReader"
-SELF_LOCALIZATION_SUBSCRIBE_TOPIC = "StateSubscriber::SelfLocalizationReader"
-OCCUPANCY_STATE_SUBSCRIBE_TOPIC = "StateSubscriber::OccupancyStateReader"
-STATE_PUBLISH_TOPIC = "StatePublisher::StateWriter"
-
-# Navigation Planning Module
-NAVIGATION_PLAN_PUBLISH_TOPIC = "NavigationPublisher::NavigationPlanWriter"
-
-# Behavioral Module
-BEHAVIORAL_STATE_READER_TOPIC = "BehavioralSubscriber::StateReader"
-BEHAVIORAL_NAV_PLAN_READER_TOPIC = "BehavioralSubscriber::NavigationPlanReader"
-BEHAVIORAL_TRAJECTORY_PARAMS_PUBLISH_TOPIC = "BehavioralPublisher::TrajectoryParametersWriter"
-BEHAVIORAL_VISUALIZATION_TOPIC = "BehavioralPublisher::BehavioralVisualizationWriter"
-
-# Trajectory Planning Module
-TRAJECTORY_STATE_READER_TOPIC = "TrajectorySubscriber::StateReader"
-TRAJECTORY_PARAMS_READER_TOPIC = "TrajectorySubscriber::TrajectoryParametersReader"
-TRAJECTORY_PUBLISH_TOPIC = "TrajectoryPublisher::TrajectoryWriter"
-TRAJECTORY_VISUALIZATION_TOPIC = "TrajectoryPublisher::TrajectoryVisualizationWriter"
 
 #### NAMES OF MODULES FOR LOGGING ####
 MAP_NAME_FOR_LOGGING = "Map API"

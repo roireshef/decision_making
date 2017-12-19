@@ -10,16 +10,17 @@ from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanM
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.state.state import OccupancyState, RoadLocalization, ObjectSize, EgoState, State, DynamicObject
+from decision_making.src.state.state import OccupancyState, ObjectSize, EgoState, State, DynamicObject
 
-from decision_making.test.constants import DDS_PUB_SUB_MOCK_NAME_FOR_LOGGING
-from decision_making.test.dds.mock_ddspubsub import DdsPubSubMock
+from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.test.planning.navigation.mock_navigation_facade import NavigationFacadeMock
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.state.mock_state_module import StateModuleMock
+from gm_lcm import LcmPerceivedDynamicObjectList, LcmDynamicObject, LcmPerceivedDynamicObject, LcmObjectLocation, \
+    LcmObjectBbox, LcmObjectVelocity, LcmObjectTrackingStatus
 from rte.python.logger.AV_logger import AV_Logger
-
+from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 
 ### MESSAGES ###
 
@@ -28,72 +29,76 @@ def navigation_plan():
     yield NavigationPlanMsg(np.array([1, 2]))
 
 
-
 @pytest.fixture(scope='function')
 def dynamic_objects_in_fov():
-    objects = dict()
+    objects = LcmPerceivedDynamicObjectList()
 
-    objects["timestamp"] = 1
-    objects["dynamic_objects"] = []
+    objects.timestamp = 1
+    objects.dynamic_objects = []
 
-    dyn_obj_dict = dict()
-    dyn_obj_dict["id"] = 1
+    dyn_obj = LcmPerceivedDynamicObject()
+    dyn_obj.id = 1
 
-    dyn_obj_dict["location"] = dict()
-    dyn_obj_dict["location"]["x"] = 5
-    dyn_obj_dict["location"]["y"] = 1
-    dyn_obj_dict["location"]["confidence"] = 1.0
+    dyn_obj.location = LcmObjectLocation()
+    dyn_obj.location.x = 5
+    dyn_obj.location.y = 1
+    dyn_obj.location.confidence = 1.0
 
-    dyn_obj_dict["bbox"] = dict()
-    dyn_obj_dict["bbox"]["yaw"] = 0
-    dyn_obj_dict["bbox"]["length"] = 2
-    dyn_obj_dict["bbox"]["width"] = 2
-    dyn_obj_dict["bbox"]["height"] = 2
+    dyn_obj.bbox = LcmObjectBbox()
 
-    dyn_obj_dict["velocity"] = dict()
-    dyn_obj_dict["velocity"]["v_x"] = 1
-    dyn_obj_dict["velocity"]["v_y"] = 2
-    dyn_obj_dict["velocity"]["omega_yaw"] = 0
+    dyn_obj.bbox.yaw = 0
+    dyn_obj.bbox.length = 2
+    dyn_obj.bbox.width = 2
+    dyn_obj.bbox.height = 2
 
-    dyn_obj_dict["tracking_status"]= dict()
-    dyn_obj_dict["tracking_status"]["in_fov"] = True
-    dyn_obj_dict["tracking_status"]["is_predicted"] = False
+    dyn_obj.velocity = LcmObjectVelocity()
 
-    objects["dynamic_objects"].append(dyn_obj_dict)
+    dyn_obj.velocity.v_x = 1
+    dyn_obj.velocity.v_y = 2
+    dyn_obj.velocity.omega_yaw = 0
+
+    dyn_obj.tracking_status = LcmObjectTrackingStatus()
+    dyn_obj.tracking_status.in_fov = True
+    dyn_obj.tracking_status.is_predicted = False
+
+    objects.dynamic_objects.append(dyn_obj)
 
     yield objects
 
+
 @pytest.fixture(scope='function')
 def dynamic_objects_not_in_fov():
-    objects = dict()
+    objects = LcmPerceivedDynamicObjectList()
 
-    objects["timestamp"] = 3
-    objects["dynamic_objects"] = []
+    objects.timestamp = 3
+    objects.dynamic_objects = []
 
-    dyn_obj_dict = dict()
-    dyn_obj_dict["id"] = 1
+    dyn_obj = LcmPerceivedDynamicObject()
+    dyn_obj.id = 1
 
-    dyn_obj_dict["location"] = dict()
-    dyn_obj_dict["location"]["x"] = 5
-    dyn_obj_dict["location"]["y"] = 1
-    dyn_obj_dict["location"]["confidence"] = 1.0
+    dyn_obj.location = LcmObjectLocation()
+    dyn_obj.location.x = 5
+    dyn_obj.location.y = 1
+    dyn_obj.location.confidence = 1.0
 
-    dyn_obj_dict["bbox"] = dict()
-    dyn_obj_dict["bbox"]["yaw"] = 0
-    dyn_obj_dict["bbox"]["length"] = 2
-    dyn_obj_dict["bbox"]["width"] = 2
-    dyn_obj_dict["bbox"]["height"] = 2
+    dyn_obj.bbox = LcmObjectBbox()
 
-    dyn_obj_dict["velocity"] = dict()
-    dyn_obj_dict["velocity"]["v_x"] = 2
-    dyn_obj_dict["velocity"]["v_y"] = 3
-    dyn_obj_dict["velocity"]["omega_yaw"] = 0
+    dyn_obj.bbox.yaw = 0
+    dyn_obj.bbox.length = 2
+    dyn_obj.bbox.width = 2
+    dyn_obj.bbox.height = 2
 
-    dyn_obj_dict["tracking_status"] = dict()
-    dyn_obj_dict["tracking_status"]["in_fov"] = False
-    dyn_obj_dict["tracking_status"]["is_predicted"] = False
+    dyn_obj.velocity = LcmObjectVelocity()
 
-    objects["dynamic_objects"].append(dyn_obj_dict)
+    dyn_obj.velocity.v_x = 2
+    dyn_obj.velocity.v_y = 3
+    dyn_obj.velocity.omega_yaw = 0
+
+    dyn_obj.tracking_status = LcmObjectTrackingStatus()
+    dyn_obj.tracking_status.in_fov = False
+    dyn_obj.tracking_status.is_predicted = False
+
+    objects.dynamic_objects.append(dyn_obj)
 
     yield objects
 
@@ -110,15 +115,13 @@ def state():
     yield State(occupancy_state, dynamic_objects, ego_state)
 
 
-
-
-
 @pytest.fixture(scope='function')
 def ego_state_fix():
     size = ObjectSize(0, 0, 0)
     # TODO - decouple from navigation plan below (1 is the road id). Make this dependency explicit.
     ego_state = EgoState(0, 5, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
     yield ego_state
+
 
 @pytest.fixture(scope='function')
 def trajectory_params():
@@ -139,11 +142,6 @@ def trajectory():
         [[1.0, 0.0, 0.0, 0.0], [2.0, -0.33, 0.0, 0.0], [3.0, -0.66, 0.0, 0.0], [4.0, -1.0, 0.0, 0.0],
          [5.0, -1.33, 0.0, 0.0], [6.0, -1.66, 0.0, 0.0], [7.0, -2.0, 0.0, 0.0], [8.0, -2.0, 0.0, 0.0],
          [9.0, -2.0, 0.0, 0.0], [10.0, -2.0, 0.0, 0.0], [11.0, -2.0, 0.0, 0.0]])
-    ref_route = np.array(
-        [[1.0, -2.0, 0.0], [2.0, -2.0, 0.0], [3.0, -2.0, 0.0], [4.0, -2.0, 0.0], [5.0, -2.0, 0.0],
-         [6.0, -2.0, 0.0],
-         [7.0, -2.0, 0.0], [8.0, -2.0, 0.0], [9.0, -2.0, 0.0], [10.0, -2.0, 0.0], [11.0, -2.0, 0.0],
-         [12.0, -2.0, 0.0], [13.0, -2.0, 0.0], [14.0, -2.0, 0.0], [15.0, -2.0, 0.0], [16.0, -2.0, 0.0]])
     yield TrajectoryPlanMsg(trajectory=chosen_trajectory, current_speed=5.0)
 
 
@@ -167,25 +165,25 @@ def trajectory_visualization_msg(state, trajectory):
 ### MODULES/INFRA ###
 
 @pytest.fixture(scope='function')
-def dds_pubsub():
-    yield DdsPubSubMock(logger=AV_Logger.get_logger(DDS_PUB_SUB_MOCK_NAME_FOR_LOGGING))
+def pubsub():
+    yield PubSubMock(logger=AV_Logger.get_logger(LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING))
 
 
 @pytest.fixture(scope='function')
-def state_module(state, dds_pubsub):
+def state_module(state, pubsub):
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
-    state_mock = StateModuleMock(dds_pubsub, logger, state)
+    state_mock = StateModuleMock(pubsub, logger, state)
     state_mock.start()
     yield state_mock
     state_mock.stop()
 
 
 @pytest.fixture(scope='function')
-def behavioral_facade(dds_pubsub, trajectory_params, behavioral_visualization_msg):
+def behavioral_facade(pubsub, trajectory_params, behavioral_visualization_msg):
     logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
 
-    behavioral_module = BehavioralFacadeMock(dds=dds_pubsub, logger=logger, trajectory_params=trajectory_params,
+    behavioral_module = BehavioralFacadeMock(pubsub=pubsub, logger=logger, trajectory_params=trajectory_params,
                                              visualization_msg=behavioral_visualization_msg)
 
     behavioral_module.start()
@@ -194,10 +192,10 @@ def behavioral_facade(dds_pubsub, trajectory_params, behavioral_visualization_ms
 
 
 @pytest.fixture(scope='function')
-def navigation_facade(dds_pubsub, navigation_plan):
+def navigation_facade(pubsub, navigation_plan):
     logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
 
-    navigation_module = NavigationFacadeMock(dds=dds_pubsub, logger=logger, navigation_plan_msg=navigation_plan)
+    navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, navigation_plan_msg=navigation_plan)
 
     navigation_module.start()
     yield navigation_module
@@ -205,12 +203,13 @@ def navigation_facade(dds_pubsub, navigation_plan):
 
 
 @pytest.fixture(scope='function')
-def trajectory_planner_facade(dds_pubsub, trajectory, trajectory_visualization_msg):
+def trajectory_planner_facade(pubsub, trajectory, trajectory_visualization_msg):
     logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
 
-    trajectory_planning_module = TrajectoryPlanningFacadeMock(dds=dds_pubsub, logger=logger,
+    trajectory_planning_module = TrajectoryPlanningFacadeMock(pubsub=pubsub, logger=logger,
                                                               trajectory_msg=trajectory,
                                                               visualization_msg=trajectory_visualization_msg)
+
     trajectory_planning_module.start()
     yield trajectory_planning_module
     trajectory_planning_module.stop()
