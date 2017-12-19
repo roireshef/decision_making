@@ -9,7 +9,7 @@ from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STE
     TRAJECTORY_OBSTACLE_LOOKAHEAD
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
-from decision_making.src.planning.types import FP_SX, CURVE_THETA, FP_DX, C_X, C_Y, C_THETA, C_V, FS_SV, \
+from decision_making.src.planning.types import FP_SX, CURVE_YAW, FP_DX, C_X, C_Y, C_YAW, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
@@ -42,7 +42,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
         # The vehicle doesn't need to lay parallel to the road.
         ego_in_frenet = frenet.cpoint_to_fpoint(np.array([state.ego_state.x, state.ego_state.y]))
-        ego_theta_diff = frenet.curve[0, CURVE_THETA] - state.ego_state.yaw
+        ego_theta_diff = frenet.curve[0, CURVE_YAW] - state.ego_state.yaw
 
         # TODO: translate acceleration of initial state
         # define constraints for the initial state
@@ -59,7 +59,7 @@ class WerlingPlanner(TrajectoryPlanner):
         goal_in_frenet = frenet.cpoint_to_fpoint(goal[[C_X, C_Y]])
         goal_sx, goal_dx = goal_in_frenet[FP_SX], goal_in_frenet[FP_DX]
 
-        goal_theta_diff = goal[C_THETA] - frenet.curve[frenet.sx_to_s_idx(goal_sx), CURVE_THETA]
+        goal_theta_diff = goal[C_YAW] - frenet.curve[frenet.sx_to_s_idx(goal_sx), CURVE_YAW]
 
         # TODO: Determine desired final state search grid - this should be fixed with introducing different T_s, T_d
         # sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_sx, 0)) / 2,

@@ -1,7 +1,7 @@
 import numpy as np
 
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_INTERP_TYPE
-from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, CURVE_THETA, CURVE_K, CURVE_K_TAG, \
+from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, CURVE_YAW, CURVE_K, CURVE_K_TAG, \
     FP_SX, \
     FP_DX, FrenetPoint, FrenetTrajectory, CartesianExtendedTrajectory, FrenetTrajectories, CartesianExtendedTrajectories, ExtendedCurve
 from mapping.src.transformations.geometry_utils import CartesianFrame
@@ -120,7 +120,7 @@ class FrenetMovingFrame:
         d_a = ftrajectories[:, :, FS_DA]
 
         s_idx = np.array(np.divide(s_x, self._ds), dtype=int)  # index of frenet-origin
-        theta_r = self._curve[s_idx, CURVE_THETA]  # yaw of frenet-origin
+        theta_r = self._curve[s_idx, CURVE_YAW]  # yaw of frenet-origin
         k_r = self._curve[s_idx, CURVE_K]  # curvature of frenet-origin
         k_r_tag = self._curve[s_idx, CURVE_K_TAG]  # derivative by distance (curvature is already in ds units)
 
