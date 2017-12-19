@@ -3,16 +3,15 @@ import numpy as np
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_INTERP_TYPE
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
     FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, FS_SX, \
-    FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint, C_THETA, C_K, C_V, C_A
-from mapping.src.model.constants import EPSILON
+    FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint, C_YAW, C_K, C_V, C_A
 from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
 
 class FrenetSerret2DFrame:
     def __init__(self, points: CartesianPath2D, ds: float = TRAJECTORY_ARCLEN_RESOLUTION,
                  interp_type=TRAJECTORY_CURVE_INTERP_TYPE):
-        # TODO: move this outside
-        self.s_max = np.sum(np.linalg.norm(np.diff(points, axis=0), axis=1), axis=0)
+        # TODO: consider moving this outside (note that simple np.sum() doesn't compute the same as np.cumsum()[-1])
+        self.s_max = np.cumsum(np.linalg.norm(np.diff(points, axis=0), axis=1), axis=0)[-1]
 
         self.O, _ = CartesianFrame.resample_curve(curve=points, step_size=ds,
                                                   desired_curve_len=self.s_max,
@@ -123,7 +122,7 @@ class FrenetSerret2DFrame:
         :return: Frenet-frame trajectories (tensor)
         """
         pos_x = ctrajectories[:, :, [C_X, C_Y]]
-        theta_x = ctrajectories[:, :, C_THETA]
+        theta_x = ctrajectories[:, :, C_YAW]
         k_x = ctrajectories[:, :, C_K]
         v_x = ctrajectories[:, :, C_V]
         a_x = ctrajectories[:, :, C_A]
