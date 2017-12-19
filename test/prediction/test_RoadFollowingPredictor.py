@@ -13,22 +13,28 @@ from unittest.mock import patch
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-def test_predictObjectTrajectories_precisePrediction():
+def test_predictObjectTrajectories_precisePredictionDynamicAndStaticObjectMultipleSingleTimestamp():
     logger = AV_Logger.get_logger("test_predictObjectTrajectories_precisePrediction")
     predictor = RoadFollowingPredictor(logger)
     size = ObjectSize(1, 1, 1)
     global_pos = np.array([500.0, 0.0, 0.0])
     dyn_obj = DynamicObject(obj_id=1, timestamp=1e9, x=global_pos[0], y=global_pos[1], z=0, yaw=0, size=size, confidence=0,
                             v_x = 10, v_y = 0, acceleration_lon=0, omega_yaw=0)
+    # test for dynamic object with multiple timestamps
     pred_timestamps = np.arange(5.0, 12.0, 0.1)
     traj = predictor.predict_object(dyn_obj, pred_timestamps)
     assert np.isclose(traj[0][0], 540.) and np.isclose(traj[0][1], 0.) and \
            np.isclose(traj[-1][0], 600.) and np.isclose(traj[-1][1], 9.)
 
+    # test for static object
     stat_obj = copy.deepcopy(dyn_obj)
     stat_obj.v_x = 0
     traj = predictor.predict_object(stat_obj, pred_timestamps)
     assert np.isclose(traj[0][0], 500.) and np.isclose(traj[0][1], 0.) and np.isclose(traj[-1][0], 500.)
+
+    # test for single prediction timestamp
+    traj = predictor.predict_object(dyn_obj, np.array([pred_timestamps[0]]))
+    assert np.isclose(traj[0][0], 540.) and np.isclose(traj[0][1], 0.)
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
