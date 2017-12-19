@@ -27,7 +27,7 @@ class RoadFollowingPredictor(Predictor):
         """
         computes future locations, yaw and velocities for an object directly in the road coordinates-frame
         :param road_localization: object's road localization
-        :param velocity: currently we assume a constant velocity
+        :param velocity: [m/s] velocity along the road; currently we assume a constant velocity
         :param localization_timestamp: the timestamp of road_localization argument (units are the same as DynamicObject.timestamp)
         :param prediction_timestamps: np array of timestamps to predict future localizations for. In ascending order.
         :return: a list of future localizations that correspond to prediction_timestamps
