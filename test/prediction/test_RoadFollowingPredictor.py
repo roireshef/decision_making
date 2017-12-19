@@ -2,6 +2,7 @@ from decision_making.src.prediction.road_following_predictor import RoadFollowin
 from decision_making.src.state.state import DynamicObject, ObjectSize, EgoState, State, OccupancyState
 from decision_making.src.state.state_module import StateModule
 import numpy as np
+import copy
 
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from mapping.src.model.localization import RoadLocalization
@@ -24,8 +25,9 @@ def test_predictObjectTrajectories_precisePrediction():
     assert np.isclose(traj[0][0], 540.) and np.isclose(traj[0][1], 0.) and \
            np.isclose(traj[-1][0], 600.) and np.isclose(traj[-1][1], 9.)
 
-    dyn_obj.v_x = 0
-    traj = predictor.predict_object(dyn_obj, pred_timestamps)
+    stat_obj = copy.deepcopy(dyn_obj)
+    stat_obj.v_x = 0
+    traj = predictor.predict_object(stat_obj, pred_timestamps)
     assert np.isclose(traj[0][0], 500.) and np.isclose(traj[0][1], 0.) and np.isclose(traj[-1][0], 500.)
 
 
