@@ -215,19 +215,25 @@ class FrenetSerret2DFrame:
         s_approx = np.add(O_idx, delta_s) * self.ds
         a_s, T_s, N_s, k_s, _ = self._taylor_interp(s_approx)
 
-        is_curvature_big_enough = np.greater(np.abs(k_s) > 10e-4).astype(np.int)
+        is_curvature_big_enough = np.greater(np.abs(k_s), 10e-5).astype(np.int)
 
-        # N = N_s[0]  # normal vector in s_approx
-        # A = a_s[0]  # cartesian of s_approx
-        radius = np.divide(1, k_s)  # signed circle radius according to the curvature
-        center_to_point = points - a_s - N_s * radius  # vector from the circle center to the input point
+        # signed circle radius according to the curvature
+        signed_radius = np.divide(1, k_s)
 
-        # TODO: np.dot should be np.einsum ?
-        step_sign = np.sign(np.einsum('ik,ik->i', points - a_s, T_s))  # sign of the step
-        cos = np.einsum('ik,ik->i', N_s, center_to_point) / np.linalg.norm(center_to_point)  # cos(angle between N_s and this vector)
+        # vector from the circle center to the input point
+        center_to_point = points - a_s - N_s * signed_radius[:, np.newaxis]
 
-        cos = np.min(1.0, np.abs(cos))
-        step = step_sign * np.math.acos(cos) * np.abs(radius)  # arc length from a_s to the new guess point
+        # sign of the step
+        step_sign = np.sign(np.einsum('ik,ik->i', points - a_s, T_s))
+
+        # cos(angle between N_s and this vector)
+        cos = np.abs(np.einsum('ik,ik->i', N_s, center_to_point) / np.linalg.norm(center_to_point, axis=1))
+
+        # TODO: why?
+        cos[cos > 1.0] = 1.0
+
+        # arc length from a_s to the new guess point
+        step = step_sign * np.apply_along_axis(np.math.acos, 1, cos[:, np.newaxis]) * np.abs(signed_radius)
         s_approx += step * is_curvature_big_enough  # next s_approx of the current point
 
         a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(s_approx)
