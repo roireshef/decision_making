@@ -82,10 +82,7 @@ class FrenetSerret2DFrame:
         a_s = np.zeros(shape=cpoints.shape)
         N_s = np.zeros(shape=cpoints.shape)
 
-        # for i in range(len(cpoints)):
-        #     s[i], a_s[i], _, N_s[i], _, _ = self._project_cartesian_point(cpoints[i])
         s, a_s, _, N_s, _, _ = self._project_cartesian_point(cpoints)
-
 
         # project cpoints on the normals at a_s
         d = np.einsum('ij,ij->i', cpoints - a_s, N_s)
@@ -155,21 +152,7 @@ class FrenetSerret2DFrame:
         v_x = ctrajectories[:, :, C_V]
         a_x = ctrajectories[:, :, C_A]
 
-        # new_shape = np.append(ctrajectories.shape[:2], [2])
-        # s_x = np.zeros(shape=new_shape[:2])
-        # a_r = np.zeros(shape=new_shape)
-        # T_r = np.zeros(shape=new_shape)
-        # N_r = np.zeros(shape=new_shape)
-        # k_r = np.zeros(shape=new_shape[:2])
-        # k_r_tag = np.zeros(shape=new_shape[:2])
-        #
-        # # TODO: replace double-for-loop with a single call to the function after it has been modified
-        # for i in range(ctrajectories.shape[0]):
-        #     for j in range(ctrajectories.shape[1]):
-        #         s_x[i, j], a_r[i, j], T_r[i, j], N_r[i, j], k_r[i, j], k_r_tag[i, j] = \
-        #             self._project_cartesian_point(ctrajectories[i, j, [C_X, C_Y]])
         s_x, a_r, T_r, N_r, k_r, k_r_tag = self._project_cartesian_point(ctrajectories[:, :, [C_X, C_Y]])
-
 
         d_x = np.einsum('tpi,tpi->tp', pos_x - a_r, N_r)
 
@@ -197,10 +180,10 @@ class FrenetSerret2DFrame:
 
     ## UTILITIES ##
 
-    # TODO: make this work with tensor operations (multiple points at once)
-    def _project_cartesian_point(self, points: CartesianPath2D) -> \
+    def _project_cartesian_point(self, points: np.ndarray) -> \
             (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
-        """Given 2D points in cartesian frame (same origin as self.O) this function uses taylor approximation to return
+        """Given a tensor (any shape) of 2D points in cartesian frame (same origin as self.O),
+        this function uses taylor approximation to return
         s*, a(s*), T(s*), N(s*), k(s*), k'(s*), where:
         s* is the progress along the curve where the point is projected
         a(s*) is the Cartesian-coordinates (x,y) of the projections on the curve,
@@ -221,15 +204,14 @@ class FrenetSerret2DFrame:
         signed_radius = np.divide(1, k_s)
 
         # vector from the circle center to the input point
-        center_to_point = points - a_s - N_s * signed_radius[:, np.newaxis]
+        center_to_point = points - a_s - N_s * signed_radius[..., np.newaxis]
 
         # sign of the step
-        step_sign = np.sign(np.einsum('ik,ik->i', points - a_s, T_s))
+        step_sign = np.sign(np.einsum('...ik,...ik->...i', points - a_s, T_s))
 
         # cos(angle between N_s and this vector)
-        cos = np.abs(np.einsum('ik,ik->i', N_s, center_to_point) / np.linalg.norm(center_to_point, axis=1))
+        cos = np.abs(np.einsum('...ik,...ik->...i', N_s, center_to_point) / np.linalg.norm(center_to_point, axis=-1))
 
-        # TODO: why?
         cos[cos > 1.0] = 1.0
 
         # arc length from a_s to the new guess point
