@@ -197,7 +197,6 @@ class FrenetSerret2DFrame:
 
     ## UTILITIES ##
 
-    # TODO: make this work with tensor operations (multiple points at once)
     def _project_cartesian_point(self, points: CartesianPath2D) -> \
             (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
         """Given 2D points in cartesian frame (same origin as self.O) this function uses taylor approximation to return
@@ -229,7 +228,7 @@ class FrenetSerret2DFrame:
         # cos(angle between N_s and this vector)
         cos = np.abs(np.einsum('ik,ik->i', N_s, center_to_point) / np.linalg.norm(center_to_point, axis=1))
 
-        # TODO: why?
+        # prevent illegal (greater than 1) argument for arccos()
         cos[cos > 1.0] = 1.0
 
         # arc length from a_s to the new guess point
