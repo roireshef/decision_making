@@ -1,12 +1,9 @@
 from abc import ABCMeta, abstractmethod
 from logging import Logger
-from typing import Type
 
-from decision_making.src.messages.dds_typed_message import DDSTypedMsg
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 
@@ -31,3 +28,4 @@ class Policy(metaclass=ABCMeta):
         :return: TrajectoryParameters for behavioral planner, BehavioralVisualizationMsg for visualization purposes
         """
         pass
+

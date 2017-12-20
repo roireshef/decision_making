@@ -6,20 +6,22 @@ from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LO
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
 from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
+from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
+from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from rte.python.logger.AV_logger import AV_Logger
-from  decision_making.test.planning import custom_fixtures
+from decision_making.test.planning import custom_fixtures
 
 
 def create_behavioral_planner() -> BehavioralFacade:
 
-    dds_pubsub = custom_fixtures.dds_pubsub
-    trajectory_params = custom_fixtures.trajectory_params
-    behavioral_visualization_msg = custom_fixtures.behavioral_visualization_msg
+    pubsub = PubSubMock(logger=AV_Logger.get_logger(LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING))
+    trajectory_params = None
+    behavioral_visualization_msg = None
 
     logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
 
-    behavioral_module = BehavioralFacadeMock(dds=dds_pubsub, logger=logger, trajectory_params=trajectory_params,
+    behavioral_module = BehavioralFacadeMock(pubsub=pubsub, logger=logger, trajectory_params=trajectory_params,
                                              visualization_msg=behavioral_visualization_msg)
     return behavioral_module
 
