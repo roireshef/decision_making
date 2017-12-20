@@ -1,9 +1,7 @@
-from decision_making.src.global_constants import TRAJECTORY_CURVE_INTERP_TYPE
 from decision_making.src.planning.types import C_A
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.test.planning.trajectory.utils import RouteFixture
-from mapping.src.transformations.geometry_utils import *
-
+import numpy as np
 
 def test_cpointsToFpointsToCpoints_pointTwoWayConversion_accurate():
     ACCURACY_TH = 10 ** -3
@@ -21,24 +19,25 @@ def test_cpointsToFpointsToCpoints_pointTwoWayConversion_accurate():
 
     errors = np.linalg.norm(cpoints - new_cpoints, axis=1)
 
-    # for error in errors.__iter__():
-    #     assert error < ACCURACY_TH, 'FrenetMovingFrame point conversions aren\'t accurate enough'
+    for error in errors.__iter__():
+        assert error < ACCURACY_TH, 'FrenetMovingFrame point conversions aren\'t accurate enough'
 
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure()
-    p1 = fig.add_subplot(111)
-    p1.plot(route_points[:, 0], route_points[:, 1], '-r')
-    p1.plot(frenet.O[:, 0], frenet.O[:, 1], '-k')
-
-    for i in range(len(cpoints)):
-        p1.plot(cpoints[i, 0], cpoints[i, 1], '*b')
-        p1.plot(new_cpoints[i, 0], new_cpoints[i, 1], '.r')
-
-    print(errors)
-
-    fig.show()
-    fig.clear()
+    ## FOR DEBUG PURPOSES
+    # import matplotlib.pyplot as plt
+    #
+    # fig = plt.figure()
+    # p1 = fig.add_subplot(111)
+    # p1.plot(route_points[:, 0], route_points[:, 1], '-r')
+    # p1.plot(frenet.O[:, 0], frenet.O[:, 1], '-k')
+    #
+    # for i in range(len(cpoints)):
+    #     p1.plot(cpoints[i, 0], cpoints[i, 1], '*b')
+    #     p1.plot(new_cpoints[i, 0], new_cpoints[i, 1], '.r')
+    #
+    # print(errors)
+    #
+    # fig.show()
+    # fig.clear()
 
 
 def test_ctrajectoryToFtrajectoryToCtrajectory_pointTwoWayConversion_accuratePoseAndVelocity():
@@ -58,21 +57,22 @@ def test_ctrajectoryToFtrajectoryToCtrajectory_pointTwoWayConversion_accuratePos
     # currently there is no guarantee on the accuracy of acceleration and curvature
     errors = np.linalg.norm((cpoints - new_cpoints)[:, :C_A], axis=1)
 
-    # for error in errors.__iter__():
-    #     assert error < ACCURACY_TH, 'FrenetMovingFrame point conversions aren\'t accurate enough'
+    for error in errors.__iter__():
+        assert error < ACCURACY_TH, 'FrenetMovingFrame point conversions aren\'t accurate enough'
 
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure()
-    p1 = fig.add_subplot(111)
-    p1.plot(route_points[:, 0], route_points[:, 1], '-r')
-    p1.plot(frenet.O[:, 0], frenet.O[:, 1], '-k')
-
-    for i in range(len(cpoints)):
-        p1.plot(cpoints[i, 0], cpoints[i, 1], '*b')
-        p1.plot(new_cpoints[i, 0], new_cpoints[i, 1], '.r')
-
-    print(errors)
-
-    fig.show()
-    fig.clear()
+    ## FOR DEBUG PURPOSES
+    # import matplotlib.pyplot as plt
+    #
+    # fig = plt.figure()
+    # p1 = fig.add_subplot(111)
+    # p1.plot(route_points[:, 0], route_points[:, 1], '-r')
+    # p1.plot(frenet.O[:, 0], frenet.O[:, 1], '-k')
+    #
+    # for i in range(len(cpoints)):
+    #     p1.plot(cpoints[i, 0], cpoints[i, 1], '*b')
+    #     p1.plot(new_cpoints[i, 0], new_cpoints[i, 1], '.r')
+    #
+    # print(errors)
+    #
+    # fig.show()
+    # fig.clear()
