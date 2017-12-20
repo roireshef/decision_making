@@ -82,8 +82,10 @@ class FrenetSerret2DFrame:
         a_s = np.zeros(shape=cpoints.shape)
         N_s = np.zeros(shape=cpoints.shape)
 
-        for i in range(len(cpoints)):
-            s[i], a_s[i], _, N_s[i], _, _ = self._project_cartesian_point(cpoints[i])
+        # for i in range(len(cpoints)):
+        #     s[i], a_s[i], _, N_s[i], _, _ = self._project_cartesian_point(cpoints[i])
+        s, a_s, _, N_s, _, _ = self._project_cartesian_point(cpoints)
+
 
         # project cpoints on the normals at a_s
         d = np.einsum('ij,ij->i', cpoints - a_s, N_s)
@@ -153,19 +155,21 @@ class FrenetSerret2DFrame:
         v_x = ctrajectories[:, :, C_V]
         a_x = ctrajectories[:, :, C_A]
 
-        new_shape = np.append(ctrajectories.shape[:2], [2])
-        s_x = np.zeros(shape=new_shape[:2])
-        a_r = np.zeros(shape=new_shape)
-        T_r = np.zeros(shape=new_shape)
-        N_r = np.zeros(shape=new_shape)
-        k_r = np.zeros(shape=new_shape[:2])
-        k_r_tag = np.zeros(shape=new_shape[:2])
+        # new_shape = np.append(ctrajectories.shape[:2], [2])
+        # s_x = np.zeros(shape=new_shape[:2])
+        # a_r = np.zeros(shape=new_shape)
+        # T_r = np.zeros(shape=new_shape)
+        # N_r = np.zeros(shape=new_shape)
+        # k_r = np.zeros(shape=new_shape[:2])
+        # k_r_tag = np.zeros(shape=new_shape[:2])
+        #
+        # # TODO: replace double-for-loop with a single call to the function after it has been modified
+        # for i in range(ctrajectories.shape[0]):
+        #     for j in range(ctrajectories.shape[1]):
+        #         s_x[i, j], a_r[i, j], T_r[i, j], N_r[i, j], k_r[i, j], k_r_tag[i, j] = \
+        #             self._project_cartesian_point(ctrajectories[i, j, [C_X, C_Y]])
+        s_x, a_r, T_r, N_r, k_r, k_r_tag = self._project_cartesian_point(ctrajectories[:, :, [C_X, C_Y]])
 
-        # TODO: replace double-for-loop with a single call to the function after it has been modified
-        for i in range(ctrajectories.shape[0]):
-            for j in range(ctrajectories.shape[1]):
-                s_x[i, j], a_r[i, j], T_r[i, j], N_r[i, j], k_r[i, j], k_r_tag[i, j] = \
-                    self._project_cartesian_point(ctrajectories[i, j, [C_X, C_Y]])
 
         d_x = np.einsum('tpi,tpi->tp', pos_x - a_r, N_r)
 
@@ -194,36 +198,40 @@ class FrenetSerret2DFrame:
     ## UTILITIES ##
 
     # TODO: make this work with tensor operations (multiple points at once)
-    def _project_cartesian_point(self, point: CartesianPoint2D) -> \
-            (float, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
-        """Given a 2D point in cartesian frame (same origin as self.O) this function uses taylor approximation to return
+    def _project_cartesian_point(self, points: CartesianPath2D) -> \
+            (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
+        """Given 2D points in cartesian frame (same origin as self.O) this function uses taylor approximation to return
         s*, a(s*), T(s*), N(s*), k(s*), k'(s*), where:
         s* is the progress along the curve where the point is projected
-        a(s*) is the Cartesian-coordinates (x,y) of the projection on the curve,
-        T(s*) is the tangent unit vector (dx,dy) of the projection on the curve
-        N(s*) is the normal unit vector (dx,dy) of the projection on the curve
-        k(s*) is the curvature (scalar) - assumed to be constant in the neighborhood of the points in self.O and thus
+        a(s*) is the Cartesian-coordinates (x,y) of the projections on the curve,
+        T(s*) is the tangent unit vector (dx,dy) of the projections on the curve
+        N(s*) is the normal unit vector (dx,dy) of the projections on the curve
+        k(s*) is the curvatures (scalars) - assumed to be constant in the neighborhood of the points in self.O and thus
         taken from the nearest point in self.O
-        k'(s*) is the derivative of the curvature (by distance d(s))
+        k'(s*) is the derivatives of the curvatures (by distance d(s))
         """
         # perform gradient decent to find s_approx
-        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(np.array([point]), self.O)
-        s_approx = (O_idx[0] + delta_s[0]) * self.ds
-        a_s, T_s, N_s, k_s, _ = self._taylor_interp(np.array([s_approx]))
-        k = k_s[0]
-        if abs(k) > 0.0001:  # then perform one gradient decent iteration
-            N = N_s[0]  # normal vector in s_approx
-            A = a_s[0]  # cartesian of s_approx
-            radius = 1 / k  # signed circle radius according to the curvature
-            center_to_point = point - A - N * radius  # vector from the circle center to the input point
-            step_sign = np.sign(np.dot(point - A, T_s[0]))  # sign of the step
-            cos = np.dot(N, center_to_point) / np.linalg.norm(center_to_point)  # cos(angle between N and this vector)
-            cos = min(1.0, abs(cos))
-            step = step_sign * np.math.acos(cos) * abs(radius)  # arc length from A to the new guess point
-            s_approx += step  # next s_approx of the current point
+        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O)
+        s_approx = np.add(O_idx, delta_s) * self.ds
+        a_s, T_s, N_s, k_s, _ = self._taylor_interp(s_approx)
 
-        a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(np.array([s_approx]))
-        return s_approx, a_s[0], T_s[0], N_s[0], k_s[0], k_s_tag[0]
+        is_curvature_big_enough = np.greater(np.abs(k_s) > 10e-4).astype(np.int)
+
+        # N = N_s[0]  # normal vector in s_approx
+        # A = a_s[0]  # cartesian of s_approx
+        radius = np.divide(1, k_s)  # signed circle radius according to the curvature
+        center_to_point = points - a_s - N_s * radius  # vector from the circle center to the input point
+
+        # TODO: np.dot should be np.einsum ?
+        step_sign = np.sign(np.einsum('ik,ik->i', points - a_s, T_s))  # sign of the step
+        cos = np.einsum('ik,ik->i', N_s, center_to_point) / np.linalg.norm(center_to_point)  # cos(angle between N_s and this vector)
+
+        cos = np.min(1.0, np.abs(cos))
+        step = step_sign * np.math.acos(cos) * np.abs(radius)  # arc length from a_s to the new guess point
+        s_approx += step * is_curvature_big_enough  # next s_approx of the current point
+
+        a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(s_approx)
+        return s_approx, a_s, T_s, N_s, k_s, k_s_tag
 
     def _taylor_interp(self, s: np.ndarray) -> (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
         """Given arbitrary s tensor (of shape D) of progresses alonge the curve (in the range [0, self.s_max]),
