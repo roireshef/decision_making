@@ -159,6 +159,7 @@ class FrenetSerret2DFrame:
         k_r = np.zeros(shape=new_shape[:2])
         k_r_tag = np.zeros(shape=new_shape[:2])
 
+        # TODO: replace double-for-loop with a single call to the function after it has been modified
         for i in range(ctrajectories.shape[0]):
             for j in range(ctrajectories.shape[1]):
                 s_x[i, j], a_r[i, j], T_r[i, j], N_r[i, j], k_r[i, j], k_r_tag[i, j] = \
@@ -190,7 +191,7 @@ class FrenetSerret2DFrame:
 
     ## UTILITIES ##
 
-    # TODO: make this work on multiple points
+    # TODO: make this work with tensor operations (multiple points at once)
     def _project_cartesian_point(self, point: CartesianPoint2D) -> \
             (float, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray):
         """Given a 2D point in cartesian frame (same origin as self.O) this function uses taylor approximation to return
