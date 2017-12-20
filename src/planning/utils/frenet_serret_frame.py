@@ -20,6 +20,8 @@ class FrenetSerret2DFrame:
         # TODO: consider moving this outside (note that simple np.sum() doesn't compute the same as np.cumsum()[-1])
         self.s_max = np.cumsum(np.linalg.norm(np.diff(points, axis=0), axis=1), axis=0)[-1]
 
+        # TODO: test if it works well with desired_curve_len=None (to spare double computation of np.cumsum)
+        # TODO: and then assign effective_step_size * len(self.O) -> self.s_max
         self.O, _ = CartesianFrame.resample_curve(curve=points, step_size=ds,
                                                   desired_curve_len=self.s_max,
                                                   preserve_step_size=True,
