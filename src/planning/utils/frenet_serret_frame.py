@@ -212,6 +212,7 @@ class FrenetSerret2DFrame:
         # cos(angle between N_s and this vector)
         cos = np.abs(np.einsum('...ik,...ik->...i', N_s, center_to_point) / np.linalg.norm(center_to_point, axis=-1))
 
+        # prevent illegal (greater than 1) argument for arccos()
         cos[cos > 1.0] = 1.0
 
         # arc length from a_s to the new guess point
