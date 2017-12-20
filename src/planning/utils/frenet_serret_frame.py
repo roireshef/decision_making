@@ -198,7 +198,7 @@ class FrenetSerret2DFrame:
         s_approx = np.add(O_idx, delta_s) * self.ds
         a_s, T_s, N_s, k_s, _ = self._taylor_interp(s_approx)
 
-        is_curvature_big_enough = np.greater(np.abs(k_s), 10e-5).astype(np.int)
+        is_curvature_big_enough = np.greater(np.abs(k_s), 10e-5)
 
         # signed circle radius according to the curvature
         signed_radius = np.divide(1, k_s)
@@ -217,7 +217,7 @@ class FrenetSerret2DFrame:
 
         # arc length from a_s to the new guess point
         step = step_sign * np.apply_along_axis(np.math.acos, 1, cos[:, np.newaxis]) * np.abs(signed_radius)
-        s_approx += step * is_curvature_big_enough  # next s_approx of the current point
+        s_approx[is_curvature_big_enough] += step[is_curvature_big_enough]  # next s_approx of the current point
 
         a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(s_approx)
         return s_approx, a_s, T_s, N_s, k_s, k_s_tag
