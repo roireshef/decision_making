@@ -49,34 +49,6 @@ class RoadFollowingPredictor(Predictor):
 
         return road_localizations_list
 
-    def predict_without_map(self, lon: float, lat: float, vel: float, intra_road_yaw: float, t: float,
-                            num_lanes: int, lane_width: float) -> [float, float]:
-        """
-        Predict object's relative road location (lon, lat) without considering the map.
-        The input: current (lon, lat), constant velocity and time period. The output: final lon, final lat.
-        We assume the object does not exit from the road's borders.
-        :param lon: [m] current object's longitude
-        :param lat: [m] current object's latitude
-        :param vel: [m/sec] object's constant velocity (not necessarily along the road)
-        :param intra_road_yaw: [rad] the movement direction relatively to the road
-        :param t: time period for prediction
-        :param num_lanes: number of lanes
-        :param lane_width: [m] lane width
-        :return: predicted lon, lat
-        """
-        sv = vel * np.cos(intra_road_yaw)
-        dv = vel * np.sin(intra_road_yaw)
-        final_lon = lon + sv * t
-        sign = np.sign(intra_road_yaw)
-        signed_lane_lat = lat % lane_width
-        if sign < 0:
-            signed_lane_lat = signed_lane_lat - lane_width
-        lane_center_lat = lat - signed_lane_lat
-        new_lane_lat = max(-lane_width, min(lane_width, signed_lane_lat + dv * t))
-        final_lat = lane_center_lat + new_lane_lat
-        final_lat = max(0.0, min(final_lat, num_lanes*lane_width))
-        return final_lon, final_lat
-
     def predict_object(self, dynamic_object: DynamicObject,
                        prediction_timestamps: np.ndarray) -> np.ndarray:
         """
