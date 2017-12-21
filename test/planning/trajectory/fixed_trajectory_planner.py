@@ -76,12 +76,12 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
             self._triggered = True
 
         if self._triggered:
-            current_trajectory = self._fixed_trajectory[self._trajectory_advancing:(self._trajectory_advancing+TRAJECTORY_NUM_POINTS), :(C_V + 1)]
+            current_trajectory = self._fixed_trajectory[self._trajectory_advancing:(self._trajectory_advancing+TRAJECTORY_NUM_POINTS)]
 
             self._trajectory_advancing += self._step_size
 
             # TODO: currently no one does anything with the cost, the array here is dummy
             return FixedSamplableTrajectory(current_trajectory), \
-                   np.array([current_trajectory]), np.array([0])
+                   np.array([current_trajectory[:, :(C_V + 1)]]), np.array([0])
         else:
             raise NoValidTrajectoriesFound("Didn't reach trigger point yet.")
