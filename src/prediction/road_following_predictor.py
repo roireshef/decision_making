@@ -27,7 +27,7 @@ class RoadFollowingPredictor(Predictor):
         """
         computes future locations, yaw and velocities for an object directly in the road coordinates-frame
         :param road_localization: object's road localization
-        :param velocity: currently we assume a constant velocity
+        :param velocity: [m/s] velocity along the road; currently we assume a constant velocity
         :param localization_timestamp: the timestamp of road_localization argument (units are the same as DynamicObject.timestamp)
         :param prediction_timestamps: np array of timestamps to predict future localizations for. In ascending order.
         :return: a list of future localizations that correspond to prediction_timestamps
@@ -36,18 +36,52 @@ class RoadFollowingPredictor(Predictor):
 
         road_localizations_list = []
         for prediction_timestamp in prediction_timestamps:
-            predicted_road_localization = copy.deepcopy(road_localization)
-            predicted_road_localization.road_id, predicted_road_localization.road_lon = \
+            predicted_road_id, predicted_road_lon = \
                 MapService.get_instance().advance_on_plan(road_localization.road_id, road_localization.road_lon,
                                (prediction_timestamp - localization_timestamp) * velocity, map_based_nav_plan)
+            predicted_road_localization = RoadLocalization(predicted_road_id,
+                                                           road_localization.lane_num,
+                                                           road_localization.intra_road_lat,
+                                                           road_localization.intra_lane_lat,
+                                                           predicted_road_lon,
+                                                           road_localization.intra_road_yaw)
             road_localizations_list.append(predicted_road_localization)
 
         return road_localizations_list
 
+    def predict_without_map(self, lon: float, lat: float, vel: float, intra_road_yaw: float, t: float,
+                            num_lanes: int, lane_width: float) -> [float, float]:
+        """
+        Predict object's relative road location (lon, lat) without considering the map.
+        The input: current (lon, lat), constant velocity and time period. The output: final lon, final lat.
+        We assume the object does not exit from the road's borders.
+        :param lon: [m] current object's longitude
+        :param lat: [m] current object's latitude
+        :param vel: [m/sec] object's constant velocity (not necessarily along the road)
+        :param intra_road_yaw: [rad] the movement direction relatively to the road
+        :param t: time period for prediction
+        :param num_lanes: number of lanes
+        :param lane_width: [m] lane width
+        :return: predicted lon, lat
+        """
+        sv = vel * np.cos(intra_road_yaw)
+        dv = vel * np.sin(intra_road_yaw)
+        final_lon = lon + sv * t
+        sign = np.sign(intra_road_yaw)
+        signed_lane_lat = lat % lane_width
+        if sign < 0:
+            signed_lane_lat = signed_lane_lat - lane_width
+        lane_center_lat = lat - signed_lane_lat
+        new_lane_lat = max(-lane_width, min(lane_width, signed_lane_lat + dv * t))
+        final_lat = lane_center_lat + new_lane_lat
+        final_lat = max(0.0, min(final_lat, num_lanes*lane_width))
+        return final_lon, final_lat
 
     def predict_object(self, dynamic_object: DynamicObject,
                        prediction_timestamps: np.ndarray) -> np.ndarray:
         """
+        Predict object's locations in global map coordinates.
+        We assume the object is travelling exactly on a constant latitude and with constant velocity.
         :param dynamic_object: in map coordinates
         :param prediction_timestamps: np array of timestamps to predict_object_trajectories for. In ascending order.
         Global, not relative
@@ -64,20 +98,29 @@ class RoadFollowingPredictor(Predictor):
         # TODO: Handle negative prediction times. For now, we take only t >= 0
         lookahead_distance = np.maximum(lookahead_distance, 0.0)
 
-        map_based_nav_plan = MapService.get_instance().get_road_based_navigation_plan(dynamic_object.road_localization.road_id)
+        map_based_nav_plan = \
+            MapService.get_instance().get_road_based_navigation_plan(dynamic_object.road_localization.road_id)
 
-        lookahead_route, initial_yaw = MapService.get_instance().get_lookahead_points(dynamic_object.road_localization.road_id,
-                                                                          dynamic_object.road_localization.road_lon,
-                                                                          lookahead_distance,
-                                                                          dynamic_object.road_localization.intra_road_lat,
-                                                                          map_based_nav_plan)
+        lookahead_route, initial_yaw = MapService.get_instance().get_lookahead_points(
+                                                    dynamic_object.road_localization.road_id,
+                                                    dynamic_object.road_localization.road_lon,
+                                                    lookahead_distance,
+                                                    dynamic_object.road_localization.intra_road_lat,
+                                                    map_based_nav_plan)
 
-        # resample the route to prediction_timestamps
-        predicted_distances_from_start = object_velocity * (prediction_timestamps - dynamic_object.timestamp_in_sec) # assuming constant velocity
+        # resample the route to prediction_timestamps, assuming constant velocity
+        predicted_distances_from_start = object_velocity * (prediction_timestamps - dynamic_object.timestamp_in_sec)
         # TODO: Handle negative prediction times. For now, we take only t >= 0
         predicted_distances_from_start = np.maximum(predicted_distances_from_start, 0.0)
-        route_xy, _ = CartesianFrame.resample_curve(curve=lookahead_route,
-                                                 arbitrary_curve_sampling_points=predicted_distances_from_start)
+
+        if lookahead_route.shape[0] > 1:
+            route_xy, _ = CartesianFrame.resample_curve(curve=lookahead_route,
+                                                        arbitrary_curve_sampling_points=predicted_distances_from_start)
+        elif lookahead_route.shape[0] == 1:
+            route_xy = np.reshape(np.tile(lookahead_route[0], predicted_distances_from_start.shape[0]), (-1, 2))
+        else:
+            raise Exception('predict object has empty lookahead_route')
+
         # add yaw and velocity
         route_len = route_xy.shape[0]
         velocity_column = np.ones(shape=[route_len, 1]) * object_velocity
