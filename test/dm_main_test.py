@@ -33,11 +33,11 @@ class DmMockInitialization:
 
         # TODO: fill the strategy handlers
         fixed_trajectory = Utils.read_trajectory(Paths.get_resource_absolute_path_filename(
-            'fixed_trajectory_files/lane_changes_from_north_50kmh_change_7sec_cruise_7sec.txt'))
+            'fixed_trajectory_files/trajectory_from_recording_2017_11_08_run2.txt'))
 
         step_size = TRAJECTORY_PLANNING_MODULE_PERIOD / TRAJECTORY_TIME_RESOLUTION
         planner = FixedTrajectoryPlanner(logger, predictor, fixed_trajectory, step_size,
-                                         np.array([1114.69414522, 8.05544111]))
+                                         np.array([1055, -49]))
 
         strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
                              TrajectoryPlanningStrategy.PARKING: planner,

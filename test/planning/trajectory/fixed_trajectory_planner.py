@@ -49,7 +49,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         """
         super().__init__(logger, predictor)
         self._fixed_trajectory = fixed_trajectory
-        self._step_size = step_size
+        self._step_size = int(step_size)
         self._trajectory_advancing = 0
         self._trigger_pos = trigger_pos
         self._triggered = False

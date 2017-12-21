@@ -45,8 +45,8 @@ NUM_ALTERNATIVE_TRAJECTORIES = 10
 # iterations. If the distance is lower than this threshold, the TP plans the trajectory as is the ego vehicle is
 # currently in the desired location and not in its actual location.
 # TODO: fix real values for thresholds. those high values are just for testing
-NEGLIGIBLE_DISPOSITION_LON = 10  # longitudinal (ego's heading direction) difference threshold
-NEGLIGIBLE_DISPOSITION_LAT = 3  # lateral (ego's side direction) difference threshold
+NEGLIGIBLE_DISPOSITION_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
+NEGLIGIBLE_DISPOSITION_LAT = 1.5  # lateral (ego's side direction) difference threshold
 
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
 TRAJECTORY_TIME_RESOLUTION = 0.1

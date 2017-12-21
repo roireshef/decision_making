@@ -134,6 +134,6 @@ def main():
     finally:
         manager.stop_modules()
 
-
-main()
+if __name__ == '__main__':
+    main()
 
