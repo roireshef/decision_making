@@ -32,22 +32,21 @@ class Predictor:
         Method to compute future locations, yaw, and velocities for dynamic objects. Returns the np.array used by the
          trajectory planner.
         :param dynamic_object: in map coordinates
-        :param prediction_timestamps: np array of timestamps to predict_object_trajectories for. In ascending order.
+        :param prediction_timestamps: np array of timestamps in [sec] to predict_object_trajectories for. In ascending order.
         Global, not relative
         :return: predicted object's locations in global map coordinates np.array([x, y, theta, vel])
         """
         pass
 
     @abstractmethod
-    def predict_object_on_road(self, road_localization: RoadLocalization, localization_timestamp: float,
-                               velocity: float, prediction_timestamps: np.ndarray) -> List[RoadLocalization]:
+    def predict_object_on_road(self, dynamic_object: DynamicObject, prediction_timestamps: np.ndarray) -> List[
+        DynamicObject]:
         """
         computes future locations, yaw and velocities for an object directly in the road coordinates-frame
-        :param road_localization: object's road localization
-        :param velocity: currently we assume a constant velocity
-        :param localization_timestamp: the timestamp of road_localization argument (units are the same as DynamicObject.timestamp)
-        :param prediction_timestamps: np array of timestamps to predict future localizations for. In ascending order.
-        :return: a list of future localizations that correspond to prediction_timestamps
+        :param dynamic_object: dynamic object
+        :param prediction_timestamps: np array of timestamps in [sec] to predict_object_trajectories for. In ascending order.
+        Global, not relative
+        :return: a list of dynamic objects with future localizations that correspond to prediction_timestamps
         """
 
     def _convert_predictions_to_dynamic_objects(self, dynamic_object: DynamicObject, predictions: CartesianTrajectory,
@@ -111,7 +110,8 @@ class Predictor:
             try:
                 predicted_obj_states = self._predict_object_state(dynamic_object, prediction_timestamps)
                 for t_ind in range(len(prediction_timestamps)):
-                    predicted_states[t_ind].dynamic_objects.append(predicted_obj_states[t_ind])  # adding predicted obj_state
+                    predicted_states[t_ind].dynamic_objects.append(
+                        predicted_obj_states[t_ind])  # adding predicted obj_state
             except LongitudeOutOfRoad as e:
                 self._logger.warning("Prediction of object id %d is out of road. %s", dynamic_object.obj_id,
                                      dynamic_object.__dict__)
@@ -135,4 +135,3 @@ class Predictor:
         most_recent_timestamp = np.max(objects_timestamp_in_sec)
 
         return self.predict_state(state=state, prediction_timestamps=np.array([most_recent_timestamp]))[0]
-

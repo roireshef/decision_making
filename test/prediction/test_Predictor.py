@@ -26,9 +26,6 @@ class TestPredictorMock(Predictor):
 
         return traj
 
-    def predict_object_on_road(self, road_localization: RoadLocalization, localization_timestamp: float,
-                               prediction_timestamps: np.ndarray) -> List[RoadLocalization]:
-        pass
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=testable_map_api)

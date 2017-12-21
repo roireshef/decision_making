@@ -146,7 +146,7 @@ class DynamicObject(StrSerializable):
         return self.__class__(**object_fields)
 
     @property
-    def road_localization(self):
+    def road_localization(self) -> RoadLocalization:
         if self._cached_road_localization is None:
             self._cached_road_localization = MapService.get_instance().compute_road_localization(
                 np.array([self.x, self.y, self.z]), self.yaw)
