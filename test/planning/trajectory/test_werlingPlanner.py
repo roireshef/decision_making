@@ -2,6 +2,7 @@ import numpy as np
 import time
 
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
+from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
@@ -100,4 +101,19 @@ def test_werlingPlanner_toyScenario_noException():
     fig.show()
     fig.clear()
 
-
+def test_jerk_laneChangeWithAcceleration():
+    logger = AV_Logger.get_logger('test_jerk')
+    predictor = RoadFollowingPredictor(logger)
+    planner = WerlingPlanner(logger, predictor)
+    a = 2
+    T = 5.0
+    fconstraints_t0 = FrenetConstraints(0, 0, 0, 0, 0, 0)
+    fconstraints_tT = FrenetConstraints(0.5*a*T*T, a*T, 0, 3.6, 0, 0)
+    _, (poly_s, poly_d) = planner._solve_optimization(fconstraints_t0, fconstraints_tT, T, np.array([0, T]))
+    poly_s = poly_s[0]
+    poly_d = poly_d[0]
+    jerk_s = 720*(poly_s[0]**2)*(T**5) + 720*poly_s[0]*poly_s[1]*(T**4) + 192*(poly_s[1]**2)*(T**3) + \
+        240*poly_s[0]*poly_s[2]*(T**3) + 144*poly_s[1]*poly_s[2]*T*T + 36*(poly_s[2]**2)*T
+    jerk_d = 720*(poly_d[0]**2)*(T**5) + 720*poly_d[0]*poly_d[1]*(T**4) + 192*(poly_d[1]**2)*(T**3) + \
+        240*poly_d[0]*poly_d[2]*(T**3) + 144*poly_d[1]*poly_d[2]*T*T + 36*(poly_d[2]**2)*T
+    print("jerk_s=", jerk_s, ", jerk_d=", jerk_d)
