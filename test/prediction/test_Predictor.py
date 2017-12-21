@@ -26,6 +26,10 @@ class TestPredictorMock(Predictor):
 
         return traj
 
+    def predict_object_on_road(self, dynamic_object: DynamicObject, prediction_timestamps: np.ndarray) -> List[
+        DynamicObject]:
+        pass
+
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=testable_map_api)

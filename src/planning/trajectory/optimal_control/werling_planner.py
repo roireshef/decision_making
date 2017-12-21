@@ -35,23 +35,27 @@ class WerlingPlanner(TrajectoryPlanner):
     def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, goal_time: float,
              cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
         """ see base class """
+
+        # Update state: align all object to most recent timestamp
+        state_aligned = self._predictor.align_objects_to_most_recent_timestamp(state=state)
+
         # create road coordinate-frame
         frenet = FrenetMovingFrame(reference_route)
 
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
         # The vehicle doesn't need to lay parallel to the road.
-        ego_in_frenet = frenet.cpoint_to_fpoint(np.array([state.ego_state.x, state.ego_state.y]))
-        ego_theta_diff = frenet.curve[0, CURVE_THETA] - state.ego_state.yaw
+        ego_in_frenet = frenet.cpoint_to_fpoint(np.array([state_aligned.ego_state.x, state_aligned.ego_state.y]))
+        ego_theta_diff = frenet.curve[0, CURVE_THETA] - state_aligned.ego_state.yaw
 
         # TODO: translate acceleration of initial state
         # define constraints for the initial state
         fconstraints_t0 = FrenetConstraints(sx=ego_in_frenet[FP_SX],
-                                            sv=np.cos(ego_theta_diff) * state.ego_state.v_x +
-                                               np.sin(ego_theta_diff) * state.ego_state.v_y,
+                                            sv=np.cos(ego_theta_diff) * state_aligned.ego_state.v_x +
+                                               np.sin(ego_theta_diff) * state_aligned.ego_state.v_y,
                                             sa=0,
                                             dx=ego_in_frenet[FP_DX],
-                                            dv=-np.sin(ego_theta_diff) * state.ego_state.v_x +
-                                               np.cos(ego_theta_diff) * state.ego_state.v_y,
+                                            dv=-np.sin(ego_theta_diff) * state_aligned.ego_state.v_x +
+                                               np.cos(ego_theta_diff) * state_aligned.ego_state.v_y,
                                             da=0)
 
         # define constraints for the terminal (goal) state
@@ -81,7 +85,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # TODO: Understand what's the best resolution for cases of planning_horizon<0
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (planning_horizon)
-        planning_horizon = goal_time - state.ego_state.timestamp_in_sec
+        planning_horizon = goal_time - state_aligned.ego_state.timestamp_in_sec
         planning_time_points = np.arange(0.0, planning_horizon, self.dt)
         assert planning_horizon >= 0
 
@@ -96,14 +100,14 @@ class WerlingPlanner(TrajectoryPlanner):
 
         if ftrajectories_filtered is None or len(ftrajectories_filtered) == 0:
             raise NoValidTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s",
-                                           planning_horizon, goal, state)
+                                           planning_horizon, goal, state_aligned)
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
 
         # compute trajectory costs at sampled times
-        global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
-        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, goal_in_frenet,
+        global_time_sample = planning_time_points + state_aligned.ego_state.timestamp_in_sec
+        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state_aligned, goal_in_frenet,
                                               cost_params, global_time_sample, self._predictor)
 
         sorted_idxs = trajectory_costs.argsort()
@@ -111,19 +115,13 @@ class WerlingPlanner(TrajectoryPlanner):
         alternative_ids_skip_range = range(0, len(ctrajectories),
                                            max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
 
-        # TODO: we might want to replace the most recent timestamp with the current machine timestamp
-        ego_timestamp_in_sec = state.ego_state.timestamp_in_sec
-        objects_timestamp_in_sec = [state.dynamic_objects[x].timestamp_in_sec for x in
-                                    range(len(state.dynamic_objects))]
-        objects_timestamp_in_sec.append(ego_timestamp_in_sec)
-        most_recent_timestamp = np.max(objects_timestamp_in_sec)
-
-        prediction_timestamps = np.arange(most_recent_timestamp, state.ego_state.timestamp_in_sec + planning_horizon,
+        prediction_timestamps = np.arange(state_aligned.ego_state.timestamp_in_sec,
+                                          state_aligned.ego_state.timestamp_in_sec + planning_horizon,
                                           VISUALIZATION_PREDICTION_RESOLUTION, float)
 
         # TODO: move this to visualizer.
-        # Curently we are predicting the state at ego's timestamp and at the end of the traj execution time.
-        predicted_states = self._predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps)
+        # Curently we are predicting the state_aligned at ego's timestamp and at the end of the traj execution time.
+        predicted_states = self._predictor.predict_state(state=state_aligned, prediction_timestamps=prediction_timestamps)
         # predicted_states[0] is the current state
         # predicted_states[1] is the predicted state in the end of the execution of traj.
         debug_results = TrajectoryVisualizationMsg(reference_route,
@@ -229,5 +227,3 @@ class WerlingPlanner(TrajectoryPlanner):
         solutions_s = OC.QuinticPoly1D.polyval_with_derivatives(poly_s, time_samples)
 
         return TensorOps.cartesian_product_matrix_rows(solutions_s, solutions_d)
-
-
