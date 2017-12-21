@@ -78,10 +78,6 @@ class FrenetSerret2DFrame:
         :param cpoints: Cartesian-frame trajectory (matrix)
         :return: Frenet-frame trajectory (matrix)
         """
-        s = np.zeros(shape=cpoints.shape[0])
-        a_s = np.zeros(shape=cpoints.shape)
-        N_s = np.zeros(shape=cpoints.shape)
-
         s, a_s, _, N_s, _, _ = self._project_cartesian_point(cpoints)
 
         # project cpoints on the normals at a_s
