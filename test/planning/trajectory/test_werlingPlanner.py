@@ -101,7 +101,7 @@ def test_werlingPlanner_toyScenario_noException():
     fig.show()
     fig.clear()
 
-def test_jerk_laneChangeWithAcceleration():
+def test_totalJerk_laneChangeWithAcceleration():
     logger = AV_Logger.get_logger('test_jerk')
     predictor = RoadFollowingPredictor(logger)
     planner = WerlingPlanner(logger, predictor)
@@ -117,3 +117,22 @@ def test_jerk_laneChangeWithAcceleration():
     jerk_d = 720*(poly_d[0]**2)*(T**5) + 720*poly_d[0]*poly_d[1]*(T**4) + 192*(poly_d[1]**2)*(T**3) + \
         240*poly_d[0]*poly_d[2]*(T**3) + 144*poly_d[1]*poly_d[2]*T*T + 36*(poly_d[2]**2)*T
     print("jerk_s=", jerk_s, ", jerk_d=", jerk_d)
+
+def test_momentaryJerk_laneChangeWithAcceleration():
+    logger = AV_Logger.get_logger('test_jerk')
+    predictor = RoadFollowingPredictor(logger)
+    planner = WerlingPlanner(logger, predictor)
+    v = 10
+    T = 4
+    step = 0.5
+    time_samples = np.array(np.arange(0, T+step, step))
+    fconstraints_t0 = FrenetConstraints(0, 0, 0, 0, 0, 0)
+    fconstraints_tT = FrenetConstraints(20, v, 0, 3.6, 0, 0)
+    _, (poly_s, poly_d) = planner._solve_optimization(fconstraints_t0, fconstraints_tT, T, time_samples)
+    poly_s = poly_s[0]
+    poly_d = poly_d[0]
+    t = time_samples
+    jerk_s = (60*poly_s[0]*t*t + 24*poly_s[1]*t + 6*poly_s[2])**2
+    jerk_d = (60*poly_d[0]*t*t + 24*poly_d[1]*t + 6*poly_d[2])**2
+    a = 20*poly_s[0]*(t**3) + 12*poly_s[1]*(t**2) + 6*poly_s[2]*t + 2*poly_s[3]
+    print("\njerk_s =", jerk_s, "\njerk_d =", jerk_d, "\na =", a)
