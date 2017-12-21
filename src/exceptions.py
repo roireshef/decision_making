@@ -2,6 +2,9 @@ import six
 from abc import ABCMeta
 
 
+class PredictObjectInPastTimes(Exception):
+    pass
+
 class MsgDeserializationError(Exception):
     pass
 

@@ -97,9 +97,6 @@ class RoadFollowingPredictor(Predictor):
             raise PredictObjectInPastTimes()
         lookahead_distance += PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
 
-        # TODO: Handle negative prediction times. For now, we take only t >= 0
-        lookahead_distance = np.maximum(lookahead_distance, 0.0)
-
         map_based_nav_plan = \
             MapService.get_instance().get_road_based_navigation_plan(dynamic_object.road_localization.road_id)
 
