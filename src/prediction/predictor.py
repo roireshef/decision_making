@@ -7,7 +7,7 @@ from typing import List, Type
 import numpy as np
 
 from decision_making.src.planning.types import CartesianTrajectory
-from decision_making.src.planning.types import C_X, C_Y, C_THETA, C_V
+from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V
 from decision_making.src.state.state import DynamicObject, EgoState, State
 from mapping.src.exceptions import LongitudeOutOfRoad
 
@@ -77,7 +77,7 @@ class Predictor:
         # Fill with predicted state
         for t_ind, predicted_object_state in enumerate(predicted_object_states):
             predicted_pos = np.array([predictions[t_ind, C_X], predictions[t_ind, C_Y], 0.0])
-            predicted_yaw = predictions[t_ind, C_THETA]
+            predicted_yaw = predictions[t_ind, C_YAW]
             predicted_object_state.timestamp_in_sec = prediction_timestamps[t_ind]
             predicted_object_state.x = predicted_pos[C_X]
             predicted_object_state.y = predicted_pos[C_Y]
@@ -171,3 +171,4 @@ class Predictor:
         most_recent_timestamp = np.max(objects_timestamp_in_sec)
 
         return self.predict_state(state=state, prediction_timestamps=np.array([most_recent_timestamp]))[0]
+

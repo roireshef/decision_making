@@ -1,8 +1,10 @@
 import numpy as np
 import time
 
+from decision_making.src.global_constants import EGO_HEIGHT, EGO_WIDTH, EGO_LENGTH, DEFAULT_ACCELERATION, \
+    DEFAULT_CURVATURE
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
-from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_THETA
+from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
@@ -33,7 +35,7 @@ def test_werlingPlanner_toyScenario_noException():
 
     predictor = RoadFollowingPredictor(logger)
 
-    goal = np.concatenate((route_points[len(route_points) // 2, [CURVE_X, CURVE_Y, CURVE_THETA]], [vT]))
+    goal = np.concatenate((route_points[len(route_points) // 2, [CURVE_X, CURVE_Y, CURVE_YAW]], [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
 
     pos1 = np.array([7, -.5])
     yaw1 = 0
@@ -41,13 +43,13 @@ def test_werlingPlanner_toyScenario_noException():
     yaw2 = np.pi / 4
 
     obs = list([
-        DynamicObject(obj_id=0, timestamp=0, x=pos1[0], y=pos1[1], z=0, yaw=yaw1, size=ObjectSize(1.5, 0.5, 0),
+        DynamicObject(obj_id=0, timestamp=950, x=pos1[0], y=pos1[1], z=0, yaw=yaw1, size=ObjectSize(1.5, 0.5, 0),
                       confidence=1.0, v_x=2.2, v_y=0, acceleration_lon=0.0, omega_yaw=0.0),
-        DynamicObject(obj_id=0, timestamp=0, x=pos2[0], y=pos2[1], z=0, yaw=yaw2, size=ObjectSize(1.5, 0.5, 0),
+        DynamicObject(obj_id=0, timestamp=950, x=pos2[0], y=pos2[1], z=0, yaw=yaw2, size=ObjectSize(1.5, 0.5, 0),
                       confidence=1.0, v_x=1.1, v_y=0, acceleration_lon=0.0, omega_yaw=0.0)
     ])
 
-    ego = EgoState(obj_id=-1, timestamp=0, x=0, y=0, z=0, yaw=0, size=None,
+    ego = EgoState(obj_id=-1, timestamp=1000, x=0, y=0, z=0, yaw=0, size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
                    confidence=1.0, v_x=v0, v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
     state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
@@ -69,8 +71,10 @@ def test_werlingPlanner_toyScenario_noException():
 
     start_time = time.time()
 
-    _, _, debug = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
-                               goal_time=T, cost_params=cost_params)
+    samplable, ctrajectories, costs = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
+                                       goal_time=T, cost_params=cost_params)
+
+    samplable.sample(np.arange(0, 1, 0.1) + ego.timestamp_in_sec)
 
     end_time = time.time() - start_time
 
@@ -87,13 +91,13 @@ def test_werlingPlanner_toyScenario_noException():
                      for o in state.dynamic_objects]
     WerlingVisualizer.plot_obstacles(p1, plottable_obs)
     WerlingVisualizer.plot_obstacles(p2, plottable_obs)
-    WerlingVisualizer.plot_route(p1, debug.reference_route)
-    WerlingVisualizer.plot_route(p2, debug.reference_route)
+    WerlingVisualizer.plot_route(p1, route_points[:, :2])
+    WerlingVisualizer.plot_route(p2, route_points[:, :2])
 
-    WerlingVisualizer.plot_best(p2, debug.trajectories[0])
-    WerlingVisualizer.plot_alternatives(p1, debug.trajectories)
+    WerlingVisualizer.plot_best(p2, ctrajectories[0])
+    WerlingVisualizer.plot_alternatives(p1, ctrajectories)
 
-    print(debug.costs)
+    print(costs)
 
     WerlingVisualizer.plot_route(p1, route_points)
 

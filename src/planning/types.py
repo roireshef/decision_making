@@ -7,22 +7,22 @@ CartesianPath2D = np.ndarray  # a numpy matrix having rows of CartesianPoint2D
 CartesianPoint3D = np.ndarray  # [C_X, C_Y, C_Z]
 CartesianPath3D = np.ndarray  # a numpy matrix having rows of CartesianPoint3D
 
-CartesianState = np.ndarray  # [C_X, C_Y, C_THETA, C_V]
+CartesianState = np.ndarray  # [C_X, C_Y, C_YAW, C_V]
 CartesianTrajectory = np.ndarray  # a numpy matrix having rows of CartesianState
 CartesianTrajectories = np.ndarray  # a tensor of CartesianTrajectory
 
-CartesianExtendedState = np.ndarray  # [C_X, C_Y, C_THETA, C_V, C_A, C_K]
+CartesianExtendedState = np.ndarray  # [C_X, C_Y, C_YAW, C_V, C_A, C_K]
 CartesianExtendedTrajectory = np.ndarray  # A Cartesian-Frame trajectory: a numpy matrix of CartesianExtendedState
 CartesianExtendedTrajectories = np.ndarray  # Cartesian-Frame trajectories: a tensor of CartesianExtendedTrajectory
 
-C_X, C_Y, C_THETA, C_V, C_A, C_K = 0, 1, 2, 3, 4, 5  # Column indices for cartesian-state [x, y, yaw, v, a, k]
+C_X, C_Y, C_YAW, C_V, C_A, C_K = 0, 1, 2, 3, 4, 5  # Column indices for cartesian-state [x, y, yaw, v, a, k]
 C_Z = 2
 
-Curve = np.ndarray  # [CURVE_X, CURVE_Y, CURVE_THETA]
-ExtendedCurve = np.ndarray  # [CURVE_X, CURVE_Y, CURVE_THETA, CURVE_K, CURVE_K_TAG]
+Curve = np.ndarray  # [CURVE_X, CURVE_Y, CURVE_YAW]
+ExtendedCurve = np.ndarray  # [CURVE_X, CURVE_Y, CURVE_YAW, CURVE_K, CURVE_K_TAG]
 
 # [x, y, yaw, (1st derivative of yaw), curvature-tag (2nd derivative of yaw)]
-CURVE_X, CURVE_Y, CURVE_THETA, CURVE_K, CURVE_K_TAG = 0, 1, 2, 3, 4
+CURVE_X, CURVE_Y, CURVE_YAW, CURVE_K, CURVE_K_TAG = 0, 1, 2, 3, 4
 
 ## FRENET FRAME ##
 FrenetPoint = np.ndarray  # [FP_SX, FP_DX]

@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import numpy as np
 
-from decision_making.src.planning.types import C_X, C_Y, C_THETA, C_V
+from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V
 from decision_making.src.planning.types import CartesianTrajectory
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject, EgoState, State
@@ -21,8 +21,8 @@ class TestPredictorMock(Predictor):
     def predict_object(self, dynamic_object: Type[DynamicObject],
                        prediction_timestamps: np.ndarray) -> np.ndarray:
         traj: CartesianTrajectory = np.array([[0.0, 0.0, np.pi / 4, x] for x in range(len(prediction_timestamps))])
-        traj[:, C_X] = np.cumsum(traj[:, C_V] * np.cos(traj[:, C_THETA]))
-        traj[:, C_Y] = np.cumsum(traj[:, C_V] * np.sin(traj[:, C_THETA]))
+        traj[:, C_X] = np.cumsum(traj[:, C_V] * np.cos(traj[:, C_YAW]))
+        traj[:, C_Y] = np.cumsum(traj[:, C_V] * np.sin(traj[:, C_YAW]))
 
         return traj
 
@@ -57,3 +57,4 @@ def test_predictState_apiTest_returnsStatesList(state):
     for predicted_state in predicted_states:
         assert np.all([isinstance(predicted_state.dynamic_objects[x], DynamicObject) for x in
                        range(len(predicted_state.dynamic_objects))])
+
