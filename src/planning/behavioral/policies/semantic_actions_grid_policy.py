@@ -292,7 +292,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         dist_from_ref_sq_cost = 0.0
 
         # TODO: set velocity and acceleration limits properly
-        velocity_limits = np.array([-1.0, 60.0])  # [m/s]. not a constant because it might be learned. TBD
+        velocity_limits = np.array([0.0, 60.0])  # [m/s]. not a constant because it might be learned. TBD
         acceleration_limits = np.array([A_LON_MIN - A_LON_EPS, A_LON_MAX + A_LON_EPS])
         cost_params = TrajectoryCostParams(left_lane_cost=left_lane_cost,
                                            right_lane_cost=right_lane_cost,
