@@ -4,6 +4,7 @@ from common_data.lcm.config import config_defs
 from common_data.lcm.python.Communication.lcmpubsub import LcmPubSub
 from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from decision_making.paths import Paths
+from decision_making.src import global_constants
 from decision_making.src.dm_main import DmInitialization
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
     DM_MANAGER_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_TIME_RESOLUTION
@@ -67,6 +68,8 @@ def main():
         ]
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
     logger.debug('%d: (main) registered signal handler', getpid())
+    logger.info("DM Global Constants: %s", {k: v for k, v in global_constants.__dict__.items() if k.isupper()})
+
     catch_interrupt_signals()
     manager = DmManager(logger, modules_list)
     manager.start_modules()
