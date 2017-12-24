@@ -81,6 +81,8 @@ class DmMockInitialization:
             road_id=BP_MOCK_FIXED_SPECS['ROAD_ID'], ego_size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
             reference_route_latitude=desired_lat)
 
+        # time here is relative for the moment, but upon trigerring of the BehavioralFacadeMock, the ego.timestamp_in_sec
+        # is being added. naughty hack as always!
         params = TrajectoryParams(strategy=TrajectoryPlanningStrategy.HIGHWAY,
                                   reference_route=ref_route,
                                   target_state=target_state,
@@ -105,13 +107,13 @@ def main():
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={}),
 
-            # DmProcess(DmInitialization.create_behavioral_planner,
-            DmProcess(DmMockInitialization.create_behavioral_planner,
+            DmProcess(DmInitialization.create_behavioral_planner,
+            # DmProcess(DmMockInitialization.create_behavioral_planner,
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
-            # DmProcess(DmInitialization.create_trajectory_planner,
-            DmProcess(DmMockInitialization.create_trajectory_planner,
+            DmProcess(DmInitialization.create_trajectory_planner,
+            # DmProcess(DmMockInitialization.create_trajectory_planner,
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD})
         ]
