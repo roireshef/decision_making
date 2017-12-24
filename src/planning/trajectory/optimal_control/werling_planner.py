@@ -111,7 +111,7 @@ class WerlingPlanner(TrajectoryPlanner):
         assert planning_horizon >= 0
 
         # solve problem in frenet-frame
-        ftrajectories, poly_coefs = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT, planning_horizon,
+        ftrajectories, poly_coefs = self._solve_optimization(fconstraints_t0, fconstraints_tT, planning_horizon,
                                                  planning_time_points)
 
         # filter resulting trajectories by velocity and acceleration
