@@ -162,7 +162,6 @@ class TrajectoryPlanningFacade(DmModule):
     def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
         self.pubsub.publish(pubsub_topics.TRAJECTORY_VISUALIZATION_TOPIC, debug_msg.serialize())
 
-
     def _is_actual_state_close_to_expected_state(self, current_ego_state: EgoState) -> bool:
         """
         checks if the actual ego state at time t[current] is close (currently in terms of Euclidean distance of position
@@ -188,6 +187,12 @@ class TrajectoryPlanningFacade(DmModule):
         )
 
         distances_in_expected_frame: FrenetPoint = np.abs(errors_in_expected_frame)
+
+        self.logger.info("TrajectoryPlanningFacade localization stats: {desired_localization: %s, actual_localization: "
+                         "%s, desired_velocity: %s, actual_velocity: %s, lon_lat_errors: %s, velocity_error: %s}" %
+                         (current_expected_state, current_actual_location,
+                          current_expected_state[C_V], current_ego_state.v_x,
+                          distances_in_expected_frame, current_ego_state.v_x - current_expected_state[C_V]))
 
         return distances_in_expected_frame[FP_SX] <= NEGLIGIBLE_DISPOSITION_LON and \
                distances_in_expected_frame[FP_DX] <= NEGLIGIBLE_DISPOSITION_LAT
