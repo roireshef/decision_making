@@ -77,8 +77,7 @@ class DmMockInitialization:
         target_state = np.append(target_pose[[C_X, C_Y]], [target_yaw, BP_MOCK_FIXED_SPECS['TARGET_VELOCITY']])
 
         cost_params = SemanticActionsGridPolicy._generate_cost_params(
-            road_id=BP_MOCK_FIXED_SPECS['ROAD_ID'], ego_size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT), 
-            target_path_latitude=desired_lat)
+            road_id=BP_MOCK_FIXED_SPECS['ROAD_ID'], ego_size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT))
 
         params = TrajectoryParams(strategy=TrajectoryPlanningStrategy.HIGHWAY,
                                   reference_route=ref_route,
