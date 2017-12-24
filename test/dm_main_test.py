@@ -21,8 +21,7 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.types import C_Y, C_X
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import ObjectSize
-from decision_making.test.constants import TP_MOCK_FIXED_TRAJECTORY_FILENAME, BP_MOCK_FIXED_SPECS, TP_INITIALIZER, \
-    BP_INITIALIZER
+from decision_making.test.constants import TP_MOCK_FIXED_TRAJECTORY_FILENAME, BP_MOCK_FIXED_SPECS
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.test.planning.trajectory.fixed_trajectory_planner import FixedTrajectoryPlanner
 from decision_making.test.utils import Utils
@@ -30,6 +29,8 @@ from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 import numpy as np
+from decision_making.paths import Paths
+
 
 
 class DmMockInitialization:
@@ -103,11 +104,13 @@ def main():
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={}),
 
-            DmProcess(BP_INITIALIZER.create_behavioral_planner,
+            # DmProcess(DmInitialization.create_behavioral_planner,
+            DmProcess(DmMockInitialization.create_behavioral_planner,
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
-            DmProcess(TP_INITIALIZER.create_trajectory_planner,
+            # DmProcess(DmInitialization.create_trajectory_planner,
+            DmProcess(DmMockInitialization.create_trajectory_planner,
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD})
         ]

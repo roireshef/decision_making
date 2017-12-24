@@ -11,7 +11,8 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from common_data.lcm.config import pubsub_topics
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, state_module, navigation_facade, state, trajectory_params
+from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, state_module, \
+    navigation_facade, state, trajectory_params, behavioral_visualization_msg, navigation_plan
 
 from mapping.test.model.testable_map_fixtures import map_api_mock
 
