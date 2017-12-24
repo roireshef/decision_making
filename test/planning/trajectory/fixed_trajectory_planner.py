@@ -1,4 +1,3 @@
-from abc import abstractmethod
 from logging import Logger
 from typing import Tuple
 
@@ -15,7 +14,6 @@ from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 
 
-# TODO: fill the units in timestamps
 class FixedSamplableTrajectory(SamplableTrajectory):
 
     def __init__(self, fixed_trajectory: CartesianExtendedTrajectory):
@@ -84,4 +82,5 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
             return FixedSamplableTrajectory(current_trajectory), \
                    np.array([current_trajectory[:, :(C_V + 1)]]), np.array([0])
         else:
-            raise NoValidTrajectoriesFound("Didn't reach trigger point yet.")
+            raise NoValidTrajectoriesFound("Didn't reach trigger point yet [%s]. Current localization is [%s]" %
+                                           (self._trigger_pos, current_pos))

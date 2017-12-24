@@ -6,7 +6,8 @@ from typing import Dict
 
 import numpy as np
 
-from common_data.dds.python.Communication.ddspubsub import DdsPubSub
+from common_data.lcm.config import pubsub_topics
+from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, DEFAULT_OBJECT_Z_VALUE, VISUALIZATION_PREDICTION_RESOLUTION, \
@@ -22,9 +23,6 @@ from decision_making.src.planning.types import C_Y, C_X, C_YAW, FP_SX, FP_DX, Fr
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, EgoState
 from mapping.src.transformations.geometry_utils import CartesianFrame
-
-from common_data.src.communication.pubsub.pubsub import PubSub
-from common_data.lcm.config import pubsub_topics
 
 
 class TrajectoryPlanningFacade(DmModule):
@@ -73,7 +71,6 @@ class TrajectoryPlanningFacade(DmModule):
                               params.time - state.ego_state.timestamp_in_sec)
             self.logger.info("state: %d objects detected", len(state.dynamic_objects))
 
-
             # TODO: this currently applies to location only (not yaw, velocities, accelerations, etc.)
             if self._is_actual_state_close_to_expected_state(state.ego_state):
                 updated_state = self._get_state_with_expected_ego(state)
@@ -92,7 +89,7 @@ class TrajectoryPlanningFacade(DmModule):
             # TODO: validate that sampling is consistent with controller!
             trajectory_points = samplable_trajectory.sample(
                 np.linspace(start=TRAJECTORY_TIME_RESOLUTION,
-                            stop= TRAJECTORY_NUM_POINTS * TRAJECTORY_TIME_RESOLUTION,
+                            stop=TRAJECTORY_NUM_POINTS * TRAJECTORY_TIME_RESOLUTION,
                             num=TRAJECTORY_NUM_POINTS) + state.ego_state.timestamp_in_sec)
 
             # TODO: should publish v_x?
@@ -102,9 +99,10 @@ class TrajectoryPlanningFacade(DmModule):
 
             # TODO: publish cost to behavioral layer?
             # publish visualization/debug data - based on original state!
-            debug_results = self._prepare_visualization_msg(state, params.reference_route, ctrajectories, costs,
-                                                            params.time - state.ego_state.timestamp_in_sec,
-                                                            self._strategy_handlers[params.strategy].predictor)
+            debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
+                state, params.reference_route, ctrajectories, costs, params.time - state.ego_state.timestamp_in_sec,
+                self._strategy_handlers[params.strategy].predictor)
+
             # TODO: DEBUG ONLY
             # debug_results.state = updated_state
             self._publish_debug(debug_results)
@@ -141,7 +139,8 @@ class TrajectoryPlanningFacade(DmModule):
         object_state = State.deserialize(input_state)
         self.logger.debug('Received state: {}'.format(object_state))
         self.logger.debug('TrajectoryPlanningFacade current localization: [%s, %s, %s, %s]' %
-                          (object_state.ego_state.x, object_state.ego_state.y, object_state.ego_state.yaw, object_state.ego_state.v_x))
+                          (object_state.ego_state.x, object_state.ego_state.y, object_state.ego_state.yaw,
+                           object_state.ego_state.v_x))
         return object_state
 
     def _get_mission_params(self) -> TrajectoryParams:
@@ -222,7 +221,8 @@ class TrajectoryPlanningFacade(DmModule):
 
         return updated_state
 
-    def _prepare_visualization_msg(self, state: State, reference_route: CartesianPath2D,
+    @staticmethod
+    def _prepare_visualization_msg(state: State, reference_route: CartesianPath2D,
                                    ctrajectories: CartesianTrajectories, costs: np.ndarray,
                                    planning_horizon: float, predictor: Predictor):
         """

@@ -12,6 +12,7 @@ from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
+from decision_making.src.planning.types import C_Y
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.test.planning.trajectory.fixed_trajectory_planner import FixedTrajectoryPlanner
 from decision_making.test.utils import Utils
@@ -19,7 +20,6 @@ from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 
-import numpy as np
 
 class DmMockInitialization:
     @staticmethod
@@ -31,13 +31,12 @@ class DmMockInitialization:
         MapService.initialize()
         predictor = RoadFollowingPredictor(logger)
 
-        # TODO: fill the strategy handlers
         fixed_trajectory = Utils.read_trajectory(Paths.get_resource_absolute_path_filename(
             'fixed_trajectory_files/trajectory_from_recording_2017_11_08_run2.txt'))
 
         step_size = TRAJECTORY_PLANNING_MODULE_PERIOD / TRAJECTORY_TIME_RESOLUTION
         planner = FixedTrajectoryPlanner(logger, predictor, fixed_trajectory, step_size,
-                                         np.array([1114, 8]))
+                                         fixed_trajectory[0, :(C_Y+1)])
 
         strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
                              TrajectoryPlanningStrategy.PARKING: planner,
@@ -46,7 +45,6 @@ class DmMockInitialization:
         trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
                                                               strategy_handlers=strategy_handlers)
         return trajectory_planning_module
-
 
 def main():
     modules_list = \
