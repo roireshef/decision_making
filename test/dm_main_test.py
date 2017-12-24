@@ -1,5 +1,7 @@
 from os import getpid
 
+import numpy as np
+
 from common_data.lcm.config import config_defs
 from common_data.lcm.python.Communication.lcmpubsub import LcmPubSub
 from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
@@ -7,12 +9,12 @@ from decision_making.src import global_constants
 from decision_making.src.dm_main import DmInitialization
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
     DM_MANAGER_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_TIME_RESOLUTION, \
-    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT
+    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams
+from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
@@ -28,9 +30,6 @@ from decision_making.test.utils import Utils
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
-import numpy as np
-from decision_making.paths import Paths
-
 
 
 class DmMockInitialization:
@@ -67,14 +66,31 @@ class DmMockInitialization:
 
         road = MapService.get_instance().get_road(BP_MOCK_FIXED_SPECS['ROAD_ID'])
         desired_lat = road.lane_width * (BP_MOCK_FIXED_SPECS['LANE_NUM'] + 0.5)
+        nav_plan = NavigationPlanMsg(road_ids=np.array([BP_MOCK_FIXED_SPECS['ROAD_ID']]))
+        trigger_point = BP_MOCK_FIXED_SPECS['TRIGGER_POINT']
+
+        # get the trigger-point's longitude from the road's beginning
+        _, init_point_longitude, _, _, _ = MapService.get_instance().convert_global_to_road_coordinates(
+            trigger_point[0], trigger_point[1], 0)
+
         ref_route, _ = MapService.get_instance().get_lookahead_points(
-            initial_road_id=BP_MOCK_FIXED_SPECS['ROAD_ID'], initial_lon=0,
-            lookahead_dist=BP_MOCK_FIXED_SPECS['TARGET_LONGITUDE'],
+            initial_road_id=BP_MOCK_FIXED_SPECS['ROAD_ID'],
+            initial_lon=init_point_longitude,
+            lookahead_dist=BP_MOCK_FIXED_SPECS['LOOKAHEAD_DISTANCE'] * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO,
             desired_lat=desired_lat,
-            navigation_plan=NavigationPlanMsg(road_ids=np.array([BP_MOCK_FIXED_SPECS['ROAD_ID']])))
+            navigation_plan=nav_plan
+        )
+
+        _, target_lon = MapService.get_instance().advance_on_plan(
+            initial_road_id=BP_MOCK_FIXED_SPECS['ROAD_ID'],
+            initial_lon=init_point_longitude,
+            lookahead_dist=BP_MOCK_FIXED_SPECS['LOOKAHEAD_DISTANCE'],
+            navigation_plan=nav_plan
+        )
 
         target_pose, target_yaw = MapService.get_instance().convert_road_to_global_coordinates(
-            road_id=BP_MOCK_FIXED_SPECS['ROAD_ID'], lon=BP_MOCK_FIXED_SPECS['TARGET_LONGITUDE'], lat=desired_lat)
+            road_id=BP_MOCK_FIXED_SPECS['ROAD_ID'], lon=target_lon, lat=desired_lat)
+
         target_state = np.append(target_pose[[C_X, C_Y]], [target_yaw, BP_MOCK_FIXED_SPECS['TARGET_VELOCITY']])
 
         cost_params = SemanticActionsGridPolicy._generate_cost_params(
@@ -91,7 +107,7 @@ class DmMockInitialization:
 
         viz_msg = BehavioralVisualizationMsg(reference_route=ref_route)
 
-        behavioral_module = BehavioralFacadeMock(pubsub=pubsub, logger=logger,
+        behavioral_module = BehavioralFacadeMock(pubsub=pubsub, logger=logger, trigger_pos=BP_MOCK_FIXED_SPECS['TRIGGER_POINT'],
                                                  trajectory_params=params, visualization_msg=viz_msg)
         return behavioral_module
 
@@ -107,13 +123,13 @@ def main():
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={}),
 
-            DmProcess(DmInitialization.create_behavioral_planner,
-            # DmProcess(DmMockInitialization.create_behavioral_planner,
+            # DmProcess(DmInitialization.create_behavioral_planner,
+            DmProcess(DmMockInitialization.create_behavioral_planner,
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
-            DmProcess(DmInitialization.create_trajectory_planner,
-            # DmProcess(DmMockInitialization.create_trajectory_planner,
+            # DmProcess(DmInitialization.create_trajectory_planner,
+            DmProcess(DmMockInitialization.create_trajectory_planner,
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD})
         ]
