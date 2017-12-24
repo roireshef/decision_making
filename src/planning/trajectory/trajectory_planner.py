@@ -1,16 +1,15 @@
 from abc import ABCMeta, abstractmethod
+from logging import Logger
 from typing import Tuple
 
 import numpy as np
 
 from decision_making.src.exceptions import raises, NoValidTrajectoriesFound
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
-from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
-from decision_making.src.planning.types import CartesianPath2D, CartesianTrajectory, CartesianState, \
-    CartesianExtendedTrajectory, CartesianTrajectories, CartesianExtendedState
+from decision_making.src.planning.types import CartesianPath2D, CartesianExtendedTrajectory, CartesianTrajectories, \
+    CartesianExtendedState
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
-from logging import Logger
 
 
 # TODO: fill the units in timestamps
