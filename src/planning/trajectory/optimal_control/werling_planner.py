@@ -87,7 +87,7 @@ class WerlingPlanner(TrajectoryPlanner):
         goal_frenet_state = frenet.ctrajectory_to_ftrajectory(np.array([goal]))[0]
 
         # TODO: Determine desired final state search grid - this should be fixed with introducing different T_s, T_d
-        sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_frenet_state[FS_SX], 0)) / 2,
+        sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_frenet_state[FS_SX], 0)),
                                np.min((SX_OFFSET_MAX + goal_frenet_state[FS_SX], (len(frenet.O)-1) * frenet.ds)),
                                SX_STEPS)
         # sx_range = np.linspace(goal_frenet_state[FS_SX]  / 2, goal_frenet_state[FS_SX], SX_STEPS)
@@ -108,7 +108,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (planning_horizon)
         planning_horizon = goal_time - state.ego_state.timestamp_in_sec
-        planning_time_points = np.arange(0.0, planning_horizon, self.dt)
+        planning_time_points = np.arange(self.dt, planning_horizon, self.dt)
         assert planning_horizon >= 0
 
         # solve problem in frenet-frame
@@ -124,8 +124,8 @@ class WerlingPlanner(TrajectoryPlanner):
             min_vel, max_vel = np.min(ftrajectories[:, :, FS_SV]), np.max(ftrajectories[:, :, FS_SV])
             min_acc, max_acc = np.min(ftrajectories[:, :, FS_SA]), np.max(ftrajectories[:, :, FS_SA])
             raise NoValidTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s. "
-                                           "planned velocities range [%s, %s]. planned accelerations range [%s, %s]",
-                                           planning_horizon, goal, state, min_vel, max_vel, min_acc, max_acc)
+                                           "planned velocities range [%s, %s]. planned accelerations range [%s, %s]" %
+                                           (planning_horizon, goal, state, min_vel, max_vel, min_acc, max_acc))
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)

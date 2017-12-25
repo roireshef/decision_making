@@ -493,12 +493,15 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
         # caused by the curve linearization approximation in the resampling process
-        lookahead_distance = target_relative_longitude * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
+        # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route) better than sending the whole road.
+        # TODO: and also what happens in the begginning of a road
+        lookahead_distance = behavioral_state.ego_state.road_localization.road_lon + \
+                             target_relative_longitude * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
         lookahead_path = MapService.get_instance().get_uniform_path_lookahead(
             road_id=behavioral_state.ego_state.road_localization.road_id,
             lat_shift=target_lane_latitude,
-            starting_lon=behavioral_state.ego_state.road_localization.road_lon,
+            starting_lon=0,
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
             steps_num=int(np.ceil(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
             navigation_plan=navigation_plan)

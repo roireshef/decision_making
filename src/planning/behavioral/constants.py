@@ -27,7 +27,7 @@ BP_SPECIFICATION_T_RES = 0.2
 # Longitudinal Acceleration Limits [m/sec^2]
 A_LON_MIN = -4.0
 A_LON_MAX = 4.0
-A_LON_EPS = 3.0
+A_LON_EPS = 1.0
 
 # Latitudinal Acceleration Limits [m/sec^2]
 A_LAT_MIN = -2.0
