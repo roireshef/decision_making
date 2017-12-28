@@ -128,7 +128,7 @@ def main():
     manager.start_modules()
     try:
         manager.wait_for_submodules()
-    except KeyboardInterrupt:
+    except SystemExit:
         logger.info('%d: (main) Interrupted by signal!', getpid())
         pass
     finally:
