@@ -2,9 +2,8 @@ from unittest.mock import patch
 
 import numpy as np
 
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
-from decision_making.src.planning.behavioral.constants import SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LAT_LEFT, \
-    SEMANTIC_CELL_LON_FRONT
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, SEMANTIC_CELL_LAT_RIGHT, \
+    SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_FRONT
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import \
     SemanticActionsGridState

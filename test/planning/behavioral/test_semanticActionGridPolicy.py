@@ -1,7 +1,6 @@
 from unittest.mock import patch
 
-from decision_making.src.planning.behavioral.constants import SAFE_DIST_TIME_DELAY
-from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR
+from decision_making.src.global_constants import SAFE_DIST_TIME_DELAY, EGO_ORIGIN_LON_FROM_REAR
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import \
     SemanticActionsGridState
