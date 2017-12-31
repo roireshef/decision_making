@@ -37,6 +37,9 @@ DEVIATION_FROM_GOAL_LON_COST = 1.0 * 1e2    # cost of squared longitudinal devia
 DEVIATION_FROM_GOAL_LAT_COST = 1.5 * 1e2    # cost of squared lateral deviation from the goal
 DEVIATION_FROM_REF_ROUTE_COST = 0.0         # cost of squared deviation from the route path
 
+# [m/s] min & max velocity limits are additional parameters for TP
+VELOCITY_LIMITS = np.array([0.0, 60.0])
+
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
 BP_SPECIFICATION_T_MIN = 2.0

@@ -5,7 +5,7 @@ import numpy as np
 from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, \
-    TRAJECTORY_ARCLEN_RESOLUTION, EGO_ORIGIN_LON_FROM_REAR
+    TRAJECTORY_ARCLEN_RESOLUTION, EGO_ORIGIN_LON_FROM_REAR, VELOCITY_LIMITS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
@@ -305,7 +305,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         dist_from_ref_sq_cost = DEVIATION_FROM_REF_ROUTE_COST
 
         # TODO: set velocity and acceleration limits properly
-        velocity_limits = np.array([0.0, 60.0])  # [m/s]. not a constant because it might be learned. TBD
+        velocity_limits = VELOCITY_LIMITS  # [m/s]. not a constant because it might be learned. TBD
         acceleration_limits = np.array([A_LON_MIN - A_LON_EPS, A_LON_MAX + A_LON_EPS])
 
         cost_params = TrajectoryCostParams(left_lane_cost=left_lane_cost,
