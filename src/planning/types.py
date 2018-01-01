@@ -1,4 +1,11 @@
 import numpy as np
+import sys
+
+## TIMESTAMPS ##
+GlobalTimeStamp = int
+GlobalTimeStampInSec = float
+MinGlobalTimeStamp = -sys.maxsize
+MinGlobalTimeStampInSec = -np.inf
 
 ## CARTESIAN FRAME ##
 CartesianPoint = np.ndarray  # [C_X, C_Y]

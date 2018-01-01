@@ -1,19 +1,14 @@
-import traceback
 import copy
 from abc import ABCMeta, abstractmethod
 from logging import Logger
-from typing import List, Type
+from typing import List
 
 import numpy as np
-
-from decision_making.src.planning.types import CartesianTrajectory
-from decision_making.src.planning.types import C_X, C_Y, C_THETA, C_V
-from decision_making.src.state.state import DynamicObject, EgoState, State
-from mapping.src.exceptions import LongitudeOutOfRoad
-
 import six
 
-from mapping.src.model.localization import RoadLocalization
+from decision_making.src.planning.types import CartesianTrajectory, GlobalTimeStampInSec, MinGlobalTimeStampInSec
+from decision_making.src.state.state import DynamicObject, State
+from mapping.src.exceptions import LongitudeOutOfRoad
 
 
 @six.add_metaclass(ABCMeta)
@@ -48,8 +43,67 @@ class Predictor:
         Global, not relative
         :return: a list of dynamic objects with future localizations that correspond to prediction_timestamps
         """
+        pass
 
-    def _convert_predictions_to_dynamic_objects(self, dynamic_object: DynamicObject, predictions: CartesianTrajectory,
+    def predict_state(self, state: State, prediction_timestamps: np.ndarray) -> List[State]:
+        """
+         Wrapper method that uses the _predict_ego_state and _predict_object_state, and creates a list containing the
+         complete predicted states.
+        :param state: State object
+        :param prediction_timestamps: np array of timestamps to predict_object_trajectories for. In ascending order.
+        Global, not relative
+        :return: a list of predicted states.
+        """
+
+        # list of predicted states in future times
+        predicted_states: List[State] = list()
+
+        # A list of predited dynamic objects in future times. init with empty lists
+        objects_in_predicted_states: List[List[DynamicObject]] = [list() for x in range(len(prediction_timestamps))]
+
+        ego_state = state.ego_state
+        dynamic_objects = state.dynamic_objects
+        predicted_ego_states = self._predict_object_state(ego_state, prediction_timestamps)
+
+        # populate list of dynamic objects in future times
+        for dynamic_object in dynamic_objects:
+            try:
+                predicted_obj_states = self._predict_object_state(dynamic_object, prediction_timestamps)
+                for t_ind in range(len(prediction_timestamps)):
+                    objects_in_predicted_states[t_ind].append(predicted_obj_states[t_ind])  # adding predicted obj_state
+            except LongitudeOutOfRoad as e:
+                self._logger.warning("Prediction of object id %d is out of road. %s", dynamic_object.obj_id,
+                                     dynamic_object.__dict__)
+
+        for t_ind in range(len(prediction_timestamps)):
+            new_state = State(occupancy_state=copy.deepcopy(state.occupancy_state),
+                              dynamic_objects=objects_in_predicted_states[t_ind],
+                              ego_state=predicted_ego_states[t_ind])
+            predicted_states.append(new_state)
+
+        return predicted_states
+
+    def align_objects_to_most_recent_timestamp(self, state: State,
+                                               current_timestamp: GlobalTimeStampInSec = MinGlobalTimeStampInSec) -> State:
+        """
+        Returns state with all objects aligned to the most recent timestamp.
+        Most recent timestamp is taken as the max between the current_timestamp, and the most recent
+        timestamp of all objects in the scene.
+        :param current_timestamp: current timestamp in global time in [sec]
+        :param state: state containing objects with different timestamps
+        :return: new state with all objects aligned
+        """
+        ego_timestamp_in_sec = state.ego_state.timestamp_in_sec
+        objects_timestamp_in_sec = [state.dynamic_objects[x].timestamp_in_sec for x in
+                                    range(len(state.dynamic_objects))]
+        objects_timestamp_in_sec.append(ego_timestamp_in_sec)
+        most_recent_timestamp = np.max(objects_timestamp_in_sec)
+        most_recent_timestamp = np.maximum(most_recent_timestamp, current_timestamp)
+
+        return self.predict_state(state=state, prediction_timestamps=np.array([most_recent_timestamp]))[0]
+
+    @staticmethod
+    def _convert_predictions_to_dynamic_objects(dynamic_object: DynamicObject, predictions: CartesianTrajectory,
                                                 prediction_timestamps: np.ndarray) -> List[DynamicObject]:
         """
         given original dynamic object, its predictions, and their respective time stamps, creates a list of dynamic
@@ -81,57 +135,3 @@ class Predictor:
         """
         predictions = self.predict_object(dynamic_object, prediction_timestamps)
         return self._convert_predictions_to_dynamic_objects(dynamic_object, predictions, prediction_timestamps)
-
-    def predict_state(self, state: State, prediction_timestamps: np.ndarray) -> List[State]:
-        """
-         Wrapper method that uses the _predict_ego_state and _predict_object_state, and creates a list containing the
-         complete predicted states.
-        :param state: State object
-        :param prediction_timestamps: np array of timestamps to predict_object_trajectories for. In ascending order.
-        Global, not relative
-        :return: a list of predicted states.
-        """
-
-        # TODO - consider adding reference route so that this method will be able to project the current
-        #  state to the reference route, for example to a different lane.
-        # TODO - no need to deepcopy states which we clear afterwards. deep copy only what you need.
-        initial_state = copy.deepcopy(state)  # protecting the state input from changes
-        predicted_states = [copy.deepcopy(state) for x in
-                            range(prediction_timestamps.shape[0])]  # creating copies to populate
-
-        ego_state = initial_state.ego_state
-        dynamic_objects = initial_state.dynamic_objects
-        predicted_ego_states = self._predict_object_state(ego_state, prediction_timestamps)
-        for t_ind in range(len(prediction_timestamps)):
-            predicted_states[t_ind].ego_state = predicted_ego_states[t_ind]  # updating ego_state
-            predicted_states[t_ind].dynamic_objects.clear()  # clearing dynamic object lists of copied states
-
-        for dynamic_object in dynamic_objects:
-            try:
-                predicted_obj_states = self._predict_object_state(dynamic_object, prediction_timestamps)
-                for t_ind in range(len(prediction_timestamps)):
-                    predicted_states[t_ind].dynamic_objects.append(
-                        predicted_obj_states[t_ind])  # adding predicted obj_state
-            except LongitudeOutOfRoad as e:
-                self._logger.warning("Prediction of object id %d is out of road. %s", dynamic_object.obj_id,
-                                     dynamic_object.__dict__)
-            except Exception as e:
-                # TODO: remove and handle
-                self._logger.error("Prediction of object failed: %s. Trace: %s", e, traceback.format_exc())
-
-        return predicted_states
-
-    def align_objects_to_most_recent_timestamp(self, state: State) -> State:
-        """
-        Returnes state with all objects aligned to the most recent timestamp
-        :param state: state containing objects with different timestamps
-        :return: new state with all objects aligned
-        """
-        # TODO: we might want to replace it with the current machine timestamp
-        ego_timestamp_in_sec = state.ego_state.timestamp_in_sec
-        objects_timestamp_in_sec = [state.dynamic_objects[x].timestamp_in_sec for x in
-                                    range(len(state.dynamic_objects))]
-        objects_timestamp_in_sec.append(ego_timestamp_in_sec)
-        most_recent_timestamp = np.max(objects_timestamp_in_sec)
-
-        return self.predict_state(state=state, prediction_timestamps=np.array([most_recent_timestamp]))[0]
