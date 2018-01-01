@@ -64,8 +64,8 @@ class RoadFollowingPredictor(Predictor):
         """
 
         # we assume the object is travelling exactly on a constant latitude. (i.e., lateral speed = 0)
-        # also, we assume that objects yaw is 0 relative to the road
-        object_velocity = dynamic_object.v_x
+        # TODO: handle objects with negative velocities
+        object_velocity = np.abs(dynamic_object.v_x)
         if object_velocity < 0.0:
             raise PredictedObjectHasNegativeVelocity()
 
