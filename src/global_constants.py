@@ -1,6 +1,11 @@
 import os
 import numpy as np
 
+# General constants
+
+UNKNOWN_DEFAULT_VAL = 0.0
+
+
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
