@@ -86,8 +86,8 @@ class WerlingPlanner(TrajectoryPlanner):
         assert planning_horizon >= 0
 
         # solve problem in frenet-frame
-        ftrajectories = self._solve_optimization(fconstraints_t0, fconstraints_tT, planning_horizon,
-                                                 planning_time_points)
+        ftrajectories, _ = self._solve_optimization(fconstraints_t0, fconstraints_tT, planning_horizon,
+                                                    planning_time_points)
 
         # filter resulting trajectories by velocity and acceleration
         ftrajectories_filtered = self._filter_limits(ftrajectories, cost_params)
@@ -228,6 +228,6 @@ class WerlingPlanner(TrajectoryPlanner):
         poly_s = OC.QuinticPoly1D.solve(A_inv, constraints_s)
         solutions_s = OC.QuinticPoly1D.polyval_with_derivatives(poly_s, time_samples)
 
-        return TensorOps.cartesian_product_matrix_rows(solutions_s, solutions_d)
+        return (TensorOps.cartesian_product_matrix_rows(solutions_s, solutions_d), (poly_s, poly_d))
 
 
