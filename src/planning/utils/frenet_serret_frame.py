@@ -4,6 +4,7 @@ from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, T
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
     FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, FS_SX, \
     FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint, C_YAW, C_K, C_V, C_A
+from decision_making.src.planning.utils.tensor_ops import TensorOps
 from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
 
@@ -285,10 +286,10 @@ class FrenetSerret2DFrame:
         dT_norm = np.linalg.norm(dT, axis=1)
 
         # Normal - robust to zero-curvature
-        N = FrenetSerret2DFrame._row_wise_normal(T)
+        N = TensorOps.row_wise_normal(T)
 
         # SIGNED (!) Curvature
-        cross_norm = np.sum(FrenetSerret2DFrame._row_wise_normal(dxy) * ddxy, axis=1)
+        cross_norm = np.sum(TensorOps.row_wise_normal(dxy) * ddxy, axis=1)
         k = np.zeros(len(T))
         k[dxy_norm > 0] = np.c_[cross_norm[dxy_norm > 0]] / (np.c_[dxy_norm[dxy_norm > 0]] ** 3)
 
@@ -296,13 +297,3 @@ class FrenetSerret2DFrame:
         k_tag = np.divide(np.gradient(k), ds)
 
         return T, N, np.c_[k], np.c_[k_tag]
-
-    @staticmethod
-    def _row_wise_normal(mat: np.ndarray):
-        """
-        Utility function that takes a 2D matrix of shape [N, 2] and computes a normal vector for each row, assuming
-         mat[i, 0] and mat[i, 1] are (x_i, y_i) coordinates of a vector.
-        :param mat: 2D numpy array with shape [N, 2]
-        :return: 2D numpy array with shape [N, 2] of normal vectors
-        """
-        return np.c_[-mat[:, 1], mat[:, 0]]
