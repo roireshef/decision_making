@@ -54,6 +54,9 @@ SX_STEPS, SV_STEPS, DX_STEPS = 15, 1, 5
 
 # State #
 
+# constant height in [m] of flat world
+FLAT_WORLD_Z = 0.0
+
 # TODO: set real values
 # [m] Bounding box size around ego vehicle
 EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 5.0, 2.0, 2.0

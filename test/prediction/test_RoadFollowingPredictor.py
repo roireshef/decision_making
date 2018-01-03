@@ -3,7 +3,8 @@ from unittest.mock import patch
 
 import numpy as np
 
-from decision_making.src.planning.types import C_Y, C_X
+from decision_making.src.global_constants import FLAT_WORLD_Z
+from decision_making.src.planning.types import C_Y, C_X, C_THETA, C_V
 from decision_making.test.planning.custom_fixtures import car_size
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import DynamicObject, EgoState, State, OccupancyState
@@ -12,17 +13,14 @@ from mapping.test.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
 
 
-def C_Z(args):
-    pass
-
-
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_predictObjectTrajectories_precisePredictionDynamicAndStaticObjectMultipleSingleTimestamp(car_size):
     logger = AV_Logger.get_logger("test_predictObjectTrajectories_precisePrediction")
     predictor = RoadFollowingPredictor(logger)
-    global_pos = np.array([500.0, 0.0, 0.0])
-    dyn_obj = DynamicObject(obj_id=1, timestamp=1e9, x=global_pos[C_X], y=global_pos[C_Y], z=global_pos[C_Z], yaw=0,
-                            size=car_size, confidence=0, v_x=10, v_y=0, acceleration_lon=0, omega_yaw=0)
+    global_state = np.array([500.0, 0.0, 0.0, 10.0])
+    dyn_obj = DynamicObject(obj_id=1, timestamp=1e9, x=global_state[C_X], y=global_state[C_Y], z=FLAT_WORLD_Z,
+                            yaw=global_state[C_THETA], size=car_size, confidence=0, v_x=global_state[C_V], v_y=0,
+                            acceleration_lon=0, omega_yaw=0)
     # test for dynamic object with multiple timestamps
     pred_timestamps = np.arange(5.0, 12.0, 0.1)
     traj = predictor.predict_object(dyn_obj, pred_timestamps)
@@ -44,11 +42,10 @@ def test_predictObjectTrajectories_precisePredictionDynamicAndStaticObjectMultip
 def test_predictObject_zeroSpeedZeroLookahead_noException(car_size):
     logger = AV_Logger.get_logger("test_predictObjectTrajectories_precisePrediction")
     predictor = RoadFollowingPredictor(logger)
-    global_pos = np.array([500.0, 0.0, 0.0])
-    dyn_obj = DynamicObject(obj_id=1, timestamp=0, x=global_pos[C_X], y=global_pos[C_Y], z=global_pos[C_Z], yaw=0,
-                            size=car_size,
-                            confidence=0,
-                            v_x=0.0, v_y=0.0, acceleration_lon=0, omega_yaw=0)
+    global_state = np.array([500.0, 0.0, 0.0, 0.0])
+    dyn_obj = DynamicObject(obj_id=1, timestamp=0, x=global_state[C_X], y=global_state[C_Y], z=FLAT_WORLD_Z,
+                            yaw=global_state[C_THETA], size=car_size, confidence=0, v_x=global_state[C_V], v_y=0.0,
+                            acceleration_lon=0, omega_yaw=0)
     # Test if zero lookahead at zero speed works without raising exception
     pred_timestamps = np.array([0.0])
     traj = predictor.predict_object(dyn_obj, pred_timestamps)
@@ -60,11 +57,10 @@ def test_predictObject_zeroSpeedZeroLookahead_noException(car_size):
 def test_predictObjectOnRoad_precisePrediction():
     logger = AV_Logger.get_logger("test_predictObjectOnRoad_precisePrediction")
     predictor = RoadFollowingPredictor(logger)
-    global_pos = np.array([500.0, 0.0, 0.0])
-    velocity = 10
-    dynamic_object = DynamicObject(obj_id=1, timestamp=0, x=global_pos[C_X], y=global_pos[C_Y], z=global_pos[C_Z],
-                                   yaw=0, size=car_size,
-                                   confidence=0, v_x=velocity, v_y=0, acceleration_lon=0, omega_yaw=0)
+    global_pos = np.array([500.0, 0.0, 0.0, 10.0])
+    dynamic_object = DynamicObject(obj_id=1, timestamp=0, x=global_pos[C_X], y=global_pos[C_Y], z=FLAT_WORLD_Z,
+                                   yaw=global_pos[C_THETA], size=car_size, confidence=0, v_x=global_pos[C_V], v_y=0,
+                                   acceleration_lon=0, omega_yaw=0)
 
     pred_timestamps = np.arange(4.0, 11.0, 0.1)
     pred_object_state = predictor.predict_object_on_road(dynamic_object, pred_timestamps)
@@ -76,15 +72,15 @@ def test_predictObjectOnRoad_precisePrediction():
 def test_predictState_precisePrediction(car_size):
     logger = AV_Logger.get_logger("test_predictState_precisePrediction")
     predictor = RoadFollowingPredictor(logger)
-    dyn_global_pos = np.array([500.0, 0.0, 0.0])
-    dyn_obj = DynamicObject(obj_id=1, timestamp=1e9, x=dyn_global_pos[C_X], y=dyn_global_pos[C_Y],
-                            z=dyn_global_pos[C_Z], yaw=0, size=car_size,
-                            confidence=0, v_x=10, v_y=0, acceleration_lon=0, omega_yaw=0)
+    dyn_global_state = np.array([500.0, 0.0, 0.0, 10.0])
+    dyn_obj = DynamicObject(obj_id=1, timestamp=1e9, x=dyn_global_state[C_X], y=dyn_global_state[C_Y],
+                            z=FLAT_WORLD_Z, yaw=dyn_global_state[C_THETA], size=car_size,
+                            confidence=0, v_x=dyn_global_state[C_V], v_y=0, acceleration_lon=0, omega_yaw=0)
 
-    ego_global_pos = np.array([450.0, 0.0, 0.0])
-    ego = EgoState(obj_id=0, timestamp=2e9, x=ego_global_pos[C_X], y=ego_global_pos[C_Y], z=ego_global_pos[C_Z], yaw=0,
-                   size=car_size,
-                   confidence=0, v_x=20, v_y=0, acceleration_lon=0, omega_yaw=0, steering_angle=0)
+    ego_global_pos = np.array([450.0, 0.0, 0.0, 20.0])
+    ego = EgoState(obj_id=0, timestamp=2e9, x=ego_global_pos[C_X], y=ego_global_pos[C_Y], z=FLAT_WORLD_Z,
+                   yaw=ego_global_pos[C_THETA], size=car_size, confidence=0, v_x=ego_global_pos[C_V], v_y=0,
+                   acceleration_lon=0, omega_yaw=0, steering_angle=0)
 
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     state = State(occupancy_state=occupancy_state, dynamic_objects=[dyn_obj], ego_state=ego)
