@@ -108,7 +108,7 @@ class DynamicObject(StrSerializable):
         self.omega_yaw = omega_yaw
         self._cached_road_localization: Optional[RoadLocalization] = None
 
-    def set_cartesian_state(self, timestamp_in_sec: float, cartesian_state: CartesianState):
+    def clone_cartesian_state(self, timestamp_in_sec: float, cartesian_state: CartesianState):
         """
         Return a new DynamicObject instance with updated timestamp and cartesian state.
         Enables creating new instances of object from predicted trajectories
