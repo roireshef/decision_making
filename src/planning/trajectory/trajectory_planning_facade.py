@@ -6,7 +6,8 @@ from typing import Dict
 
 import numpy as np
 
-from common_data.dds.python.Communication.ddspubsub import DdsPubSub
+from common_data.lcm.config import pubsub_topics
+from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, DEFAULT_OBJECT_Z_VALUE, VISUALIZATION_PREDICTION_RESOLUTION, \
@@ -22,9 +23,6 @@ from decision_making.src.planning.types import C_Y, C_X, C_YAW, FP_SX, FP_DX, Fr
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, EgoState
 from mapping.src.transformations.geometry_utils import CartesianFrame
-
-from common_data.src.communication.pubsub.pubsub import PubSub
-from common_data.lcm.config import pubsub_topics
 
 
 class TrajectoryPlanningFacade(DmModule):
@@ -48,9 +46,9 @@ class TrajectoryPlanningFacade(DmModule):
         self.pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, None)
         self.pubsub.subscribe(pubsub_topics.STATE_TOPIC, None)
 
-    # TODO: unsubscibe once logic is fixed in LCM
     def _stop_impl(self):
-        pass
+        self.pubsub.unsubscribe(pubsub_topics.TRAJECTORY_PARAMS_TOPIC)
+        self.pubsub.unsubscribe(pubsub_topics.STATE_TOPIC)
 
     def _periodic_action_impl(self):
         """
@@ -59,7 +57,7 @@ class TrajectoryPlanningFacade(DmModule):
         """
         try:
             # TODO: Read time from central time module to support also simulation & recording time.
-            # TODO: If it is done only for measuring RT performance, then add documentation and change name accordingly
+            # Monitor execution time of a time-critical component (prints to logging at the end of method)
             start_time = time.time()
 
             state = self._get_current_state()
@@ -73,8 +71,10 @@ class TrajectoryPlanningFacade(DmModule):
                               params.time - state.ego_state.timestamp_in_sec)
             self.logger.info("state: %d objects detected", len(state.dynamic_objects))
 
-
-            # TODO: this currently applies to location only (not yaw, velocities, accelerations, etc.)
+            # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
+            # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
+            # Optimal Control and the fact it complies with Bellman principle of optimality.
+            # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if self._is_actual_state_close_to_expected_state(state.ego_state):
                 updated_state = self._get_state_with_expected_ego(state)
                 self.logger.info("TrajectoryPlanningFacade ego localization was overriden to the expected-state "
@@ -82,31 +82,29 @@ class TrajectoryPlanningFacade(DmModule):
             else:
                 updated_state = state
 
-            # TODO: currently adding default curvature and acceleration values
+            # THIS ASSUMES TARGET IS ACCELERATION-FREE AND CURAVUTURE-FREE
             extended_target_state = np.append(params.target_state, [DEFAULT_ACCELERATION, DEFAULT_CURVATURE])
 
-            # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
+            # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, extended_target_state, params.time, params.cost_params)
 
             # TODO: validate that sampling is consistent with controller!
             trajectory_points = samplable_trajectory.sample(
                 np.linspace(start=TRAJECTORY_TIME_RESOLUTION,
-                            stop= TRAJECTORY_NUM_POINTS * TRAJECTORY_TIME_RESOLUTION,
+                            stop=TRAJECTORY_NUM_POINTS * TRAJECTORY_TIME_RESOLUTION,
                             num=TRAJECTORY_NUM_POINTS) + state.ego_state.timestamp_in_sec)
 
-            # TODO: should publish v_x?
+            # TODO: should we publish v_x at all? add timestamp here.
             # publish results to the lower DM level (Control)
             self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory_points, current_speed=state.ego_state.v_x))
             self._last_trajectory = samplable_trajectory
 
-            # TODO: publish cost to behavioral layer?
-            # publish visualization/debug data - based on original state!
+            # publish visualization/debug data - based on actual ego localization (original state)!
             debug_results = self._prepare_visualization_msg(state, params.reference_route, ctrajectories, costs,
                                                             params.time - state.ego_state.timestamp_in_sec,
                                                             self._strategy_handlers[params.strategy].predictor)
-            # TODO: DEBUG ONLY
-            # debug_results.state = updated_state
+
             self._publish_debug(debug_results)
 
             self.logger.info("TrajectoryPlanningFacade._periodic_action_impl time %f", time.time() - start_time)
@@ -160,7 +158,6 @@ class TrajectoryPlanningFacade(DmModule):
     def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
         self.pubsub.publish(pubsub_topics.TRAJECTORY_VISUALIZATION_TOPIC, debug_msg.serialize())
 
-
     def _is_actual_state_close_to_expected_state(self, current_ego_state: EgoState) -> bool:
         """
         checks if the actual ego state at time t[current] is close (currently in terms of Euclidean distance of position
@@ -180,7 +177,7 @@ class TrajectoryPlanningFacade(DmModule):
 
         errors_in_expected_frame, _ = CartesianFrame.convert_global_to_relative_frame(
             global_pos=current_actual_location,
-            global_yaw=0.0,
+            global_yaw=0.0,  # irrelevant since yaw isn't used.
             frame_position=np.append(current_expected_state[[C_X, C_Y]], [DEFAULT_OBJECT_Z_VALUE]),
             frame_orientation=current_expected_state[C_YAW]
         )
@@ -193,7 +190,9 @@ class TrajectoryPlanningFacade(DmModule):
     def _get_state_with_expected_ego(self, state: State):
         """
         takes a state and overrides its ego vehicle's localization to be the localization expected at the state's
-        timestamp according to the last trajectory cached in the facade's self._last_trajectory
+        timestamp according to the last trajectory cached in the facade's self._last_trajectory.
+        Note: lateral velocity is zeroed since we don't plan for drifts and lateral components are being reflected in
+        yaw and curvature.
         :param state: the state to process
         :return: a new state object with a new ego-vehicle localization
         """
@@ -235,10 +234,10 @@ class TrajectoryPlanningFacade(DmModule):
         prediction_timestamps = np.arange(most_recent_timestamp, state.ego_state.timestamp_in_sec + planning_horizon,
                                           VISUALIZATION_PREDICTION_RESOLUTION, float)
 
+        # TODO: move this to visualizer!
         # Curently we are predicting the state at ego's timestamp and at the end of the traj execution time.
         # predicted_states[0] is the current state
         # predicted_states[1] is the predicted state in the end of the execution of traj.
-        # TODO: move this to visualizer!
         predicted_states = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps)
 
         return TrajectoryVisualizationMsg(reference_route,

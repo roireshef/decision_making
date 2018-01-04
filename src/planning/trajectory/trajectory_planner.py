@@ -12,7 +12,6 @@ from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 
 
-# TODO: fill the units in timestamps
 class SamplableTrajectory(metaclass=ABCMeta):
     def __init__(self, timestamp: float, max_sample_time: float):
         """

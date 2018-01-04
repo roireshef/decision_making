@@ -8,7 +8,6 @@ from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STE
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, NUM_ALTERNATIVE_TRAJECTORIES, \
     TRAJECTORY_OBSTACLE_LOOKAHEAD, SX_OFFSET_MIN, SX_OFFSET_MAX
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
-from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils as OC
@@ -44,8 +43,6 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         fstates = np.hstack((fstates_s, fstates_d))
 
         # project from road coordinates to cartesian coordinate frame
-        # TODO: currently acceleration is computed in ftrajectory_to_ctrajectory as pseudo-derivative
-        # TODO (cont.): so acceleration values here are wrong
         cstates = self.frenet_frame.ftrajectory_to_ctrajectory(fstates)
 
         return cstates
@@ -88,13 +85,13 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # TODO: Determine desired final state search grid - this should be fixed with introducing different T_s, T_d
         sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_frenet_state[FS_SX], 0)),
-                               np.min((SX_OFFSET_MAX + goal_frenet_state[FS_SX], (len(frenet.O)-1) * frenet.ds)),
+                               np.min((SX_OFFSET_MAX + goal_frenet_state[FS_SX], (len(frenet.O) - 1) * frenet.ds)),
                                SX_STEPS)
         # sx_range = np.linspace(goal_frenet_state[FS_SX]  / 2, goal_frenet_state[FS_SX], SX_STEPS)
 
         sv_range = np.linspace(
-            np.max((SV_OFFSET_MIN + goal_frenet_state[FS_SV], cost_params.velocity_limits[0])),
-            np.min((SV_OFFSET_MAX + goal_frenet_state[FS_SV], cost_params.velocity_limits[1])),
+            np.max((SV_OFFSET_MIN + goal_frenet_state[FS_SV], cost_params.velocity_limits[LIMIT_MIN])),
+            np.min((SV_OFFSET_MAX + goal_frenet_state[FS_SV], cost_params.velocity_limits[LIMIT_MAX])),
             SV_STEPS)
 
         dx_range = np.linspace(DX_OFFSET_MIN + goal_frenet_state[FS_DX],
@@ -104,7 +101,6 @@ class WerlingPlanner(TrajectoryPlanner):
         fconstraints_tT = FrenetConstraints(sx=sx_range, sv=sv_range, sa=goal_frenet_state[FS_SA],
                                             dx=dx_range, dv=goal_frenet_state[FS_DV], da=goal_frenet_state[FS_DA])
 
-        # TODO: Understand what's the best resolution for cases of planning_horizon<0
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (planning_horizon)
         planning_horizon = goal_time - state.ego_state.timestamp_in_sec
@@ -112,8 +108,9 @@ class WerlingPlanner(TrajectoryPlanner):
         assert planning_horizon >= 0
 
         # solve problem in frenet-frame
-        ftrajectories, poly_coefs = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT, planning_horizon,
-                                                 planning_time_points)
+        ftrajectories, poly_coefs = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
+                                                                       planning_horizon,
+                                                                       planning_time_points)
 
         # filter resulting trajectories by velocity and acceleration
         ftrajectories_filtered, filtered_indices = self._filter_limits(ftrajectories, cost_params)
@@ -145,16 +142,17 @@ class WerlingPlanner(TrajectoryPlanner):
             poly_d_coefs=poly_coefs[filtered_indices[sorted_idxs[0]]][6:]
         )
 
-        # splice alternative trajectories by skipping indices - for visualization
+        # slice alternative trajectories by skipping indices - for visualization
         alternative_ids_skip_range = range(0, len(ctrajectories),
                                            max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
 
         return samplable_trajectory, \
-               ctrajectories[sorted_idxs[alternative_ids_skip_range], :, :(C_V+1)], \
+               ctrajectories[sorted_idxs[alternative_ids_skip_range], :, :(C_V + 1)], \
                trajectory_costs[sorted_idxs[alternative_ids_skip_range]]
 
     @staticmethod
-    def _filter_limits(ftrajectories: FrenetTrajectories, cost_params: TrajectoryCostParams) -> (FrenetTrajectories, np.ndarray):
+    def _filter_limits(ftrajectories: FrenetTrajectories, cost_params: TrajectoryCostParams) -> (
+    FrenetTrajectories, np.ndarray):
         """
         filters trajectories in their frenet-frame representation according to velocity and acceleration limits
         :param ftrajectories: Frenet-frame trajectories (tensor) of shape [t, p, 6] with t trajectories,
@@ -186,8 +184,6 @@ class WerlingPlanner(TrajectoryPlanner):
         :return: numpy array (1D) of the total cost per trajectory (in ctrajectories and ftrajectories)
         """
         # TODO: add jerk cost
-        # TODO: handle dynamic objects?
-        # TODO: max instead of sum? what if close_obstacles is empty?
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
         close_obstacles = \
             [SigmoidDynamicBoxObstacle.from_object(obs, params.obstacle_cost.k, params.obstacle_cost.offset,
@@ -251,5 +247,3 @@ class WerlingPlanner(TrajectoryPlanner):
 
         return TensorOps.cartesian_product_matrix_rows(solutions_s, solutions_d), \
                TensorOps.cartesian_product_matrix_rows(poly_s, poly_d)
-
-
