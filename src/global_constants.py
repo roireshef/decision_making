@@ -17,9 +17,6 @@ PREDICTION_LOOKAHEAD_COMPENSATION_RATIO = 1.1
 # [m] length of reference trajectory provided by behavioral planner
 REFERENCE_TRAJECTORY_LENGTH = 30.0
 
-# [m] extra margin (backwards) for the reference-route generation for TP
-#REFERENCE_TRAJECTORY_MARGIN = PREDICTION_LOOKAHEAD_COMPENSATION_RATIO / 2
-
 # [m] Resolution for the interpolation of the reference route
 TRAJECTORY_ARCLEN_RESOLUTION = 0.1
 
@@ -66,7 +63,6 @@ SX_OFFSET_MIN, SX_OFFSET_MAX = -3, 0.1
 SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
 
 # [m] Range for grid search in werling planner (lat. position)
-# TODO: set lateral offsets
 DX_OFFSET_MIN, DX_OFFSET_MAX = -1, 1
 
 # Linspace number of steps in the constraints parameters grid-search

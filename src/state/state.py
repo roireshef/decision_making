@@ -190,6 +190,7 @@ class EgoState(DynamicObject):
     @property
     def curvature(self):    # curvature is signed (same sign as steering_angle)
         # TODO: change <length> to the distance between the two axles
+        # TODO: understand (w.r.t which axle counts) if we should use sin or tan here + validate vs sensor-alignments
         return np.tan(self.steering_angle) / self.size.length
 
     def serialize(self) -> LcmEgoState:
