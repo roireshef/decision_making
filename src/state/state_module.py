@@ -169,13 +169,13 @@ class StateModule(DmModule):
             yaw = self_localization.yaw
             v_x = self_localization.velocity.v_x
             v_y = self_localization.velocity.v_y
+            a_x = self_localization.acceleration
             size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
             # Update state information under lock
             with self._ego_state_lock:
                 # TODO: replace UNKNOWN_DEFAULT_VAL with actual implementation
-                self._ego_state = EgoState(EGO_ID, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
-                                           self.UNKNOWN_DEFAULT_VAL,
+                self._ego_state = EgoState(EGO_ID, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, a_x,
                                            self.UNKNOWN_DEFAULT_VAL, self.UNKNOWN_DEFAULT_VAL)
 
             self._publish_state_if_full()
