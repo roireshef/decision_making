@@ -44,7 +44,7 @@ NUM_ALTERNATIVE_TRAJECTORIES = 10
 # [m] "Negligible distance" threshold between the desired location and the actual location between two TP planning
 # iterations. If the distance is lower than this threshold, the TP plans the trajectory as is the ego vehicle is
 # currently in the desired location and not in its actual location.
-# TODO: fix real values for thresholds. those high values are just for testing
+# TODO: fix real values for thresholds (after tuning controller)
 NEGLIGIBLE_DISPOSITION_LON = 10  # longitudinal (ego's heading direction) difference threshold
 NEGLIGIBLE_DISPOSITION_LAT = 3  # lateral (ego's side direction) difference threshold
 
@@ -72,12 +72,16 @@ DX_OFFSET_MIN, DX_OFFSET_MAX = -1, 1
 # Linspace number of steps in the constraints parameters grid-search
 SX_STEPS, SV_STEPS, DX_STEPS = 15, 1, 5
 
+# Frenet-Serret Conversions #
+
+# [1/m] Curvature threshold for the GD step (if value is smaller than this value, there is no step executed)
+TINY_CURVATURE = 10e-5
+
 # [m/sec^2] when acceleration is not specified - TP uses this as goal acceleration
 DEFAULT_ACCELERATION = 0.0
 
 # [-+1/m] when curvature is not specified - TP uses this as goal curvature
 DEFAULT_CURVATURE = 0.0
-
 # State #
 
 # TODO: set real values

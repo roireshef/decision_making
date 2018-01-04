@@ -103,7 +103,7 @@ def test_projectCartesianPoint_fivePointsProjection_accurate():
     correct_k_s = np.array([0.0111573838619, -0.000306650767641, -0.00842721944009, -0.0076813879679, -0.015775437513])
     correct_k_s_tag = np.array([5.2208243733e-05, -4.87381176358e-08, -5.94632191054e-06, 4.61577294664e-05, -7.69965827048e-05])
 
-    s, a_s, T_s, N_s, k_s, k_s_tag = frenet._project_cartesian_point(cpoints)
+    s, a_s, T_s, N_s, k_s, k_s_tag = frenet._project_cartesian_points(cpoints)
     s_error = s - correct_s
     a_s_error = a_s - correct_a_s
     T_s_error = T_s - correct_T_s
