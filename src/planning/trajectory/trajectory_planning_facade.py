@@ -14,7 +14,6 @@ from decision_making.src.state.state import State
 from common_data.src.communication.pubsub.pubsub import PubSub
 from common_data.lcm.config import pubsub_topics
 
-
 import time
 
 
@@ -60,22 +59,20 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.debug("input: ego: v_x: %f, v_y: %f", state.ego_state.v_x, state.ego_state.v_y)
             self.logger.info("state: %d objects detected", len(state.dynamic_objects))
 
-            # Update state: align all object to most recent timestamp
-            state_aligned = self._predictor.align_objects_to_most_recent_timestamp(state=state)
-
             # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
             trajectory, cost, debug_results = self._strategy_handlers[params.strategy].plan(
-                state_aligned, params.reference_route, params.target_state, params.time, params.cost_params)
+                state, params.reference_route, params.target_state, params.time, params.cost_params)
 
             # TODO: should publish v_x?
             # publish results to the lower DM level (Control)
-            self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory, current_speed=state_aligned.ego_state.v_x))
+            self._publish_trajectory(
+                TrajectoryPlanMsg(trajectory=trajectory, current_speed=state.ego_state.v_x))
 
             # TODO: publish cost to behavioral layer?
             # publish visualization/debug data
             self._publish_debug(debug_results)
 
-            self.logger.info("TrajectoryPlanningFacade._periodic_action_impl time %f", time.time()-start_time)
+            self.logger.info("TrajectoryPlanningFacade._periodic_action_impl time %f", time.time() - start_time)
 
         except MsgDeserializationError as e:
             self.logger.warn("MsgDeserializationError was raised. skipping planning. " +
@@ -126,4 +123,3 @@ class TrajectoryPlanningFacade(DmModule):
 
     def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
         self.pubsub.publish(pubsub_topics.TRAJECTORY_VISUALIZATION_TOPIC, debug_msg.serialize())
-

@@ -6,7 +6,7 @@ import numpy as np
 from decision_making.src.messages.str_serializable import StrSerializable
 from mapping.src.model.localization import RoadLocalization
 
-from decision_making.src.planning.types import CartesianState, C_X, C_THETA, C_Y, C_V
+from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW
 from mapping.src.service.map_service import MapService
 
 from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedNumpyArray
@@ -125,7 +125,7 @@ class DynamicObject(StrSerializable):
         x = cartesian_state[C_X]
         y = cartesian_state[C_Y]
         z = 0.0
-        yaw = cartesian_state[C_THETA]
+        yaw = cartesian_state[C_YAW]
 
         # Assume that object's speed is only in the x axis
         v_x = cartesian_state[C_V]
