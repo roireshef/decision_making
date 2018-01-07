@@ -111,7 +111,8 @@ class DynamicObject(StrSerializable):
     def clone_cartesian_state(self, timestamp_in_sec: float, cartesian_state: CartesianState):
         """
         Return a new DynamicObject instance with updated timestamp and cartesian state.
-        Enables creating new instances of object from predicted trajectories
+        Enables creating new instances of object from predicted trajectories.
+        Assume that object's speed is only in the x axis
         :param timestamp_in_sec: global timestamp in [sec] of updated object
         :param cartesian_state: object cartesian state
         :return: Returns a new DynamicObject with updated state

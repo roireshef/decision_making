@@ -60,13 +60,16 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.debug("input: ego: v_x: %f, v_y: %f", state.ego_state.v_x, state.ego_state.v_y)
             self.logger.info("state: %d objects detected", len(state.dynamic_objects))
 
+            # Update state: align all object to most recent timestamp
+            state_aligned = self._predictor.align_objects_to_most_recent_timestamp(state=state)
+
             # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
             trajectory, cost, debug_results = self._strategy_handlers[params.strategy].plan(
-                state, params.reference_route, params.target_state, params.time, params.cost_params)
+                state_aligned, params.reference_route, params.target_state, params.time, params.cost_params)
 
             # TODO: should publish v_x?
             # publish results to the lower DM level (Control)
-            self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory, current_speed=state.ego_state.v_x))
+            self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory, current_speed=state_aligned.ego_state.v_x))
 
             # TODO: publish cost to behavioral layer?
             # publish visualization/debug data
