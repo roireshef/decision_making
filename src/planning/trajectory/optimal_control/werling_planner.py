@@ -9,14 +9,14 @@ from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STE
     TRAJECTORY_OBSTACLE_LOOKAHEAD
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
-from decision_making.src.planning.types import FP_SX, CURVE_THETA, FP_DX, C_X, C_Y, C_THETA, C_V, FS_SV, \
-    FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils as OC
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
-from decision_making.src.planning.utils.frenet_moving_frame import FrenetMovingFrame
+from decision_making.src.planning.types import FP_SX, CURVE_YAW, FP_DX, C_X, C_Y, C_YAW, C_V, FS_SV, \
+    FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX
 from decision_making.src.planning.types import FrenetTrajectories, CartesianExtendedTrajectories, FrenetPoint
+from decision_making.src.planning.utils.frenet_moving_frame import FrenetMovingFrame
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.tensor_ops import TensorOps
 from decision_making.src.prediction.predictor import Predictor
@@ -42,7 +42,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
         # The vehicle doesn't need to lay parallel to the road.
         ego_in_frenet = frenet.cpoint_to_fpoint(np.array([state.ego_state.x, state.ego_state.y]))
-        ego_theta_diff = frenet.curve[0, CURVE_THETA] - state.ego_state.yaw
+        ego_theta_diff = frenet.curve[0, CURVE_YAW] - state.ego_state.yaw
 
         # TODO: translate acceleration of initial state
         # define constraints for the initial state
@@ -59,7 +59,7 @@ class WerlingPlanner(TrajectoryPlanner):
         goal_in_frenet = frenet.cpoint_to_fpoint(goal[[C_X, C_Y]])
         goal_sx, goal_dx = goal_in_frenet[FP_SX], goal_in_frenet[FP_DX]
 
-        goal_theta_diff = goal[C_THETA] - frenet.curve[frenet.sx_to_s_idx(goal_sx), CURVE_THETA]
+        goal_theta_diff = goal[C_YAW] - frenet.curve[frenet.sx_to_s_idx(goal_sx), CURVE_YAW]
 
         # TODO: Determine desired final state search grid - this should be fixed with introducing different T_s, T_d
         # sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_sx, 0)) / 2,
@@ -87,8 +87,8 @@ class WerlingPlanner(TrajectoryPlanner):
         assert planning_horizon >= 0
 
         # solve problem in frenet-frame
-        ftrajectories = self._solve_optimization(fconstraints_t0, fconstraints_tT, planning_horizon,
-                                                 planning_time_points)
+        ftrajectories, _ = self._solve_optimization(fconstraints_t0, fconstraints_tT, planning_horizon,
+                                                    planning_time_points)
 
         # filter resulting trajectories by velocity and acceleration
         ftrajectories_filtered = self._filter_limits(ftrajectories, cost_params)
@@ -223,4 +223,6 @@ class WerlingPlanner(TrajectoryPlanner):
         poly_s = OC.QuinticPoly1D.solve(A_inv, constraints_s)
         solutions_s = OC.QuinticPoly1D.polyval_with_derivatives(poly_s, time_samples)
 
-        return TensorOps.cartesian_product_matrix_rows(solutions_s, solutions_d)
+        return (TensorOps.cartesian_product_matrix_rows(solutions_s, solutions_d), (poly_s, poly_d))
+
+

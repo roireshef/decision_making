@@ -3,7 +3,7 @@ from abc import abstractmethod
 import numpy as np
 
 from decision_making.src.global_constants import EXP_CLIP_TH
-from decision_making.src.planning.types import CartesianTrajectory, C_THETA, CartesianState, C_Y, C_X
+from decision_making.src.planning.types import CartesianTrajectory, C_YAW, CartesianState, C_Y, C_X
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject
 from mapping.src.transformations.geometry_utils import CartesianFrame
@@ -81,7 +81,7 @@ class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
         # conversion matrices from global to relative to obstacle
         # TODO: make this more efficient by removing for loop
         for pose_ind in range(poses.shape[0]):
-            H = CartesianFrame.homo_matrix_2d(poses[pose_ind, C_THETA], poses[pose_ind, :C_THETA])
+            H = CartesianFrame.homo_matrix_2d(poses[pose_ind, C_YAW], poses[pose_ind, :C_YAW])
             self._H_inv[pose_ind] = np.linalg.inv(H).transpose()
 
     def convert_to_obstacle_coordinate_frame(self, homo_trajectories_points: np.ndarray):
@@ -119,7 +119,7 @@ class SigmoidStaticBoxObstacle(SigmoidBoxObstacle):
         :param margin: center of sigmoid offset
         """
         super().__init__(length, width, k, margin)
-        H = CartesianFrame.homo_matrix_2d(pose[C_THETA], pose[:C_THETA])
+        H = CartesianFrame.homo_matrix_2d(pose[C_YAW], pose[:C_YAW])
         self._H_inv = np.linalg.inv(H).transpose()
 
     def convert_to_obstacle_coordinate_frame(self, homo_trajectories_points: np.ndarray):

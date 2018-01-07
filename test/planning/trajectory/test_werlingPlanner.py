@@ -2,7 +2,8 @@ import numpy as np
 import time
 
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
-from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_THETA
+from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
+from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
@@ -33,7 +34,7 @@ def test_werlingPlanner_toyScenario_noException():
 
     predictor = RoadFollowingPredictor(logger)
 
-    goal = np.concatenate((route_points[len(route_points) // 2, [CURVE_X, CURVE_Y, CURVE_THETA]], [vT]))
+    goal = np.concatenate((route_points[len(route_points) // 2, [CURVE_X, CURVE_Y, CURVE_YAW]], [vT]))
 
     pos1 = np.array([7, -.5])
     yaw1 = 0
@@ -97,7 +98,6 @@ def test_werlingPlanner_toyScenario_noException():
 
     WerlingVisualizer.plot_route(p1, route_points)
 
-    #fig.show()
-    #fig.clear()
-
+    fig.show()
+    fig.clear()
 

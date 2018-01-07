@@ -23,7 +23,7 @@ VISUALIZATION_PREDICTION_RESOLUTION = 1.0
 OBJECT_HISTORY_TIMEOUT = 1000*1000*1000*2
 
 # Curve interpolation type (order)
-TRAJECTORY_CURVE_INTERP_TYPE = 'cubic'
+TRAJECTORY_CURVE_INTERP_TYPE = 'quadratic'
 
 # [m] Do not consider obstacles that are distant than this threshold
 TRAJECTORY_OBSTACLE_LOOKAHEAD = 200.0
@@ -51,6 +51,11 @@ DX_OFFSET_MIN, DX_OFFSET_MAX = -1, 1
 
 # Linspace number of steps in the constraints parameters grid-search
 SX_STEPS, SV_STEPS, DX_STEPS = 15, 1, 5
+
+# Frenet-Serret Conversions #
+
+# [1/m] Curvature threshold for the GD step (if value is smaller than this value, there is no step executed)
+TINY_CURVATURE = 10e-5
 
 # State #
 

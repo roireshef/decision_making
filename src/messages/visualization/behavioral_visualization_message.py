@@ -2,7 +2,7 @@ import numpy as np
 
 from common_data.lcm.generatedFiles.gm_lcm import LcmBehavioralVisualizationMsg
 from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedNumpyArray
-from decision_making.src.planning.types import CartesianPath
+from decision_making.src.planning.types import CartesianPath2D
 
 
 class BehavioralVisualizationMsg:
@@ -10,7 +10,7 @@ class BehavioralVisualizationMsg:
         # type: (CartesianPath) -> None
         """
         The struct used for communicating the behavioral plan to the visualizer.
-        :param reference_route: of type CartesianPath
+        :param reference_route: of type CartesianPath2D
         """
         self.reference_route = reference_route
 
