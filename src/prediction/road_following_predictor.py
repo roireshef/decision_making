@@ -70,14 +70,16 @@ class RoadFollowingPredictor(Predictor):
         if object_velocity < 0.0:
             raise PredictedObjectHasNegativeVelocity(
                 'Object with id (%d) velocity is %f. Prediction timestamps: %s. Object data: %s' % (
-                dynamic_object.obj_id,
-                object_velocity, prediction_timestamps, dynamic_object))
+                    dynamic_object.obj_id,
+                    object_velocity, prediction_timestamps, dynamic_object))
 
         # we assume the objects is travelling with a constant velocity, therefore the lookahead distance is
         lookahead_distance = (prediction_timestamps[-1] - dynamic_object.timestamp_in_sec) * object_velocity
         # raise exception if trying to predict an object in past times
         if lookahead_distance < 0.0:
-            raise PredictObjectInPastTimes()
+            raise PredictObjectInPastTimes(
+                'Trying to predict object (id=%d) with timestamp %f [sec] to past timestamps: %s' % (
+                    dynamic_object.obj_id, dynamic_object.timestamp_in_sec, prediction_timestamps))
         lookahead_distance += PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
 
         map_based_nav_plan = \
