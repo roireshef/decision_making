@@ -7,12 +7,9 @@ from decision_making.src.planning.types import C_X, C_Y, CartesianTrajectory
 from decision_making.src.prediction.constants import PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject
+from mapping.src.exceptions import PredictedObjectHasNegativeVelocity
 from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
-
-
-class PredictedObjectHasNegativeVelocity(Exception):
-    pass
 
 
 class RoadFollowingPredictor(Predictor):
@@ -72,8 +69,10 @@ class RoadFollowingPredictor(Predictor):
         # TODO: handle objects with negative velocities
         object_velocity = np.abs(dynamic_object.v_x)
         if object_velocity < 0.0:
-            raise PredictedObjectHasNegativeVelocity('Object with id (%d) velocity is %f' % (dynamic_object.obj_id,
-                                                                                             object_velocity))
+            raise PredictedObjectHasNegativeVelocity(
+                'Object with id (%d) velocity is %f. Prediction timestamps: %s. Object data: %s' % (
+                dynamic_object.obj_id,
+                object_velocity, prediction_timestamps, dynamic_object))
 
         # we assume the objects is travelling with a constant velocity, therefore the lookahead distance is
         lookahead_distance = (prediction_timestamps[-1] - dynamic_object.timestamp_in_sec) * object_velocity

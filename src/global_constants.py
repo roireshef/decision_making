@@ -59,9 +59,6 @@ TINY_CURVATURE = 10e-5
 
 # State #
 
-# constant height in [m] of flat world
-FLAT_WORLD_Z = 0.0
-
 # TODO: set real values
 # [m] Bounding box size around ego vehicle
 EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 5.0, 2.0, 2.0
