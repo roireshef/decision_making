@@ -105,7 +105,7 @@ class RoadFollowingPredictor(Predictor):
             route_xy = np.reshape(np.tile(lookahead_route[0], predicted_distances_from_start.shape[0]), (-1, 2))
         else:
             raise Exception('Predict object (id=%d) has empty lookahead_route. Object info: %s' % (
-                dynamic_object.obj_id, dynamic_object))
+                dynamic_object.obj_id, dynamic_object.__dict__))
 
         # add yaw and velocity
         route_len = route_xy.shape[0]
