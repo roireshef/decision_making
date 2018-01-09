@@ -39,7 +39,7 @@ def test_predictObjectTrajectories_precisePredictionDynamicAndStaticObjectMultip
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-def test_predictObject_zeroSpeedZeroLookahead_noException(car_size):
+def test_predictObject_zeroSpeedZeroLookahead_samePoint(car_size):
     logger = AV_Logger.get_logger("test_predictObjectTrajectories_precisePrediction")
     predictor = RoadFollowingPredictor(logger)
     global_state = np.array([500.0, 0.0, 0.0, 0.0])
@@ -48,9 +48,9 @@ def test_predictObject_zeroSpeedZeroLookahead_noException(car_size):
                             acceleration_lon=0, omega_yaw=0)
     # Test if zero lookahead at zero speed works without raising exception
     pred_timestamps = np.array([0.0])
-    traj = predictor.predict_object(dyn_obj, pred_timestamps)
+    predicted_traj = predictor.predict_object(dyn_obj, pred_timestamps)
 
-    assert True
+    assert np.any(np.isclose(global_state, predicted_traj))
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
