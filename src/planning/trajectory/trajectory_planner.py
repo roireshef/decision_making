@@ -6,7 +6,7 @@ import numpy as np
 from decision_making.src.exceptions import raises, NoValidTrajectoriesFound
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
-from decision_making.src.planning.types import CartesianPath, CartesianTrajectory, CartesianState
+from decision_making.src.planning.types import CartesianPath2D, CartesianTrajectory, CartesianState
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 from logging import Logger
@@ -19,7 +19,7 @@ class TrajectoryPlanner(metaclass=ABCMeta):
 
     @abstractmethod
     @raises(NoValidTrajectoriesFound)
-    def plan(self, state: State, reference_route: CartesianPath, goal: CartesianState, goal_time: float,
+    def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianState, goal_time: float,
              cost_params: TrajectoryCostParams) -> Tuple[CartesianTrajectory, float, TrajectoryVisualizationMsg]:
         """
         Plans a trajectory according to the specifications in the arguments
