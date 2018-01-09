@@ -7,7 +7,6 @@ from decision_making.src.planning.types import C_X, C_Y, CartesianTrajectory
 from decision_making.src.prediction.constants import PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject
-from mapping.src.exceptions import PredictedObjectHasNegativeVelocity
 from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
