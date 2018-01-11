@@ -34,7 +34,7 @@ class TrajectoryPlanningFacade(DmModule):
         :param pubsub: communication layer (DDS/LCM/...) instance
         :param logger: logger
         :param strategy_handlers: a dictionary of trajectory planners as strategy handlers -
-        types are {TrajectoryPlanningStrategy: TrajectoryPlanner}
+        :param last_trajectory: a representation the last trajectory that was planned during self._periodic_action_impl
         """
         super().__init__(pubsub=pubsub, logger=logger)
 

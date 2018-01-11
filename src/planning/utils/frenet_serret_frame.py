@@ -5,7 +5,7 @@ from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, T
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
     FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, FS_SX, \
     FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint, C_YAW, C_K, C_V, C_A, \
-    CartesianVectorsTensor2D, CartesianPointsTensor2D
+    CartesianVectorsTensor2D, CartesianPointsTensor2D, FrenetState, CartesianExtendedState
 from decision_making.src.planning.utils.tensor_ops import TensorOps
 from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
@@ -38,29 +38,11 @@ class FrenetSerret2DFrame:
         _, T_r, _, _, _ = self._taylor_interp(s)
         return np.arctan2(T_r[..., C_Y], T_r[..., C_X])
 
-    def ftrajectory_to_ctrajectory(self, ftrajectory: FrenetTrajectory) -> CartesianExtendedTrajectory:
-        """
-        Transforms Frenet-frame trajectory to cartesian-frame trajectory, using tensor operations
-        :param ftrajectory: a frenet-frame trajectory
-        :return: a cartesian-frame trajectory (given in the coordinate frame of self.points)
-        """
-        return self.ftrajectories_to_ctrajectories(np.array([ftrajectory]))[0]
-
-    def ctrajectory_to_ftrajectory(self, ctrajectory: CartesianExtendedTrajectory) -> FrenetTrajectory:
-        """
-        Transforms Cartesian-frame trajectory to Frenet-frame trajectory, using tensor operations
-        :param ctrajectory: a cartesian-frame trajectory (in the coordinate frame of self.points)
-        :return: a frenet-frame trajectory
-        """
-        return self.ctrajectories_to_ftrajectories(np.array([ctrajectory]))[0]
+    ## FRENET => CARTESIAN
 
     def fpoint_to_cpoint(self, fpoints: FrenetPoint) -> CartesianPoint2D:
         """Transforms a frenet-frame point to a cartesian-frame point (see self.fpoints_to_cpoints for more details)"""
         return self.fpoints_to_cpoints(fpoints[np.newaxis, :])[0]
-
-    def cpoint_to_fpoint(self, cpoints: CartesianPoint2D) -> FrenetPoint:
-        """Transforms a cartesian-frame point to a frenet-frame point (see self.fpoints_to_cpoints for more details)"""
-        return self.cpoints_to_fpoints(cpoints[np.newaxis, :])[0]
 
     def fpoints_to_cpoints(self, fpoints: FrenetTrajectory) -> CartesianPath2D:
         """
@@ -71,18 +53,21 @@ class FrenetSerret2DFrame:
         a_s, _, N_s, _, _ = self._taylor_interp(fpoints[:, FP_SX])
         return a_s + N_s * fpoints[:, [FP_DX]]
 
-    def cpoints_to_fpoints(self, cpoints: CartesianPath2D) -> FrenetTrajectory:
+    def fstate_to_cstate(self, fstate: FrenetState) -> CartesianExtendedState:
         """
-        Transforms cartesian-frame points to frenet-frame points (using self.curve)
-        :param cpoints: Cartesian-frame trajectory (matrix)
-        :return: Frenet-frame trajectory (matrix)
+        Transforms Frenet-frame state to cartesian-frame state
+        :param ftrajectory: a frenet-frame state
+        :return: a cartesian-frame state (given in the coordinate frame of self.points)
         """
-        s, a_s, _, N_s, _, _ = self._project_cartesian_points(cpoints)
+        return self.ftrajectories_to_ctrajectories(np.array([fstate]))[0]
 
-        # project cpoints on the normals at a_s
-        d = np.einsum('ij,ij->i', cpoints - a_s, N_s)
-
-        return np.c_[s, d]
+    def ftrajectory_to_ctrajectory(self, ftrajectory: FrenetTrajectory) -> CartesianExtendedTrajectory:
+        """
+        Transforms Frenet-frame trajectory to cartesian-frame trajectory, using tensor operations
+        :param ftrajectory: a frenet-frame trajectory
+        :return: a cartesian-frame trajectory (given in the coordinate frame of self.points)
+        """
+        return self.ftrajectories_to_ctrajectories(np.array([ftrajectory]))[0]
 
     def ftrajectories_to_ctrajectories(self, ftrajectories: FrenetTrajectories) -> CartesianExtendedTrajectories:
         """
@@ -133,6 +118,41 @@ class FrenetSerret2DFrame:
         return np.concatenate((pos_x.reshape([num_t, num_p, 2]), theta_x.reshape([num_t, num_p, 1]),
                                v_x.reshape([num_t, num_p, 1]), a_x.reshape([num_t, num_p, 1]),
                                k_x.reshape([num_t, num_p, 1])), axis=2)
+
+    ## CARTESIAN => FRENET
+
+    def cpoint_to_fpoint(self, cpoints: CartesianPoint2D) -> FrenetPoint:
+        """Transforms a cartesian-frame point to a frenet-frame point (see self.fpoints_to_cpoints for more details)"""
+        return self.cpoints_to_fpoints(cpoints[np.newaxis, :])[0]
+
+    def cpoints_to_fpoints(self, cpoints: CartesianPath2D) -> FrenetTrajectory:
+        """
+        Transforms cartesian-frame points to frenet-frame points (using self.curve)
+        :param cpoints: Cartesian-frame trajectory (matrix)
+        :return: Frenet-frame trajectory (matrix)
+        """
+        s, a_s, _, N_s, _, _ = self._project_cartesian_points(cpoints)
+
+        # project cpoints on the normals at a_s
+        d = np.einsum('ij,ij->i', cpoints - a_s, N_s)
+
+        return np.c_[s, d]
+
+    def cstate_to_fstate(self, cstate: CartesianExtendedState) -> FrenetState:
+        """
+        Transforms Cartesian-frame state to Frenet-frame state
+        :param ctrajectory: a cartesian-frame state (in the coordinate frame of self.points)
+        :return: a frenet-frame state
+        """
+        return self.ctrajectory_to_ftrajectory(np.array([cstate]))[0]
+
+    def ctrajectory_to_ftrajectory(self, ctrajectory: CartesianExtendedTrajectory) -> FrenetTrajectory:
+        """
+        Transforms Cartesian-frame trajectory to Frenet-frame trajectory, using tensor operations
+        :param ctrajectory: a cartesian-frame trajectory (in the coordinate frame of self.points)
+        :return: a frenet-frame trajectory
+        """
+        return self.ctrajectories_to_ftrajectories(np.array([ctrajectory]))[0]
 
     def ctrajectories_to_ftrajectories(self, ctrajectories: CartesianExtendedTrajectories) -> FrenetTrajectories:
         """

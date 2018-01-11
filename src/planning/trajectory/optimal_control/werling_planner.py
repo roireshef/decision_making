@@ -14,7 +14,7 @@ from decision_making.src.planning.trajectory.optimal_control.optimal_control_uti
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianExtendedTrajectory, \
-    CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState
+    CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, FrenetState
 from decision_making.src.planning.types import FrenetTrajectories, CartesianExtendedTrajectories, FrenetPoint
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
@@ -68,7 +68,7 @@ class WerlingPlanner(TrajectoryPlanner):
         ego_cartesian_state = np.array([state.ego_state.x, state.ego_state.y, state.ego_state.yaw, state.ego_state.v_x,
                                         state.ego_state.acceleration_lon, state.ego_state.curvature])
 
-        ego_frenet_state = frenet.ctrajectory_to_ftrajectory(np.array([ego_cartesian_state]))[0]
+        ego_frenet_state: FrenetState = frenet.cstate_to_fstate(ego_cartesian_state)
 
         # THIS HANDLES CURRENT STATES WHERE THE VEHICLE IS STANDING STILL
         if np.any(np.isnan(ego_frenet_state)):
@@ -81,7 +81,7 @@ class WerlingPlanner(TrajectoryPlanner):
         fconstraints_t0 = FrenetConstraints.from_state(ego_frenet_state)
 
         # define constraints for the terminal (goal) state
-        goal_frenet_state = frenet.ctrajectory_to_ftrajectory(np.array([goal]))[0]
+        goal_frenet_state: FrenetState = frenet.cstate_to_fstate(goal)
 
         # TODO: Determine desired final state search grid - this should be fixed with introducing different T_s, T_d
         sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_frenet_state[FS_SX], 0)),
@@ -125,7 +125,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                            (planning_horizon, goal, state, min_vel, max_vel, min_acc, max_acc))
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
-        ctrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
+        ctrajectories: CartesianExtendedTrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
 
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec

@@ -467,7 +467,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         else:
             return None
 
-
     @staticmethod
     def _generate_reference_route(behavioral_state: SemanticActionsGridState,
                                   action_spec: SemanticActionSpec, navigation_plan: NavigationPlanMsg) -> np.ndarray:
@@ -486,11 +485,16 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
         # caused by the curve linearization approximation in the resampling process
-        # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
-        # TODO: better than sending the whole road. and also what happens in the begginning of a road
+        # The compensation here is multiplicative because of the different curve-fittings we use:
+        # in BP we use piecewise-linear and in TP we use cubic-fit.
+        # Due to that, a point's longitude-value will be different between the 2 curves.
+        # This error is accumulated depending on the actual length of the curvature -
+        # when it is long, the error will potentially be big.
         lookahead_distance = behavioral_state.ego_state.road_localization.road_lon + \
                              target_relative_longitude * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
+        # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
+        # TODO: better than sending the whole road. and also what happens in the begginning of a road
         lookahead_path = MapService.get_instance().get_uniform_path_lookahead(
             road_id=behavioral_state.ego_state.road_localization.road_id,
             lat_shift=target_lane_latitude,
