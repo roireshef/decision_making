@@ -25,7 +25,7 @@ class TrajectoryPlanMsg(StrSerializable):
     def serialize(self) -> LcmTrajectoryData:
         lcm_msg = LcmTrajectoryData()
 
-        lcm_msg.time.timestamp = self.timestamp
+        lcm_msg.timestamp = self.timestamp
         lcm_msg.trajectory = LcmNumpyArray()
         lcm_msg.trajectory.num_dimensions = len(self.trajectory.shape)
         lcm_msg.trajectory.shape = list(self.trajectory.shape)
