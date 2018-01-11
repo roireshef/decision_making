@@ -187,7 +187,7 @@ class TrajectoryPlanningFacade(DmModule):
         return distances_in_expected_frame[FP_SX] <= NEGLIGIBLE_DISPOSITION_LON and \
                distances_in_expected_frame[FP_DX] <= NEGLIGIBLE_DISPOSITION_LAT
 
-    def _get_state_with_expected_ego(self, state: State):
+    def _get_state_with_expected_ego(self, state: State) -> State:
         """
         takes a state and overrides its ego vehicle's localization to be the localization expected at the state's
         timestamp according to the last trajectory cached in the facade's self._last_trajectory.
@@ -197,20 +197,22 @@ class TrajectoryPlanningFacade(DmModule):
         :return: a new state object with a new ego-vehicle localization
         """
         current_time = state.ego_state.timestamp_in_sec
-        expected_state: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
+        expected_state_vec: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
 
-        updated_state = copy.deepcopy(state)
-        updated_state.ego_state = EgoState(obj_id=state.ego_state.obj_id,
-                                           timestamp=state.ego_state.timestamp,
-                                           x=expected_state[C_X], y=expected_state[C_Y], z=state.ego_state.z,
-                                           yaw=expected_state[C_YAW], size=state.ego_state.size,
-                                           confidence=state.ego_state.confidence,
-                                           v_x=expected_state[C_V],
-                                           v_y=0.0,  # this is ok because we don't PLAN for drift velocity
-                                           acceleration_lon=expected_state[C_A],
-                                           omega_yaw=state.ego_state.omega_yaw,  # TODO: fill this properly
-                                           steering_angle=np.arctan(state.ego_state.size.length * expected_state[C_K]),
-                                           )
+        expected_ego_state = EgoState(
+            obj_id=state.ego_state.obj_id,
+            timestamp=state.ego_state.timestamp,
+            x=expected_state_vec[C_X], y=expected_state_vec[C_Y], z=state.ego_state.z,
+            yaw=expected_state_vec[C_YAW], size=state.ego_state.size,
+            confidence=state.ego_state.confidence,
+            v_x=expected_state_vec[C_V],
+            v_y=0.0,  # this is ok because we don't PLAN for drift velocity
+            acceleration_lon=expected_state_vec[C_A],
+            omega_yaw=state.ego_state.omega_yaw,  # TODO: fill this properly
+            steering_angle=np.arctan(state.ego_state.size.length * expected_state_vec[C_K]),
+        )
+
+        updated_state = state.clone_with(ego_state=expected_ego_state)
 
         return updated_state
 

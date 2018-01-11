@@ -218,7 +218,7 @@ class State(StrSerializable):
     def __init__(self, occupancy_state, dynamic_objects, ego_state):
         # type: (OccupancyState, List[DynamicObject], EgoState) -> None
         """
-        main class for the world state
+        main class for the world state. deep copy is required by self.clone_with!
         :param occupancy_state: free space
         :param dynamic_objects:
         :param ego_state:
@@ -226,6 +226,17 @@ class State(StrSerializable):
         self.occupancy_state = copy.deepcopy(occupancy_state)
         self.dynamic_objects = copy.deepcopy(dynamic_objects)
         self.ego_state = copy.deepcopy(ego_state)
+
+    def clone_with(self, occupancy_state: Optional[OccupancyState] = None,
+                   dynamic_objects: Optional[List[DynamicObject]] = None,
+                   ego_state: Optional[EgoState] = None):
+        """
+        clones state object with potential overriding of specific fields.
+        requires deep-copying of all fields in State.__init__ !!
+        """
+        return State(occupancy_state or self.occupancy_state,
+                     dynamic_objects or self.dynamic_objects,
+                     ego_state or self.ego_state)
 
     def serialize(self) -> LcmState:
         lcm_msg = LcmState()
