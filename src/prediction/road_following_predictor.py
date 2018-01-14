@@ -58,7 +58,6 @@ class RoadFollowingPredictor(Predictor):
 
         return predicted_object_states
 
-    # TODO: make this function work with object whose velocity==0 and for prediction_timestamp==dynamic_object.timestamp
     def predict_object(self, dynamic_object: DynamicObject,
                        prediction_timestamps: np.ndarray) -> CartesianTrajectory:
         """
@@ -81,7 +80,7 @@ class RoadFollowingPredictor(Predictor):
             raise PredictObjectInPastTimes(
                 'Trying to predict object (id=%d) with timestamp %f [sec] to past timestamps: %s' % (
                     dynamic_object.obj_id, dynamic_object.timestamp_in_sec, prediction_timestamps))
-        lookahead_distance = lookahead_distance * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
+        lookahead_distance *= PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
         map_based_nav_plan = \
             MapService.get_instance().get_road_based_navigation_plan(dynamic_object.road_localization.road_id)
