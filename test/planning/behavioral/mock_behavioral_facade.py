@@ -18,7 +18,7 @@ class BehavioralFacadeMock(BehavioralFacade):
         :param trajectory_params: the trajectory params message to publish periodically
         :param visualization_msg: the visualization message to publish periodically
         """
-        super().__init__(pubsub=pubsub, logger=logger, policy=None)
+        super().__init__(pubsub=pubsub, logger=logger, policy=None, short_time_predictor=None)
         self._trajectory_params = trajectory_params
         self._visualization_msg = visualization_msg
 

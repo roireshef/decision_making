@@ -24,7 +24,7 @@ class Policy(metaclass=ABCMeta):
         Plan according to the behavioral state and return trajectory parametrs that
         allow the Trajectory planner to evaluate & choose the best available trajectory
         :param nav_plan: car's navigation plan
-        :param state: world state
+        :param state: world state. All objects are assumed to be aligned to ego's timestamp
         :return: TrajectoryParameters for behavioral planner, BehavioralVisualizationMsg for visualization purposes
         """
         pass

@@ -9,6 +9,7 @@ from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanM
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
+from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 
 from common_data.src.communication.pubsub.pubsub import PubSub
@@ -19,15 +20,18 @@ import time
 
 class TrajectoryPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger,
-                 strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner]):
+                 strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner],
+                 short_time_predictor: Predictor):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param pubsub: communication layer (DDS/LCM/...) instance
         :param logger: logger
         :param strategy_handlers: a dictionary of trajectory planners as strategy handlers
+        :param short_time_predictor: predictor used to align all objects in state to ego's timestamp.
         """
         super().__init__(pubsub=pubsub, logger=logger)
 
+        self._predictor = short_time_predictor
         self._strategy_handlers = strategy_handlers
         self._validate_strategy_handlers()
 
@@ -51,22 +55,26 @@ class TrajectoryPlanningFacade(DmModule):
             start_time = time.time()
 
             state = self._get_current_state()
+
+            # Update state: align all object to most recent timestamp
+            state_aligned = self._predictor.align_objects_to_most_recent_timestamp(state=state)
+
             params = self._get_mission_params()
 
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route[0])
-            self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
-            self.logger.debug("input: ego: v_x: %f, v_y: %f", state.ego_state.v_x, state.ego_state.v_y)
-            self.logger.info("state: %d objects detected", len(state.dynamic_objects))
+            self.logger.debug("input: ego: pos: (x: %f y: %f)", state_aligned.ego_state.x, state_aligned.ego_state.y)
+            self.logger.debug("input: ego: v_x: %f, v_y: %f", state_aligned.ego_state.v_x, state_aligned.ego_state.v_y)
+            self.logger.info("state: %d objects detected", len(state_aligned.dynamic_objects))
 
             # plan a trajectory according to params (from upper DM level) and most-recent vehicle-state
             trajectory, cost, debug_results = self._strategy_handlers[params.strategy].plan(
-                state, params.reference_route, params.target_state, params.time, params.cost_params)
+                state_aligned, params.reference_route, params.target_state, params.time, params.cost_params)
 
             # TODO: should publish v_x?
             # publish results to the lower DM level (Control)
             self._publish_trajectory(
-                TrajectoryPlanMsg(trajectory=trajectory, current_speed=state.ego_state.v_x))
+                TrajectoryPlanMsg(trajectory=trajectory, current_speed=state_aligned.ego_state.v_x))
 
             # TODO: publish cost to behavioral layer?
             # publish visualization/debug data
