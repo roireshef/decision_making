@@ -1,4 +1,12 @@
 import numpy as np
+import sys
+
+## TIMESTAMPS ##
+GlobalTimeStamp = int                   # global timestamp in [nanosec] since given time
+GlobalTimeStampInSec = float            # global timestamp in [sec] since given time
+# Initialization of timestamps in the past: these constants assure that each real timstamp will be greater
+MinGlobalTimeStamp = -sys.maxsize       # past timestamps in [nanosec]
+MinGlobalTimeStampInSec = -np.inf       # past timestamp in [sec]
 
 ## CARTESIAN FRAME ##
 

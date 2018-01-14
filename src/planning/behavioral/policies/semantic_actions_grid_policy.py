@@ -4,19 +4,20 @@ import numpy as np
 
 from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
-from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
-    PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, \
+    TRAJECTORY_ARCLEN_RESOLUTION, EGO_ORIGIN_LON_FROM_REAR, VELOCITY_LIMITS, EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
+    PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, VELOCITY_LIMITS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.constants import BP_SPECIFICATION_T_MIN, BP_SPECIFICATION_T_MAX, \
+from decision_making.src.global_constants import BP_SPECIFICATION_T_MIN, BP_SPECIFICATION_T_MAX, \
     BP_SPECIFICATION_T_RES, A_LON_MIN, \
     A_LON_MAX, A_LAT_MIN, A_LAT_MAX, SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL, \
     BEHAVIORAL_PLANNING_HORIZON, A_LON_EPS, INFINITE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
-    OUT_OF_LANE_COST, ROAD_SIGMOID_K_PARAM, OBJECTS_SIGMOID_K_PARAM
-from decision_making.src.planning.behavioral.constants import LATERAL_SAFETY_MARGIN_FROM_OBJECT
+    OUT_OF_LANE_COST, ROAD_SIGMOID_K_PARAM, OBJECTS_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_LON_COST, \
+    DEVIATION_FROM_GOAL_LAT_COST, DEVIATION_FROM_REF_ROUTE_COST, LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import \
     SemanticActionsGridState
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticActionsPolicy, \
@@ -295,12 +296,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         objects_cost = SigmoidFunctionParams(w=INFINITE_SIGMOID_COST, k=OBJECTS_SIGMOID_K_PARAM,
                                              offset=objects_dilation_size)  # Very high (inf) cost
 
-        dist_from_goal_lon_sq_cost = 1.0 * 1e2
-        dist_from_goal_lat_sq_cost = 1.5 * 1e2
-        dist_from_ref_sq_cost = 0.0
+        dist_from_goal_lon_sq_cost = DEVIATION_FROM_GOAL_LON_COST
+        dist_from_goal_lat_sq_cost = DEVIATION_FROM_GOAL_LAT_COST
+        dist_from_ref_sq_cost = DEVIATION_FROM_REF_ROUTE_COST
 
         # TODO: set velocity and acceleration limits properly
-        velocity_limits = np.array([0.0, 60.0])  # [m/s]. not a constant because it might be learned. TBD
+        velocity_limits = VELOCITY_LIMITS  # [m/s]. not a constant because it might be learned. TBD
         acceleration_limits = np.array([A_LON_MIN - A_LON_EPS, A_LON_MAX + A_LON_EPS])
 
         cost_params = TrajectoryCostParams(left_lane_cost=left_lane_cost,

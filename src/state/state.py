@@ -5,6 +5,8 @@ import numpy as np
 
 from decision_making.src.messages.str_serializable import StrSerializable
 from mapping.src.model.localization import RoadLocalization
+
+from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW
 from mapping.src.service.map_service import MapService
 
 from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedNumpyArray
@@ -105,6 +107,44 @@ class DynamicObject(StrSerializable):
         self.acceleration_lon = acceleration_lon
         self.omega_yaw = omega_yaw
         self._cached_road_localization: Optional[RoadLocalization] = None
+
+    def clone_cartesian_state(self, timestamp_in_sec: float, cartesian_state: CartesianState):
+        """
+        Return a new DynamicObject instance with updated timestamp and cartesian state.
+        Enables creating new instances of object from predicted trajectories.
+        Assume that object's speed is only in the x axis
+        :param timestamp_in_sec: global timestamp in [sec] of updated object
+        :param cartesian_state: object cartesian state
+        :return: Returns a new DynamicObject with updated state
+        """
+
+        # TODO: set other attributes, as:
+        # TODO: z coordinate, acceleration
+
+        timestamp = int(timestamp_in_sec * 1e9)
+        x = cartesian_state[C_X]
+        y = cartesian_state[C_Y]
+        z = 0.0
+        yaw = cartesian_state[C_YAW]
+
+        # Assume that object's speed is only in the x axis
+        v_x = cartesian_state[C_V]
+        v_y = 0.0
+
+        # Fetch object's public fields
+        object_fields = {k: v for k, v in self.__dict__.items() if k[0] != '_'}
+
+        # Overwrite object fields
+        object_fields['timestamp'] = timestamp
+        object_fields['x'] = x
+        object_fields['y'] = y
+        object_fields['z'] = z
+        object_fields['yaw'] = yaw
+        object_fields['v_x'] = v_x
+        object_fields['v_y'] = v_y
+
+        # Construct a new object
+        return self.__class__(**object_fields)
 
     @property
     def road_localization(self):

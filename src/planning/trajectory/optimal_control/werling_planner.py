@@ -60,6 +60,7 @@ class WerlingPlanner(TrajectoryPlanner):
     def plan(self, state: State, reference_route: np.ndarray, goal: CartesianExtendedState, goal_time: float,
              cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """ see base class """
+
         # create road coordinate-frame
         frenet = FrenetSerret2DFrame(reference_route)
 
