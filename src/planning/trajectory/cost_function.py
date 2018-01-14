@@ -132,7 +132,7 @@ class SigmoidStaticBoxObstacle(SigmoidBoxObstacle):
 
         # this also removes third value (=1.0) from results to return to (x,y) coordinates
         # dimensions - (i) trajectories, (j) timestamp, (k) old-frame-coordinates, (l) new-frame-coordinates
-        return np.abs(np.einsum('ijk, kl -> ijl', points, self._H_inv))
+        return np.abs(np.einsum('ijk, kl -> ijl', points_ext, self._H_inv)[:, :, :(C_Y+1)])
 
     @classmethod
     def from_object(cls, obj: DynamicObject, k: float, offset: float):
