@@ -6,7 +6,7 @@ import numpy as np
 from decision_making.src.exceptions import NoValidTrajectoriesFound
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, VISUALIZATION_PREDICTION_RESOLUTION, NUM_ALTERNATIVE_TRAJECTORIES, \
-    TRAJECTORY_OBSTACLE_LOOKAHEAD
+    TRAJECTORY_OBSTACLE_LOOKAHEAD, EGO_ORIGIN_LON_FROM_REAR
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle
@@ -14,7 +14,7 @@ from decision_making.src.planning.trajectory.optimal_control.frenet_constraints 
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils as OC
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.planning.types import FP_SX, CURVE_YAW, FP_DX, C_X, C_Y, C_YAW, C_V, FS_SV, \
-    FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX
+    FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianPoint2D, CURVE_X
 from decision_making.src.planning.types import FrenetTrajectories, CartesianExtendedTrajectories, FrenetPoint
 from decision_making.src.planning.utils.frenet_moving_frame import FrenetMovingFrame
 from decision_making.src.planning.utils.math import Math
@@ -35,6 +35,11 @@ class WerlingPlanner(TrajectoryPlanner):
     def plan(self, state: State, reference_route: np.ndarray, goal: np.ndarray, goal_time: float,
              cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
         """ see base class """
+
+        #TODO: shift reference_route, goal and ego_in_frenet by ego_origin_offset
+        shift = EGO_ORIGIN_LON_FROM_REAR - state.ego_state.size.length/2
+        reference_route[:, CURVE_X] += shift
+        goal[C_X] += shift
 
         # create road coordinate-frame
         frenet = FrenetMovingFrame(reference_route)
@@ -164,14 +169,15 @@ class WerlingPlanner(TrajectoryPlanner):
         # TODO: handle dynamic objects?
         # TODO: max instead of sum? what if close_obstacles is empty?
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
+        offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
         close_obstacles = \
-            [SigmoidDynamicBoxObstacle.from_object(obs, params.obstacle_cost.k, params.obstacle_cost.offset,
-                                                   global_time_samples, predictor)
+            [SigmoidDynamicBoxObstacle.from_object(obj=obs, k=params.obstacle_cost_x.k, offset=offset,
+                                                    time_samples=global_time_samples, predictor=predictor)
              for obs in state.dynamic_objects
              if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
 
         cost_per_obstacle = [obs.compute_cost(ctrajectories[:, :, 0:2]) for obs in close_obstacles]
-        obstacles_costs = params.obstacle_cost.w * np.sum(cost_per_obstacle, axis=0)
+        obstacles_costs = params.obstacle_cost_x.w * np.sum(cost_per_obstacle, axis=0)
 
         ''' SQUARED DISTANCE FROM GOAL SCORE '''
         # make theta_diff to be in [-pi, pi]

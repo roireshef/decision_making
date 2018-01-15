@@ -39,7 +39,8 @@ class TrajectoryCostParams(StrSerializable):
     def __init__(self, left_lane_cost: SigmoidFunctionParams, right_lane_cost: SigmoidFunctionParams,
                  left_road_cost: SigmoidFunctionParams, right_road_cost: SigmoidFunctionParams,
                  left_shoulder_cost: SigmoidFunctionParams, right_shoulder_cost: SigmoidFunctionParams,
-                 obstacle_cost: SigmoidFunctionParams,
+                 obstacle_cost_x: SigmoidFunctionParams,
+                 obstacle_cost_y: SigmoidFunctionParams,
                  dist_from_goal_lon_sq_cost: float, dist_from_goal_lat_sq_cost: float,
                  dist_from_ref_sq_cost: float, velocity_limits: Limits, acceleration_limits: Limits):
         """
@@ -67,7 +68,8 @@ class TrajectoryCostParams(StrSerializable):
         :param acceleration_limits: Limits of allowed acceleration in [m/sec^2]
         """
 
-        self.obstacle_cost = obstacle_cost
+        self.obstacle_cost_x = obstacle_cost_x
+        self.obstacle_cost_y = obstacle_cost_y
         self.left_lane_cost = left_lane_cost
         self.right_lane_cost = right_lane_cost
         self.left_shoulder_cost = left_shoulder_cost
@@ -83,7 +85,8 @@ class TrajectoryCostParams(StrSerializable):
     def serialize(self) -> LcmTrajectoryCostParams:
         lcm_msg = LcmTrajectoryCostParams()
 
-        lcm_msg.obstacle_cost = self.obstacle_cost.serialize()
+        lcm_msg.obstacle_cost_x = self.obstacle_cost_x.serialize()
+        lcm_msg.obstacle_cost_y = self.obstacle_cost_y.serialize()
         lcm_msg.left_lane_cost = self.left_lane_cost.serialize()
         lcm_msg.right_lane_cost = self.right_lane_cost.serialize()
         lcm_msg.left_shoulder_cost = self.left_shoulder_cost.serialize()

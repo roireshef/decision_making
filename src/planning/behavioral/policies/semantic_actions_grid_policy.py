@@ -296,9 +296,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # Set objects parameters
         # dilate each object by ego length + safety margin
-        objects_dilation_size = ego_size.length + LATERAL_SAFETY_MARGIN_FROM_OBJECT
-        objects_cost = SigmoidFunctionParams(w=INFINITE_SIGMOID_COST, k=OBJECTS_SIGMOID_K_PARAM,
-                                             offset=objects_dilation_size)  # Very high (inf) cost
+        objects_dilation_length = ego_size.length/2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
+        objects_dilation_width = ego_size.width/2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
+        objects_cost_x = SigmoidFunctionParams(w=INFINITE_SIGMOID_COST, k=OBJECTS_SIGMOID_K_PARAM,
+                                             offset=objects_dilation_length)  # Very high (inf) cost
+        objects_cost_y = SigmoidFunctionParams(w=INFINITE_SIGMOID_COST, k=OBJECTS_SIGMOID_K_PARAM,
+                                             offset=objects_dilation_width)  # Very high (inf) cost
 
         dist_from_goal_lon_sq_cost = DEVIATION_FROM_GOAL_LON_COST
         dist_from_goal_lat_sq_cost = DEVIATION_FROM_GOAL_LAT_COST
@@ -314,7 +317,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                            right_road_cost=right_road_cost,
                                            left_shoulder_cost=left_shoulder_cost,
                                            right_shoulder_cost=right_shoulder_cost,
-                                           obstacle_cost=objects_cost,
+                                           obstacle_cost_x=objects_cost_x,
+                                           obstacle_cost_y=objects_cost_y,
                                            dist_from_goal_lon_sq_cost=dist_from_goal_lon_sq_cost,
                                            dist_from_goal_lat_sq_cost=dist_from_goal_lat_sq_cost,
                                            dist_from_ref_sq_cost=dist_from_ref_sq_cost,
