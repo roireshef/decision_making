@@ -35,7 +35,7 @@ BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 # Trajectory cost parameters
 INFINITE_SIGMOID_COST = 1.0 * 1e4           # cost around obstacles (sigmoid)
 DEVIATION_FROM_ROAD_COST = 1.0 * 1e4        # cost of deviation from road (sigmoid)
-DEVIATION_TO_SHOULDER_COST = 1.0 * 1e2      # cost of deviation to shoulders (sigmoid)
+DEVIATION_TO_SHOULDER_COST = 3.0 * 1e2      # cost of deviation to shoulders (sigmoid)
 OUT_OF_LANE_COST = 0.0                      # cost of deviation from lane (sigmoid)
 ROAD_SIGMOID_K_PARAM = 20                   # sigmoid k (slope) param of going out-of-road
 SHOULDER_SIGMOID_K_PARAM = 3                # sigmoid k (slope) param of going out-of-shoulder

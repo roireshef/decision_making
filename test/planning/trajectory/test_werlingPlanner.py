@@ -128,13 +128,17 @@ def test_werlingPlanner_costsShaping():
 
     pos1 = np.array([6, 1.8])
     yaw1 = 0
-    pos2 = np.array([20, 5.4])
-    yaw2 = np.pi / 16
+    pos2 = np.array([20, 2.7])
+    yaw2 = 0
+    pos3 = np.array([40, 3.5])
+    yaw3 = 0
 
     obs = list([
         DynamicObject(obj_id=0, timestamp=0, x=pos1[0], y=pos1[1], z=0, yaw=yaw1, size=ObjectSize(4, 1.8, 0),
                       confidence=1.0, v_x=2.2, v_y=0, acceleration_lon=0.0, omega_yaw=0.0),
         DynamicObject(obj_id=0, timestamp=0, x=pos2[0], y=pos2[1], z=0, yaw=yaw2, size=ObjectSize(4, 1.8, 0),
+                      confidence=1.0, v_x=1.1, v_y=0, acceleration_lon=0.0, omega_yaw=0.0),
+        DynamicObject(obj_id=0, timestamp=0, x=pos3[0], y=pos3[1], z=0, yaw=yaw2, size=ObjectSize(4, 1.8, 0),
                       confidence=1.0, v_x=1.1, v_y=0, acceleration_lon=0.0, omega_yaw=0.0)
     ])
 
@@ -177,7 +181,7 @@ def test_werlingPlanner_costsShaping():
 
     end_time = time.time() - start_time
 
-    xrange = (0, 30)
+    xrange = (0, 60)
     yrange = (-2, 10)
     x = np.arange(xrange[0], xrange[1], 0.1)
     y = np.arange(yrange[0], yrange[1], 0.1)
@@ -216,38 +220,43 @@ def test_werlingPlanner_costsShaping():
     plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost_x.k, offsets,
                                                         time_samples, predictor)
                      for o in state.dynamic_objects]
-    WerlingVisualizer.plot_obstacles(p1, plottable_obs)
-    WerlingVisualizer.plot_obstacles(p2, plottable_obs)
+    # WerlingVisualizer.plot_obstacles(p1, plottable_obs)
+    # WerlingVisualizer.plot_obstacles(p2, plottable_obs)
     # WerlingVisualizer.plot_route(p2, debug.reference_route)
     # WerlingVisualizer.plot_best(p2, debug.trajectories[0])
 
     print(debug.costs)
 
-    p1.plot(np.arange(0, xrange[1]), np.repeat(np.array([0]), xrange[1]), '-k')
-    p1.plot(np.arange(0, xrange[1]), np.repeat(np.array([road_width]), xrange[1]), '-k')
-    p1.plot(np.arange(0, xrange[1]), np.repeat(np.array([-1.5]), xrange[1]), '-r')
-    p1.plot(np.arange(0, xrange[1]), np.repeat(np.array([road_width+1.5]), xrange[1]), '-r')
-    p1.plot(np.arange(0, xrange[1]), np.repeat(np.array([road_width/2]), xrange[1]), '--w')
-
     x = points[0, :, 0].reshape(height, width)
     y = points[0, :, 1].reshape(height, width)
     z = obs_costs.reshape(height, width) + road_deviations_costs.reshape(height, width) \
         #+ goal_deviation_costs.reshape(height, width)
-    #z = np.log(z)
-    z = np.clip(z, 0, 5000)
+
+    for p in list([p1, p2]):
+        WerlingVisualizer.plot_obstacles(p, plottable_obs)
+        p.plot(np.arange(0, xrange[1]), np.repeat(np.array([0]), xrange[1]), '-k')
+        p.plot(np.arange(0, xrange[1]), np.repeat(np.array([road_width]), xrange[1]), '-k')
+        p.plot(np.arange(0, xrange[1]), np.repeat(np.array([-1.5]), xrange[1]), '-r')
+        p.plot(np.arange(0, xrange[1]), np.repeat(np.array([road_width+1.5]), xrange[1]), '-r')
+        p.plot(np.arange(0, xrange[1]), np.repeat(np.array([road_width/2]), xrange[1]), '--w')
+
+        # plot ego's best position for both obstacles
+        for obs in state.dynamic_objects:
+            min_cost_y = np.argmin(z[:,int((obs.x - xrange[0])/0.1)]) * 0.1 + yrange[0]
+            p.plot(np.arange(- ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x,
+                   np.repeat(np.array([min_cost_y+ego.size.width/2]), np.ceil(ego.size.length)+1), '*w')
+            p.plot(np.arange(- ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x,
+                   np.repeat(np.array([min_cost_y - ego.size.width / 2]), np.ceil(ego.size.length)+1), '*w')
+            p.plot(np.repeat(np.array([-ego.size.length / 2 + obs.x]), np.ceil(ego.size.width)+1),
+                   np.arange(min_cost_y-ego.size.width/2, min_cost_y+ego.size.width/2 + 0.01), '*w')
+            p.plot(np.repeat(np.array([ego.size.length / 2 + obs.x]), np.ceil(ego.size.width)+1),
+                   np.arange(min_cost_y-ego.size.width/2, min_cost_y+ego.size.width/2 + 0.01), '*w')
+
+    # z = np.clip(z, 0, 5000)
     p1.contourf(x, y, z, 100)
 
-
-    p2.plot(np.arange(0, xrange[1]), np.repeat(np.array([0]), xrange[1]), '-k')
-    p2.plot(np.arange(0, xrange[1]), np.repeat(np.array([road_width]), xrange[1]), '-k')
-    p2.plot(np.arange(0, xrange[1]), np.repeat(np.array([-1.5]), xrange[1]), '-r')
-    p2.plot(np.arange(0, xrange[1]), np.repeat(np.array([road_width+1.5]), xrange[1]), '-r')
-    p2.plot(np.arange(0, xrange[1]), np.repeat(np.array([road_width/2]), xrange[1]), '--w')
-
-    z = obs_costs.reshape(height, width) + road_deviations_costs.reshape(height, width) \
-        #+ goal_deviation_costs.reshape(height, width)
-    #z = np.log(z)
-    z = np.clip(z, 0., 200.)
+    z = np.log(z)
+    # z = np.clip(z, 0., 1000.)
     p2.contourf(x, y, z, 100)
 
     #for i, p in enumerate(points[0]):
