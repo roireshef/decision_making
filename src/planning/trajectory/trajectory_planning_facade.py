@@ -50,13 +50,11 @@ class TrajectoryPlanningFacade(DmModule):
         :return: no return value. results are published in self.__publish_results()
         """
         try:
-            # TODO: Read time from central time module to support also simulation & recording time.
-            # TODO: If it is done only for measuring RT performance, then add documentation and change name accordingly
             start_time = time.time()
 
             state = self._get_current_state()
 
-            # Update state: align all object to most recent timestamp
+            # Update state: align all object to most recent timestamp, based on ego and dynamic objects timestamp
             state_aligned = self._predictor.align_objects_to_most_recent_timestamp(state=state)
 
             params = self._get_mission_params()

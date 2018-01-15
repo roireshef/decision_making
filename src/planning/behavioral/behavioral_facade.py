@@ -47,7 +47,7 @@ class BehavioralFacade(DmModule):
 
             state = self._get_current_state()
 
-            # Update state: align all object to most recent timestamp
+            # Update state: align all object to most recent timestamp, based on ego and dynamic objects timestamp
             state_aligned = self._predictor.align_objects_to_most_recent_timestamp(state=state)
 
             navigation_plan = self._get_current_navigation_plan()
