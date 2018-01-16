@@ -30,7 +30,8 @@ from mapping.src.transformations.geometry_utils import CartesianFrame
 class TrajectoryPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger,
                  strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner],
-                 short_time_predictor: Predictor):
+                 short_time_predictor: Predictor,
+                 last_trajectory: SamplableTrajectory = None):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param pubsub: communication layer (DDS/LCM/...) instance
