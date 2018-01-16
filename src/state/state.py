@@ -147,7 +147,8 @@ class DynamicObject(StrSerializable):
         return self.__class__(**object_fields)
 
     @property
-    def road_localization(self) -> RoadLocalization:
+    def road_localization(self):
+        # type: () -> RoadLocalization
         if self._cached_road_localization is None:
             self._cached_road_localization = MapService.get_instance().compute_road_localization(
                 np.array([self.x, self.y, self.z]), self.yaw)
@@ -226,6 +227,17 @@ class EgoState(DynamicObject):
                                acceleration_lon, omega_yaw)
         self.steering_angle = steering_angle
 
+    @property
+    # TODO: change <length> to the distance between the two axles
+    # TODO: understand (w.r.t which axle counts) if we should use sin or tan here + validate vs sensor-alignments
+    def curvature(self):
+        """
+        For any point on a curve, the curvature measure is defined as 1/R where R is the radius length of a
+        circle that tangents the curve at that point. HERE, CURVATURE IS SIGNED (same sign as steering_angle).
+        For more information please see: https://en.wikipedia.org/wiki/Curvature#Curvature_of_plane_curves
+        """
+        return np.tan(self.steering_angle) / self.size.length
+
     def serialize(self) -> LcmEgoState:
         lcm_msg = LcmEgoState()
         lcm_msg.dynamic_obj = super(self.__class__, self).serialize()
@@ -246,7 +258,7 @@ class State(StrSerializable):
     def __init__(self, occupancy_state, dynamic_objects, ego_state):
         # type: (OccupancyState, List[DynamicObject], EgoState) -> None
         """
-        main class for the world state
+        main class for the world state. deep copy is required by self.clone_with!
         :param occupancy_state: free space
         :param dynamic_objects:
         :param ego_state:
@@ -254,6 +266,17 @@ class State(StrSerializable):
         self.occupancy_state = copy.deepcopy(occupancy_state)
         self.dynamic_objects = copy.deepcopy(dynamic_objects)
         self.ego_state = copy.deepcopy(ego_state)
+
+    def clone_with(self, occupancy_state: Optional[OccupancyState] = None,
+                   dynamic_objects: Optional[List[DynamicObject]] = None,
+                   ego_state: Optional[EgoState] = None):
+        """
+        clones state object with potential overriding of specific fields.
+        requires deep-copying of all fields in State.__init__ !!
+        """
+        return State(occupancy_state or self.occupancy_state,
+                     dynamic_objects or self.dynamic_objects,
+                     ego_state or self.ego_state)
 
     def serialize(self) -> LcmState:
         lcm_msg = LcmState()

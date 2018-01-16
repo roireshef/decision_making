@@ -1,4 +1,5 @@
 from logging import Logger
+from typing import Optional
 
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams

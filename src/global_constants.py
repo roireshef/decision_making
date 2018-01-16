@@ -1,10 +1,8 @@
 import os
 import numpy as np
-
 # General constants
 
 UNKNOWN_DEFAULT_VAL = 0.0
-
 
 # Behavioral Planner
 
@@ -12,6 +10,11 @@ UNKNOWN_DEFAULT_VAL = 0.0
 BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 60.0
 # TODO - get this value from the map
 BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT = 14.0
+
+# When retrieving the lookahead path of a given dynamic object, we will multiply the path length
+# by the following ratio in order to avoid extrapolation when resampling the path (due to path sampling
+# and linearization errors)
+PREDICTION_LOOKAHEAD_COMPENSATION_RATIO = 1.1
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.1
@@ -79,7 +82,6 @@ LON_MARGIN_FROM_EGO = 1
 
 # [m] length of reference trajectory provided by behavioral planner
 REFERENCE_TRAJECTORY_LENGTH = 30.0
-REFERENCE_TRAJECTORY_LENGTH_EXTENDED = 31.0
 
 # [m] Resolution for the interpolation of the reference route
 TRAJECTORY_ARCLEN_RESOLUTION = 0.1
@@ -102,6 +104,19 @@ EXP_CLIP_TH = 50.0
 # Number of (best) trajectories to publish to visualization
 NUM_ALTERNATIVE_TRAJECTORIES = 10
 
+# [m] "Negligible distance" threshold between the desired location and the actual location between two TP planning
+# iterations. If the distance is lower than this threshold, the TP plans the trajectory as is the ego vehicle is
+# currently in the desired location and not in its actual location.
+# TODO: fix real values for thresholds (after tuning controller)
+NEGLIGIBLE_DISPOSITION_LON = 10  # longitudinal (ego's heading direction) difference threshold
+NEGLIGIBLE_DISPOSITION_LAT = 3  # lateral (ego's side direction) difference threshold
+
+# [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
+TRAJECTORY_TIME_RESOLUTION = 0.1
+
+# Number of trajectory points to send out (to controller) from the TP
+TRAJECTORY_NUM_POINTS = 10
+
 # Werling Planner #
 
 # [sec] Time-Resolution for planning
@@ -114,7 +129,6 @@ SX_OFFSET_MIN, SX_OFFSET_MAX = -3, 0.1
 SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
 
 # [m] Range for grid search in werling planner (lat. position)
-# TODO: set lateral offsets
 DX_OFFSET_MIN, DX_OFFSET_MAX = -1, 1
 
 # Linspace number of steps in the constraints parameters grid-search
@@ -125,6 +139,11 @@ SX_STEPS, SV_STEPS, DX_STEPS = 15, 1, 5
 # [1/m] Curvature threshold for the GD step (if value is smaller than this value, there is no step executed)
 TINY_CURVATURE = 10e-5
 
+# [m/sec^2] when acceleration is not specified - TP uses this as goal acceleration
+DEFAULT_ACCELERATION = 0.0
+
+# [-+1/m] when curvature is not specified - TP uses this as goal curvature
+DEFAULT_CURVATURE = 0.0
 # State #
 
 # TODO: set real values
@@ -155,14 +174,3 @@ ACDA_NAME_FOR_LOGGING = "ACDA Module"
 TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 STATE_MODULE_NAME_FOR_LOGGING = "State Module"
 
-
-# Predictor #
-
-# This margin in [m] will be added to the lookahead path of dynamic objects to avoid
-# extrapolation when resampling the curve
-PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN = 3.0
-
-
-# Navigation #
-
-ONE_TWO_NAVIGATION_PLAN = np.array([1, 2])

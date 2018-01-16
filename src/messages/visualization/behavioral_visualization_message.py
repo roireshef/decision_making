@@ -7,7 +7,7 @@ from decision_making.src.planning.types import CartesianPath2D
 
 class BehavioralVisualizationMsg:
     def __init__(self, reference_route):
-        # type: (CartesianPath) -> None
+        # type: (CartesianPath2D) -> None
         """
         The struct used for communicating the behavioral plan to the visualizer.
         :param reference_route: of type CartesianPath2D

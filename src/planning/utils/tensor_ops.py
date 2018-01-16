@@ -15,3 +15,13 @@ class TensorOps:
         mat1_shape_for_tile[0] = len(mat1)
         return np.concatenate((np.repeat(mat1, len(mat2), axis=0), np.tile(mat2, tuple(mat1_shape_for_tile))),
                               axis=len(mat1.shape) - 1)
+
+    @staticmethod
+    def row_wise_normal(mat: np.ndarray):
+        """
+        Utility function that takes a 2D matrix of shape [N, 2] and computes a normal vector for each row, assuming
+         mat[i, 0] and mat[i, 1] are (x_i, y_i) coordinates of a vector.
+        :param mat: 2D numpy array with shape [N, 2]
+        :return: 2D numpy array with shape [N, 2] of normal vectors
+        """
+        return np.c_[-mat[:, 1], mat[:, 0]]
