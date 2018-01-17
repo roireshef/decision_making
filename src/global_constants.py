@@ -15,7 +15,6 @@ BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT = 14.0
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
-LATERAL_SAFETY_MARGIN_FROM_SHOULDER = 0.6
 
 # A lower and upper thresholds on the longitudinal offset between object and ego.
 # Any object out of this scope won't be accounted in the behavioral planning process
@@ -34,34 +33,30 @@ BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 
 # Trajectory cost parameters
 INFINITE_SIGMOID_COST = 1.0 * 1e4           # cost around obstacles (sigmoid)
-DEVIATION_FROM_ROAD_COST = 1.0 * 1e4        # cost of deviation from road (sigmoid)
+OBJECTS_SIGMOID_K_PARAM = 6                 # sigmoid k (slope) param of objects on road
+OUT_OF_LANE_COST = 20                        # cost of deviation from lane (sigmoid)
 DEVIATION_TO_SHOULDER_COST = 3.0 * 1e2      # cost of deviation to shoulders (sigmoid)
-OUT_OF_LANE_COST = 0.0                      # cost of deviation from lane (sigmoid)
+DEVIATION_FROM_ROAD_COST = 1.0 * 1e4        # cost of deviation from road (sigmoid)
+LANE_SIGMOID_K_PARAM = 4                    # sigmoid k (slope) param of going out-of-lane-center
+SHOULDER_SIGMOID_K_PARAM = 4                # sigmoid k (slope) param of going out-of-shoulder
 ROAD_SIGMOID_K_PARAM = 20                   # sigmoid k (slope) param of going out-of-road
-SHOULDER_SIGMOID_K_PARAM = 3                # sigmoid k (slope) param of going out-of-shoulder
-OBJECTS_SIGMOID_K_PARAM = 5                 # sigmoid k (slope) param of objects on road
-DEVIATION_FROM_GOAL_LON_COST = 1.0          # cost of squared longitudinal deviation from the goal
-DEVIATION_FROM_GOAL_LAT_COST = 2.0          # cost of squared lateral deviation from the goal
-DEVIATION_FROM_GOAL_MAX_COST = DEVIATION_TO_SHOULDER_COST/2
+SHOULDER_SIGMOID_OFFSET = 0.8               # offset param m of going out-of-shoulder: w/(1+e^(k*(m+x)))
+DEVIATION_FROM_GOAL_LON_COST = 10           # cost of squared longitudinal deviation from the goal
+DEVIATION_FROM_GOAL_LAT_COST = 20           # cost of squared lateral deviation from the goal
 DEVIATION_FROM_REF_ROUTE_COST = 0.0         # cost of squared deviation from the route path
 
 # [m/s] min & max velocity limits are additional parameters for TP
 VELOCITY_LIMITS = np.array([0.0, 60.0])
+
+# Acceleration Limits [m/sec^2]
+LON_ACCELERATION_LIMITS = np.array([-8.0, 3.0])
+LAT_ACCELERATION_LIMITS = np.array([-2.0, 2.0])
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
 BP_SPECIFICATION_T_MIN = 2.0
 BP_SPECIFICATION_T_MAX = 20.0
 BP_SPECIFICATION_T_RES = 0.2
-
-# Longitudinal Acceleration Limits [m/sec^2]
-A_LON_MIN = -4.0
-A_LON_MAX = 4.0
-A_LON_EPS = 3.0
-
-# Latitudinal Acceleration Limits [m/sec^2]
-A_LAT_MIN = -2.0
-A_LAT_MAX = 2.0
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road

@@ -85,7 +85,7 @@ class PlottableSigmoidDynamicBoxObstacle(SigmoidDynamicBoxObstacle, PlottableSig
 class WerlingVisualizer:
     @staticmethod
     def plot_route(plt, route):
-        plt.plot(route[:, 0], route[:, 1], '-k')
+        plt.plot(route[:, 0], route[:, 1], '-b')
 
     @staticmethod
     def plot_obstacles(plt, obs: List[PlottableSigmoidBoxObstacle]):

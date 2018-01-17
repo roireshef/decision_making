@@ -2,6 +2,7 @@ from logging import Logger
 from typing import Tuple
 
 import numpy as np
+import copy
 
 from decision_making.src.exceptions import NoValidTrajectoriesFound
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
@@ -14,7 +15,7 @@ from decision_making.src.planning.trajectory.optimal_control.frenet_constraints 
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils as OC
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner
 from decision_making.src.planning.types import FP_SX, CURVE_YAW, FP_DX, C_X, C_Y, C_YAW, C_V, FS_SV, \
-    FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianPoint2D, CURVE_X
+    FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianPoint2D, CURVE_X, CURVE_Y
 from decision_making.src.planning.types import FrenetTrajectories, CartesianExtendedTrajectories, FrenetPoint
 from decision_making.src.planning.utils.frenet_moving_frame import FrenetMovingFrame
 from decision_making.src.planning.utils.math import Math
@@ -36,17 +37,17 @@ class WerlingPlanner(TrajectoryPlanner):
              cost_params: TrajectoryCostParams) -> Tuple[np.ndarray, float, TrajectoryVisualizationMsg]:
         """ see base class """
 
-        #TODO: shift reference_route, goal and ego_in_frenet by ego_origin_offset
+        # we shift ego origin from front axle to ego center, so shift ego position accordingly
         shift = EGO_ORIGIN_LON_FROM_REAR - state.ego_state.size.length/2
-        reference_route[:, CURVE_X] += shift
-        goal[C_X] += shift
+        shift_vec = shift * np.array([np.cos(state.ego_state.yaw), np.sin(state.ego_state.yaw)])
+        shifted_ego_pos = np.array([state.ego_state.x - shift_vec[0], state.ego_state.y - shift_vec[1]])
 
         # create road coordinate-frame
         frenet = FrenetMovingFrame(reference_route)
 
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
         # The vehicle doesn't need to lay parallel to the road.
-        ego_in_frenet = frenet.cpoint_to_fpoint(np.array([state.ego_state.x, state.ego_state.y]))
+        ego_in_frenet = frenet.cpoint_to_fpoint(shifted_ego_pos)
         ego_theta_diff = frenet.curve[0, CURVE_YAW] - state.ego_state.yaw
 
         # TODO: translate acceleration of initial state
@@ -109,8 +110,8 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
-        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, goal_in_frenet,
-                                              cost_params, global_time_sample, self._predictor)
+        trajectory_costs = self._compute_cost(ctrajectories, ftrajectories_filtered, state, shifted_ego_pos,
+                                              goal_in_frenet, cost_params, global_time_sample, self._predictor)
 
         sorted_idxs = trajectory_costs.argsort()
 
@@ -133,6 +134,8 @@ class WerlingPlanner(TrajectoryPlanner):
                                                    predicted_states[1:],
                                                    planning_horizon)
 
+        #TODO: ego origin: transform trajectories to the front axle
+
         return ctrajectories[sorted_idxs[0], :, :C_V + 1], trajectory_costs[sorted_idxs[0]], debug_results
 
     @staticmethod
@@ -152,13 +155,14 @@ class WerlingPlanner(TrajectoryPlanner):
 
     @staticmethod
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories, state: State,
-                      goal_in_frenet: FrenetPoint, params: TrajectoryCostParams, global_time_samples: np.ndarray,
-                      predictor: Predictor):
+                      shifted_ego_pos: np.ndarray, goal_in_frenet: FrenetPoint, params: TrajectoryCostParams,
+                      global_time_samples: np.ndarray, predictor: Predictor):
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
         :param ftrajectories: numpy tensor of trajectories in frenet-frame
         :param state: the state object (that includes obstacles, etc.)
+        :param shifted_ego_pos: shifted global ego position by shifting origin to ego center
         :param params: parameters for the cost function (from behavioral layer)
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
         :param predictor:
@@ -174,7 +178,7 @@ class WerlingPlanner(TrajectoryPlanner):
             [SigmoidDynamicBoxObstacle.from_object(obj=obs, k=params.obstacle_cost_x.k, offset=offset,
                                                     time_samples=global_time_samples, predictor=predictor)
              for obs in state.dynamic_objects
-             if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
+             if np.linalg.norm([obs.x - shifted_ego_pos[0], obs.y - shifted_ego_pos[1]]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
 
         cost_per_obstacle = [obs.compute_cost(ctrajectories[:, :, 0:2]) for obs in close_obstacles]
         obstacles_costs = params.obstacle_cost_x.w * np.sum(cost_per_obstacle, axis=0)
