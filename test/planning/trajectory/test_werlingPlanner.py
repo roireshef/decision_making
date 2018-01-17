@@ -5,7 +5,7 @@ from decision_making.src.global_constants import OBJECTS_SIGMOID_K_PARAM, LATERA
     INFINITE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, OUT_OF_LANE_COST, ROAD_SIGMOID_K_PARAM, \
     DEVIATION_FROM_GOAL_LON_COST, DEVIATION_FROM_GOAL_LAT_COST, EGO_LENGTH, EGO_WIDTH, \
     SHOULDER_SIGMOID_OFFSET, SHOULDER_SIGMOID_K_PARAM, DEVIATION_FROM_REF_ROUTE_COST, VELOCITY_LIMITS, \
-    LON_ACCELERATION_LIMITS
+    LON_ACCELERATION_LIMITS, DEFAULT_ACCELERATION, DEFAULT_CURVATURE
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, CartesianPoint2D
@@ -41,7 +41,7 @@ def test_werlingPlanner_toyScenario_noException():
 
     predictor = RoadFollowingPredictor(logger)
 
-    goal = np.concatenate((route_points[len(route_points) // 2, [CURVE_X, CURVE_Y, CURVE_YAW]], [vT]))
+    goal = np.concatenate((route_points[len(route_points) // 2, [CURVE_X, CURVE_Y, CURVE_YAW]], [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
 
     pos1 = np.array([7, -.5])
     yaw1 = 0
@@ -49,13 +49,13 @@ def test_werlingPlanner_toyScenario_noException():
     yaw2 = np.pi / 4
 
     obs = list([
-        DynamicObject(obj_id=0, timestamp=0, x=pos1[0], y=pos1[1], z=0, yaw=yaw1, size=ObjectSize(1.5, 0.5, 0),
+        DynamicObject(obj_id=0, timestamp=950*10e6, x=pos1[0], y=pos1[1], z=0, yaw=yaw1, size=ObjectSize(1.5, 0.5, 0),
                       confidence=1.0, v_x=2.2, v_y=0, acceleration_lon=0.0, omega_yaw=0.0),
-        DynamicObject(obj_id=0, timestamp=0, x=pos2[0], y=pos2[1], z=0, yaw=yaw2, size=ObjectSize(1.5, 0.5, 0),
+        DynamicObject(obj_id=0, timestamp=950*10e6, x=pos2[0], y=pos2[1], z=0, yaw=yaw2, size=ObjectSize(1.5, 0.5, 0),
                       confidence=1.0, v_x=1.1, v_y=0, acceleration_lon=0.0, omega_yaw=0.0)
     ])
 
-    ego = EgoState(obj_id=-1, timestamp=0, x=0, y=0, z=0, yaw=0, size=ObjectSize(1.5, 0.5, 0),
+    ego = EgoState(obj_id=-1, timestamp=1000*10e6, x=0, y=0, z=0, yaw=0, size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
                    confidence=1.0, v_x=v0, v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
     state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
@@ -78,8 +78,10 @@ def test_werlingPlanner_toyScenario_noException():
 
     start_time = time.time()
 
-    _, _, debug = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
-                               goal_time=T, cost_params=cost_params)
+    samplable, ctrajectories, costs = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
+                                       goal_time=ego.timestamp_in_sec + T, cost_params=cost_params)
+
+    samplable.sample(np.arange(0, 1, 0.1) + ego.timestamp_in_sec)
 
     end_time = time.time() - start_time
 
@@ -90,7 +92,7 @@ def test_werlingPlanner_toyScenario_noException():
     fig = plt.figure()
     p1 = fig.add_subplot(211)
     p2 = fig.add_subplot(212)
-    time_samples = np.arange(0.0, T, 0.1)
+    time_samples = np.arange(0.0, T, 0.1) + ego.timestamp_in_sec
     plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost_x.k,
                                                         np.array([cost_params.obstacle_cost_x.offset,
                                                                   cost_params.obstacle_cost_y.offset]),
@@ -98,13 +100,13 @@ def test_werlingPlanner_toyScenario_noException():
                      for o in state.dynamic_objects]
     WerlingVisualizer.plot_obstacles(p1, plottable_obs)
     WerlingVisualizer.plot_obstacles(p2, plottable_obs)
-    WerlingVisualizer.plot_route(p1, debug.reference_route)
-    WerlingVisualizer.plot_route(p2, debug.reference_route)
+    WerlingVisualizer.plot_route(p1, route_points[:, :2])
+    WerlingVisualizer.plot_route(p2, route_points[:, :2])
 
-    WerlingVisualizer.plot_best(p2, debug.trajectories[0])
-    WerlingVisualizer.plot_alternatives(p1, debug.trajectories)
+    WerlingVisualizer.plot_best(p2, ctrajectories[0])
+    WerlingVisualizer.plot_alternatives(p1, ctrajectories)
 
-    print(debug.costs)
+    print(costs)
 
     WerlingVisualizer.plot_route(p1, route_points)
 

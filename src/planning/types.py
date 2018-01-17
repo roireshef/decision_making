@@ -14,6 +14,8 @@ MinGlobalTimeStampInSec = -np.inf       # past timestamp in [sec]
 CartesianPoint2D = np.ndarray
 # a numpy matrix having rows of CartesianPoint2D [:, [C_X, C_Y]]
 CartesianPath2D = np.ndarray
+# a numpy tensor having rows of CartesianPath2D [:, :, [C_X, C_Y]]
+CartesianPaths2D = np.ndarray
 # a numpy matrix having rows of vector in 2D cartesian space [:, [d(C_X), d(C_Y)]]
 CartesianVectors2D = np.ndarray
 # Arbitrarily-shaped tesnor with last dimension being CartesianPoint2D [..., [C_X, C_Y]]

@@ -4,12 +4,6 @@ import numpy as np
 
 from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, \
-    TRAJECTORY_ARCLEN_RESOLUTION, EGO_ORIGIN_LON_FROM_REAR, VELOCITY_LIMITS
-from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
-    TrajectoryParams
-from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.global_constants import BP_SPECIFICATION_T_MIN, BP_SPECIFICATION_T_MAX, \
     BP_SPECIFICATION_T_RES, LON_ACCELERATION_LIMITS, \
     SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
@@ -17,6 +11,12 @@ from decision_making.src.global_constants import BP_SPECIFICATION_T_MIN, BP_SPEC
     BEHAVIORAL_PLANNING_HORIZON, INFINITE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     OUT_OF_LANE_COST, ROAD_SIGMOID_K_PARAM, OBJECTS_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_LON_COST, \
     DEVIATION_FROM_GOAL_LAT_COST, DEVIATION_FROM_REF_ROUTE_COST, LATERAL_SAFETY_MARGIN_FROM_OBJECT
+from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
+    PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, VELOCITY_LIMITS
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
+    TrajectoryParams
+from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import \
     SemanticActionsGridState
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticActionsPolicy, \
@@ -25,17 +25,13 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_policy im
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_X, C_Y
-from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
-from mapping.src.transformations.geometry_utils import CartesianFrame
-from mapping.src.transformations.math_utils import Math
 
 
 class SemanticActionsGridPolicy(SemanticActionsPolicy):
-
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
 
         # Update state: align all object to most recent timestamp
@@ -232,11 +228,10 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         target_latitude = behavioral_state.ego_state.road_localization.intra_road_lat + action_spec.d_rel
         target_longitude = behavioral_state.ego_state.road_localization.road_lon + action_spec.s_rel
 
-        reference_route_x_y_yaw = CartesianFrame.add_yaw(reference_route)
-        target_state_x_y_yaw = reference_route_x_y_yaw[-1, :]
-        target_state_velocity = action_spec.v
-        target_state = np.array(
-            [target_state_x_y_yaw[0], target_state_x_y_yaw[1], target_state_x_y_yaw[2], target_state_velocity])
+        # TODO: adjust to work with different target-object's road id (following the same adjustment in SPECIFY)
+        target_state_x_y_z, target_state_yaw = MapService.get_instance().convert_road_to_global_coordinates(
+            road_id, target_longitude, target_latitude)
+        target_state = np.append(target_state_x_y_z[[C_X, C_Y]], [target_state_yaw, action_spec.v])
 
         cost_params = SemanticActionsGridPolicy._generate_cost_params(
             road_id=road_id,
@@ -356,6 +351,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
     @staticmethod
     @raises(NoValidTrajectoriesFound)
+    # TODO: modify this function to work with DynamicObject's specific NavigationPlan (and predictor?)
     def _specify_action_towards_object(behavioral_state: SemanticActionsGridState,
                                        semantic_action: SemanticAction,
                                        navigation_plan: NavigationPlanMsg,
@@ -402,7 +398,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                      semantic_action.target_obj.size.length/2
 
         prediction_timestamps = np.arange(BP_SPECIFICATION_T_MIN, BP_SPECIFICATION_T_MAX, BP_SPECIFICATION_T_RES)
-        # predicted_localizations_list = predictor.predict_object_on_road(obj_on_road, 0.0, obj_sv0, prediction_timestamps)
 
         for T in prediction_timestamps:
             # TODO: should be cached in advance using OCU.QP1D.time_constraints_tensor
@@ -414,6 +409,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             obj_svT = obj_sv0 + obj_sa0 * T
             obj_sxT = obj_sx0 + obj_sv0 * T + obj_sa0 * T ** 2 / 2
 
+            # TODO: account for acc<>0 (from MobilEye's paper)
             safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
 
             # set of 6 constraints RHS values for quintic polynomial solution (S DIM)
@@ -473,7 +469,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         else:
             return None
 
-
     @staticmethod
     def _generate_reference_route(behavioral_state: SemanticActionsGridState,
                                   action_spec: SemanticActionSpec, navigation_plan: NavigationPlanMsg) -> np.ndarray:
@@ -492,19 +487,22 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
         # caused by the curve linearization approximation in the resampling process
-        lookahead_distance = target_relative_longitude + PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
+        # The compensation here is multiplicative because of the different curve-fittings we use:
+        # in BP we use piecewise-linear and in TP we use cubic-fit.
+        # Due to that, a point's longitude-value will be different between the 2 curves.
+        # This error is accumulated depending on the actual length of the curvature -
+        # when it is long, the error will potentially be big.
+        lookahead_distance = behavioral_state.ego_state.road_localization.road_lon + \
+                             target_relative_longitude * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
+        # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
+        # TODO: better than sending the whole road. and also what happens in the begginning of a road
         lookahead_path = MapService.get_instance().get_uniform_path_lookahead(
             road_id=behavioral_state.ego_state.road_localization.road_id,
             lat_shift=target_lane_latitude,
-            starting_lon=behavioral_state.ego_state.road_localization.road_lon,
+            starting_lon=0,
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
-            steps_num=int(np.round(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
+            steps_num=int(np.ceil(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
             navigation_plan=navigation_plan)
 
-        # trim the route to the required length
-        route_size = Math.div(target_relative_longitude, TRAJECTORY_ARCLEN_RESOLUTION) + 1
-        reference_route_xy_trimmed = lookahead_path[:route_size]
-
-        return reference_route_xy_trimmed
-
+        return lookahead_path

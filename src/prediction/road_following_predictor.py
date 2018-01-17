@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from decision_making.src.exceptions import PredictObjectInPastTimes, PredictedObjectHasNegativeVelocity
-from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
+from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 from decision_making.src.planning.types import C_X, C_Y, CartesianTrajectory
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject
@@ -80,7 +80,7 @@ class RoadFollowingPredictor(Predictor):
             raise PredictObjectInPastTimes(
                 'Trying to predict object (id=%d) with timestamp %f [sec] to past timestamps: %s' % (
                     dynamic_object.obj_id, dynamic_object.timestamp_in_sec, prediction_timestamps))
-        lookahead_distance += PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
+        lookahead_distance *= PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
         map_based_nav_plan = \
             MapService.get_instance().get_road_based_navigation_plan(dynamic_object.road_localization.road_id)
