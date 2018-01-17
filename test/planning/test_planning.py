@@ -36,6 +36,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
 
     pubsub.subscribe(pubsub_topics.TRAJECTORY_TOPIC, trajectory_publish_mock)
 
+    state_module.periodic_action()
     trajectory_planning_module.start()
     behavioral_facade.periodic_action()
     state_module.periodic_action()
