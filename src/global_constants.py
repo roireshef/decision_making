@@ -53,7 +53,7 @@ VELOCITY_LIMITS = np.array([0.0, 60.0])
 
 # Acceleration Limits [m/sec^2]
 LON_ACCELERATION_LIMITS = np.array([-8.0, 3.0])
-LAT_ACCELERATION_LIMITS = np.array([-2.0, 2.0])
+LAT_ACCELERATION_LIMITS = np.array([-2.0, 2.0])  # TODO: use this.
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
@@ -100,7 +100,7 @@ TRAJECTORY_OBSTACLE_LOOKAHEAD = 200.0
 EXP_CLIP_TH = 50.0
 
 # Number of (best) trajectories to publish to visualization
-NUM_ALTERNATIVE_TRAJECTORIES = 10
+NUM_ALTERNATIVE_TRAJECTORIES = 20
 
 # [m] "Negligible distance" threshold between the desired location and the actual location between two TP planning
 # iterations. If the distance is lower than this threshold, the TP plans the trajectory as is the ego vehicle is

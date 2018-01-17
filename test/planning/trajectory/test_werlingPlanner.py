@@ -138,7 +138,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
 
     v0 = 6
     vT = 10
-    T = 4.1
+    T = 3.8
 
     predictor = RoadFollowingPredictor(logger)
 
@@ -156,6 +156,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
         DynamicObject(obj_id=0, timestamp=0, x=pos2[0], y=pos2[1], z=0, yaw=yaw2, size=ObjectSize(4, 1.8, 0),
                       confidence=1.0, v_x=0, v_y=0, acceleration_lon=0.0, omega_yaw=0.0)
     ])
+    obs = list([])
 
     ego = EgoState(obj_id=-1, timestamp=0, x=0, y=lane_width/2, z=0, yaw=0,
                    size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
