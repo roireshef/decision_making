@@ -105,7 +105,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (planning_horizon)
         planning_horizon = goal_time - state.ego_state.timestamp_in_sec
-        planning_time_points = np.arange(self.dt, planning_horizon, self.dt)
+        planning_time_points = np.arange(self.dt, planning_horizon + np.finfo(np.float16).eps, self.dt)
         assert planning_horizon >= 0
 
         # solve problem in frenet-frame

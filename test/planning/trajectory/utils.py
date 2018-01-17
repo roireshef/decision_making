@@ -3,7 +3,7 @@ from typing import List
 import matplotlib.patches as patches
 import numpy as np
 
-from decision_making.src.planning.types import CURVE_YAW, CartesianPoint2D
+from decision_making.src.planning.types import CURVE_YAW, CartesianPoint2D, CartesianExtendedState, C_X, C_Y
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle, SigmoidStaticBoxObstacle, \
     SigmoidBoxObstacle
 from decision_making.src.prediction.predictor import Predictor
@@ -92,12 +92,20 @@ class WerlingVisualizer:
         for o in obs: o.plot(plt)
 
     @staticmethod
-    def plot_alternatives(plt, alternatives: np.ndarray):
-        for alt in alternatives:
-            plt.plot(alt[:, 0], alt[:, 1], '-m')
-            plt.plot(alt[-1, 0], alt[-1, 1], 'om')
+    def plot_alternatives(plt, alternatives: np.ndarray, costs: np.ndarray):
+        max_cost = np.log(1+max(costs))
+        min_cost = np.log(1+min(costs))
+        for i, alt in enumerate(alternatives):
+            cost = np.log(1+costs[i])
+            c = 1 - (cost-min_cost)/(max_cost-min_cost)
+            plt.plot(alt[:, 0], alt[:, 1], '-', color=[c, 0, 0.5])
+            plt.plot(alt[-1, 0], alt[-1, 1], 'o', color=[c, 0, 0.5])
 
     @staticmethod
     def plot_best(plt, traj):
         plt.plot(traj[:, 0], traj[:, 1], '-g')
         plt.plot(traj[-1, 0], traj[-1, 1], 'og')
+
+    @staticmethod
+    def plot_goal(plt, goal: CartesianExtendedState):
+        plt.plot(goal[C_X], goal[C_Y], 'or')

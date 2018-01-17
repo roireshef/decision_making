@@ -8,7 +8,7 @@ from decision_making.src.global_constants import OBJECTS_SIGMOID_K_PARAM, LATERA
     LON_ACCELERATION_LIMITS, DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
-from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, CartesianPoint2D
+from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, CartesianPoint2D, C_Y
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
@@ -133,7 +133,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
 
     route_points = CartesianFrame.add_yaw_and_derivatives(
         RouteFixture.get_route(lng=10, k=1, step=1, lat=0, offset=reference_route_latitude))
-    goal_latitude = reference_route_latitude
+    goal_latitude = reference_route_latitude + 1
     target_lane = int(goal_latitude/lane_width)
 
     v0 = 6
@@ -143,12 +143,12 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     predictor = RoadFollowingPredictor(logger)
 
     goal = np.concatenate((route_points[-1, [CURVE_X, CURVE_Y, CURVE_YAW]], [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
-    goal[1] = goal_latitude
+    goal[C_Y] = goal_latitude
 
     pos1 = np.array([6, 5.5])
     yaw1 = 0
     pos2 = np.array([22, 3.0])
-    yaw2 = 0  # np.pi / 16
+    yaw2 = np.pi / 32
 
     obs = list([
         DynamicObject(obj_id=0, timestamp=0, x=pos1[0], y=pos1[1], z=0, yaw=yaw1, size=ObjectSize(4, 1.8, 0),
@@ -156,7 +156,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
         DynamicObject(obj_id=0, timestamp=0, x=pos2[0], y=pos2[1], z=0, yaw=yaw2, size=ObjectSize(4, 1.8, 0),
                       confidence=1.0, v_x=0, v_y=0, acceleration_lon=0.0, omega_yaw=0.0)
     ])
-    obs = list([])
+    #obs = list([])
 
     ego = EgoState(obj_id=-1, timestamp=0, x=0, y=lane_width/2, z=0, yaw=0,
                    size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
@@ -266,7 +266,9 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     WerlingVisualizer.plot_route(p2, route_points[:, :2])
 
     WerlingVisualizer.plot_best(p2, ctrajectories[0])
-    WerlingVisualizer.plot_alternatives(p1, ctrajectories)
+    WerlingVisualizer.plot_alternatives(p1, ctrajectories, costs)
+
+    WerlingVisualizer.plot_goal(p2, goal)
 
     print(costs)
 

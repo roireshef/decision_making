@@ -44,8 +44,8 @@ LANE_SIGMOID_K_PARAM = 4                    # sigmoid k (slope) param of going o
 SHOULDER_SIGMOID_K_PARAM = 4                # sigmoid k (slope) param of going out-of-shoulder
 ROAD_SIGMOID_K_PARAM = 20                   # sigmoid k (slope) param of going out-of-road
 SHOULDER_SIGMOID_OFFSET = 0.8               # offset param m of going out-of-shoulder: w/(1+e^(k*(m+x)))
-DEVIATION_FROM_GOAL_LON_COST = 10           # cost of squared longitudinal deviation from the goal
-DEVIATION_FROM_GOAL_LAT_COST = 20           # cost of squared lateral deviation from the goal
+DEVIATION_FROM_GOAL_LON_COST = 8            # cost of squared longitudinal deviation from the goal
+DEVIATION_FROM_GOAL_LAT_COST = 24           # cost of squared lateral deviation from the goal
 DEVIATION_FROM_REF_ROUTE_COST = 0.0         # cost of squared deviation from the route path
 
 # [m/s] min & max velocity limits are additional parameters for TP
@@ -100,7 +100,7 @@ TRAJECTORY_OBSTACLE_LOOKAHEAD = 200.0
 EXP_CLIP_TH = 50.0
 
 # Number of (best) trajectories to publish to visualization
-NUM_ALTERNATIVE_TRAJECTORIES = 20
+NUM_ALTERNATIVE_TRAJECTORIES = 10
 
 # [m] "Negligible distance" threshold between the desired location and the actual location between two TP planning
 # iterations. If the distance is lower than this threshold, the TP plans the trajectory as is the ego vehicle is
