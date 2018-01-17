@@ -25,6 +25,10 @@ from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 ### MESSAGES ###
 
 @pytest.fixture(scope='function')
+def car_size():
+    yield ObjectSize(length=3.0, width=2.0, height=1.2)
+
+@pytest.fixture(scope='function')
 def navigation_plan():
     yield NavigationPlanMsg(np.array([1, 2]))
 

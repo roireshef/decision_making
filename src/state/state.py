@@ -5,6 +5,8 @@ import numpy as np
 
 from decision_making.src.messages.str_serializable import StrSerializable
 from mapping.src.model.localization import RoadLocalization
+
+from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW
 from mapping.src.service.map_service import MapService
 
 from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedNumpyArray
@@ -106,6 +108,44 @@ class DynamicObject(StrSerializable):
         self.omega_yaw = omega_yaw
         self._cached_road_localization: Optional[RoadLocalization] = None
 
+    def clone_cartesian_state(self, timestamp_in_sec: float, cartesian_state: CartesianState):
+        """
+        Return a new DynamicObject instance with updated timestamp and cartesian state.
+        Enables creating new instances of object from predicted trajectories.
+        Assume that object's speed is only in the x axis
+        :param timestamp_in_sec: global timestamp in [sec] of updated object
+        :param cartesian_state: object cartesian state
+        :return: Returns a new DynamicObject with updated state
+        """
+
+        # TODO: set other attributes, as:
+        # TODO: z coordinate, acceleration
+
+        timestamp = int(timestamp_in_sec * 1e9)
+        x = cartesian_state[C_X]
+        y = cartesian_state[C_Y]
+        z = 0.0
+        yaw = cartesian_state[C_YAW]
+
+        # Assume that object's speed is only in the x axis
+        v_x = cartesian_state[C_V]
+        v_y = 0.0
+
+        # Fetch object's public fields
+        object_fields = {k: v for k, v in self.__dict__.items() if k[0] != '_'}
+
+        # Overwrite object fields
+        object_fields['timestamp'] = timestamp
+        object_fields['x'] = x
+        object_fields['y'] = y
+        object_fields['z'] = z
+        object_fields['yaw'] = yaw
+        object_fields['v_x'] = v_x
+        object_fields['v_y'] = v_y
+
+        # Construct a new object
+        return self.__class__(**object_fields)
+
     @property
     def road_localization(self):
         # type: () -> RoadLocalization
@@ -188,8 +228,14 @@ class EgoState(DynamicObject):
         self.steering_angle = steering_angle
 
     @property
-    def curvature(self):    # curvature is signed (same sign as steering_angle)
-        # TODO: change <length> to the distance between the two axles
+    # TODO: change <length> to the distance between the two axles
+    # TODO: understand (w.r.t which axle counts) if we should use sin or tan here + validate vs sensor-alignments
+    def curvature(self):
+        """
+        For any point on a curve, the curvature measure is defined as 1/R where R is the radius length of a
+        circle that tangents the curve at that point. HERE, CURVATURE IS SIGNED (same sign as steering_angle).
+        For more information please see: https://en.wikipedia.org/wiki/Curvature#Curvature_of_plane_curves
+        """
         return np.tan(self.steering_angle) / self.size.length
 
     def serialize(self) -> LcmEgoState:
@@ -212,7 +258,7 @@ class State(StrSerializable):
     def __init__(self, occupancy_state, dynamic_objects, ego_state):
         # type: (OccupancyState, List[DynamicObject], EgoState) -> None
         """
-        main class for the world state
+        main class for the world state. deep copy is required by self.clone_with!
         :param occupancy_state: free space
         :param dynamic_objects:
         :param ego_state:
@@ -220,6 +266,17 @@ class State(StrSerializable):
         self.occupancy_state = copy.deepcopy(occupancy_state)
         self.dynamic_objects = copy.deepcopy(dynamic_objects)
         self.ego_state = copy.deepcopy(ego_state)
+
+    def clone_with(self, occupancy_state: Optional[OccupancyState] = None,
+                   dynamic_objects: Optional[List[DynamicObject]] = None,
+                   ego_state: Optional[EgoState] = None):
+        """
+        clones state object with potential overriding of specific fields.
+        requires deep-copying of all fields in State.__init__ !!
+        """
+        return State(occupancy_state or self.occupancy_state,
+                     dynamic_objects or self.dynamic_objects,
+                     ego_state or self.ego_state)
 
     def serialize(self) -> LcmState:
         lcm_msg = LcmState()

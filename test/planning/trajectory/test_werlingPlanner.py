@@ -4,6 +4,7 @@ import time
 from decision_making.src.global_constants import EGO_HEIGHT, EGO_WIDTH, EGO_LENGTH, DEFAULT_ACCELERATION, \
     DEFAULT_CURVATURE
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
+from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
@@ -43,13 +44,13 @@ def test_werlingPlanner_toyScenario_noException():
     yaw2 = np.pi / 4
 
     obs = list([
-        DynamicObject(obj_id=0, timestamp=950, x=pos1[0], y=pos1[1], z=0, yaw=yaw1, size=ObjectSize(1.5, 0.5, 0),
+        DynamicObject(obj_id=0, timestamp=950*10e6, x=pos1[0], y=pos1[1], z=0, yaw=yaw1, size=ObjectSize(1.5, 0.5, 0),
                       confidence=1.0, v_x=2.2, v_y=0, acceleration_lon=0.0, omega_yaw=0.0),
-        DynamicObject(obj_id=0, timestamp=950, x=pos2[0], y=pos2[1], z=0, yaw=yaw2, size=ObjectSize(1.5, 0.5, 0),
+        DynamicObject(obj_id=0, timestamp=950*10e6, x=pos2[0], y=pos2[1], z=0, yaw=yaw2, size=ObjectSize(1.5, 0.5, 0),
                       confidence=1.0, v_x=1.1, v_y=0, acceleration_lon=0.0, omega_yaw=0.0)
     ])
 
-    ego = EgoState(obj_id=-1, timestamp=1000, x=0, y=0, z=0, yaw=0, size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
+    ego = EgoState(obj_id=-1, timestamp=1000*10e6, x=0, y=0, z=0, yaw=0, size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
                    confidence=1.0, v_x=v0, v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
     state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
@@ -72,7 +73,7 @@ def test_werlingPlanner_toyScenario_noException():
     start_time = time.time()
 
     samplable, ctrajectories, costs = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
-                                       goal_time=T, cost_params=cost_params)
+                                       goal_time=ego.timestamp_in_sec + T, cost_params=cost_params)
 
     samplable.sample(np.arange(0, 1, 0.1) + ego.timestamp_in_sec)
 
@@ -85,7 +86,7 @@ def test_werlingPlanner_toyScenario_noException():
     fig = plt.figure()
     p1 = fig.add_subplot(211)
     p2 = fig.add_subplot(212)
-    time_samples = np.arange(0.0, T, 0.1)
+    time_samples = np.arange(0.0, T, 0.1) + ego.timestamp_in_sec
     plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost.k,
                                                         cost_params.obstacle_cost.offset, time_samples, predictor)
                      for o in state.dynamic_objects]
@@ -103,5 +104,4 @@ def test_werlingPlanner_toyScenario_noException():
 
     fig.show()
     fig.clear()
-
 
