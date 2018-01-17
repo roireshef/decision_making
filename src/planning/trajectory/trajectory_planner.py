@@ -46,12 +46,13 @@ class TrajectoryPlanner(metaclass=ABCMeta):
 
     @abstractmethod
     @raises(NoValidTrajectoriesFound)
-    def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, goal_time: float,
+    def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, lon_plan_horizon: float,
              cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
         Plans a trajectory according to the specifications in the arguments
-        :param goal_time: defines the global time in [sec] of the goal. Enables the target state and time
-            to be determined in the behavioral planner, so that any re-planning iteration is consistent in the TP.
+        :param lon_plan_horizon: defines the longitudinal planning horizon in [sec] for reaching the goal. Enables the target
+            state and time to be determined in the behavioral planner, so that any re-planning iteration is consistent
+            in the TP.
         :param state: environment & ego state object
         :param reference_route: a reference route (often the center of lane).
         :param goal: A 1D numpy array of the desired ego-state to plan towards, represented in current

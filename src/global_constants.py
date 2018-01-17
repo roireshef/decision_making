@@ -134,6 +134,9 @@ DX_OFFSET_MIN, DX_OFFSET_MAX = -1, 1
 # Linspace number of steps in the constraints parameters grid-search
 SX_STEPS, SV_STEPS, DX_STEPS = 15, 1, 5
 
+# Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
+TD_STEPS = 3
+
 # Frenet-Serret Conversions #
 
 # [1/m] Curvature threshold for the GD step (if value is smaller than this value, there is no step executed)

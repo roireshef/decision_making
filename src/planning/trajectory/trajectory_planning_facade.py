@@ -65,12 +65,14 @@ class TrajectoryPlanningFacade(DmModule):
             state = self._get_current_state()
             params = self._get_mission_params()
 
+            # Longitudinal planning horizon (Ts)
+            lon_plan_horizon = params.time - state.ego_state.timestamp_in_sec
+
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route[0])
             self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
             self.logger.debug("input: ego: v_x: %f, v_y: %f", state.ego_state.v_x, state.ego_state.v_y)
-            self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s",
-                              params.time - state.ego_state.timestamp_in_sec)
+            self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", lon_plan_horizon)
             self.logger.info("state: %d objects detected", len(state.dynamic_objects))
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
@@ -89,7 +91,7 @@ class TrajectoryPlanningFacade(DmModule):
 
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, extended_target_state, params.time, params.cost_params)
+                plan(updated_state, params.reference_route, extended_target_state, lon_plan_horizon, params.cost_params)
 
             # TODO: validate that sampling is consistent with controller!
             trajectory_points = samplable_trajectory.sample(
@@ -104,7 +106,7 @@ class TrajectoryPlanningFacade(DmModule):
 
             # publish visualization/debug data - based on actual ego localization (original state)!
             debug_results = self._prepare_visualization_msg(state, params.reference_route, ctrajectories, costs,
-                                                            params.time - state.ego_state.timestamp_in_sec,
+                                                            lon_plan_horizon,
                                                             self._strategy_handlers[params.strategy].predictor)
 
             self._publish_debug(debug_results)
