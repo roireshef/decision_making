@@ -60,7 +60,8 @@ class TrajectoryCostParams(StrSerializable):
         :param right_road_cost: defines the sigmoid cost of the right-side of the road
         :param left_shoulder_cost: defines the sigmoid cost of the left-shoulder of the road (physical boundary)
         :param right_shoulder_cost: defines the sigmoid cost of the right-shoulder of the road (physical boundary)
-        :param obstacle_cost: defines the sigmoid cost of obstacles
+        :param obstacle_cost_x: defines the longitudinal sigmoid cost of obstacles
+        :param obstacle_cost_y: defines the lateral sigmoid cost of obstacles
         :param dist_from_goal_lon_sq_cost: cost of distance from the target longitude is C(x) = a*x^2, this is a.
         :param dist_from_goal_lat_sq_cost: cost of distance from the target latitude is C(x) = a*x^2, this is a.
         :param dist_from_ref_sq_cost: if cost of distance from the reference route is C(x) = a*x^2, this is a.
@@ -114,7 +115,8 @@ class TrajectoryCostParams(StrSerializable):
 
     @classmethod
     def deserialize(cls, lcmMsg: LcmTrajectoryCostParams):
-        return cls(SigmoidFunctionParams.deserialize(lcmMsg.obstacle_cost)
+        return cls(SigmoidFunctionParams.deserialize(lcmMsg.obstacle_cost_x)
+                 , SigmoidFunctionParams.deserialize(lcmMsg.obstacle_cost_y)
                  , SigmoidFunctionParams.deserialize(lcmMsg.left_lane_cost)
                  , SigmoidFunctionParams.deserialize(lcmMsg.right_lane_cost)
                  , SigmoidFunctionParams.deserialize(lcmMsg.left_shoulder_cost)
