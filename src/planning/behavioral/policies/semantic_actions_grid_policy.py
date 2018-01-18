@@ -314,7 +314,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                            dist_from_goal_lat_sq_cost=dist_from_goal_lat_sq_cost,
                                            dist_from_ref_sq_cost=dist_from_ref_sq_cost,
                                            velocity_limits=velocity_limits,
-                                           acceleration_limits=acceleration_limits)
+                                           lon_acceleration_limits=acceleration_limits)
 
         return cost_params
 

@@ -66,7 +66,7 @@ def test_werlingPlanner_toyScenario_noException():
                                        dist_from_goal_lat_sq_cost=1.0,
                                        dist_from_goal_lon_sq_cost=1.0,
                                        velocity_limits=np.array([v_min, v_max]),
-                                       acceleration_limits=np.array([a_min, a_max]))
+                                       lon_acceleration_limits=np.array([a_min, a_max]))
 
     planner = WerlingPlanner(logger, predictor)
 

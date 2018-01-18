@@ -41,7 +41,8 @@ class TrajectoryCostParams(StrSerializable):
                  left_shoulder_cost: SigmoidFunctionParams, right_shoulder_cost: SigmoidFunctionParams,
                  obstacle_cost: SigmoidFunctionParams,
                  dist_from_goal_lon_sq_cost: float, dist_from_goal_lat_sq_cost: float,
-                 dist_from_ref_sq_cost: float, velocity_limits: Limits, acceleration_limits: Limits):
+                 dist_from_ref_sq_cost: float, velocity_limits: Limits,
+                 lon_acceleration_limits: Limits, lat_acceleration_limits: Limits):
         """
         This class holds all the parameters used to build the cost function of the trajectory planner.
         It is dynamically set and sent by the behavioral planner.
@@ -64,9 +65,9 @@ class TrajectoryCostParams(StrSerializable):
         :param dist_from_goal_lat_sq_cost: cost of distance from the target latitude is C(x) = a*x^2, this is a.
         :param dist_from_ref_sq_cost: if cost of distance from the reference route is C(x) = a*x^2, this is a.
         :param velocity_limits: Limits of allowed velocity in [m/sec]
-        :param acceleration_limits: Limits of allowed acceleration in [m/sec^2]
+        :param lon_acceleration_limits: Limits of allowed longitudinal acceleration in [m/sec^2]
+        :param lon_acceleration_limits: Limits of allowed lateral acceleration in [m/sec^2]
         """
-
         self.obstacle_cost = obstacle_cost
         self.left_lane_cost = left_lane_cost
         self.right_lane_cost = right_lane_cost
@@ -78,7 +79,8 @@ class TrajectoryCostParams(StrSerializable):
         self.dist_from_goal_lat_sq_cost = dist_from_goal_lat_sq_cost
         self.dist_from_ref_sq_cost = dist_from_ref_sq_cost
         self.velocity_limits = velocity_limits
-        self.acceleration_limits = acceleration_limits
+        self.lon_acceleration_limits = lon_acceleration_limits
+        self.lat_acceleration_limits = lat_acceleration_limits
 
     def serialize(self) -> LcmTrajectoryCostParams:
         lcm_msg = LcmTrajectoryCostParams()
@@ -102,10 +104,10 @@ class TrajectoryCostParams(StrSerializable):
         lcm_msg.velocity_limits.data = self.velocity_limits.flat.__array__().tolist()
 
         lcm_msg.acceleration_limits = LcmNumpyArray()
-        lcm_msg.acceleration_limits.num_dimensions = len(self.acceleration_limits.shape)
-        lcm_msg.acceleration_limits.shape = list(self.acceleration_limits.shape)
-        lcm_msg.acceleration_limits.length = self.acceleration_limits.size
-        lcm_msg.acceleration_limits.data = self.acceleration_limits.flat.__array__().tolist()
+        lcm_msg.acceleration_limits.num_dimensions = len(self.lon_acceleration_limits.shape)
+        lcm_msg.acceleration_limits.shape = list(self.lon_acceleration_limits.shape)
+        lcm_msg.acceleration_limits.length = self.lon_acceleration_limits.size
+        lcm_msg.acceleration_limits.data = self.lon_acceleration_limits.flat.__array__().tolist()
 
         return lcm_msg
 
