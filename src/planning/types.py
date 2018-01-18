@@ -72,6 +72,6 @@ FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA = 0, 1, 2, 3, 4, 5
 
 ## MISC ##
 # A (two-cells) 1D numpy array represents limits (min, max)
-lon_accelerationLimits = np.ndarray
+Limits = np.ndarray
 LIMIT_MIN = 0
 LIMIT_MAX = 1

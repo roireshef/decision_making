@@ -176,24 +176,6 @@ class WerlingPlanner(TrajectoryPlanner):
             (np.less_equal(lat_acceleration, cost_params.lat_acceleration_limits[LIMIT_MAX])), axis=1)
         return np.argwhere(conforms).flatten()
 
-    # @staticmethod
-    # def _filter_limits(ftrajectories: FrenetTrajectories, cost_params: TrajectoryCostParams) -> (
-    #         FrenetTrajectories, np.ndarray):
-    #     """
-    #     filters trajectories in their frenet-frame representation according to velocity and acceleration limits
-    #     :param ftrajectories: Frenet-frame trajectories (tensor) of shape [t, p, 6] with t trajectories,
-    #     p points in each, and 6 frenet-frame axes
-    #     :param cost_params: A CostParams instance specifying the required limitations
-    #     :return: (a tensor of valid trajectories. shape is [reduced_t, p, 6], array of booleans - true if trajectory is
-    #     valid, false if it breaks the limits.
-    #     """
-    #     conforms = np.all(
-    #         (np.greater_equal(ftrajectories[:, :, FS_SV], cost_params.velocity_limits[LIMIT_MIN])) &
-    #         (np.less_equal(ftrajectories[:, :, FS_SV], cost_params.velocity_limits[LIMIT_MAX])) &
-    #         (np.greater_equal(ftrajectories[:, :, FS_SA], cost_params.lon_acceleration_limits[LIMIT_MIN])) &
-    #         (np.less_equal(ftrajectories[:, :, FS_SA], cost_params.lon_acceleration_limits[LIMIT_MAX])), axis=1)
-    #     return ftrajectories[conforms], np.argwhere(conforms).flatten()
-
     @staticmethod
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories, state: State,
                       goal_in_frenet: FrenetPoint, params: TrajectoryCostParams, global_time_samples: np.ndarray,

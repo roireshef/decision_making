@@ -45,23 +45,21 @@ DEVIATION_FROM_GOAL_LON_COST = 1.0 * 1e2    # cost of squared longitudinal devia
 DEVIATION_FROM_GOAL_LAT_COST = 1.5 * 1e2    # cost of squared lateral deviation from the goal
 DEVIATION_FROM_REF_ROUTE_COST = 0.0         # cost of squared deviation from the route path
 
-# [m/s] min & max velocity limits are additional parameters for TP
-VELOCITY_LIMITS = np.array([0.0, 60.0])
-
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
 BP_SPECIFICATION_T_MIN = 2.0
 BP_SPECIFICATION_T_MAX = 20.0
 BP_SPECIFICATION_T_RES = 0.2
 
+# [m/s] min & max velocity limits are additional parameters for TP
+VELOCITY_LIMITS = np.array([0.0, 30.0])
+
 # Longitudinal Acceleration Limits [m/sec^2]
-A_LON_MIN = -4.0
-A_LON_MAX = 4.0
+LON_ACC_LIMITS = np.array([-4.0, 4.0])
 A_LON_EPS = 3.0
 
 # Latitudinal Acceleration Limits [m/sec^2]
-A_LAT_MIN = -2.0
-A_LAT_MAX = 2.0
+LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road

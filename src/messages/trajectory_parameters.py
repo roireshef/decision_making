@@ -66,7 +66,7 @@ class TrajectoryCostParams(StrSerializable):
         :param dist_from_ref_sq_cost: if cost of distance from the reference route is C(x) = a*x^2, this is a.
         :param velocity_limits: Limits of allowed velocity in [m/sec]
         :param lon_acceleration_limits: Limits of allowed longitudinal acceleration in [m/sec^2]
-        :param lon_acceleration_limits: Limits of allowed lateral acceleration in [m/sec^2]
+        :param lat_acceleration_limits: Limits of allowed signed lateral acceleration in [m/sec^2]
         """
         self.obstacle_cost = obstacle_cost
         self.left_lane_cost = left_lane_cost
@@ -103,11 +103,17 @@ class TrajectoryCostParams(StrSerializable):
         lcm_msg.velocity_limits.length = self.velocity_limits.size
         lcm_msg.velocity_limits.data = self.velocity_limits.flat.__array__().tolist()
 
-        lcm_msg.acceleration_limits = LcmNumpyArray()
-        lcm_msg.acceleration_limits.num_dimensions = len(self.lon_acceleration_limits.shape)
-        lcm_msg.acceleration_limits.shape = list(self.lon_acceleration_limits.shape)
-        lcm_msg.acceleration_limits.length = self.lon_acceleration_limits.size
-        lcm_msg.acceleration_limits.data = self.lon_acceleration_limits.flat.__array__().tolist()
+        lcm_msg.lon_acceleration_limits = LcmNumpyArray()
+        lcm_msg.lon_acceleration_limits.num_dimensions = len(self.lon_acceleration_limits.shape)
+        lcm_msg.lon_acceleration_limits.shape = list(self.lon_acceleration_limits.shape)
+        lcm_msg.lon_acceleration_limits.length = self.lon_acceleration_limits.size
+        lcm_msg.lon_acceleration_limits.data = self.lon_acceleration_limits.flat.__array__().tolist()
+
+        lcm_msg.lat_acceleration_limits = LcmNumpyArray()
+        lcm_msg.lat_acceleration_limits.num_dimensions = len(self.lat_acceleration_limits.shape)
+        lcm_msg.lat_acceleration_limits.shape = list(self.lat_acceleration_limits.shape)
+        lcm_msg.lat_acceleration_limits.length = self.lat_acceleration_limits.size
+        lcm_msg.lat_acceleration_limits.data = self.lat_acceleration_limits.flat.__array__().tolist()
 
         return lcm_msg
 
@@ -126,9 +132,13 @@ class TrajectoryCostParams(StrSerializable):
                  , np.ndarray(shape = tuple(lcmMsg.velocity_limits.shape)
                             , buffer = np.array(lcmMsg.velocity_limits.data)
                             , dtype = float)
-                 , np.ndarray(shape = tuple(lcmMsg.acceleration_limits.shape)
-                            , buffer = np.array(lcmMsg.acceleration_limits.data)
+                 , np.ndarray(shape = tuple(lcmMsg.lon_acceleration_limits.shape)
+                            , buffer = np.array(lcmMsg.lon_acceleration_limits.data)
+                            , dtype = float)
+                 , np.ndarray(shape = tuple(lcmMsg.lat_acceleration_limits.shape)
+                            , buffer = np.array(lcmMsg.lat_acceleration_limits.data)
                             , dtype = float))
+
 
 class TrajectoryParams(StrSerializable):
     def __init__(self, strategy: TrajectoryPlanningStrategy, reference_route: np.ndarray,
