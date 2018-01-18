@@ -30,10 +30,10 @@ class BehavioralFacadeMock(BehavioralFacade):
         self._visualization_msg = visualization_msg
 
         self._trigger_pos = trigger_pos
-        if self._trigger_pos:
-            self._triggered = False
-        else:
+        if self._trigger_pos is None:
             self._triggered = True
+        else:
+            self._triggered = False
 
     def _periodic_action_impl(self):
         """
