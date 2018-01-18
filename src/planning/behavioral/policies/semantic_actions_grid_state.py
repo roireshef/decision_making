@@ -1,6 +1,6 @@
 from logging import Logger
 
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, EGO_ORIGIN_LON_FROM_REAR
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, EGO_ORIGIN_LON_FROM_REAR
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.global_constants import SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LON_REAR, LON_MARGIN_FROM_EGO, BEHAVIORAL_PLANNING_HORIZON
@@ -88,7 +88,7 @@ class SemanticActionsGridState(SemanticBehavioralState):
                 # We treat the object only if its distance is smaller than the distance we
                 # would have travelled for the planning horizon in the average speed between current and target vel.
                 if dist_from_object_rear_to_ego_front > BEHAVIORAL_PLANNING_HORIZON * \
-                        0.5 * (ego_state.v_x + BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT):
+                        0.5 * (ego_state.v_x + BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED):
                     continue
 
                 if len(semantic_occupancy_dict[occupancy_index]) == 0:

@@ -23,6 +23,7 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.types import C_Y, C_X
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import ObjectSize
+from decision_making.test import constants
 from decision_making.test.constants import TP_MOCK_FIXED_TRAJECTORY_FILENAME, BP_MOCK_FIXED_SPECS
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.test.planning.trajectory.fixed_trajectory_planner import FixedTrajectoryPlanner
@@ -97,8 +98,8 @@ class DmMockInitialization:
             road_id=BP_MOCK_FIXED_SPECS['ROAD_ID'], ego_size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
             reference_route_latitude=desired_lat)
 
-        # time here is relative for the moment, but upon trigerring of the BehavioralFacadeMock, the ego.timestamp_in_sec
-        # is being added. naughty hack as always!
+        # time here is relative for the moment, but upon triggering of the BehavioralFacadeMock,
+        # the ego.timestamp_in_sec is being added.
         params = TrajectoryParams(strategy=TrajectoryPlanningStrategy.HIGHWAY,
                                   reference_route=ref_route,
                                   target_state=target_state,
@@ -107,12 +108,17 @@ class DmMockInitialization:
 
         viz_msg = BehavioralVisualizationMsg(reference_route=ref_route)
 
-        behavioral_module = BehavioralFacadeMock(pubsub=pubsub, logger=logger, trigger_pos=BP_MOCK_FIXED_SPECS['TRIGGER_POINT'],
+        behavioral_module = BehavioralFacadeMock(pubsub=pubsub, logger=logger,
+                                                 trigger_pos=BP_MOCK_FIXED_SPECS['TRIGGER_POINT'],
                                                  trajectory_params=params, visualization_msg=viz_msg)
         return behavioral_module
 
 
 def main():
+    """
+    initializes DM planning pipeline. for switching between BP/TP impl./mock make sure to comment out the relevant
+    instantiation in modules_list.
+    """
     modules_list = \
         [
             DmProcess(DmInitialization.create_navigation_planner,
@@ -136,6 +142,7 @@ def main():
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
     logger.debug('%d: (main) registered signal handler', getpid())
     logger.info("DM Global Constants: %s", {k: v for k, v in global_constants.__dict__.items() if k.isupper()})
+    logger.info("DM Test Constants: %s", {k: v for k, v in constants.__dict__.items() if k.isupper()})
 
     catch_interrupt_signals()
     manager = DmManager(logger, modules_list)
@@ -148,5 +155,6 @@ def main():
     finally:
         manager.stop_modules()
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     main()
