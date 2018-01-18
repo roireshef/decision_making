@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
-                                                 BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
+    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
@@ -31,7 +31,8 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
                          TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
     trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
-                                                          strategy_handlers=strategy_handlers)
+                                                          strategy_handlers=strategy_handlers,
+                                                          short_time_predictor=predictor)
 
     pubsub.subscribe(pubsub_topics.TRAJECTORY_TOPIC, trajectory_publish_mock)
 
@@ -53,7 +54,8 @@ def test_behavioralPlanningFacade_semanticPolicy_anyResult(pubsub: PubSub, state
 
     state_module.periodic_action()
     navigation_facade.periodic_action()
-    behavioral_planner_module = BehavioralFacade(pubsub=pubsub, logger=logger, policy=policy)
+    behavioral_planner_module = BehavioralFacade(pubsub=pubsub, logger=logger, policy=policy,
+                                                 short_time_predictor=predictor)
 
     pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, behavioral_publish_mock)
 
@@ -63,4 +65,3 @@ def test_behavioralPlanningFacade_semanticPolicy_anyResult(pubsub: PubSub, state
     # behavioral_publish_mock.periodic_action()
 
     behavioral_publish_mock.assert_called_once()
-
