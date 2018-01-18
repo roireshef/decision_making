@@ -299,7 +299,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # TODO: set velocity and acceleration limits properly
         velocity_limits = VELOCITY_LIMITS  # [m/s]. not a constant because it might be learned. TBD
         lon_acceleration_limits = LON_ACC_LIMITS + np.array([-A_LON_EPS, +A_LON_EPS])
-        lat_acceleration_limits = np.array([A_LAT_MIN, A_LAT_MAX])
+        lat_acceleration_limits = LAT_ACC_LIMITS
 
         cost_params = TrajectoryCostParams(left_lane_cost=left_lane_cost,
                                            right_lane_cost=right_lane_cost,
