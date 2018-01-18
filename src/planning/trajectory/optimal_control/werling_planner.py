@@ -15,7 +15,7 @@ from decision_making.src.planning.trajectory.trajectory_planner import Trajector
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianExtendedTrajectory, \
     CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, FrenetState, \
-    WerlingCoeffsPlaceholder, FS_1D_Len, FS_X
+    WerlingCoeffsPlaceholder, FS_1D_LEN, FS_X
 from decision_making.src.planning.types import FrenetTrajectories, CartesianExtendedTrajectories, FrenetPoint
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
@@ -277,7 +277,7 @@ class WerlingPlanner(TrajectoryPlanner):
             # Expand latitudinal solutions to the size of the longitudinal solutions with its final positions replicated
             # and velocity and accelerations set to zero.
             time_samples_diff = lon_time_samples.size - lat_time_samples.size
-            solutions_d_td = np.concatenate((solutions_d_td, np.zeros((DX_STEPS, time_samples_diff, FS_1D_Len))), axis=1)
+            solutions_d_td = np.concatenate((solutions_d_td, np.zeros((DX_STEPS, time_samples_diff, FS_1D_LEN))), axis=1)
             final_lat_positions = solutions_d_td[:, lat_time_samples.size - 1, FS_X]
             solutions_d_td[:, lat_time_samples.size:, FS_X] = np.transpose(np.tile(final_lat_positions, (time_samples_diff, 1)))
 

@@ -69,7 +69,7 @@ FrenetTrajectories = np.ndarray
 
 # frenet-frame 1D state: [s, s-dot, s-dotdot] or [d, d-dot, d-dotdot]
 FS_X, FS_V, FS_A, = 0, 1, 2
-FS_1D_Len = 3
+FS_1D_LEN = 3
 
 # frenet-frame state: [s, s-dot, s-dotdot, d, d-dot, d-dotdot]
 FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA = 0, 1, 2, 3, 4, 5
