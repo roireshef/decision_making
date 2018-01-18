@@ -2,7 +2,7 @@ import numpy as np
 import time
 
 from decision_making.src.global_constants import EGO_HEIGHT, EGO_WIDTH, EGO_LENGTH, DEFAULT_ACCELERATION, \
-    DEFAULT_CURVATURE
+    DEFAULT_CURVATURE,TD_STEPS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW
@@ -32,7 +32,12 @@ def test_werlingPlanner_toyScenario_noException():
     v_max = 10
     a_min = -5
     a_max = 5
-    T = 1.5
+    Ts = 1.5
+    Td_low_bound = 0.3
+
+    Td_vals = np.linspace(Td_low_bound, Ts, TD_STEPS)
+    dt=0.1
+    Td_vals = np.round(Td_vals * (1 / dt)) / (1 / dt)
 
     predictor = RoadFollowingPredictor(logger)
 
@@ -73,9 +78,10 @@ def test_werlingPlanner_toyScenario_noException():
     start_time = time.time()
 
     samplable, ctrajectories, costs = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
-                                       goal_time=ego.timestamp_in_sec + T, cost_params=cost_params)
+                                                   lon_plan_horizon=Ts, low_bound_lat_plan_horizon=Td_low_bound,
+                                                   cost_params=cost_params)
 
-    samplable.sample(np.arange(0, 1, 0.1) + ego.timestamp_in_sec)
+    samplable.sample(np.arange(0, 1, 0.01) + ego.timestamp_in_sec)
 
     end_time = time.time() - start_time
 
@@ -85,8 +91,10 @@ def test_werlingPlanner_toyScenario_noException():
 
     fig = plt.figure()
     p1 = fig.add_subplot(211)
+    plt.title('A sample from possible trajectories, Ts=%s, Td=%s' % (Ts, Td_vals))
     p2 = fig.add_subplot(212)
-    time_samples = np.arange(0.0, T, 0.1) + ego.timestamp_in_sec
+    plt.title('Chosen trajectory')
+    time_samples = np.arange(0.0, Ts, 0.1) + ego.timestamp_in_sec
     plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost.k,
                                                         cost_params.obstacle_cost.offset, time_samples, predictor)
                      for o in state.dynamic_objects]

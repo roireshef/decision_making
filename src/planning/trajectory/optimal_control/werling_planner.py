@@ -59,7 +59,8 @@ class WerlingPlanner(TrajectoryPlanner):
         return self._dt
 
     def plan(self, state: State, reference_route: np.ndarray, goal: CartesianExtendedState, lon_plan_horizon: float,
-             cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
+             low_bound_lat_plan_horizon: float, cost_params: TrajectoryCostParams)\
+            -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """ see base class """
 
         # create road coordinate-frame
@@ -107,9 +108,6 @@ class WerlingPlanner(TrajectoryPlanner):
         # so time points are from t0 = 0 until some T (lon_plan_horizon)
         planning_time_points = np.arange(self.dt, lon_plan_horizon, self.dt)
         assert lon_plan_horizon >= 0
-
-        # TODO: determine lower bound according to physical constraints and ego control limitations
-        low_bound_lat_plan_horizon = 0.5*lon_plan_horizon
 
         # solve problem in frenet-frame
         ftrajectories, poly_coefs = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
@@ -228,7 +226,7 @@ class WerlingPlanner(TrajectoryPlanner):
         """
         Solves the two-point boundary value problem, given a set of constraints over the initial state
         and a set of constraints over the terminal state. The solution is a cartesian product of the solutions returned
-        from solving two 1D problems (one for each Frenet dimension). The solution for the latitudinal direction is
+        from solving two 1D problems (one for each Frenet dimension). The solutions for the latitudinal direction are
         aggregated along different Td possible values.
         :param fconst_0: a set of constraints over the initial state
         :param fconst_t: a set of constraints over the terminal state
@@ -257,14 +255,16 @@ class WerlingPlanner(TrajectoryPlanner):
         solutions_d = np.empty((0, lon_time_samples.size, FS_1D_Len), float)
         poly_d = WerlingCoeffsPlaceholder
 
-        Td_vals = np.linspace(Td_low_bound, Ts, TD_STEPS)
-        # Make sure Td_vals values are multiples of dt.
+        Td_vals = np.array([Td_low_bound])
+        if Ts != Td_low_bound:
+            Td_vals = np.linspace(Td_low_bound, Ts, TD_STEPS)
+
+        # Make sure Td_vals values are multiples of dt (or else the matrix, calculated using Td, and the latitudinal
+        #  time axis, lat_time_samples, won't fit).
         # TODO: Consider how and where to handle this (Td_vals, and also Ts, have to be multiples of dt)
         Td_vals = np.round(Td_vals * (1 / dt)) / (1 / dt)
 
-        for i in range(TD_STEPS):
-
-            Td = Td_vals[i]
+        for Td in Td_vals:
 
             lat_time_samples = np.arange(dt, Td, dt)
 

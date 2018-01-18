@@ -68,6 +68,10 @@ class TrajectoryPlanningFacade(DmModule):
             # Longitudinal planning horizon (Ts)
             lon_plan_horizon = params.time - state.ego_state.timestamp_in_sec
 
+            # Latituudinal planning horizon(Td) lower bound
+            # TODO: determine lower bound according to physical constraints and ego control limitations
+            low_bound_lat_plan_horizon = lon_plan_horizon
+
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route[0])
             self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
@@ -91,7 +95,8 @@ class TrajectoryPlanningFacade(DmModule):
 
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, extended_target_state, lon_plan_horizon, params.cost_params)
+                plan(updated_state, params.reference_route, extended_target_state, lon_plan_horizon,
+                     low_bound_lat_plan_horizon, params.cost_params)
 
             # TODO: validate that sampling is consistent with controller!
             trajectory_points = samplable_trajectory.sample(
