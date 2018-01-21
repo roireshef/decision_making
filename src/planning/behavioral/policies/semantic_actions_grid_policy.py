@@ -301,7 +301,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         dist_from_goal_lon_sq_cost = DEVIATION_FROM_GOAL_LON_COST
         dist_from_goal_lat_sq_cost = DEVIATION_FROM_GOAL_LAT_COST
-        dist_from_ref_sq_cost = DEVIATION_FROM_REF_ROUTE_COST
 
         # TODO: set velocity and acceleration limits properly
         velocity_limits = VELOCITY_LIMITS  # [m/s]. not a constant because it might be learned. TBD
