@@ -176,7 +176,7 @@ class TrajectoryPlanningFacade(DmModule):
         if self._last_trajectory is None or current_time > self._last_trajectory.max_sample_time:
             return False
 
-        self.logger.debug("TrajectoryPlanningFacade time-difference from last planned trajectory is %s",
+        self.logger.info("TrajectoryPlanningFacade time-difference from last planned trajectory is %s",
                           current_time - self._last_trajectory.timestamp)
 
         current_expected_state: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]

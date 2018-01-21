@@ -107,6 +107,9 @@ class WerlingPlanner(TrajectoryPlanner):
         planning_horizon = goal_time - state.ego_state.timestamp_in_sec
         planning_time_points = np.arange(self.dt, planning_horizon, self.dt)
         assert planning_horizon >= 0
+        self._logger.debug('WerlingPlanner is planning from %s (frenet) to %s (frenet) in %s seconds' %
+                           (repr(ego_frenet_state).replace('\n', ''), repr(goal_frenet_state).replace('\n', ''),
+                            planning_horizon))
 
         # solve problem in frenet-frame
         ftrajectories, poly_coefs = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
