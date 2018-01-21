@@ -4,12 +4,15 @@ import time
 from decision_making.src.global_constants import OBJECTS_SIGMOID_K_PARAM, LATERAL_SAFETY_MARGIN_FROM_OBJECT, \
     INFINITE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, OUT_OF_LANE_COST, ROAD_SIGMOID_K_PARAM, \
     DEVIATION_FROM_GOAL_LON_COST, DEVIATION_FROM_GOAL_LAT_COST, EGO_LENGTH, EGO_WIDTH, \
-    SHOULDER_SIGMOID_OFFSET, SHOULDER_SIGMOID_K_PARAM, DEVIATION_FROM_REF_ROUTE_COST, VELOCITY_LIMITS, \
-    LON_ACCELERATION_LIMITS, DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT
+    SHOULDER_SIGMOID_OFFSET, SHOULDER_SIGMOID_K_PARAM, VELOCITY_LIMITS, \
+    LON_ACCELERATION_LIMITS, DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LON_JERK_COST, LAT_JERK_COST
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
+from decision_making.src.planning.trajectory.cost_function import Jerk
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
-from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, CartesianPoint2D, C_Y
+from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, CartesianPoint2D, C_Y, \
+    CartesianExtendedTrajectory, C_X, C_YAW, C_V
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
@@ -21,6 +24,7 @@ from mapping.test.model.testable_map_fixtures import testable_map_api
 from mapping.src.transformations.geometry_utils import CartesianFrame
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
+from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 
 from unittest.mock import patch
 
@@ -68,7 +72,8 @@ def test_werlingPlanner_toyScenario_noException():
                                        right_shoulder_cost=SigmoidFunctionParams(10, 1.0, 2),
                                        obstacle_cost_x=SigmoidFunctionParams(100, 10.0, 0.3),
                                        obstacle_cost_y=SigmoidFunctionParams(100, 10.0, 0.3),
-                                       dist_from_ref_sq_cost=1.0,
+                                       lon_jerk_cost=LON_JERK_COST,
+                                       lat_jerk_cost=LAT_JERK_COST,
                                        dist_from_goal_lat_sq_cost=1.0,
                                        dist_from_goal_lon_sq_cost=1.0,
                                        velocity_limits=np.array([v_min, v_max]),
@@ -123,29 +128,51 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     road_width = num_lanes*lane_width
     reference_route_latitude = 3*lane_width/2
 
-    xrange = (0, 30)
-    yrange = (-2, 10)
+    lng = 40
+    step = 0.2
+    curvature = 0.2
+
+    route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step, curvature=curvature)
+    ext = 4
+    ext_route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=ext, step=step, curvature=curvature)
+    route_points = CartesianFrame.add_yaw_and_derivatives(route_xy)
+    ext_route_points = CartesianFrame.add_yaw_and_derivatives(ext_route_xy)
+
+    start_latitude = lane_width/2
+    goal_latitude = reference_route_latitude
+    target_lane = int(goal_latitude/lane_width)
+
+    xrange = (route_points[0, C_X], route_points[-1, C_X])
+    yrange = (np.min(route_points[:, C_Y]) - reference_route_latitude - ROAD_SHOULDERS_WIDTH,
+              np.max(route_points[:, C_Y]) - reference_route_latitude + road_width + ROAD_SHOULDERS_WIDTH)
     x = np.arange(xrange[0], xrange[1], 0.1)
     y = np.arange(yrange[0], yrange[1], 0.1)
     width = x.shape[0]
     height = y.shape[0]
     points = np.array([np.transpose([np.tile(x, y.shape[0]), np.repeat(y, x.shape[0])])])
 
-    route_points = CartesianFrame.add_yaw_and_derivatives(
-        RouteFixture.get_route(lng=10, k=1, step=1, lat=0, offset=reference_route_latitude))
-    goal_latitude = reference_route_latitude + 1
-    target_lane = int(goal_latitude/lane_width)
+    frenet = FrenetSerret2DFrame(ext_route_points[:, :2])
+    pos_x = points[0].reshape(height, width, 2)
+    s_x, a_r, _, N_r, _, _ = frenet._project_cartesian_points(pos_x)
+    d_x = np.einsum('tpi,tpi->tp', pos_x - a_r, N_r)
+    fpoints = np.c_[s_x.flatten()-s_x.flatten()[0], d_x.flatten()]
 
     v0 = 6
     vT = 10
-    T = 3.8
+    T = 4.6
+
+    ftraj_start_goal = np.array([np.array([ext, v0, 0, start_latitude-reference_route_latitude, 0, 0]),
+                                 np.array([lng+ext, vT, 0, goal_latitude-reference_route_latitude, 0, 0])])
+    ctraj_start_goal = frenet.ftrajectory_to_ctrajectory(ftraj_start_goal)
 
     predictor = RoadFollowingPredictor(logger)
 
-    goal = np.concatenate((route_points[-1, [CURVE_X, CURVE_Y, CURVE_YAW]], [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
-    goal[C_Y] = goal_latitude
+    goal = ctraj_start_goal[1]
+        #np.concatenate((route_points[-1, [CURVE_X, CURVE_Y, CURVE_YAW]], [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
+    goal[C_X] -= 0.001
+    goal[C_Y] += goal_latitude - reference_route_latitude
 
-    pos1 = np.array([6, 5.5])
+    pos1 = np.array([6, 5.4])
     yaw1 = 0
     pos2 = np.array([22, 3.0])
     yaw2 = np.pi / 32
@@ -156,11 +183,12 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
         DynamicObject(obj_id=0, timestamp=0, x=pos2[0], y=pos2[1], z=0, yaw=yaw2, size=ObjectSize(4, 1.8, 0),
                       confidence=1.0, v_x=0, v_y=0, acceleration_lon=0.0, omega_yaw=0.0)
     ])
-    #obs = list([])
+    obs = list([])
 
-    ego = EgoState(obj_id=-1, timestamp=0, x=0, y=lane_width/2, z=0, yaw=0,
+    ego = EgoState(obj_id=-1, timestamp=0, x=ctraj_start_goal[0][C_X], y=ctraj_start_goal[0][C_Y], z=0,
+                   yaw=ctraj_start_goal[0][C_YAW],  # route_points[0, CURVE_YAW],
                    size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
-                   confidence=1.0, v_x=v0, v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
+                   confidence=1.0, v_x=ctraj_start_goal[0][C_V], v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
     state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
 
@@ -182,7 +210,8 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
         right_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, ROAD_SIGMOID_K_PARAM, right_shoulder_offset),
         obstacle_cost_x=SigmoidFunctionParams(INFINITE_SIGMOID_COST, OBJECTS_SIGMOID_K_PARAM, objects_dilation_length),
         obstacle_cost_y=SigmoidFunctionParams(INFINITE_SIGMOID_COST, OBJECTS_SIGMOID_K_PARAM, objects_dilation_width),
-        dist_from_ref_sq_cost=DEVIATION_FROM_REF_ROUTE_COST,
+        lon_jerk_cost=LON_JERK_COST,
+        lat_jerk_cost=LAT_JERK_COST,
         dist_from_goal_lat_sq_cost=DEVIATION_FROM_GOAL_LAT_COST,
         dist_from_goal_lon_sq_cost=DEVIATION_FROM_GOAL_LON_COST,
         velocity_limits=VELOCITY_LIMITS,
@@ -192,8 +221,8 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
 
     start_time = time.time()
 
-    samplable, ctrajectories, costs = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
-                                                    goal_time=T, cost_params=cost_params)
+    samplable, ctrajectories, costs, partial_costs = planner.plan(state=state, reference_route=ext_route_points[:, :2],
+                                                                  goal=goal, goal_time=T, cost_params=cost_params)
 
     end_time = time.time() - start_time
 
@@ -203,13 +232,13 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
                                                  margin=np.array([objects_dilation_length, objects_dilation_width]))
         obs_costs += INFINITE_SIGMOID_COST * sobj.compute_cost_per_point(points)[0]
 
-    latitudes = points[0][:, 1]
-    left_lane_offsets = (latitudes-reference_route_latitude) - left_lane_offset
-    right_lane_offsets = -(latitudes-reference_route_latitude) - right_lane_offset
-    left_shoulder_offsets = (latitudes-reference_route_latitude) - left_shoulder_offset
-    right_shoulder_offsets = -(latitudes-reference_route_latitude) - right_shoulder_offset
-    left_road_offsets = (latitudes-reference_route_latitude) - left_road_offset
-    right_road_offsets = -(latitudes-reference_route_latitude) - right_road_offset
+    latitudes = fpoints[:, 1]
+    left_lane_offsets = latitudes - left_lane_offset
+    right_lane_offsets = -latitudes - right_lane_offset
+    left_shoulder_offsets = latitudes - left_shoulder_offset
+    right_shoulder_offsets = -latitudes - right_shoulder_offset
+    left_road_offsets = latitudes - left_road_offset
+    right_road_offsets = -latitudes - right_road_offset
 
     road_deviations_costs = \
         Math.clipped_sigmoid(left_lane_offsets, OUT_OF_LANE_COST, SHOULDER_SIGMOID_K_PARAM) + \
@@ -237,13 +266,20 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     z = obs_costs.reshape(height, width) + road_deviations_costs.reshape(height, width) \
         #+ goal_deviation_costs.reshape(height, width)
 
+    diff = np.diff(route_points[:, :2], axis=0)
+    angles = np.arctan2(diff[:, 1], diff[:, 0])
+    angles = np.concatenate((angles, np.array([angles[-1]])))
+
     for p in list([p1, p2]):
         WerlingVisualizer.plot_obstacles(p, plottable_obs)
-        p.plot(np.arange(0, xrange[1]), np.repeat(np.array([0]), xrange[1]), '-k')
-        p.plot(np.arange(0, xrange[1]), np.repeat(np.array([road_width]), xrange[1]), '-k')
-        p.plot(np.arange(0, xrange[1]), np.repeat(np.array([-1.5]), xrange[1]), '-r')
-        p.plot(np.arange(0, xrange[1]), np.repeat(np.array([road_width+1.5]), xrange[1]), '-r')
-        p.plot(np.arange(0, xrange[1]), np.repeat(np.array([road_width/2]), xrange[1]), '--w')
+        WerlingVisualizer.plot_obstacles(p, plottable_obs)
+        WerlingVisualizer.plot_route(p, route_points[:, :2])
+        d = reference_route_latitude
+        WerlingVisualizer.plot_route(p, np.c_[route_points[:, 0] + d*np.sin(angles), route_points[:, 1] - d*np.cos(angles)], '-k')
+        d = road_width - reference_route_latitude
+        WerlingVisualizer.plot_route(p, np.c_[route_points[:, 0] - d*np.sin(angles), route_points[:, 1] + d*np.cos(angles)], '-k')
+        d = road_width/2 - reference_route_latitude
+        WerlingVisualizer.plot_route(p, np.c_[route_points[:, 0] - d*np.sin(angles), route_points[:, 1] + d*np.cos(angles)], '--w')
 
         # plot ego's best position for both obstacles
         for obs in state.dynamic_objects:
@@ -257,22 +293,20 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
             p.plot(np.repeat(np.array([ego.size.length / 2 + obs.x]), np.ceil(ego.size.width)+1),
                    np.arange(min_cost_y-ego.size.width/2, min_cost_y+ego.size.width/2 + 0.01), '*w')
 
+    d = reference_route_latitude + ROAD_SHOULDERS_WIDTH
+    WerlingVisualizer.plot_route(p2, np.c_[route_points[:, 0] + d*np.sin(angles), route_points[:, 1] - d*np.cos(angles)], '-r')
+    d = road_width - reference_route_latitude + ROAD_SHOULDERS_WIDTH
+    WerlingVisualizer.plot_route(p2, np.c_[route_points[:, 0] - d*np.sin(angles), route_points[:, 1] + d*np.cos(angles)], '-r')
+
     z = np.log(1 + z)
     p2.contourf(x, y, z, 100)
-
-    WerlingVisualizer.plot_obstacles(p1, plottable_obs)
-    WerlingVisualizer.plot_obstacles(p2, plottable_obs)
-    WerlingVisualizer.plot_route(p1, route_points[:, :2])
-    WerlingVisualizer.plot_route(p2, route_points[:, :2])
 
     WerlingVisualizer.plot_best(p2, ctrajectories[0])
     WerlingVisualizer.plot_alternatives(p1, ctrajectories, costs)
 
     WerlingVisualizer.plot_goal(p2, goal)
 
-    print(costs)
-
-    WerlingVisualizer.plot_route(p1, route_points)
+    print(partial_costs)
 
     fig.show()
     fig.clear()
@@ -338,7 +372,8 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
 #         right_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, ROAD_SIGMOID_K_PARAM, right_shoulder_offset),
 #         obstacle_cost_x=SigmoidFunctionParams(INFINITE_SIGMOID_COST, OBJECTS_SIGMOID_K_PARAM, objects_dilation_length),
 #         obstacle_cost_y=SigmoidFunctionParams(INFINITE_SIGMOID_COST, OBJECTS_SIGMOID_K_PARAM, objects_dilation_width),
-#         dist_from_ref_sq_cost=DEVIATION_FROM_REF_ROUTE_COST,
+#         lon_jerk_cost = LON_JERK_COST,
+#         lat_jerk_cost = LAT_JERK_COST,
 #         dist_from_goal_lat_sq_cost=DEVIATION_FROM_GOAL_LAT_COST,
 #         dist_from_goal_lon_sq_cost=DEVIATION_FROM_GOAL_LON_COST,
 #         velocity_limits=VELOCITY_LIMITS,
@@ -452,3 +487,14 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
 #
 #     fig.show()
 #     fig.clear()
+
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+def test_calcJerkCosts():
+    # [C_X, C_Y, C_YAW, C_V, C_A, C_K]
+    ctraj: CartesianExtendedTrajectory = np.array([
+        np.array([0, 0, 0,   1, 0, 0]),
+        np.array([0, 0, 0, 1.1, 1, 1]),
+        np.array([0, 0, 0, 1.3, 3, 2])
+    ])
+    lon_jerks, lat_jerks = Jerk.compute_jerks(np.array([ctraj]), 0.1)
+    assert np.isclose(lon_jerks[0], 500) and np.isclose(lat_jerks[0], 617.3)

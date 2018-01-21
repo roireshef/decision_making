@@ -59,7 +59,7 @@ class FrenetSerret2DFrame:
         :param ftrajectory: a frenet-frame state
         :return: a cartesian-frame state (given in the coordinate frame of self.points)
         """
-        return self.ftrajectories_to_ctrajectories(np.array([fstate]))[0]
+        return self.ftrajectories_to_ctrajectories(np.array([np.array([fstate])]))[0][0]
 
     def ftrajectory_to_ctrajectory(self, ftrajectory: FrenetTrajectory) -> CartesianExtendedTrajectory:
         """
@@ -167,7 +167,7 @@ class FrenetSerret2DFrame:
         v_x = ctrajectories[:, :, C_V]
         a_x = ctrajectories[:, :, C_A]
 
-        s_x, a_r, T_r, N_r, k_r, k_r_tag = self._project_cartesian_points(ctrajectories[:, :, [C_X, C_Y]])
+        s_x, a_r, T_r, N_r, k_r, k_r_tag = self._project_cartesian_points(pos_x)
 
         d_x = np.einsum('tpi,tpi->tp', pos_x - a_r, N_r)
 

@@ -4,7 +4,7 @@ import numpy as np
 
 from decision_making.src.global_constants import EXP_CLIP_TH
 from decision_making.src.planning.types import CartesianTrajectory, C_YAW, CartesianState, C_Y, C_X, \
-    CartesianTrajectories, CartesianPaths2D, CartesianPoint2D
+    CartesianTrajectories, CartesianPaths2D, CartesianPoint2D, C_A, C_K, C_V, FrenetTrajectories, FS_SA
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject
 from mapping.src.transformations.geometry_utils import CartesianFrame
@@ -154,3 +154,13 @@ class SigmoidStaticBoxObstacle(SigmoidBoxObstacle):
         :return: new instance
         """
         return cls(np.array([obj.x, obj.y, obj.yaw, 0]), obj.size.length, obj.size.width, k, offset)
+
+class Jerk:
+
+    @staticmethod
+    def compute_jerks(ctrajectories: CartesianTrajectories, ftrajectories: FrenetTrajectories,
+                      dt: float) -> (np.array, np.array):
+        lon_jerks = np.sum(np.square(np.diff(ftrajectories[:, :, FS_SA], axis=1)), axis=1) / (dt*dt)
+        lat_jerks = np.sum(np.square(np.diff(ctrajectories[:, :, C_K] * np.square(ctrajectories[:, :, C_V]), axis=1)),
+                           axis=1) / (dt*dt)
+        return lon_jerks, lat_jerks

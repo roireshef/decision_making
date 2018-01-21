@@ -10,7 +10,8 @@ from decision_making.src.global_constants import BP_SPECIFICATION_T_MIN, BP_SPEC
     SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL, \
     BEHAVIORAL_PLANNING_HORIZON, INFINITE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     OUT_OF_LANE_COST, ROAD_SIGMOID_K_PARAM, OBJECTS_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_LON_COST, \
-    DEVIATION_FROM_GOAL_LAT_COST, DEVIATION_FROM_REF_ROUTE_COST, LATERAL_SAFETY_MARGIN_FROM_OBJECT
+    DEVIATION_FROM_GOAL_LAT_COST, LATERAL_SAFETY_MARGIN_FROM_OBJECT, LON_JERK_COST, \
+    LAT_JERK_COST
 from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, VELOCITY_LIMITS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -316,7 +317,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                            obstacle_cost_y=objects_cost_y,
                                            dist_from_goal_lon_sq_cost=dist_from_goal_lon_sq_cost,
                                            dist_from_goal_lat_sq_cost=dist_from_goal_lat_sq_cost,
-                                           dist_from_ref_sq_cost=dist_from_ref_sq_cost,
+                                           lon_jerk_cost=LON_JERK_COST,
+                                           lat_jerk_cost=LAT_JERK_COST,
                                            velocity_limits=velocity_limits,
                                            acceleration_limits=lon_acceleration_limits)
 

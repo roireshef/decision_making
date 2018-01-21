@@ -28,6 +28,34 @@ class RouteFixture:
             np.array([[i + 2 * lng, lat + offset] for i in range(0, lng, step)])
         ), axis=0)
 
+    @staticmethod
+    def get_sigmoid_route(lng: int = 200, k: float = 10, step: float = 1, lat: int = 100, offset: float = -50.0):
+        def stretch(v):
+            min = np.min(v[:, 1])
+            max = np.max(v[:, 1])
+
+            for i in range(len(v)):
+                v[i, 1] = lat * (v[i, 1] - min) / (max - min) + offset
+
+            return v
+
+        stretch(np.array([[i, 1 / (1 + np.exp(-k * (i/lng - 0.5)))] for i in np.arange(0, lng, step)]))
+
+    @staticmethod
+    def get_round_route(lng: int = 100, lat: float = 0, ext: float = 10, step: float = 1, curvature: float = 0.01):
+        ang = (lng - 2*ext) * curvature
+        r = 1/curvature
+        round_part = np.array([[r*np.sin(a), lat + r - r*np.cos(a)] for a in np.arange(0, ang, step*curvature)])
+        last_round = round_part[-1]
+        return np.concatenate((
+            np.array([[i, lat] for i in np.arange(-ext, 0, step)]),
+            round_part,
+            np.array([last_round + i * np.array([np.cos(ang), np.sin(ang)]) for i in np.arange(1, ext, step)])
+        ), axis=0)
+
+    @staticmethod
+    def get_cubic_route(lng: int = 100, lat: float = 0, ext: float = 10, step: float = 1, curvature: float = 0.1):
+        return np.array([[x, lat + curvature*lng*((x/lng)**3)] for x in np.arange(-ext, lng+ext, step)])
 
 class PlottableSigmoidBoxObstacle(SigmoidBoxObstacle):
     def plot(self, plt):
@@ -84,8 +112,8 @@ class PlottableSigmoidDynamicBoxObstacle(SigmoidDynamicBoxObstacle, PlottableSig
 
 class WerlingVisualizer:
     @staticmethod
-    def plot_route(plt, route):
-        plt.plot(route[:, 0], route[:, 1], '-b')
+    def plot_route(plt, route, param='-b'):
+        plt.plot(route[:, 0], route[:, 1], param)
 
     @staticmethod
     def plot_obstacles(plt, obs: List[PlottableSigmoidBoxObstacle]):

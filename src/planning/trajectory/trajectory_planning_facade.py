@@ -88,7 +88,7 @@ class TrajectoryPlanningFacade(DmModule):
             extended_target_state = np.append(params.target_state, [DEFAULT_ACCELERATION, DEFAULT_CURVATURE])
 
             # plan a trajectory according to specification from upper DM level
-            samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
+            samplable_trajectory, ctrajectories, costs, _ = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, extended_target_state, params.time, params.cost_params)
 
             # TODO: validate that sampling is consistent with controller!
