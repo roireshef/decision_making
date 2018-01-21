@@ -3,7 +3,7 @@ from typing import Tuple
 
 import numpy as np
 
-from decision_making.src.exceptions import NoValidTrajectoriesFound
+from decision_making.src.exceptions import raises
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, \
     TRAJECTORY_NUM_POINTS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
@@ -12,12 +12,13 @@ from decision_making.src.planning.types import C_V, \
     CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
+from decision_making.test.exceptions import NotTriggeredException
 
 
 class FixedSamplableTrajectory(SamplableTrajectory):
 
     def __init__(self, fixed_trajectory: CartesianExtendedTrajectory):
-        super().__init__(0, np.inf)
+        super().__init__(timestamp=0, max_sample_time=np.inf)
         self._fixed_trajectory = fixed_trajectory
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
@@ -26,7 +27,7 @@ class FixedSamplableTrajectory(SamplableTrajectory):
         curvature> along the trajectory. Note: this function ignores the time_points parameter and returns the
         fixed trajectory which is already sampled.
         :param time_points: 1D numpy array of time stamps *in seconds* (global self.timestamp)
-        :return: 2D numpy array with every row having the format of <x, y, yaw, velocity, a, k>
+        :return: CartesianExtendedTrajectory
         """
         return self._fixed_trajectory
 
@@ -53,6 +54,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         self._trigger_pos = trigger_pos
         self._triggered = False
 
+    @raises(NotTriggeredException)
     def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, goal_time: float,
              cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
@@ -79,8 +81,10 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
             self._trajectory_advancing += self._step_size
 
             # TODO: currently no one does anything with the cost, the array here is dummy
+            zero_trajectory_cost = np.array([0])
+
             return FixedSamplableTrajectory(current_trajectory), \
-                   np.array([current_trajectory[:, :(C_V + 1)]]), np.array([0])
+                   np.array([current_trajectory[:, :(C_V + 1)]]), zero_trajectory_cost
         else:
-            raise NoValidTrajectoriesFound("Didn't reach trigger point yet [%s]. Current localization is [%s]" %
+            raise NotTriggeredException("Didn't reach trigger point yet [%s]. Current localization is [%s]" %
                                            (self._trigger_pos, current_pos))
