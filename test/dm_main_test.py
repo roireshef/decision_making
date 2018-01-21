@@ -129,8 +129,8 @@ def main():
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={}),
 
-            # DmProcess(DmInitialization.create_behavioral_planner,
-            DmProcess(DmMockInitialization.create_behavioral_planner,
+            DmProcess(DmInitialization.create_behavioral_planner,
+            # DmProcess(DmMockInitialization.create_behavioral_planner,
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
