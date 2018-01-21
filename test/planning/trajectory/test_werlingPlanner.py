@@ -83,7 +83,7 @@ def test_werlingPlanner_toyScenario_noException():
 
     start_time = time.time()
 
-    samplable, ctrajectories, costs = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
+    samplable, ctrajectories, costs, _ = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
                                        goal_time=ego.timestamp_in_sec + T, cost_params=cost_params)
 
     samplable.sample(np.arange(0, 1, 0.1) + ego.timestamp_in_sec)
@@ -109,7 +109,7 @@ def test_werlingPlanner_toyScenario_noException():
     WerlingVisualizer.plot_route(p2, route_points[:, :2])
 
     WerlingVisualizer.plot_best(p2, ctrajectories[0])
-    WerlingVisualizer.plot_alternatives(p1, ctrajectories)
+    WerlingVisualizer.plot_alternatives(p1, ctrajectories, costs)
 
     print(costs)
 
@@ -496,5 +496,5 @@ def test_calcJerkCosts():
         np.array([0, 0, 0, 1.1, 1, 1]),
         np.array([0, 0, 0, 1.3, 3, 2])
     ])
-    lon_jerks, lat_jerks = Jerk.compute_jerks(np.array([ctraj]), 0.1)
+    lon_jerks, lat_jerks = Jerk.compute_jerks(np.array([ctraj]), None, 0.1)
     assert np.isclose(lon_jerks[0], 500) and np.isclose(lat_jerks[0], 617.3)

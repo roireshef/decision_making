@@ -121,6 +121,8 @@ class WerlingVisualizer:
 
     @staticmethod
     def plot_alternatives(plt, alternatives: np.ndarray, costs: np.ndarray):
+        if costs is None:
+            costs = np.array([0,]*alternatives.shape[0])
         max_cost = np.log(1+max(costs))
         min_cost = np.log(1+min(costs))
         for i, alt in enumerate(alternatives):
