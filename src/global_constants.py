@@ -55,11 +55,11 @@ BP_SPECIFICATION_T_RES = 0.2
 VELOCITY_LIMITS = np.array([0.0, 30.0])
 
 # Longitudinal Acceleration Limits [m/sec^2]
-LON_ACC_LIMITS = np.array([-4.0, 4.0])
-A_LON_EPS = 3.0
+LON_ACC_LIMITS = np.array([-3.0, 3.0])
+A_LON_EPS = 2.0
 
 # Latitudinal Acceleration Limits [m/sec^2]
-LAT_ACC_LIMITS = np.array([-4.0, 4.0])
+LAT_ACC_LIMITS = np.array([-3.0, 3.0])
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
@@ -82,7 +82,7 @@ LON_MARGIN_FROM_EGO = 1
 REFERENCE_TRAJECTORY_LENGTH = 30.0
 
 # [m] Resolution for the interpolation of the reference route
-TRAJECTORY_ARCLEN_RESOLUTION = 0.1
+TRAJECTORY_ARCLEN_RESOLUTION = 0.5
 
 # [seconds] Resolution for the visualization of predicted dynamic objects
 VISUALIZATION_PREDICTION_RESOLUTION = 1.0
