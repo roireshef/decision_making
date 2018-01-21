@@ -37,7 +37,7 @@ class SigmoidBoxObstacle:
         """
         Takes a list of points in vehicle's coordinate frame and returns cost of proximity (to self) for each point
         :param points: either a CartesianPath2D or CartesianPaths2D
-        :return: numpy vector of corresponding trajectory-costs
+        :return: numpy vector of corresponding costs per point
         """
         if len(points.shape) == 2:
             points = np.array([points])
