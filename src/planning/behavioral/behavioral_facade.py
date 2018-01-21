@@ -84,7 +84,7 @@ class BehavioralFacade(DmModule):
 
     def _publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
         self.pubsub.publish(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, trajectory_parameters.serialize())
-        self.logger.debug("BehavioralPlanningFacade output is %s", str(trajectory_parameters.serialize()))
+        self.logger.debug("BehavioralPlanningFacade output is %s", str(trajectory_parameters))
 
     def _publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
         self.pubsub.publish(pubsub_topics.VISUALIZATION_TOPIC, visualization_message.serialize())
