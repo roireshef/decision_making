@@ -120,7 +120,7 @@ class WerlingPlanner(TrajectoryPlanner):
         ctrajectories: CartesianExtendedTrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories)
 
         # filter resulting trajectories by velocity and acceleration
-        filtered_indices = self._filter_limits(ftrajectories, cost_params)
+        filtered_indices = self._filter_limits(ctrajectories, cost_params)
         ctrajectories_filtered = ctrajectories[filtered_indices]
         ftrajectories_filtered = ftrajectories[filtered_indices]
 
