@@ -18,6 +18,7 @@ from common_data.src.communication.pubsub.pubsub import PubSub
 from common_data.lcm.config import pubsub_topics
 from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedDynamicObjectList
 from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedSelfLocalization
+import rte.python.profiler as prof
 
 
 class StateModule(DmModule):
@@ -67,6 +68,7 @@ class StateModule(DmModule):
     def _periodic_action_impl(self) -> None:
         pass
 
+    @prof.ProfileFunction()
     def _dynamic_obj_callback(self, objects: LcmPerceivedDynamicObjectList):
         """
         Deserialize dynamic objects message and replace pointer reference to dynamic object list under lock
@@ -164,6 +166,7 @@ class StateModule(DmModule):
                 "Couldn't localize object on road. Object location: ({}, {}, {})".format(id, x, y, z))
             return False
 
+    @prof.ProfileFunction()
     def _self_localization_callback(self, self_localization: LcmPerceivedSelfLocalization) -> None:
         """
         Deserialize localization information, convert to road coordinates and update state information.
@@ -195,6 +198,7 @@ class StateModule(DmModule):
 
     # TODO: convert from lcm...
     # TODO: handle invalid data - occupancy is currently unused throughout the system
+    @prof.ProfileFunction()
     def _occupancy_state_callback(self, occupancy: dict) -> None:
         """
         De-serialize occupancy message and update state information.
@@ -239,6 +243,7 @@ class StateModule(DmModule):
 
     # TODO: LCM?
     # TODO: solve the fact that actuator status can be outdated and no one will ever know
+    @prof.ProfileFunction()
     def _actuator_status_callback(self, actuator: dict) -> None:
         """
         Placeholder for future utilization of actuator information (e.g., steering and gas pedal).

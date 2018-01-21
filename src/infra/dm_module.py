@@ -7,7 +7,7 @@ from logging import Logger
 
 from common_data.src.communication.pubsub.pubsub import PubSub
 import six
-
+import rte.python.profiler as prof
 
 @six.add_metaclass(ABCMeta)
 class DmModule:
@@ -64,6 +64,7 @@ class DmModule:
         Perform triggered action and write logging messages.
         """
         self.logger.debug("executing periodic action at module: " + self.__class__.__name__)
-        self._periodic_action_impl()
+        with prof.time_range(self.__class__.__name__ + ":periodic"):
+            self._periodic_action_impl()
         self.logger.debug("finished periodic action at module: " + self.__class__.__name__)
 
