@@ -30,7 +30,8 @@ class OccupancyState(StrSerializable):
         self.free_space = np.copy(free_space)
         self.confidence = np.copy(confidence)
 
-    def serialize(self) -> LcmOccupancyState:
+    def serialize(self):
+        # type: () -> LcmOccupancyState
         lcm_msg = LcmOccupancyState()
         lcm_msg.timestamp = self.timestamp
         lcm_msg.free_space = LcmNonTypedNumpyArray()
@@ -46,7 +47,8 @@ class OccupancyState(StrSerializable):
         return lcm_msg
 
     @classmethod
-    def deserialize(cls, lcmMsg: LcmOccupancyState):
+    def deserialize(cls, lcmMsg):
+        # type: (LcmOccupancyState) -> OccupancyState
         return cls(lcmMsg.timestamp
                  , np.ndarray(shape = tuple(lcmMsg.free_space.shape)
                             , buffer = np.array(lcmMsg.free_space.data)
@@ -63,7 +65,8 @@ class ObjectSize(StrSerializable):
         self.width = width
         self.height = height
 
-    def serialize(self) -> LcmObjectSize:
+    def serialize(self):
+        # type: () -> LcmObjectSize
         lcm_msg = LcmObjectSize()
         lcm_msg.length = self.length
         lcm_msg.width = self.width
@@ -71,7 +74,8 @@ class ObjectSize(StrSerializable):
         return lcm_msg
 
     @classmethod
-    def deserialize(cls, lcmMsg: LcmObjectSize):
+    def deserialize(cls, lcmMsg):
+        # type: (LcmObjectSize) -> ObjectSize
         return cls(lcmMsg.length, lcmMsg.width, lcmMsg.height)
 
 
@@ -106,9 +110,10 @@ class DynamicObject(StrSerializable):
         self.v_y = v_y
         self.acceleration_lon = acceleration_lon
         self.omega_yaw = omega_yaw
-        self._cached_road_localization: Optional[RoadLocalization] = None
+        self._cached_road_localization = None
 
-    def clone_cartesian_state(self, timestamp_in_sec: float, cartesian_state: CartesianState):
+    def clone_cartesian_state(self, timestamp_in_sec, cartesian_state):
+        # type: (float, CartesianState) -> DynamicObject
         """
         Return a new DynamicObject instance with updated timestamp and cartesian state.
         Enables creating new instances of object from predicted trajectories.
@@ -163,7 +168,8 @@ class DynamicObject(StrSerializable):
         self.timestamp = int(value * 1e9)
 
     @property
-    def road_longitudinal_speed(self) -> float:
+    def road_longitudinal_speed(self):
+        # type: () -> float
         """
         Assuming no lateral slip
         :return: Longitudinal speed (relative to road)
@@ -171,14 +177,16 @@ class DynamicObject(StrSerializable):
         return np.linalg.norm([self.v_x, self.v_y]) * np.cos(self.road_localization.intra_road_yaw)
 
     @property
-    def road_lateral_speed(self) -> float:
+    def road_lateral_speed(self):
+        # type: () -> float
         """
         Assuming no lateral slip
         :return: Longitudinal speed (relative to road)
         """
         return np.linalg.norm([self.v_x, self.v_y]) * np.sin(self.road_localization.intra_road_yaw)
 
-    def serialize(self) -> LcmDynamicObject:
+    def serialize(self):
+        # type: () -> LcmDynamicObject
         lcm_msg = LcmDynamicObject()
         lcm_msg.obj_id = self.obj_id
         lcm_msg.timestamp = self.timestamp
@@ -195,7 +203,8 @@ class DynamicObject(StrSerializable):
         return lcm_msg
 
     @classmethod
-    def deserialize(cls, lcmMsg: LcmDynamicObject):
+    def deserialize(cls, lcmMsg):
+        # type: (LcmDynamicObject) -> DynamicObject
         return cls(lcmMsg.obj_id, lcmMsg.timestamp
                  , lcmMsg.x, lcmMsg.y, lcmMsg.z, lcmMsg.yaw
                  , ObjectSize.deserialize(lcmMsg.size)
@@ -238,14 +247,16 @@ class EgoState(DynamicObject):
         """
         return np.tan(self.steering_angle) / self.size.length
 
-    def serialize(self) -> LcmEgoState:
+    def serialize(self):
+        # type: () -> LcmEgoState
         lcm_msg = LcmEgoState()
         lcm_msg.dynamic_obj = super(self.__class__, self).serialize()
         lcm_msg.steering_angle = self.steering_angle
         return lcm_msg
 
     @classmethod
-    def deserialize(cls, lcmMsg: LcmEgoState):
+    def deserialize(cls, lcmMsg):
+        # type: (LcmEgoState) -> EgoState
         dyn_obj = DynamicObject.deserialize(lcmMsg.dynamic_obj)
         return cls(dyn_obj.obj_id, dyn_obj.timestamp
                  , dyn_obj.x, dyn_obj.y, dyn_obj.z, dyn_obj.yaw
@@ -267,9 +278,8 @@ class State(StrSerializable):
         self.dynamic_objects = copy.deepcopy(dynamic_objects)
         self.ego_state = copy.deepcopy(ego_state)
 
-    def clone_with(self, occupancy_state: Optional[OccupancyState] = None,
-                   dynamic_objects: Optional[List[DynamicObject]] = None,
-                   ego_state: Optional[EgoState] = None):
+    def clone_with(self, occupancy_state=None, dynamic_objects=None, ego_state=None):
+        # type: (OccupancyState, List[DynamicObject], EgoState) -> State
         """
         clones state object with potential overriding of specific fields.
         requires deep-copying of all fields in State.__init__ !!
@@ -278,7 +288,8 @@ class State(StrSerializable):
                      dynamic_objects or self.dynamic_objects,
                      ego_state or self.ego_state)
 
-    def serialize(self) -> LcmState:
+    def serialize(self):
+        # type: () -> LcmState
         lcm_msg = LcmState()
         lcm_msg.occupancy_state = self.occupancy_state.serialize()
         ''' resize the list at once to the right length '''
@@ -290,7 +301,8 @@ class State(StrSerializable):
         return lcm_msg
 
     @classmethod
-    def deserialize(cls, lcmMsg: LcmState):
+    def deserialize(cls, lcmMsg):
+        # type: (LcmState) -> State
         dynamic_objects = list()
         for i in range(lcmMsg.num_obj):
             dynamic_objects.append(DynamicObject.deserialize(lcmMsg.dynamic_objects[i]))
