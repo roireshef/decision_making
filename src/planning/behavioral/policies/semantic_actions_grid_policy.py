@@ -22,6 +22,7 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_grid_stat
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticActionsPolicy, \
     SemanticAction, SemanticActionSpec, SemanticActionType, \
     LAT_CELL, LON_CELL, SemanticGridCell
+from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils as SAU
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_X, C_Y
@@ -338,8 +339,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # We set the desired longitudinal distance to be equal to the distance we
         # would have travelled for the planning horizon in the average speed between current and target vel.
-        target_relative_s = BEHAVIORAL_PLANNING_HORIZON * \
-                            0.5 * (behavioral_state.ego_state.v_x + BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
+        target_relative_s = SAU.compute_distance_by_velocity_diff(behavioral_state.ego_state.v_x)
         target_relative_d = target_lane_latitude - behavioral_state.ego_state.road_localization.intra_road_lat
 
         return SemanticActionSpec(t=BEHAVIORAL_PLANNING_HORIZON, v=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED,
@@ -504,3 +504,5 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             navigation_plan=navigation_plan)
 
         return lookahead_path
+
+
