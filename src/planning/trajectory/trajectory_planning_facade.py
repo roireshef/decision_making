@@ -89,12 +89,9 @@ class TrajectoryPlanningFacade(DmModule):
             else:
                 updated_state = state_aligned
 
-            # THIS ASSUMES TARGET IS ACCELERATION-FREE AND CURAVUTURE-FREE
-            extended_target_state = np.append(params.target_state, [DEFAULT_ACCELERATION, DEFAULT_CURVATURE])
-
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, extended_target_state, params.time, params.cost_params)
+                plan(updated_state, params.reference_route, params.target_state, params.time, params.cost_params)
 
             # TODO: validate that sampling is consistent with controller!
             trajectory_points = samplable_trajectory.sample(

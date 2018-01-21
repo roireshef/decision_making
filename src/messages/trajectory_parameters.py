@@ -1,7 +1,7 @@
 import numpy as np
 
 from decision_making.src.messages.str_serializable import StrSerializable
-from decision_making.src.planning.types import C_V, Limits
+from decision_making.src.planning.types import C_V, Limits, CartesianExtendedState, CartesianPath2D
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 
 from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryParameters
@@ -128,15 +128,14 @@ class TrajectoryCostParams(StrSerializable):
                             , buffer = np.array(lcmMsg.acceleration_limits.data)
                             , dtype = float))
 
+
 class TrajectoryParams(StrSerializable):
-    def __init__(self, strategy: TrajectoryPlanningStrategy, reference_route: np.ndarray,
-                 target_state: np.ndarray, cost_params: TrajectoryCostParams, time: float):
+    def __init__(self, strategy: TrajectoryPlanningStrategy, reference_route: CartesianPath2D,
+                 target_state: CartesianExtendedState, cost_params: TrajectoryCostParams, time: float):
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
-        :param reference_route: a reference route (often the center of lane). A numpy array of the shape [-1, 2] where
-        each row is a point (x, y) relative to the ego-coordinate-frame.
-        :param target_state: A 1D numpy array of the desired ego-state to plan towards, represented in current
-        ego-coordinate-frame
+        :param reference_route: a reference route points (often the center of lane)
+        :param target_state: the desired ego-state to plan towards
         :param cost_params: list of parameters for the cost function of trajectory planner.
         :param strategy: trajectory planning strategy.
         :param time: trajectory planning time-frame
