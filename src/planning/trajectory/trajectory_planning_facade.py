@@ -11,7 +11,7 @@ from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, DEFAULT_OBJECT_Z_VALUE, VISUALIZATION_PREDICTION_RESOLUTION, \
-    DEFAULT_CURVATURE, DEFAULT_ACCELERATION, MAX_NUM_POINTS_FOR_VIZ
+    DEFAULT_CURVATURE, DEFAULT_ACCELERATION, MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
@@ -252,7 +252,8 @@ class TrajectoryPlanningFacade(DmModule):
         # predicted_states[1] is the predicted state in the end of the execution of traj.
         predicted_states = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps)
 
-        downsampled_reference_route, _ = CartesianFrame.resample_curve(reference_route, step_size=0.5)
+        downsampled_reference_route, _ = CartesianFrame.resample_curve(reference_route,
+                                                                       step_size=DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION)
 
         return TrajectoryVisualizationMsg(downsampled_reference_route,
                                           ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :C_V],
