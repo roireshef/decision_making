@@ -59,7 +59,7 @@ class FrenetSerret2DFrame:
         :param ftrajectory: a frenet-frame state
         :return: a cartesian-frame state (given in the coordinate frame of self.points)
         """
-        return self.ftrajectories_to_ctrajectories(np.array([fstate]))[0]
+        return self.ftrajectory_to_ctrajectory(np.array([fstate]))[0]
 
     def ftrajectory_to_ctrajectory(self, ftrajectory: FrenetTrajectory) -> CartesianExtendedTrajectory:
         """
@@ -310,7 +310,7 @@ class FrenetSerret2DFrame:
         # SIGNED (!) Curvature
         cross_norm = np.sum(TensorOps.row_wise_normal(dxy) * ddxy, axis=1)
         k = np.zeros(len(T))
-        k[dxy_norm > 0] = np.c_[cross_norm[dxy_norm > 0]] / (np.c_[dxy_norm[dxy_norm > 0]] ** 3)
+        k[dxy_norm > 0] = cross_norm[dxy_norm > 0] / (dxy_norm[dxy_norm > 0] ** 3)
 
         # derivative of curvature
         k_tag = np.divide(np.gradient(k), ds)
