@@ -23,8 +23,8 @@ class FixedSamplableTrajectory(SamplableTrajectory):
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
         """
-        This function takes an array of time stamps and returns an array of points <x, y, theta, v, acceleration,
-        curvature> along the trajectory. Note: this function ignores the time_points parameter and returns the
+        This function takes an array of time stamps and returns aCartesianExtendedTrajectory.
+        Note: this function ignores the time_points parameter and returns the
         fixed trajectory which is already sampled.
         :param time_points: 1D numpy array of time stamps *in seconds* (global self.timestamp)
         :return: CartesianExtendedTrajectory
@@ -59,7 +59,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
              cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
         Once the ego reached the trigger position, every time the trajectory planner is called, output a trajectory
-        that advances incrementally on fixed_trajectory by step size. Otherwise raise NoValidTrajectoriesFound
+        that advances incrementally on fixed_trajectory by step size. Otherwise raise NotTriggeredException
         :param goal_time: ignored
         :param state: environment & ego state object
         :param reference_route: ignored
