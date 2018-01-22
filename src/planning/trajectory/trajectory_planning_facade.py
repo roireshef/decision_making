@@ -41,7 +41,7 @@ class TrajectoryPlanningFacade(DmModule):
         """
         super().__init__(pubsub=pubsub, logger=logger)
 
-        self._predictor = short_time_predictor
+        self._short_time_predictor = short_time_predictor
         self._strategy_handlers = strategy_handlers
         self._validate_strategy_handlers()
         self._last_trajectory = last_trajectory
@@ -67,7 +67,7 @@ class TrajectoryPlanningFacade(DmModule):
             state = self._get_current_state()
 
             # Update state: align all object to most recent timestamp, based on ego and dynamic objects timestamp
-            state_aligned = self._predictor.align_objects_to_most_recent_timestamp(state=state)
+            state_aligned = self._short_time_predictor.align_objects_to_most_recent_timestamp(state=state)
 
             params = self._get_mission_params()
 
