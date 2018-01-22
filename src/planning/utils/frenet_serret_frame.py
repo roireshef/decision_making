@@ -59,7 +59,7 @@ class FrenetSerret2DFrame:
         :param ftrajectory: a frenet-frame state
         :return: a cartesian-frame state (given in the coordinate frame of self.points)
         """
-        return self.ftrajectories_to_ctrajectories(np.array([fstate]))[0]
+        return self.ftrajectory_to_ctrajectory(np.array([fstate]))[0]
 
     def ftrajectory_to_ctrajectory(self, ftrajectory: FrenetTrajectory) -> CartesianExtendedTrajectory:
         """
