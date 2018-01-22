@@ -21,16 +21,18 @@ from rte.python.logger.AV_logger import AV_Logger
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
                                                                         behavioral_facade, state_module):
-    logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
-    trajectory_publish_mock = MagicMock()
-    predictor = RoadFollowingPredictor(logger)
+    tp_logger = MagicMock()
+    predictor_logger = MagicMock()
 
-    planner = WerlingPlanner(logger, predictor)
+    trajectory_publish_mock = MagicMock()
+    predictor = RoadFollowingPredictor(predictor_logger)
+
+    planner = WerlingPlanner(tp_logger, predictor)
     strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
                          TrajectoryPlanningStrategy.PARKING: planner,
                          TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
-    trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
+    trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=tp_logger,
                                                           strategy_handlers=strategy_handlers,
                                                           short_time_predictor=predictor)
 
@@ -41,27 +43,44 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
     state_module.periodic_action()
     trajectory_planning_module.periodic_action()
 
+    tp_logger.warn.assert_not_called()
+    tp_logger.error.assert_not_called()
+    tp_logger.critical.assert_not_called()
+
+    predictor_logger.warn.assert_not_called()
+    predictor_logger.error.assert_not_called()
+    predictor_logger.critical.assert_not_called()
+
     trajectory_publish_mock.assert_called_once()
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_behavioralPlanningFacade_semanticPolicy_anyResult(pubsub: PubSub, state_module,
                                                            navigation_facade):
-    logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
+    bp_logger = MagicMock()
+    predictor_logger = MagicMock()
+
     behavioral_publish_mock = MagicMock()
-    predictor = RoadFollowingPredictor(logger)
-    policy = SemanticActionsGridPolicy(logger, predictor)
+    predictor = RoadFollowingPredictor(predictor_logger)
+    policy = SemanticActionsGridPolicy(bp_logger, predictor)
 
     state_module.periodic_action()
     navigation_facade.periodic_action()
-    behavioral_planner_module = BehavioralFacade(pubsub=pubsub, logger=logger, policy=policy,
+    behavioral_planner_module = BehavioralFacade(pubsub=pubsub, logger=bp_logger, policy=policy,
                                                  short_time_predictor=predictor)
 
     pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, behavioral_publish_mock)
 
+    bp_logger.warn.assert_not_called()
+    bp_logger.error.assert_not_called()
+    bp_logger.critical.assert_not_called()
+
+    predictor_logger.warn.assert_not_called()
+    predictor_logger.error.assert_not_called()
+    predictor_logger.critical.assert_not_called()
+
+
     behavioral_planner_module.start()
     behavioral_planner_module.periodic_action()
-
-    # behavioral_publish_mock.periodic_action()
 
     behavioral_publish_mock.assert_called_once()

@@ -130,7 +130,7 @@ def ego_state_fix():
 @pytest.fixture(scope='function')
 def trajectory_params():
     ref_route = np.array([[x, -2.0] for x in range(0, 16)])
-    target_state = np.array([15.0, -2.0, 0.0, 1])
+    target_state = np.array([15.0, -2.0, 0.0, 1, 0.0, 0.0])
     mock_sigmoid = SigmoidFunctionParams(1.0, 2.0, 3.0)
     trajectory_cost_params = TrajectoryCostParams(mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
                                                   mock_sigmoid, mock_sigmoid, mock_sigmoid, 16.0,
