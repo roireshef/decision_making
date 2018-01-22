@@ -3,7 +3,6 @@ import numpy as np
 
 
 class StrSerializable:
-
     def to_dict(self):
         """
         used to create the dds message
