@@ -2,10 +2,11 @@ import numpy as np
 
 from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryData
 from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.str_serializable import StrSerializable
 
 
-class TrajectoryPlanMsg(StrSerializable):
+class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
     def __init__(self, trajectory, current_speed):
         # type: (np.ndarray, float) -> TrajectoryPlanMsg
         """
