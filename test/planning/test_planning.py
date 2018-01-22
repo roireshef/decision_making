@@ -17,7 +17,7 @@ from mapping.test.model.testable_map_fixtures import map_api_mock
 
 from rte.python.logger.AV_logger import AV_Logger
 
-
+# TODO: need to add a logger-mock here because facades catch exceptions and redirect them to logger
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
                                                                         behavioral_facade, state_module):

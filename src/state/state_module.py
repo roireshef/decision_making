@@ -4,7 +4,8 @@ from typing import Optional, List, Dict
 
 import numpy as np
 
-from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID
+from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID, \
+    UNKNOWN_DEFAULT_VAL
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.state.state import OccupancyState, EgoState, DynamicObject, ObjectSize, State
 from mapping.src.exceptions import MapCellNotFound, raises
@@ -19,8 +20,6 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedSelfLocalization
 
 
 class StateModule(DmModule):
-    # TODO: temporary solution for unknown class members on initialization
-    UNKNOWN_DEFAULT_VAL = 0.0
 
     # TODO: implement double-buffer mechanism for locks wherever needed. Current lock mechanism may slow the
     # TODO(cont): processing when multiple events come in concurrently.
@@ -135,7 +134,7 @@ class StateModule(DmModule):
                     if road_width + ROAD_SHOULDERS_WIDTH > road_localization.intra_road_lat > -ROAD_SHOULDERS_WIDTH:
                         dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
                                                 global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
-                                                self.UNKNOWN_DEFAULT_VAL, omega_yaw)
+                                                UNKNOWN_DEFAULT_VAL, omega_yaw)
                         self._dynamic_objects_memory_map[id] = dyn_obj
                         dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
                     else:
@@ -176,7 +175,7 @@ class StateModule(DmModule):
             with self._ego_state_lock:
                 # TODO: replace UNKNOWN_DEFAULT_VAL with actual implementation
                 self._ego_state = EgoState(EGO_ID, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, a_x,
-                                           self.UNKNOWN_DEFAULT_VAL, self.UNKNOWN_DEFAULT_VAL)
+                                           UNKNOWN_DEFAULT_VAL, UNKNOWN_DEFAULT_VAL)
 
             self._publish_state_if_full()
         except Exception as e:

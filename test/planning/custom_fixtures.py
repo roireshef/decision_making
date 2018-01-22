@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
-    NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING
+    NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
@@ -23,6 +23,10 @@ from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 
 ### MESSAGES ###
+
+@pytest.fixture(scope='function')
+def car_size():
+    yield ObjectSize(length=3.0, width=2.0, height=1.2)
 
 @pytest.fixture(scope='function')
 def navigation_plan():
@@ -109,7 +113,7 @@ def state():
     dyn1 = DynamicObject(1, 34, 0.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
     dyn2 = DynamicObject(1, 35, 10.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
     dynamic_objects = [dyn1, dyn2]
-    size = ObjectSize(0, 0, 0)
+    size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
     # TODO - decouple from navigation plan below (1 is the road id). Make this dependency explicit.
     ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
     yield State(occupancy_state, dynamic_objects, ego_state)
@@ -125,11 +129,8 @@ def ego_state_fix():
 
 @pytest.fixture(scope='function')
 def trajectory_params():
-    ref_route = np.array(
-        [[1.0, -2.0], [2.0, -2.0], [3.0, -2.0], [4.0, -2.0], [5.0, -2.0], [6.0, -2.0],
-         [7.0, -2.0], [8.0, -2.0], [9.0, -2.0], [10.0, -2.0], [11.0, -2.0],
-         [12.0, -2.0], [13.0, -2.0], [14.0, -2.0], [15.0, -2.0], [16.0, -2.0]])
-    target_state = np.array([16.0, -2.0, 0.0, 1])
+    ref_route = np.array([[x, -2.0] for x in range(0, 16)])
+    target_state = np.array([15.0, -2.0, 0.0, 1])
     mock_sigmoid = SigmoidFunctionParams(1.0, 2.0, 3.0)
     trajectory_cost_params = TrajectoryCostParams(mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
                                                   mock_sigmoid, mock_sigmoid, mock_sigmoid, 16.0,

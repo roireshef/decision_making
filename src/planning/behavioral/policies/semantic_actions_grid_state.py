@@ -2,7 +2,7 @@ from logging import Logger
 
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, EGO_ORIGIN_LON_FROM_REAR
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.behavioral.constants import SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
+from decision_making.src.global_constants import SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LON_REAR, LON_MARGIN_FROM_EGO, BEHAVIORAL_PLANNING_HORIZON
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticBehavioralState, \
     RoadSemanticOccupancyGrid, LON_CELL
