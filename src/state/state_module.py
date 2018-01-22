@@ -168,7 +168,7 @@ class StateModule(DmModule):
             yaw = self_localization.yaw
             v_x = self_localization.velocity.v_x
             v_y = self_localization.velocity.v_y
-            a_x = self_localization.acceleration
+            a_x = self_localization.acceleration.a_x
             size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
             # Update state information under lock
@@ -179,7 +179,7 @@ class StateModule(DmModule):
 
             self._publish_state_if_full()
         except Exception as e:
-            self.logger.error("StateModule._self_localization_callback failed due to {}".format(e))
+            self.logger.exception('StateModule._self_localization_callback failed due to', exc_info=True)#.error("StateModule._self_localization_callback failed due to {}".format(e))
 
     # TODO: convert from lcm...
     # TODO: handle invalid data - occupancy is currently unused throughout the system
