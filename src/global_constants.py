@@ -9,6 +9,7 @@ UNKNOWN_DEFAULT_VAL = 0.0
 
 # Communication Layer
 
+# PubSub message class implementation for all DM messages
 PUBSUB_MSG_IMPL = StrSerializable
 
 
