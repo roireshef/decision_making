@@ -1,4 +1,5 @@
 import inspect
+import traceback
 from builtins import Exception
 from enum import Enum
 from typing import List
@@ -51,7 +52,7 @@ class DDSTypedMsg(DDSMsg):
                 if issubclass(tpe, np.ndarray):
                     deser_dict[name] = np.array(message[name]['array']).reshape(tuple(message[name]['shape']))
                 elif issubclass(tpe, Enum):
-                    deser_dict[name] = tpe[message[name]]
+                    deser_dict[name] = tpe[message[name]['name']]
                 elif issubclass(tpe, List):
                     deser_dict[name] = list(map(lambda d: tpe.__args__[0].deserialize(d), message[name]))
                 elif issubclass(tpe, DDSTypedMsg):
@@ -61,4 +62,4 @@ class DDSTypedMsg(DDSMsg):
             return cls(**deser_dict)
         except Exception as e:
             raise MsgDeserializationError("MsgDeserializationError error: could not deserialize into " +
-                                          cls.__name__ + " from " + str(message) + ":\n" + str(e.__traceback__))
+                                          cls.__name__ + " from " + str(message) + ":\n" + str(traceback.print_exc()))
