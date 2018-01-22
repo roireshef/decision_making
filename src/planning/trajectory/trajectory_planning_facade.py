@@ -252,7 +252,9 @@ class TrajectoryPlanningFacade(DmModule):
         # predicted_states[1] is the predicted state in the end of the execution of traj.
         predicted_states = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps)
 
-        return TrajectoryVisualizationMsg(reference_route[:min(MAX_NUM_POINTS_FOR_VIZ, reference_route.shape[0])],
+        downsampled_reference_route, _ = CartesianFrame.resample_curve(reference_route, step_size=0.5)
+
+        return TrajectoryVisualizationMsg(downsampled_reference_route,
                                           ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :C_V],
                                           costs,
                                           predicted_states[0],

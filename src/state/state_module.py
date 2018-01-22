@@ -168,7 +168,7 @@ class StateModule(DmModule):
             yaw = self_localization.yaw
             v_x = self_localization.velocity.v_x
             v_y = self_localization.velocity.v_y
-            a_x = self_localization.acceleration
+            a_x = self_localization.acceleration.a_x
             size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
             # Update state information under lock
