@@ -81,27 +81,27 @@ def test_werlingPlanner_toyScenario_noException():
 
     assert True
 
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure()
-    p1 = fig.add_subplot(211)
-    p2 = fig.add_subplot(212)
-    time_samples = np.arange(0.0, T, 0.1) + ego.timestamp_in_sec
-    plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost.k,
-                                                        cost_params.obstacle_cost.offset, time_samples, predictor)
-                     for o in state.dynamic_objects]
-    WerlingVisualizer.plot_obstacles(p1, plottable_obs)
-    WerlingVisualizer.plot_obstacles(p2, plottable_obs)
-    WerlingVisualizer.plot_route(p1, route_points[:, :2])
-    WerlingVisualizer.plot_route(p2, route_points[:, :2])
-
-    WerlingVisualizer.plot_best(p2, ctrajectories[0])
-    WerlingVisualizer.plot_alternatives(p1, ctrajectories)
-
-    print(costs)
-
-    WerlingVisualizer.plot_route(p1, route_points)
-
-    fig.show()
-    fig.clear()
+    # import matplotlib.pyplot as plt
+    #
+    # fig = plt.figure()
+    # p1 = fig.add_subplot(211)
+    # p2 = fig.add_subplot(212)
+    # time_samples = np.arange(0.0, T, 0.1) + ego.timestamp_in_sec
+    # plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost.k,
+    #                                                     cost_params.obstacle_cost.offset, time_samples, predictor)
+    #                  for o in state.dynamic_objects]
+    # WerlingVisualizer.plot_obstacles(p1, plottable_obs)
+    # WerlingVisualizer.plot_obstacles(p2, plottable_obs)
+    # WerlingVisualizer.plot_route(p1, route_points[:, :2])
+    # WerlingVisualizer.plot_route(p2, route_points[:, :2])
+    #
+    # WerlingVisualizer.plot_best(p2, ctrajectories[0])
+    # WerlingVisualizer.plot_alternatives(p1, ctrajectories)
+    #
+    # print(costs)
+    #
+    # WerlingVisualizer.plot_route(p1, route_points)
+    #
+    # fig.show()
+    # fig.clear()
 
