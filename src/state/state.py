@@ -1,21 +1,18 @@
 import copy
-from typing import List, Optional
+from typing import List
 
 import numpy as np
 
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.messages.str_serializable import StrSerializable
-from mapping.src.model.localization import RoadLocalization
-
-from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW
-from mapping.src.service.map_service import MapService
-
-from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedNumpyArray
-from common_data.lcm.generatedFiles.gm_lcm import LcmOccupancyState
-from common_data.lcm.generatedFiles.gm_lcm import LcmObjectSize
 from common_data.lcm.generatedFiles.gm_lcm import LcmDynamicObject
 from common_data.lcm.generatedFiles.gm_lcm import LcmEgoState
+from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedNumpyArray
+from common_data.lcm.generatedFiles.gm_lcm import LcmObjectSize
+from common_data.lcm.generatedFiles.gm_lcm import LcmOccupancyState
 from common_data.lcm.generatedFiles.gm_lcm import LcmState
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW
+from mapping.src.model.localization import RoadLocalization
+from mapping.src.service.map_service import MapService
 
 
 class OccupancyState(PUBSUB_MSG_IMPL):
