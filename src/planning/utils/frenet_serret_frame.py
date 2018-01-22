@@ -310,7 +310,7 @@ class FrenetSerret2DFrame:
         # SIGNED (!) Curvature
         cross_norm = np.sum(TensorOps.row_wise_normal(dxy) * ddxy, axis=1)
         k = np.zeros(len(T))
-        k[dxy_norm > 0] = np.c_[cross_norm[dxy_norm > 0]] / (np.c_[dxy_norm[dxy_norm > 0]] ** 3)
+        k[dxy_norm > 0] = cross_norm[dxy_norm > 0] / (dxy_norm[dxy_norm > 0] ** 3)
 
         # derivative of curvature
         k_tag = np.divide(np.gradient(k), ds)
