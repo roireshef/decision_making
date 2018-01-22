@@ -1,8 +1,17 @@
-import os
 import numpy as np
+
+from decision_making.src.messages.str_serializable import StrSerializable
+
 # General constants
 
 UNKNOWN_DEFAULT_VAL = 0.0
+
+
+# Communication Layer
+
+# PubSub message class implementation for all DM messages
+PUBSUB_MSG_IMPL = StrSerializable
+
 
 # Behavioral Planner
 
