@@ -100,11 +100,15 @@ class RoadFollowingPredictor(Predictor):
                 'Trying to predict object (id=%d) with timestamp %f [sec] to past timestamps: %s' % (
                     dynamic_object.obj_id, dynamic_object.timestamp_in_sec, prediction_timestamps))
 
+        yaw_vector = None
         if lookahead_route.shape[0] > 1:
             route_xy, _ = CartesianFrame.resample_curve(curve=lookahead_route,
                                                         arbitrary_curve_sampling_points=predicted_distances_from_start)
+            if route_xy.shape[0] == 1:
+                yaw_vector = np.ones(shape=[route_xy.shape[0], 1]) * initial_yaw
         elif lookahead_route.shape[0] == 1:
             route_xy = np.reshape(np.tile(lookahead_route[0], predicted_distances_from_start.shape[0]), (-1, 2))
+            yaw_vector = np.ones(shape=[route_xy.shape[0], 1]) * initial_yaw
         else:
             raise Exception('Predict object (id=%d) has empty lookahead_route. Object info: %s' % (
                 dynamic_object.obj_id, dynamic_object.__dict__))
@@ -113,10 +117,9 @@ class RoadFollowingPredictor(Predictor):
         route_len = route_xy.shape[0]
         velocity_column = np.ones(shape=[route_len, 1]) * object_velocity
 
-        if route_len > 1:
+        if yaw_vector is None:
             route_x_y_theta_v = np.c_[CartesianFrame.add_yaw(route_xy), velocity_column]
         else:
-            yaw_vector = np.ones(shape=[route_len, 1]) * initial_yaw
             route_x_y_theta_v = np.concatenate((route_xy, yaw_vector, velocity_column), axis=1)
 
         return route_x_y_theta_v
