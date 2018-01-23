@@ -158,8 +158,8 @@ def behavioral_visualization_msg(trajectory_params):
 
 @pytest.fixture(scope='function')
 def trajectory_visualization_msg(state, trajectory):
-    yield TrajectoryVisualizationMsg(reference_route=trajectory.reference_route,
-                                     trajectories=np.array([trajectory.chosen_trajectory]),
+    yield TrajectoryVisualizationMsg(reference_route=trajectory.trajectory,
+                                     trajectories=np.array([trajectory.trajectory]),
                                      costs=np.array([0]),
                                      state=state,
                                      predicted_states=[state],

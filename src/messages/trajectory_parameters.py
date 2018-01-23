@@ -1,6 +1,6 @@
 import numpy as np
 
-from decision_making.src.messages.str_serializable import StrSerializable
+from decision_making.src.messages.dds_typed_message import DDSTypedMsg
 from decision_making.src.planning.types import C_V, Limits
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 
@@ -9,7 +9,7 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmSigmoidFunctionParams
 from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryCostParams
 from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
 
-class SigmoidFunctionParams(StrSerializable):
+class SigmoidFunctionParams(DDSTypedMsg):
     def __init__(self, w: float, k: float, offset: float):
         """
         A data class that corresponds to a parametrization of a sigmoid function
@@ -21,21 +21,7 @@ class SigmoidFunctionParams(StrSerializable):
         self.k = k
         self.offset = offset
 
-    def serialize(self) -> LcmSigmoidFunctionParams:
-        lcm_msg = LcmSigmoidFunctionParams()
-
-        lcm_msg.w = self.w
-        lcm_msg.k = self.k
-        lcm_msg.offset = self.offset
-
-        return lcm_msg
-
-    @classmethod
-    def deserialize(cls, lcmMsg: LcmSigmoidFunctionParams):
-        return cls(lcmMsg.w, lcmMsg.k, lcmMsg.offset)
-
-
-class TrajectoryCostParams(StrSerializable):
+class TrajectoryCostParams(DDSTypedMsg):
     def __init__(self, left_lane_cost: SigmoidFunctionParams, right_lane_cost: SigmoidFunctionParams,
                  left_road_cost: SigmoidFunctionParams, right_road_cost: SigmoidFunctionParams,
                  left_shoulder_cost: SigmoidFunctionParams, right_shoulder_cost: SigmoidFunctionParams,
@@ -80,55 +66,8 @@ class TrajectoryCostParams(StrSerializable):
         self.velocity_limits = velocity_limits
         self.acceleration_limits = acceleration_limits
 
-    def serialize(self) -> LcmTrajectoryCostParams:
-        lcm_msg = LcmTrajectoryCostParams()
 
-        lcm_msg.obstacle_cost = self.obstacle_cost.serialize()
-        lcm_msg.left_lane_cost = self.left_lane_cost.serialize()
-        lcm_msg.right_lane_cost = self.right_lane_cost.serialize()
-        lcm_msg.left_shoulder_cost = self.left_shoulder_cost.serialize()
-        lcm_msg.right_shoulder_cost = self.right_shoulder_cost.serialize()
-        lcm_msg.left_road_cost = self.left_road_cost.serialize()
-        lcm_msg.right_road_cost = self.right_road_cost.serialize()
-
-        lcm_msg.dist_from_goal_lon_sq_cost = self.dist_from_goal_lon_sq_cost
-        lcm_msg.dist_from_goal_lat_sq_cost = self.dist_from_goal_lat_sq_cost
-        lcm_msg.dist_from_ref_sq_cost = self.dist_from_ref_sq_cost
-
-        lcm_msg.velocity_limits = LcmNumpyArray()
-        lcm_msg.velocity_limits.num_dimensions = len(self.velocity_limits.shape)
-        lcm_msg.velocity_limits.shape = list(self.velocity_limits.shape)
-        lcm_msg.velocity_limits.length = self.velocity_limits.size
-        lcm_msg.velocity_limits.data = self.velocity_limits.flat.__array__().tolist()
-
-        lcm_msg.acceleration_limits = LcmNumpyArray()
-        lcm_msg.acceleration_limits.num_dimensions = len(self.acceleration_limits.shape)
-        lcm_msg.acceleration_limits.shape = list(self.acceleration_limits.shape)
-        lcm_msg.acceleration_limits.length = self.acceleration_limits.size
-        lcm_msg.acceleration_limits.data = self.acceleration_limits.flat.__array__().tolist()
-
-        return lcm_msg
-
-    @classmethod
-    def deserialize(cls, lcmMsg: LcmTrajectoryCostParams):
-        return cls(SigmoidFunctionParams.deserialize(lcmMsg.obstacle_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.left_lane_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.right_lane_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.left_shoulder_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.right_shoulder_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.left_road_cost)
-                 , SigmoidFunctionParams.deserialize(lcmMsg.right_road_cost)
-                 , lcmMsg.dist_from_goal_lon_sq_cost
-                 , lcmMsg.dist_from_goal_lat_sq_cost
-                 , lcmMsg.dist_from_ref_sq_cost
-                 , np.ndarray(shape = tuple(lcmMsg.velocity_limits.shape)
-                            , buffer = np.array(lcmMsg.velocity_limits.data)
-                            , dtype = float)
-                 , np.ndarray(shape = tuple(lcmMsg.acceleration_limits.shape)
-                            , buffer = np.array(lcmMsg.acceleration_limits.data)
-                            , dtype = float))
-
-class TrajectoryParams(StrSerializable):
+class TrajectoryParams(DDSTypedMsg):
     def __init__(self, strategy: TrajectoryPlanningStrategy, reference_route: np.ndarray,
                  target_state: np.ndarray, cost_params: TrajectoryCostParams, time: float):
         """
@@ -150,39 +89,3 @@ class TrajectoryParams(StrSerializable):
     @property
     def desired_velocity(self):
         return self.target_state[C_V]
-
-    def serialize(self) -> LcmTrajectoryParameters:
-        lcm_msg = LcmTrajectoryParameters()
-
-        lcm_msg.strategy = self.strategy.value
-
-        lcm_msg.reference_route = LcmNumpyArray()
-        lcm_msg.reference_route.num_dimensions = len(self.reference_route.shape)
-        lcm_msg.reference_route.shape = list(self.reference_route.shape)
-        lcm_msg.reference_route.length = self.reference_route.size
-        lcm_msg.reference_route.data = self.reference_route.flat.__array__().tolist()
-
-        lcm_msg.target_state = LcmNumpyArray()
-        lcm_msg.target_state.num_dimensions = len(self.target_state.shape)
-        lcm_msg.target_state.shape = list(self.target_state.shape)
-        lcm_msg.target_state.length = self.target_state.size
-        lcm_msg.target_state.data = self.target_state.flat.__array__().tolist()
-
-        lcm_msg.cost_params = self.cost_params.serialize()
-
-        lcm_msg.time = self.time
-
-        return lcm_msg
-
-    @classmethod
-    def deserialize(cls, lcmMsg: LcmTrajectoryParameters):
-        return cls(TrajectoryPlanningStrategy(lcmMsg.strategy)
-                 , np.ndarray(shape = tuple(lcmMsg.reference_route.shape)
-                            , buffer = np.array(lcmMsg.reference_route.data)
-                            , dtype = float)
-                 , np.ndarray(shape = tuple(lcmMsg.target_state.shape)
-                            , buffer = np.array(lcmMsg.target_state.data)
-                            , dtype = float)
-                 , TrajectoryCostParams.deserialize(lcmMsg.cost_params)
-                 , lcmMsg.time)
-
