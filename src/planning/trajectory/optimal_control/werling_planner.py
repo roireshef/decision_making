@@ -300,7 +300,8 @@ class WerlingPlanner(TrajectoryPlanner):
         :param T_d_vals: lateral trajectory possible durations (sec.), relative to ego. Higher bound is Ts.
         :param dt: [sec] basic time unit from constructor.
         :return: a tuple: (points-matrix of rows in the form [sx, sv, sa, dx, dv, da],
-        poly-coefficients-matrix of rows in the form [c0_s, c1_s, ... c5_s, c0_d, ..., c5_d])
+        poly-coefficients-matrix of rows in the form [c0_s, c1_s, ... c5_s, c0_d, ..., c5_d],
+        array of the Td values associated with the polynomials)
         """
 
         lon_time_samples = np.arange(dt, T_s + np.finfo(np.float16).eps, dt)
