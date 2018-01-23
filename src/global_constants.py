@@ -135,7 +135,7 @@ DX_OFFSET_MIN, DX_OFFSET_MAX = -1, 1
 SX_STEPS, SV_STEPS, DX_STEPS = 15, 1, 5
 
 # Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
-TD_STEPS = 1
+TD_STEPS = 5
 
 # Frenet-Serret Conversions #
 

@@ -74,10 +74,6 @@ FS_1D_LEN = 3
 # frenet-frame state: [s, s-dot, s-dotdot, d, d-dot, d-dotdot]
 FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA = 0, 1, 2, 3, 4, 5
 
-## WERLING PLANNER##
-WerlingNumOfCoeffs = 6
-WerlingCoeffsPlaceholder = np.empty((0, WerlingNumOfCoeffs), float)
-
 ## MISC ##
 # A (two-cells) 1D numpy array represents limits (min, max)
 Limits = np.ndarray

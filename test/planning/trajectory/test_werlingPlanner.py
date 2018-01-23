@@ -1,26 +1,31 @@
-import numpy as np
 import time
+from unittest.mock import patch
+
+import numpy as np
 
 from decision_making.src.global_constants import EGO_HEIGHT, EGO_WIDTH, EGO_LENGTH, DEFAULT_ACCELERATION, \
-    DEFAULT_CURVATURE,TD_STEPS
+    DEFAULT_CURVATURE, TD_STEPS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
-from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
-from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
+from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidDynamicBoxObstacle, \
     WerlingVisualizer
-from mapping.test.model.testable_map_fixtures import testable_map_api
 from mapping.src.transformations.geometry_utils import CartesianFrame
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
 
-from unittest.mock import patch
+
+mock_td_steps = 5
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+@patch('decision_making.test.planning.trajectory.test_werlingPlanner.TD_STEPS', mock_td_steps)
+@patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.TD_STEPS', mock_td_steps)
+@patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.SX_STEPS', 2)
+@patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.DX_STEPS', 3)
 def test_werlingPlanner_toyScenario_noException():
     logger = AV_Logger.get_logger('test_werlingPlanner_toyScenario_noException')
     route_points = CartesianFrame.add_yaw_and_derivatives(
@@ -33,16 +38,10 @@ def test_werlingPlanner_toyScenario_noException():
     a_min = -5
     a_max = 5
     Ts = 1.5
-    Td_low_bound = 0.3
-
-    Td_vals = np.linspace(Td_low_bound, Ts, TD_STEPS)
-    dt=0.1
-    Td_vals = np.round(Td_vals * (1 / dt)) / (1 / dt)
 
     predictor = RoadFollowingPredictor(logger)
 
     goal = np.concatenate((route_points[len(route_points) // 2, [CURVE_X, CURVE_Y, CURVE_YAW]], [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
-
     pos1 = np.array([7, -.5])
     yaw1 = 0
     pos2 = np.array([11, 1.5])
@@ -78,20 +77,18 @@ def test_werlingPlanner_toyScenario_noException():
     start_time = time.time()
 
     samplable, ctrajectories, costs = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
-                                                   lon_plan_horizon=Ts, low_bound_lat_plan_horizon=Td_low_bound,
-                                                   cost_params=cost_params)
+                                                   lon_plan_horizon=Ts, cost_params=cost_params)
 
     samplable.sample(np.arange(0, 1, 0.01) + ego.timestamp_in_sec)
-
-    end_time = time.time() - start_time
 
     assert True
 
     import matplotlib.pyplot as plt
+    plt.switch_backend('QT5Agg')
 
     fig = plt.figure()
     p1 = fig.add_subplot(211)
-    plt.title('A sample from possible trajectories, Ts=%s, Td=%s' % (Ts, Td_vals))
+    plt.title('A sample from possible trajectories, Ts=%s, TD_STEPS=%s' % (Ts, TD_STEPS))
     p2 = fig.add_subplot(212)
     plt.title('Chosen trajectory')
     time_samples = np.arange(0.0, Ts, 0.1) + ego.timestamp_in_sec
@@ -107,9 +104,10 @@ def test_werlingPlanner_toyScenario_noException():
     WerlingVisualizer.plot_alternatives(p1, ctrajectories)
 
     print(costs)
+    print('\n minimal is: ', np.min(costs))
 
     WerlingVisualizer.plot_route(p1, route_points)
-
-    fig.show()
+    figManager = plt.get_current_fig_manager()
+    figManager.window.showMaximized()
+    plt.show()
     fig.clear()
-
