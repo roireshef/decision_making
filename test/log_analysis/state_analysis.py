@@ -129,95 +129,101 @@ def parse_no_valid_trajectories(log_content):
     return log_timestamp, state_timestamps, states
 
 
+if __name__ == '__main__':
 
-pubsub = PubSubMock(logger=AV_Logger.get_logger(LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING))
-filename = '/data/recordings/cdrive/Database/2017_12_27/logs/16_02/AV_Log_dm_main_test.log'
-# filename = 'C:/Users/xzjsyy/av_code/AV_Log_dm_main_test.log'
+    pubsub = PubSubMock(logger=AV_Logger.get_logger(LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING))
+    filename = '/data/recordings/cdrive/Database/2017_12_27/logs/16_02/AV_Log_dm_main_test.log'
+    # filename = 'C:/Users/xzjsyy/av_code/AV_Log_dm_main_test.log'
 
-f = open(file=filename, mode='r')
-log_content = f.readlines()
+    f = open(file=filename, mode='r')
+    log_content = f.readlines()
 
-# State module
-identifier_str = "_publish_state_if_full: publishing state "
-state_module_log_timestamp, state_module_timestamps, state_module_states = parse_state(log_content=log_content,
-                                                                                       identifier_str=identifier_str)
+    # State module
+    identifier_str = "_publish_state_if_full: publishing state "
+    state_module_log_timestamp, state_module_timestamps, state_module_states = parse_state(log_content=log_content,
+                                                                                           identifier_str=identifier_str)
 
-# BP module
-identifier_str = "behavioral_facade.py:    76: _get_current_state  : Received State: "
-bp_state_log_timestamp, bp_state_timestamps, bp_states = parse_state(log_content=log_content,
-                                                                     identifier_str=identifier_str)
-bp_module_log_timestamp, bp_module_timestamps, bp_module_states = parse_bp(log_content=log_content)
+    # BP module
+    identifier_str = "behavioral_facade.py:    76: _get_current_state  : Received State: "
+    bp_state_log_timestamp, bp_state_timestamps, bp_states = parse_state(log_content=log_content,
+                                                                         identifier_str=identifier_str)
+    bp_module_log_timestamp, bp_module_timestamps, bp_module_states = parse_bp(log_content=log_content)
 
-# TP module
-identifier_str = "trajectory_planning_facade.py:   139: _get_current_state  : Received state: "
-tp_state_log_timestamp, tp_state_timestamps, tp_states = parse_state(log_content=log_content,
-                                                                     identifier_str=identifier_str)
-tp_module_log_timestamp, tp_module_timestamps, tp_module_states = parse_tp(log_content=log_content)
-no_valid_trajectories_log_timestamp, no_valid_trajectories_timestamps, no_valid_trajectories_states = parse_no_valid_trajectories(
-    log_content=log_content)
+    # TP module
+    identifier_str = "trajectory_planning_facade.py:   139: _get_current_state  : Received state: "
+    tp_state_log_timestamp, tp_state_timestamps, tp_states = parse_state(log_content=log_content,
+                                                                         identifier_str=identifier_str)
+    tp_module_log_timestamp, tp_module_timestamps, tp_module_states = parse_tp(log_content=log_content)
+    no_valid_trajectories_log_timestamp, no_valid_trajectories_timestamps, no_valid_trajectories_states = parse_no_valid_trajectories(
+        log_content=log_content)
 
-# plt.plot(no_valid_trajectories_timestamps, np.ones(shape=no_valid_trajectories_timestamps.shape), '*b')
-# plt.plot(state_module_timestamps[1:], np.diff(state_module_timestamps), '-.r')
-# plt.plot(bp_state_timestamps[1:], np.diff(bp_state_timestamps), '-g')
-# plt.plot(tp_state_timestamps[1:], np.diff(tp_state_timestamps), '-c')
-# plt.plot(tp_module_timestamps[1:], np.diff(tp_module_timestamps), '-k')
 
-tp_params_dict_1 = ast.literal_eval(tp_module_states[144])
-state_dict_1 = ast.literal_eval(state_module_states[144])
-tp_params_dict_2 = ast.literal_eval(tp_module_states[145])
+    # Find index where no trajectories were found
+    invalid_log_time = 57653.6
+    invalid_tp_message_index = np.where(tp_module_log_timestamp > invalid_log_time)[0][0]
+    invalid_state_message_index = np.where(state_module_log_timestamp > invalid_log_time)[0][0]
 
-tp_params_1 = LogTypedMsg.deserialize(class_type=TrajectoryParams, message=tp_params_dict_1)
-state_1 = LogTypedMsg.deserialize(class_type=State, message=state_dict_1)
+    # Find index where trajectories were found
+    valid_log_time = 57652.6
+    valid_tp_message_index = np.where(tp_module_log_timestamp > valid_log_time)[0][0]
+    valid_state_message_index = np.where(state_module_log_timestamp > valid_log_time)[0][0]
 
-pubsub.publish(pubsub_topics.STATE_TOPIC, LogTypedMsg.serialize(state_1))
-pubsub.publish(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, LogTypedMsg.serialize(tp_params_1))
+    # Fetch messages from log
+    tp_params_dict_1 = ast.literal_eval(tp_module_states[invalid_tp_message_index])
+    state_dict_1 = ast.literal_eval(state_module_states[invalid_state_message_index])
+    tp_params_1 = LogTypedMsg.deserialize(class_type=TrajectoryParams, message=tp_params_dict_1)
+    state_1 = LogTypedMsg.deserialize(class_type=State, message=state_dict_1)
 
-logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
-# Init map
-MapService.initialize()
-predictor = RoadFollowingPredictor(logger)
+    # Publish messages using pubsub mock
+    pubsub.publish(pubsub_topics.STATE_TOPIC, LogTypedMsg.serialize(state_1))
+    pubsub.publish(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, LogTypedMsg.serialize(tp_params_1))
 
-# TODO: fill the strategy handlers
-planner = WerlingPlanner(logger, predictor)
-strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
-                     TrajectoryPlanningStrategy.PARKING: planner,
-                     TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
+    # Initialize TP
+    logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
+    MapService.initialize()
+    predictor = RoadFollowingPredictor(logger)
+    planner = WerlingPlanner(logger, predictor)
+    strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
+                         TrajectoryPlanningStrategy.PARKING: planner,
+                         TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
+    trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
+                                                          strategy_handlers=strategy_handlers)
 
-trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
-                                                      strategy_handlers=strategy_handlers,
-                                                      short_time_predictor=predictor)
-trajectory_planning_module._periodic_action_impl()
+    # Execute TP
+    trajectory_planning_module._periodic_action_impl()
 
-fig = plt.figure()
-plt.plot(no_valid_trajectories_log_timestamp, np.ones(shape=no_valid_trajectories_timestamps.shape), '*b')
-plt.plot(state_module_log_timestamp[1:], np.diff(state_module_timestamps), '-.r')
-plt.plot(bp_state_log_timestamp[1:], np.diff(bp_state_timestamps), '-g')
-plt.plot(tp_state_log_timestamp[1:], np.diff(tp_state_timestamps), '-c')
-plt.plot(tp_module_log_timestamp[1:], np.diff(tp_module_timestamps), '-k')
-plt.title('State time measurements')
-plt.legend(('Times where no valid trajectories were found',
-            'Diff between last ego timestamp in state module',
-            'Diff between last ego timestamp in BP module',
-            'Diff between last ego timestamp in TP module',
-            'Diff between end time of high-level action'))
-plt.xlabel('Log time [sec]')
-plt.show()
 
-fig = plt.figure()
-plt.plot(no_valid_trajectories_log_timestamp, np.ones(shape=no_valid_trajectories_timestamps.shape), '*b')
-plt.plot(state_module_log_timestamp[1:], np.diff(state_module_log_timestamp), '-.r')
-plt.plot(bp_state_log_timestamp[1:], np.diff(bp_state_log_timestamp), '-g')
-plt.plot(tp_state_log_timestamp[1:], np.diff(tp_state_log_timestamp), '-c')
-plt.plot(tp_module_log_timestamp[1:], np.diff(tp_module_log_timestamp), '-k')
-plt.plot(bp_module_log_timestamp[1:], np.diff(bp_module_log_timestamp), '-m')
-plt.title('Log time measurements')
-plt.legend(('Times where no valid trajectories were found',
-            'Time since last state message in state module',
-            'Time since last state received in BP',
-            'Time since last state received in TP',
-            'Time since last TP fetch of TP params',
-            'Time since last output send by BP'))
-plt.xlabel('Log time [sec]')
-plt.show()
+    # Plot log analysis
+    fig = plt.figure()
+    plt.plot(no_valid_trajectories_log_timestamp, np.ones(shape=no_valid_trajectories_timestamps.shape), '*b')
+    plt.plot(state_module_log_timestamp[1:], np.diff(state_module_timestamps), '-.r')
+    plt.plot(bp_state_log_timestamp[1:], np.diff(bp_state_timestamps), '-g')
+    plt.plot(tp_state_log_timestamp[1:], np.diff(tp_state_timestamps), '-c')
+    plt.plot(tp_module_log_timestamp[1:], np.diff(tp_module_timestamps), '-k')
+    plt.title('State time measurements')
+    plt.legend(('Times where no valid trajectories were found',
+                'Diff between last ego timestamp in state module',
+                'Diff between last ego timestamp in BP module',
+                'Diff between last ego timestamp in TP module',
+                'Diff between end time of high-level action'))
+    plt.xlabel('Log time [sec]')
+    plt.show()
 
-a = 2
+    fig = plt.figure()
+    plt.plot(no_valid_trajectories_log_timestamp, np.ones(shape=no_valid_trajectories_timestamps.shape), '*b')
+    plt.plot(state_module_log_timestamp[1:], np.diff(state_module_log_timestamp), '-.r')
+    plt.plot(bp_state_log_timestamp[1:], np.diff(bp_state_log_timestamp), '-g')
+    plt.plot(tp_state_log_timestamp[1:], np.diff(tp_state_log_timestamp), '-c')
+    plt.plot(tp_module_log_timestamp[1:], np.diff(tp_module_log_timestamp), '-k')
+    plt.plot(bp_module_log_timestamp[1:], np.diff(bp_module_log_timestamp), '-m')
+    plt.title('Log time measurements')
+    plt.legend(('Times where no valid trajectories were found',
+                'Time since last state message in state module',
+                'Time since last state received in BP',
+                'Time since last state received in TP',
+                'Time since last TP fetch of TP params',
+                'Time since last output send by BP'))
+    plt.xlabel('Log time [sec]')
+    plt.show()
+
+    a = 2
