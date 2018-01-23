@@ -30,16 +30,19 @@ from mapping.src.transformations.geometry_utils import CartesianFrame
 class TrajectoryPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger,
                  strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner],
+                 short_time_predictor: Predictor,
                  last_trajectory: SamplableTrajectory = None):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param pubsub: communication layer (DDS/LCM/...) instance
         :param logger: logger
         :param strategy_handlers: a dictionary of trajectory planners as strategy handlers -
+        :param short_time_predictor: predictor used to align all objects in state to ego's timestamp.
         :param last_trajectory: a representation the last trajectory that was planned during self._periodic_action_impl
         """
         super().__init__(pubsub=pubsub, logger=logger)
 
+        self._predictor = short_time_predictor
         self._strategy_handlers = strategy_handlers
         self._validate_strategy_handlers()
         self._last_trajectory = last_trajectory
@@ -63,55 +66,50 @@ class TrajectoryPlanningFacade(DmModule):
             start_time = time.time()
 
             state = self._get_current_state()
+
+            # Update state: align all object to most recent timestamp, based on ego and dynamic objects timestamp
+            state_aligned = self._predictor.align_objects_to_most_recent_timestamp(state=state)
+
             params = self._get_mission_params()
-
-            # Longitudinal planning horizon (Ts)
-            lon_plan_horizon = params.time - state.ego_state.timestamp_in_sec
-
-            # Latituudinal planning horizon(Td) lower bound
-            # TODO: determine lower bound according to physical constraints and ego control limitations
-            low_bound_lat_plan_horizon = lon_plan_horizon
 
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route[0])
-            self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
-            self.logger.debug("input: ego: v_x: %f, v_y: %f", state.ego_state.v_x, state.ego_state.v_y)
-            self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", lon_plan_horizon)
-            self.logger.info("state: %d objects detected", len(state.dynamic_objects))
+            self.logger.debug("input: ego: pos: (x: %f y: %f)", state_aligned.ego_state.x, state_aligned.ego_state.y)
+            self.logger.debug("input: ego: v_x: %f, v_y: %f", state_aligned.ego_state.v_x, state_aligned.ego_state.v_y)
+            self.logger.info("state: %d objects detected", len(state_aligned.dynamic_objects))
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
-            if self._is_actual_state_close_to_expected_state(state.ego_state):
-                updated_state = self._get_state_with_expected_ego(state)
+            if self._is_actual_state_close_to_expected_state(state_aligned.ego_state):
+                updated_state = self._get_state_with_expected_ego(state_aligned)
                 self.logger.info("TrajectoryPlanningFacade ego localization was overriden to the expected-state "
                                  "according to previous plan")
             else:
-                updated_state = state
+                updated_state = state_aligned
 
             # THIS ASSUMES TARGET IS ACCELERATION-FREE AND CURAVUTURE-FREE
             extended_target_state = np.append(params.target_state, [DEFAULT_ACCELERATION, DEFAULT_CURVATURE])
 
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, extended_target_state, lon_plan_horizon,
-                     low_bound_lat_plan_horizon, params.cost_params)
+                plan(updated_state, params.reference_route, extended_target_state, params.time, params.cost_params)
 
             # TODO: validate that sampling is consistent with controller!
             trajectory_points = samplable_trajectory.sample(
                 np.linspace(start=TRAJECTORY_TIME_RESOLUTION,
                             stop=TRAJECTORY_NUM_POINTS * TRAJECTORY_TIME_RESOLUTION,
-                            num=TRAJECTORY_NUM_POINTS) + state.ego_state.timestamp_in_sec)
+                            num=TRAJECTORY_NUM_POINTS) + state_aligned.ego_state.timestamp_in_sec)
 
             # TODO: should we publish v_x at all? add timestamp here.
             # publish results to the lower DM level (Control)
-            self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory_points, current_speed=state.ego_state.v_x))
+            self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory_points, current_speed=state_aligned.ego_state.v_x))
             self._last_trajectory = samplable_trajectory
 
-            # publish visualization/debug data - based on actual ego localization (original state)!
-            debug_results = self._prepare_visualization_msg(state, params.reference_route, ctrajectories, costs,
-                                                            lon_plan_horizon,
+            # publish visualization/debug data - based on actual ego localization (original state_aligned)!
+            debug_results = self._prepare_visualization_msg(state_aligned, params.reference_route, ctrajectories, costs,
+                                                            params.time - state_aligned.ego_state.timestamp_in_sec,
                                                             self._strategy_handlers[params.strategy].predictor)
 
             self._publish_debug(debug_results)

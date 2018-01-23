@@ -34,12 +34,9 @@ from mapping.src.service.map_service import MapService
 class SemanticActionsGridPolicy(SemanticActionsPolicy):
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
 
-        # Update state: align all object to most recent timestamp
-        state_aligned = self._predictor.align_objects_to_most_recent_timestamp(state=state)
-
         # create road semantic grid from the raw State object
         # behavioral_state contains road_occupancy_grid and ego_state
-        behavioral_state = SemanticActionsGridState.create_from_state(state=state_aligned,
+        behavioral_state = SemanticActionsGridState.create_from_state(state=state,
                                                                       logger=self.logger)
 
         # iterate over the semantic grid and enumerate all relevant HL actions
