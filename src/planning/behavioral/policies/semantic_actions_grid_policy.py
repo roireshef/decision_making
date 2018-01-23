@@ -25,6 +25,7 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_policy im
 from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils as SAU
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
+from decision_making.src.planning.types import CURVE_X, CURVE_Y
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize
@@ -214,7 +215,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         """
         Generate trajectory specification for trajectory planner given a SemanticActionSpec
         :param behavioral_state: processed behavioral state
-        :param reference_route: [nx3] numpy array of (x, y, z, yaw) states
+        :param reference_route: [nx4] numpy array of (x, y, z, yaw) states
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
 
@@ -222,7 +223,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         road_id = behavioral_state.ego_state.road_localization.road_id
 
         # TODO: should be replaced with cached road statistics on future feature
-        frenet = FrenetSerret2DFrame(MapService.get_instance().get_road(road_id)._points)
+        frenet = FrenetSerret2DFrame(reference_route[:, [CURVE_X, CURVE_Y]])
 
         # Create target state
         target_latitude = behavioral_state.ego_state.road_localization.intra_road_lat + action_spec.d_rel
