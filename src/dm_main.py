@@ -8,12 +8,12 @@ from common_data.src.communication.pubsub.pubsub import PubSub
 from common_data.lcm.python.Communication.lcmpubsub import LcmPubSub
 from common_data.lcm.config import config_defs
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
-    NAVIGATION_PLANNING_NAME_FOR_LOGGING, \
-    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
-    BEHAVIORAL_PLANNING_MODULE_PERIOD, \
-    TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
-    TRAJECTORY_PLANNING_MODULE_PERIOD, \
-    DM_MANAGER_NAME_FOR_LOGGING
+                                                 NAVIGATION_PLANNING_NAME_FOR_LOGGING, \
+                                                 BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
+                                                 BEHAVIORAL_PLANNING_MODULE_PERIOD, \
+                                                 TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
+                                                 TRAJECTORY_PLANNING_MODULE_PERIOD, \
+                                                 DM_MANAGER_NAME_FOR_LOGGING
 
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
@@ -34,8 +34,6 @@ from rte.python.os import catch_interrupt_signals
 
 # TODO: move this into test package
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))
-
-
 class NavigationFacadeMock(NavigationFacade):
     def __init__(self, pubsub: PubSub, logger: Logger, plan: NavigationPlanMsg):
         super().__init__(pubsub=pubsub, logger=logger, handler=None)
@@ -81,8 +79,7 @@ class DmInitialization:
         predictor = RoadFollowingPredictor(logger)
         policy = SemanticActionsGridPolicy(logger=logger, predictor=predictor)
 
-        behavioral_module = BehavioralFacade(pubsub=pubsub, logger=logger, policy=policy,
-                                             short_time_predictor=predictor)
+        behavioral_module = BehavioralFacade(pubsub=pubsub, logger=logger, policy=policy)
         return behavioral_module
 
     @staticmethod
@@ -101,8 +98,7 @@ class DmInitialization:
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
         trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
-                                                              strategy_handlers=strategy_handlers,
-                                                              short_time_predictor=predictor)
+                                                              strategy_handlers=strategy_handlers)
         return trajectory_planning_module
 
 
@@ -138,5 +134,6 @@ def main():
     finally:
         manager.stop_modules()
 
+if __name__ == '__main__':
+    main()
 
-main()
