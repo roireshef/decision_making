@@ -12,7 +12,7 @@ from decision_making.src.global_constants import BP_SPECIFICATION_T_MIN, BP_SPEC
     OUT_OF_LANE_COST, ROAD_SIGMOID_K_PARAM, OBJECTS_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_LON_COST, \
     DEVIATION_FROM_GOAL_LAT_COST, DEVIATION_FROM_REF_ROUTE_COST, LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
-    PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, VELOCITY_LIMITS
+    PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
@@ -22,6 +22,7 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_grid_stat
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticActionsPolicy, \
     SemanticAction, SemanticActionSpec, SemanticActionType, \
     LAT_CELL, LON_CELL, SemanticGridCell
+from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils as SAU
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
@@ -166,7 +167,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # Otherwise remain on the current lane.
 
         # TODO - this needs to come from map
-        desired_vel = BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
+        desired_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 
         # boolean whether the forward-right cell is fast enough (may be empty grid cell)
         is_forward_right_fast = right_lane_action_ind is not None and \
@@ -333,11 +334,10 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # We set the desired longitudinal distance to be equal to the distance we
         # would have travelled for the planning horizon in the average speed between current and target vel.
-        target_relative_s = BEHAVIORAL_PLANNING_HORIZON * \
-                            0.5 * (behavioral_state.ego_state.v_x + BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT)
+        target_relative_s = SAU.compute_distance_by_velocity_diff(behavioral_state.ego_state.v_x)
         target_relative_d = target_lane_latitude - behavioral_state.ego_state.road_localization.intra_road_lat
 
-        return SemanticActionSpec(t=BEHAVIORAL_PLANNING_HORIZON, v=BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT,
+        return SemanticActionSpec(t=BEHAVIORAL_PLANNING_HORIZON, v=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED,
                                   s_rel=target_relative_s, d_rel=target_relative_d)
 
     @staticmethod
@@ -499,3 +499,5 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             navigation_plan=navigation_plan)
 
         return lookahead_path
+
+
