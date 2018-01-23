@@ -189,7 +189,7 @@ def behavioral_facade(pubsub, trajectory_params, behavioral_visualization_msg):
     logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
 
     behavioral_module = BehavioralFacadeMock(pubsub=pubsub, logger=logger, trajectory_params=trajectory_params,
-                                             visualization_msg=behavioral_visualization_msg)
+                                             visualization_msg=behavioral_visualization_msg, trigger_pos=None)
 
     behavioral_module.start()
     yield behavioral_module

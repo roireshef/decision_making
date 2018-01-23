@@ -1,15 +1,15 @@
 import numpy as np
 
-from decision_making.src.messages.str_serializable import StrSerializable
-from decision_making.src.planning.types import C_V, Limits
-from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-
-from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryParameters
+from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
 from common_data.lcm.generatedFiles.gm_lcm import LcmSigmoidFunctionParams
 from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryCostParams
-from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
+from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryParameters
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
+from decision_making.src.planning.types import C_V, Limits
 
-class SigmoidFunctionParams(StrSerializable):
+
+class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
     def __init__(self, w: float, k: float, offset: float):
         """
         A data class that corresponds to a parametrization of a sigmoid function
@@ -35,7 +35,7 @@ class SigmoidFunctionParams(StrSerializable):
         return cls(lcmMsg.w, lcmMsg.k, lcmMsg.offset)
 
 
-class TrajectoryCostParams(StrSerializable):
+class TrajectoryCostParams(PUBSUB_MSG_IMPL):
     def __init__(self, left_lane_cost: SigmoidFunctionParams, right_lane_cost: SigmoidFunctionParams,
                  left_road_cost: SigmoidFunctionParams, right_road_cost: SigmoidFunctionParams,
                  left_shoulder_cost: SigmoidFunctionParams, right_shoulder_cost: SigmoidFunctionParams,
@@ -140,7 +140,7 @@ class TrajectoryCostParams(StrSerializable):
                             , dtype = float))
 
 
-class TrajectoryParams(StrSerializable):
+class TrajectoryParams(PUBSUB_MSG_IMPL):
     def __init__(self, strategy: TrajectoryPlanningStrategy, reference_route: np.ndarray,
                  target_state: np.ndarray, cost_params: TrajectoryCostParams, time: float):
         """

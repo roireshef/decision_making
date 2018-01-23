@@ -1,20 +1,27 @@
-import os
 import numpy as np
+
+from decision_making.src.messages.str_serializable import StrSerializable
+
 # General constants
 
 UNKNOWN_DEFAULT_VAL = 0.0
 
+
+# Communication Layer
+
+# PubSub message class implementation for all DM messages
+PUBSUB_MSG_IMPL = StrSerializable
+
+
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
-BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 60.0
-# TODO - get this value from the map
-BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT = 14.0
+BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 80.0
 
 # When retrieving the lookahead path of a given dynamic object, we will multiply the path length
 # by the following ratio in order to avoid extrapolation when resampling the path (due to path sampling
 # and linearization errors)
-PREDICTION_LOOKAHEAD_COMPENSATION_RATIO = 1.1
+PREDICTION_LOOKAHEAD_COMPENSATION_RATIO = 1.2
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.1
@@ -45,14 +52,17 @@ DEVIATION_FROM_GOAL_LON_COST = 1.0 * 1e2    # cost of squared longitudinal devia
 DEVIATION_FROM_GOAL_LAT_COST = 1.5 * 1e2    # cost of squared lateral deviation from the goal
 DEVIATION_FROM_REF_ROUTE_COST = 0.0         # cost of squared deviation from the route path
 
+# [m/sec] speed to plan towards by default in BP
+BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
+
+# [m/s] min & max velocity limits are additional parameters for TP
+VELOCITY_LIMITS = np.array([0.0, 20.0])
+
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
 BP_SPECIFICATION_T_MIN = 2.0
 BP_SPECIFICATION_T_MAX = 20.0
 BP_SPECIFICATION_T_RES = 0.2
-
-# [m/s] min & max velocity limits are additional parameters for TP
-VELOCITY_LIMITS = np.array([0.0, 30.0])
 
 # Longitudinal Acceleration Limits [m/sec^2]
 LON_ACC_LIMITS = np.array([-3.0, 3.0])
@@ -102,11 +112,17 @@ EXP_CLIP_TH = 50.0
 # Number of (best) trajectories to publish to visualization
 NUM_ALTERNATIVE_TRAJECTORIES = 10
 
+# Number of points in trajectories for sending out to visualization (currently VizTool freezes when there are too much)
+MAX_NUM_POINTS_FOR_VIZ = 30
+
+# in meters, to be used as an argument in the resample_curve method
+DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION = 0.5
+
 # [m] "Negligible distance" threshold between the desired location and the actual location between two TP planning
 # iterations. If the distance is lower than this threshold, the TP plans the trajectory as is the ego vehicle is
 # currently in the desired location and not in its actual location.
 # TODO: fix real values for thresholds (after tuning controller)
-NEGLIGIBLE_DISPOSITION_LON = 10  # longitudinal (ego's heading direction) difference threshold
+NEGLIGIBLE_DISPOSITION_LON = 3  # longitudinal (ego's heading direction) difference threshold
 NEGLIGIBLE_DISPOSITION_LAT = 3  # lateral (ego's side direction) difference threshold
 
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
@@ -114,6 +130,7 @@ TRAJECTORY_TIME_RESOLUTION = 0.1
 
 # Number of trajectory points to send out (to controller) from the TP
 TRAJECTORY_NUM_POINTS = 10
+
 
 # Werling Planner #
 
@@ -142,6 +159,8 @@ DEFAULT_ACCELERATION = 0.0
 
 # [-+1/m] when curvature is not specified - TP uses this as goal curvature
 DEFAULT_CURVATURE = 0.0
+
+
 # State #
 
 # TODO: set real values
