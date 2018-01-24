@@ -253,7 +253,7 @@ class TrajectoryPlanningFacade(DmModule):
         # predicted_states[1] is the predicted state in the end of the execution of traj.
         predicted_states = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps)
 
-        downsampled_reference_route, _ = CartesianFrame.resample_curve(reference_route,
+        _, downsampled_reference_route, _ = CartesianFrame.resample_curve(reference_route,
                                                                        step_size=DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION)
 
         return TrajectoryVisualizationMsg(downsampled_reference_route,

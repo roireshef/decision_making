@@ -105,7 +105,7 @@ class RoadFollowingPredictor(Predictor):
         # In these cases yaw_vector contains a duplicated value of initial_yaw.
         yaw_vector = None
         if lookahead_route.shape[0] > 1:
-            route_xy, _ = CartesianFrame.resample_curve(curve=lookahead_route,
+            _, route_xy, _ = CartesianFrame.resample_curve(curve=lookahead_route,
                                                         arbitrary_curve_sampling_points=predicted_distances_from_start)
             if route_xy.shape[0] == 1:
                 yaw_vector = np.ones(shape=[route_xy.shape[0], 1]) * initial_yaw

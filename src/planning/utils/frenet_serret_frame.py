@@ -1,6 +1,6 @@
 import numpy as np
 
-from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_INTERP_TYPE, \
+from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_SPLINE_FIT_ORDER, \
     TINY_CURVATURE
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
     FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, FS_SX, \
@@ -12,17 +12,17 @@ from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
 class FrenetSerret2DFrame:
     def __init__(self, points: CartesianPath2D, ds: float = TRAJECTORY_ARCLEN_RESOLUTION,
-                 interp_type=TRAJECTORY_CURVE_INTERP_TYPE):
+                 spline_order=TRAJECTORY_CURVE_SPLINE_FIT_ORDER):
         """
         This is an object used for paramterizing a curve given discrete set of points in some "global" cartesian frame,
         and then for transforming from the "global" frame to the curve's frenet frame and back.
         :param points: a set of points in some "global" cartesian frame
         :param ds: a resolution parameter - the desired distance between each two consecutive points after re-sampling
-        :param interp_type: interpolation type for fitting and re-sampling the original points
+        :param spline_order: spline order for fitting and re-sampling the original points
         """
-        self.O, effective_ds = CartesianFrame.resample_curve(curve=points, step_size=ds,
+        splines, self.O, effective_ds = CartesianFrame.resample_curve(curve=points, step_size=ds,
                                                              preserve_step_size=True,
-                                                             interp_type=interp_type)
+                                                             spline_order=spline_order)
 
         self.s_max = effective_ds * len(self.O)
         self.ds = effective_ds
