@@ -37,15 +37,6 @@ class FrenetSerret2DFrame:
         _, T_r, _, _, _ = self._taylor_interp(s)
         return np.arctan2(T_r[..., C_Y], T_r[..., C_X])
 
-    def get_curvature(self, s: np.ndarray):
-        """
-        Computes curvature (in rad/m) at specific points along the curve, given progresses
-        :param s: progress on the curve from its beginning in meters (any tensor shape)
-        :return: curvatures in [rad/m]
-        """
-        _, _, _, k_r, _ = self._taylor_interp(s)
-        return k_r
-
     ## FRENET => CARTESIAN
 
     def fpoint_to_cpoint(self, fpoints: FrenetPoint) -> CartesianPoint2D:
