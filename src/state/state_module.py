@@ -127,7 +127,7 @@ class StateModule(DmModule):
                 global_yaw = yaw
 
                 # When filtering off-road objects, try to localize object on road.
-                if FILTER_OFF_ROAD_OBJECTS and self.is_object_on_road(global_coordinates, global_yaw):
+                if FILTER_OFF_ROAD_OBJECTS and self._is_object_on_road(global_coordinates, global_yaw):
                     dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
                                             global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
                                             UNKNOWN_DEFAULT_VAL, omega_yaw)
@@ -145,7 +145,7 @@ class StateModule(DmModule):
                     self.logger.warning("received out of FOV object which is not in memory.")
         return dyn_obj_list
 
-    def is_object_on_road(self, global_coordinates: CartesianPoint3D, global_yaw: float)->bool:
+    def _is_object_on_road(self, global_coordinates: CartesianPoint3D, global_yaw: float)->bool:
         """
         Try to localize coordinates on any road of the map
         :param global_coordinates: CartesianPoint3D

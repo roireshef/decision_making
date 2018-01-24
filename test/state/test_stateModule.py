@@ -4,10 +4,10 @@ from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING
 from decision_making.src.state.state import OccupancyState, EgoState
 from decision_making.src.state.state_module import StateModule
-from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
+from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH, FILTER_OBJECT_OFF_ROAD_PATH
 from gm_lcm import LcmPerceivedDynamicObjectList
 from rte.python.logger.AV_logger import AV_Logger
-from decision_making.test.planning.custom_fixtures import dynamic_objects_not_in_fov, dynamic_objects_in_fov
+from decision_making.test.planning.custom_fixtures import dynamic_objects_not_in_fov, dynamic_objects_in_fov, dynamic_objects_not_on_road
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from decision_making.test.planning.custom_fixtures import ego_state_fix, pubsub
 import numpy as np
@@ -57,3 +57,75 @@ def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(pubsub: Pub
 
     state_module.stop()
 
+
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+def test_isObjectOnRoad_objectOffOfRoad_False(pubsub: PubSub, ego_state_fix: EgoState):
+    """
+    :param pubsub: Inter-process communication interface.
+    :param dynamic_objects_in_fov: Fixture of a serialized dynamic object data located within the field of view
+            (FOV).
+    :param dynamic_objects_not_in_fov: Fixture of a serialized dynamic object with the same id as above but now it's located
+                                        out of the field of view.
+    :param ego_state_fix: Fixture of an ego state compatible with the above two fixtures.
+
+    This test checks the memory functionality of the StateModule. It initially sends into the StateModule a dynamic object
+    in the FOV followed by a message indicating that the object is out of FOV. The test then asserts that the last known
+    object properties have been "remembered".
+    """
+    logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
+
+    state_module = StateModule(pubsub=pubsub, logger=logger,
+                               occupancy_state=OccupancyState(0, np.array([]), np.array([])),
+                               dynamic_objects=None, ego_state=ego_state_fix)
+    bool_should_be_false = state_module._is_object_on_road(np.array([17.0,17.0,0.0]), 0.0)
+
+    assert not bool_should_be_false
+
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+def test_isObjectOnRoad_objectOnOfRoad_True(pubsub: PubSub, ego_state_fix: EgoState):
+    """
+    :param pubsub: Inter-process communication interface.
+    :param dynamic_objects_in_fov: Fixture of a serialized dynamic object data located within the field of view
+            (FOV).
+    :param dynamic_objects_not_in_fov: Fixture of a serialized dynamic object with the same id as above but now it's located
+                                        out of the field of view.
+    :param ego_state_fix: Fixture of an ego state compatible with the above two fixtures.
+
+    This test checks the memory functionality of the StateModule. It initially sends into the StateModule a dynamic object
+    in the FOV followed by a message indicating that the object is out of FOV. The test then asserts that the last known
+    object properties have been "remembered".
+    """
+    logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
+
+    state_module = StateModule(pubsub=pubsub, logger=logger,
+                               occupancy_state=OccupancyState(0, np.array([]), np.array([])),
+                               dynamic_objects=None, ego_state=ego_state_fix)
+    bool_should_be_true = state_module._is_object_on_road(np.array([5.0,1.0,0.0]), 0.0)
+    assert bool_should_be_true
+
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+@patch(target=FILTER_OBJECT_OFF_ROAD_PATH, new=True)
+def test_dynamicObjCallbackWithoutFilter_objectOnAndOffOfRoad_stateWithBothObjects(pubsub: PubSub,
+                                                                                   dynamic_objects_not_on_road: LcmPerceivedDynamicObjectList,
+                                                                                   ego_state_fix: EgoState):
+    """
+    :param pubsub: Inter-process communication interface.
+    :param dynamic_objects_in_fov: Fixture of a serialized dynamic object data located within the field of view
+            (FOV).
+    :param dynamic_objects_not_in_fov: Fixture of a serialized dynamic object with the same id as above but now it's located
+                                        out of the field of view.
+    :param ego_state_fix: Fixture of an ego state compatible with the above two fixtures.
+
+    This test checks the memory functionality of the StateModule. It initially sends into the StateModule a dynamic object
+    in the FOV followed by a message indicating that the object is out of FOV. The test then asserts that the last known
+    object properties have been "remembered".
+    """
+    logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
+
+    state_module = StateModule(pubsub=pubsub, logger=logger,
+                               occupancy_state=OccupancyState(0, np.array([]), np.array([])),
+                               dynamic_objects=None, ego_state=ego_state_fix)
+    state_module.start()
+    #Inserting a object that's not on the road
+    dyn_obj_list = state_module.create_dyn_obj_list(dynamic_objects_not_on_road)
+    assert len(dyn_obj_list) == 1
