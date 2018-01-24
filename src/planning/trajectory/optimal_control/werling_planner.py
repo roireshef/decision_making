@@ -162,10 +162,11 @@ class WerlingPlanner(TrajectoryPlanner):
     @staticmethod
     def _filter_limits(ctrajectories: CartesianExtendedTrajectories, cost_params: TrajectoryCostParams) -> np.ndarray:
         """
-
-        :param ctrajectories:
-        :param cost_params:
-        :return:
+        Given a set of trajectories in Cartesian coordinate-frame, it validates them against the following limits:
+        longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity)
+        :param ctrajectories: CartesianExtendedTrajectories object of trajectories to validate
+        :param cost_params: TrajectoryCostParams object that holds desired limits (for validation)
+        :return: Indices along the 1st dimension in <ctrajectories> (trajectory index) for valid trajectories
         """
         lon_acceleration = ctrajectories[:, :, C_A]
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
