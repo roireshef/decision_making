@@ -41,8 +41,9 @@ class TrajectoryCostParams(StrSerializable):
                  left_shoulder_cost: SigmoidFunctionParams, right_shoulder_cost: SigmoidFunctionParams,
                  obstacle_cost_x: SigmoidFunctionParams,
                  obstacle_cost_y: SigmoidFunctionParams,
-                 dist_from_goal_lon_sq_cost: float, dist_from_goal_lat_sq_cost: float,
-                 dist_from_ref_sq_cost: float, velocity_limits: Limits, acceleration_limits: Limits):
+                 dist_from_goal_cost: SigmoidFunctionParams,
+                 dist_from_goal_lat_factor: float,
+                 velocity_limits: Limits, acceleration_limits: Limits):
         """
         This class holds all the parameters used to build the cost function of the trajectory planner.
         It is dynamically set and sent by the behavioral planner.
@@ -77,9 +78,8 @@ class TrajectoryCostParams(StrSerializable):
         self.right_shoulder_cost = right_shoulder_cost
         self.left_road_cost = left_road_cost
         self.right_road_cost = right_road_cost
-        self.dist_from_goal_lon_sq_cost = dist_from_goal_lon_sq_cost
-        self.dist_from_goal_lat_sq_cost = dist_from_goal_lat_sq_cost
-        self.dist_from_ref_sq_cost = dist_from_ref_sq_cost
+        self.dist_from_goal_cost = dist_from_goal_cost
+        self.dist_from_goal_lat_factor = dist_from_goal_lat_factor
         self.velocity_limits = velocity_limits
         self.acceleration_limits = acceleration_limits
 
@@ -94,10 +94,8 @@ class TrajectoryCostParams(StrSerializable):
         lcm_msg.right_shoulder_cost = self.right_shoulder_cost.serialize()
         lcm_msg.left_road_cost = self.left_road_cost.serialize()
         lcm_msg.right_road_cost = self.right_road_cost.serialize()
-
-        lcm_msg.dist_from_goal_lon_sq_cost = self.dist_from_goal_lon_sq_cost
-        lcm_msg.dist_from_goal_lat_sq_cost = self.dist_from_goal_lat_sq_cost
-        lcm_msg.dist_from_ref_sq_cost = self.dist_from_ref_sq_cost
+        lcm_msg.dist_from_goal_cost = self.dist_from_goal_cost.serialize()
+        lcm_msg.dist_from_goal_lat_factor = self.dist_from_goal_lat_factor
 
         lcm_msg.velocity_limits = LcmNumpyArray()
         lcm_msg.velocity_limits.num_dimensions = len(self.velocity_limits.shape)
@@ -123,9 +121,8 @@ class TrajectoryCostParams(StrSerializable):
                  , SigmoidFunctionParams.deserialize(lcmMsg.right_shoulder_cost)
                  , SigmoidFunctionParams.deserialize(lcmMsg.left_road_cost)
                  , SigmoidFunctionParams.deserialize(lcmMsg.right_road_cost)
-                 , lcmMsg.dist_from_goal_lon_sq_cost
-                 , lcmMsg.dist_from_goal_lat_sq_cost
-                 , lcmMsg.dist_from_ref_sq_cost
+                 , SigmoidFunctionParams.deserialize(lcmMsg.dist_from_goal_cost)
+                 , lcmMsg.dist_from_goal_lat_factor
                  , np.ndarray(shape = tuple(lcmMsg.velocity_limits.shape)
                             , buffer = np.array(lcmMsg.velocity_limits.data)
                             , dtype = float)
