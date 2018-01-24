@@ -6,7 +6,7 @@ from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
     FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, FS_SX, \
     FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint, C_YAW, C_K, C_V, C_A, \
     CartesianVectorsTensor2D, CartesianPointsTensor2D, FrenetState, CartesianExtendedState
-from decision_making.src.planning.utils.tensor_ops import TensorOps
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
 
@@ -313,10 +313,10 @@ class FrenetSerret2DFrame:
         dT = np.divide(np.gradient(T)[0], ds)
 
         # Normal - robust to zero-curvature
-        N = TensorOps.row_wise_normal(T)
+        N = NumpyUtils.row_wise_normal(T)
 
         # SIGNED (!) Curvature
-        cross_norm = np.sum(TensorOps.row_wise_normal(dxy) * ddxy, axis=1)
+        cross_norm = np.sum(NumpyUtils.row_wise_normal(dxy) * ddxy, axis=1)
         k = np.zeros(len(T))
         k[dxy_norm > 0] = cross_norm[dxy_norm > 0] / (dxy_norm[dxy_norm > 0] ** 3)
 
