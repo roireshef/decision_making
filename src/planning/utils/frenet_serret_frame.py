@@ -31,12 +31,20 @@ class FrenetSerret2DFrame:
     def get_yaw(self, s: np.ndarray):
         """
         Computes yaw (in radians, relative to the origin in which the curve points (self.O) are given
-        :param s: progress on the curve from its beginning in meters (any tensor shape, with the last dimension being
-        [x,y] coordinates)
+        :param s: progress on the curve from its beginning in meters (any tensor shape)
         :return: yaw in radians (tensor shape is the same as <s>)
         """
         _, T_r, _, _, _ = self._taylor_interp(s)
         return np.arctan2(T_r[..., C_Y], T_r[..., C_X])
+
+    def get_curvature(self, s: np.ndarray):
+        """
+        Computes curvature (in rad/m) at specific points along the curve, given progresses
+        :param s: progress on the curve from its beginning in meters (any tensor shape)
+        :return: curvatures in [rad/m]
+        """
+        _, _, _, k_r, _ = self._taylor_interp(s)
+        return k_r
 
     ## FRENET => CARTESIAN
 

@@ -228,7 +228,11 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # Create target state
         target_latitude = behavioral_state.ego_state.road_localization.intra_road_lat + action_spec.d_rel
         target_longitude = behavioral_state.ego_state.road_localization.road_lon + action_spec.s_rel
-        target_state = frenet.fstate_to_cstate(np.array([target_longitude, action_spec.v, 0, target_latitude, 0, 0]))
+
+        curvature = float(frenet.get_curvature(target_longitude))
+
+        target_state = frenet.fstate_to_cstate(
+            np.array([target_longitude, action_spec.v, 0, target_latitude, 0, curvature]))
 
         cost_params = SemanticActionsGridPolicy._generate_cost_params(
             road_id=road_id,
@@ -245,7 +249,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         return trajectory_parameters
 
     @staticmethod
-    def _generate_cost_params(road_id: int, ego_size: ObjectSize, reference_route_latitude: float) -> TrajectoryCostParams:
+    def _generate_cost_params(road_id: int, ego_size: ObjectSize, reference_route_latitude: float) -> \
+            TrajectoryCostParams:
         """
         Generate cost specification for trajectory planner
         :param road_id: the road's id - it currently assumes a single road for the whole action.
