@@ -52,7 +52,7 @@ DEVIATION_FROM_REF_ROUTE_COST = 0.0         # cost of squared deviation from the
 VELOCITY_LIMITS = np.array([0.0, 60.0])
 
 # Acceleration Limits [m/sec^2]
-LON_ACCELERATION_LIMITS = np.array([-8.0, 3.0])
+LON_ACCELERATION_LIMITS = np.array([-8.0, 3.0])  # taken from SuperCruise presentation
 LAT_ACCELERATION_LIMITS = np.array([-2.0, 2.0])  # TODO: use this.
 
 # Planning horizon for the TP query sent by BP [sec]
