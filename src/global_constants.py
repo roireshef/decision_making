@@ -56,7 +56,7 @@ DEVIATION_FROM_REF_ROUTE_COST = 0.0         # cost of squared deviation from the
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
 
 # [m/s] min & max velocity limits are additional parameters for TP
-VELOCITY_LIMITS = np.array([0.0, 35.0])
+VELOCITY_LIMITS = np.array([0.0, 20.0])
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
