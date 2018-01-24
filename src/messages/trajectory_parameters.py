@@ -135,7 +135,7 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
         :param reference_route: a reference route points (often the center of lane)
-        :param target_state: the desired ego-state to plan towards
+        :param target_state: the vector-representation of the target state to plan ego motion towards
         :param cost_params: list of parameters for the cost function of trajectory planner.
         :param strategy: trajectory planning strategy.
         :param time: trajectory planning time-frame
