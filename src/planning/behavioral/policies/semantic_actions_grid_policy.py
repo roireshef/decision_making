@@ -440,17 +440,17 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         """
         # TODO: a(0) and a(T) checks are omitted as they they are provided by the user.
         # compute extrema points, by finding the roots of the 3rd derivative (which is itself a 2nd degree polynomial)
-        acc_suspected_points_s = np.roots(np.polyder(poly_coefs, m=3))
+        acc_suspected_points = np.roots(np.polyder(poly_coefs, m=3))
         acceleration_poly_coefs = np.polyder(poly_coefs, m=2)
-        acc_suspected_values_s = np.polyval(acceleration_poly_coefs, acc_suspected_points_s)
+        acc_suspected_values = np.polyval(acceleration_poly_coefs, acc_suspected_points)
 
         # filter out extrema points out of [0, T]
-        acc_inlimit_suspected_values_s = acc_suspected_values_s[np.greater_equal(acc_suspected_points_s, 0) &
-                                                                np.less_equal(acc_suspected_points_s, T)]
+        acc_inlimit_suspected_values = acc_suspected_values[np.greater_equal(acc_suspected_points, 0) &
+                                                            np.less_equal(acc_suspected_points, T)]
 
         # check if extrema values are within [a_min, a_max] limits
-        return np.all(np.greater_equal(acc_inlimit_suspected_values_s, acc_limits[LIMIT_MIN]) &
-                      np.less_equal(acc_inlimit_suspected_values_s, acc_limits[LIMIT_MAX]))
+        return np.all(np.greater_equal(acc_inlimit_suspected_values, acc_limits[LIMIT_MIN]) &
+                      np.less_equal(acc_inlimit_suspected_values, acc_limits[LIMIT_MAX]))
 
     @staticmethod
     def _get_action_ind(semantic_actions: List[SemanticAction], cell: SemanticGridCell):
