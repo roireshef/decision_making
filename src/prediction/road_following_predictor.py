@@ -100,6 +100,9 @@ class RoadFollowingPredictor(Predictor):
                 'Trying to predict object (id=%d) with timestamp %f [sec] to past timestamps: %s' % (
                     dynamic_object.obj_id, dynamic_object.timestamp_in_sec, prediction_timestamps))
 
+        # If lookahead_route's length == 1, then a single-point route_xy is duplicated. The yaw can not be calculated.
+        # If lookahead_route's length > 1 but route_xy length == 1, then again the yaw can not be calculated.
+        # In these cases yaw_vector contains a duplicated value of initial_yaw.
         yaw_vector = None
         if lookahead_route.shape[0] > 1:
             route_xy, _ = CartesianFrame.resample_curve(curve=lookahead_route,
