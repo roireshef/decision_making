@@ -431,12 +431,11 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
     @staticmethod
     def _is_acceleration_in_limits(poly_coefs: np.ndarray, T: float, acc_limits: Limits) -> bool:
         """
-        given a quintic polynomial coefficients vector, and restrictions
+        given coefficients vector of a quintic polynomial x(t), and restrictions
         on the acceleration values, return True if restrictions are met, False otherwise
-        :param poly_coefs: 1D numpy array with s(t), s_dot(t) s_dotdot(t) concatenated
+        :param poly_coefs: 1D numpy array with x(t), x_dot(t) x_dotdot(t) concatenated
         :param T: planning time horizon [sec]
-        :param min_acc_threshold: minimal allowed value of acceleration/deceleration [m/sec^2]
-        :param max_acc_threshold: maximal allowed value of acceleration/deceleration [m/sec^2]
+        :param acc_limits: minimal and maximal allowed values of acceleration/deceleration [m/sec^2]
         :return: True if restrictions are met, False otherwise
         """
         # TODO: a(0) and a(T) checks are omitted as they they are provided by the user.
