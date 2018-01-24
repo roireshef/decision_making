@@ -130,7 +130,7 @@ class StateModule(DmModule):
                 try:
                     if FILTER_OFF_ROAD_OBJECTS:
                         # Try to localize object on road. If not successful, warn by raising MapCellNotFound exception.
-                        is_valid_obj = self.is_object_on_road(global_coordinates, global_yaw)
+                        is_valid_obj = StateModule.is_object_on_road(global_coordinates, global_yaw)
                     else:
                         is_valid_obj = True
 
@@ -155,19 +155,22 @@ class StateModule(DmModule):
                     self.logger.warning("received out of FOV object which is not in memory.")
         return dyn_obj_list
 
-    @raises(MapCellNotFound)
-    def is_object_on_road(self, global_coordinates: CartesianPoint3D, global_yaw: float)->bool:
+    @staticmethod
+    def is_object_on_road(global_coordinates: CartesianPoint3D, global_yaw: float)->bool:
         """
         Try to localize coordinates on any road of the map
         :param global_coordinates: CartesianPoint3D
         :param global_yaw: heading of object
         :return: True is on a road, False otherwise
         """
-        road_localization = MapService.get_instance().compute_road_localization(global_coordinates, global_yaw)
-        # Filter objects out of road:
-        road_width = MapService.get_instance().get_road(road_id=road_localization.road_id).road_width
-        object_on_road = road_width + ROAD_SHOULDERS_WIDTH > road_localization.intra_road_lat > -ROAD_SHOULDERS_WIDTH
-        return object_on_road
+        try:
+            road_localization = MapService.get_instance().compute_road_localization(global_coordinates, global_yaw)
+            # Filter objects out of road:
+            road_width = MapService.get_instance().get_road(road_id=road_localization.road_id).road_width
+            object_on_road = road_width + ROAD_SHOULDERS_WIDTH > road_localization.intra_road_lat > -ROAD_SHOULDERS_WIDTH
+            return object_on_road
+        except MapCellNotFound:
+            return False
 
     def _self_localization_callback(self, self_localization: LcmPerceivedSelfLocalization) -> None:
         """
