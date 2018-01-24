@@ -113,13 +113,15 @@ class TrajectoryPlanningFacade(DmModule):
 
             self.logger.info("TrajectoryPlanningFacade._periodic_action_impl time %f", time.time() - start_time)
 
-        except MsgDeserializationError as e:
-            self.logger.warn("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ", e)
-        except NoValidTrajectoriesFound as e:
-            # TODO - we need to handle this as an emergency.
-            self.logger.exception("TrajectoryPlanningFacade: NoValidTrajectoriesFound was raised")
+        except MsgDeserializationError:
+            self.logger.warn("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
+                             traceback.format_exc())
+        # TODO - we need to handle this as an emergency.
+        except NoValidTrajectoriesFound:
+            self.logger.warn("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s",
+                             traceback.format_exc())
         # TODO: remove this handler
-        except Exception as e:
+        except Exception:
             self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s",
                                  traceback.format_exc())
 

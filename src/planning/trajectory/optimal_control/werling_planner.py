@@ -131,7 +131,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                            "planned velocities range [%s, %s], "
                                            "planned accelerations range [%s, %s], "
                                            "planned curvatures range [%s, %s], " %
-                                           (planning_horizon, goal, state,
+                                           (planning_horizon, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                             np.min(ctrajectories[:, :, C_V]), np.max(ctrajectories[:, :, C_V]),
                                             np.min(ctrajectories[:, :, C_A]), np.max(ctrajectories[:, :, C_A]),
                                             np.min(ctrajectories[:, :, C_K]), np.max(ctrajectories[:, :, C_K])))
