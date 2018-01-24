@@ -3,6 +3,7 @@ import numpy as np
 from numbers import Number
 
 from decision_making.src.planning.types import FrenetState
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 
 
 class FrenetConstraints:
@@ -26,6 +27,9 @@ class FrenetConstraints:
         self._dx = np.array(dx)
         self._dv = np.array(dv)
         self._da = np.array(da)
+
+    def __str__(self):
+        return "FrenetConstraints(%s)" % ["%s: %s" % (k, NumpyUtils.str_log(v)) for k, v in self.__dict__.items()]
 
     @classmethod
     def from_state(cls, state: FrenetState):

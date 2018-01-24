@@ -18,7 +18,7 @@ from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
 from decision_making.src.planning.types import FrenetTrajectories, CartesianExtendedTrajectories, FrenetPoint
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
-from decision_making.src.planning.utils.tensor_ops import TensorOps
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 
@@ -108,6 +108,10 @@ class WerlingPlanner(TrajectoryPlanner):
         planning_time_points = np.arange(self.dt, planning_horizon, self.dt)
         assert planning_horizon >= 0
 
+        self._logger.debug("Werling planner is planning according to the following constraints: "
+                           "Initial Constraint: %s; Terminal Constraint set: %s" % (fconstraints_t0, fconstraints_tT))
+
+
         # solve problem in frenet-frame
         ftrajectories, poly_coefs = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
                                                                        planning_horizon,
@@ -120,10 +124,16 @@ class WerlingPlanner(TrajectoryPlanner):
 
         if ftrajectories_filtered is None or len(ftrajectories_filtered) == 0:
             min_vel, max_vel = np.min(ftrajectories[:, :, FS_SV]), np.max(ftrajectories[:, :, FS_SV])
-            min_acc, max_acc = np.min(ftrajectories[:, :, FS_SA]), np.max(ftrajectories[:, :, FS_SA])
+            min_acc_s, max_acc_s = np.min(ftrajectories[:, :, FS_SA]), np.max(ftrajectories[:, :, FS_SA])
+            min_acc_d, max_acc_d = np.min(ftrajectories[:, :, FS_DA]), np.max(ftrajectories[:, :, FS_DA])
             raise NoValidTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s. "
-                                           "planned velocities range [%s, %s]. planned accelerations range [%s, %s]" %
-                                           (planning_horizon, goal, state, min_vel, max_vel, min_acc, max_acc))
+                                           "planned velocities range [%s, %s]; "
+                                           "planned lon. accelerations range [%s, %s]; "
+                                           "planned lat. accelerations range [%s, %s]; " %
+                                           (planning_horizon, NumpyUtils.str_log(goal), state,
+                                            min_vel, max_vel,
+                                            min_acc_s, max_acc_s,
+                                            min_acc_d, max_acc_d))
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
         ctrajectories: CartesianExtendedTrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories_filtered)
@@ -237,14 +247,14 @@ class WerlingPlanner(TrajectoryPlanner):
         A_inv = np.linalg.inv(A)
 
         # solve for dimesion d
-        constraints_d = TensorOps.cartesian_product_matrix_rows(fconst_0.get_grid_d(), fconst_t.get_grid_d())
+        constraints_d = NumpyUtils.cartesian_product_matrix_rows(fconst_0.get_grid_d(), fconst_t.get_grid_d())
         poly_d = OC.QuinticPoly1D.solve(A_inv, constraints_d)
         solutions_d = OC.QuinticPoly1D.polyval_with_derivatives(poly_d, time_samples)
 
         # solve for dimesion s
-        constraints_s = TensorOps.cartesian_product_matrix_rows(fconst_0.get_grid_s(), fconst_t.get_grid_s())
+        constraints_s = NumpyUtils.cartesian_product_matrix_rows(fconst_0.get_grid_s(), fconst_t.get_grid_s())
         poly_s = OC.QuinticPoly1D.solve(A_inv, constraints_s)
         solutions_s = OC.QuinticPoly1D.polyval_with_derivatives(poly_s, time_samples)
 
-        return TensorOps.cartesian_product_matrix_rows(solutions_s, solutions_d), \
-               TensorOps.cartesian_product_matrix_rows(poly_s, poly_d)
+        return NumpyUtils.cartesian_product_matrix_rows(solutions_s, solutions_d), \
+               NumpyUtils.cartesian_product_matrix_rows(poly_s, poly_d)

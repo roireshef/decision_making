@@ -118,8 +118,7 @@ class TrajectoryPlanningFacade(DmModule):
                              e, traceback.format_exc())
         except NoValidTrajectoriesFound as e:
             # TODO - we need to handle this as an emergency.
-            self.logger.warn("TrajectoryPlanningFacade: NoValidTrajectoriesFound was raised. skipping planning. %s %s",
-                             e, traceback.format_exc())
+            self.logger.exception("TrajectoryPlanningFacade: NoValidTrajectoriesFound was raised")
         # TODO: remove this handler
         except Exception as e:
             self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s. %s ",
