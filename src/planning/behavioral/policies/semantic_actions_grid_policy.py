@@ -229,10 +229,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         target_latitude = behavioral_state.ego_state.road_localization.intra_road_lat + action_spec.d_rel
         target_longitude = behavioral_state.ego_state.road_localization.road_lon + action_spec.s_rel
 
-        curvature = float(frenet.get_curvature(target_longitude))
-
-        target_state = frenet.fstate_to_cstate(
-            np.array([target_longitude, action_spec.v, 0, target_latitude, 0, curvature]))
+        # DX = 0 assums target falls on the reference route!!
+        target_state = frenet.fstate_to_cstate(np.array([target_longitude, action_spec.v, 0, 0, 0, 0]))
 
         cost_params = SemanticActionsGridPolicy._generate_cost_params(
             road_id=road_id,
