@@ -113,7 +113,7 @@ EXP_CLIP_TH = 50.0
 NUM_ALTERNATIVE_TRAJECTORIES = 10
 
 # Number of points in trajectories for sending out to visualization (currently VizTool freezes when there are too much)
-MAX_NUM_POINTS_FOR_VIZ = 30
+MAX_NUM_POINTS_FOR_VIZ = 60
 
 # in meters, to be used as an argument in the resample_curve method
 DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION = 0.5

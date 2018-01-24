@@ -18,7 +18,7 @@ from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
 from decision_making.src.planning.types import FrenetTrajectories, CartesianExtendedTrajectories, FrenetPoint
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
-from decision_making.src.planning.utils.tensor_ops import TensorOps
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 
@@ -108,7 +108,7 @@ class WerlingPlanner(TrajectoryPlanner):
         planning_time_points = np.arange(self.dt, planning_horizon, self.dt)
         assert planning_horizon >= 0
         self._logger.debug('WerlingPlanner is planning from %s (frenet) to %s (frenet) in %s seconds' %
-                           (repr(ego_frenet_state).replace('\n', ''), repr(goal_frenet_state).replace('\n', ''),
+                           (NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
                             planning_horizon))
 
         # solve problem in frenet-frame
@@ -247,14 +247,14 @@ class WerlingPlanner(TrajectoryPlanner):
         A_inv = np.linalg.inv(A)
 
         # solve for dimesion d
-        constraints_d = TensorOps.cartesian_product_matrix_rows(fconst_0.get_grid_d(), fconst_t.get_grid_d())
+        constraints_d = NumpyUtils.cartesian_product_matrix_rows(fconst_0.get_grid_d(), fconst_t.get_grid_d())
         poly_d = OC.QuinticPoly1D.solve(A_inv, constraints_d)
         solutions_d = OC.QuinticPoly1D.polyval_with_derivatives(poly_d, time_samples)
 
         # solve for dimesion s
-        constraints_s = TensorOps.cartesian_product_matrix_rows(fconst_0.get_grid_s(), fconst_t.get_grid_s())
+        constraints_s = NumpyUtils.cartesian_product_matrix_rows(fconst_0.get_grid_s(), fconst_t.get_grid_s())
         poly_s = OC.QuinticPoly1D.solve(A_inv, constraints_s)
         solutions_s = OC.QuinticPoly1D.polyval_with_derivatives(poly_s, time_samples)
 
-        return TensorOps.cartesian_product_matrix_rows(solutions_s, solutions_d), \
-               TensorOps.cartesian_product_matrix_rows(poly_s, poly_d)
+        return NumpyUtils.cartesian_product_matrix_rows(solutions_s, solutions_d), \
+               NumpyUtils.cartesian_product_matrix_rows(poly_s, poly_d)

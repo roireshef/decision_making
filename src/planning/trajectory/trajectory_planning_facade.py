@@ -88,12 +88,9 @@ class TrajectoryPlanningFacade(DmModule):
             else:
                 updated_state = state_aligned
 
-            # THIS ASSUMES TARGET IS ACCELERATION-FREE AND CURAVUTURE-FREE
-            extended_target_state = np.append(params.target_state, [DEFAULT_ACCELERATION, DEFAULT_CURVATURE])
-
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, extended_target_state, params.time, params.cost_params)
+                plan(updated_state, params.reference_route, params.target_state, params.time, params.cost_params)
 
             # TODO: validate that sampling is consistent with controller!
             trajectory_points = samplable_trajectory.sample(
@@ -120,7 +117,7 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.warn("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ", e)
         except NoValidTrajectoriesFound as e:
             # TODO - we need to handle this as an emergency.
-            self.logger.warn("TrajectoryPlanningFacade: NoValidTrajectoriesFound was raised. skipping planning. %s ", e)
+            self.logger.exception("TrajectoryPlanningFacade: NoValidTrajectoriesFound was raised")
         # TODO: remove this handler
         except Exception as e:
             self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s",

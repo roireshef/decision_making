@@ -25,7 +25,9 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_policy im
 from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils as SAU
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import C_X, C_Y, Limits, LIMIT_MIN, LIMIT_MAX
+from decision_making.src.planning.types import CURVE_X, CURVE_Y
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.types import Limits, LIMIT_MIN, LIMIT_MAX
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
@@ -214,22 +216,22 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         """
         Generate trajectory specification for trajectory planner given a SemanticActionSpec
         :param behavioral_state: processed behavioral state
-        :param reference_route: [nx3] numpy array of (x, y, z, yaw) states
+        :param reference_route: [nx4] numpy array of (x, y, z, yaw) states
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
 
         # Get road details
         road_id = behavioral_state.ego_state.road_localization.road_id
-        road = MapService.get_instance().get_road(road_id)
+
+        # TODO: should be replaced with cached road statistics on future feature
+        frenet = FrenetSerret2DFrame(reference_route[:, [CURVE_X, CURVE_Y]])
 
         # Create target state
         target_latitude = behavioral_state.ego_state.road_localization.intra_road_lat + action_spec.d_rel
         target_longitude = behavioral_state.ego_state.road_localization.road_lon + action_spec.s_rel
 
-        # TODO: adjust to work with different target-object's road id (following the same adjustment in SPECIFY)
-        target_state_x_y_z, target_state_yaw = MapService.get_instance().convert_road_to_global_coordinates(
-            road_id, target_longitude, target_latitude)
-        target_state = np.append(target_state_x_y_z[[C_X, C_Y]], [target_state_yaw, action_spec.v])
+        # DX = 0 assums target falls on the reference route!!
+        target_state = frenet.fstate_to_cstate(np.array([target_longitude, action_spec.v, 0, 0, 0, 0]))
 
         cost_params = SemanticActionsGridPolicy._generate_cost_params(
             road_id=road_id,
@@ -246,7 +248,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         return trajectory_parameters
 
     @staticmethod
-    def _generate_cost_params(road_id: int, ego_size: ObjectSize, reference_route_latitude: float) -> TrajectoryCostParams:
+    def _generate_cost_params(road_id: int, ego_size: ObjectSize, reference_route_latitude: float) -> \
+            TrajectoryCostParams:
         """
         Generate cost specification for trajectory planner
         :param road_id: the road's id - it currently assumes a single road for the whole action.

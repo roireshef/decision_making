@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class TensorOps:
+class NumpyUtils:
     @staticmethod
     def cartesian_product_matrix_rows(mat1: np.ndarray, mat2: np.ndarray):
         """
@@ -25,3 +25,12 @@ class TensorOps:
         :return: 2D numpy array with shape [N, 2] of normal vectors
         """
         return np.c_[-mat[:, 1], mat[:, 0]]
+
+    @staticmethod
+    def str_log(arr: np.ndarray) -> str:
+        """
+        format array for log (no newlines)
+        :param arr: any array shape
+        :return: string
+        """
+        return np.array_repr(arr).replace('\n', '')
