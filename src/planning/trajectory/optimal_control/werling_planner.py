@@ -6,7 +6,7 @@ import numpy as np
 from decision_making.src.exceptions import NoValidTrajectoriesFound
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, NUM_ALTERNATIVE_TRAJECTORIES, \
-    TRAJECTORY_OBSTACLE_LOOKAHEAD, SX_OFFSET_MIN, SX_OFFSET_MAX
+    TRAJECTORY_OBSTACLE_LOOKAHEAD, SX_OFFSET_MIN, SX_OFFSET_MAX, DEVIATION_FROM_GOAL_LAT_FACTOR
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle, Jerk
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
@@ -206,12 +206,15 @@ class WerlingPlanner(TrajectoryPlanner):
         if len(cost_per_obstacle) == 0:
             obstacles_costs = np.array([0,]*ctrajectories.shape[0])
 
-        ''' SQUARED DISTANCE FROM GOAL SCORE '''
+        ''' DEVIATIONS FROM GOAL SCORE '''
         # make theta_diff to be in [-pi, pi]
         last_fpoints = ftrajectories[:, -1, :]
-        dist_from_goal_costs = \
-            params.dist_from_goal_lon_sq_cost * np.square(last_fpoints[:, FS_SX] - goal_in_frenet[FS_SX]) + \
-            params.dist_from_goal_lat_sq_cost * np.square(last_fpoints[:, FS_DX] - goal_in_frenet[FS_DX])
+        goal_vect = np.array([last_fpoints[:, FS_SX] - goal_in_frenet[FS_SX],
+                              last_fpoints[:, FS_DX] - goal_in_frenet[FS_DX]])
+        goal_dist = np.sqrt(goal_vect[0]**2 + (params.dist_from_goal_lat_factor * goal_vect[1])**2)
+        dist_from_goal_costs = Math.clipped_sigmoid(goal_dist - params.dist_from_goal_cost.offset,
+                                                            params.dist_from_goal_cost.w,
+                                                            params.dist_from_goal_cost.k)
 
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
         deviations_costs = np.zeros(ftrajectories.shape[0])

@@ -8,10 +8,10 @@ from decision_making.src.global_constants import BP_SPECIFICATION_T_MIN, BP_SPEC
     BP_SPECIFICATION_T_RES, LON_ACCELERATION_LIMITS, \
     SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL, \
-    BEHAVIORAL_PLANNING_HORIZON, INFINITE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
-    OUT_OF_LANE_COST, ROAD_SIGMOID_K_PARAM, OBJECTS_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_LON_COST, \
-    DEVIATION_FROM_GOAL_LAT_COST, LATERAL_SAFETY_MARGIN_FROM_OBJECT, LON_JERK_COST, \
-    LAT_JERK_COST
+    BEHAVIORAL_PLANNING_HORIZON, OBSTACLE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
+    DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
+    LATERAL_SAFETY_MARGIN_FROM_OBJECT, DEVIATION_FROM_GOAL_COST, DEVIATION_FROM_GOAL_LAT_FACTOR, GOAL_SIGMOID_K_PARAM, \
+    GOAL_SIGMOID_OFFSET, LON_JERK_COST, LAT_JERK_COST
 from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, VELOCITY_LIMITS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -277,9 +277,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         left_road_offset = left_shoulder_offset + ROAD_SHOULDERS_WIDTH
 
         # Set road-structure-based cost parameters
-        right_lane_cost = SigmoidFunctionParams(w=OUT_OF_LANE_COST, k=ROAD_SIGMOID_K_PARAM,
+        right_lane_cost = SigmoidFunctionParams(w=DEVIATION_FROM_LANE_COST, k=ROAD_SIGMOID_K_PARAM,
                                                 offset=right_lane_offset)  # Zero cost
-        left_lane_cost = SigmoidFunctionParams(w=OUT_OF_LANE_COST, k=ROAD_SIGMOID_K_PARAM,
+        left_lane_cost = SigmoidFunctionParams(w=DEVIATION_FROM_LANE_COST, k=ROAD_SIGMOID_K_PARAM,
                                                offset=left_lane_offset)  # Zero cost
         right_shoulder_cost = SigmoidFunctionParams(w=DEVIATION_TO_SHOULDER_COST, k=ROAD_SIGMOID_K_PARAM,
                                                     offset=right_shoulder_offset)  # Very high cost
@@ -294,13 +294,13 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # dilate each object by ego length + safety margin
         objects_dilation_length = ego_size.length/2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
         objects_dilation_width = ego_size.width/2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
-        objects_cost_x = SigmoidFunctionParams(w=INFINITE_SIGMOID_COST, k=OBJECTS_SIGMOID_K_PARAM,
-                                             offset=objects_dilation_length)  # Very high (inf) cost
-        objects_cost_y = SigmoidFunctionParams(w=INFINITE_SIGMOID_COST, k=OBJECTS_SIGMOID_K_PARAM,
-                                             offset=objects_dilation_width)  # Very high (inf) cost
-
-        dist_from_goal_lon_sq_cost = DEVIATION_FROM_GOAL_LON_COST
-        dist_from_goal_lat_sq_cost = DEVIATION_FROM_GOAL_LAT_COST
+        objects_cost_x = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
+                                               offset=objects_dilation_length)  # Very high (inf) cost
+        objects_cost_y = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
+                                               offset=objects_dilation_width)  # Very high (inf) cost
+        dist_from_goal_cost = SigmoidFunctionParams(w=DEVIATION_FROM_GOAL_COST, k=GOAL_SIGMOID_K_PARAM,
+                                                    offset=GOAL_SIGMOID_OFFSET)
+        dist_from_goal_lat_factor = DEVIATION_FROM_GOAL_LAT_FACTOR
 
         # TODO: set velocity and acceleration limits properly
         velocity_limits = VELOCITY_LIMITS  # [m/s]. not a constant because it might be learned. TBD
@@ -314,8 +314,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                            right_shoulder_cost=right_shoulder_cost,
                                            obstacle_cost_x=objects_cost_x,
                                            obstacle_cost_y=objects_cost_y,
-                                           dist_from_goal_lon_sq_cost=dist_from_goal_lon_sq_cost,
-                                           dist_from_goal_lat_sq_cost=dist_from_goal_lat_sq_cost,
+                                           dist_from_goal_cost=dist_from_goal_cost,
+                                           dist_from_goal_lat_factor=dist_from_goal_lat_factor,
                                            lon_jerk_cost=LON_JERK_COST,
                                            lat_jerk_cost=LAT_JERK_COST,
                                            velocity_limits=velocity_limits,

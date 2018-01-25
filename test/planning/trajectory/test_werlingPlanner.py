@@ -1,11 +1,13 @@
 import numpy as np
 import time
 
-from decision_making.src.global_constants import OBJECTS_SIGMOID_K_PARAM, LATERAL_SAFETY_MARGIN_FROM_OBJECT, \
-    INFINITE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, OUT_OF_LANE_COST, ROAD_SIGMOID_K_PARAM, \
-    DEVIATION_FROM_GOAL_LON_COST, DEVIATION_FROM_GOAL_LAT_COST, EGO_LENGTH, EGO_WIDTH, \
+from decision_making.src.global_constants import OBSTACLE_SIGMOID_K_PARAM, LATERAL_SAFETY_MARGIN_FROM_OBJECT, \
+    OBSTACLE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_LANE_COST, \
+    ROAD_SIGMOID_K_PARAM, EGO_LENGTH, EGO_WIDTH, \
     SHOULDER_SIGMOID_OFFSET, SHOULDER_SIGMOID_K_PARAM, VELOCITY_LIMITS, \
-    LON_ACCELERATION_LIMITS, DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LON_JERK_COST, LAT_JERK_COST
+    LON_ACCELERATION_LIMITS, DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LANE_SIGMOID_K_PARAM, \
+    DEVIATION_FROM_GOAL_LAT_FACTOR, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, \
+    LON_JERK_COST, LAT_JERK_COST
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.trajectory.cost_function import Jerk
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
@@ -72,10 +74,10 @@ def test_werlingPlanner_toyScenario_noException():
                                        right_shoulder_cost=SigmoidFunctionParams(10, 1.0, 2),
                                        obstacle_cost_x=SigmoidFunctionParams(100, 10.0, 0.3),
                                        obstacle_cost_y=SigmoidFunctionParams(100, 10.0, 0.3),
+                                       dist_from_goal_cost=SigmoidFunctionParams(100, 10.0, 0.3),
+                                       dist_from_goal_lat_factor=1.0,
                                        lon_jerk_cost=LON_JERK_COST,
                                        lat_jerk_cost=LAT_JERK_COST,
-                                       dist_from_goal_lat_sq_cost=1.0,
-                                       dist_from_goal_lon_sq_cost=1.0,
                                        velocity_limits=np.array([v_min, v_max]),
                                        acceleration_limits=np.array([a_min, a_max]))
 
@@ -138,7 +140,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     route_points = CartesianFrame.add_yaw_and_derivatives(route_xy)
     ext_route_points = CartesianFrame.add_yaw_and_derivatives(ext_route_xy)
 
-    start_latitude = lane_width/2
+    start_latitude = lane_width / 2
     goal_latitude = reference_route_latitude
     target_lane = int(goal_latitude/lane_width)
 
@@ -159,7 +161,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
 
     v0 = 6
     vT = 10
-    T = 4.6
+    T = 6.8
 
     ftraj_start_goal = np.array([np.array([ext, v0, 0, start_latitude-reference_route_latitude, 0, 0]),
                                  np.array([lng+ext, vT, 0, goal_latitude-reference_route_latitude, 0, 0])])
@@ -168,145 +170,156 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     predictor = RoadFollowingPredictor(logger)
 
     goal = ctraj_start_goal[1]
-        #np.concatenate((route_points[-1, [CURVE_X, CURVE_Y, CURVE_YAW]], [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
     goal[C_X] -= 0.001
     goal[C_Y] += goal_latitude - reference_route_latitude
 
-    pos1 = np.array([6, 5.4])
-    yaw1 = 0
-    pos2 = np.array([22, 3.0])
-    yaw2 = np.pi / 32
+    for test_idx in range(16):
 
-    obs = list([
-        DynamicObject(obj_id=0, timestamp=0, x=pos1[0], y=pos1[1], z=0, yaw=yaw1, size=ObjectSize(4, 1.8, 0),
-                      confidence=1.0, v_x=0, v_y=0, acceleration_lon=0.0, omega_yaw=0.0),
-        DynamicObject(obj_id=0, timestamp=0, x=pos2[0], y=pos2[1], z=0, yaw=yaw2, size=ObjectSize(4, 1.8, 0),
-                      confidence=1.0, v_x=0, v_y=0, acceleration_lon=0.0, omega_yaw=0.0)
-    ])
-    obs = list([])
+        if test_idx < 8:
+            obs_poses = np.array([np.array([4, 5.4]), np.array([14, 6.0]), np.array([24, 7.5]), np.array([40, 8.8]),
+                                  np.array([54, 0.8 + test_idx*0.2])])
+            start_ego_lat = start_latitude
+        else:
+            obs_poses = np.array([np.array([54, -1.6 + test_idx*0.4])])
+            start_ego_lat = 3*lane_width / 2
+        obs = []
+        for i, pose in enumerate(obs_poses):
+            obs.append(DynamicObject(obj_id=i, timestamp=0, x=pose[0], y=pose[1], z=0, yaw=0,
+                                     size=ObjectSize(4, 1.8, 0), confidence=1.0, v_x=0, v_y=0,
+                                     acceleration_lon=0.0, omega_yaw=0.0))
+        #obs = list([])
 
-    ego = EgoState(obj_id=-1, timestamp=0, x=ctraj_start_goal[0][C_X], y=ctraj_start_goal[0][C_Y], z=0,
-                   yaw=ctraj_start_goal[0][C_YAW],  # route_points[0, CURVE_YAW],
-                   size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
-                   confidence=1.0, v_x=ctraj_start_goal[0][C_V], v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
+        ego = EgoState(obj_id=-1, timestamp=0, x=ctraj_start_goal[0][C_X], y=ctraj_start_goal[0][C_Y], z=0,
+                       yaw=ctraj_start_goal[0][C_YAW],
+                       size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
+                       confidence=1.0, v_x=ctraj_start_goal[0][C_V], v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
-    state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
+        state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
 
-    objects_dilation_length = ego.size.length / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
-    objects_dilation_width = ego.size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
-    right_lane_offset = max(0.0, reference_route_latitude - ego.size.width / 2 - target_lane * lane_width)
-    left_lane_offset = (road_width - reference_route_latitude) - ego.size.width / 2 - (num_lanes - target_lane - 1) * lane_width
-    right_shoulder_offset = reference_route_latitude - ego.size.width / 2 + SHOULDER_SIGMOID_OFFSET
-    left_shoulder_offset = (road_width - reference_route_latitude) - ego.size.width / 2 + SHOULDER_SIGMOID_OFFSET
-    right_road_offset = reference_route_latitude - ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
-    left_road_offset = (road_width - reference_route_latitude) - ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
+        objects_dilation_length = ego.size.length / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
+        objects_dilation_width = ego.size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
+        right_lane_offset = max(0.0, reference_route_latitude - ego.size.width / 2 - target_lane * lane_width)
+        left_lane_offset = (road_width - reference_route_latitude) - ego.size.width / 2 - (num_lanes - target_lane - 1) * lane_width
+        right_shoulder_offset = reference_route_latitude - ego.size.width / 2 + SHOULDER_SIGMOID_OFFSET
+        left_shoulder_offset = (road_width - reference_route_latitude) - ego.size.width / 2 + SHOULDER_SIGMOID_OFFSET
+        right_road_offset = reference_route_latitude - ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
+        left_road_offset = (road_width - reference_route_latitude) - ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
 
-    cost_params = TrajectoryCostParams(
-        left_lane_cost=SigmoidFunctionParams(OUT_OF_LANE_COST, ROAD_SIGMOID_K_PARAM, left_lane_offset),
-        right_lane_cost=SigmoidFunctionParams(OUT_OF_LANE_COST, ROAD_SIGMOID_K_PARAM, right_lane_offset),
-        left_road_cost=SigmoidFunctionParams(DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, left_road_offset),
-        right_road_cost=SigmoidFunctionParams(DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, right_road_offset),
-        left_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, ROAD_SIGMOID_K_PARAM, left_shoulder_offset),
-        right_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, ROAD_SIGMOID_K_PARAM, right_shoulder_offset),
-        obstacle_cost_x=SigmoidFunctionParams(INFINITE_SIGMOID_COST, OBJECTS_SIGMOID_K_PARAM, objects_dilation_length),
-        obstacle_cost_y=SigmoidFunctionParams(INFINITE_SIGMOID_COST, OBJECTS_SIGMOID_K_PARAM, objects_dilation_width),
-        lon_jerk_cost=LON_JERK_COST,
-        lat_jerk_cost=LAT_JERK_COST,
-        dist_from_goal_lat_sq_cost=DEVIATION_FROM_GOAL_LAT_COST,
-        dist_from_goal_lon_sq_cost=DEVIATION_FROM_GOAL_LON_COST,
-        velocity_limits=VELOCITY_LIMITS,
-        acceleration_limits=LON_ACCELERATION_LIMITS)
+        cost_params = TrajectoryCostParams(
+            left_lane_cost=SigmoidFunctionParams(DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, left_lane_offset),
+            right_lane_cost=SigmoidFunctionParams(DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, right_lane_offset),
+            left_road_cost=SigmoidFunctionParams(DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, left_road_offset),
+            right_road_cost=SigmoidFunctionParams(DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, right_road_offset),
+            left_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, ROAD_SIGMOID_K_PARAM, left_shoulder_offset),
+            right_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, ROAD_SIGMOID_K_PARAM, right_shoulder_offset),
+            obstacle_cost_x=SigmoidFunctionParams(OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, objects_dilation_length),
+            obstacle_cost_y=SigmoidFunctionParams(OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, objects_dilation_width),
+            dist_from_goal_cost=SigmoidFunctionParams(DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET),
+            dist_from_goal_lat_factor=DEVIATION_FROM_GOAL_LAT_FACTOR,
+            lon_jerk_cost=LON_JERK_COST,
+            lat_jerk_cost=LAT_JERK_COST,
+            velocity_limits=VELOCITY_LIMITS,
+            acceleration_limits=LON_ACCELERATION_LIMITS)
 
-    planner = WerlingPlanner(logger, predictor)
+        planner = WerlingPlanner(logger, predictor)
 
-    start_time = time.time()
+        start_time = time.time()
 
-    samplable, ctrajectories, costs, partial_costs = planner.plan(state=state, reference_route=ext_route_points[:, :2],
-                                                                  goal=goal, goal_time=T, cost_params=cost_params)
+        samplable, ctrajectories, costs, partial_costs = planner.plan(state=state, reference_route=ext_route_points[:, :2],
+                                                                      goal=goal, goal_time=T, cost_params=cost_params)
 
-    end_time = time.time() - start_time
+        end_time = time.time() - start_time
 
-    obs_costs = np.zeros(width * height)
-    for obj in obs:
-        sobj = PlottableSigmoidStaticBoxObstacle(obj, k=OBJECTS_SIGMOID_K_PARAM,
-                                                 margin=np.array([objects_dilation_length, objects_dilation_width]))
-        obs_costs += INFINITE_SIGMOID_COST * sobj.compute_cost_per_point(points)[0]
+        obs_costs = np.zeros(width * height)
+        for obj in obs:
+            sobj = PlottableSigmoidStaticBoxObstacle(obj, k=OBSTACLE_SIGMOID_K_PARAM,
+                                                     margin=np.array([objects_dilation_length, objects_dilation_width]))
+            obs_costs += OBSTACLE_SIGMOID_COST * sobj.compute_cost_per_point(points)[0]
 
-    latitudes = fpoints[:, 1]
-    left_lane_offsets = latitudes - left_lane_offset
-    right_lane_offsets = -latitudes - right_lane_offset
-    left_shoulder_offsets = latitudes - left_shoulder_offset
-    right_shoulder_offsets = -latitudes - right_shoulder_offset
-    left_road_offsets = latitudes - left_road_offset
-    right_road_offsets = -latitudes - right_road_offset
+        latitudes = fpoints[:, 1]
+        left_lane_offsets = (latitudes-reference_route_latitude) - left_lane_offset
+        right_lane_offsets = -(latitudes-reference_route_latitude) - right_lane_offset
+        left_shoulder_offsets = (latitudes-reference_route_latitude) - left_shoulder_offset
+        right_shoulder_offsets = -(latitudes-reference_route_latitude) - right_shoulder_offset
+        left_road_offsets = (latitudes-reference_route_latitude) - left_road_offset
+        right_road_offsets = -(latitudes-reference_route_latitude) - right_road_offset
 
-    road_deviations_costs = \
-        Math.clipped_sigmoid(left_lane_offsets, OUT_OF_LANE_COST, SHOULDER_SIGMOID_K_PARAM) + \
-        Math.clipped_sigmoid(right_lane_offsets, OUT_OF_LANE_COST, SHOULDER_SIGMOID_K_PARAM) + \
-        Math.clipped_sigmoid(left_shoulder_offsets, DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM) + \
-        Math.clipped_sigmoid(right_shoulder_offsets, DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM) + \
-        Math.clipped_sigmoid(left_road_offsets, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM) + \
-        Math.clipped_sigmoid(right_road_offsets, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM)
-    goal_deviation_costs = DEVIATION_FROM_GOAL_LON_COST * (points[0][:, 0] - goal[0])**2 + \
-                           DEVIATION_FROM_GOAL_LAT_COST * (points[0][:, 1] - goal[1])**2
+        road_deviations_costs = \
+            Math.clipped_sigmoid(left_lane_offsets, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM) + \
+            Math.clipped_sigmoid(right_lane_offsets, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM) + \
+            Math.clipped_sigmoid(left_shoulder_offsets, DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM) + \
+            Math.clipped_sigmoid(right_shoulder_offsets, DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM) + \
+            Math.clipped_sigmoid(left_road_offsets, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM) + \
+            Math.clipped_sigmoid(right_road_offsets, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM)
 
-    import matplotlib.pyplot as plt
+        import matplotlib.pyplot as plt
 
-    fig = plt.figure()
-    p1 = fig.add_subplot(211)
-    p2 = fig.add_subplot(212)
-    time_samples = np.arange(0.0, T, 0.1)
-    offsets = np.array([cost_params.obstacle_cost_x.offset, cost_params.obstacle_cost_y.offset])
-    plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost_x.k, offsets, time_samples,
-                                                        predictor)
-                     for o in state.dynamic_objects]
+        fig = plt.figure(figsize=(22, 11))
+        p1 = fig.add_subplot(211)
+        p2 = fig.add_subplot(212)
+        time_samples = np.arange(0.0, T, 0.1)
+        offsets = np.array([cost_params.obstacle_cost_x.offset, cost_params.obstacle_cost_y.offset])
+        plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost_x.k, offsets, time_samples,
+                                                            predictor)
+                         for o in state.dynamic_objects]
 
-    x = points[0, :, 0].reshape(height, width)
-    y = points[0, :, 1].reshape(height, width)
-    z = obs_costs.reshape(height, width) + road_deviations_costs.reshape(height, width) \
-        #+ goal_deviation_costs.reshape(height, width)
+        x = points[0, :, 0].reshape(height, width)
+        y = points[0, :, 1].reshape(height, width)
+        z = obs_costs.reshape(height, width) + road_deviations_costs.reshape(height, width)
 
-    diff = np.diff(route_points[:, :2], axis=0)
-    angles = np.arctan2(diff[:, 1], diff[:, 0])
-    angles = np.concatenate((angles, np.array([angles[-1]])))
+        diff = np.diff(route_points[:, :2], axis=0)
+        angles = np.arctan2(diff[:, 1], diff[:, 0])
+        angles = np.concatenate((angles, np.array([angles[-1]])))
 
-    for p in list([p1, p2]):
-        WerlingVisualizer.plot_obstacles(p, plottable_obs)
-        WerlingVisualizer.plot_obstacles(p, plottable_obs)
-        WerlingVisualizer.plot_route(p, route_points[:, :2])
-        d = reference_route_latitude
-        WerlingVisualizer.plot_route(p, np.c_[route_points[:, 0] + d*np.sin(angles), route_points[:, 1] - d*np.cos(angles)], '-k')
-        d = road_width - reference_route_latitude
-        WerlingVisualizer.plot_route(p, np.c_[route_points[:, 0] - d*np.sin(angles), route_points[:, 1] + d*np.cos(angles)], '-k')
-        d = road_width/2 - reference_route_latitude
-        WerlingVisualizer.plot_route(p, np.c_[route_points[:, 0] - d*np.sin(angles), route_points[:, 1] + d*np.cos(angles)], '--w')
+        for p in list([p1, p2]):
+            WerlingVisualizer.plot_obstacles(p, plottable_obs)
+            d = reference_route_latitude
+            WerlingVisualizer.plot_route(p, np.c_[
+                route_points[:, 0] + d * np.sin(angles), route_points[:, 1] - d * np.cos(angles)], '-k')
+            d = road_width - reference_route_latitude
+            WerlingVisualizer.plot_route(p, np.c_[
+                route_points[:, 0] - d * np.sin(angles), route_points[:, 1] + d * np.cos(angles)], '-k')
+            d = road_width / 2 - reference_route_latitude
+            WerlingVisualizer.plot_route(p, np.c_[
+                route_points[:, 0] - d * np.sin(angles), route_points[:, 1] + d * np.cos(angles)], '--w')
+            d = reference_route_latitude + ROAD_SHOULDERS_WIDTH
+            WerlingVisualizer.plot_route(p2, np.c_[
+                route_points[:, 0] + d * np.sin(angles), route_points[:, 1] - d * np.cos(angles)], '-r')
+            d = road_width - reference_route_latitude + ROAD_SHOULDERS_WIDTH
+            WerlingVisualizer.plot_route(p2, np.c_[
+                route_points[:, 0] - d * np.sin(angles), route_points[:, 1] + d * np.cos(angles)], '-r')
 
-        # plot ego's best position for both obstacles
-        for obs in state.dynamic_objects:
-            min_cost_y = np.argmin(z[:, int((obs.x - xrange[0])/0.1)]) * 0.1 + yrange[0]
-            p.plot(np.arange(- ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x,
-                   np.repeat(np.array([min_cost_y+ego.size.width/2]), np.ceil(ego.size.length)+1), '*w')
-            p.plot(np.arange(- ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x,
-                   np.repeat(np.array([min_cost_y - ego.size.width / 2]), np.ceil(ego.size.length)+1), '*w')
-            p.plot(np.repeat(np.array([-ego.size.length / 2 + obs.x]), np.ceil(ego.size.width)+1),
-                   np.arange(min_cost_y-ego.size.width/2, min_cost_y+ego.size.width/2 + 0.01), '*w')
-            p.plot(np.repeat(np.array([ego.size.length / 2 + obs.x]), np.ceil(ego.size.width)+1),
-                   np.arange(min_cost_y-ego.size.width/2, min_cost_y+ego.size.width/2 + 0.01), '*w')
+            # plot ego's best position for both obstacles
+            for obs in state.dynamic_objects:
+                min_cost_y = np.argmin(z[:, int((obs.x - xrange[0])/0.1)]) * 0.1 + yrange[0]
+                p.plot(np.arange(- ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x,
+                       np.repeat(np.array([min_cost_y+ego.size.width/2]), np.ceil(ego.size.length)+1), '*w')
+                p.plot(np.arange(- ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x,
+                       np.repeat(np.array([min_cost_y - ego.size.width / 2]), np.ceil(ego.size.length)+1), '*w')
+                p.plot(np.repeat(np.array([-ego.size.length / 2 + obs.x]), np.ceil(ego.size.width)+1),
+                       np.arange(min_cost_y-ego.size.width/2, min_cost_y+ego.size.width/2 + 0.01), '*w')
+                p.plot(np.repeat(np.array([ego.size.length / 2 + obs.x]), np.ceil(ego.size.width)+1),
+                       np.arange(min_cost_y-ego.size.width/2, min_cost_y+ego.size.width/2 + 0.01), '*w')
 
-    d = reference_route_latitude + ROAD_SHOULDERS_WIDTH
-    WerlingVisualizer.plot_route(p2, np.c_[route_points[:, 0] + d*np.sin(angles), route_points[:, 1] - d*np.cos(angles)], '-r')
-    d = road_width - reference_route_latitude + ROAD_SHOULDERS_WIDTH
-    WerlingVisualizer.plot_route(p2, np.c_[route_points[:, 0] - d*np.sin(angles), route_points[:, 1] + d*np.cos(angles)], '-r')
+        z = np.log(1 + z)
+        p2.contourf(x, y, z, 100)
 
-    z = np.log(1 + z)
-    p2.contourf(x, y, z, 100)
+        WerlingVisualizer.plot_obstacles(p1, plottable_obs)
+        WerlingVisualizer.plot_obstacles(p2, plottable_obs)
+        WerlingVisualizer.plot_route(p1, route_points[:, :2])
+        WerlingVisualizer.plot_route(p2, route_points[:, :2])
 
-    WerlingVisualizer.plot_best(p2, ctrajectories[0])
-    WerlingVisualizer.plot_alternatives(p1, ctrajectories, costs)
+        WerlingVisualizer.plot_best(p2, ctrajectories[0])
+        WerlingVisualizer.plot_alternatives(p1, ctrajectories, costs)
 
-    WerlingVisualizer.plot_goal(p2, goal)
+        WerlingVisualizer.plot_goal(p2, goal)
 
-    print(partial_costs)
+        print(costs)
+
+        WerlingVisualizer.plot_route(p1, route_points)
+
+        filename = 'test_costs'+str(test_idx)+'.png'
+        fig.savefig(filename)
 
     fig.show()
     fig.clear()

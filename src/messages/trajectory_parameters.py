@@ -41,7 +41,8 @@ class TrajectoryCostParams(StrSerializable):
                  left_shoulder_cost: SigmoidFunctionParams, right_shoulder_cost: SigmoidFunctionParams,
                  obstacle_cost_x: SigmoidFunctionParams,
                  obstacle_cost_y: SigmoidFunctionParams,
-                 dist_from_goal_lon_sq_cost: float, dist_from_goal_lat_sq_cost: float,
+                 dist_from_goal_cost: SigmoidFunctionParams,
+                 dist_from_goal_lat_factor: float,
                  lon_jerk_cost: float, lat_jerk_cost: float,
                  velocity_limits: Limits, acceleration_limits: Limits):
         """
@@ -63,8 +64,8 @@ class TrajectoryCostParams(StrSerializable):
         :param right_shoulder_cost: defines the sigmoid cost of the right-shoulder of the road (physical boundary)
         :param obstacle_cost_x: defines the longitudinal sigmoid cost of obstacles
         :param obstacle_cost_y: defines the lateral sigmoid cost of obstacles
-        :param dist_from_goal_lon_sq_cost: cost of distance from the target longitude is C(x) = a*x^2, this is a.
-        :param dist_from_goal_lat_sq_cost: cost of distance from the target latitude is C(x) = a*x^2, this is a.
+        :param dist_from_goal_cost: cost of distance from the target longitude is C(x) = a*x^2, this is a.
+        :param dist_from_goal_lat_factor: cost of distance from the target latitude is C(x) = a*x^2, this is a.
         :param lon_jerk_cost: longitudinal jerk cost
         :param lat_jerk_cost: lateral jerk cost
         :param velocity_limits: Limits of allowed velocity in [m/sec]
@@ -79,8 +80,8 @@ class TrajectoryCostParams(StrSerializable):
         self.right_shoulder_cost = right_shoulder_cost
         self.left_road_cost = left_road_cost
         self.right_road_cost = right_road_cost
-        self.dist_from_goal_lon_sq_cost = dist_from_goal_lon_sq_cost
-        self.dist_from_goal_lat_sq_cost = dist_from_goal_lat_sq_cost
+        self.dist_from_goal_cost = dist_from_goal_cost
+        self.dist_from_goal_lat_factor = dist_from_goal_lat_factor
         self.lon_jerk_cost = lon_jerk_cost
         self.lat_jerk_cost = lat_jerk_cost
         self.velocity_limits = velocity_limits
@@ -97,9 +98,8 @@ class TrajectoryCostParams(StrSerializable):
         lcm_msg.right_shoulder_cost = self.right_shoulder_cost.serialize()
         lcm_msg.left_road_cost = self.left_road_cost.serialize()
         lcm_msg.right_road_cost = self.right_road_cost.serialize()
-
-        lcm_msg.dist_from_goal_lon_sq_cost = self.dist_from_goal_lon_sq_cost
-        lcm_msg.dist_from_goal_lat_sq_cost = self.dist_from_goal_lat_sq_cost
+        lcm_msg.dist_from_goal_cost = self.dist_from_goal_cost.serialize()
+        lcm_msg.dist_from_goal_lat_factor = self.dist_from_goal_lat_factor
         lcm_msg.lon_jerk_cost = self.lon_jerk_cost
         lcm_msg.lat_jerk_cost = self.lat_jerk_cost
 
@@ -127,11 +127,11 @@ class TrajectoryCostParams(StrSerializable):
                  , SigmoidFunctionParams.deserialize(lcmMsg.right_shoulder_cost)
                  , SigmoidFunctionParams.deserialize(lcmMsg.left_road_cost)
                  , SigmoidFunctionParams.deserialize(lcmMsg.right_road_cost)
-                 , lcmMsg.dist_from_goal_lon_sq_cost
-                 , lcmMsg.dist_from_goal_lat_sq_cost
+                 , SigmoidFunctionParams.deserialize(lcmMsg.dist_from_goal_cost)
+                 , lcmMsg.dist_from_goal_lat_factor
                  , lcmMsg.lon_jerk_cost
                  , lcmMsg.lat_jerk_cost
-        , np.ndarray(shape = tuple(lcmMsg.velocity_limits.shape)
+                 , np.ndarray(shape = tuple(lcmMsg.velocity_limits.shape)
                             , buffer = np.array(lcmMsg.velocity_limits.data)
                             , dtype = float)
                  , np.ndarray(shape = tuple(lcmMsg.acceleration_limits.shape)
