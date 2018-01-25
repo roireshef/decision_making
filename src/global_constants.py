@@ -176,6 +176,11 @@ EGO_ID = 0
 # [m] Default height for objects - State Module
 DEFAULT_OBJECT_Z_VALUE = 0.
 
+# Whether we filter out dynamic objects that are not on the road
+# Request by perception for viewing recordings in non-mapped areas.
+# SHOULD ALWAYS BE TRUE FOR NORMAL DM FLOW
+FILTER_OFF_ROAD_OBJECTS = True
+
 ### DM Manager configuration ###
 BEHAVIORAL_PLANNING_MODULE_PERIOD = 1.0
 TRAJECTORY_PLANNING_MODULE_PERIOD = 0.2
