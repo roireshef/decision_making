@@ -1,12 +1,13 @@
 import numpy as np
 
-from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryData
 from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
-from decision_making.src.messages.str_serializable import StrSerializable
+from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryData
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 
-class TrajectoryPlanMsg(StrSerializable):
-    def __init__(self, trajectory: np.ndarray, current_speed: float):
+class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
+    def __init__(self, trajectory, current_speed):
+        # type: (np.ndarray, float) -> TrajectoryPlanMsg
         """
         A discrete representation of the trajectory to follow - passed from TrajectoryPlanner to Controller
         :param trajectory: numpy 2D array - 9 rows with each row containing <x, y, yaw, curvature, v> where x and y
@@ -19,7 +20,8 @@ class TrajectoryPlanMsg(StrSerializable):
         self.trajectory = trajectory
         self.current_speed = current_speed
 
-    def serialize(self) -> LcmTrajectoryData:
+    def serialize(self):
+        # type: () -> LcmTrajectoryData
         lcm_msg = LcmTrajectoryData()
 
         lcm_msg.trajectory = LcmNumpyArray()
@@ -33,7 +35,8 @@ class TrajectoryPlanMsg(StrSerializable):
         return lcm_msg
 
     @classmethod
-    def deserialize(cls, lcmMsg: LcmTrajectoryData):
+    def deserialize(cls, lcmMsg):
+        # type: (LcmTrajectoryData) -> TrajectoryPlanMsg
         return cls(np.ndarray(shape = tuple(lcmMsg.trajectory.shape)
                             , buffer = np.array(lcmMsg.trajectory.data)
                             , dtype = float)

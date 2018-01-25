@@ -1,4 +1,4 @@
-import copy
+import time
 import time
 import traceback
 from logging import Logger
@@ -11,7 +11,8 @@ from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, DEFAULT_OBJECT_Z_VALUE, VISUALIZATION_PREDICTION_RESOLUTION, \
-    DEFAULT_CURVATURE, DEFAULT_ACCELERATION
+    MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION, \
+    NUM_ALTERNATIVE_TRAJECTORIES
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
@@ -19,27 +20,29 @@ from decision_making.src.messages.visualization.trajectory_visualization_message
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_Y, C_X, C_YAW, FP_SX, FP_DX, FrenetPoint, \
-CartesianExtendedState, C_V, C_A, CartesianTrajectories, CartesianPath2D, C_K
+    CartesianExtendedState, C_V, C_A, CartesianTrajectories, CartesianPath2D, C_K
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, EgoState
-
-
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
 class TrajectoryPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger,
                  strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner],
+                 short_time_predictor: Predictor,
                  last_trajectory: SamplableTrajectory = None):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
         :param pubsub: communication layer (DDS/LCM/...) instance
         :param logger: logger
-        :param strategy_handlers: a dictionary of trajectory planners as strategy handlers -
+        :param strategy_handlers: a dictionary of trajectory planners as strategy handlers - types are
+        {TrajectoryPlanningStrategy: TrajectoryPlanner}
+        :param short_time_predictor: predictor used to align all objects in state to ego's timestamp.
         :param last_trajectory: a representation the last trajectory that was planned during self._periodic_action_impl
         """
         super().__init__(pubsub=pubsub, logger=logger)
 
+        self._short_time_predictor = short_time_predictor
         self._strategy_handlers = strategy_handlers
         self._validate_strategy_handlers()
         self._last_trajectory = last_trajectory
@@ -63,65 +66,65 @@ class TrajectoryPlanningFacade(DmModule):
             start_time = time.time()
 
             state = self._get_current_state()
+
+            # Update state: align all object to most recent timestamp, based on ego and dynamic objects timestamp
+            state_aligned = self._short_time_predictor.align_objects_to_most_recent_timestamp(state=state)
+
             params = self._get_mission_params()
 
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route[0])
-            self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
-            self.logger.debug("input: ego: v_x: %f, v_y: %f", state.ego_state.v_x, state.ego_state.v_y)
-            self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s",
-                              params.time - state.ego_state.timestamp_in_sec)
-            self.logger.info("state: %d objects detected", len(state.dynamic_objects))
+            self.logger.debug("input: ego: pos: (x: %f y: %f)", state_aligned.ego_state.x, state_aligned.ego_state.y)
+            self.logger.debug("input: ego: v_x: %f, v_y: %f", state_aligned.ego_state.v_x, state_aligned.ego_state.v_y)
+            self.logger.info("state: %d objects detected", len(state_aligned.dynamic_objects))
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
-            if self._is_actual_state_close_to_expected_state(state.ego_state):
-                updated_state = self._get_state_with_expected_ego(state)
+            if self._is_actual_state_close_to_expected_state(state_aligned.ego_state):
+                updated_state = self._get_state_with_expected_ego(state_aligned)
                 self.logger.info("TrajectoryPlanningFacade ego localization was overriden to the expected-state "
                                  "according to previous plan")
             else:
-                updated_state = state
-
-            # THIS ASSUMES TARGET IS ACCELERATION-FREE AND CURAVUTURE-FREE
-            extended_target_state = np.append(params.target_state, [DEFAULT_ACCELERATION, DEFAULT_CURVATURE])
+                updated_state = state_aligned
 
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs, _ = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, extended_target_state, params.time, params.cost_params)
+                plan(updated_state, params.reference_route, params.target_state, params.time, params.cost_params)
 
             # TODO: validate that sampling is consistent with controller!
             trajectory_points = samplable_trajectory.sample(
                 np.linspace(start=TRAJECTORY_TIME_RESOLUTION,
                             stop=TRAJECTORY_NUM_POINTS * TRAJECTORY_TIME_RESOLUTION,
-                            num=TRAJECTORY_NUM_POINTS) + state.ego_state.timestamp_in_sec)
+                            num=TRAJECTORY_NUM_POINTS) + state_aligned.ego_state.timestamp_in_sec)
 
-            # TODO: should we publish v_x at all? add timestamp here.
+            # TODO: should we publish v_x at all?
+            # TODO: add timestamp here.
             # publish results to the lower DM level (Control)
-            self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory_points, current_speed=state.ego_state.v_x))
+            self._publish_trajectory(TrajectoryPlanMsg(trajectory=trajectory_points, current_speed=state_aligned.ego_state.v_x))
             self._last_trajectory = samplable_trajectory
 
             # publish visualization/debug data - based on actual ego localization (original state)!
-            debug_results = self._prepare_visualization_msg(state, params.reference_route, ctrajectories, costs,
-                                                            params.time - state.ego_state.timestamp_in_sec,
-                                                            self._strategy_handlers[params.strategy].predictor)
+            debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
+                state, params.reference_route, ctrajectories, costs, params.time - state.ego_state.timestamp_in_sec,
+                self._strategy_handlers[params.strategy].predictor)
 
             self._publish_debug(debug_results)
 
             self.logger.info("TrajectoryPlanningFacade._periodic_action_impl time %f", time.time() - start_time)
 
-        except MsgDeserializationError as e:
-            self.logger.warn("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s %s",
-                             e, traceback.format_exc())
-        except NoValidTrajectoriesFound as e:
-            # TODO - we need to handle this as an emergency.
-            self.logger.warn("TrajectoryPlanningFacade: NoValidTrajectoriesFound was raised. skipping planning. %s %s",
-                             e, traceback.format_exc())
+        except MsgDeserializationError:
+            self.logger.warn("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
+                             traceback.format_exc())
+        # TODO - we need to handle this as an emergency.
+        except NoValidTrajectoriesFound:
+            self.logger.warn("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s",
+                             traceback.format_exc())
         # TODO: remove this handler
-        except Exception as e:
-            self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s. %s ",
-                                 e, traceback.format_exc())
+        except Exception:
+            self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s",
+                                 traceback.format_exc())
 
     def _validate_strategy_handlers(self) -> None:
         for elem in TrajectoryPlanningStrategy.__members__.values():
@@ -139,7 +142,7 @@ class TrajectoryPlanningFacade(DmModule):
         """
         input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
         object_state = State.deserialize(input_state)
-        self.logger.debug('Received state: {}'.format(object_state))
+        self.logger.debug('Received state: %s' % object_state)
         return object_state
 
     def _get_mission_params(self) -> TrajectoryParams:
@@ -171,7 +174,7 @@ class TrajectoryPlanningFacade(DmModule):
         if self._last_trajectory is None or current_time > self._last_trajectory.max_sample_time:
             return False
 
-        self.logger.debug("TrajectoryPlanningFacade time-difference from last planned trajectory is %s",
+        self.logger.info("TrajectoryPlanningFacade time-difference from last planned trajectory is %s",
                           current_time - self._last_trajectory.timestamp)
 
         current_expected_state: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
@@ -185,6 +188,13 @@ class TrajectoryPlanningFacade(DmModule):
         )
 
         distances_in_expected_frame: FrenetPoint = np.abs(errors_in_expected_frame)
+
+        self.logger.info(("TrajectoryPlanningFacade localization stats: "
+                          "{desired_localization: %s, actual_localization: %s, desired_velocity: %s, "
+                          "actual_velocity: %s, lon_lat_errors: %s, velocity_error: %s}" %
+                         (current_expected_state, current_actual_location, current_expected_state[C_V],
+                          current_ego_state.v_x, distances_in_expected_frame,
+                          current_ego_state.v_x - current_expected_state[C_V])).replace('\n', ' '))
 
         return distances_in_expected_frame[FP_SX] <= NEGLIGIBLE_DISPOSITION_LON and \
                distances_in_expected_frame[FP_DX] <= NEGLIGIBLE_DISPOSITION_LAT
@@ -218,7 +228,8 @@ class TrajectoryPlanningFacade(DmModule):
 
         return updated_state
 
-    def _prepare_visualization_msg(self, state: State, reference_route: CartesianPath2D,
+    @staticmethod
+    def _prepare_visualization_msg(state: State, reference_route: CartesianPath2D,
                                    ctrajectories: CartesianTrajectories, costs: np.ndarray,
                                    planning_horizon: float, predictor: Predictor):
         """
@@ -230,7 +241,7 @@ class TrajectoryPlanningFacade(DmModule):
         :param planning_horizon: [sec] the (relative) planning-horizon used for planning
         :return:
         """
-        # TODO: remove this section and solve timestamps-sync in StateModule
+        # TODO: remove this section and solve timestamps-sync in StateModule?
         objects_timestamp_in_sec = [dyn_obj.timestamp_in_sec for dyn_obj in state.dynamic_objects]
         objects_timestamp_in_sec.append(state.ego_state.timestamp_in_sec)
         most_recent_timestamp = np.max(objects_timestamp_in_sec)
@@ -244,9 +255,20 @@ class TrajectoryPlanningFacade(DmModule):
         # predicted_states[1] is the predicted state in the end of the execution of traj.
         predicted_states = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps)
 
-        return TrajectoryVisualizationMsg(reference_route,
-                                          ctrajectories[:, :, :C_V],
-                                          costs,
+        downsampled_reference_route, _ = CartesianFrame.resample_curve(reference_route,
+                                                                       step_size=DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION)
+
+        # slice alternative trajectories by skipping indices - for visualization
+        alternative_ids_skip_range = range(0, len(ctrajectories),
+                                           max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
+
+        # slice alternative trajectories by skipping indices - for visualization
+        sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
+        sliced_costs = costs[alternative_ids_skip_range]
+
+        return TrajectoryVisualizationMsg(downsampled_reference_route,
+                                          sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :C_V],
+                                          sliced_costs,
                                           predicted_states[0],
                                           predicted_states[1:],
                                           planning_horizon)

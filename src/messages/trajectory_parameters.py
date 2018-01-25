@@ -1,15 +1,15 @@
 import numpy as np
 
-from decision_making.src.messages.str_serializable import StrSerializable
-from decision_making.src.planning.types import C_V, Limits
-from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-
-from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryParameters
+from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
 from common_data.lcm.generatedFiles.gm_lcm import LcmSigmoidFunctionParams
 from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryCostParams
-from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
+from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryParameters
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
+from decision_making.src.planning.types import C_V, Limits
 
-class SigmoidFunctionParams(StrSerializable):
+
+class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
     def __init__(self, w: float, k: float, offset: float):
         """
         A data class that corresponds to a parametrization of a sigmoid function
@@ -35,7 +35,7 @@ class SigmoidFunctionParams(StrSerializable):
         return cls(lcmMsg.w, lcmMsg.k, lcmMsg.offset)
 
 
-class TrajectoryCostParams(StrSerializable):
+class TrajectoryCostParams(PUBSUB_MSG_IMPL):
     def __init__(self, left_lane_cost: SigmoidFunctionParams, right_lane_cost: SigmoidFunctionParams,
                  left_road_cost: SigmoidFunctionParams, right_road_cost: SigmoidFunctionParams,
                  left_shoulder_cost: SigmoidFunctionParams, right_shoulder_cost: SigmoidFunctionParams,
@@ -44,7 +44,8 @@ class TrajectoryCostParams(StrSerializable):
                  dist_from_goal_cost: SigmoidFunctionParams,
                  dist_from_goal_lat_factor: float,
                  lon_jerk_cost: float, lat_jerk_cost: float,
-                 velocity_limits: Limits, acceleration_limits: Limits):
+                 velocity_limits: Limits,
+                 lon_acceleration_limits: Limits, lat_acceleration_limits: Limits):
         """
         This class holds all the parameters used to build the cost function of the trajectory planner.
         It is dynamically set and sent by the behavioral planner.
@@ -69,9 +70,9 @@ class TrajectoryCostParams(StrSerializable):
         :param lon_jerk_cost: longitudinal jerk cost
         :param lat_jerk_cost: lateral jerk cost
         :param velocity_limits: Limits of allowed velocity in [m/sec]
-        :param acceleration_limits: Limits of allowed acceleration in [m/sec^2]
+        :param lon_acceleration_limits: Limits of allowed longitudinal acceleration in [m/sec^2]
+        :param lat_acceleration_limits: Limits of allowed signed lateral acceleration in [m/sec^2]
         """
-
         self.obstacle_cost_x = obstacle_cost_x
         self.obstacle_cost_y = obstacle_cost_y
         self.left_lane_cost = left_lane_cost
@@ -85,7 +86,8 @@ class TrajectoryCostParams(StrSerializable):
         self.lon_jerk_cost = lon_jerk_cost
         self.lat_jerk_cost = lat_jerk_cost
         self.velocity_limits = velocity_limits
-        self.acceleration_limits = acceleration_limits
+        self.lon_acceleration_limits = lon_acceleration_limits
+        self.lat_acceleration_limits = lat_acceleration_limits
 
     def serialize(self) -> LcmTrajectoryCostParams:
         lcm_msg = LcmTrajectoryCostParams()
@@ -109,11 +111,17 @@ class TrajectoryCostParams(StrSerializable):
         lcm_msg.velocity_limits.length = self.velocity_limits.size
         lcm_msg.velocity_limits.data = self.velocity_limits.flat.__array__().tolist()
 
-        lcm_msg.acceleration_limits = LcmNumpyArray()
-        lcm_msg.acceleration_limits.num_dimensions = len(self.acceleration_limits.shape)
-        lcm_msg.acceleration_limits.shape = list(self.acceleration_limits.shape)
-        lcm_msg.acceleration_limits.length = self.acceleration_limits.size
-        lcm_msg.acceleration_limits.data = self.acceleration_limits.flat.__array__().tolist()
+        lcm_msg.lon_acceleration_limits = LcmNumpyArray()
+        lcm_msg.lon_acceleration_limits.num_dimensions = len(self.lon_acceleration_limits.shape)
+        lcm_msg.lon_acceleration_limits.shape = list(self.lon_acceleration_limits.shape)
+        lcm_msg.lon_acceleration_limits.length = self.lon_acceleration_limits.size
+        lcm_msg.lon_acceleration_limits.data = self.lon_acceleration_limits.flat.__array__().tolist()
+
+        lcm_msg.lat_acceleration_limits = LcmNumpyArray()
+        lcm_msg.lat_acceleration_limits.num_dimensions = len(self.lat_acceleration_limits.shape)
+        lcm_msg.lat_acceleration_limits.shape = list(self.lat_acceleration_limits.shape)
+        lcm_msg.lat_acceleration_limits.length = self.lat_acceleration_limits.size
+        lcm_msg.lat_acceleration_limits.data = self.lat_acceleration_limits.flat.__array__().tolist()
 
         return lcm_msg
 
@@ -134,19 +142,21 @@ class TrajectoryCostParams(StrSerializable):
                  , np.ndarray(shape = tuple(lcmMsg.velocity_limits.shape)
                             , buffer = np.array(lcmMsg.velocity_limits.data)
                             , dtype = float)
-                 , np.ndarray(shape = tuple(lcmMsg.acceleration_limits.shape)
-                            , buffer = np.array(lcmMsg.acceleration_limits.data)
+                 , np.ndarray(shape = tuple(lcmMsg.lon_acceleration_limits.shape)
+                            , buffer = np.array(lcmMsg.lon_acceleration_limits.data)
+                            , dtype = float)
+                 , np.ndarray(shape = tuple(lcmMsg.lat_acceleration_limits.shape)
+                            , buffer = np.array(lcmMsg.lat_acceleration_limits.data)
                             , dtype = float))
 
-class TrajectoryParams(StrSerializable):
+
+class TrajectoryParams(PUBSUB_MSG_IMPL):
     def __init__(self, strategy: TrajectoryPlanningStrategy, reference_route: np.ndarray,
                  target_state: np.ndarray, cost_params: TrajectoryCostParams, time: float):
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
-        :param reference_route: a reference route (often the center of lane). A numpy array of the shape [-1, 2] where
-        each row is a point (x, y) relative to the ego-coordinate-frame.
-        :param target_state: A 1D numpy array of the desired ego-state to plan towards, represented in current
-        ego-coordinate-frame
+        :param reference_route: a reference route points (often the center of lane)
+        :param target_state: the vector-representation of the target state to plan ego motion towards
         :param cost_params: list of parameters for the cost function of trajectory planner.
         :param strategy: trajectory planning strategy.
         :param time: trajectory planning time-frame

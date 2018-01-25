@@ -103,9 +103,9 @@ class PlottableSigmoidDynamicBoxObstacle(SigmoidDynamicBoxObstacle, PlottableSig
             hatch='\\', fill=False
         ))
 
-        lower_left_p = np.dot(H_inv, [-self.length / 2 - self._margin[0], -self.width / 2 - self._margin[1], 1])
+        lower_left_p = np.dot(H_inv, [-self.length / 2 - self._margin[C_X], -self.width / 2 - self._margin[C_Y], 1])
         plt.add_patch(patches.Rectangle(
-            (lower_left_p[0], lower_left_p[1]), self.length + 2 * self._margin[0], self.width + 2 * self._margin[1],
+            (lower_left_p[0], lower_left_p[1]), self.length + 2 * self._margin[C_X], self.width + 2 * self._margin[C_Y],
             angle=np.rad2deg(self.poses[0][CURVE_YAW]), fill=False, alpha=0.15, color=[0, 0, 0]
         ))
 
