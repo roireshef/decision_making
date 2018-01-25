@@ -209,7 +209,9 @@ class FrenetSerret2DFrame:
         """
         # perform gradient decent to find s_approx
         O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O)
+
         s_approx = np.add(O_idx, delta_s) * self.ds
+
         a_s, T_s, N_s, k_s, _ = self._taylor_interp(s_approx)
 
         is_curvature_big_enough = np.greater(np.abs(k_s), TINY_CURVATURE)
@@ -220,7 +222,7 @@ class FrenetSerret2DFrame:
         # vector from the circle center to the input point
         center_to_point = points - a_s - N_s * signed_radius[..., np.newaxis]
 
-        # sign of the step
+        # sign of the step (sign of the inner product between the position error and the tangent of all samples)
         step_sign = np.sign(np.einsum('...ik,...ik->...i', points - a_s, T_s))
 
         # cos(angle between N_s and this vector)
@@ -234,6 +236,7 @@ class FrenetSerret2DFrame:
         s_approx[is_curvature_big_enough] += step[is_curvature_big_enough]  # next s_approx of the current point
 
         a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(s_approx)
+
         return s_approx, a_s, T_s, N_s, k_s, k_s_tag
 
     def _taylor_interp(self, s: np.ndarray) -> \
