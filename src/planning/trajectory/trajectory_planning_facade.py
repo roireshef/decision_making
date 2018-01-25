@@ -1,4 +1,3 @@
-import copy
 import time
 import traceback
 from logging import Logger
@@ -11,7 +10,8 @@ from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, DEFAULT_OBJECT_Z_VALUE, VISUALIZATION_PREDICTION_RESOLUTION, \
-    DEFAULT_CURVATURE, DEFAULT_ACCELERATION, MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION
+    MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION, \
+    NUM_ALTERNATIVE_TRAJECTORIES
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
@@ -92,12 +92,9 @@ class TrajectoryPlanningFacade(DmModule):
             else:
                 updated_state = state_aligned
 
-            # THIS ASSUMES TARGET IS ACCELERATION-FREE AND CURVATURE-FREE
-            extended_target_state = np.append(params.target_state, [DEFAULT_ACCELERATION, DEFAULT_CURVATURE])
-
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, extended_target_state, lon_plan_horizon,
+                plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
                      params.cost_params)
 
             # TODO: validate that sampling is consistent with controller!
@@ -121,17 +118,17 @@ class TrajectoryPlanningFacade(DmModule):
 
             self.logger.info("TrajectoryPlanningFacade._periodic_action_impl time %f", time.time() - start_time)
 
-        except MsgDeserializationError as e:
-            self.logger.warn("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s %s",
-                             e, traceback.format_exc())
-        except NoValidTrajectoriesFound as e:
-            # TODO - we need to handle this as an emergency.
-            self.logger.warn("TrajectoryPlanningFacade: NoValidTrajectoriesFound was raised. skipping planning. %s %s",
-                             e, traceback.format_exc())
+        except MsgDeserializationError:
+            self.logger.warn("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
+                             traceback.format_exc())
+        # TODO - we need to handle this as an emergency.
+        except NoValidTrajectoriesFound:
+            self.logger.warn("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s",
+                             traceback.format_exc())
         # TODO: remove this handler
-        except Exception as e:
-            self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s. %s ",
-                                 e, traceback.format_exc())
+        except Exception:
+            self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s",
+                                 traceback.format_exc())
 
     def _validate_strategy_handlers(self) -> None:
         for elem in TrajectoryPlanningStrategy.__members__.values():
@@ -181,7 +178,7 @@ class TrajectoryPlanningFacade(DmModule):
         if self._last_trajectory is None or current_time > self._last_trajectory.max_sample_time:
             return False
 
-        self.logger.debug("TrajectoryPlanningFacade time-difference from last planned trajectory is %s",
+        self.logger.info("TrajectoryPlanningFacade time-difference from last planned trajectory is %s",
                           current_time - self._last_trajectory.timestamp)
 
         current_expected_state: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
@@ -265,9 +262,17 @@ class TrajectoryPlanningFacade(DmModule):
         downsampled_reference_route, _ = CartesianFrame.resample_curve(reference_route,
                                                                        step_size=DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION)
 
+        # slice alternative trajectories by skipping indices - for visualization
+        alternative_ids_skip_range = range(0, len(ctrajectories),
+                                           max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
+
+        # slice alternative trajectories by skipping indices - for visualization
+        sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
+        sliced_costs = costs[alternative_ids_skip_range]
+
         return TrajectoryVisualizationMsg(downsampled_reference_route,
-                                          ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :C_V],
-                                          costs,
+                                          sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :C_V],
+                                          sliced_costs,
                                           predicted_states[0],
                                           predicted_states[1:],
                                           planning_horizon)

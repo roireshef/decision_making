@@ -5,8 +5,9 @@ from typing import Optional, List, Dict
 import numpy as np
 
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID, \
-    UNKNOWN_DEFAULT_VAL
+    UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS
 from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.planning.types import CartesianPoint3D
 from decision_making.src.state.state import OccupancyState, EgoState, DynamicObject, ObjectSize, State
 from mapping.src.exceptions import MapCellNotFound, raises
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
@@ -125,24 +126,16 @@ class StateModule(DmModule):
                 global_coordinates = np.array([x, y, z])
                 global_yaw = yaw
 
-                try:
-                    # Try to localize object on road. If not successful, warn.
-                    road_localization = MapService.get_instance().compute_road_localization(global_coordinates, global_yaw)
+                # When filtering off-road objects, try to localize object on road.
+                if not FILTER_OFF_ROAD_OBJECTS or self._is_object_on_road(global_coordinates, global_yaw):
+                    dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
+                                            global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
+                                            UNKNOWN_DEFAULT_VAL, omega_yaw)
+                    self._dynamic_objects_memory_map[id] = dyn_obj
+                    dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
+                else:
+                    continue
 
-                    # Filter objects out of road:
-                    road_width = MapService.get_instance().get_road(road_id=road_localization.road_id).road_width
-                    if road_width + ROAD_SHOULDERS_WIDTH > road_localization.intra_road_lat > -ROAD_SHOULDERS_WIDTH:
-                        dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
-                                                global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
-                                                UNKNOWN_DEFAULT_VAL, omega_yaw)
-                        self._dynamic_objects_memory_map[id] = dyn_obj
-                        dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
-                    else:
-                        continue
-
-                except MapCellNotFound:
-                    self.logger.warning(
-                        "Couldn't localize object id {} on road. Object location: ({}, {}, {})".format(id, x, y, z))
             else:
                 # object is out of FOV, using its last known location and timestamp.
                 dyn_obj = self._dynamic_objects_memory_map.get(id)
@@ -151,6 +144,25 @@ class StateModule(DmModule):
                 else:
                     self.logger.warning("received out of FOV object which is not in memory.")
         return dyn_obj_list
+
+    def _is_object_on_road(self, global_coordinates: CartesianPoint3D, global_yaw: float)->bool:
+        """
+        Try to localize coordinates on any road of the map
+        :param global_coordinates: CartesianPoint3D
+        :param global_yaw: heading of object
+        :return: True is on a road, False otherwise
+        """
+        try:
+            road_localization = MapService.get_instance().compute_road_localization(global_coordinates, global_yaw)
+            # Filter objects out of road:
+            road_width = MapService.get_instance().get_road(road_id=road_localization.road_id).road_width
+            is_on_road = road_width + ROAD_SHOULDERS_WIDTH > road_localization.intra_road_lat > -ROAD_SHOULDERS_WIDTH
+            return is_on_road
+        except MapCellNotFound:
+            x,y,z = global_coordinates
+            self.logger.warning(
+                "Couldn't localize object on road. Object location: ({}, {}, {})".format(id, x, y, z))
+            return False
 
     def _self_localization_callback(self, self_localization: LcmPerceivedSelfLocalization) -> None:
         """
