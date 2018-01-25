@@ -1,5 +1,7 @@
 import numpy as np
 
+from decision_making.src.planning.types import Limits, LIMIT_MIN, LIMIT_MAX
+
 
 class NumpyUtils:
     @staticmethod
@@ -34,3 +36,13 @@ class NumpyUtils:
         :return: string
         """
         return np.array_repr(arr).replace('\n', '')
+
+    @staticmethod
+    def is_in_limits(arr: np.array, limits: Limits):
+        """
+        tests if values of arr are in the limit [lb, ub]
+        :param arr: any tensor shape
+        :param limits: Limits object - 1D numpy array of [lower_bound, upper_bound]
+        :return: tensor of boolean values of the shape of <arr>
+        """
+        return np.logical_and(arr >= limits[LIMIT_MIN], arr <= limits[LIMIT_MAX])
