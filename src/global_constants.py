@@ -155,7 +155,7 @@ SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
 DX_OFFSET_MIN, DX_OFFSET_MAX = -3, 3
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 15, 1, 5
+SX_STEPS, SV_STEPS, DX_STEPS = 10, 1, 7
 
 # Frenet-Serret Conversions #
 

@@ -117,6 +117,12 @@ def test_werlingPlanner_toyScenario_noException():
 @pytest.mark.skip(reason="takes too long.")
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_werlingPlanner_twoStaticObjScenario_withCostViz():
+    """
+    The route is set to route_points by calling to RouteFixture.get_route(). Currently it is a straight line.
+    The test runs with 16 iterations. In each iteration one or more obstacles move.
+    At each iteration the image with costs and calculated trajectories is saved in a file.
+    The number of obstacles is determined by the length of obs_poses.
+    """
     logger = AV_Logger.get_logger('test_werlingPlanner_twoStaticObjScenario_withCostViz')
 
     lane_width = 3.6
