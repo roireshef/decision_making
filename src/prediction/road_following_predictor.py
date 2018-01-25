@@ -106,7 +106,7 @@ class RoadFollowingPredictor(Predictor):
         yaw_vector = None
         if lookahead_route.shape[0] > 1:
             _, route_xy, _ = CartesianFrame.resample_curve(curve=lookahead_route,
-                                                        arbitrary_curve_sampling_points=predicted_distances_from_start)
+                                                           arbitrary_curve_sampling_points=predicted_distances_from_start)
             if route_xy.shape[0] == 1:
                 yaw_vector = np.ones(shape=[route_xy.shape[0], 1]) * initial_yaw
         elif lookahead_route.shape[0] == 1:
