@@ -4,8 +4,8 @@ import time
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_K_PARAM, LATERAL_SAFETY_MARGIN_FROM_OBJECT, \
     OBSTACLE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_LANE_COST, \
     ROAD_SIGMOID_K_PARAM, EGO_LENGTH, EGO_WIDTH, \
-    SHOULDER_SIGMOID_OFFSET, SHOULDER_SIGMOID_K_PARAM, VELOCITY_LIMITS, \
-    LON_ACCELERATION_LIMITS, DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LANE_SIGMOID_K_PARAM, \
+    SHOULDER_SIGMOID_OFFSET, SHOULDER_SIGMOID_K_PARAM, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
+    DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LANE_SIGMOID_K_PARAM, \
     DEVIATION_FROM_GOAL_LAT_FACTOR, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
@@ -190,7 +190,8 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
             dist_from_goal_cost=SigmoidFunctionParams(DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET),
             dist_from_goal_lat_factor=DEVIATION_FROM_GOAL_LAT_FACTOR,
             velocity_limits=VELOCITY_LIMITS,
-            acceleration_limits=LON_ACCELERATION_LIMITS)
+            lon_acceleration_limits=LON_ACC_LIMITS,
+            lat_acceleration_limits=LAT_ACC_LIMITS)
 
         planner = WerlingPlanner(logger, predictor)
 
