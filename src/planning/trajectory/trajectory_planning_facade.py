@@ -88,12 +88,9 @@ class TrajectoryPlanningFacade(DmModule):
             else:
                 updated_state = state_aligned
 
-            # THIS ASSUMES TARGET IS ACCELERATION-FREE AND CURAVUTURE-FREE
-            extended_target_state = np.append(params.target_state, [DEFAULT_ACCELERATION, DEFAULT_CURVATURE])
-
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, extended_target_state, params.time, params.cost_params)
+                plan(updated_state, params.reference_route, params.target_state, params.time, params.cost_params)
 
             # TODO: validate that sampling is consistent with controller!
             trajectory_points = samplable_trajectory.sample(
@@ -116,17 +113,17 @@ class TrajectoryPlanningFacade(DmModule):
 
             self.logger.info("TrajectoryPlanningFacade._periodic_action_impl time %f", time.time() - start_time)
 
-        except MsgDeserializationError as e:
-            self.logger.warn("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s %s",
-                             e, traceback.format_exc())
-        except NoValidTrajectoriesFound as e:
-            # TODO - we need to handle this as an emergency.
-            self.logger.warn("TrajectoryPlanningFacade: NoValidTrajectoriesFound was raised. skipping planning. %s %s",
-                             e, traceback.format_exc())
+        except MsgDeserializationError:
+            self.logger.warn("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
+                             traceback.format_exc())
+        # TODO - we need to handle this as an emergency.
+        except NoValidTrajectoriesFound:
+            self.logger.warn("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s",
+                             traceback.format_exc())
         # TODO: remove this handler
-        except Exception as e:
-            self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s. %s ",
-                                 e, traceback.format_exc())
+        except Exception:
+            self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s",
+                                 traceback.format_exc())
 
     def _validate_strategy_handlers(self) -> None:
         for elem in TrajectoryPlanningStrategy.__members__.values():
@@ -176,7 +173,7 @@ class TrajectoryPlanningFacade(DmModule):
         if self._last_trajectory is None or current_time > self._last_trajectory.max_sample_time:
             return False
 
-        self.logger.debug("TrajectoryPlanningFacade time-difference from last planned trajectory is %s",
+        self.logger.info("TrajectoryPlanningFacade time-difference from last planned trajectory is %s",
                           current_time - self._last_trajectory.timestamp)
 
         current_expected_state: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]

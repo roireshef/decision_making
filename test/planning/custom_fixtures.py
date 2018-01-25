@@ -2,7 +2,8 @@ import pytest
 import numpy as np
 
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
-    NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT
+    NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
+    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
@@ -130,11 +131,11 @@ def ego_state_fix():
 @pytest.fixture(scope='function')
 def trajectory_params():
     ref_route = np.array([[x, -2.0] for x in range(0, 16)])
-    target_state = np.array([15.0, -2.0, 0.0, 1])
+    target_state = np.array([15.0, -2.0, 0.0, 1, 0.0, 0.0])
     mock_sigmoid = SigmoidFunctionParams(1.0, 2.0, 3.0)
     trajectory_cost_params = TrajectoryCostParams(mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
                                                   mock_sigmoid, mock_sigmoid, mock_sigmoid, 16.0,
-                                                  2.0, 2.0, np.array([0.0, 2.0]), np.array([-1.0, 2.0]))
+                                                  2.0, 2.0, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)
     yield TrajectoryParams(reference_route=ref_route, target_state=target_state,
                            cost_params=trajectory_cost_params, time=16,
                            strategy=TrajectoryPlanningStrategy.HIGHWAY)
