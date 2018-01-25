@@ -167,12 +167,12 @@ def test_fitFrenet_originalRoutePointsAreProjected_errorsAreLowEnough():
 
     # project the original route points unto the fitted curve - last point can be outside the curve
     # (due to length estimation)
-    fprojections = frenet.cpoints_to_fpoints(route_points[:-1])
+    fprojections = frenet.cpoints_to_fpoints(route_points[1:-1])
     fprojections[:, FP_DX] = 0
 
     new_route_points = frenet.fpoints_to_cpoints(fprojections)
 
-    position_errors = np.linalg.norm(route_points[:-1] - new_route_points, axis=1)
+    position_errors = np.linalg.norm(route_points[1:-1] - new_route_points, axis=1)
 
     np.testing.assert_array_less(position_errors, POSITION_ACCURACY_TH,
                                  err_msg='FrenetMovingFrame position conversions aren\'t accurate enough')

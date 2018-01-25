@@ -299,7 +299,7 @@ class FrenetSerret2DFrame:
         x = xy_splines[0]
         x_tag = x.derivative(1)
         x_tagtag = x.derivative(2)
-        y = xy_splines[0]
+        y = xy_splines[1]
         y_tag = y.derivative(1)
         y_tagtag = y.derivative(2)
 
