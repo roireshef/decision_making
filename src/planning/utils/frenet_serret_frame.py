@@ -314,10 +314,10 @@ class FrenetSerret2DFrame:
         T = np.divide(dxy, np.c_[dxy_norm])
 
         # Normal - robust to zero-curvature
-        N = TensorOps.row_wise_normal(T)
+        N = NumpyUtils.row_wise_normal(T)
 
         # SIGNED (!) Curvature
-        cross_norm = np.sum(TensorOps.row_wise_normal(dxy) * ddxy, axis=1)
+        cross_norm = np.sum(NumpyUtils.row_wise_normal(dxy) * ddxy, axis=1)
         k = cross_norm / dxy_norm ** 3
 
         # derivative of curvature
