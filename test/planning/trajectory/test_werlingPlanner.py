@@ -121,7 +121,7 @@ def test_werlingPlanner_toyScenario_noException():
     fig.clear()
 
 
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+#@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     logger = AV_Logger.get_logger('test_werlingPlanner_twoStaticObjScenario_withCostViz')
     predictor = RoadFollowingPredictor(logger)
@@ -178,21 +178,23 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
                                      np.array([lng + ext, vT, 0, goal_latitude - reference_route_latitude, 0, 0])])
         ctraj_start_goal = frenet.ftrajectory_to_ctrajectory(ftraj_start_goal)
 
+        ego = EgoState(obj_id=-1, timestamp=0, x=ctraj_start_goal[0][C_X], y=ctraj_start_goal[0][C_Y], z=0,
+                       yaw=ctraj_start_goal[0][C_YAW], size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
+                       confidence=1.0, v_x=ctraj_start_goal[0][C_V], v_y=0, steering_angle=0.0, acceleration_lon=0.0,
+                       omega_yaw=0.0)
+
         goal = ctraj_start_goal[1]
         goal[C_X] -= 0.001
         goal[C_Y] += goal_latitude - reference_route_latitude
 
         obs = []
         for i, pose in enumerate(obs_poses):
-            obs.append(DynamicObject(obj_id=i, timestamp=0, x=pose[0], y=pose[1], z=0, yaw=0,
+            fobs = np.array([pose[0], 0, 0, pose[1], 0, 0])
+            cobs = frenet.fstate_to_cstate(fobs)
+            obs.append(DynamicObject(obj_id=i, timestamp=0, x=cobs[C_X], y=cobs[C_Y], z=0, yaw=cobs[C_YAW],
                                      size=ObjectSize(4, 1.8, 0), confidence=1.0, v_x=0, v_y=0,
                                      acceleration_lon=0.0, omega_yaw=0.0))
         #obs = list([])
-
-        ego = EgoState(obj_id=-1, timestamp=0, x=ctraj_start_goal[0][C_X], y=ctraj_start_goal[0][C_Y], z=0,
-                       yaw=ctraj_start_goal[0][C_YAW], size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
-                       confidence=1.0, v_x=ctraj_start_goal[0][C_V], v_y=0, steering_angle=0.0, acceleration_lon=0.0,
-                       omega_yaw=0.0)
 
         state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
 
