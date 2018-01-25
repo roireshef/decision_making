@@ -1,7 +1,9 @@
 import numpy as np
 
+from decision_making.src.planning.types import Limits, LIMIT_MIN, LIMIT_MAX
 
-class TensorOps:
+
+class NumpyUtils:
     @staticmethod
     def cartesian_product_matrix_rows(mat1: np.ndarray, mat2: np.ndarray):
         """
@@ -25,3 +27,22 @@ class TensorOps:
         :return: 2D numpy array with shape [N, 2] of normal vectors
         """
         return np.c_[-mat[:, 1], mat[:, 0]]
+
+    @staticmethod
+    def str_log(arr: np.ndarray) -> str:
+        """
+        format array for log (no newlines)
+        :param arr: any array shape
+        :return: string
+        """
+        return np.array_repr(arr).replace('\n', '')
+
+    @staticmethod
+    def is_in_limits(arr: np.array, limits: Limits):
+        """
+        tests if values of arr are in the limit [lb, ub]
+        :param arr: any tensor shape
+        :param limits: Limits object - 1D numpy array of [lower_bound, upper_bound]
+        :return: tensor of boolean values of the shape of <arr>
+        """
+        return np.logical_and(arr >= limits[LIMIT_MIN], arr <= limits[LIMIT_MAX])
