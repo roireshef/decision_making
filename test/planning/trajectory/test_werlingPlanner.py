@@ -1,6 +1,8 @@
 import numpy as np
 import time
 
+import pytest
+
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_K_PARAM, LATERAL_SAFETY_MARGIN_FROM_OBJECT, \
     OBSTACLE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_LANE_COST, \
     ROAD_SIGMOID_K_PARAM, EGO_LENGTH, EGO_WIDTH, \
@@ -112,7 +114,7 @@ def test_werlingPlanner_toyScenario_noException():
     # fig.show()
     # fig.clear()
 
-
+@pytest.mark.skip(reason="takes too long.")
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     logger = AV_Logger.get_logger('test_werlingPlanner_twoStaticObjScenario_withCostViz')
@@ -163,7 +165,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
                                      acceleration_lon=0.0, omega_yaw=0.0))
         #obs = list([])
 
-        ego = EgoState(obj_id=-1, timestamp=0, x=0, y=start_ego_lat, z=0, yaw=0,
+        ego = EgoState(obj_id=-1, timestamp=0, x=0.001, y=start_ego_lat, z=0, yaw=0,
                        size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
                        confidence=1.0, v_x=v0, v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
