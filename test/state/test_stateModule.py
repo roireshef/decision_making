@@ -64,9 +64,7 @@ def test_isObjectOnRoad_objectOffOfRoad_False(pubsub: PubSub, ego_state_fix: Ego
     :param pubsub: Inter-process communication interface.
     :param ego_state_fix: Fixture of an ego state compatible with the above two fixtures.
 
-    This test checks the memory functionality of the StateModule. It initially sends into the StateModule a dynamic object
-    in the FOV followed by a message indicating that the object is out of FOV. The test then asserts that the last known
-    object properties have been "remembered".
+    Checking functionality of _is_object_on_road for an object that is off the road.
     """
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
@@ -96,7 +94,7 @@ def test_isObjectOnRoad_objectOnOfRoad_True(pubsub: PubSub, ego_state_fix: EgoSt
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-@patch(target=FILTER_OBJECT_OFF_ROAD_PATH, new=True)
+@patch(FILTER_OBJECT_OFF_ROAD_PATH, False)
 def test_dynamicObjCallbackWithoutFilter_objectOffOfRoad_stateWithObject(pubsub: PubSub,
                                                                                    dynamic_objects_not_on_road: LcmPerceivedDynamicObjectList,
                                                                                    ego_state_fix: EgoState):

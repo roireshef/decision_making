@@ -136,7 +136,7 @@ def dynamic_objects_not_on_road():
     dyn_obj.velocity.omega_yaw = 0
 
     dyn_obj.tracking_status = LcmObjectTrackingStatus()
-    dyn_obj.tracking_status.in_fov = False
+    dyn_obj.tracking_status.in_fov = True
     dyn_obj.tracking_status.is_predicted = False
 
     objects.dynamic_objects.append(dyn_obj)
