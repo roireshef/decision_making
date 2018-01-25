@@ -176,13 +176,12 @@ class WerlingPlanner(TrajectoryPlanner):
         lon_acceleration = ctrajectories[:, :, C_A]
         lat_acceleration = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
         lon_velocity = ctrajectories[:, :, C_V]
+
         conforms = np.all(
-            (np.greater_equal(lon_velocity, cost_params.velocity_limits[LIMIT_MIN])) &
-            (np.less_equal(lon_velocity, cost_params.velocity_limits[LIMIT_MAX])) &
-            (np.greater_equal(lon_acceleration, cost_params.lon_acceleration_limits[LIMIT_MIN])) &
-            (np.less_equal(lon_acceleration, cost_params.lon_acceleration_limits[LIMIT_MAX])) &
-            (np.greater_equal(lat_acceleration, cost_params.lat_acceleration_limits[LIMIT_MIN])) &
-            (np.less_equal(lat_acceleration, cost_params.lat_acceleration_limits[LIMIT_MAX])), axis=1)
+            NumpyUtils.is_in_limits(lon_velocity, cost_params.velocity_limits) &
+            NumpyUtils.is_in_limits(lon_acceleration, cost_params.lon_acceleration_limits) &
+            NumpyUtils.is_in_limits(lat_acceleration, cost_params.lat_acceleration_limits), axis=1)
+
         return np.argwhere(conforms).flatten()
 
     @staticmethod
