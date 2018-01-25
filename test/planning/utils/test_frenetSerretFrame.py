@@ -25,7 +25,7 @@ def test_cpointsToFpointsToCpoints_pointTwoWayConversion_accurate():
 
     ## FOR DEBUG PURPOSES
     # import matplotlib.pyplot as plt
-    #
+    # plt.switch_backend('QT5Agg')
     # fig = plt.figure()
     # p1 = fig.add_subplot(111)
     # p1.plot(route_points[:, 0], route_points[:, 1], '-r')
@@ -75,7 +75,7 @@ def test_ctrajectoryToFtrajectoryToCtrajectory_pointTwoWayConversion_accuratePos
 
     ## FOR DEBUG PURPOSES
     # import matplotlib.pyplot as plt
-    #
+    # plt.switch_backend('QT5Agg')
     # fig = plt.figure()
     # p1 = fig.add_subplot(111)
     # p1.plot(route_points[:, 0], route_points[:, 1], '-r')
@@ -127,7 +127,7 @@ def test_ftrajectoryToCtrajectoryToFtrajectory_pointTwoWayConversion_accuratePos
 
     # # FOR DEBUG PURPOSES
     # import matplotlib.pyplot as plt
-    #
+    # plt.switch_backend('QT5Agg')
     # fig = plt.figure()
     # p1 = fig.add_subplot(111)
     #
@@ -163,29 +163,27 @@ def test_fitFrenet_originalRoutePointsAreProjected_errorsAreLowEnough():
 
     route_points = RouteFixture.get_route(lng=200, k=0.05, step=40, lat=100, offset=-50.0)
 
-    route_points_downsampled = route_points[::2]
-
-    frenet = FrenetSerret2DFrame(route_points_downsampled)
+    frenet = FrenetSerret2DFrame(route_points)
 
     # project the original route points unto the fitted curve - last point can be outside the curve
     # (due to length estimation)
-    fprojections = frenet.cpoints_to_fpoints(route_points[1:-3])
+    fprojections = frenet.cpoints_to_fpoints(route_points[:-1])
     fprojections[:, FP_DX] = 0
 
     new_route_points = frenet.fpoints_to_cpoints(fprojections)
 
-    position_errors = np.linalg.norm(route_points[1:-3] - new_route_points, axis=1)
+    position_errors = np.linalg.norm(route_points[:-1] - new_route_points, axis=1)
 
-    #np.testing.assert_array_less(position_errors, POSITION_ACCURACY_TH,
-    #                             err_msg='FrenetMovingFrame position conversions aren\'t accurate enough')
+    np.testing.assert_array_less(position_errors, POSITION_ACCURACY_TH,
+                                err_msg='FrenetMovingFrame position conversions aren\'t accurate enough')
 
-    # FOR DEBUG PURPOSES
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure()
-    p1 = fig.add_subplot(111)
-    p1.plot(route_points[:, 0], route_points[:, 1], '*r')
-    p1.plot(frenet.O[:, 0], frenet.O[:, 1], '-k')
-
-    fig.show()
-    fig.clear()
+    # # FOR DEBUG PURPOSES
+    # import matplotlib.pyplot as plt
+    # plt.switch_backend('QT5Agg')
+    # fig = plt.figure()
+    # p1 = fig.add_subplot(111)
+    # p1.plot(route_points[:, 0], route_points[:, 1], '*r')
+    # p1.plot(frenet.O[:, 0], frenet.O[:, 1], '-k')
+    #
+    # fig.show()
+    # fig.clear()

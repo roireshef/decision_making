@@ -131,6 +131,9 @@ TRAJECTORY_TIME_RESOLUTION = 0.1
 # Number of trajectory points to send out (to controller) from the TP
 TRAJECTORY_NUM_POINTS = 10
 
+# Amount of error in fitting points to curve, smaller means using more spline polynomials for the fit (and smaller error)
+SPLINE_SMOOTH_FACTOR = 0.0001
+
 
 # Werling Planner #
 
