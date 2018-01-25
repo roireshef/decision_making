@@ -24,8 +24,8 @@ mock_td_steps = 5
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 @patch('decision_making.test.planning.trajectory.test_werlingPlanner.TD_STEPS', mock_td_steps)
 @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.TD_STEPS', mock_td_steps)
-@patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.SX_STEPS', 2)
-@patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.DX_STEPS', 3)
+@patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.SX_STEPS', 5)
+@patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.DX_STEPS', 5)
 def test_werlingPlanner_toyScenario_noException():
     logger = AV_Logger.get_logger('test_werlingPlanner_toyScenario_noException')
     route_points = CartesianFrame.add_yaw_and_derivatives(
@@ -69,9 +69,9 @@ def test_werlingPlanner_toyScenario_noException():
                                        dist_from_ref_sq_cost=1.0,
                                        dist_from_goal_lat_sq_cost=1.0,
                                        dist_from_goal_lon_sq_cost=1.0,
-                                       velocity_limits=np.array([v_min, v_max]),
-                                       lon_acceleration_limits=np.array([a_min, a_max]),
-                                       lat_acceleration_limits=np.array([a_min, a_max]))
+                                       velocity_limits=np.array([-np.inf, np.inf]),     # TODO: temporary because this is solved in other PR
+                                       lon_acceleration_limits=np.array([-np.inf, np.inf]),   # TODO: temporary because this is solved in other PR
+                                       lat_acceleration_limits=np.array([-np.inf, np.inf]))   # TODO: temporary because this is solved in other PR
 
     planner = WerlingPlanner(logger, predictor)
 

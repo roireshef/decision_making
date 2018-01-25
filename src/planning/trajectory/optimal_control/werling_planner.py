@@ -5,7 +5,8 @@ import numpy as np
 
 from decision_making.src.exceptions import NoValidTrajectoriesFound
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
-    SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, TRAJECTORY_OBSTACLE_LOOKAHEAD, SX_OFFSET_MIN, SX_OFFSET_MAX, TD_STEPS, A_LAT_MAX
+    SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, TRAJECTORY_OBSTACLE_LOOKAHEAD, SX_OFFSET_MIN, SX_OFFSET_MAX, \
+    TD_STEPS, LAT_ACC_LIMITS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
@@ -129,7 +130,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # Latitudinal planning horizon(Td) lower bound, now approximated from x=a*t^2
         # TODO: determine lower bound according to physical constraints and ego control limitations
         min_lat_movement = np.min(np.abs(fconstraints_tT.get_grid_d()[:, 0] - fconstraints_t0.get_grid_d()[0, 0]))
-        low_bound_lat_plan_horizon = max(np.sqrt((2*min_lat_movement) / A_LAT_MAX), self.dt)
+        low_bound_lat_plan_horizon = max(np.sqrt((2*min_lat_movement) / LAT_ACC_LIMITS[LIMIT_MAX]), self.dt)
 
         assert lon_plan_horizon >= low_bound_lat_plan_horizon
 
