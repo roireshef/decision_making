@@ -36,22 +36,22 @@ BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 
 # Trajectory cost parameters
 OBSTACLE_SIGMOID_COST = 1.0 * 1e4           # cost around obstacles (sigmoid)
-OBSTACLE_SIGMOID_K_PARAM = 6                # sigmoid k (slope) param of objects on road
+OBSTACLE_SIGMOID_K_PARAM = 5.5              # sigmoid k (slope) param of objects on road
 
 DEVIATION_FROM_LANE_COST = 20               # cost of deviation from lane (sigmoid)
 LANE_SIGMOID_K_PARAM = 4                    # sigmoid k (slope) param of going out-of-lane-center
 
 DEVIATION_TO_SHOULDER_COST = 3.0 * 1e2      # cost of deviation to shoulders (sigmoid)
-SHOULDER_SIGMOID_K_PARAM = 4                # sigmoid k (slope) param of going out-of-shoulder
+SHOULDER_SIGMOID_K_PARAM = 6                # sigmoid k (slope) param of going out-of-shoulder
+SHOULDER_SIGMOID_OFFSET = 0.2               # offset param m of going out-of-shoulder: cost = w/(1+e^(k*(m+x)))
 
 DEVIATION_FROM_ROAD_COST = 1.0 * 1e4        # cost of deviation from road (sigmoid)
 ROAD_SIGMOID_K_PARAM = 20                   # sigmoid k (slope) param of going out-of-road
-SHOULDER_SIGMOID_OFFSET = 0.8               # offset param m of going out-of-shoulder: cost = w/(1+e^(k*(m+x)))
 
 DEVIATION_FROM_GOAL_LAT_FACTOR = 4          # ratio between lateral and longitudinal deviation costs from the goal
-DEVIATION_FROM_GOAL_COST = 2.0 * 1e2        # cost of longitudinal deviation from the goal
+DEVIATION_FROM_GOAL_COST = 1.0 * 1e2        # cost of longitudinal deviation from the goal
 GOAL_SIGMOID_K_PARAM = 0.5                  # sigmoid k (slope) param of going out-of-goal
-GOAL_SIGMOID_OFFSET = 5                     # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
+GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
 
 # [m/s] min & max velocity limits are additional parameters for TP
 VELOCITY_LIMITS = np.array([0.0, 60.0])
