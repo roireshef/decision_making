@@ -24,12 +24,13 @@ class FrenetSerret2DFrame:
         :param spline_order: spline order for fitting and re-sampling the original points
         """
         splines, self.O, effective_ds = CartesianFrame.resample_curve(curve=points, step_size=ds,
-                                                             preserve_step_size=True,
-                                                             spline_order=spline_order)
+                                                                      preserve_step_size=True,
+                                                                      spline_order=spline_order)
 
         self.s_max = effective_ds * len(self.O)
         self.ds = effective_ds
-        self.T, self.N, self.k, self.k_tag = FrenetSerret2DFrame._fit_frenet(self.O, ds)
+        self.T, self.N, self.k, self.k_tag = FrenetSerret2DFrame._fit_frenet_from_splines(0.0, self.s_max, self.ds,
+                                                                                          splines)
 
     def get_yaw(self, s: np.ndarray):
         """
