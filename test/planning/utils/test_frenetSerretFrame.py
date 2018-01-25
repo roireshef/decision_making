@@ -1,6 +1,6 @@
 import numpy as np
 
-from decision_making.src.planning.types import C_A, C_V, C_K, FP_SX, FS_SX, FS_DX, FS_DV, FS_SV, FS_DA, FS_SA
+from decision_making.src.planning.types import C_A, C_V, C_K, FP_SX, FS_SX, FS_DX, FS_DV, FS_SV, FS_DA, FS_SA, FP_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.test.planning.trajectory.utils import RouteFixture
 
@@ -42,10 +42,10 @@ def test_cpointsToFpointsToCpoints_pointTwoWayConversion_accurate():
 
 
 def test_ctrajectoryToFtrajectoryToCtrajectory_pointTwoWayConversion_accuratePoseAndVelocity():
-    POSITION_ACCURACY_TH = 1e-3
-    VEL_ACCURACY_TH = 1e-3
-    ACC_ACCURACY_TH = 1e-3
-    CURV_ACCURACY_TH = 1e-3
+    POSITION_ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
+    VEL_ACCURACY_TH = 1e-3  # up to 1 [mm/sec] error in velocity
+    ACC_ACCURACY_TH = 1e-3  # up to 1 [mm/sec^2] error in acceleration
+    CURV_ACCURACY_TH = 1e-4  # up to 0.0001 [m] error in curvature which accounts to radius of 10,000[m]
 
     route_points = RouteFixture.get_route(lng=200, k=0.05, step=40, lat=100, offset=-50.0)
     cpoints = np.array([[150.0, 0.0, -np.pi/8, 10.0, 1.0, 1e-2], [250.0, 0.0, np.pi/6, 20.0, 1.1, -1e-2],
@@ -92,9 +92,9 @@ def test_ctrajectoryToFtrajectoryToCtrajectory_pointTwoWayConversion_accuratePos
 
 
 def test_ftrajectoryToCtrajectoryToFtrajectory_pointTwoWayConversion_accuratePoseAndVelocity():
-    POSITION_ACCURACY_TH = 1e-3
-    VEL_ACCURACY_TH = 1e-3
-    ACC_ACCURACY_TH = 1e-3
+    POSITION_ACCURACY_TH = 1e-3  # up to 1 [mm] error in positions
+    VEL_ACCURACY_TH = 1e-3  # up to 1 [mm/sec] error in velocity
+    ACC_ACCURACY_TH = 1e-3  # up to 1 [mm/sec^2] error in acceleration
 
     route_points = RouteFixture.get_route(lng=200, k=0.05, step=40, lat=100, offset=-50.0)
     fstates = np.array([[1.49932706e+02,   9.10405803e+00,   1.30695915e+00,
@@ -158,3 +158,21 @@ def test_projectCartesianPoint_fivePointsProjection_accurate():
     np.testing.assert_array_less(s_error, ACCURACY_TH, 'FrenetSerret2DFrame._project_cartesian_points is not accurate')
 
 
+def test_fitFrenet_originalRoutePointsAreProjected_errorsAreLowEnough():
+    POSITION_ACCURACY_TH = 1e-2  # up to 1 [cm] error in euclidean distance
+
+    route_points = RouteFixture.get_route(lng=200, k=0.05, step=40, lat=100, offset=-50.0)
+
+    frenet = FrenetSerret2DFrame(route_points)
+
+    # project the original route points unto the fitted curve - last point can be outside the curve
+    # (due to length estimation)
+    fprojections = frenet.cpoints_to_fpoints(route_points[:-1])
+    fprojections[:, FP_DX] = 0
+
+    new_route_points = frenet.fpoints_to_cpoints(fprojections)
+
+    position_errors = np.linalg.norm(route_points[:-1] - new_route_points, axis=1)
+
+    np.testing.assert_array_less(position_errors, POSITION_ACCURACY_TH,
+                                 err_msg='FrenetMovingFrame position conversions aren\'t accurate enough')
