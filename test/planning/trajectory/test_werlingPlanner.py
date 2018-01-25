@@ -24,7 +24,7 @@ from unittest.mock import patch
 def test_werlingPlanner_toyScenario_noException():
     logger = AV_Logger.get_logger('test_werlingPlanner_toyScenario_noException')
     route_points = CartesianFrame.add_yaw_and_derivatives(
-        RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5))
+        RouteFixture.get_route(lng=10, k=1, step=1, lat=1, offset=-.5))
 
     v0 = 6
     vT = 10
@@ -66,7 +66,8 @@ def test_werlingPlanner_toyScenario_noException():
                                        dist_from_goal_lat_sq_cost=1.0,
                                        dist_from_goal_lon_sq_cost=1.0,
                                        velocity_limits=np.array([v_min, v_max]),
-                                       acceleration_limits=np.array([a_min, a_max]))
+                                       lon_acceleration_limits=np.array([a_min, a_max]),
+                                       lat_acceleration_limits=np.array([a_min, a_max]))
 
     planner = WerlingPlanner(logger, predictor)
 

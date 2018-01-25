@@ -5,12 +5,12 @@ import numpy as np
 from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import BP_SPECIFICATION_T_MIN, BP_SPECIFICATION_T_MAX, \
-    BP_SPECIFICATION_T_RES, A_LON_MIN, \
-    A_LON_MAX, A_LAT_MIN, A_LAT_MAX, SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
+    BP_SPECIFICATION_T_RES, SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL, \
     BEHAVIORAL_PLANNING_HORIZON, A_LON_EPS, INFINITE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     OUT_OF_LANE_COST, ROAD_SIGMOID_K_PARAM, OBJECTS_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_LON_COST, \
-    DEVIATION_FROM_GOAL_LAT_COST, DEVIATION_FROM_REF_ROUTE_COST, LATERAL_SAFETY_MARGIN_FROM_OBJECT
+    DEVIATION_FROM_GOAL_LAT_COST, DEVIATION_FROM_REF_ROUTE_COST, LATERAL_SAFETY_MARGIN_FROM_OBJECT, LON_ACC_LIMITS, \
+    LAT_ACC_LIMITS
 from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -27,6 +27,7 @@ from decision_making.src.planning.trajectory.optimal_control.optimal_control_uti
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import CURVE_X, CURVE_Y
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.types import Limits, LIMIT_MIN, LIMIT_MAX
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
@@ -301,7 +302,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # TODO: set velocity and acceleration limits properly
         velocity_limits = VELOCITY_LIMITS  # [m/s]. not a constant because it might be learned. TBD
-        acceleration_limits = np.array([A_LON_MIN - A_LON_EPS, A_LON_MAX + A_LON_EPS])
+        lon_acceleration_limits = LON_ACC_LIMITS + np.array([-A_LON_EPS, +A_LON_EPS])
+        lat_acceleration_limits = LAT_ACC_LIMITS
 
         cost_params = TrajectoryCostParams(left_lane_cost=left_lane_cost,
                                            right_lane_cost=right_lane_cost,
@@ -314,7 +316,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                            dist_from_goal_lat_sq_cost=dist_from_goal_lat_sq_cost,
                                            dist_from_ref_sq_cost=dist_from_ref_sq_cost,
                                            velocity_limits=velocity_limits,
-                                           acceleration_limits=acceleration_limits)
+                                           lon_acceleration_limits=lon_acceleration_limits,
+                                           lat_acceleration_limits=lat_acceleration_limits)
 
         return cost_params
 
@@ -417,8 +420,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             poly_coefs_d = OptimalControlUtils.QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
 
             # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
-            if SemanticActionsGridPolicy._is_acceleration_in_limits(poly_coefs_s, T, A_LON_MIN, A_LON_MAX) and \
-                    SemanticActionsGridPolicy._is_acceleration_in_limits(poly_coefs_d, T, A_LAT_MIN, A_LAT_MAX):
+            if SemanticActionsGridPolicy._is_acceleration_in_limits(poly_coefs_s, T, LON_ACC_LIMITS) and \
+                    SemanticActionsGridPolicy._is_acceleration_in_limits(poly_coefs_d, T, LAT_ACC_LIMITS):
                 return SemanticActionSpec(t=T, v=obj_svT, s_rel=constraints_s[3] - ego_sx0,
                                           d_rel=constraints_d[3] - ego_dx0)
 
@@ -426,30 +429,28 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                        semantic_action.__dict__, behavioral_state.__dict__)
 
     @staticmethod
-    def _is_acceleration_in_limits(poly_coefs: np.ndarray, T: float,
-                                   min_acc_threshold: float, max_acc_threshold: float) -> bool:
+    def _is_acceleration_in_limits(poly_coefs: np.ndarray, T: float, acc_limits: Limits) -> bool:
         """
-        given a quintic polynomial coefficients vector, and restrictions
+        given coefficients vector of a quintic polynomial x(t), and restrictions
         on the acceleration values, return True if restrictions are met, False otherwise
-        :param poly_coefs: 1D numpy array with s(t), s_dot(t) s_dotdot(t) concatenated
+        :param poly_coefs: 1D numpy array with x(t), x_dot(t) x_dotdot(t) concatenated
         :param T: planning time horizon [sec]
-        :param min_acc_threshold: minimal allowed value of acceleration/deceleration [m/sec^2]
-        :param max_acc_threshold: maximal allowed value of acceleration/deceleration [m/sec^2]
+        :param acc_limits: minimal and maximal allowed values of acceleration/deceleration [m/sec^2]
         :return: True if restrictions are met, False otherwise
         """
         # TODO: a(0) and a(T) checks are omitted as they they are provided by the user.
         # compute extrema points, by finding the roots of the 3rd derivative (which is itself a 2nd degree polynomial)
-        acc_suspected_points_s = np.roots(np.polyder(poly_coefs, m=3))
+        acc_suspected_points = np.roots(np.polyder(poly_coefs, m=3))
         acceleration_poly_coefs = np.polyder(poly_coefs, m=2)
-        acc_suspected_values_s = np.polyval(acceleration_poly_coefs, acc_suspected_points_s)
+        acc_suspected_values = np.polyval(acceleration_poly_coefs, acc_suspected_points)
 
         # filter out extrema points out of [0, T]
-        acc_inlimit_suspected_values_s = acc_suspected_values_s[np.greater_equal(acc_suspected_points_s, 0) &
-                                                                np.less_equal(acc_suspected_points_s, T)]
+        acc_inlimit_suspected_values = acc_suspected_values[np.greater_equal(acc_suspected_points, 0) &
+                                                            np.less_equal(acc_suspected_points, T)]
 
         # check if extrema values are within [a_min, a_max] limits
-        return np.all(np.greater_equal(acc_inlimit_suspected_values_s, min_acc_threshold) &
-                      np.less_equal(acc_inlimit_suspected_values_s, max_acc_threshold))
+        return np.all(np.greater_equal(acc_inlimit_suspected_values, acc_limits[LIMIT_MIN]) &
+                      np.less_equal(acc_inlimit_suspected_values, acc_limits[LIMIT_MAX]))
 
     @staticmethod
     def _get_action_ind(semantic_actions: List[SemanticAction], cell: SemanticGridCell):
