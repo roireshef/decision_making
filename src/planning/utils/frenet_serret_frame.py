@@ -24,7 +24,7 @@ class FrenetSerret2DFrame:
         :param spline_order: spline order for fitting and re-sampling the original points
         """
         splines, self.O, effective_ds = CartesianFrame.resample_curve(curve=points, step_size=ds,
-                                                                      preserve_step_size=True,
+                                                                      preserve_step_size=False,
                                                                       spline_order=spline_order)
 
         self.s_max = effective_ds * len(self.O)

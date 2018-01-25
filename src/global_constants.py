@@ -106,6 +106,9 @@ TRAJECTORY_CURVE_SPLINE_FIT_ORDER = 4
 # [m] Do not consider obstacles that are distant than this threshold
 TRAJECTORY_OBSTACLE_LOOKAHEAD = 200.0
 
+# Desired resolution of map [m], used for accuracy test on Frenet-Serret transformations
+ROAD_MAP_REQUIRED_RES = 5
+
 # [m] Cost function clips higher distances before exponentiation
 EXP_CLIP_TH = 50.0
 
@@ -132,6 +135,8 @@ TRAJECTORY_TIME_RESOLUTION = 0.1
 TRAJECTORY_NUM_POINTS = 10
 
 # Amount of error in fitting points to curve, smaller means using more spline polynomials for the fit (and smaller error)
+# This factor is the maximum mean square error (per point) allowed.
+# For example, 0.0001 mean that the max. standard deviation is 1 [cm]
 SPLINE_SMOOTH_FACTOR = 0.0001
 
 
