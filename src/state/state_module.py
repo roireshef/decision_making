@@ -156,8 +156,8 @@ class StateModule(DmModule):
             road_localization = MapService.get_instance().compute_road_localization(global_coordinates, global_yaw)
             # Filter objects out of road:
             road_width = MapService.get_instance().get_road(road_id=road_localization.road_id).road_width
-            object_on_road = road_width + ROAD_SHOULDERS_WIDTH > road_localization.intra_road_lat > -ROAD_SHOULDERS_WIDTH
-            return object_on_road
+            is_on_road = road_width + ROAD_SHOULDERS_WIDTH > road_localization.intra_road_lat > -ROAD_SHOULDERS_WIDTH
+            return is_on_road
         except MapCellNotFound:
             x,y,z = global_coordinates
             self.logger.warning(
