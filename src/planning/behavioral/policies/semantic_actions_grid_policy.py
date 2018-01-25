@@ -5,15 +5,15 @@ import numpy as np
 from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import BP_SPECIFICATION_T_MIN, BP_SPECIFICATION_T_MAX, \
-    BP_SPECIFICATION_T_RES, LON_ACCELERATION_LIMITS, \
-    SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
+    BP_SPECIFICATION_T_RES, SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL, \
-    BEHAVIORAL_PLANNING_HORIZON, OBSTACLE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
+    BEHAVIORAL_PLANNING_HORIZON, A_LON_EPS, OBSTACLE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
-    LATERAL_SAFETY_MARGIN_FROM_OBJECT, DEVIATION_FROM_GOAL_COST, DEVIATION_FROM_GOAL_LAT_FACTOR, GOAL_SIGMOID_K_PARAM, \
-    GOAL_SIGMOID_OFFSET
+    DEVIATION_FROM_GOAL_COST, DEVIATION_FROM_GOAL_LAT_FACTOR, GOAL_SIGMOID_K_PARAM, \
+    GOAL_SIGMOID_OFFSET, LATERAL_SAFETY_MARGIN_FROM_OBJECT, LON_ACC_LIMITS, \
+    LAT_ACC_LIMITS
 from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
-    PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT, VELOCITY_LIMITS
+    PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
@@ -23,9 +23,12 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_grid_stat
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticActionsPolicy, \
     SemanticAction, SemanticActionSpec, SemanticActionType, \
     LAT_CELL, LON_CELL, SemanticGridCell
+from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils as SAU
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import C_X, C_Y
+from decision_making.src.planning.types import CURVE_X, CURVE_Y
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.types import Limits, LIMIT_MIN, LIMIT_MAX
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
@@ -35,12 +38,9 @@ from mapping.src.service.map_service import MapService
 class SemanticActionsGridPolicy(SemanticActionsPolicy):
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
 
-        # Update state: align all object to most recent timestamp
-        state_aligned = self._predictor.align_objects_to_most_recent_timestamp(state=state)
-
         # create road semantic grid from the raw State object
         # behavioral_state contains road_occupancy_grid and ego_state
-        behavioral_state = SemanticActionsGridState.create_from_state(state=state_aligned,
+        behavioral_state = SemanticActionsGridState.create_from_state(state=state,
                                                                       logger=self.logger)
 
         # iterate over the semantic grid and enumerate all relevant HL actions
@@ -170,7 +170,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # Otherwise remain on the current lane.
 
         # TODO - this needs to come from map
-        desired_vel = BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
+        desired_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 
         # boolean whether the forward-right cell is fast enough (may be empty grid cell)
         is_forward_right_fast = right_lane_action_ind is not None and \
@@ -217,22 +217,22 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         """
         Generate trajectory specification for trajectory planner given a SemanticActionSpec
         :param behavioral_state: processed behavioral state
-        :param reference_route: [nx3] numpy array of (x, y, z, yaw) states
+        :param reference_route: [nx4] numpy array of (x, y, z, yaw) states
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
 
         # Get road details
         road_id = behavioral_state.ego_state.road_localization.road_id
-        road = MapService.get_instance().get_road(road_id)
+
+        # TODO: should be replaced with cached road statistics on future feature
+        frenet = FrenetSerret2DFrame(reference_route[:, [CURVE_X, CURVE_Y]])
 
         # Create target state
         target_latitude = behavioral_state.ego_state.road_localization.intra_road_lat + action_spec.d_rel
         target_longitude = behavioral_state.ego_state.road_localization.road_lon + action_spec.s_rel
 
-        # TODO: adjust to work with different target-object's road id (following the same adjustment in SPECIFY)
-        target_state_x_y_z, target_state_yaw = MapService.get_instance().convert_road_to_global_coordinates(
-            road_id, target_longitude, target_latitude)
-        target_state = np.append(target_state_x_y_z[[C_X, C_Y]], [target_state_yaw, action_spec.v])
+        # DX = 0 assums target falls on the reference route!!
+        target_state = frenet.fstate_to_cstate(np.array([target_longitude, action_spec.v, 0, 0, 0, 0]))
 
         cost_params = SemanticActionsGridPolicy._generate_cost_params(
             road_id=road_id,
@@ -249,7 +249,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         return trajectory_parameters
 
     @staticmethod
-    def _generate_cost_params(road_id: int, ego_size: ObjectSize, reference_route_latitude: float) -> TrajectoryCostParams:
+    def _generate_cost_params(road_id: int, ego_size: ObjectSize, reference_route_latitude: float) -> \
+            TrajectoryCostParams:
         """
         Generate cost specification for trajectory planner
         :param road_id: the road's id - it currently assumes a single road for the whole action.
@@ -304,7 +305,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # TODO: set velocity and acceleration limits properly
         velocity_limits = VELOCITY_LIMITS  # [m/s]. not a constant because it might be learned. TBD
-        lon_acceleration_limits = LON_ACCELERATION_LIMITS
+        lon_acceleration_limits = LON_ACC_LIMITS + np.array([-A_LON_EPS, +A_LON_EPS])
+        lat_acceleration_limits = LAT_ACC_LIMITS
 
         cost_params = TrajectoryCostParams(left_lane_cost=left_lane_cost,
                                            right_lane_cost=right_lane_cost,
@@ -317,7 +319,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                            dist_from_goal_cost=dist_from_goal_cost,
                                            dist_from_goal_lat_factor=dist_from_goal_lat_factor,
                                            velocity_limits=velocity_limits,
-                                           acceleration_limits=lon_acceleration_limits)
+                                           lon_acceleration_limits=lon_acceleration_limits,
+                                           lat_acceleration_limits=lat_acceleration_limits)
 
         return cost_params
 
@@ -341,11 +344,10 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # We set the desired longitudinal distance to be equal to the distance we
         # would have travelled for the planning horizon in the average speed between current and target vel.
-        target_relative_s = BEHAVIORAL_PLANNING_HORIZON * \
-                            0.5 * (behavioral_state.ego_state.v_x + BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT)
+        target_relative_s = SAU.compute_distance_by_velocity_diff(behavioral_state.ego_state.v_x)
         target_relative_d = target_lane_latitude - behavioral_state.ego_state.road_localization.intra_road_lat
 
-        return SemanticActionSpec(t=BEHAVIORAL_PLANNING_HORIZON, v=BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT,
+        return SemanticActionSpec(t=BEHAVIORAL_PLANNING_HORIZON, v=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED,
                                   s_rel=target_relative_s, d_rel=target_relative_d)
 
     @staticmethod
@@ -421,8 +423,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             poly_coefs_d = OptimalControlUtils.QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
 
             # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
-            if SemanticActionsGridPolicy._is_acceleration_in_limits(poly_coefs_s, T, LON_ACCELERATION_LIMITS) and \
-                    SemanticActionsGridPolicy._is_acceleration_in_limits(poly_coefs_d, T, LON_ACCELERATION_LIMITS):
+            if SemanticActionsGridPolicy._is_acceleration_in_limits(poly_coefs_s, T, LON_ACC_LIMITS) and \
+                    SemanticActionsGridPolicy._is_acceleration_in_limits(poly_coefs_d, T, LAT_ACC_LIMITS):
                 return SemanticActionSpec(t=T, v=obj_svT, s_rel=constraints_s[3] - ego_sx0,
                                           d_rel=constraints_d[3] - ego_dx0)
 
@@ -430,28 +432,28 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                        semantic_action.__dict__, behavioral_state.__dict__)
 
     @staticmethod
-    def _is_acceleration_in_limits(poly_coefs: np.ndarray, T: float, acc_limits: np.ndarray) -> bool:
+    def _is_acceleration_in_limits(poly_coefs: np.ndarray, T: float, acc_limits: Limits) -> bool:
         """
-        given a quintic polynomial coefficients vector, and restrictions
+        given coefficients vector of a quintic polynomial x(t), and restrictions
         on the acceleration values, return True if restrictions are met, False otherwise
-        :param poly_coefs: 1D numpy array with s(t), s_dot(t) s_dotdot(t) concatenated
+        :param poly_coefs: 1D numpy array with x(t), x_dot(t) x_dotdot(t) concatenated
         :param T: planning time horizon [sec]
-        :param acc_limits: [min, max] allowed values of acceleration/deceleration [m/sec^2]
+        :param acc_limits: minimal and maximal allowed values of acceleration/deceleration [m/sec^2]
         :return: True if restrictions are met, False otherwise
         """
         # TODO: a(0) and a(T) checks are omitted as they they are provided by the user.
         # compute extrema points, by finding the roots of the 3rd derivative (which is itself a 2nd degree polynomial)
-        acc_suspected_points_s = np.roots(np.polyder(poly_coefs, m=3))
+        acc_suspected_points = np.roots(np.polyder(poly_coefs, m=3))
         acceleration_poly_coefs = np.polyder(poly_coefs, m=2)
-        acc_suspected_values_s = np.polyval(acceleration_poly_coefs, acc_suspected_points_s)
+        acc_suspected_values = np.polyval(acceleration_poly_coefs, acc_suspected_points)
 
         # filter out extrema points out of [0, T]
-        acc_inlimit_suspected_values_s = acc_suspected_values_s[np.greater_equal(acc_suspected_points_s, 0) &
-                                                                np.less_equal(acc_suspected_points_s, T)]
+        acc_inlimit_suspected_values = acc_suspected_values[np.greater_equal(acc_suspected_points, 0) &
+                                                            np.less_equal(acc_suspected_points, T)]
 
         # check if extrema values are within [a_min, a_max] limits
-        return np.all(np.greater_equal(acc_inlimit_suspected_values_s, acc_limits[0]) &
-                      np.less_equal(acc_inlimit_suspected_values_s, acc_limits[1]))
+        return np.all(np.greater_equal(acc_inlimit_suspected_values, acc_limits[LIMIT_MIN]) &
+                      np.less_equal(acc_inlimit_suspected_values, acc_limits[LIMIT_MAX]))
 
     @staticmethod
     def _get_action_ind(semantic_actions: List[SemanticAction], cell: SemanticGridCell):

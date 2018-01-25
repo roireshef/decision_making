@@ -54,8 +54,7 @@ class TrajectoryPlanner(metaclass=ABCMeta):
             to be determined in the behavioral planner, so that any re-planning iteration is consistent in the TP.
         :param state: environment & ego state object
         :param reference_route: a reference route (often the center of lane).
-        :param goal: A 1D numpy array of the desired ego-state to plan towards, represented in current
-        global-coordinate-frame (see EGO_* in planning.utils.types.py for the fields)
+        :param goal: the desired ego-state to plan towards
         :param cost_params: Data object with parameters that specify how to build the planning's cost function
         :return: a tuple of: (samplable represantation of the chosen trajectory, tensor of trajectory alternatives,
          trajectories costs correspond to previous output)
