@@ -190,17 +190,17 @@ def test_fitFrenet_originalRoutePointsAreProjected_errorsAreLowEnough():
 
     position_errors = np.linalg.norm(test_points - new_test_points, axis=1)
 
-    # np.testing.assert_array_less(position_errors, POSITION_ACCURACY_TH,
-    #                             err_msg='FrenetMovingFrame position conversions aren\'t accurate enough')
+    np.testing.assert_array_less(position_errors, POSITION_ACCURACY_TH,
+                                err_msg='FrenetMovingFrame position conversions aren\'t accurate enough')
 
-    # FOR DEBUG PURPOSES
-    import matplotlib.pyplot as plt
-    plt.switch_backend('QT5Agg')
-    fig = plt.figure()
-    p1 = fig.add_subplot(111)
-    p1.plot(route_points[:, 0], route_points[:, 1], '*r')
-    p1.plot(test_points[:, 0], test_points[:, 1], '*g')
-    p1.plot(frenet.O[:, 0], frenet.O[:, 1], '-k')
-
-    fig.show()
-    fig.clear()
+    # # FOR DEBUG PURPOSES
+    # import matplotlib.pyplot as plt
+    # plt.switch_backend('QT5Agg')
+    # fig = plt.figure()
+    # p1 = fig.add_subplot(111)
+    # p1.plot(route_points[:, 0], route_points[:, 1], '*r')
+    # p1.plot(test_points[:, 0], test_points[:, 1], '*g')
+    # p1.plot(frenet.O[:, 0], frenet.O[:, 1], '-k')
+    #
+    # fig.show()
+    # fig.clear()
