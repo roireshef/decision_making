@@ -1,4 +1,7 @@
+from typing import Tuple
+
 import numpy as np
+from scipy.interpolate.fitpack2 import UnivariateSpline
 
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_SPLINE_FIT_ORDER, \
     TINY_CURVATURE
@@ -279,6 +282,54 @@ class FrenetSerret2DFrame:
         return a_s, T_s, N_s, k_s[..., 0], k_s_tag[..., 0]
 
     @staticmethod
+    def _fit_frenet_from_splines(start: float, stop: float, step: float,
+                                 xy_splines: Tuple[UnivariateSpline, UnivariateSpline]) -> \
+            (CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray, np.ndarray):
+        """
+        Utility for the construction of the Frenet-Serret frame. Given a set of 2D points in cartesian-frame, it fits
+        a curve and returns its parameters at the given points (Tangent, Normal, curvature, etc.).
+        Formulas are similar to: dipy.tracking.metrics.frenet_serret() but modified for 2D (rather than 3D), for
+        signed-curvature and for continuity of the Normal vector regardless of the curvature-sign.
+        :param start: [m] start of progress on the curve. The natural value to use here is 0.0
+        :param stop: [m] the end of the curve to use
+        :param step: [m] the constant step-size in meters
+        :param xy_splines: a tuple of the splines objects used for fitting x, y
+        :return:
+        """
+        # TODO: should normalize by step size or is it already normalized? ...
+        # TODO: ... are derivatives of spline-object in meter-units?
+        x = xy_splines[0]
+        x_tag = x.derivative(1)
+        x_tagtag = x.derivative(2)
+        y = xy_splines[0]
+        y_tag = y.derivative(1)
+        y_tagtag = y.derivative(2)
+
+        # parameterization of progress on the curve (in meters)
+        s = np.arange(start, stop, step)
+
+        dxy = np.c_[x_tag(s), y_tag(s)]
+        ddxy = np.c_[x_tagtag(s), y_tagtag(s)]
+
+        dxy_norm = np.linalg.norm(dxy, axis=1)
+
+        # Tangent
+        T = np.divide(dxy, np.c_[dxy_norm])
+
+        # Normal - robust to zero-curvature
+        N = TensorOps.row_wise_normal(T)
+
+        # SIGNED (!) Curvature
+        cross_norm = np.sum(TensorOps.row_wise_normal(dxy) * ddxy, axis=1)
+        k = cross_norm / dxy_norm ** 3
+
+        # derivative of curvature
+        k_tag = np.divide(np.gradient(k), step)
+
+        return T, N, np.c_[k], np.c_[k_tag]
+
+
+    @staticmethod
     def _fit_frenet(xy: CartesianPath2D, ds: float) -> (CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray,
                                                         np.ndarray):
         """
@@ -302,9 +353,6 @@ class FrenetSerret2DFrame:
 
         # Tangent
         T = np.divide(dxy, np.c_[dxy_norm])
-
-        # Derivative of Tangent
-        dT = np.divide(np.gradient(T)[0], ds)
 
         # Normal - robust to zero-curvature
         N = NumpyUtils.row_wise_normal(T)
