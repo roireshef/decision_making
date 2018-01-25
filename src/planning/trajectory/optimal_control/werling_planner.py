@@ -156,13 +156,9 @@ class WerlingPlanner(TrajectoryPlanner):
             poly_d_coefs=poly_coefs[filtered_indices[sorted_filtered_idxs[0]]][6:]
         )
 
-        # slice alternative trajectories by skipping indices - for visualization
-        alternative_ids_skip_range = range(0, len(ctrajectories_filtered),
-                                           max(int(len(ctrajectories_filtered) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
-
         return samplable_trajectory, \
-               ctrajectories_filtered[sorted_filtered_idxs[alternative_ids_skip_range], :, :(C_V + 1)], \
-               filtered_trajectory_costs[sorted_filtered_idxs[alternative_ids_skip_range]]
+               ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
+               filtered_trajectory_costs[sorted_filtered_idxs]
 
     @staticmethod
     def _filter_limits(ctrajectories: CartesianExtendedTrajectories, cost_params: TrajectoryCostParams) -> np.ndarray:

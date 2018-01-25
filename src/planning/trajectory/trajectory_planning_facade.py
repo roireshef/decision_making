@@ -257,9 +257,17 @@ class TrajectoryPlanningFacade(DmModule):
         downsampled_reference_route, _ = CartesianFrame.resample_curve(reference_route,
                                                                        step_size=DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION)
 
+        # slice alternative trajectories by skipping indices - for visualization
+        alternative_ids_skip_range = range(0, len(ctrajectories),
+                                           max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
+
+        # slice alternative trajectories by skipping indices - for visualization
+        sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
+        sliced_costs = costs[alternative_ids_skip_range]
+
         return TrajectoryVisualizationMsg(downsampled_reference_route,
-                                          ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :C_V],
-                                          costs,
+                                          sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :C_V],
+                                          sliced_costs,
                                           predicted_states[0],
                                           predicted_states[1:],
                                           planning_horizon)
