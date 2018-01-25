@@ -62,7 +62,7 @@ def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(pubsub: Pub
 def test_isObjectOnRoad_objectOffOfRoad_False(pubsub: PubSub, ego_state_fix: EgoState):
     """
     :param pubsub: Inter-process communication interface.
-    :param ego_state_fix: Fixture of an ego state compatible with the above two fixtures.
+    :param ego_state_fix: Fixture of an ego state.
 
     Checking functionality of _is_object_on_road for an object that is off the road.
     """
