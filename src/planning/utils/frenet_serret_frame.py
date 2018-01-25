@@ -24,12 +24,13 @@ class FrenetSerret2DFrame:
         :param spline_order: spline order for fitting and re-sampling the original points
         """
         splines, self.O, effective_ds = CartesianFrame.resample_curve(curve=points, step_size=ds,
-                                                             preserve_step_size=True,
-                                                             spline_order=spline_order)
+                                                                      preserve_step_size=True,
+                                                                      spline_order=spline_order)
 
         self.s_max = effective_ds * len(self.O)
         self.ds = effective_ds
-        self.T, self.N, self.k, self.k_tag = FrenetSerret2DFrame._fit_frenet(self.O, ds)
+        self.T, self.N, self.k, self.k_tag = FrenetSerret2DFrame._fit_frenet_from_splines(0.0, self.s_max, self.ds,
+                                                                                          splines)
 
     def get_yaw(self, s: np.ndarray):
         """
@@ -301,7 +302,7 @@ class FrenetSerret2DFrame:
         x = xy_splines[0]
         x_tag = x.derivative(1)
         x_tagtag = x.derivative(2)
-        y = xy_splines[0]
+        y = xy_splines[1]
         y_tag = y.derivative(1)
         y_tagtag = y.derivative(2)
 
@@ -317,10 +318,10 @@ class FrenetSerret2DFrame:
         T = np.divide(dxy, np.c_[dxy_norm])
 
         # Normal - robust to zero-curvature
-        N = TensorOps.row_wise_normal(T)
+        N = NumpyUtils.row_wise_normal(T)
 
         # SIGNED (!) Curvature
-        cross_norm = np.sum(TensorOps.row_wise_normal(dxy) * ddxy, axis=1)
+        cross_norm = np.sum(NumpyUtils.row_wise_normal(dxy) * ddxy, axis=1)
         k = cross_norm / dxy_norm ** 3
 
         # derivative of curvature
