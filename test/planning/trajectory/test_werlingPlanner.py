@@ -124,6 +124,7 @@ def test_werlingPlanner_toyScenario_noException():
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     logger = AV_Logger.get_logger('test_werlingPlanner_twoStaticObjScenario_withCostViz')
+    predictor = RoadFollowingPredictor(logger)
 
     lane_width = 3.6
     num_lanes = 2
@@ -161,27 +162,26 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
 
     v0 = 6
     vT = 10
-    T = 6.8
+    T = 4.8
 
-    ftraj_start_goal = np.array([np.array([ext, v0, 0, start_latitude-reference_route_latitude, 0, 0]),
-                                 np.array([lng+ext, vT, 0, goal_latitude-reference_route_latitude, 0, 0])])
-    ctraj_start_goal = frenet.ftrajectory_to_ctrajectory(ftraj_start_goal)
-
-    predictor = RoadFollowingPredictor(logger)
-
-    goal = ctraj_start_goal[1]
-    goal[C_X] -= 0.001
-    goal[C_Y] += goal_latitude - reference_route_latitude
-
-    for test_idx in range(16):
+    for test_idx in range(1):
 
         if test_idx < 8:
-            obs_poses = np.array([np.array([4, 5.4]), np.array([14, 6.0]), np.array([24, 7.5]), np.array([40, 8.8]),
-                                  np.array([54, 0.8 + test_idx*0.2])])
+            obs_poses = np.array([np.array([4, 5.4]), np.array([14, 6.0]), np.array([24, 7.5]),
+                                  np.array([36, 0.8 + test_idx*0.2])])
             start_ego_lat = start_latitude
         else:
-            obs_poses = np.array([np.array([54, -1.6 + test_idx*0.4])])
+            obs_poses = np.array([np.array([36, -1.6 + test_idx*0.4])])
             start_ego_lat = 3*lane_width / 2
+
+        ftraj_start_goal = np.array([np.array([ext, v0, 0, start_ego_lat - reference_route_latitude, 0, 0]),
+                                     np.array([lng + ext, vT, 0, goal_latitude - reference_route_latitude, 0, 0])])
+        ctraj_start_goal = frenet.ftrajectory_to_ctrajectory(ftraj_start_goal)
+
+        goal = ctraj_start_goal[1]
+        goal[C_X] -= 0.001
+        goal[C_Y] += goal_latitude - reference_route_latitude
+
         obs = []
         for i, pose in enumerate(obs_poses):
             obs.append(DynamicObject(obj_id=i, timestamp=0, x=pose[0], y=pose[1], z=0, yaw=0,
@@ -190,9 +190,9 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
         #obs = list([])
 
         ego = EgoState(obj_id=-1, timestamp=0, x=ctraj_start_goal[0][C_X], y=ctraj_start_goal[0][C_Y], z=0,
-                       yaw=ctraj_start_goal[0][C_YAW],
-                       size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
-                       confidence=1.0, v_x=ctraj_start_goal[0][C_V], v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
+                       yaw=ctraj_start_goal[0][C_YAW], size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
+                       confidence=1.0, v_x=ctraj_start_goal[0][C_V], v_y=0, steering_angle=0.0, acceleration_lon=0.0,
+                       omega_yaw=0.0)
 
         state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
 
