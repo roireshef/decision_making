@@ -21,11 +21,11 @@ class DDSNonTypedMsg(DDSMsg):
                 ser_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': list(val.shape),
                                  'type': 'numpy.ndarray'}
             elif issubclass(type(val), list):
-                ser_dict[key] = {'iterable': list(map(lambda x: x.pubsub_serialize(), val)), 'type': type(val).__name__}
+                ser_dict[key] = {'iterable': list(map(lambda x: x.serialize(), val)), 'type': type(val).__name__}
             elif issubclass(type(val), Enum):
                 ser_dict[key] = {'name': val.name, 'type': type(val).__module__ + '.' + type(val).__name__}
             elif issubclass(type(val), DDSMsg):
-                ser_dict[key] = val.pubsub_serialize()
+                ser_dict[key] = val.serialize()
             else:
                 ser_dict[key] = val
         ser_dict['type'] = self.__module__ + "." + self.__class__.__name__

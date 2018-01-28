@@ -37,11 +37,11 @@ class LogMsg(object):
                     ser_dict[name] = {'array': self_dict[name].flat.__array__().tolist(),
                                       'shape': list(self_dict[name].shape)}
                 elif issubclass(tpe, list):
-                    ser_dict[name] = list(map(lambda x: x.pubsub_serialize(), self_dict[name]))
+                    ser_dict[name] = list(map(lambda x: x.serialize(), self_dict[name]))
                 elif issubclass(tpe, Enum):
                     ser_dict[name] = self_dict[name].name  # save the name of the Enum's value (string)
                 elif inspect.isclass(tpe) and issubclass(tpe, LogMsg):
-                    ser_dict[name] = self_dict[name].pubsub_serialize()
+                    ser_dict[name] = self_dict[name].serialize()
                 # if the member type in the constructor is a primitive - copy as is
                 else:
                     ser_dict[name] = self_dict[name]
