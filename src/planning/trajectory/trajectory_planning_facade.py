@@ -1,5 +1,4 @@
 import time
-import time
 import traceback
 from logging import Logger
 from typing import Dict
@@ -102,7 +101,9 @@ class TrajectoryPlanningFacade(DmModule):
             # TODO: should we publish v_x at all?
             # TODO: add timestamp here.
             # publish results to the lower DM level (Control)
-            self._publish_trajectory(TrajectoryPlanMsg(timestamp=state.ego_state.timestamp, trajectory=trajectory_points, current_speed=state_aligned.ego_state.v_x))
+            self._publish_trajectory(
+                TrajectoryPlanMsg(timestamp=state.ego_state.timestamp, trajectory=trajectory_points,
+                                  current_speed=state_aligned.ego_state.v_x))
             self._last_trajectory = samplable_trajectory
 
             # publish visualization/debug data - based on actual ego localization (original state)!
@@ -175,7 +176,7 @@ class TrajectoryPlanningFacade(DmModule):
             return False
 
         self.logger.info("TrajectoryPlanningFacade time-difference from last planned trajectory is %s",
-                          current_time - self._last_trajectory.timestamp)
+                         current_time - self._last_trajectory.timestamp)
 
         current_expected_state: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
         current_actual_location = np.array([current_ego_state.x, current_ego_state.y, DEFAULT_OBJECT_Z_VALUE])
@@ -192,9 +193,9 @@ class TrajectoryPlanningFacade(DmModule):
         self.logger.info(("TrajectoryPlanningFacade localization stats: "
                           "{desired_localization: %s, actual_localization: %s, desired_velocity: %s, "
                           "actual_velocity: %s, lon_lat_errors: %s, velocity_error: %s}" %
-                         (current_expected_state, current_actual_location, current_expected_state[C_V],
-                          current_ego_state.v_x, distances_in_expected_frame,
-                          current_ego_state.v_x - current_expected_state[C_V])).replace('\n', ' '))
+                          (current_expected_state, current_actual_location, current_expected_state[C_V],
+                           current_ego_state.v_x, distances_in_expected_frame,
+                           current_ego_state.v_x - current_expected_state[C_V])).replace('\n', ' '))
 
         return distances_in_expected_frame[FP_SX] <= NEGLIGIBLE_DISPOSITION_LON and \
                distances_in_expected_frame[FP_DX] <= NEGLIGIBLE_DISPOSITION_LAT
@@ -267,7 +268,8 @@ class TrajectoryPlanningFacade(DmModule):
         sliced_costs = costs[alternative_ids_skip_range]
 
         return TrajectoryVisualizationMsg(downsampled_reference_route,
-                                          sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :C_V],
+                                          sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]),
+                                          :C_V],
                                           sliced_costs,
                                           predicted_states[0],
                                           predicted_states[1:],
