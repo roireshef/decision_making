@@ -5,8 +5,10 @@ from abc import ABCMeta
 class PredictedObjectHasNegativeVelocity(Exception):
     pass
 
+
 class PredictObjectInPastTimes(Exception):
     pass
+
 
 class MsgDeserializationError(Exception):
     pass
