@@ -39,7 +39,7 @@ class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
         return lcm_msg
 
     @classmethod
-    def deserialize(cls, lcmMsg: LcmTrajectoryData):
+    def deserialize(cls, lcmMsg):
         # type: (LcmTrajectoryData) -> TrajectoryPlanMsg
         return cls(lcmMsg.timestamp,
                    np.ndarray(shape=tuple(lcmMsg.trajectory.shape)
