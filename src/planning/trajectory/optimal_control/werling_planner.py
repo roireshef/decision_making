@@ -86,7 +86,8 @@ class WerlingPlanner(TrajectoryPlanner):
         goal_frenet_state: FrenetState = frenet.cstate_to_fstate(goal)
 
         # TODO: Determine desired final state search grid - this should be fixed with introducing different T_s, T_d
-        sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_frenet_state[FS_SX], 0)),
+        sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_frenet_state[FS_SX],
+                                       (goal_frenet_state[FS_SX] + ego_frenet_state[FS_SX]) / 2)),
                                np.min((SX_OFFSET_MAX + goal_frenet_state[FS_SX], (len(frenet.O) - 1) * frenet.ds)),
                                SX_STEPS)
         # sx_range = np.linspace(goal_frenet_state[FS_SX]  / 2, goal_frenet_state[FS_SX], SX_STEPS)
@@ -245,7 +246,9 @@ class WerlingPlanner(TrajectoryPlanner):
         duplicated_ego_frenet_state = np.array([np.array([ego_frenet_state]), ] * ctrajectories.shape[0])
         full_ctrajectories = np.concatenate((duplicated_ego_state, ctrajectories), axis=1)
         full_ftrajectories = np.concatenate((duplicated_ego_frenet_state, ftrajectories), axis=1)
-        lon_jerks, lat_jerks = Jerk.compute_jerks(full_ctrajectories, full_ftrajectories, dt)
+        lon_jerks, lat_jerks = Jerk.compute_jerks(full_ctrajectories,
+                                                  None, #full_ftrajectories,
+                                                  dt)
         jerk_costs = params.lon_jerk_cost * lon_jerks + params.lat_jerk_cost * lat_jerks
 
         ''' TOTAL '''

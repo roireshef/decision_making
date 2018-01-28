@@ -124,8 +124,7 @@ def test_werlingPlanner_toyScenario_noException():
     # fig.show()
     # fig.clear()
 
-@pytest.mark.skip(reason="takes too long.")
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+#@pytest.mark.skip(reason="takes too long.")
 def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     """
     The route is set to route_points by calling to RouteFixture.get_route(). Currently it is a straight line.
@@ -143,7 +142,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
 
     lng = 40
     step = 0.2
-    curvature = 0.2
+    curvature = 0.4
 
     route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step, curvature=curvature)
     ext = 4
@@ -180,7 +179,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
 
     v0 = 6
     vT = 10
-    T = 4.8
+    T = 5.0
 
     for test_idx in range(1):
 
@@ -213,7 +212,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
                                      yaw=frenet.get_yaw(pose[FP_SX]),
                                      size=ObjectSize(4, 1.8, 0), confidence=1.0, v_x=0, v_y=0,
                                      acceleration_lon=0.0, omega_yaw=0.0))
-        #obs = list([])
+        obs = list([])
 
         state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
 
@@ -245,12 +244,9 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
 
         planner = WerlingPlanner(logger, predictor)
 
-        start_time = time.time()
-
-        samplable, ctrajectories, costs, partial_costs = planner.plan(state=state, reference_route=ext_route_points[:, :2],
+        samplable, ctrajectories, costs, partial_costs = planner.plan(state=state,
+                                                                      reference_route=ext_route_points[:, :2],
                                                                       goal=goal, goal_time=T, cost_params=cost_params)
-
-        end_time = time.time() - start_time
 
         obs_costs = np.zeros(width * height)
         for obj in obs:
