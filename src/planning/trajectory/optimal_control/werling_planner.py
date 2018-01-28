@@ -243,12 +243,8 @@ class WerlingPlanner(TrajectoryPlanner):
         ''' JERK COST '''
         # first concatenate the current ego state to ctrajectories
         duplicated_ego_state = np.array([np.array([ext_ego_state]), ] * ctrajectories.shape[0])
-        duplicated_ego_frenet_state = np.array([np.array([ego_frenet_state]), ] * ctrajectories.shape[0])
         full_ctrajectories = np.concatenate((duplicated_ego_state, ctrajectories), axis=1)
-        full_ftrajectories = np.concatenate((duplicated_ego_frenet_state, ftrajectories), axis=1)
-        lon_jerks, lat_jerks = Jerk.compute_jerks(full_ctrajectories,
-                                                  None, #full_ftrajectories,
-                                                  dt)
+        lon_jerks, lat_jerks = Jerk.compute_jerks(full_ctrajectories, dt)
         jerk_costs = params.lon_jerk_cost * lon_jerks + params.lat_jerk_cost * lat_jerks
 
         ''' TOTAL '''

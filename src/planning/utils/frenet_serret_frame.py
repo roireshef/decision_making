@@ -234,7 +234,7 @@ class FrenetSerret2DFrame:
         cos[np.logical_or(np.logical_not(is_curvature_big_enough), cos > 1.0)] = 1.0
 
         # arc length from a_s to the new guess point
-        step = step_sign * np.arccos(cos[:, np.newaxis]) * np.abs(signed_radius)
+        step = step_sign * np.arccos(cos) * np.abs(signed_radius)
         s_approx[is_curvature_big_enough] += step[is_curvature_big_enough]  # next s_approx of the current point
 
         a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(s_approx)

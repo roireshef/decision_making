@@ -158,12 +158,8 @@ class SigmoidStaticBoxObstacle(SigmoidBoxObstacle):
 class Jerk:
 
     @staticmethod
-    def compute_jerks(ctrajectories: CartesianTrajectories, ftrajectories: FrenetTrajectories,
-                      dt: float) -> (np.array, np.array):
-        if ftrajectories is not None:
-            lon_jerks = np.sum(np.square(np.diff(ftrajectories[:, :, FS_SA], axis=1)), axis=1) / (dt*dt)
-        else:
-            lon_jerks = np.sum(np.square(np.diff(ctrajectories[:, :, C_A], axis=1)), axis=1) / (dt*dt)
+    def compute_jerks(ctrajectories: CartesianTrajectories, dt: float) -> (np.array, np.array):
+        lon_jerks = np.sum(np.square(np.diff(ctrajectories[:, :, C_A], axis=1)), axis=1) / (dt*dt)
         lat_jerks = np.sum(np.square(np.diff(ctrajectories[:, :, C_K] * np.square(ctrajectories[:, :, C_V]), axis=1)),
                            axis=1) / (dt*dt)
         return lon_jerks, lat_jerks
