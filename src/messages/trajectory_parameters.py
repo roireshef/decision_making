@@ -61,14 +61,14 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
                 length and width).
                 This can be used to keep a certain margin from any object, specifically useful when
                 treating the ego vehicle as a point in space, and dilating the other objects by it's width.
-        :param left_lane_cost: defines the sigmoid cost of the left-side of the current lane
-        :param right_lane_cost: defines the sigmoid cost of the right-side of the current lane
-        :param left_road_cost: defines the sigmoid cost of the left-side of the road
-        :param right_road_cost: defines the sigmoid cost of the right-side of the road
-        :param left_shoulder_cost: defines the sigmoid cost of the left-shoulder of the road (physical boundary)
-        :param right_shoulder_cost: defines the sigmoid cost of the right-shoulder of the road (physical boundary)
         :param obstacle_cost_x: defines the longitudinal sigmoid cost of obstacles
         :param obstacle_cost_y: defines the lateral sigmoid cost of obstacles
+        :param left_lane_cost: defines the sigmoid cost of the left-side of the current lane
+        :param right_lane_cost: defines the sigmoid cost of the right-side of the current lane
+        :param left_shoulder_cost: defines the sigmoid cost of the left-shoulder of the road (physical boundary)
+        :param right_shoulder_cost: defines the sigmoid cost of the right-shoulder of the road (physical boundary)
+        :param left_road_cost: defines the sigmoid cost of the left-side of the road
+        :param right_road_cost: defines the sigmoid cost of the right-side of the road
         :param dist_from_goal_lon_sq_cost: cost of distance from the target longitude is C(x) = a*x^2, this is a.
         :param dist_from_goal_lat_sq_cost: cost of distance from the target latitude is C(x) = a*x^2, this is a.
         :param dist_from_ref_sq_cost: if cost of distance from the reference route is C(x) = a*x^2, this is a.
