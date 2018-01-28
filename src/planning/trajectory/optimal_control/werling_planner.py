@@ -14,8 +14,9 @@ from decision_making.src.planning.trajectory.optimal_control.optimal_control_uti
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianExtendedTrajectory, \
-    CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, FrenetState, C_A, C_K, FS_1D_LEN, FS_X
-from decision_making.src.planning.types import FrenetTrajectories, CartesianExtendedTrajectories, FrenetPoint
+    CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, FrenetState2D, C_A, C_K, FS_1D_LEN, FS_X, \
+    FrenetTrajectory2D, FrenetState1D, FrenetTrajectory1D
+from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories, FrenetPoint
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
@@ -43,20 +44,22 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         # This check is done in relative-to-ego units
         assert max(relative_time_points) < self.lon_plan_horizon
 
-        # assign values from <time_points> in s polynomial
+        # assign values from <time_points> in s-axis polynomial
         fstates_s = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), relative_time_points)[0]
-        # assign values from <time_points> in d polynomial
-        in_range_relative_time_points=relative_time_points[relative_time_points < self.lat_plan_horizon]
-        fstates_d = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]), in_range_relative_time_points)[0]
+
+        # assign values from <time_points> in d-axis polynomial
+        in_range_relative_time_points = relative_time_points[relative_time_points <= self.lat_plan_horizon]
+        partial_fstates_d = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]),
+                                                                      in_range_relative_time_points)[0]
 
         # Expand lateral solution to the size of the longitudinal solution with its final positions replicated
         # NOTE: we assume that velocity and accelerations = 0 !!
-        time_samples_diff = relative_time_points.size - in_range_relative_time_points.size
-        fstates_d = np.concatenate((fstates_d, np.zeros((time_samples_diff, FS_1D_LEN))))
-        final_lat_position = fstates_d[in_range_relative_time_points.size - 1, FS_X]
-        fstates_d[in_range_relative_time_points.size:, FS_X] = final_lat_position
+        full_fstates_d = WerlingPlanner.extrapolate_solution_1d(
+            fstates=partial_fstates_d,
+            length=relative_time_points.size - in_range_relative_time_points.size,
+            override_values=np.array([np.NaN, 0.0, 0.0]))
 
-        fstates = np.hstack((fstates_s, fstates_d))
+        fstates = np.hstack((fstates_s, full_fstates_d))
 
         # project from road coordinates to cartesian coordinate frame
         cstates = self.frenet_frame.ftrajectory_to_ctrajectory(fstates)
@@ -85,7 +88,7 @@ class WerlingPlanner(TrajectoryPlanner):
         ego_cartesian_state = np.array([state.ego_state.x, state.ego_state.y, state.ego_state.yaw, state.ego_state.v_x,
                                         state.ego_state.acceleration_lon, state.ego_state.curvature])
 
-        ego_frenet_state: FrenetState = frenet.cstate_to_fstate(ego_cartesian_state)
+        ego_frenet_state: FrenetState2D = frenet.cstate_to_fstate(ego_cartesian_state)
 
         # THIS HANDLES CURRENT STATES WHERE THE VEHICLE IS STANDING STILL
         if np.any(np.isnan(ego_frenet_state)):
@@ -98,7 +101,7 @@ class WerlingPlanner(TrajectoryPlanner):
         fconstraints_t0 = FrenetConstraints.from_state(ego_frenet_state)
 
         # define constraints for the terminal (goal) state
-        goal_frenet_state: FrenetState = frenet.cstate_to_fstate(goal)
+        goal_frenet_state: FrenetState2D = frenet.cstate_to_fstate(goal)
 
         # TODO: Determine desired final state search grid - this should be fixed with introducing different T_s, T_d
         sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_frenet_state[FS_SX], 0)),
@@ -211,7 +214,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return np.argwhere(conforms).flatten()
 
     @staticmethod
-    def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories, state: State,
+    def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,
                       goal_in_frenet: FrenetPoint, params: TrajectoryCostParams, global_time_samples: np.ndarray,
                       predictor: Predictor) -> np.ndarray:
         """
@@ -297,8 +300,24 @@ class WerlingPlanner(TrajectoryPlanner):
         return poly
 
     @staticmethod
+    def extrapolate_solution_1d(fstates: FrenetTrajectory1D, length: int, override_values: FrenetState1D):
+        """
+        Given a partial 1D trajectory, this function appends to the end of it an extrapolation-block of specified length
+        with values taken from the trajectory's last state (or values-overrides).
+        :param fstates: the 1D trajectory to extrapolate
+        :param length: length of extrapolation block (number of replicates)
+        :param override_values: 1D frenet state vector (or NaN values whereas actual values are to be taken from the
+        last point in the partial 1D trajectory)
+        :return:
+        """
+        extrapolation_vector = override_values[np.isnan(override_values)] = fstates[-1, np.isnan(override_values)]
+        extrapolation_block = np.repeat(extrapolation_vector, repeats=length)
+
+        return np.concatenate((fstates, extrapolation_block))
+
+    @staticmethod
     def _solve_optimization(fconst_0: FrenetConstraints, fconst_t: FrenetConstraints, T_s: float, T_d_vals: np.ndarray,
-                            dt: float) -> Tuple[FrenetTrajectories, np.ndarray, np.ndarray]:
+                            dt: float) -> Tuple[FrenetTrajectories2D, np.ndarray, np.ndarray]:
         """
         Solves the two-point boundary value problem, given a set of constraints over the initial state
         and a set of constraints over the terminal state. The solution is a cartesian product of the solutions returned
@@ -342,6 +361,7 @@ class WerlingPlanner(TrajectoryPlanner):
             # Expand lateral solutions to the size of the longitudinal solutions with its final positions replicated
             # NOTE: we assume that final velocities and accelerations = 0 !!
             time_samples_diff = lon_time_samples.size - lat_time_samples.size
+
             solutions_d_td = np.concatenate((solutions_d_td, np.zeros((DX_STEPS, time_samples_diff, FS_1D_LEN))),
                                             axis=1)
             final_lat_positions = solutions_d_td[:, lat_time_samples.size - 1, FS_X]
