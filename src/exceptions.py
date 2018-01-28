@@ -2,17 +2,13 @@ import six
 from abc import ABCMeta
 
 
-class DelayBetweenTpAndControllerTooLong(Exception):
-    pass
-
-class NegativeDelayBetweenTpAndController(Exception):
-    pass
-
 class PredictedObjectHasNegativeVelocity(Exception):
     pass
 
+
 class PredictObjectInPastTimes(Exception):
     pass
+
 
 class MsgDeserializationError(Exception):
     pass
