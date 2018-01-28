@@ -142,7 +142,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
 
     lng = 40
     step = 0.2
-    curvature = 0.0
+    curvature = 0.5
 
     route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step, curvature=curvature)
     ext = 4
@@ -161,7 +161,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     start_latitude = lane_width / 2
     goal_latitude = reference_route_latitude
     target_lane = int(goal_latitude/lane_width)
-    start_ego_lat = 3*lane_width / 2  # start_latitude
+    start_ego_lat = start_latitude
     obs_poses = np.array([])
 
     xrange = (route_points[0, C_X], route_points[-1, C_X])
