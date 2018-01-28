@@ -15,7 +15,7 @@ from decision_making.src.planning.trajectory.trajectory_planner import Trajector
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianExtendedTrajectory, \
     CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, FrenetState2D, C_A, C_K, FrenetState1D, \
-    FrenetTrajectories1D
+    FrenetTrajectory1D
 from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories, FrenetPoint
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
@@ -55,13 +55,12 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
 
         # Expand lateral solution to the size of the longitudinal solution with its final positions replicated
         # NOTE: we assume that velocity and accelerations = 0 !!
-        full_fstates_d = WerlingPlanner.extrapolate_solution_1d(
-            fstates=np.array([partial_fstates_d]),
-            length=relative_time_points.size - in_range_relative_time_points.size,
+        fstates_extrapolation_d = WerlingPlanner.repeat_1d_state(
+            fstate=partial_fstates_d[-1],
+            repeats=relative_time_points.size - in_range_relative_time_points.size,
             override_values=np.zeros(3),
-            override_mask=np.array([0, 1, 1])
-        )[0]
-
+            override_mask=np.array([0, 1, 1]))
+        full_fstates_d = np.concatenate((partial_fstates_d, fstates_extrapolation_d), axis=-2)
         fstates = np.hstack((fstates_s, full_fstates_d))
 
         # project from road coordinates to cartesian coordinate frame
@@ -301,23 +300,28 @@ class WerlingPlanner(TrajectoryPlanner):
         return poly
 
     @staticmethod
-    def extrapolate_solution_1d(fstates: FrenetTrajectories1D, length: int, override_values: FrenetState1D,
-                                override_mask: FrenetState1D):
+    def repeat_1d_state(fstate: FrenetState1D, repeats: int,
+                        override_values: FrenetState1D, override_mask: FrenetState1D):
+        """please see documentation in used method"""
+        return WerlingPlanner.repeat_1d_states(fstate[np.newaxis,:], repeats, override_values, override_mask)[0]
+
+    @staticmethod
+    def repeat_1d_states(fstates: FrenetTrajectory1D, repeats: int,
+                         override_values: FrenetState1D, override_mask: FrenetState1D):
         """
-        Given a partial 1D trajectory, this function appends to the end of it an extrapolation-block of specified length
-        with values taken from the trajectory's last state (or values-overrides).
-        :param fstates: the set of 1D trajectories to extrapolate
-        :param length: length of extrapolation block (number of replicates)
-        :param override_values: 1D frenet state vector (or NaN values whereas actual values are to be taken from the
-        last point in the partial 1D trajectory)
-        :param override_mask: mask vector for <override_values>. On cells where mask values == 1, override will apply.
+        Given an array of 1D-frenet-states [x, x_dot, x_dotdot], this function builds a block of replicates of each one
+        of them <repeats> times while giving the option for overriding values (part or all) their values.
+        :param fstates: the set of 1D-frenet-states to repeat
+        :param repeats: length of repeated block (number of replicates for each state)
+        :param override_values: 1D-frenet-state vector of values to override while repeating every state in <fstates>
+        :param override_mask: mask vector for <override_values>. Where mask values == 1, override will apply, whereas
+        mask value of 0 will incur no value override
         :return:
         """
-        extrapolation_vector = np.logical_not(override_mask) * fstates[:, -1, :] + \
-                               override_mask * np.repeat(override_values[np.newaxis, :], repeats=fstates.shape[0], axis=0)
-        extrapolation_block = np.repeat(extrapolation_vector[:, np.newaxis, :], repeats=length, axis=1)
-
-        return np.concatenate((fstates, extrapolation_block), axis=-2)
+        repeating_slice = np.logical_not(override_mask) * fstates + \
+                          override_mask * np.repeat(override_values[np.newaxis, :], repeats=fstates.shape[0], axis=0)
+        repeated_block = np.repeat(repeating_slice[:, np.newaxis, :], repeats=repeats, axis=1)
+        return repeated_block
 
     @staticmethod
     def _solve_optimization(fconst_0: FrenetConstraints, fconst_t: FrenetConstraints, T_s: float, T_d_vals: np.ndarray,
@@ -362,20 +366,23 @@ class WerlingPlanner(TrajectoryPlanner):
 
             # solve for dimension d (with time-horizon T_d)
             partial_poly_d = WerlingPlanner._get_werling_poly(constraints_d, T_d)
+
+            # generate the trajectories for the polynomials of dimension d - within the horizon T_d
             partial_solutions_d = OC.QuinticPoly1D.polyval_with_derivatives(partial_poly_d, time_samples_d)
 
             # Expand lateral solutions (dimension d) to the size of the longitudinal solutions (dimension s)
             # with its final positions replicated. NOTE: we assume that final (dim d) velocities and accelerations = 0 !
-            full_solutions_d = WerlingPlanner.extrapolate_solution_1d(
-                fstates=partial_solutions_d,
-                length=time_samples_s.size - time_samples_d.size,
+            solutions_extrapolation_d = WerlingPlanner.repeat_1d_states(
+                fstates=partial_solutions_d[:, -1, :],
+                repeats=time_samples_s.size - time_samples_d.size,
                 override_values=np.zeros(3),
                 override_mask=np.array([0, 1, 1])
             )
+            full_horizon_solutions_d = np.concatenate((partial_solutions_d, solutions_extrapolation_d), axis=-2)
 
             # append polynomials, trajectories and time-horizons to the dimensions d buffers
             poly_d = np.vstack((poly_d, partial_poly_d))
-            solutions_d = np.vstack((solutions_d, full_solutions_d))
+            solutions_d = np.vstack((solutions_d, full_horizon_solutions_d))
             horizons_d = np.append(horizons_d, np.repeat(T_d, len(constraints_d)))
 
         # generate 2D trajectories by Cartesian product of {horizons, polynomials, and 1D trajectories}
