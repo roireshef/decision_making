@@ -142,7 +142,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
 
     lng = 40
     step = 0.2
-    curvature = 0.4
+    curvature = 0.0
 
     route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step, curvature=curvature)
     ext = 4
@@ -161,6 +161,8 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     start_latitude = lane_width / 2
     goal_latitude = reference_route_latitude
     target_lane = int(goal_latitude/lane_width)
+    start_ego_lat = 3*lane_width / 2  # start_latitude
+    obs_poses = np.array([])
 
     xrange = (route_points[0, C_X], route_points[-1, C_X])
     yrange = (np.min(route_points[:, C_Y]) - reference_route_latitude - ROAD_SHOULDERS_WIDTH,
@@ -181,15 +183,22 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     vT = 10
     T = 5.0
 
-    for test_idx in range(1):
+    test_safety = False
+    test_jerk = True
 
-        if test_idx < 8:
-            obs_poses = np.array([np.array([4, 0]), np.array([14, 0.6]), np.array([24, 2.1]),
-                                  np.array([36, -4.6 + test_idx*0.2])])
-            start_ego_lat = start_latitude
-        else:
-            obs_poses = np.array([np.array([36, -1.6 + test_idx*0.4])])
-            start_ego_lat = 3*lane_width / 2
+    for test_idx in range(4, 5):
+
+        if test_safety:
+            if test_idx < 8:
+                obs_poses = np.array([np.array([4, 0]), np.array([14, 0.6]), np.array([24, 2.1]),
+                                      np.array([36, -4.6 + test_idx*0.2])])
+                start_ego_lat = start_latitude
+            else:
+                obs_poses = np.array([np.array([36, -1.6 + test_idx*0.4])])
+                start_ego_lat = 3*lane_width / 2
+
+        if test_jerk:
+            T = 3.6 + test_idx*0.2
 
         ftraj_start_goal = np.array([np.array([ext, v0, 0, start_ego_lat - reference_route_latitude, 0, 0]),
                                      np.array([lng + ext, vT, 0, goal_latitude - reference_route_latitude, 0, 0])])
