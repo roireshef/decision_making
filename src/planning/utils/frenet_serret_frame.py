@@ -252,7 +252,8 @@ class FrenetSerret2DFrame:
         taken from the nearest point in self.O (will have shape of D)
         k'(s) is the derivative of the curvature (by distance d(s))
         """
-        assert np.all(np.bitwise_and(0 <= s, s <= self.s_max))
+        assert np.all(np.bitwise_and(0 <= s, s <= self.s_max)), \
+            "Cannot extrapolate, desired progress is out of the curve."
 
         progress_ds = s / self.ds
         O_idx = np.round(progress_ds).astype(np.int)
