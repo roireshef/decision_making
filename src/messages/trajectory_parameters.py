@@ -36,15 +36,20 @@ class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
 
 
 class TrajectoryCostParams(PUBSUB_MSG_IMPL):
-    def __init__(self, left_lane_cost: SigmoidFunctionParams, right_lane_cost: SigmoidFunctionParams,
-                 left_road_cost: SigmoidFunctionParams, right_road_cost: SigmoidFunctionParams,
-                 left_shoulder_cost: SigmoidFunctionParams, right_shoulder_cost: SigmoidFunctionParams,
+    def __init__(self,
                  obstacle_cost_x: SigmoidFunctionParams,
                  obstacle_cost_y: SigmoidFunctionParams,
+                 left_lane_cost: SigmoidFunctionParams,
+                 right_lane_cost: SigmoidFunctionParams,
+                 left_shoulder_cost: SigmoidFunctionParams,
+                 right_shoulder_cost: SigmoidFunctionParams,
+                 left_road_cost: SigmoidFunctionParams,
+                 right_road_cost: SigmoidFunctionParams,
                  dist_from_goal_cost: SigmoidFunctionParams,
                  dist_from_goal_lat_factor: float,
                  velocity_limits: Limits,
-                 lon_acceleration_limits: Limits, lat_acceleration_limits: Limits):
+                 lon_acceleration_limits: Limits,
+                 lat_acceleration_limits: Limits):
         """
         This class holds all the parameters used to build the cost function of the trajectory planner.
         It is dynamically set and sent by the behavioral planner.

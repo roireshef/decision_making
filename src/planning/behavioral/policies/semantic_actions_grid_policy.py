@@ -302,14 +302,14 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                     offset=GOAL_SIGMOID_OFFSET)
         dist_from_goal_lat_factor = DEVIATION_FROM_GOAL_LAT_FACTOR
 
-        cost_params = TrajectoryCostParams(left_lane_cost=left_lane_cost,
+        cost_params = TrajectoryCostParams(obstacle_cost_x=objects_cost_x,
+                                           obstacle_cost_y=objects_cost_y,
+                                           left_lane_cost=left_lane_cost,
                                            right_lane_cost=right_lane_cost,
-                                           left_road_cost=left_road_cost,
-                                           right_road_cost=right_road_cost,
                                            left_shoulder_cost=left_shoulder_cost,
                                            right_shoulder_cost=right_shoulder_cost,
-                                           obstacle_cost_x=objects_cost_x,
-                                           obstacle_cost_y=objects_cost_y,
+                                           left_road_cost=left_road_cost,
+                                           right_road_cost=right_road_cost,
                                            dist_from_goal_cost=dist_from_goal_cost,
                                            dist_from_goal_lat_factor=dist_from_goal_lat_factor,
                                            velocity_limits=VELOCITY_LIMITS,
