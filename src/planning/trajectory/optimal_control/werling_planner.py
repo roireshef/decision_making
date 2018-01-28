@@ -37,7 +37,8 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
         """See base method for API. In this specific representation of the trajectory, we sample from s-axis polynomial
-        and partially from d-axis polynomial and extrapolate the d-axis to conform to the trajectory's total duration"""
+        (longitudinal) and partially (up to some time-horizon cached in self.lon_plan_horizon) from d-axis polynomial
+        (lateral) and extrapolate the rest of the states in d-axis to conform to the trajectory's total duration"""
 
         relative_time_points = time_points - self.timestamp
 
