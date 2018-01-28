@@ -6,7 +6,7 @@ import numpy as np
 from decision_making.src.exceptions import NoValidTrajectoriesFound
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, TRAJECTORY_OBSTACLE_LOOKAHEAD, SX_OFFSET_MIN, SX_OFFSET_MAX, \
-    TD_STEPS, LAT_ACC_LIMITS, DEVIATION_FROM_GOAL_LAT_FACTOR
+    TD_STEPS, LAT_ACC_LIMITS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
@@ -16,7 +16,7 @@ from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianExtendedTrajectory, \
     CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, FrenetState2D, C_A, C_K, FrenetState1D, \
     FrenetTrajectory1D
-from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories, FrenetPoint
+from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
@@ -49,20 +49,26 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         # assign values from <time_points> in s-axis polynomial
         fstates_s = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), relative_time_points)[0]
 
-        # assign values from <time_points> in d-axis polynomial
-        in_range_relative_time_points = relative_time_points[relative_time_points <= self.lat_plan_horizon]
-        partial_fstates_d = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]),
-                                                                      in_range_relative_time_points)[0]
+        fstates_d = np.empty(shape=np.append(time_points.shape, 3))
+
+        is_within_horizon_d = relative_time_points <= self.lat_plan_horizon
+
+        fstates_d[is_within_horizon_d] = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]),
+                                                                                   relative_time_points[is_within_horizon_d])
 
         # Expand lateral solution to the size of the longitudinal solution with its final positions replicated
         # NOTE: we assume that velocity and accelerations = 0 !!
-        fstates_extrapolation_d = WerlingPlanner.repeat_1d_state(
-            fstate=partial_fstates_d[-1],
-            repeats=relative_time_points.size - in_range_relative_time_points.size,
+        end_of_horizon_state_d = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]),
+                                                                           np.array([self.lat_plan_horizon]))[0]
+        extrapolation_state_d = WerlingPlanner.repeat_1d_state(
+            fstate=end_of_horizon_state_d,
+            repeats=1,
             override_values=np.zeros(3),
             override_mask=np.array([0, 1, 1]))
-        full_fstates_d = np.concatenate((partial_fstates_d, fstates_extrapolation_d), axis=-2)
-        fstates = np.hstack((fstates_s, full_fstates_d))
+
+        fstates_d[np.logical_not(is_within_horizon_d)] = extrapolation_state_d
+
+        fstates = np.hstack((fstates_s, fstates_d))
 
         # project from road coordinates to cartesian coordinate frame
         cstates = self.frenet_frame.ftrajectory_to_ctrajectory(fstates)
@@ -219,7 +225,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
     @staticmethod
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,
-                      goal_in_frenet: FrenetState, params: TrajectoryCostParams, global_time_samples: np.ndarray,
+                      goal_in_frenet: FrenetState2D, params: TrajectoryCostParams, global_time_samples: np.ndarray,
                       predictor: Predictor) -> np.ndarray:
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one

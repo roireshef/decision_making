@@ -1,8 +1,7 @@
-import numpy as np
 import time
+from unittest.mock import patch
 
-from decision_making.src.global_constants import EGO_HEIGHT, EGO_WIDTH, EGO_LENGTH, DEFAULT_ACCELERATION, \
-    DEFAULT_CURVATURE, TD_STEPS
+import numpy as np
 import pytest
 
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_K_PARAM, LATERAL_SAFETY_MARGIN_FROM_OBJECT, \
@@ -10,27 +9,30 @@ from decision_making.src.global_constants import OBSTACLE_SIGMOID_K_PARAM, LATER
     ROAD_SIGMOID_K_PARAM, EGO_LENGTH, EGO_WIDTH, \
     SHOULDER_SIGMOID_OFFSET, SHOULDER_SIGMOID_K_PARAM, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LANE_SIGMOID_K_PARAM, \
-    DEVIATION_FROM_GOAL_LAT_FACTOR, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET
+    DEVIATION_FROM_GOAL_LAT_FACTOR, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, TD_STEPS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
-from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
-from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, CartesianPoint2D, C_Y
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW
+from decision_making.src.planning.types import C_Y
+from decision_making.src.planning.utils.math import Math
+from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidDynamicBoxObstacle, \
     WerlingVisualizer, PlottableSigmoidStaticBoxObstacle
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
-from decision_making.src.planning.utils.math import Math
-from mapping.test.model.testable_map_fixtures import testable_map_api
 from mapping.src.transformations.geometry_utils import CartesianFrame
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
 
-from unittest.mock import patch
 
+mock_td_steps = 5
 
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+# @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+# @patch('decision_making.test.planning.trajectory.test_werlingPlanner.TD_STEPS', mock_td_steps)
+# @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.TD_STEPS', mock_td_steps)
+# @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.SX_STEPS', 5)
+# @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.DX_STEPS', 5)
 def test_werlingPlanner_toyScenario_noException():
     logger = AV_Logger.get_logger('test_werlingPlanner_toyScenario_noException')
     route_points = CartesianFrame.add_yaw_and_derivatives(
@@ -54,9 +56,9 @@ def test_werlingPlanner_toyScenario_noException():
 
     obs = list([
         DynamicObject(obj_id=0, timestamp=950*10e6, x=pos1[0], y=pos1[1], z=0, yaw=yaw1, size=ObjectSize(1.5, 0.5, 0),
-                      confidence=1.0, v_x=2.2, v_y=0, acceleration_lon=0.0, omega_yaw=0.0),
+                      confidence=1.0, v_x=0, v_y=0, acceleration_lon=0.0, omega_yaw=0.0),
         DynamicObject(obj_id=0, timestamp=950*10e6, x=pos2[0], y=pos2[1], z=0, yaw=yaw2, size=ObjectSize(1.5, 0.5, 0),
-                      confidence=1.0, v_x=1.1, v_y=0, acceleration_lon=0.0, omega_yaw=0.0)
+                      confidence=1.0, v_x=0, v_y=0, acceleration_lon=0.0, omega_yaw=0.0)
     ])
 
     ego = EgoState(obj_id=-1, timestamp=1000*10e6, x=0, y=0, z=0, yaw=0, size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
@@ -98,8 +100,10 @@ def test_werlingPlanner_toyScenario_noException():
     # p2 = fig.add_subplot(212)
     # plt.title('Chosen trajectory')
     # time_samples = np.arange(0.0, Ts, 0.1) + ego.timestamp_in_sec
-    # plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost.k,
-    #                                                     cost_params.obstacle_cost.offset, time_samples, predictor)
+    # plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost_x.k,
+    #                                                     np.array([cost_params.obstacle_cost_x.offset,
+    #                                                               cost_params.obstacle_cost_y.offset]),
+    #                                                     time_samples, predictor)
     #                  for o in state.dynamic_objects]
     # WerlingVisualizer.plot_obstacles(p1, plottable_obs)
     # WerlingVisualizer.plot_obstacles(p2, plottable_obs)
@@ -107,7 +111,7 @@ def test_werlingPlanner_toyScenario_noException():
     # WerlingVisualizer.plot_route(p2, route_points[:, :2])
     #
     # WerlingVisualizer.plot_best(p2, ctrajectories[0])
-    # WerlingVisualizer.plot_alternatives(p1, ctrajectories)
+    # WerlingVisualizer.plot_alternatives(p1, ctrajectories, costs)
     #
     # print(costs)
     # print('\n minimal is: ', np.min(costs))
