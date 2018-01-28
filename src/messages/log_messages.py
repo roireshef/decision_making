@@ -1,3 +1,4 @@
+import ast
 import inspect
 import traceback
 from builtins import Exception
@@ -9,11 +10,21 @@ import numpy as np
 from decision_making.src.exceptions import MsgDeserializationError, MsgSerializationError
 
 
-class LogTypedMsg(object):
+class LogMsg(object):
+
     @staticmethod
-    def serialize(obj: object) -> dict:
+    def convert_message_to_dict(message: str) -> dict:
         """
-        used to create the dds message
+        Convert message string from log to dictionary that can be deserialized to the message object
+        :param message:
+        :return:
+        """
+        return ast.literal_eval(message)
+
+    @staticmethod
+    def pubsub_serialize(obj: object) -> dict:
+        """
+        Serializes the object to PubSub dictionary
         :return: dict containing all the fields of the class
         """
         self_dict = obj.__dict__
@@ -26,11 +37,11 @@ class LogTypedMsg(object):
                     ser_dict[name] = {'array': self_dict[name].flat.__array__().tolist(),
                                       'shape': list(self_dict[name].shape)}
                 elif issubclass(tpe, list):
-                    ser_dict[name] = list(map(lambda x: x.serialize(), self_dict[name]))
+                    ser_dict[name] = list(map(lambda x: x.pubsub_serialize(), self_dict[name]))
                 elif issubclass(tpe, Enum):
                     ser_dict[name] = self_dict[name].name  # save the name of the Enum's value (string)
-                elif inspect.isclass(tpe) and issubclass(tpe, LogTypedMsg):
-                    ser_dict[name] = self_dict[name].serialize()
+                elif inspect.isclass(tpe) and issubclass(tpe, LogMsg):
+                    ser_dict[name] = self_dict[name].pubsub_serialize()
                 # if the member type in the constructor is a primitive - copy as is
                 else:
                     ser_dict[name] = self_dict[name]
@@ -42,7 +53,7 @@ class LogTypedMsg(object):
     @staticmethod
     def deserialize(class_type: Type, message: dict):
         """
-        used to create an instance of cls represented by the dds message
+        Creates an instance of cls represented by the log message
         :param message: dict containing all fields of the class
         :return: object of type cls, constructed with the arguments from message
         """
@@ -56,8 +67,8 @@ class LogTypedMsg(object):
                     deser_dict[name] = tpe[message[name]['name']]
                 elif issubclass(tpe, List):
                     deser_dict[name] = list(map(lambda d: tpe.__args__[0].deserialize(d), message[name]['iterable']))
-                elif issubclass(tpe, LogTypedMsg):
-                    deser_dict[name] = LogTypedMsg.deserialize(tpe, message[name])
+                elif issubclass(tpe, LogMsg):
+                    deser_dict[name] = LogMsg.deserialize(tpe, message[name])
                 else:
                     deser_dict[name] = message[name]
             return class_type(**deser_dict)
