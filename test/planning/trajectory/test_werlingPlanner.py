@@ -124,7 +124,7 @@ def test_werlingPlanner_toyScenario_noException():
     # fig.show()
     # fig.clear()
 
-#@pytest.mark.skip(reason="takes too long.")
+@pytest.mark.skip(reason="takes too long.")
 def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     """
     The route is set to route_points by calling to RouteFixture.get_route(). Currently it is a straight line.
@@ -186,7 +186,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     test_safety = False
     test_jerk = True
 
-    for test_idx in range(4, 5):
+    for test_idx in range(8):
 
         if test_safety:
             if test_idx < 8:
