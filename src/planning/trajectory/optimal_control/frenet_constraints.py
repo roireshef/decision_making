@@ -2,6 +2,9 @@ from typing import Union
 import numpy as np
 from numbers import Number
 
+from decision_making.src.planning.types import FrenetState
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
+
 
 class FrenetConstraints:
     """
@@ -24,6 +27,13 @@ class FrenetConstraints:
         self._dx = np.array(dx)
         self._dv = np.array(dv)
         self._da = np.array(da)
+
+    def __str__(self):
+        return "FrenetConstraints(%s)" % ["%s: %s" % (k, NumpyUtils.str_log(v)) for k, v in self.__dict__.items()]
+
+    @classmethod
+    def from_state(cls, state: FrenetState):
+        return cls(state[0], state[1], state[2], state[3], state[4], state[5])
 
     def get_grid_s(self) -> np.ndarray:
         """

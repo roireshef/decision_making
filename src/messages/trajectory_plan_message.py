@@ -1,12 +1,13 @@
 import numpy as np
 
-from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryData
 from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
-from decision_making.src.messages.str_serializable import StrSerializable
+from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryData
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 
-class TrajectoryPlanMsg(StrSerializable):
+class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
     def __init__(self, timestamp: int, trajectory: np.ndarray, current_speed: float):
+        # type: (np.ndarray, float) -> TrajectoryPlanMsg
         """
         A discrete representation of the trajectory to follow - passed from TrajectoryPlanner to Controller
         :param timestamp: ego's timestamp on which the trajectory is based. Used for giving the controller a reference
@@ -22,7 +23,8 @@ class TrajectoryPlanMsg(StrSerializable):
         self.trajectory = trajectory
         self.current_speed = current_speed
 
-    def serialize(self) -> LcmTrajectoryData:
+    def serialize(self):
+        # type: () -> LcmTrajectoryData
         lcm_msg = LcmTrajectoryData()
 
         lcm_msg.timestamp = self.timestamp
@@ -38,6 +40,7 @@ class TrajectoryPlanMsg(StrSerializable):
 
     @classmethod
     def deserialize(cls, lcmMsg: LcmTrajectoryData):
+        # type: (LcmTrajectoryData) -> TrajectoryPlanMsg
         return cls(lcmMsg.timestamp,
                    np.ndarray(shape=tuple(lcmMsg.trajectory.shape)
                               , buffer=np.array(lcmMsg.trajectory.data)

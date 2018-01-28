@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 
 from decision_making.src.exceptions import PredictObjectInPastTimes, PredictedObjectHasNegativeVelocity
-from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
+from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 from decision_making.src.planning.types import C_X, C_Y, CartesianTrajectory
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject
@@ -80,7 +80,7 @@ class RoadFollowingPredictor(Predictor):
             raise PredictObjectInPastTimes(
                 'Trying to predict object (id=%d) with timestamp %f [sec] to past timestamps: %s' % (
                     dynamic_object.obj_id, dynamic_object.timestamp_in_sec, prediction_timestamps))
-        lookahead_distance += PREDICTION_LOOKAHEAD_LINEARIZATION_MARGIN
+        lookahead_distance *= PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
         map_based_nav_plan = \
             MapService.get_instance().get_road_based_navigation_plan(dynamic_object.road_localization.road_id)
@@ -100,11 +100,18 @@ class RoadFollowingPredictor(Predictor):
                 'Trying to predict object (id=%d) with timestamp %f [sec] to past timestamps: %s' % (
                     dynamic_object.obj_id, dynamic_object.timestamp_in_sec, prediction_timestamps))
 
+        # If lookahead_route's length == 1, then a single-point route_xy is duplicated. The yaw can not be calculated.
+        # If lookahead_route's length > 1 but route_xy length == 1, then again the yaw can not be calculated.
+        # In these cases yaw_vector contains a duplicated value of initial_yaw.
+        yaw_vector = None
         if lookahead_route.shape[0] > 1:
             route_xy, _ = CartesianFrame.resample_curve(curve=lookahead_route,
                                                         arbitrary_curve_sampling_points=predicted_distances_from_start)
+            if route_xy.shape[0] == 1:
+                yaw_vector = np.ones(shape=[route_xy.shape[0], 1]) * initial_yaw
         elif lookahead_route.shape[0] == 1:
             route_xy = np.reshape(np.tile(lookahead_route[0], predicted_distances_from_start.shape[0]), (-1, 2))
+            yaw_vector = np.ones(shape=[route_xy.shape[0], 1]) * initial_yaw
         else:
             raise Exception('Predict object (id=%d) has empty lookahead_route. Object info: %s' % (
                 dynamic_object.obj_id, dynamic_object.__dict__))
@@ -113,10 +120,9 @@ class RoadFollowingPredictor(Predictor):
         route_len = route_xy.shape[0]
         velocity_column = np.ones(shape=[route_len, 1]) * object_velocity
 
-        if route_len > 1:
+        if yaw_vector is None:
             route_x_y_theta_v = np.c_[CartesianFrame.add_yaw(route_xy), velocity_column]
         else:
-            yaw_vector = np.ones(shape=[route_len, 1]) * initial_yaw
             route_x_y_theta_v = np.concatenate((route_xy, yaw_vector, velocity_column), axis=1)
 
         return route_x_y_theta_v
