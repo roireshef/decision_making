@@ -36,13 +36,20 @@ class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
 
 
 class TrajectoryCostParams(PUBSUB_MSG_IMPL):
-    def __init__(self, left_lane_cost: SigmoidFunctionParams, right_lane_cost: SigmoidFunctionParams,
-                 left_road_cost: SigmoidFunctionParams, right_road_cost: SigmoidFunctionParams,
-                 left_shoulder_cost: SigmoidFunctionParams, right_shoulder_cost: SigmoidFunctionParams,
-                 obstacle_cost: SigmoidFunctionParams,
-                 dist_from_goal_lon_sq_cost: float, dist_from_goal_lat_sq_cost: float,
-                 dist_from_ref_sq_cost: float, velocity_limits: Limits,
-                 lon_acceleration_limits: Limits, lat_acceleration_limits: Limits):
+    def __init__(self,
+                 obstacle_cost_x: SigmoidFunctionParams,
+                 obstacle_cost_y: SigmoidFunctionParams,
+                 left_lane_cost: SigmoidFunctionParams,
+                 right_lane_cost: SigmoidFunctionParams,
+                 left_shoulder_cost: SigmoidFunctionParams,
+                 right_shoulder_cost: SigmoidFunctionParams,
+                 left_road_cost: SigmoidFunctionParams,
+                 right_road_cost: SigmoidFunctionParams,
+                 dist_from_goal_cost: SigmoidFunctionParams,
+                 dist_from_goal_lat_factor: float,
+                 velocity_limits: Limits,
+                 lon_acceleration_limits: Limits,
+                 lat_acceleration_limits: Limits):
         """
         This class holds all the parameters used to build the cost function of the trajectory planner.
         It is dynamically set and sent by the behavioral planner.
@@ -54,30 +61,30 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
                 length and width).
                 This can be used to keep a certain margin from any object, specifically useful when
                 treating the ego vehicle as a point in space, and dilating the other objects by it's width.
+        :param obstacle_cost_x: defines the longitudinal sigmoid cost of obstacles
+        :param obstacle_cost_y: defines the lateral sigmoid cost of obstacles
         :param left_lane_cost: defines the sigmoid cost of the left-side of the current lane
         :param right_lane_cost: defines the sigmoid cost of the right-side of the current lane
-        :param left_road_cost: defines the sigmoid cost of the left-side of the road
-        :param right_road_cost: defines the sigmoid cost of the right-side of the road
         :param left_shoulder_cost: defines the sigmoid cost of the left-shoulder of the road (physical boundary)
         :param right_shoulder_cost: defines the sigmoid cost of the right-shoulder of the road (physical boundary)
-        :param obstacle_cost: defines the sigmoid cost of obstacles
-        :param dist_from_goal_lon_sq_cost: cost of distance from the target longitude is C(x) = a*x^2, this is a.
-        :param dist_from_goal_lat_sq_cost: cost of distance from the target latitude is C(x) = a*x^2, this is a.
-        :param dist_from_ref_sq_cost: if cost of distance from the reference route is C(x) = a*x^2, this is a.
+        :param left_road_cost: defines the sigmoid cost of the left-side of the road
+        :param right_road_cost: defines the sigmoid cost of the right-side of the road
+        :param dist_from_goal_cost: cost of distance from the target is a sigmoid.
+        :param dist_from_goal_lat_factor: Weight of latitude vs. longitude in the dist from goal cost.
         :param velocity_limits: Limits of allowed velocity in [m/sec]
         :param lon_acceleration_limits: Limits of allowed longitudinal acceleration in [m/sec^2]
         :param lat_acceleration_limits: Limits of allowed signed lateral acceleration in [m/sec^2]
         """
-        self.obstacle_cost = obstacle_cost
+        self.obstacle_cost_x = obstacle_cost_x
+        self.obstacle_cost_y = obstacle_cost_y
         self.left_lane_cost = left_lane_cost
         self.right_lane_cost = right_lane_cost
         self.left_shoulder_cost = left_shoulder_cost
         self.right_shoulder_cost = right_shoulder_cost
         self.left_road_cost = left_road_cost
         self.right_road_cost = right_road_cost
-        self.dist_from_goal_lon_sq_cost = dist_from_goal_lon_sq_cost
-        self.dist_from_goal_lat_sq_cost = dist_from_goal_lat_sq_cost
-        self.dist_from_ref_sq_cost = dist_from_ref_sq_cost
+        self.dist_from_goal_cost = dist_from_goal_cost
+        self.dist_from_goal_lat_factor = dist_from_goal_lat_factor
         self.velocity_limits = velocity_limits
         self.lon_acceleration_limits = lon_acceleration_limits
         self.lat_acceleration_limits = lat_acceleration_limits
@@ -85,17 +92,16 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
     def serialize(self) -> LcmTrajectoryCostParams:
         lcm_msg = LcmTrajectoryCostParams()
 
-        lcm_msg.obstacle_cost = self.obstacle_cost.serialize()
+        lcm_msg.obstacle_cost_x = self.obstacle_cost_x.serialize()
+        lcm_msg.obstacle_cost_y = self.obstacle_cost_y.serialize()
         lcm_msg.left_lane_cost = self.left_lane_cost.serialize()
         lcm_msg.right_lane_cost = self.right_lane_cost.serialize()
         lcm_msg.left_shoulder_cost = self.left_shoulder_cost.serialize()
         lcm_msg.right_shoulder_cost = self.right_shoulder_cost.serialize()
         lcm_msg.left_road_cost = self.left_road_cost.serialize()
         lcm_msg.right_road_cost = self.right_road_cost.serialize()
-
-        lcm_msg.dist_from_goal_lon_sq_cost = self.dist_from_goal_lon_sq_cost
-        lcm_msg.dist_from_goal_lat_sq_cost = self.dist_from_goal_lat_sq_cost
-        lcm_msg.dist_from_ref_sq_cost = self.dist_from_ref_sq_cost
+        lcm_msg.dist_from_goal_cost = self.dist_from_goal_cost.serialize()
+        lcm_msg.dist_from_goal_lat_factor = self.dist_from_goal_lat_factor
 
         lcm_msg.velocity_limits = LcmNumpyArray()
         lcm_msg.velocity_limits.num_dimensions = len(self.velocity_limits.shape)
@@ -119,16 +125,16 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, lcmMsg: LcmTrajectoryCostParams):
-        return cls(SigmoidFunctionParams.deserialize(lcmMsg.obstacle_cost)
+        return cls(SigmoidFunctionParams.deserialize(lcmMsg.obstacle_cost_x)
+                 , SigmoidFunctionParams.deserialize(lcmMsg.obstacle_cost_y)
                  , SigmoidFunctionParams.deserialize(lcmMsg.left_lane_cost)
                  , SigmoidFunctionParams.deserialize(lcmMsg.right_lane_cost)
                  , SigmoidFunctionParams.deserialize(lcmMsg.left_shoulder_cost)
                  , SigmoidFunctionParams.deserialize(lcmMsg.right_shoulder_cost)
                  , SigmoidFunctionParams.deserialize(lcmMsg.left_road_cost)
                  , SigmoidFunctionParams.deserialize(lcmMsg.right_road_cost)
-                 , lcmMsg.dist_from_goal_lon_sq_cost
-                 , lcmMsg.dist_from_goal_lat_sq_cost
-                 , lcmMsg.dist_from_ref_sq_cost
+                 , SigmoidFunctionParams.deserialize(lcmMsg.dist_from_goal_cost)
+                 , lcmMsg.dist_from_goal_lat_factor
                  , np.ndarray(shape = tuple(lcmMsg.velocity_limits.shape)
                             , buffer = np.array(lcmMsg.velocity_limits.data)
                             , dtype = float)

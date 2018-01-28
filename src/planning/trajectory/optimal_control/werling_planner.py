@@ -6,7 +6,7 @@ import numpy as np
 from decision_making.src.exceptions import NoValidTrajectoriesFound
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, TRAJECTORY_OBSTACLE_LOOKAHEAD, SX_OFFSET_MIN, SX_OFFSET_MAX, \
-    TD_STEPS, LAT_ACC_LIMITS
+    TD_STEPS, LAT_ACC_LIMITS, DEVIATION_FROM_GOAL_LAT_FACTOR
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
@@ -107,7 +107,8 @@ class WerlingPlanner(TrajectoryPlanner):
         goal_frenet_state: FrenetState2D = frenet.cstate_to_fstate(goal)
 
         # TODO: Determine desired final state search grid - this should be fixed with introducing different T_s, T_d
-        sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_frenet_state[FS_SX], 0)),
+        sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_frenet_state[FS_SX],
+                                       (goal_frenet_state[FS_SX] + ego_frenet_state[FS_SX]) / 2)),
                                np.min((SX_OFFSET_MAX + goal_frenet_state[FS_SX], (len(frenet.O) - 1) * frenet.ds)),
                                SX_STEPS)
         # sx_range = np.linspace(goal_frenet_state[FS_SX]  / 2, goal_frenet_state[FS_SX], SX_STEPS)
@@ -218,7 +219,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
     @staticmethod
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,
-                      goal_in_frenet: FrenetPoint, params: TrajectoryCostParams, global_time_samples: np.ndarray,
+                      goal_in_frenet: FrenetState, params: TrajectoryCostParams, global_time_samples: np.ndarray,
                       predictor: Predictor) -> np.ndarray:
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
@@ -233,22 +234,25 @@ class WerlingPlanner(TrajectoryPlanner):
         """
         # TODO: add jerk cost
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
+        offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
         close_obstacles = \
-            [SigmoidDynamicBoxObstacle.from_object(obs, params.obstacle_cost.k, params.obstacle_cost.offset,
-                                                   global_time_samples, predictor)
+            [SigmoidDynamicBoxObstacle.from_object(obj=obs, k=params.obstacle_cost_x.k, offset=offset,
+                                                    time_samples=global_time_samples, predictor=predictor)
              for obs in state.dynamic_objects
              if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
 
         cost_per_obstacle = [obs.compute_cost(ctrajectories[:, :, 0:2]) for obs in close_obstacles]
-        obstacles_costs = params.obstacle_cost.w * np.sum(cost_per_obstacle, axis=0)
+        obstacles_costs = params.obstacle_cost_x.w * np.sum(cost_per_obstacle, axis=0)
 
-        ''' SQUARED DISTANCE FROM GOAL SCORE '''
+        ''' DEVIATIONS FROM GOAL SCORE '''
         # make theta_diff to be in [-pi, pi]
         last_fpoints = ftrajectories[:, -1, :]
-        dist_from_goal_costs = \
-            params.dist_from_goal_lon_sq_cost * np.square(last_fpoints[:, FS_SX] - goal_in_frenet[FP_SX]) + \
-            params.dist_from_goal_lat_sq_cost * np.square(last_fpoints[:, FS_DX] - goal_in_frenet[FP_DX])
-        dist_from_ref_costs = params.dist_from_ref_sq_cost * np.sum(np.power(ftrajectories[:, :, FS_DX], 2), axis=1)
+        goal_vect = np.array([last_fpoints[:, FS_SX] - goal_in_frenet[FS_SX],
+                              last_fpoints[:, FS_DX] - goal_in_frenet[FS_DX]])
+        goal_dist = np.sqrt(goal_vect[0]**2 + (params.dist_from_goal_lat_factor * goal_vect[1])**2)
+        dist_from_goal_costs = Math.clipped_sigmoid(goal_dist - params.dist_from_goal_cost.offset,
+                                                            params.dist_from_goal_cost.w,
+                                                            params.dist_from_goal_cost.k)
 
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
         deviations_costs = np.zeros(ftrajectories.shape[0])
@@ -264,7 +268,7 @@ class WerlingPlanner(TrajectoryPlanner):
             deviations_costs += np.mean(Math.clipped_sigmoid(right_offsets, exp.w, exp.k), axis=1)
 
         ''' TOTAL '''
-        return obstacles_costs + dist_from_ref_costs + dist_from_goal_costs + deviations_costs
+        return obstacles_costs + dist_from_goal_costs + deviations_costs
 
     @staticmethod
     def _create_lat_horizon_grid(T_s: float, T_d_low_bound: float, dt: float) -> np.ndarray:
