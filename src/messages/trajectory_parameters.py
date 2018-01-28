@@ -69,9 +69,8 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         :param right_shoulder_cost: defines the sigmoid cost of the right-shoulder of the road (physical boundary)
         :param left_road_cost: defines the sigmoid cost of the left-side of the road
         :param right_road_cost: defines the sigmoid cost of the right-side of the road
-        :param dist_from_goal_lon_sq_cost: cost of distance from the target longitude is C(x) = a*x^2, this is a.
-        :param dist_from_goal_lat_sq_cost: cost of distance from the target latitude is C(x) = a*x^2, this is a.
-        :param dist_from_ref_sq_cost: if cost of distance from the reference route is C(x) = a*x^2, this is a.
+        :param dist_from_goal_cost: cost of distance from the target is a sigmoid.
+        :param dist_from_goal_lat_factor: Weight of latitude vs. longitude in the dist from goal cost.
         :param velocity_limits: Limits of allowed velocity in [m/sec]
         :param lon_acceleration_limits: Limits of allowed longitudinal acceleration in [m/sec^2]
         :param lat_acceleration_limits: Limits of allowed signed lateral acceleration in [m/sec^2]
