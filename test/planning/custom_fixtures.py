@@ -184,7 +184,7 @@ def trajectory():
         [[1.0, 0.0, 0.0, 0.0], [2.0, -0.33, 0.0, 0.0], [3.0, -0.66, 0.0, 0.0], [4.0, -1.0, 0.0, 0.0],
          [5.0, -1.33, 0.0, 0.0], [6.0, -1.66, 0.0, 0.0], [7.0, -2.0, 0.0, 0.0], [8.0, -2.0, 0.0, 0.0],
          [9.0, -2.0, 0.0, 0.0], [10.0, -2.0, 0.0, 0.0], [11.0, -2.0, 0.0, 0.0]])
-    yield TrajectoryPlanMsg(trajectory=chosen_trajectory, current_speed=5.0)
+    yield TrajectoryPlanMsg(timestamp=0.0, trajectory=chosen_trajectory, current_speed=5.0)
 
 
 ### VIZ MESSAGES ###

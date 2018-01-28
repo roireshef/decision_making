@@ -11,7 +11,7 @@ from decision_making.src.global_constants import BP_SPECIFICATION_T_MIN, BP_SPEC
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
     DEVIATION_FROM_GOAL_COST, DEVIATION_FROM_GOAL_LAT_FACTOR, GOAL_SIGMOID_K_PARAM, \
     GOAL_SIGMOID_OFFSET, LATERAL_SAFETY_MARGIN_FROM_OBJECT, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS, LON_JERK_COST, LAT_JERK_COST
+    LAT_ACC_LIMITS, SHOULDER_SIGMOID_OFFSET, LON_JERK_COST, LAT_JERK_COST
 from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -262,20 +262,19 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         target_lane_num = int(reference_route_latitude / road.lane_width)
 
         # lateral distance in [m] from ref. path to rightmost edge of lane
-        left_margin = right_margin = ego_size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
-        # lateral distance in [m] from ref. path to rightmost edge of lane
-        right_lane_offset = max(0.0, reference_route_latitude - right_margin - target_lane_num * road.lane_width)
+        right_lane_offset = max(0.0, reference_route_latitude - ego_size.width / 2 - target_lane_num * road.lane_width)
         # lateral distance in [m] from ref. path to leftmost edge of lane
-        left_lane_offset = (road.road_width - reference_route_latitude) - left_margin - \
+        left_lane_offset = (road.road_width - reference_route_latitude) - ego_size.width / 2 - \
                            (road.lanes_num - target_lane_num - 1) * road.lane_width
         # as stated above, for shoulders
-        right_shoulder_offset = reference_route_latitude - right_margin
+        right_shoulder_offset = reference_route_latitude - ego_size.width / 2 + SHOULDER_SIGMOID_OFFSET
         # as stated above, for shoulders
-        left_shoulder_offset = (road.road_width - reference_route_latitude) - left_margin
+        left_shoulder_offset = (road.road_width - reference_route_latitude) - ego_size.width / 2 + \
+                               SHOULDER_SIGMOID_OFFSET
         # as stated above, for whole road including shoulders
-        right_road_offset = right_shoulder_offset + ROAD_SHOULDERS_WIDTH
+        right_road_offset = reference_route_latitude - ego_size.width / 2 + ROAD_SHOULDERS_WIDTH
         # as stated above, for whole road including shoulders
-        left_road_offset = left_shoulder_offset + ROAD_SHOULDERS_WIDTH
+        left_road_offset = (road.road_width - reference_route_latitude) - ego_size.width / 2 + ROAD_SHOULDERS_WIDTH
 
         # Set road-structure-based cost parameters
         right_lane_cost = SigmoidFunctionParams(w=DEVIATION_FROM_LANE_COST, k=ROAD_SIGMOID_K_PARAM,
@@ -303,26 +302,21 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                     offset=GOAL_SIGMOID_OFFSET)
         dist_from_goal_lat_factor = DEVIATION_FROM_GOAL_LAT_FACTOR
 
-        # TODO: set velocity and acceleration limits properly
-        velocity_limits = VELOCITY_LIMITS  # [m/s]. not a constant because it might be learned. TBD
-        lon_acceleration_limits = LON_ACC_LIMITS + np.array([-A_LON_EPS, +A_LON_EPS])
-        lat_acceleration_limits = LAT_ACC_LIMITS
-
-        cost_params = TrajectoryCostParams(left_lane_cost=left_lane_cost,
+        cost_params = TrajectoryCostParams(obstacle_cost_x=objects_cost_x,
+                                           obstacle_cost_y=objects_cost_y,
+                                           left_lane_cost=left_lane_cost,
                                            right_lane_cost=right_lane_cost,
-                                           left_road_cost=left_road_cost,
-                                           right_road_cost=right_road_cost,
                                            left_shoulder_cost=left_shoulder_cost,
                                            right_shoulder_cost=right_shoulder_cost,
-                                           obstacle_cost_x=objects_cost_x,
-                                           obstacle_cost_y=objects_cost_y,
+                                           left_road_cost=left_road_cost,
+                                           right_road_cost=right_road_cost,
                                            dist_from_goal_cost=dist_from_goal_cost,
                                            dist_from_goal_lat_factor=dist_from_goal_lat_factor,
                                            lon_jerk_cost=LON_JERK_COST,
                                            lat_jerk_cost=LAT_JERK_COST,
-                                           velocity_limits=velocity_limits,
-                                           lon_acceleration_limits=lon_acceleration_limits,
-                                           lat_acceleration_limits=lat_acceleration_limits)
+                                           velocity_limits=VELOCITY_LIMITS,
+                                           lon_acceleration_limits=LON_ACC_LIMITS,
+                                           lat_acceleration_limits=LAT_ACC_LIMITS)
 
         return cost_params
 

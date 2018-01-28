@@ -36,16 +36,21 @@ class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
 
 
 class TrajectoryCostParams(PUBSUB_MSG_IMPL):
-    def __init__(self, left_lane_cost: SigmoidFunctionParams, right_lane_cost: SigmoidFunctionParams,
-                 left_road_cost: SigmoidFunctionParams, right_road_cost: SigmoidFunctionParams,
-                 left_shoulder_cost: SigmoidFunctionParams, right_shoulder_cost: SigmoidFunctionParams,
+    def __init__(self,
                  obstacle_cost_x: SigmoidFunctionParams,
                  obstacle_cost_y: SigmoidFunctionParams,
+                 left_lane_cost: SigmoidFunctionParams,
+                 right_lane_cost: SigmoidFunctionParams,
+                 left_shoulder_cost: SigmoidFunctionParams,
+                 right_shoulder_cost: SigmoidFunctionParams,
+                 left_road_cost: SigmoidFunctionParams,
+                 right_road_cost: SigmoidFunctionParams,
                  dist_from_goal_cost: SigmoidFunctionParams,
                  dist_from_goal_lat_factor: float,
                  lon_jerk_cost: float, lat_jerk_cost: float,
                  velocity_limits: Limits,
-                 lon_acceleration_limits: Limits, lat_acceleration_limits: Limits):
+                 lon_acceleration_limits: Limits,
+                 lat_acceleration_limits: Limits):
         """
         This class holds all the parameters used to build the cost function of the trajectory planner.
         It is dynamically set and sent by the behavioral planner.
@@ -57,16 +62,16 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
                 length and width).
                 This can be used to keep a certain margin from any object, specifically useful when
                 treating the ego vehicle as a point in space, and dilating the other objects by it's width.
-        :param left_lane_cost: defines the sigmoid cost of the left-side of the current lane
-        :param right_lane_cost: defines the sigmoid cost of the right-side of the current lane
-        :param left_road_cost: defines the sigmoid cost of the left-side of the road
-        :param right_road_cost: defines the sigmoid cost of the right-side of the road
-        :param left_shoulder_cost: defines the sigmoid cost of the left-shoulder of the road (physical boundary)
-        :param right_shoulder_cost: defines the sigmoid cost of the right-shoulder of the road (physical boundary)
         :param obstacle_cost_x: defines the longitudinal sigmoid cost of obstacles
         :param obstacle_cost_y: defines the lateral sigmoid cost of obstacles
-        :param dist_from_goal_cost: cost of distance from the target longitude is C(x) = a*x^2, this is a.
-        :param dist_from_goal_lat_factor: cost of distance from the target latitude is C(x) = a*x^2, this is a.
+        :param left_lane_cost: defines the sigmoid cost of the left-side of the current lane
+        :param right_lane_cost: defines the sigmoid cost of the right-side of the current lane
+        :param left_shoulder_cost: defines the sigmoid cost of the left-shoulder of the road (physical boundary)
+        :param right_shoulder_cost: defines the sigmoid cost of the right-shoulder of the road (physical boundary)
+        :param left_road_cost: defines the sigmoid cost of the left-side of the road
+        :param right_road_cost: defines the sigmoid cost of the right-side of the road
+        :param dist_from_goal_cost: cost of distance from the target is a sigmoid.
+        :param dist_from_goal_lat_factor: Weight of latitude vs. longitude in the dist from goal cost.
         :param lon_jerk_cost: longitudinal jerk cost
         :param lat_jerk_cost: lateral jerk cost
         :param velocity_limits: Limits of allowed velocity in [m/sec]
