@@ -142,12 +142,6 @@ TRAJECTORY_TIME_RESOLUTION = 0.1
 # Number of trajectory points to send out (to controller) from the TP
 TRAJECTORY_NUM_POINTS = 10
 
-# Amount of error in fitting points to curve, smaller means using more spline polynomials for the fit (and smaller error)
-# This factor is the maximum mean square error (per point) allowed.
-# For example, 0.0001 mean that the max. standard deviation is 1 [cm]
-SPLINE_SMOOTH_FACTOR = 0.0001
-
-
 # Werling Planner #
 
 # [sec] Time-Resolution for planning
