@@ -169,14 +169,17 @@ def test_fitFrenet_originalRoutePointsAreProjected_errorsAreLowEnough():
     route_points = MapService.get_instance().get_road(20)._points
 
     # "Train" points: assumed to be sampled sufficiently dense (according to ROAD_MAP_REQUIRED_RES)
-    _, route_points_upsampled_to_required_res, _ = CartesianFrame.resample_curve(curve=route_points, step_size=ROAD_MAP_REQUIRED_RES,
-                                                                  preserve_step_size=False,
-                                                                  spline_order=TRAJECTORY_CURVE_SPLINE_FIT_ORDER)
+    _, route_points_upsampled_to_required_res, _ = \
+        CartesianFrame.resample_curve(curve=route_points,
+                                      step_size=ROAD_MAP_REQUIRED_RES,
+                                      preserve_step_size=False,
+                                      spline_order=TRAJECTORY_CURVE_SPLINE_FIT_ORDER)
 
     # "Test" points: upsampling of the train points, used for accuracy testing
-    _, test_points, _ = CartesianFrame.resample_curve(curve=route_points, step_size=ROAD_MAP_REQUIRED_RES/upsampling_factor_for_test,
-                                                                  preserve_step_size=False,
-                                                                  spline_order=TRAJECTORY_CURVE_SPLINE_FIT_ORDER)
+    _, test_points, _ = CartesianFrame.resample_curve(curve=route_points,
+                                                      step_size=ROAD_MAP_REQUIRED_RES/upsampling_factor_for_test,
+                                                      preserve_step_size=False,
+                                                      spline_order=TRAJECTORY_CURVE_SPLINE_FIT_ORDER)
 
     frenet = FrenetSerret2DFrame(route_points_upsampled_to_required_res)
 
