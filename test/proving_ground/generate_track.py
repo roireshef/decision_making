@@ -1,7 +1,7 @@
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
-from decision_making.src.planning.types import FP_SX, FP_DX, C_V, C_A, C_K
+from decision_making.src.planning.types import FP_SX, FP_DX, C_V, C_A, C_K, CartesianExtendedTrajectory
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.test.planning.trajectory.utils import WerlingVisualizer
 from mapping.src.model.map_api import MapAPI
@@ -12,13 +12,28 @@ import matplotlib
 
 
 class OfflineTrajectoryGenerator:
+    """ This class takes specifications for maneuvers and generates a trajectory that
+    goes according to them on a specific road using Werling planner """
     def __init__(self, road_id, map_file_name: str):
+        """
+        :param road_id: the road id on which the trajectory will be planned
+        :param map_file_name: the filename for MapService to work on
+        """
         MapService.initialize(MapServiceArgs(map_source=map_file_name))
         self.map: MapAPI = MapService.get_instance()
         self.road = self.map.get_road(road_id)
         self.frenet = FrenetSerret2DFrame(self.road._points)
 
-    def plan(self, geo_coordinates: np.array, init_velocity: float, interm_goals: list):
+    def plan(self, geo_coordinates: np.array, init_velocity: float, interm_goals: list) -> CartesianExtendedTrajectory:
+        """
+        Given the initial state of the vehicle (in geo_coordinates and init_velocity) and a list of intermediate goals
+        (each specifies a maneuver), generate a single and unified trajectory that goes through those goals.
+        :param geo_coordinates: Geographic coordinates of the vehicle's initial position
+        :param init_velocity: Vehicle's initial velocity [m/sec]
+        :param interm_goals: list of intermediate goals of the format: (time to goal [sec],
+        goal lateral deviation [lanes], goal velocity [m/sec])
+        :return: a single trajectory that goes through all intermediate goals specified
+        """
         map_coordinates = np.array(self.map.convert_geo_to_map_coordinates(geo_coordinates[0], geo_coordinates[1]))
 
         finit = self.frenet.cpoint_to_fpoint(map_coordinates)
@@ -29,7 +44,8 @@ class OfflineTrajectoryGenerator:
         trajectory = [self.frenet.ftrajectory_to_ctrajectory(np.array([init_fstate_vec]))[0]]
         current_state = init_state
         for action in interm_goals:
-            interm_traj, goal_state = self._plan_segment(current_state, action[0], action[1] * self.road.lane_width, action[2])
+            interm_traj, goal_state = self._plan_segment(current_state, action[0], action[1] * self.road.lane_width,
+                                                         action[2])
 
             # trim first point to remove duplicates
             trajectory = np.concatenate((trajectory, interm_traj[1:, :]), axis=0)
@@ -39,7 +55,15 @@ class OfflineTrajectoryGenerator:
         return trajectory
 
     def _plan_segment(self, init_constraints: FrenetConstraints, T: float, delta_dx: float, goal_sv: float):
-        """Given initial state, planning-time and desired change in (dx, sv) - generate trajectory (return in cartesian)"""
+        """
+        Given initial state in frenet frame, planning-time, and desired change in (dx, sv) - generate trajectory
+        (returns trajectory in cartesian)
+        :param init_constraints: initial frenet-frame state of the vehicle
+        :param T: planning time [sec]
+        :param delta_dx: desired change in lateral position [m] (difference between goal and current)
+        :param goal_sv: desired longitudinal velocity [m/sec] (of goal)
+        :return: trajectory in Cartesian-frame
+        """
         time_points = np.arange(0.0, T+WERLING_TIME_RESOLUTION, WERLING_TIME_RESOLUTION)
         goal_state = FrenetConstraints(sx=init_constraints._sx + (goal_sv + init_constraints._sv) / 2 * T, sv=goal_sv,
                                        sa=0, dx=init_constraints._dx + delta_dx, dv=0, da=0)
