@@ -140,7 +140,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     road_width = num_lanes*lane_width
     reference_route_latitude = 3*lane_width/2
 
-    lng = 40
+    lng = 50
     step = 0.2
     curvature = 0.5
 
@@ -179,14 +179,14 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     d_x = np.einsum('tpi,tpi->tp', pos_x - a_r, N_r)
     fpoints = np.c_[s_x.flatten()-s_x.flatten()[0], d_x.flatten()]
 
-    v0 = 6
-    vT = 10
-    T = 5.0
+    v0 = 9
+    vT = 15
+    T = 4.0
 
     test_safety = False
     test_jerk = True
 
-    for test_idx in range(8):
+    for test_idx in range(16):
 
         if test_safety:
             if test_idx < 8:
@@ -253,7 +253,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
 
         planner = WerlingPlanner(logger, predictor)
 
-        samplable, ctrajectories, costs, partial_costs = planner.plan(state=state,
+        samplable, ctrajectories, costs, cost_components = planner.plan(state=state,
                                                                       reference_route=ext_route_points[:, :2],
                                                                       goal=goal, goal_time=T, cost_params=cost_params)
 

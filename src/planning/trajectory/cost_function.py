@@ -159,6 +159,12 @@ class Jerk:
 
     @staticmethod
     def compute_jerks(ctrajectories: CartesianTrajectories, dt: float) -> (np.array, np.array):
+        """
+        Compute longitudinal and lateral jerks based on cartesian trajectories.
+        :param ctrajectories: array[trajectories_num, timesteps_num, 6] of cartesian trajectories
+        :param dt: time step for acceleration derivative by time
+        :return: two ndarrays of size ctrajectories.shape[0]. Longitudinal and lateral jerks for all ctrajectories
+        """
         lon_jerks = np.sum(np.square(np.diff(ctrajectories[:, :, C_A], axis=1)), axis=1) / (dt*dt)
         lat_jerks = np.sum(np.square(np.diff(ctrajectories[:, :, C_K] * np.square(ctrajectories[:, :, C_V]), axis=1)),
                            axis=1) / (dt*dt)

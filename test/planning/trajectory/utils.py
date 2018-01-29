@@ -133,7 +133,7 @@ class WerlingVisualizer:
 
     @staticmethod
     def plot_best(plt, traj):
-        plt.plot(traj[:, 0], traj[:, 1], '-g')
+        plt.plot(traj[:, 0], traj[:, 1], '-g', linewidth=2)
         plt.plot(traj[-1, 0], traj[-1, 1], 'og')
 
     @staticmethod

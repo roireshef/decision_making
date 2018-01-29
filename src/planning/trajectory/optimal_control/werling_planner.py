@@ -145,9 +145,9 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
-        filtered_trajectory_costs, partial_costs = \
+        filtered_trajectory_costs, cost_components = \
             self._compute_cost(ctrajectories_filtered, ftrajectories_filtered, state, goal_frenet_state, cost_params,
-                               global_time_sample, self._predictor, self.dt, ego_cartesian_state, ego_frenet_state)
+                               global_time_sample, self._predictor, self.dt, ego_cartesian_state)
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
@@ -162,7 +162,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return samplable_trajectory, \
                ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
                filtered_trajectory_costs[sorted_filtered_idxs], \
-               np.array([costs[sorted_filtered_idxs] for costs in partial_costs])
+               np.array([costs[sorted_filtered_idxs] for costs in cost_components])
 
     @staticmethod
     def _filter_limits(ctrajectories: CartesianExtendedTrajectories, cost_params: TrajectoryCostParams) -> np.ndarray:
@@ -187,8 +187,8 @@ class WerlingPlanner(TrajectoryPlanner):
     @staticmethod
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories, state: State,
                       goal_in_frenet: FrenetState, params: TrajectoryCostParams, global_time_samples: np.ndarray,
-                      predictor: Predictor, dt: float, ext_ego_state: CartesianExtendedState,
-                      ego_frenet_state: FrenetState) -> [np.ndarray, np.ndarray]:
+                      predictor: Predictor, dt: float, ext_ego_state: CartesianExtendedState) -> \
+            [np.ndarray, np.ndarray]:
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
@@ -201,7 +201,7 @@ class WerlingPlanner(TrajectoryPlanner):
         :param dt: time step of ctrajectories
         :param ext_ego_state: ego cartesian state to be concatenated to ctrajectories for jerk calculation
         :return: 1. numpy array (1D) of the total cost per trajectory (in ctrajectories and ftrajectories)
-                 2. partial_costs tuple: obstacles_costs, dist_from_goal_costs, deviations_costs, jerk_costs
+                 2. cost_components tuple: obstacles_costs, dist_from_goal_costs, deviations_costs, jerk_costs
         """
         # TODO: add jerk cost
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''

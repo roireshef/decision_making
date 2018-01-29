@@ -58,6 +58,6 @@ class TrajectoryPlanner(metaclass=ABCMeta):
         :param goal: the desired ego-state to plan towards
         :param cost_params: Data object with parameters that specify how to build the planning's cost function
         :return: a tuple of: (samplable represantation of the chosen trajectory, tensor of trajectory alternatives,
-         trajectories costs correspond to previous output, tuple of partial costs)
+         trajectories costs correspond to previous output, tuple of cost components)
         """
         pass
