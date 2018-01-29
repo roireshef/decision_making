@@ -6,8 +6,8 @@ import numpy as np
 LOG_TIME_PATTERN = ": \d+-\d+-\d+ \d+:\d+:\d+,\d+ :"
 LOG_TIME_PARSE_PATTERN = ": (\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+),(\d+) :"
 
-# LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2017_12_27/logs/16_02/AV_Log_dm_main_test.log'
-LOG_PATH_FOR_ANALYSIS = 'C:/Users/xzjsyy/av_code/AV_Log_dm_main_test.log'
+LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2017_12_27/logs/16_02/AV_Log_dm_main_test.log'
+#LOG_PATH_FOR_ANALYSIS = 'C:/Users/xzjsyy/av_code/AV_Log_dm_main_test.log'
 STATE_IDENTIFIER_STRING_TP = "trajectory_planning_facade.py:   139: _get_current_state  : Received state: "
 STATE_IDENTIFIER_STRING_BP = "behavioral_facade.py:    76: _get_current_state  : Received State: "
 STATE_IDENTIFIER_STRING_STATE_MODULE = "_publish_state_if_full: publishing state "
