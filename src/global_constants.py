@@ -24,7 +24,7 @@ BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 80.0
 PREDICTION_LOOKAHEAD_COMPENSATION_RATIO = 1.2
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
-LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.1
+LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
 
 # A lower and upper thresholds on the longitudinal offset between object and ego.
 # Any object out of this scope won't be accounted in the behavioral planning process
@@ -42,15 +42,23 @@ BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON = 2.0
 BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 
 # Trajectory cost parameters
-INFINITE_SIGMOID_COST = 2.0 * 1e2           # cost around obstacles (sigmoid)
-DEVIATION_FROM_ROAD_COST = 1.0 * 1e2        # cost of deviation from road (sigmoid)
-DEVIATION_TO_SHOULDER_COST = 1.0 * 1e2      # cost of deviation to shoulders (sigmoid)
-OUT_OF_LANE_COST = 0.0                      # cost of deviation from lane (sigmoid)
-ROAD_SIGMOID_K_PARAM = 1000.0               # sigmoid k (slope) param of going out-of-road
-OBJECTS_SIGMOID_K_PARAM = 20.0              # sigmoid k (slope) param of objects on road
-DEVIATION_FROM_GOAL_LON_COST = 1.0 * 1e2    # cost of squared longitudinal deviation from the goal
-DEVIATION_FROM_GOAL_LAT_COST = 1.5 * 1e2    # cost of squared lateral deviation from the goal
-DEVIATION_FROM_REF_ROUTE_COST = 0.0         # cost of squared deviation from the route path
+OBSTACLE_SIGMOID_COST = 1.0 * 1e4           # cost around obstacles (sigmoid)
+OBSTACLE_SIGMOID_K_PARAM = 5.5              # sigmoid k (slope) param of objects on road
+
+DEVIATION_FROM_LANE_COST = 20               # cost of deviation from lane (sigmoid)
+LANE_SIGMOID_K_PARAM = 4                    # sigmoid k (slope) param of going out-of-lane-center
+
+DEVIATION_TO_SHOULDER_COST = 3.0 * 1e2      # cost of deviation to shoulders (sigmoid)
+SHOULDER_SIGMOID_K_PARAM = 6                # sigmoid k (slope) param of going out-of-shoulder
+SHOULDER_SIGMOID_OFFSET = 0.2               # offset param m of going out-of-shoulder: cost = w/(1+e^(k*(m+x)))
+
+DEVIATION_FROM_ROAD_COST = 1.0 * 1e4        # cost of deviation from road (sigmoid)
+ROAD_SIGMOID_K_PARAM = 20                   # sigmoid k (slope) param of going out-of-road
+
+DEVIATION_FROM_GOAL_LAT_FACTOR = 4          # ratio between lateral and longitudinal deviation costs from the goal
+DEVIATION_FROM_GOAL_COST = 1.0 * 1e2        # cost of longitudinal deviation from the goal
+GOAL_SIGMOID_K_PARAM = 0.5                  # sigmoid k (slope) param of going out-of-goal
+GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
 
 # [m/sec] speed to plan towards by default in BP
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
@@ -65,13 +73,11 @@ BP_SPECIFICATION_T_MAX = 20.0
 BP_SPECIFICATION_T_RES = 0.2
 
 # Longitudinal Acceleration Limits [m/sec^2]
-A_LON_MIN = -4.0
-A_LON_MAX = 4.0
-A_LON_EPS = 3.0
+LON_ACC_LIMITS = np.array([-8.0, 3.0])  # taken from SuperCruise presentation
+A_LON_EPS = 2.0
 
 # Latitudinal Acceleration Limits [m/sec^2]
-A_LAT_MIN = -2.0
-A_LAT_MAX = 2.0
+LAT_ACC_LIMITS = np.array([-3.0, 3.0])
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
@@ -94,7 +100,7 @@ LON_MARGIN_FROM_EGO = 1
 REFERENCE_TRAJECTORY_LENGTH = 30.0
 
 # [m] Resolution for the interpolation of the reference route
-TRAJECTORY_ARCLEN_RESOLUTION = 0.1
+TRAJECTORY_ARCLEN_RESOLUTION = 0.5
 
 # [seconds] Resolution for the visualization of predicted dynamic objects
 VISUALIZATION_PREDICTION_RESOLUTION = 1.0
@@ -112,10 +118,10 @@ TRAJECTORY_OBSTACLE_LOOKAHEAD = 200.0
 EXP_CLIP_TH = 50.0
 
 # Number of (best) trajectories to publish to visualization
-NUM_ALTERNATIVE_TRAJECTORIES = 10
+NUM_ALTERNATIVE_TRAJECTORIES = 75
 
 # Number of points in trajectories for sending out to visualization (currently VizTool freezes when there are too much)
-MAX_NUM_POINTS_FOR_VIZ = 30
+MAX_NUM_POINTS_FOR_VIZ = 60
 
 # in meters, to be used as an argument in the resample_curve method
 DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION = 0.5
@@ -140,16 +146,19 @@ TRAJECTORY_NUM_POINTS = 10
 WERLING_TIME_RESOLUTION = 0.1
 
 # [m] Range for grid search in werling planner (long. position)
-SX_OFFSET_MIN, SX_OFFSET_MAX = -3, 0.1
+SX_OFFSET_MIN, SX_OFFSET_MAX = -15, 0.1
 
 # [m] Range for grid search in werling planner (long. velocity)
 SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
 
 # [m] Range for grid search in werling planner (lat. position)
-DX_OFFSET_MIN, DX_OFFSET_MAX = -1, 1
+DX_OFFSET_MIN, DX_OFFSET_MAX = -3, 3
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 15, 1, 5
+SX_STEPS, SV_STEPS, DX_STEPS = 10, 1, 7
+
+# Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
+TD_STEPS = 5
 
 # Frenet-Serret Conversions #
 
@@ -177,6 +186,11 @@ EGO_ID = 0
 
 # [m] Default height for objects - State Module
 DEFAULT_OBJECT_Z_VALUE = 0.
+
+# Whether we filter out dynamic objects that are not on the road
+# Request by perception for viewing recordings in non-mapped areas.
+# SHOULD ALWAYS BE TRUE FOR NORMAL DM FLOW
+FILTER_OFF_ROAD_OBJECTS = True
 
 ### DM Manager configuration ###
 BEHAVIORAL_PLANNING_MODULE_PERIOD = 1.0

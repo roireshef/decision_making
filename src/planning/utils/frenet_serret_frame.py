@@ -3,10 +3,10 @@ import numpy as np
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_INTERP_TYPE, \
     TINY_CURVATURE
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
-    FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, FS_SX, \
+    FrenetTrajectory2D, CartesianPath2D, FrenetTrajectories2D, CartesianExtendedTrajectories, FS_SX, \
     FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint, C_YAW, C_K, C_V, C_A, \
-    CartesianVectorsTensor2D, CartesianPointsTensor2D, FrenetState, CartesianExtendedState
-from decision_making.src.planning.utils.tensor_ops import TensorOps
+    CartesianVectorsTensor2D, CartesianPointsTensor2D, FrenetState2D, CartesianExtendedState
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
 
@@ -31,8 +31,7 @@ class FrenetSerret2DFrame:
     def get_yaw(self, s: np.ndarray):
         """
         Computes yaw (in radians, relative to the origin in which the curve points (self.O) are given
-        :param s: progress on the curve from its beginning in meters (any tensor shape, with the last dimension being
-        [x,y] coordinates)
+        :param s: progress on the curve from its beginning in meters (any tensor shape)
         :return: yaw in radians (tensor shape is the same as <s>)
         """
         _, T_r, _, _, _ = self._taylor_interp(s)
@@ -44,7 +43,7 @@ class FrenetSerret2DFrame:
         """Transforms a frenet-frame point to a cartesian-frame point (see self.fpoints_to_cpoints for more details)"""
         return self.fpoints_to_cpoints(fpoints[np.newaxis, :])[0]
 
-    def fpoints_to_cpoints(self, fpoints: FrenetTrajectory) -> CartesianPath2D:
+    def fpoints_to_cpoints(self, fpoints: FrenetTrajectory2D) -> CartesianPath2D:
         """
         Transforms frenet-frame points to cartesian-frame points (using self.curve)
         :param fpoint: Frenet-frame trajectory (matrix)
@@ -53,7 +52,7 @@ class FrenetSerret2DFrame:
         a_s, _, N_s, _, _ = self._taylor_interp(fpoints[:, FP_SX])
         return a_s + N_s * fpoints[:, [FP_DX]]
 
-    def fstate_to_cstate(self, fstate: FrenetState) -> CartesianExtendedState:
+    def fstate_to_cstate(self, fstate: FrenetState2D) -> CartesianExtendedState:
         """
         Transforms Frenet-frame state to cartesian-frame state
         :param ftrajectory: a frenet-frame state
@@ -61,7 +60,7 @@ class FrenetSerret2DFrame:
         """
         return self.ftrajectory_to_ctrajectory(np.array([fstate]))[0]
 
-    def ftrajectory_to_ctrajectory(self, ftrajectory: FrenetTrajectory) -> CartesianExtendedTrajectory:
+    def ftrajectory_to_ctrajectory(self, ftrajectory: FrenetTrajectory2D) -> CartesianExtendedTrajectory:
         """
         Transforms Frenet-frame trajectory to cartesian-frame trajectory, using tensor operations
         :param ftrajectory: a frenet-frame trajectory
@@ -69,7 +68,7 @@ class FrenetSerret2DFrame:
         """
         return self.ftrajectories_to_ctrajectories(np.array([ftrajectory]))[0]
 
-    def ftrajectories_to_ctrajectories(self, ftrajectories: FrenetTrajectories) -> CartesianExtendedTrajectories:
+    def ftrajectories_to_ctrajectories(self, ftrajectories: FrenetTrajectories2D) -> CartesianExtendedTrajectories:
         """
         Transforms Frenet-frame trajectories to cartesian-frame trajectories, using tensor operations.
         For formulas derivations please refer to: http://ieeexplore.ieee.org/document/5509799/
@@ -125,7 +124,7 @@ class FrenetSerret2DFrame:
         """Transforms a cartesian-frame point to a frenet-frame point (see self.fpoints_to_cpoints for more details)"""
         return self.cpoints_to_fpoints(cpoints[np.newaxis, :])[0]
 
-    def cpoints_to_fpoints(self, cpoints: CartesianPath2D) -> FrenetTrajectory:
+    def cpoints_to_fpoints(self, cpoints: CartesianPath2D) -> FrenetTrajectory2D:
         """
         Transforms cartesian-frame points to frenet-frame points (using self.curve)
         :param cpoints: Cartesian-frame trajectory (matrix)
@@ -138,7 +137,7 @@ class FrenetSerret2DFrame:
 
         return np.c_[s, d]
 
-    def cstate_to_fstate(self, cstate: CartesianExtendedState) -> FrenetState:
+    def cstate_to_fstate(self, cstate: CartesianExtendedState) -> FrenetState2D:
         """
         Transforms Cartesian-frame state to Frenet-frame state
         :param ctrajectory: a cartesian-frame state (in the coordinate frame of self.points)
@@ -146,7 +145,7 @@ class FrenetSerret2DFrame:
         """
         return self.ctrajectory_to_ftrajectory(np.array([cstate]))[0]
 
-    def ctrajectory_to_ftrajectory(self, ctrajectory: CartesianExtendedTrajectory) -> FrenetTrajectory:
+    def ctrajectory_to_ftrajectory(self, ctrajectory: CartesianExtendedTrajectory) -> FrenetTrajectory2D:
         """
         Transforms Cartesian-frame trajectory to Frenet-frame trajectory, using tensor operations
         :param ctrajectory: a cartesian-frame trajectory (in the coordinate frame of self.points)
@@ -154,7 +153,7 @@ class FrenetSerret2DFrame:
         """
         return self.ctrajectories_to_ftrajectories(np.array([ctrajectory]))[0]
 
-    def ctrajectories_to_ftrajectories(self, ctrajectories: CartesianExtendedTrajectories) -> FrenetTrajectories:
+    def ctrajectories_to_ftrajectories(self, ctrajectories: CartesianExtendedTrajectories) -> FrenetTrajectories2D:
         """
         Transforms Cartesian-frame trajectories to Frenet-frame trajectories, using tensor operations
         For formulas derivations please refer to: http://ieeexplore.ieee.org/document/5509799/
@@ -167,7 +166,7 @@ class FrenetSerret2DFrame:
         v_x = ctrajectories[:, :, C_V]
         a_x = ctrajectories[:, :, C_A]
 
-        s_x, a_r, T_r, N_r, k_r, k_r_tag = self._project_cartesian_points(ctrajectories[:, :, [C_X, C_Y]])
+        s_x, a_r, T_r, N_r, k_r, k_r_tag = self._project_cartesian_points(pos_x)
 
         d_x = np.einsum('tpi,tpi->tp', pos_x - a_r, N_r)
 
@@ -215,6 +214,9 @@ class FrenetSerret2DFrame:
 
         is_curvature_big_enough = np.greater(np.abs(k_s), TINY_CURVATURE)
 
+        # don't enable zero curvature to prevent numerical problems with infinite radius
+        k_s[np.logical_not(is_curvature_big_enough)] = TINY_CURVATURE
+
         # signed circle radius according to the curvature
         signed_radius = np.divide(1, k_s)
 
@@ -228,10 +230,11 @@ class FrenetSerret2DFrame:
         cos = np.abs(np.einsum('...ik,...ik->...i', N_s, center_to_point) / np.linalg.norm(center_to_point, axis=-1))
 
         # prevent illegal (greater than 1) argument for arccos()
-        cos[cos > 1.0] = 1.0
+        # don't enable zero curvature to prevent numerical problems with infinite radius
+        cos[np.logical_or(np.logical_not(is_curvature_big_enough), cos > 1.0)] = 1.0
 
         # arc length from a_s to the new guess point
-        step = step_sign * np.apply_along_axis(np.math.acos, 1, cos[:, np.newaxis]) * np.abs(signed_radius)
+        step = step_sign * np.arccos(cos) * np.abs(signed_radius)
         s_approx[is_curvature_big_enough] += step[is_curvature_big_enough]  # next s_approx of the current point
 
         a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(s_approx)
@@ -249,7 +252,8 @@ class FrenetSerret2DFrame:
         taken from the nearest point in self.O (will have shape of D)
         k'(s) is the derivative of the curvature (by distance d(s))
         """
-        assert np.all(np.bitwise_and(0 <= s, s <= self.s_max))
+        assert np.all(np.bitwise_and(0 <= s, s <= self.s_max)), \
+            "Cannot extrapolate, desired progress (%s) is out of the curve." % s
 
         progress_ds = s / self.ds
         O_idx = np.round(progress_ds).astype(np.int)
@@ -305,10 +309,10 @@ class FrenetSerret2DFrame:
         dT = np.divide(np.gradient(T)[0], ds)
 
         # Normal - robust to zero-curvature
-        N = TensorOps.row_wise_normal(T)
+        N = NumpyUtils.row_wise_normal(T)
 
         # SIGNED (!) Curvature
-        cross_norm = np.sum(TensorOps.row_wise_normal(dxy) * ddxy, axis=1)
+        cross_norm = np.sum(NumpyUtils.row_wise_normal(dxy) * ddxy, axis=1)
         k = np.zeros(len(T))
         k[dxy_norm > 0] = cross_norm[dxy_norm > 0] / (dxy_norm[dxy_norm > 0] ** 3)
 

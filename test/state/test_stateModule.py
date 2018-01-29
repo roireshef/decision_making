@@ -4,12 +4,12 @@ from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING
 from decision_making.src.state.state import OccupancyState, EgoState
 from decision_making.src.state.state_module import StateModule
-from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
+from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH, FILTER_OBJECT_OFF_ROAD_PATH
 from gm_lcm import LcmPerceivedDynamicObjectList
 from rte.python.logger.AV_logger import AV_Logger
-from decision_making.test.planning.custom_fixtures import dynamic_objects_not_in_fov, dynamic_objects_in_fov
+from decision_making.test.planning.custom_fixtures import dynamic_objects_not_in_fov, dynamic_objects_in_fov,\
+    dynamic_objects_not_on_road, ego_state_fix, pubsub
 from mapping.test.model.testable_map_fixtures import map_api_mock
-from decision_making.test.planning.custom_fixtures import ego_state_fix, pubsub
 import numpy as np
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
@@ -57,3 +57,80 @@ def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(pubsub: Pub
 
     state_module.stop()
 
+
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+def test_isObjectOnRoad_objectOffOfRoad_False(pubsub: PubSub, ego_state_fix: EgoState):
+    """
+    :param pubsub: Inter-process communication interface.
+    :param ego_state_fix: Fixture of an ego state.
+
+    Checking functionality of _is_object_on_road for an object that is off the road.
+    """
+    logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
+
+    state_module = StateModule(pubsub=pubsub, logger=logger,
+                               occupancy_state=OccupancyState(0, np.array([]), np.array([])),
+                               dynamic_objects=None, ego_state=ego_state_fix)
+    actual_result = state_module._is_object_on_road(np.array([17.0,17.0,0.0]), 0.0)
+    expected_result = False
+    assert expected_result == actual_result
+
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+def test_isObjectOnRoad_objectOnRoad_True(pubsub: PubSub, ego_state_fix: EgoState):
+    """
+    :param pubsub: Inter-process communication interface.
+    :param ego_state_fix: Fixture of an ego state.
+
+    Checking functionality of _is_object_on_road for an object that is on the road.
+    """
+    logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
+
+    state_module = StateModule(pubsub=pubsub, logger=logger,
+                               occupancy_state=OccupancyState(0, np.array([]), np.array([])),
+                               dynamic_objects=None, ego_state=ego_state_fix)
+    actual_result = state_module._is_object_on_road(np.array([5.0,1.0,0.0]), 0.0)
+    expected_result = True
+    assert expected_result == actual_result
+
+
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+@patch(FILTER_OBJECT_OFF_ROAD_PATH, False)
+def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: PubSub,
+                                                                                   dynamic_objects_not_on_road: LcmPerceivedDynamicObjectList,
+                                                                                   ego_state_fix: EgoState):
+    """
+    :param pubsub: Inter-process communication interface.
+    :param ego_state_fix: Fixture of an ego state.
+
+    Checking functionality of dynamic_object_callback for an object that is not on the road.
+    """
+    logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
+
+    state_module = StateModule(pubsub=pubsub, logger=logger,
+                               occupancy_state=OccupancyState(0, np.array([]), np.array([])),
+                               dynamic_objects=None, ego_state=ego_state_fix)
+    state_module.start()
+    # Inserting a object that's not on the road
+    dyn_obj_list = state_module.create_dyn_obj_list(dynamic_objects_not_on_road)
+    assert len(dyn_obj_list) == 1 # check that object was inserted
+
+
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+def test_dynamicObjCallbackWithFilter_objectOffRoad_stateWithoutObject(pubsub: PubSub,
+                                                                                   dynamic_objects_not_on_road: LcmPerceivedDynamicObjectList,
+                                                                                   ego_state_fix: EgoState):
+    """
+    :param pubsub: Inter-process communication interface.
+    :param ego_state_fix: Fixture of an ego state.
+
+    Checking functionality of dynamic_object_callback for an object that is not on the road.
+    """
+    logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
+
+    state_module = StateModule(pubsub=pubsub, logger=logger,
+                               occupancy_state=OccupancyState(0, np.array([]), np.array([])),
+                               dynamic_objects=None, ego_state=ego_state_fix)
+    state_module.start()
+    # Inserting a object that's not on the road
+    dyn_obj_list = state_module.create_dyn_obj_list(dynamic_objects_not_on_road)
+    assert len(dyn_obj_list) == 0   # check that object was not inserted
