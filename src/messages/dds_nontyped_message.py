@@ -4,7 +4,7 @@ from pydoc import locate
 import numpy as np
 
 from decision_making.src.exceptions import MsgDeserializationError
-from decision_making.src.messages.dds_message import *
+from decision_making.src.messages.dds_message import DDSMsg
 
 
 class DDSNonTypedMsg(DDSMsg):

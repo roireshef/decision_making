@@ -3,14 +3,15 @@ from abc import abstractmethod
 import numpy as np
 
 from decision_making.src.global_constants import EXP_CLIP_TH
-from decision_making.src.planning.types import CartesianTrajectory, C_YAW, CartesianState, C_Y, C_X
+from decision_making.src.planning.types import CartesianTrajectory, C_YAW, CartesianState, C_Y, C_X, \
+    CartesianTrajectories, CartesianPaths2D, CartesianPoint2D
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
 class SigmoidBoxObstacle:
-    def __init__(self, length: float, width: float, k: float, margin: float):
+    def __init__(self, length: float, width: float, k: float, margin: CartesianPoint2D):
         """
         :param length: length of the box in its own longitudinal axis (box's x)
         :param width: length of the box in its own lateral axis (box's y)
@@ -32,68 +33,80 @@ class SigmoidBoxObstacle:
     @property
     def margin(self): return self._margin
 
+    def compute_cost_per_point(self, points: np.ndarray) -> np.ndarray:
+        """
+        Takes a list of points in vehicle's coordinate frame and returns cost of proximity (to self) for each point
+        :param points: either a CartesianPath2D or CartesianPaths2D
+        :return: numpy vector of corresponding trajectory-costs
+        """
+        if len(points.shape) == 2:
+            points = np.array([points])
+
+        points_proj = self.convert_to_obstacle_coordinate_frame(points)
+
+        # subtract from the distances: 1. the box dimensions (height, width) and the margin
+        points_offset = np.subtract(points_proj, [self.length / 2 + self.margin[0], self.width / 2 + self.margin[1]])
+
+        # compute a sigmoid for each dimension [x, y] of each point (in each trajectory)
+        logit_costs = np.divide(1.0, (1.0 + np.exp(np.clip(np.multiply(self.k, points_offset), -np.inf, EXP_CLIP_TH))))
+
+        return logit_costs[:, :, C_X] * logit_costs[:, :, C_Y]
+
     def compute_cost(self, points: np.ndarray) -> np.ndarray:
         """
         Takes a list of points in vehicle's coordinate frame and returns cost of proximity (to self) for each point
         :param points: either a CartesianTrajectory or CartesianTrajectories
         :return: numpy vector of corresponding trajectory-costs
         """
-        if len(points.shape) == 2:
-            points = np.array([points])
-
-        # add a third value (=1.0) to each point in each trajectory for multiplication with homo-matrix
-        ones = np.ones(points.shape[:2])
-        points_ext = np.dstack((points, ones))
-
-        points_proj = self.convert_to_obstacle_coordinate_frame(points_ext)[:, :, :(C_Y+1)]
-
-        # subtract from the distances: 1. the box dimensions (height, width) and the margin
-        points_offset = np.subtract(points_proj, [self.length / 2 + self.margin, self.width / 2 + self.margin])
-
-        # compute a sigmoid for each dimension [x, y] of each point (in each trajectory)
-        logit_costs = np.divide(1.0, (1.0 + np.exp(np.clip(np.multiply(self.k, points_offset), -np.inf, EXP_CLIP_TH))))
-
-        return np.sum(logit_costs[:, :, C_X] * logit_costs[:, :, C_Y], axis=1)
+        logit_costs = self.compute_cost_per_point(points)
+        return np.sum(logit_costs[:, :], axis=1)
 
     @abstractmethod
-    def convert_to_obstacle_coordinate_frame(self, homo_trajectories_points: np.ndarray):
+    def convert_to_obstacle_coordinate_frame(self, points: CartesianPaths2D) -> CartesianPaths2D:
         """
-        Project all points to the box obstacle's own coordinate-frame (for each trajectory).
+        Project all points to the box-obstacle's own coordinate-frame (for each trajectory).
         Each trajectory-point is multiplied by the appropriate conversion matrix.
-        now each record is the [x, y, 1] relative to the box coordinate frame (box-center).
-        :param homo_trajectories_points: a numpy tensor (3D) of the shape [t, p, 3] (t trajectories, p points, [x, y, 1]
-        in each point). The 1 constant at the 3rd cell of the vectors are for homogeneous matrices multiplication
-        :return: a numpy tensor (3D) of the shape [t, p, 3] (t trajectories, p points, [x, y, 1]) relative to box
-        coordinate-frame
+        now each record is relative to the box coordinate frame (box-center).
+        :param points: CartesianPaths2D tensor of trajectories in global-frame
+        :return: CartesianPaths2D tensor of trajectories in object's-coordinate-frame
         """
         pass
 
 
 class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
-    def __init__(self, poses: CartesianTrajectory, length: float, width: float, k: float, margin: float):
+    def __init__(self, poses: CartesianTrajectory, length: float, width: float, k: float, margin: CartesianPoint2D):
         """
         :param poses: array of the object's predicted poses, each pose is np.array([x, y, theta, vel])
         :param length: length of the box in its own longitudinal axis (box's x)
         :param width: length of the box in its own lateral axis (box's y)
         """
         super().__init__(length, width, k, margin)
-        self._H_inv = np.zeros((poses.shape[0], 3, 3))
+
         # conversion matrices from global to relative to obstacle
         # TODO: make this more efficient by removing for loop
+        self._H_inv = np.zeros((poses.shape[0], 3, 3))
         for pose_ind in range(poses.shape[0]):
             H = CartesianFrame.homo_matrix_2d(poses[pose_ind, C_YAW], poses[pose_ind, :C_YAW])
             self._H_inv[pose_ind] = np.linalg.inv(H).transpose()
 
-    def convert_to_obstacle_coordinate_frame(self, homo_trajectories_points: np.ndarray):
-        return np.abs(np.einsum('ijk, jkl -> ijl', homo_trajectories_points, self._H_inv))
+    def convert_to_obstacle_coordinate_frame(self, points: np.ndarray):
+        """ see base method """
+        # add a third value (=1.0) to each point in each trajectory for multiplication with homogeneous-matrix
+        ones = np.ones(points.shape[:2])
+        points_ext = np.dstack((points, ones))
+
+        # this also removes third value (=1.0) from results to return to (x,y) coordinates
+        # dimensions - (i) trajectories, (j) timestamp, (k) old-frame-coordinates, (l) new-frame-coordinates
+        return np.abs(np.einsum('ijk, jkl -> ijl', points_ext, self._H_inv)[:, :, :(C_Y+1)])
 
     @classmethod
-    def from_object(cls, obj: DynamicObject, k: float, offset: float, time_samples: np.ndarray, predictor: Predictor):
+    def from_object(cls, obj: DynamicObject, k: float, offset: CartesianPoint2D, time_samples: np.ndarray,
+                    predictor: Predictor):
         """
         Additional constructor that takes a ObjectState from the State object and wraps it
         :param obj: ObjectState object from State object (in global coordinates)
         :param k:
-        :param offset:
+        :param offset: longitudinal & lateral margins (half size of ego)
         :param time_samples: [sec] time period for prediction (absolute time)
         :param predictor:
         :return: new instance
@@ -110,7 +123,7 @@ class SigmoidStaticBoxObstacle(SigmoidBoxObstacle):
     """
 
     # width is on y, length is on x
-    def __init__(self, pose: CartesianState, length: float, width: float, k: float, margin: float):
+    def __init__(self, pose: CartesianState, length: float, width: float, k: float, margin: CartesianPoint2D):
         """
         :param pose: 1D numpy array [x, y, theta, vel] that represents object's pose
         :param length: length of the box in its own longitudinal axis (box's x)
@@ -122,11 +135,17 @@ class SigmoidStaticBoxObstacle(SigmoidBoxObstacle):
         H = CartesianFrame.homo_matrix_2d(pose[C_YAW], pose[:C_YAW])
         self._H_inv = np.linalg.inv(H).transpose()
 
-    def convert_to_obstacle_coordinate_frame(self, homo_trajectories_points: np.ndarray):
-        return np.abs(np.einsum('ijk, kl -> ijl', homo_trajectories_points, self._H_inv))
+    def convert_to_obstacle_coordinate_frame(self, points: CartesianTrajectories):
+        # add a third value (=1.0) to each point in each trajectory for multiplication with homogeneous-matrix
+        ones = np.ones(points.shape[:2])
+        points_ext = np.dstack((points, ones))
+
+        # this also removes third value (=1.0) from results to return to (x,y) coordinates
+        # dimensions - (i) trajectories, (j) timestamp, (k) old-frame-coordinates, (l) new-frame-coordinates
+        return np.abs(np.einsum('ijk, kl -> ijl', points_ext, self._H_inv)[:, :, :(C_Y+1)])
 
     @classmethod
-    def from_object(cls, obj: DynamicObject, k: float, offset: float):
+    def from_object(cls, obj: DynamicObject, k: float, offset: CartesianPoint2D):
         """
         Additional constructor that takes a ObjectState from the State object and wraps it
         :param obj: ObjectState object from State object (in global coordinates)

@@ -2,9 +2,8 @@ from unittest.mock import patch
 
 import numpy as np
 
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT
-from decision_making.src.planning.behavioral.constants import SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LAT_LEFT, \
-    SEMANTIC_CELL_LON_FRONT
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, SEMANTIC_CELL_LAT_RIGHT, \
+    SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_FRONT
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import \
     SemanticActionsGridState
@@ -20,7 +19,7 @@ from rte.python.logger.AV_logger import AV_Logger
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=testable_map_api)
 def test_evalSemanticActions():
-    max_velocity = v = BEHAVIORAL_PLANNING_DEFAULT_SPEED_LIMIT  # m/s
+    max_velocity = v = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED  # m/s
 
     ego_v = max_velocity
     pos1 = np.array([33, -3])
