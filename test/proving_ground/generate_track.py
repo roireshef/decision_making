@@ -89,9 +89,13 @@ def main():
     fig = plt.figure()
 
     pmap = fig.add_subplot(211)
+    plt.title('Map')
     pvel = fig.add_subplot(234)
+    plt.title(r'v_lon[$\frac{m}{s}$]')
     pacc = fig.add_subplot(235)
+    plt.title(r'a_lon[$\frac{m}{s^2}$]')
     pcurv = fig.add_subplot(236)
+    plt.title(r'curvature[$\frac{1}{m}$]')
 
     WerlingVisualizer.plot_route(pmap, generator.road._points)
     pmap.plot(init_geo_coordinate[0], init_geo_coordinate[1], '.b')
