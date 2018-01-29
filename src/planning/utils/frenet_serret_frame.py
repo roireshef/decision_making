@@ -6,7 +6,7 @@ from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
     FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, FS_SX, \
     FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint, C_YAW, C_K, C_V, C_A, \
     CartesianVectorsTensor2D, CartesianPointsTensor2D, FrenetState, CartesianExtendedState
-from decision_making.src.planning.utils.tensor_ops import TensorOps
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
 
@@ -31,8 +31,7 @@ class FrenetSerret2DFrame:
     def get_yaw(self, s: np.ndarray):
         """
         Computes yaw (in radians, relative to the origin in which the curve points (self.O) are given
-        :param s: progress on the curve from its beginning in meters (any tensor shape, with the last dimension being
-        [x,y] coordinates)
+        :param s: progress on the curve from its beginning in meters (any tensor shape)
         :return: yaw in radians (tensor shape is the same as <s>)
         """
         _, T_r, _, _, _ = self._taylor_interp(s)
@@ -167,7 +166,7 @@ class FrenetSerret2DFrame:
         v_x = ctrajectories[:, :, C_V]
         a_x = ctrajectories[:, :, C_A]
 
-        s_x, a_r, T_r, N_r, k_r, k_r_tag = self._project_cartesian_points(ctrajectories[:, :, [C_X, C_Y]])
+        s_x, a_r, T_r, N_r, k_r, k_r_tag = self._project_cartesian_points(pos_x)
 
         d_x = np.einsum('tpi,tpi->tp', pos_x - a_r, N_r)
 
@@ -215,6 +214,9 @@ class FrenetSerret2DFrame:
 
         is_curvature_big_enough = np.greater(np.abs(k_s), TINY_CURVATURE)
 
+        # don't enable zero curvature to prevent numerical problems with infinite radius
+        k_s[np.logical_not(is_curvature_big_enough)] = TINY_CURVATURE
+
         # signed circle radius according to the curvature
         signed_radius = np.divide(1, k_s)
 
@@ -228,10 +230,11 @@ class FrenetSerret2DFrame:
         cos = np.abs(np.einsum('...ik,...ik->...i', N_s, center_to_point) / np.linalg.norm(center_to_point, axis=-1))
 
         # prevent illegal (greater than 1) argument for arccos()
-        cos[cos > 1.0] = 1.0
+        # don't enable zero curvature to prevent numerical problems with infinite radius
+        cos[np.logical_or(np.logical_not(is_curvature_big_enough), cos > 1.0)] = 1.0
 
         # arc length from a_s to the new guess point
-        step = step_sign * np.apply_along_axis(np.math.acos, 1, cos[:, np.newaxis]) * np.abs(signed_radius)
+        step = step_sign * np.arccos(cos) * np.abs(signed_radius)
         s_approx[is_curvature_big_enough] += step[is_curvature_big_enough]  # next s_approx of the current point
 
         a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(s_approx)
@@ -249,7 +252,8 @@ class FrenetSerret2DFrame:
         taken from the nearest point in self.O (will have shape of D)
         k'(s) is the derivative of the curvature (by distance d(s))
         """
-        assert np.all(np.bitwise_and(0 <= s, s <= self.s_max))
+        assert np.all(np.bitwise_and(0 <= s, s <= self.s_max)), \
+            "Cannot extrapolate, desired progress is out of the curve."
 
         progress_ds = s / self.ds
         O_idx = np.round(progress_ds).astype(np.int)
@@ -305,10 +309,10 @@ class FrenetSerret2DFrame:
         dT = np.divide(np.gradient(T)[0], ds)
 
         # Normal - robust to zero-curvature
-        N = TensorOps.row_wise_normal(T)
+        N = NumpyUtils.row_wise_normal(T)
 
         # SIGNED (!) Curvature
-        cross_norm = np.sum(TensorOps.row_wise_normal(dxy) * ddxy, axis=1)
+        cross_norm = np.sum(NumpyUtils.row_wise_normal(dxy) * ddxy, axis=1)
         k = np.zeros(len(T))
         k[dxy_norm > 0] = cross_norm[dxy_norm > 0] / (dxy_norm[dxy_norm > 0] ** 3)
 

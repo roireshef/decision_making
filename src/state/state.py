@@ -1,25 +1,22 @@
 import copy
-from typing import List, Optional
+from typing import List
 
 import numpy as np
 
-from decision_making.src.messages.dds_nontyped_message import DDSNonTypedMsg
-from decision_making.src.messages.dds_typed_message import DDSTypedMsg
-from mapping.src.model.localization import RoadLocalization
-
-from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW
-from mapping.src.service.map_service import MapService
-
-from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedNumpyArray
-from common_data.lcm.generatedFiles.gm_lcm import LcmOccupancyState
-from common_data.lcm.generatedFiles.gm_lcm import LcmObjectSize
 from common_data.lcm.generatedFiles.gm_lcm import LcmDynamicObject
 from common_data.lcm.generatedFiles.gm_lcm import LcmEgoState
+from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedNumpyArray
+from common_data.lcm.generatedFiles.gm_lcm import LcmObjectSize
+from common_data.lcm.generatedFiles.gm_lcm import LcmOccupancyState
 from common_data.lcm.generatedFiles.gm_lcm import LcmState
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW
+from mapping.src.model.localization import RoadLocalization
+from mapping.src.service.map_service import MapService
 
 
-class OccupancyState(DDSTypedMsg):
-    def __init__(self, timestamp: int, free_space: np.ndarray, confidence: np.ndarray):
+class OccupancyState(PUBSUB_MSG_IMPL):
+    def __init__(self, timestamp, free_space, confidence):
         # type: (int, np.ndarray, np.ndarray) -> None
         """
         free space description
@@ -31,20 +28,57 @@ class OccupancyState(DDSTypedMsg):
         self.free_space = np.copy(free_space)
         self.confidence = np.copy(confidence)
 
+    def serialize(self):
+        # type: () -> LcmOccupancyState
+        lcm_msg = LcmOccupancyState()
+        lcm_msg.timestamp = self.timestamp
+        lcm_msg.free_space = LcmNonTypedNumpyArray()
+        lcm_msg.free_space.num_dimensions = len(self.free_space.shape)
+        lcm_msg.free_space.shape = list(self.free_space.shape)
+        lcm_msg.free_space.length = self.free_space.size
+        lcm_msg.free_space.data = self.free_space.flat.__array__().tolist()
+        lcm_msg.confidence = LcmNonTypedNumpyArray()
+        lcm_msg.confidence.num_dimensions = len(self.confidence.shape)
+        lcm_msg.confidence.shape = list(self.confidence.shape)
+        lcm_msg.confidence.length = self.confidence.size
+        lcm_msg.confidence.data = self.confidence.flat.__array__().tolist()
+        return lcm_msg
+
+    @classmethod
+    def deserialize(cls, lcmMsg):
+        # type: (LcmOccupancyState) -> OccupancyState
+        return cls(lcmMsg.timestamp
+                 , np.ndarray(shape = tuple(lcmMsg.free_space.shape)
+                            , buffer = np.array(lcmMsg.free_space.data)
+                            , dtype = float)
+                 , np.ndarray(shape = tuple(lcmMsg.confidence.shape)
+                            , buffer = np.array(lcmMsg.confidence.data)
+                            , dtype = float))
 
 
-class ObjectSize(DDSTypedMsg):
-    def __init__(self, length: float, width: float, height: float):
+class ObjectSize(PUBSUB_MSG_IMPL):
+    def __init__(self, length, width, height):
         # type: (float, float, float) -> None
         self.length = length
         self.width = width
         self.height = height
 
+    def serialize(self):
+        # type: () -> LcmObjectSize
+        lcm_msg = LcmObjectSize()
+        lcm_msg.length = self.length
+        lcm_msg.width = self.width
+        lcm_msg.height = self.height
+        return lcm_msg
+
+    @classmethod
+    def deserialize(cls, lcmMsg):
+        # type: (LcmObjectSize) -> ObjectSize
+        return cls(lcmMsg.length, lcmMsg.width, lcmMsg.height)
 
 
-class DynamicObject(DDSTypedMsg):
-    def __init__(self, obj_id: int, timestamp: int, x: float, y: float, z: float, yaw: float, size: ObjectSize,
-                 confidence: float, v_x: float, v_y: float, acceleration_lon: float, omega_yaw: float):
+class DynamicObject(PUBSUB_MSG_IMPL):
+    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, acceleration_lon, omega_yaw):
         # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float) -> DynamicObject
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
@@ -74,9 +108,10 @@ class DynamicObject(DDSTypedMsg):
         self.v_y = v_y
         self.acceleration_lon = acceleration_lon
         self.omega_yaw = omega_yaw
-        self._cached_road_localization: Optional[RoadLocalization] = None
+        self._cached_road_localization = None
 
-    def clone_cartesian_state(self, timestamp_in_sec: float, cartesian_state: CartesianState):
+    def clone_cartesian_state(self, timestamp_in_sec, cartesian_state):
+        # type: (float, CartesianState) -> DynamicObject
         """
         Return a new DynamicObject instance with updated timestamp and cartesian state.
         Enables creating new instances of object from predicted trajectories.
@@ -131,7 +166,8 @@ class DynamicObject(DDSTypedMsg):
         self.timestamp = int(value * 1e9)
 
     @property
-    def road_longitudinal_speed(self) -> float:
+    def road_longitudinal_speed(self):
+        # type: () -> float
         """
         Assuming no lateral slip
         :return: Longitudinal speed (relative to road)
@@ -139,18 +175,44 @@ class DynamicObject(DDSTypedMsg):
         return np.linalg.norm([self.v_x, self.v_y]) * np.cos(self.road_localization.intra_road_yaw)
 
     @property
-    def road_lateral_speed(self) -> float:
+    def road_lateral_speed(self):
+        # type: () -> float
         """
         Assuming no lateral slip
         :return: Longitudinal speed (relative to road)
         """
         return np.linalg.norm([self.v_x, self.v_y]) * np.sin(self.road_localization.intra_road_yaw)
 
+    def serialize(self):
+        # type: () -> LcmDynamicObject
+        lcm_msg = LcmDynamicObject()
+        lcm_msg.obj_id = self.obj_id
+        lcm_msg.timestamp = self.timestamp
+        lcm_msg.x = self.x
+        lcm_msg.y = self.y
+        lcm_msg.z = self.z
+        lcm_msg.yaw = self.yaw
+        lcm_msg.size = self.size.serialize()
+        lcm_msg.confidence = self.confidence
+        lcm_msg.v_x = self.v_x
+        lcm_msg.v_y = self.v_y
+        lcm_msg.acceleration_lon = self.acceleration_lon
+        lcm_msg.omega_yaw = self.omega_yaw
+        return lcm_msg
+
+    @classmethod
+    def deserialize(cls, lcmMsg):
+        # type: (LcmDynamicObject) -> DynamicObject
+        return cls(lcmMsg.obj_id, lcmMsg.timestamp
+                 , lcmMsg.x, lcmMsg.y, lcmMsg.z, lcmMsg.yaw
+                 , ObjectSize.deserialize(lcmMsg.size)
+                 , lcmMsg.confidence, lcmMsg.v_x, lcmMsg.v_y
+                 , lcmMsg.acceleration_lon, lcmMsg.omega_yaw)
+
 
 class EgoState(DynamicObject):
-    def __init__(self, obj_id: int, timestamp: int, x: float, y: float, z: float, yaw: float, size: ObjectSize,
-                 confidence: float,
-                 v_x: float, v_y: float, acceleration_lon: float, omega_yaw: float, steering_angle: float):
+    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence,
+                 v_x, v_y, acceleration_lon, omega_yaw, steering_angle):
         # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float, float) -> None
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
@@ -183,8 +245,26 @@ class EgoState(DynamicObject):
         """
         return np.tan(self.steering_angle) / self.size.length
 
-class State(DDSTypedMsg):
-    def __init__(self, occupancy_state: OccupancyState, dynamic_objects: List[DynamicObject], ego_state: EgoState):
+    def serialize(self):
+        # type: () -> LcmEgoState
+        lcm_msg = LcmEgoState()
+        lcm_msg.dynamic_obj = super(self.__class__, self).serialize()
+        lcm_msg.steering_angle = self.steering_angle
+        return lcm_msg
+
+    @classmethod
+    def deserialize(cls, lcmMsg):
+        # type: (LcmEgoState) -> EgoState
+        dyn_obj = DynamicObject.deserialize(lcmMsg.dynamic_obj)
+        return cls(dyn_obj.obj_id, dyn_obj.timestamp
+                 , dyn_obj.x, dyn_obj.y, dyn_obj.z, dyn_obj.yaw
+                 , dyn_obj.size, dyn_obj.confidence
+                 , dyn_obj.v_x, dyn_obj.v_y, dyn_obj.acceleration_lon
+                 , dyn_obj.omega_yaw, lcmMsg.steering_angle)
+
+
+class State(PUBSUB_MSG_IMPL):
+    def __init__(self, occupancy_state, dynamic_objects, ego_state):
         # type: (OccupancyState, List[DynamicObject], EgoState) -> None
         """
         main class for the world state. deep copy is required by self.clone_with!
@@ -196,9 +276,8 @@ class State(DDSTypedMsg):
         self.dynamic_objects = copy.deepcopy(dynamic_objects)
         self.ego_state = copy.deepcopy(ego_state)
 
-    def clone_with(self, occupancy_state: Optional[OccupancyState] = None,
-                   dynamic_objects: Optional[List[DynamicObject]] = None,
-                   ego_state: Optional[EgoState] = None):
+    def clone_with(self, occupancy_state=None, dynamic_objects=None, ego_state=None):
+        # type: (OccupancyState, List[DynamicObject], EgoState) -> State
         """
         clones state object with potential overriding of specific fields.
         requires deep-copying of all fields in State.__init__ !!
@@ -206,3 +285,27 @@ class State(DDSTypedMsg):
         return State(occupancy_state or self.occupancy_state,
                      dynamic_objects or self.dynamic_objects,
                      ego_state or self.ego_state)
+
+    def serialize(self):
+        # type: () -> LcmState
+        lcm_msg = LcmState()
+        lcm_msg.occupancy_state = self.occupancy_state.serialize()
+        ''' resize the list at once to the right length '''
+        lcm_msg.num_obj = len(self.dynamic_objects)
+        lcm_msg.dynamic_objects = list()
+        for i in range(lcm_msg.num_obj):
+            lcm_msg.dynamic_objects.append(self.dynamic_objects[i].serialize())
+        lcm_msg.ego_state = self.ego_state.serialize()
+        return lcm_msg
+
+    @classmethod
+    def deserialize(cls, lcmMsg):
+        # type: (LcmState) -> State
+        dynamic_objects = list()
+        for i in range(lcmMsg.num_obj):
+            dynamic_objects.append(DynamicObject.deserialize(lcmMsg.dynamic_objects[i]))
+        ''' [DynamicObject.deserialize(lcmMsg.dynamic_objects[i]) for i in range(lcmMsg.num_obj)] '''
+        return cls(OccupancyState.deserialize(lcmMsg.occupancy_state)
+                 , dynamic_objects
+                 , EgoState.deserialize(lcmMsg.ego_state))
+
