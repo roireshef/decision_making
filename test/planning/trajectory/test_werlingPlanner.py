@@ -148,9 +148,9 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     lane_width = 3.6
     num_lanes = 2
     road_width = num_lanes*lane_width
-    reference_route_latitude = 3*lane_width/2
+    reference_route_latitude = lane_width/2
 
-    lng = 50
+    lng = 40
     step = 0.2
     curvature = 0.5
 
@@ -168,7 +168,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     route_points = CartesianFrame.add_yaw_and_derivatives(route_xy)
     ext_route_points = CartesianFrame.add_yaw_and_derivatives(ext_route_xy)
 
-    start_latitude = lane_width / 2
+    start_latitude = 3*lane_width / 2
     goal_latitude = reference_route_latitude
     target_lane = int(goal_latitude/lane_width)
     start_ego_lat = start_latitude
@@ -189,14 +189,14 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     d_x = np.einsum('tpi,tpi->tp', pos_x - a_r, N_r)
     fpoints = np.c_[s_x.flatten()-s_x.flatten()[0], d_x.flatten()]
 
-    v0 = 9
-    vT = 15
-    T = 4.0
+    v0 = 6
+    vT = 10
+    T = 4.6
 
     test_safety = False
     test_jerk = True
 
-    for test_idx in range(16):
+    for test_idx in range(2, 3):
 
         if test_safety:
             if test_idx < 8:
@@ -207,8 +207,8 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
                 obs_poses = np.array([np.array([36, -1.6 + test_idx*0.4])])
                 start_ego_lat = 3*lane_width / 2
 
-        if test_jerk:
-            T = 3.6 + test_idx*0.2
+        #if test_jerk:
+        #    T = 3.6 + test_idx*0.2
 
         ftraj_start_goal = np.array([np.array([ext, v0, 0, start_ego_lat - reference_route_latitude, 0, 0]),
                                      np.array([lng + ext, vT, 0, goal_latitude - reference_route_latitude, 0, 0])])
@@ -264,8 +264,9 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
         planner = WerlingPlanner(logger, predictor)
 
         samplable, ctrajectories, costs, cost_components = planner.plan(state=state,
-                                                                      reference_route=ext_route_points[:, :2],
-                                                                      goal=goal, goal_time=T, cost_params=cost_params)
+                                                                        reference_route=ext_route_points[:, :2],
+                                                                        goal=goal, lon_plan_horizon=T,
+                                                                        cost_params=cost_params)
 
         obs_costs = np.zeros(width * height)
         for obj in obs:
@@ -347,6 +348,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
         WerlingVisualizer.plot_best(p2, ctrajectories[0])
         WerlingVisualizer.plot_alternatives(p1, ctrajectories, costs)
 
+        WerlingVisualizer.plot_goal(p1, goal)
         WerlingVisualizer.plot_goal(p2, goal)
 
         print(costs)

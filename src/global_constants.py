@@ -79,7 +79,7 @@ BP_SPECIFICATION_T_RES = 0.2
 LON_ACC_LIMITS = np.array([-8.0, 3.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
-LAT_ACC_LIMITS = np.array([-3.0, 3.0])
+LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
@@ -120,7 +120,7 @@ TRAJECTORY_OBSTACLE_LOOKAHEAD = 200.0
 EXP_CLIP_TH = 50.0
 
 # Number of (best) trajectories to publish to visualization
-NUM_ALTERNATIVE_TRAJECTORIES = 75
+NUM_ALTERNATIVE_TRAJECTORIES = 350
 
 # Number of points in trajectories for sending out to visualization (currently VizTool freezes when there are too much)
 MAX_NUM_POINTS_FOR_VIZ = 60

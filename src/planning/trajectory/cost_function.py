@@ -4,7 +4,7 @@ import numpy as np
 
 from decision_making.src.global_constants import EXP_CLIP_TH
 from decision_making.src.planning.types import CartesianTrajectory, C_YAW, CartesianState, C_Y, C_X, \
-    CartesianTrajectories, CartesianPaths2D, CartesianPoint2D, C_A, C_K, C_V, FrenetTrajectories, FS_SA
+    CartesianTrajectories, CartesianPaths2D, CartesianPoint2D, C_A, C_K, C_V
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject
 from mapping.src.transformations.geometry_utils import CartesianFrame
