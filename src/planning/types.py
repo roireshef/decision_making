@@ -61,14 +61,25 @@ FrenetPoint = np.ndarray  # [FP_SX, FP_DX]
 FP_SX, FP_DX = 0, 1
 
 # [FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA]
-FrenetState = np.ndarray
-# A Frenet-Frame trajectory: a numpy matrix of FrenetState [:, [FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA]]
-FrenetTrajectory = np.ndarray
-# Frenet-Frame trajectories: a tensor of FrenetTrajectory [:, :, [FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA]]
-FrenetTrajectories = np.ndarray
+FrenetState2D = np.ndarray
+# A Frenet-Frame trajectory: a numpy matrix of FrenetState2D [:, [FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA]]
+FrenetTrajectory2D = np.ndarray
+# Frenet-Frame trajectories: a tensor of FrenetTrajectory2D [:, :, [FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA]]
+FrenetTrajectories2D = np.ndarray
 
-# frenet-frame state: [s, s-dot, s-dotdot, d, d-dot, d-dotdot]
+# Frenet-frame state: [s, s-dot, s-dotdot, d, d-dot, d-dotdot]
 FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA = 0, 1, 2, 3, 4, 5
+
+# [FS_X, FS_V, FS_A]
+FrenetState1D = np.ndarray
+# A Frenet-Frame trajectory: a numpy matrix of FrenetState1D [:, [FS_X, FS_V, FS_A]]
+FrenetTrajectory1D = np.ndarray
+# Frenet-Frame trajectories: a tensor of FrenetTrajectory1D [:, :, [FS_X, FS_V, FS_A]]
+FrenetTrajectories1D = np.ndarray
+
+# frenet-frame 1D state: [x, x-dot, x-dotdot]
+FS_X, FS_V, FS_A, = 0, 1, 2
+FS_1D_LEN = 3
 
 ## MISC ##
 # A (two-cells) 1D numpy array represents limits (min, max)
