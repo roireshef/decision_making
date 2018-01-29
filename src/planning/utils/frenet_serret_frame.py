@@ -305,17 +305,17 @@ class FrenetSerret2DFrame:
         # TODO: should normalize by step size or is it already normalized? ...
         # TODO: ... are derivatives of spline-object in meter-units?
         x = xy_splines[0]
-        x_tag = x.derivative(1)
-        x_tagtag = x.derivative(2)
+        x_dot = x.derivative(1)
+        x_dotdot = x.derivative(2)
         y = xy_splines[1]
-        y_tag = y.derivative(1)
-        y_tagtag = y.derivative(2)
+        y_dot = y.derivative(1)
+        y_dotdot = y.derivative(2)
 
         # parameterization of progress on the curve (in meters)
         s = np.arange(start, stop, step)
 
-        dxy = np.c_[x_tag(s), y_tag(s)]
-        ddxy = np.c_[x_tagtag(s), y_tagtag(s)]
+        dxy = np.c_[x_dot(s), y_dot(s)]
+        ddxy = np.c_[x_dotdot(s), y_dotdot(s)]
 
         dxy_norm = np.linalg.norm(dxy, axis=1)
 
@@ -330,9 +330,9 @@ class FrenetSerret2DFrame:
         k = cross_norm / dxy_norm ** 3
 
         # derivative of curvature
-        k_tag = np.divide(np.gradient(k), step)
+        k_dot = np.divide(np.gradient(k), step)
 
-        return T, N, np.c_[k], np.c_[k_tag]
+        return T, N, np.c_[k], np.c_[k_dot]
 
 
     @staticmethod
@@ -369,6 +369,6 @@ class FrenetSerret2DFrame:
         k[dxy_norm > 0] = cross_norm[dxy_norm > 0] / (dxy_norm[dxy_norm > 0] ** 3)
 
         # derivative of curvature
-        k_tag = np.divide(np.gradient(k), ds)
+        k_dot = np.divide(np.gradient(k), ds)
 
-        return T, N, np.c_[k], np.c_[k_tag]
+        return T, N, np.c_[k], np.c_[k_dot]
