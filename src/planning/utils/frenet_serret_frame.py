@@ -329,10 +329,10 @@ class FrenetSerret2DFrame:
         cross_norm = np.sum(NumpyUtils.row_wise_normal(dxy) * ddxy, axis=1)
         k = cross_norm / dxy_norm ** 3
 
-        # derivative of curvature
-        k_dot = np.divide(np.gradient(k), step)
+        # derivative of curvature (by ds)
+        k_tag = np.divide(np.gradient(k), step)
 
-        return T, N, np.c_[k], np.c_[k_dot]
+        return T, N, np.c_[k], np.c_[k_tag]
 
 
     @staticmethod
@@ -368,7 +368,7 @@ class FrenetSerret2DFrame:
         k = np.zeros(len(T))
         k[dxy_norm > 0] = cross_norm[dxy_norm > 0] / (dxy_norm[dxy_norm > 0] ** 3)
 
-        # derivative of curvature
-        k_dot = np.divide(np.gradient(k), ds)
+        # derivative of curvature (by ds)
+        k_tag = np.divide(np.gradient(k), ds)
 
-        return T, N, np.c_[k], np.c_[k_dot]
+        return T, N, np.c_[k], np.c_[k_tag]
