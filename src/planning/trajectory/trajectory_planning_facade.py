@@ -37,7 +37,7 @@ class TrajectoryPlanningFacade(DmModule):
         :param strategy_handlers: a dictionary of trajectory planners as strategy handlers - types are
         {TrajectoryPlanningStrategy: TrajectoryPlanner}
         :param short_time_predictor: predictor used to align all objects in state to ego's timestamp.
-        :param last_trajectory: a representation the last trajectory that was planned during self._periodic_action_impl
+        :param last_trajectory: a representation of the last trajectory that was planned during self._periodic_action_impl
         """
         super().__init__(pubsub=pubsub, logger=logger)
 
@@ -71,11 +71,15 @@ class TrajectoryPlanningFacade(DmModule):
 
             params = self._get_mission_params()
 
+            # Longitudinal planning horizon (Ts)
+            lon_plan_horizon = params.time - state.ego_state.timestamp_in_sec
+
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route[0])
-            self.logger.debug("input: ego: pos: (x: %f y: %f)", state_aligned.ego_state.x, state_aligned.ego_state.y)
-            self.logger.debug("input: ego: v_x: %f, v_y: %f", state_aligned.ego_state.v_x, state_aligned.ego_state.v_y)
-            self.logger.info("state: %d objects detected", len(state_aligned.dynamic_objects))
+            self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
+            self.logger.debug("input: ego: v_x: %f, v_y: %f", state.ego_state.v_x, state.ego_state.v_y)
+            self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", lon_plan_horizon)
+            self.logger.info("state: %d objects detected", len(state.dynamic_objects))
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
@@ -83,14 +87,14 @@ class TrajectoryPlanningFacade(DmModule):
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if self._is_actual_state_close_to_expected_state(state_aligned.ego_state):
                 updated_state = self._get_state_with_expected_ego(state_aligned)
-                self.logger.info("TrajectoryPlanningFacade ego localization was overriden to the expected-state "
+                self.logger.info("TrajectoryPlanningFacade ego localization was overridden to the expected-state "
                                  "according to previous plan")
             else:
                 updated_state = state_aligned
 
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs, _ = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, params.target_state, params.time, params.cost_params)
+                plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon, params.cost_params)
 
             # TODO: validate that sampling is consistent with controller!
             trajectory_points = samplable_trajectory.sample(

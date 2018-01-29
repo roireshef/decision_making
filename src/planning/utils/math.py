@@ -46,3 +46,15 @@ class Math:
             y = np.einsum('ij,j->ij', y, x) + np.repeat(p[:, i, np.newaxis], n, axis=1)
 
         return y
+
+    @staticmethod
+    def round_to_step(value, step):
+        """
+        Round the value to nearest multiple of step
+        :param value: the value to be rounded.
+        :param step: the rounding step
+        :return: a value rounded to a multiple of step
+        """
+        rounded_val = np.round(value * (1 / step)) / (1 / step)
+
+        return rounded_val
