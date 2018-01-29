@@ -48,8 +48,7 @@ class DDSTypedMsg(DDSMsg):
         """
         try:
             deser_dict = {}
-            annotations = cls.__init__.__annotations__.items()
-            for name, tpe in annotations:
+            for name, tpe in cls.__init__.__annotations__.items():
                 if issubclass(tpe, np.ndarray):
                     deser_dict[name] = np.array(message[name]['array']).reshape(tuple(message[name]['shape']))
                 elif issubclass(tpe, Enum):
