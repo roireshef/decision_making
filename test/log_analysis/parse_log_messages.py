@@ -1,4 +1,6 @@
 import re
+from typing import List
+
 import numpy as np
 
 LOG_TIME_PATTERN = ": \d+-\d+-\d+ \d+:\d+:\d+,\d+ :"
@@ -12,14 +14,18 @@ STATE_IDENTIFIER_STRING_STATE_MODULE = "_publish_state_if_full: publishing state
 
 
 class DmLogParser:
+    """
+    Parse different types of messages from log
+    """
+
     @staticmethod
-    def parse_state_struct(str):
-        state_match = re.match(pattern='[^{]*({.*})$', string=str)
+    def parse_state_struct(input_str: str) -> str:
+        state_match = re.match(pattern='[^{]*({.*})$', string=input_str)
         return state_match.groups()[0]
 
     @staticmethod
-    def parse_log_timestamp(str):
-        time_match = re.match(pattern=LOG_TIME_PARSE_PATTERN, string=str)
+    def parse_log_timestamp(input_str: str) -> float:
+        time_match = re.match(pattern=LOG_TIME_PARSE_PATTERN, string=input_str)
         y, mm, d, h, m, s, ms = float(time_match.groups()[0]), float(time_match.groups()[1]), float(
             time_match.groups()[2]), float(time_match.groups()[3]), float(time_match.groups()[4]), float(
             time_match.groups()[5]), float(time_match.groups()[6])
@@ -28,7 +34,7 @@ class DmLogParser:
         return (h * 3600 + m * 60 + s + 0.001 * ms) * 1.0
 
     @staticmethod
-    def parse_state_message(log_content, identifier_str):
+    def parse_state_message(log_content: List[str], identifier_str: str) -> (List[float], List[float], List[str]) :
         log_timestamp = list()
         state_timestamps = list()
         states = list()
@@ -37,7 +43,7 @@ class DmLogParser:
         for row in range(len(log_content)):
             state_match = re.match(pattern=search_pattern, string=log_content[row])
             if state_match is not None:
-                states.append(DmLogParser.parse_state_struct(str=state_match.groups()[2]))
+                states.append(DmLogParser.parse_state_struct(input_str=state_match.groups()[2]))
                 timestamp_match = re.match(pattern=".*'timestamp': (\d*)", string=state_match.groups()[2])
                 timestamp = float(timestamp_match.groups()[0]) * 1E-9
                 state_timestamps.append(timestamp)
@@ -49,7 +55,7 @@ class DmLogParser:
         return log_timestamp, state_timestamps, states
 
     @staticmethod
-    def parse_tp_params(log_content):
+    def parse_tp_params(log_content: List[str]) -> (List[float], List[float], List[str]):
         log_timestamp = list()
         state_timestamps = list()
         states = list()
@@ -59,7 +65,7 @@ class DmLogParser:
         for row in range(len(log_content)):
             state_match = re.match(pattern=search_pattern, string=log_content[row])
             if state_match is not None:
-                states.append(DmLogParser.parse_state_struct(str=state_match.groups()[2]))
+                states.append(DmLogParser.parse_state_struct(input_str=state_match.groups()[2]))
                 timestamp_match = re.match(pattern=".*'time': ([0-9\.]*)", string=state_match.groups()[2])
                 timestamp = float(timestamp_match.groups()[0])
                 state_timestamps.append(timestamp)
@@ -71,7 +77,7 @@ class DmLogParser:
         return log_timestamp, state_timestamps, states
 
     @staticmethod
-    def parse_bp_output(log_content):
+    def parse_bp_output(log_content: List[str]) -> (List[float], List[float], List[str]):
         log_timestamp = list()
         state_timestamps = list()
         states = list()
@@ -82,6 +88,7 @@ class DmLogParser:
             state_match = re.match(pattern=search_pattern, string=log_content[row])
             if state_match is not None:
                 states.append(state_match.groups()[2])
+                # TODO: parse timestamp. currently this message isn't written properly to log
                 # timestamp_match = re.match(pattern=".*'time': ([0-9\.]*)", string=state_match.groups()[2])
                 # timestamp = float(timestamp_match.groups()[0])
                 timestamp = 0.0
@@ -94,7 +101,7 @@ class DmLogParser:
         return log_timestamp, state_timestamps, states
 
     @staticmethod
-    def parse_no_valid_trajectories_message(log_content):
+    def parse_no_valid_trajectories_message(log_content: List[str]) -> (List[float], List[float], List[str]):
         log_timestamp = list()
         state_timestamps = list()
         states = list()
