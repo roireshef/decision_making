@@ -8,10 +8,10 @@ from typing import List, Type
 import numpy as np
 
 from decision_making.src.exceptions import MsgDeserializationError, MsgSerializationError
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 
 class LogMsg(object):
-
     @staticmethod
     def convert_message_to_dict(message: str) -> dict:
         """
@@ -31,17 +31,24 @@ class LogMsg(object):
         ser_dict = {}
 
         # enumerate all fields (and their types) in the constructor
-        for name, tpe in obj.__init__.__annotations__.items():
+        annotations = obj.__init__.__annotations__.items()
+        if len(annotations) == 0:
+            # Non typed message (Python 2)
+            annotations = inspect.getmembers(type(obj),
+                                             lambda a: not (isinstance(a, property)) and not (inspect.isroutine(a)))
+            annotations = [(a[0], type(a[1])) for a in annotations if not a[0].startswith('_')]
+
+        for name, tpe in annotations:
             try:
                 if issubclass(tpe, np.ndarray):
                     ser_dict[name] = {'array': self_dict[name].flat.__array__().tolist(),
                                       'shape': list(self_dict[name].shape)}
                 elif issubclass(tpe, list):
-                    ser_dict[name] = list(map(lambda x: x.serialize(), self_dict[name]))
+                    ser_dict[name] = {'iterable': list(map(lambda x: LogMsg.pubsub_serialize(obj=x), self_dict[name]))}
                 elif issubclass(tpe, Enum):
-                    ser_dict[name] = self_dict[name].name  # save the name of the Enum's value (string)
+                    ser_dict[name] = {'name': self_dict[name].name }  # save the name of the Enum's value (string)
                 elif inspect.isclass(tpe) and issubclass(tpe, LogMsg):
-                    ser_dict[name] = self_dict[name].serialize()
+                    ser_dict[name] = LogMsg.pubsub_serialize(obj=self_dict[name])
                 # if the member type in the constructor is a primitive - copy as is
                 else:
                     ser_dict[name] = self_dict[name]
@@ -60,18 +67,25 @@ class LogMsg(object):
         try:
             deser_dict = {}
             annotations = class_type.__init__.__annotations__.items()
+            if len(annotations) == 0:
+                # Non typed message (Python 2)
+                annotations = inspect.getmembers(class_type,
+                                                 lambda a: not (isinstance(a, property)) and not (inspect.isroutine(a)))
+                annotations = [a for a in annotations if not a[0].startswith('_')]
             for name, tpe in annotations:
                 if issubclass(tpe, np.ndarray):
                     deser_dict[name] = np.array(message[name]['array']).reshape(tuple(message[name]['shape']))
                 elif issubclass(tpe, Enum):
                     deser_dict[name] = tpe[message[name]['name']]
                 elif issubclass(tpe, List):
-                    deser_dict[name] = list(map(lambda d: tpe.__args__[0].deserialize(d), message[name]['iterable']))
-                elif issubclass(tpe, LogMsg):
-                    deser_dict[name] = LogMsg.deserialize(tpe, message[name])
+                    deser_dict[name] = list(map(lambda d: LogMsg.deserialize(class_type=tpe.__args__[0], message=d),
+                                                message[name]['iterable']))
+                elif issubclass(tpe, PUBSUB_MSG_IMPL):
+                    deser_dict[name] = LogMsg.deserialize(class_type=tpe, message=message[name])
                 else:
                     deser_dict[name] = message[name]
             return class_type(**deser_dict)
         except Exception as e:
             raise MsgDeserializationError("MsgDeserializationError error: could not deserialize into " +
-                                          class_type.__name__ + " from " + str(message) + ":\n" + str(traceback.print_exc()))
+                                          class_type.__name__ + " from " + str(message) + ":\n" + str(
+                traceback.print_exc()))

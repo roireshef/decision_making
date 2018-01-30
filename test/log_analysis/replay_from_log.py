@@ -19,6 +19,33 @@ from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
 
+# TODO: Remove temporary TP facade. used only to bypass the Lcm Ser/Deser methods
+class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
+    def _get_current_state(self) -> State:
+        """
+        Returns the last received world state.
+        We assume that if no updates have been received since the last call,
+        then we will output the last received state.
+        :return: deserialized State
+        """
+        input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
+        object_state = LogMsg.deserialize(class_type=State, message=input_state)
+        self.logger.debug('Received state: %s' % object_state)
+        return object_state
+
+    def _get_mission_params(self) -> TrajectoryParams:
+        """
+        Returns the last received mission (trajectory) parameters.
+        We assume that if no updates have been received since the last call,
+        then we will output the last received trajectory parameters.
+        :return: deserialized trajectory parameters
+        """
+        input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_TOPIC, timeout=1)
+        object_params = LogMsg.deserialize(class_type=TrajectoryParams, message=input_params)
+        self.logger.debug('Received mission params: {}'.format(object_params))
+        return object_params
+
+
 def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
     """
     Executes the Trajectory planner with the relevant inputs by sending them via PubSub mock
@@ -26,6 +53,7 @@ def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
     :param tp_params_serialized: serialized trajectory parameters input message
     :return:
     """
+
     # Create PubSub Mock
     pubsub = PubSubMock(logger=AV_Logger.get_logger(LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING))
 
@@ -41,8 +69,9 @@ def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
     strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
                          TrajectoryPlanningStrategy.PARKING: planner,
                          TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
-    trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
-                                                          strategy_handlers=strategy_handlers)
+    trajectory_planning_module = TrajectoryPlanningFacadeNoLcm(pubsub=pubsub, logger=logger,
+                                                          strategy_handlers=strategy_handlers,
+                                                          short_time_predictor=predictor)
 
     # Execute TP
     trajectory_planning_module._periodic_action_impl()
@@ -79,7 +108,7 @@ if __name__ == '__main__':
     ###########################
     # Find index of relevant messages
     ###########################
-    #target_log_time = 57653.6 # Time where no valid trajectories were found
+    # target_log_time = 57653.6 # Time where no valid trajectories were found
     target_log_time = 57652.6  # Time where with valid trajectories
     tp_message_index = np.where(tp_module_log_timestamp > target_log_time)[0][0]
     state_message_index = np.where(state_module_log_timestamp > target_log_time)[0][0]
@@ -97,8 +126,8 @@ if __name__ == '__main__':
     state = LogMsg.deserialize(class_type=State, message=state_msg)
 
     # Serialize object to PubSub dict
-    state_serialized = LogMsg.pubsub_serialize(state)
-    tp_params_serialized = LogMsg.pubsub_serialize(tp_params)
+    state_serialized = state.to_dict()
+    tp_params_serialized = tp_params.to_dict()
 
     ###########################
     # Execute TP with relevant inputs
