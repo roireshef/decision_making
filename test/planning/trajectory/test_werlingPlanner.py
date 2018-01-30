@@ -11,9 +11,11 @@ from decision_making.src.global_constants import OBSTACLE_SIGMOID_K_PARAM, LATER
     DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LANE_SIGMOID_K_PARAM, \
     DEVIATION_FROM_GOAL_LAT_FACTOR, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, TD_STEPS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
-from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
-from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW
+from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner, \
+    SamplableWerlingTrajectory
+from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, FS_DX
 from decision_making.src.planning.types import C_Y
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
@@ -61,7 +63,7 @@ def test_werlingPlanner_toyScenario_noException():
                       confidence=1.0, v_x=0, v_y=0, acceleration_lon=0.0, omega_yaw=0.0)
     ])
 
-    ego = EgoState(obj_id=-1, timestamp=1000*10e6, x=0, y=0, z=0, yaw=0, size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
+    ego = EgoState(obj_id=-1, timestamp=1000*10e6, x=1, y=0, z=0, yaw=0, size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
                    confidence=1.0, v_x=v0, v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
     state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
@@ -297,3 +299,26 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
 
     fig.show()
     fig.clear()
+
+
+def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
+    route_points = RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5)
+
+    frenet = FrenetSerret2DFrame(route_points)
+
+    trajectory = SamplableWerlingTrajectory(
+        timestamp=10.0,
+        T_s=1.5,
+        T_d=1.0,
+        frenet_frame=frenet,
+        poly_s_coefs=np.array([-2.53400421e+00, 8.90980541e+00, -7.72383669e+00, -3.76008007e-03, 6.00604195e+00, 1.00520801e+00]),
+        poly_d_coefs=np.array([-1.44408865e+01, 3.62482582e+01, -2.42818417e+01, -3.62145365e-02, 1.03423064e-02, 5.01250837e-01])
+    )
+
+    fstate_terminal = frenet.cstate_to_fstate(trajectory.sample(
+        np.array([trajectory.timestamp + trajectory.T]))[0])
+
+    fstate_after_T_d = frenet.cstate_to_fstate(trajectory.sample(
+        np.array([trajectory.timestamp + (trajectory.T + trajectory.T_d) / 2]))[0])
+
+    np.testing.assert_allclose(fstate_after_T_d[FS_DX], fstate_terminal[FS_DX])
