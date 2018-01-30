@@ -100,11 +100,13 @@ class OptimalControlUtils:
         @staticmethod
         def are_accelerations_in_limits(poly_coefs: np.ndarray, T_vals: np.ndarray, acc_limits: Limits) -> np.ndarray:
             """
-
-            :param polys_coefs:
-            :param T_vals:
-            :param acc_limits:
-            :return:
+            Applies the following on a vector of polynomials and planning-times: given coefficients vector of a quintic
+            polynomial x(t), and restrictions on the acceleration values, return True if restrictions are met,
+            False otherwise
+            :param polys_coefs: 2D numpy array with N polynomials and 6 coefficients each [Nx6]
+            :param T_vals: 1D numpy array of planning-times [N]
+            :param acc_limits: minimal and maximal allowed values of acceleration/deceleration [m/sec^2]
+            :return: 1D numpy array of booleans where True means the restrictions are met.
             """
             # TODO: a(0) and a(T) checks are omitted as they they are provided by the user.
             # compute extrema points, by finding the roots of the 3rd derivative (which is itself a 2nd degree polynomial)
