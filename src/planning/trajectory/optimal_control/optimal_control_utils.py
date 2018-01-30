@@ -120,8 +120,7 @@ class OptimalControlUtils:
                                                  np.less_equal(acc_suspected_points, T_vals[:, np.newaxis])
 
             # check if extrema values are within [a_min, a_max] limits
-            is_suspected_value_in_limits = np.greater_equal(acc_suspected_values, acc_limits[LIMIT_MIN]) &\
-                                             np.less_equal(acc_suspected_values, acc_limits[LIMIT_MAX])
+            is_suspected_value_in_limits = NumpyUtils.is_in_limits(acc_suspected_values, acc_limits)
 
             # a polynomial is valid if any of its extrma points is outside the [a_min, a_max] limits
-            return np.all(np.logical_and(is_suspected_point_in_time_range, is_suspected_value_in_limits), axis=1)
+            return np.all(np.logical_or(np.logical_not(is_suspected_point_in_time_range), is_suspected_value_in_limits), axis=1)
