@@ -191,7 +191,7 @@ class StateModule(DmModule):
 
             self._publish_state_if_full()
         except Exception as e:
-            self.logger.exception('StateModule._self_localization_callback failed due to', exc_info=True)#.error("StateModule._self_localization_callback failed due to {}".format(e))
+            self.logger.exception('StateModule._self_localization_callback failed due to', exc_info=True)
 
     # TODO: convert from lcm...
     # TODO: handle invalid data - occupancy is currently unused throughout the system
