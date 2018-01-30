@@ -6,7 +6,7 @@ import numpy as np
 from decision_making.src.exceptions import NoValidTrajectoriesFound
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, TRAJECTORY_OBSTACLE_LOOKAHEAD, SX_OFFSET_MIN, SX_OFFSET_MAX, \
-    TD_STEPS, LAT_ACC_LIMITS
+    TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
@@ -147,16 +147,16 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # Latitudinal planning horizon(Td) lower bound, now approximated from x=a*t^2
         # TODO: determine tighter lower bound according to physical constraints and ego control limitations
-        low_bound_T_d = WerlingPlanner._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, self.dt)
+        lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, self.dt)
 
-        assert T_s >= low_bound_T_d
+        assert T_s >= lower_bound_T_d
 
         self._logger.debug('WerlingPlanner is planning from %s (frenet) to %s (frenet) in %s seconds' %
                            (NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
                             T_s))
 
         # create a grid on T_d (lateral movement time-grid)
-        T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_s, low_bound_T_d, self.dt)
+        T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_s, lower_bound_T_d, self.dt)
 
         # solve problem in frenet-frame
         ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
@@ -288,8 +288,8 @@ class WerlingPlanner(TrajectoryPlanner):
         ''' TOTAL '''
         return obstacles_costs + dist_from_goal_costs + deviations_costs
 
-    @staticmethod
-    def _low_bound_lat_horizon(fconstraints_t0: FrenetConstraints , fconstraints_tT: FrenetConstraints , dt) -> float:
+    def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints ,
+                               fconstraints_tT: FrenetConstraints , dt) -> float:
         """
         Calculates the lower bound for the lateral time horizon based on the physical constraints.
         :param fconstraints_t0: a set of constraints over the initial state
@@ -299,7 +299,7 @@ class WerlingPlanner(TrajectoryPlanner):
         """
         min_lat_movement = np.min(np.abs(fconstraints_tT.get_grid_d()[:, 0] - fconstraints_t0.get_grid_d()[0, 0]))
         low_bound_lat_plan_horizon = max(np.sqrt((2*min_lat_movement) / LAT_ACC_LIMITS[LIMIT_MAX]), dt)
-        return low_bound_lat_plan_horizon
+        return max(low_bound_lat_plan_horizon, TD_MIN_DT * self.dt)
 
     @staticmethod
     def _create_lat_horizon_grid(T_s: float, T_d_low_bound: float, dt: float) -> np.ndarray:

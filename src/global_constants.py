@@ -162,6 +162,9 @@ SX_STEPS, SV_STEPS, DX_STEPS = 10, 1, 7
 # Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
 TD_STEPS = 5
 
+# Minimal T_d (time-horizon for the lateral movement) - in units of WerlingPlanner.dt
+TD_MIN_DT = 3
+
 # Frenet-Serret Conversions #
 
 # [1/m] Curvature threshold for the GD step (if value is smaller than this value, there is no step executed)
