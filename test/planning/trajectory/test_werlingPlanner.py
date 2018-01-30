@@ -146,70 +146,72 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     logger = AV_Logger.get_logger('test_werlingPlanner_twoStaticObjScenario_withCostViz')
     predictor = RoadFollowingPredictor(logger)
 
-    lane_width = 3.6
-    num_lanes = 2
-    road_width = num_lanes*lane_width
-    reference_route_latitude = 3*lane_width/2
+    for test_idx in range(14):
 
-    lng = 40
-    step = 0.2
-    curvature = 0.0
+        lane_width = 3.6
+        num_lanes = 2
+        road_width = num_lanes*lane_width
+        reference_route_latitude = 3 * lane_width / 2
+        start_ego_lat = lane_width / 2
+        goal_latitude = reference_route_latitude
+        target_lane = int(goal_latitude/lane_width)
 
-    route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step, curvature=curvature)
-    ext = 4
-    ext_route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=ext, step=step, curvature=curvature)
+        lng = 40
+        step = 0.2
+        if test_idx < 8:
+            curvature = 0.0
+        else:
+            curvature = 0.2
 
-    test_map_model = TestMapModelUtils.create_road_map_from_coordinates(points_of_roads=[ext_route_xy], road_id=1,
-                                                                        road_name='y=x^3',
-                                                                        lanes_num=num_lanes, lane_width=lane_width,
-                                                                        frame_origin=[0, 0])
-    map = MapAPI(map_model=test_map_model, logger=logger)
-    MapService().set_instance(map)
+        if test_idx < 4:
+            obs_poses = np.array([np.array([4, 0]), np.array([14, 0.6]), np.array([24, 2.1]),
+                                  np.array([42, -4.6 + test_idx*0.2])])
+        elif test_idx < 8:
+            obs_poses = np.array([np.array([4, 0]), np.array([22, -1.6 - test_idx*0.2])])
+            goal_latitude = lane_width / 2
+        elif test_idx == 8:  # go on margin to prevent collision
+            obs_poses = np.array([np.array([17, 1.4])])
+            start_ego_lat = reference_route_latitude = goal_latitude = lane_width / 2
+        elif test_idx < 12:  # curve road with obstacles
+            obs_poses = np.array([np.array([4, 0]), np.array([14, 0.6]), np.array([24, 2.1]),
+                                  np.array([42, -4.6 + (test_idx-9)*0.2])])
+        else:  # curve road without obstacles
+            obs_poses = np.array([])
+            goal_latitude = reference_route_latitude = lane_width / 2 + (test_idx % 2) * lane_width
+            start_ego_lat = lane_width / 2 + ((test_idx+1) % 2) * lane_width
 
-    route_points = CartesianFrame.add_yaw_and_derivatives(route_xy)
-    ext_route_points = CartesianFrame.add_yaw_and_derivatives(ext_route_xy)
+        route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step, curvature=curvature)
+        ext = 4
+        ext_route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=ext, step=step, curvature=curvature)
 
-    start_latitude = lane_width / 2
-    goal_latitude = reference_route_latitude
-    target_lane = int(goal_latitude/lane_width)
-    start_ego_lat = start_latitude
-    obs_poses = np.array([])
+        test_map_model = TestMapModelUtils.create_road_map_from_coordinates(points_of_roads=[ext_route_xy], road_id=1,
+                                                                            road_name='y=x^3',
+                                                                            lanes_num=num_lanes, lane_width=lane_width,
+                                                                            frame_origin=[0, 0])
+        map = MapAPI(map_model=test_map_model, logger=logger)
+        MapService().set_instance(map)
 
-    xrange = (route_points[0, C_X], route_points[-1, C_X])
-    yrange = (np.min(route_points[:, C_Y]) - reference_route_latitude - ROAD_SHOULDERS_WIDTH,
-              np.max(route_points[:, C_Y]) - reference_route_latitude + road_width + ROAD_SHOULDERS_WIDTH)
-    x = np.arange(xrange[0], xrange[1], 0.1)
-    y = np.arange(yrange[0], yrange[1], 0.1)
-    width = x.shape[0]
-    height = y.shape[0]
-    points = np.array([np.transpose([np.tile(x, y.shape[0]), np.repeat(y, x.shape[0])])])
+        route_points = CartesianFrame.add_yaw_and_derivatives(route_xy)
+        ext_route_points = CartesianFrame.add_yaw_and_derivatives(ext_route_xy)
 
-    frenet = FrenetSerret2DFrame(ext_route_points[:, :2])
-    pos_x = points[0].reshape(height, width, 2)
-    s_x, a_r, _, N_r, _, _ = frenet._project_cartesian_points(pos_x)
-    d_x = np.einsum('tpi,tpi->tp', pos_x - a_r, N_r)
-    fpoints = np.c_[s_x.flatten()-s_x.flatten()[0], d_x.flatten()]
+        xrange = (route_points[0, C_X], route_points[-1, C_X])
+        yrange = (np.min(route_points[:, C_Y]) - reference_route_latitude - ROAD_SHOULDERS_WIDTH,
+                  np.max(route_points[:, C_Y]) - reference_route_latitude + road_width + ROAD_SHOULDERS_WIDTH)
+        x = np.arange(xrange[0], xrange[1], 0.1)
+        y = np.arange(yrange[0], yrange[1], 0.1)
+        width = x.shape[0]
+        height = y.shape[0]
+        points = np.array([np.transpose([np.tile(x, y.shape[0]), np.repeat(y, x.shape[0])])])
 
-    v0 = 6
-    vT = 10
-    T = 4.6
+        frenet = FrenetSerret2DFrame(ext_route_points[:, :2])
+        pos_x = points[0].reshape(height, width, 2)
+        s_x, a_r, _, N_r, _, _ = frenet._project_cartesian_points(pos_x)
+        d_x = np.einsum('tpi,tpi->tp', pos_x - a_r, N_r)
+        fpoints = np.c_[s_x.flatten()-s_x.flatten()[0], d_x.flatten()]
 
-    test_safety = True
-    test_jerk = False
-
-    for test_idx in range(2, 3):
-
-        if test_safety:
-            if test_idx < 8:
-                obs_poses = np.array([np.array([4, 0]), np.array([14, 0.6]), np.array([24, 2.1]),
-                                      np.array([36, -4.6 + test_idx*0.2])])
-                start_ego_lat = start_latitude
-            else:
-                obs_poses = np.array([np.array([36, -1.6 + test_idx*0.4])])
-                start_ego_lat = 3*lane_width / 2
-
-        #if test_jerk:
-        #    T = 3.6 + test_idx*0.2
+        v0 = 6
+        vT = 10
+        T = 4.6
 
         ftraj_start_goal = np.array([np.array([ext, v0, 0, start_ego_lat - reference_route_latitude, 0, 0]),
                                      np.array([lng + ext, vT, 0, goal_latitude - reference_route_latitude, 0, 0])])
@@ -222,7 +224,6 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
 
         goal = ctraj_start_goal[1]
         goal[C_X] -= 0.001
-        goal[C_Y] += goal_latitude - reference_route_latitude
 
         obs = []
         for i, pose in enumerate(obs_poses):

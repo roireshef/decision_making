@@ -165,7 +165,8 @@ class Jerk:
         :param dt: time step for acceleration derivative by time
         :return: two ndarrays of size ctrajectories.shape[0]. Longitudinal and lateral jerks for all ctrajectories
         """
-        lon_jerks = np.sum(np.square(np.diff(ctrajectories[:, :, C_A], axis=1)), axis=1) / (dt*dt)
+        # divide by dt^2 (squared a_dot) and multiply by dt (in the integral)
+        lon_jerks = np.sum(np.square(np.diff(ctrajectories[:, :, C_A], axis=1)), axis=1) / dt
         lat_jerks = np.sum(np.square(np.diff(ctrajectories[:, :, C_K] * np.square(ctrajectories[:, :, C_V]), axis=1)),
-                           axis=1) / (dt*dt)
+                           axis=1) / dt
         return lon_jerks, lat_jerks

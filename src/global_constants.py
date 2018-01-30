@@ -60,8 +60,8 @@ DEVIATION_FROM_GOAL_COST = 1.0 * 1e2        # cost of longitudinal deviation fro
 GOAL_SIGMOID_K_PARAM = 0.5                  # sigmoid k (slope) param of going out-of-goal
 GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
 
-LON_JERK_COST = 2.0 * 1e-1                  # cost of longitudinal jerk
-LAT_JERK_COST = 2.0 * 1e-1                  # cost of lateral jerk
+LON_JERK_COST = 2.0                         # cost of longitudinal jerk
+LAT_JERK_COST = 2.0                         # cost of lateral jerk
 
 # [m/sec] speed to plan towards by default in BP
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
