@@ -42,8 +42,8 @@ BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON = 2.0
 BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 
 # Trajectory cost parameters
-OBSTACLE_SIGMOID_COST = 1.0 * 1e4           # cost around obstacles (sigmoid)
-OBSTACLE_SIGMOID_K_PARAM = 5.5              # sigmoid k (slope) param of objects on road
+OBSTACLE_SIGMOID_COST = 1.0 * 1e5           # cost around obstacles (sigmoid)
+OBSTACLE_SIGMOID_K_PARAM = 7.0              # sigmoid k (slope) param of objects on road
 
 DEVIATION_FROM_LANE_COST = 20               # cost of deviation from lane (sigmoid)
 LANE_SIGMOID_K_PARAM = 4                    # sigmoid k (slope) param of going out-of-lane-center
@@ -150,7 +150,7 @@ TRAJECTORY_NUM_POINTS = 10
 WERLING_TIME_RESOLUTION = 0.1
 
 # [m] Range for grid search in werling planner (long. position)
-SX_OFFSET_MIN, SX_OFFSET_MAX = -15, 0.1
+SX_OFFSET_MIN, SX_OFFSET_MAX = -15, 0
 
 # [m] Range for grid search in werling planner (long. velocity)
 SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0

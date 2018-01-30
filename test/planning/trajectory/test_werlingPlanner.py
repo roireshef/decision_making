@@ -149,11 +149,11 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     lane_width = 3.6
     num_lanes = 2
     road_width = num_lanes*lane_width
-    reference_route_latitude = lane_width/2
+    reference_route_latitude = 3*lane_width/2
 
     lng = 40
     step = 0.2
-    curvature = 0.5
+    curvature = 0.0
 
     route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step, curvature=curvature)
     ext = 4
@@ -169,7 +169,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     route_points = CartesianFrame.add_yaw_and_derivatives(route_xy)
     ext_route_points = CartesianFrame.add_yaw_and_derivatives(ext_route_xy)
 
-    start_latitude = 3*lane_width / 2
+    start_latitude = lane_width / 2
     goal_latitude = reference_route_latitude
     target_lane = int(goal_latitude/lane_width)
     start_ego_lat = start_latitude
@@ -194,8 +194,8 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
     vT = 10
     T = 4.6
 
-    test_safety = False
-    test_jerk = True
+    test_safety = True
+    test_jerk = False
 
     for test_idx in range(2, 3):
 
@@ -325,16 +325,16 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
                 route_points[:, 0] - d * np.sin(angles), route_points[:, 1] + d * np.cos(angles)], '--k')
 
             # plot ego's best position for both obstacles
-            # for obs in state.dynamic_objects:
-            #     min_cost_y = np.argmin(z[:, int((obs.x - xrange[0])/0.1)]) * 0.1 + yrange[0]
-            #     p.plot(np.arange(- ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x,
-            #            np.repeat(np.array([min_cost_y+ego.size.width/2]), np.ceil(ego.size.length)+1), '*w')
-            #     p.plot(np.arange(- ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x,
-            #            np.repeat(np.array([min_cost_y - ego.size.width / 2]), np.ceil(ego.size.length)+1), '*w')
-            #     p.plot(np.repeat(np.array([-ego.size.length / 2 + obs.x]), np.ceil(ego.size.width)+1),
-            #            np.arange(min_cost_y-ego.size.width/2, min_cost_y+ego.size.width/2 + 0.01), '*w')
-            #     p.plot(np.repeat(np.array([ego.size.length / 2 + obs.x]), np.ceil(ego.size.width)+1),
-            #            np.arange(min_cost_y-ego.size.width/2, min_cost_y+ego.size.width/2 + 0.01), '*w')
+            for obs in state.dynamic_objects:
+                min_cost_y = np.argmin(z[:, int((obs.x - xrange[0])/0.1)]) * 0.1 + yrange[0]
+                p.plot(np.arange(- ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x,
+                       np.repeat(np.array([min_cost_y+ego.size.width/2]), np.ceil(ego.size.length)+1), '*w')
+                p.plot(np.arange(- ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x,
+                       np.repeat(np.array([min_cost_y - ego.size.width / 2]), np.ceil(ego.size.length)+1), '*w')
+                p.plot(np.repeat(np.array([-ego.size.length / 2 + obs.x]), np.ceil(ego.size.width)+1),
+                       np.arange(min_cost_y-ego.size.width/2, min_cost_y+ego.size.width/2 + 0.01), '*w')
+                p.plot(np.repeat(np.array([ego.size.length / 2 + obs.x]), np.ceil(ego.size.width)+1),
+                       np.arange(min_cost_y-ego.size.width/2, min_cost_y+ego.size.width/2 + 0.01), '*w')
 
         d = reference_route_latitude + ROAD_SHOULDERS_WIDTH
         WerlingVisualizer.plot_route(p2, np.c_[
