@@ -36,15 +36,11 @@ mock_td_steps = 5
 def test_werlingPlanner_toyScenario_noException():
     logger = AV_Logger.get_logger('test_werlingPlanner_toyScenario_noException')
     route_points = CartesianFrame.add_yaw_and_derivatives(
-        RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5))
+        RouteFixture.get_route(lng=10, k=1, step=1, lat=1, offset=-.5))
 
-    v0 = 6
-    vT = 10
-    v_min = 0
-    v_max = 10
-    a_min = -5
-    a_max = 5
-    Ts = 1.5
+    v0 = 5
+    vT = 5
+    Ts = 2
 
     predictor = RoadFollowingPredictor(logger)
 
@@ -61,7 +57,7 @@ def test_werlingPlanner_toyScenario_noException():
                       confidence=1.0, v_x=0, v_y=0, acceleration_lon=0.0, omega_yaw=0.0)
     ])
 
-    ego = EgoState(obj_id=-1, timestamp=1000*10e6, x=0, y=0, z=0, yaw=0, size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
+    ego = EgoState(obj_id=-1, timestamp=1000*10e6, x=1, y=0, z=0, yaw=0, size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
                    confidence=1.0, v_x=v0, v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
     state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
@@ -76,9 +72,9 @@ def test_werlingPlanner_toyScenario_noException():
                                        obstacle_cost_y=SigmoidFunctionParams(100, 10.0, 0.3),
                                        dist_from_goal_cost=SigmoidFunctionParams(100, 10.0, 0.3),
                                        dist_from_goal_lat_factor=1.0,
-                                       velocity_limits=np.array([-np.inf, np.inf]),     # TODO: temporary because this is solved in other PR
-                                       lon_acceleration_limits=np.array([-np.inf, np.inf]),   # TODO: temporary because this is solved in other PR
-                                       lat_acceleration_limits=np.array([-np.inf, np.inf]))   # TODO: temporary because this is solved in other PR
+                                       velocity_limits=VELOCITY_LIMITS,
+                                       lon_acceleration_limits=LON_ACC_LIMITS,
+                                       lat_acceleration_limits=LAT_ACC_LIMITS)
 
     planner = WerlingPlanner(logger, predictor)
 

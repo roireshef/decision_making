@@ -15,7 +15,7 @@ from decision_making.src.planning.trajectory.trajectory_planner import Trajector
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianExtendedTrajectory, \
     CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, FrenetState2D, C_A, C_K, FrenetState1D, \
-    FrenetTrajectory1D
+    FrenetTrajectory1D, D5
 from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
@@ -167,7 +167,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # filter resulting trajectories by velocity and accelerations limits - this is now done in Cartesian frame
         # which takes into account the curvature of the road applied to trajectories planned in the Frenet frame
-        filtered_indices = self._filter_limits(ctrajectories, cost_params)
+        filtered_indices = self._filter_limits(ctrajectories, poly_coefs[:, D5:], T_d_vals, cost_params)
         ctrajectories_filtered = ctrajectories[filtered_indices]
         ftrajectories_filtered = ftrajectories[filtered_indices]
 
@@ -209,7 +209,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
     @staticmethod
     def _filter_limits(ctrajectories: CartesianExtendedTrajectories,
-                       poly_coefs: np.ndarray,
+                       poly_coefs_d: np.ndarray,
                        T_d_vals: np.ndarray,
                        cost_params: TrajectoryCostParams) -> np.ndarray:
         """
@@ -217,7 +217,7 @@ class WerlingPlanner(TrajectoryPlanner):
         longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity)
         :param ctrajectories: CartesianExtendedTrajectories object of trajectories to validate
 
-        :param poly_coefs: 2D numpy array of each row has 12 poly coefficients
+        :param poly_coefs_d: 2D numpy array of each row has 12 poly coefficients
         :param T_d_vals:
 
         :param cost_params: TrajectoryCostParams object that holds desired limits (for validation)
@@ -232,9 +232,10 @@ class WerlingPlanner(TrajectoryPlanner):
             NumpyUtils.is_in_limits(lon_acceleration, cost_params.lon_acceleration_limits) &
             NumpyUtils.is_in_limits(lat_acceleration, cost_params.lat_acceleration_limits), axis=1)
 
-        np.polyder()
+        frenet_lateral_movement_is_feasible = \
+            OC.QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_d_vals, cost_params.lat_acceleration_limits)
 
-        return np.argwhere(conforms).flatten()
+        return np.argwhere(np.logical_and(conforms, frenet_lateral_movement_is_feasible)).flatten()
 
     @staticmethod
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,

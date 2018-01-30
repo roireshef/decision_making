@@ -83,7 +83,7 @@ FS_1D_LEN = 3
 
 
 # [s,d] Polynomials
-S5, S4, S3, S2, S1, S0, D5, D4, D3, D2, D1, D0 = 0, 1, 2, 3, 4, 5
+S5, S4, S3, S2, S1, S0, D5, D4, D3, D2, D1, D0 = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
 
 ## MISC ##
 # A (two-cells) 1D numpy array represents limits (min, max)

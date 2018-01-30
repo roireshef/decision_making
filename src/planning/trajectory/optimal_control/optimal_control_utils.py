@@ -1,5 +1,8 @@
 import numpy as np
+
+from decision_making.src.planning.types import Limits, LIMIT_MIN, LIMIT_MAX
 from decision_making.src.planning.utils.math import Math
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 
 
 class OptimalControlUtils:
@@ -81,3 +84,42 @@ class OptimalControlUtils:
             """
             return OptimalControlUtils.QuinticPoly1D.time_constraints_tensor(np.array([T]))[0]
 
+        @staticmethod
+        def is_acceleration_in_limits(poly_coefs: np.ndarray, T: float, acc_limits: Limits) -> bool:
+            """
+            given coefficients vector of a quintic polynomial x(t), and restrictions
+            on the acceleration values, return True if restrictions are met, False otherwise
+            :param poly_coefs: 1D numpy array with x(t), x_dot(t) x_dotdot(t) concatenated
+            :param T: planning time horizon [sec]
+            :param acc_limits: minimal and maximal allowed values of acceleration/deceleration [m/sec^2]
+            :return: True if restrictions are met, False otherwise
+            """
+            return OptimalControlUtils.QuinticPoly1D.are_accelerations_in_limits(np.array([poly_coefs]),
+                                                                                 np.array([T]), acc_limits)[0]
+
+        @staticmethod
+        def are_accelerations_in_limits(poly_coefs: np.ndarray, T_vals: np.ndarray, acc_limits: Limits) -> np.ndarray:
+            """
+
+            :param polys_coefs:
+            :param T_vals:
+            :param acc_limits:
+            :return:
+            """
+            # TODO: a(0) and a(T) checks are omitted as they they are provided by the user.
+            # compute extrema points, by finding the roots of the 3rd derivative (which is itself a 2nd degree polynomial)
+            jerk_poly = Math.polyder2d(poly_coefs, m=3)
+            acc_poly = Math.polyder2d(poly_coefs, m=2)
+            acc_suspected_points = np.apply_along_axis(np.roots, 1, jerk_poly)  # TODO: this should use matrix operations!
+            acc_suspected_values = Math.zip_polyval2d(acc_poly, acc_suspected_points)
+
+            # are extrema points out of [0, T] range
+            is_suspected_point_in_time_range = np.greater_equal(acc_suspected_points, 0) &\
+                                                 np.less_equal(acc_suspected_points, T_vals[:, np.newaxis])
+
+            # check if extrema values are within [a_min, a_max] limits
+            is_suspected_value_in_limits = np.greater_equal(acc_suspected_values, acc_limits[LIMIT_MIN]) &\
+                                             np.less_equal(acc_suspected_values, acc_limits[LIMIT_MAX])
+
+            # a polynomial is valid if any of its extrma points is outside the [a_min, a_max] limits
+            return np.all(np.logical_and(is_suspected_point_in_time_range, is_suspected_value_in_limits), axis=1)

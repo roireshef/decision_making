@@ -48,6 +48,43 @@ class Math:
         return y
 
     @staticmethod
+    def zip_polyval2d(p, x):
+        """
+        Functionality similar to numpy.polyval, except now p can be multiple poly1d instances - one in each row,
+        while enjoying matrix-operations efficiency
+        :param p: a 2d numpy array [MxL] having in each of the M rows the L polynomial coefficients vector
+        :param x: a 2d numpy array [N] of samples
+        :return: a 2d numpy array [MxN] of polynom values for each poly1d instance and sample
+        """
+        assert p.shape[0] == x.shape[0], 'number of values and polynomials is not equal'
+        m = p.shape[0]
+        l = p.shape[1]
+        n = x.shape[1]
+
+        y = np.zeros(shape=[m, n])
+        for i in range(l):
+            y = np.einsum('ij,ij->ij', y, x) + np.repeat(p[:, i, np.newaxis], n, axis=1)
+
+        return y
+
+    @staticmethod
+    def polyder2d(p, m):
+        """
+        Functionality similar to numpy.polyval, except now p can be multiple poly1d instances - one in each row,
+        while enjoying matrix-operations efficiency
+        :param p: a 2d numpy array [MxL] having in each of the M rows the L polynomial coefficients vector
+        :param x: a 1d numpy array [N] of samples
+        :return: a 2d numpy array [MxN] of polynom values for each poly1d instance and sample
+        """
+        n = p.shape[1] - 1
+        y = p[:, :-1] * np.arange(n, 0, -1)
+        if m == 0:
+            val = p
+        else:
+            val = Math.polyder2d(y, m - 1)
+        return val
+
+    @staticmethod
     def round_to_step(value, step):
         """
         Round the value to nearest multiple of step
