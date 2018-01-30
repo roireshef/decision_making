@@ -216,10 +216,8 @@ class WerlingPlanner(TrajectoryPlanner):
         Given a set of trajectories in Cartesian coordinate-frame, it validates them against the following limits:
         longitudinal velocity, longitudinal acceleration, lateral acceleration (via curvature and lon. velocity)
         :param ctrajectories: CartesianExtendedTrajectories object of trajectories to validate
-
-        :param poly_coefs_d: 2D numpy array of each row has 12 poly coefficients
-        :param T_d_vals:
-
+        :param poly_coefs_d: 2D numpy array of each row has 6 poly coefficients of lateral polynomial
+        :param T_d_vals: 1D numpy array with lateral planning-horizons (correspond to each trajectory)
         :param cost_params: TrajectoryCostParams object that holds desired limits (for validation)
         :return: Indices along the 1st dimension in <ctrajectories> (trajectory index) for valid trajectories
         """
