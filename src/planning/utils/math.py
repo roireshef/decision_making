@@ -50,8 +50,9 @@ class Math:
     @staticmethod
     def zip_polyval2d(p, x):
         """
-        Functionality similar to numpy.polyval, except now p can be multiple poly1d instances - one in each row,
-        while enjoying matrix-operations efficiency
+        Functionality similar to numpy.polyval, except now p holds multiple poly1d instances - one in each row,
+        and x holds in each row a vector of values to assign to the corresponding poly1d in p.
+        this enjoys matrix-operations efficiency
         :param p: a 2d numpy array [MxL] having in each of the M rows the L polynomial coefficients vector
         :param x: a 2d numpy array [N] of samples
         :return: a 2d numpy array [MxN] of polynom values for each poly1d instance and sample
