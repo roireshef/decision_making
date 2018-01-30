@@ -140,7 +140,7 @@ NEGLIGIBLE_DISPOSITION_LAT = 3  # lateral (ego's side direction) difference thre
 TRAJECTORY_TIME_RESOLUTION = 0.1
 
 # Number of trajectory points to send out (to controller) from the TP - including the current state of ego
-TRAJECTORY_NUM_POINTS = 11
+TRAJECTORY_NUM_POINTS = 10
 
 # Werling Planner #
 
