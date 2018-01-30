@@ -109,7 +109,8 @@ if __name__ == '__main__':
     # Find index of relevant messages
     ###########################
     # target_log_time = 57653.6 # Time where no valid trajectories were found
-    target_log_time = 57652.6  # Time where with valid trajectories
+    # target_log_time = 57652.6  # Time where with valid trajectories
+    target_log_time = 48840.0
     tp_message_index = np.where(tp_module_log_timestamp > target_log_time)[0][0]
     state_message_index = np.where(state_module_log_timestamp > target_log_time)[0][0]
 

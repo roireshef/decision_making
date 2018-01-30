@@ -22,42 +22,6 @@ class LogMsg(object):
         return ast.literal_eval(message)
 
     @staticmethod
-    def pubsub_serialize(obj: object) -> dict:
-        """
-        Serializes the object to PubSub dictionary
-        :return: dict containing all the fields of the class
-        """
-        self_dict = obj.__dict__
-        ser_dict = {}
-
-        # enumerate all fields (and their types) in the constructor
-        annotations = obj.__init__.__annotations__.items()
-        if len(annotations) == 0:
-            # Non typed message (Python 2)
-            annotations = inspect.getmembers(type(obj),
-                                             lambda a: not (isinstance(a, property)) and not (inspect.isroutine(a)))
-            annotations = [(a[0], type(a[1])) for a in annotations if not a[0].startswith('_')]
-
-        for name, tpe in annotations:
-            try:
-                if issubclass(tpe, np.ndarray):
-                    ser_dict[name] = {'array': self_dict[name].flat.__array__().tolist(),
-                                      'shape': list(self_dict[name].shape)}
-                elif issubclass(tpe, list):
-                    ser_dict[name] = {'iterable': list(map(lambda x: LogMsg.pubsub_serialize(obj=x), self_dict[name]))}
-                elif issubclass(tpe, Enum):
-                    ser_dict[name] = {'name': self_dict[name].name }  # save the name of the Enum's value (string)
-                elif inspect.isclass(tpe) and issubclass(tpe, LogMsg):
-                    ser_dict[name] = LogMsg.pubsub_serialize(obj=self_dict[name])
-                # if the member type in the constructor is a primitive - copy as is
-                else:
-                    ser_dict[name] = self_dict[name]
-            except Exception as e:
-                raise MsgSerializationError("MsgSerializationError error: could not serialize " +
-                                            str(self_dict[name]) + " into " + str(tpe) + ":\n" + str(e.__traceback__))
-        return ser_dict
-
-    @staticmethod
     def deserialize(class_type: Type, message: dict):
         """
         Creates an instance of cls represented by the log message

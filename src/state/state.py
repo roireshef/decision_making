@@ -18,7 +18,7 @@ from mapping.src.service.map_service import MapService
 class OccupancyState(PUBSUB_MSG_IMPL):
     timestamp = int
     free_space = np.ndarray
-    confidence: np.ndarray
+    confidence = np.ndarray
 
     def __init__(self, timestamp, free_space, confidence):
         # type: (int, np.ndarray, np.ndarray) -> None
@@ -242,7 +242,7 @@ class EgoState(DynamicObject):
     confidence = float
     v_x = float
     v_y = float
-    acceleration_lob = float
+    acceleration_lon = float
     omega_yaw = float
     steering_angle = float
 
