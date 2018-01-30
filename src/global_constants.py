@@ -139,7 +139,7 @@ NEGLIGIBLE_DISPOSITION_LAT = 3  # lateral (ego's side direction) difference thre
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
 TRAJECTORY_TIME_RESOLUTION = 0.1
 
-# Number of trajectory points to send out (to controller) from the TP
+# Number of trajectory points to send out (to controller) from the TP - including the current state of ego
 TRAJECTORY_NUM_POINTS = 10
 
 # Werling Planner #

@@ -143,7 +143,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)
-        planning_time_points = np.arange(self.dt, T_s + np.finfo(np.float16).eps, self.dt)
+        planning_time_points = np.arange(0, T_s + np.finfo(np.float16).eps, self.dt)
 
         # Latitudinal planning horizon(Td) lower bound, now approximated from x=a*t^2
         # TODO: determine tighter lower bound according to physical constraints and ego control limitations
@@ -377,8 +377,7 @@ class WerlingPlanner(TrajectoryPlanner):
         poly-coefficients-matrix of rows in the form [c0_s, c1_s, ... c5_s, c0_d, ..., c5_d],
         array of the Td values associated with the polynomials)
         """
-
-        time_samples_s = np.arange(dt, T_s + np.finfo(np.float16).eps, dt)
+        time_samples_s = np.arange(0, T_s + np.finfo(np.float16).eps, dt)
 
         # Define constraints
         constraints_s = NumpyUtils.cartesian_product_matrix_rows(fconst_0.get_grid_s(), fconst_t.get_grid_s())

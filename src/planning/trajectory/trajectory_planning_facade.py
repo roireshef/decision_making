@@ -99,8 +99,8 @@ class TrajectoryPlanningFacade(DmModule):
 
             # TODO: validate that sampling is consistent with controller!
             trajectory_points = samplable_trajectory.sample(
-                np.linspace(start=TRAJECTORY_TIME_RESOLUTION,
-                            stop=TRAJECTORY_NUM_POINTS * TRAJECTORY_TIME_RESOLUTION,
+                np.linspace(start=0,
+                            stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
                             num=TRAJECTORY_NUM_POINTS) + state_aligned.ego_state.timestamp_in_sec)
 
             # TODO: should we publish v_x at all?
