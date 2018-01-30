@@ -1,32 +1,36 @@
-import numpy as np
+from typing import Tuple
 
-from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_INTERP_TYPE, \
+import numpy as np
+from scipy.interpolate.fitpack2 import UnivariateSpline
+
+from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_SPLINE_FIT_ORDER, \
     TINY_CURVATURE
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
-    FrenetTrajectory, CartesianPath2D, FrenetTrajectories, CartesianExtendedTrajectories, FS_SX, \
+    FrenetTrajectory2D, CartesianPath2D, FrenetTrajectories2D, CartesianExtendedTrajectories, FS_SX, \
     FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint, C_YAW, C_K, C_V, C_A, \
-    CartesianVectorsTensor2D, CartesianPointsTensor2D, FrenetState, CartesianExtendedState
+    CartesianVectorsTensor2D, CartesianPointsTensor2D, FrenetState2D, CartesianExtendedState
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
 
 class FrenetSerret2DFrame:
     def __init__(self, points: CartesianPath2D, ds: float = TRAJECTORY_ARCLEN_RESOLUTION,
-                 interp_type=TRAJECTORY_CURVE_INTERP_TYPE):
+                 spline_order=TRAJECTORY_CURVE_SPLINE_FIT_ORDER):
         """
         This is an object used for paramterizing a curve given discrete set of points in some "global" cartesian frame,
         and then for transforming from the "global" frame to the curve's frenet frame and back.
         :param points: a set of points in some "global" cartesian frame
         :param ds: a resolution parameter - the desired distance between each two consecutive points after re-sampling
-        :param interp_type: interpolation type for fitting and re-sampling the original points
+        :param spline_order: spline order for fitting and re-sampling the original points
         """
-        self.O, effective_ds = CartesianFrame.resample_curve(curve=points, step_size=ds,
-                                                             preserve_step_size=True,
-                                                             interp_type=interp_type)
+        splines, self.O, effective_ds = CartesianFrame.resample_curve(curve=points, step_size=ds,
+                                                                      preserve_step_size=False,
+                                                                      spline_order=spline_order)
 
         self.s_max = effective_ds * len(self.O)
         self.ds = effective_ds
-        self.T, self.N, self.k, self.k_tag = FrenetSerret2DFrame._fit_frenet(self.O, ds)
+        self.T, self.N, self.k, self.k_tag = FrenetSerret2DFrame._fit_frenet_from_splines(0.0, self.s_max, self.ds,
+                                                                                          splines)
 
     def get_yaw(self, s: np.ndarray):
         """
@@ -43,7 +47,7 @@ class FrenetSerret2DFrame:
         """Transforms a frenet-frame point to a cartesian-frame point (see self.fpoints_to_cpoints for more details)"""
         return self.fpoints_to_cpoints(fpoints[np.newaxis, :])[0]
 
-    def fpoints_to_cpoints(self, fpoints: FrenetTrajectory) -> CartesianPath2D:
+    def fpoints_to_cpoints(self, fpoints: FrenetTrajectory2D) -> CartesianPath2D:
         """
         Transforms frenet-frame points to cartesian-frame points (using self.curve)
         :param fpoint: Frenet-frame trajectory (matrix)
@@ -52,7 +56,7 @@ class FrenetSerret2DFrame:
         a_s, _, N_s, _, _ = self._taylor_interp(fpoints[:, FP_SX])
         return a_s + N_s * fpoints[:, [FP_DX]]
 
-    def fstate_to_cstate(self, fstate: FrenetState) -> CartesianExtendedState:
+    def fstate_to_cstate(self, fstate: FrenetState2D) -> CartesianExtendedState:
         """
         Transforms Frenet-frame state to cartesian-frame state
         :param ftrajectory: a frenet-frame state
@@ -60,7 +64,7 @@ class FrenetSerret2DFrame:
         """
         return self.ftrajectory_to_ctrajectory(np.array([fstate]))[0]
 
-    def ftrajectory_to_ctrajectory(self, ftrajectory: FrenetTrajectory) -> CartesianExtendedTrajectory:
+    def ftrajectory_to_ctrajectory(self, ftrajectory: FrenetTrajectory2D) -> CartesianExtendedTrajectory:
         """
         Transforms Frenet-frame trajectory to cartesian-frame trajectory, using tensor operations
         :param ftrajectory: a frenet-frame trajectory
@@ -68,7 +72,7 @@ class FrenetSerret2DFrame:
         """
         return self.ftrajectories_to_ctrajectories(np.array([ftrajectory]))[0]
 
-    def ftrajectories_to_ctrajectories(self, ftrajectories: FrenetTrajectories) -> CartesianExtendedTrajectories:
+    def ftrajectories_to_ctrajectories(self, ftrajectories: FrenetTrajectories2D) -> CartesianExtendedTrajectories:
         """
         Transforms Frenet-frame trajectories to cartesian-frame trajectories, using tensor operations.
         For formulas derivations please refer to: http://ieeexplore.ieee.org/document/5509799/
@@ -124,7 +128,7 @@ class FrenetSerret2DFrame:
         """Transforms a cartesian-frame point to a frenet-frame point (see self.fpoints_to_cpoints for more details)"""
         return self.cpoints_to_fpoints(cpoints[np.newaxis, :])[0]
 
-    def cpoints_to_fpoints(self, cpoints: CartesianPath2D) -> FrenetTrajectory:
+    def cpoints_to_fpoints(self, cpoints: CartesianPath2D) -> FrenetTrajectory2D:
         """
         Transforms cartesian-frame points to frenet-frame points (using self.curve)
         :param cpoints: Cartesian-frame trajectory (matrix)
@@ -137,7 +141,7 @@ class FrenetSerret2DFrame:
 
         return np.c_[s, d]
 
-    def cstate_to_fstate(self, cstate: CartesianExtendedState) -> FrenetState:
+    def cstate_to_fstate(self, cstate: CartesianExtendedState) -> FrenetState2D:
         """
         Transforms Cartesian-frame state to Frenet-frame state
         :param ctrajectory: a cartesian-frame state (in the coordinate frame of self.points)
@@ -145,7 +149,7 @@ class FrenetSerret2DFrame:
         """
         return self.ctrajectory_to_ftrajectory(np.array([cstate]))[0]
 
-    def ctrajectory_to_ftrajectory(self, ctrajectory: CartesianExtendedTrajectory) -> FrenetTrajectory:
+    def ctrajectory_to_ftrajectory(self, ctrajectory: CartesianExtendedTrajectory) -> FrenetTrajectory2D:
         """
         Transforms Cartesian-frame trajectory to Frenet-frame trajectory, using tensor operations
         :param ctrajectory: a cartesian-frame trajectory (in the coordinate frame of self.points)
@@ -153,7 +157,7 @@ class FrenetSerret2DFrame:
         """
         return self.ctrajectories_to_ftrajectories(np.array([ctrajectory]))[0]
 
-    def ctrajectories_to_ftrajectories(self, ctrajectories: CartesianExtendedTrajectories) -> FrenetTrajectories:
+    def ctrajectories_to_ftrajectories(self, ctrajectories: CartesianExtendedTrajectories) -> FrenetTrajectories2D:
         """
         Transforms Cartesian-frame trajectories to Frenet-frame trajectories, using tensor operations
         For formulas derivations please refer to: http://ieeexplore.ieee.org/document/5509799/
@@ -209,7 +213,9 @@ class FrenetSerret2DFrame:
         """
         # perform gradient decent to find s_approx
         O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O)
+
         s_approx = np.add(O_idx, delta_s) * self.ds
+
         a_s, T_s, N_s, k_s, _ = self._taylor_interp(s_approx)
 
         is_curvature_big_enough = np.greater(np.abs(k_s), TINY_CURVATURE)
@@ -223,7 +229,7 @@ class FrenetSerret2DFrame:
         # vector from the circle center to the input point
         center_to_point = points - a_s - N_s * signed_radius[..., np.newaxis]
 
-        # sign of the step
+        # sign of the step (sign of the inner product between the position error and the tangent of all samples)
         step_sign = np.sign(np.einsum('...ik,...ik->...i', points - a_s, T_s))
 
         # cos(angle between N_s and this vector)
@@ -238,6 +244,7 @@ class FrenetSerret2DFrame:
         s_approx[is_curvature_big_enough] += step[is_curvature_big_enough]  # next s_approx of the current point
 
         a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(s_approx)
+
         return s_approx, a_s, T_s, N_s, k_s, k_s_tag
 
     def _taylor_interp(self, s: np.ndarray) -> \
@@ -253,7 +260,7 @@ class FrenetSerret2DFrame:
         k'(s) is the derivative of the curvature (by distance d(s))
         """
         assert np.all(np.bitwise_and(0 <= s, s <= self.s_max)), \
-            "Cannot extrapolate, desired progress is out of the curve."
+            "Cannot extrapolate, desired progress (%s) is out of the curve." % s
 
         progress_ds = s / self.ds
         O_idx = np.round(progress_ds).astype(np.int)
@@ -281,6 +288,54 @@ class FrenetSerret2DFrame:
         return a_s, T_s, N_s, k_s[..., 0], k_s_tag[..., 0]
 
     @staticmethod
+    def _fit_frenet_from_splines(start: float, stop: float, step: float,
+                                 xy_splines: Tuple[UnivariateSpline, UnivariateSpline]) -> \
+            (CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray, np.ndarray):
+        """
+        Utility for the construction of the Frenet-Serret frame. Given a set of 2D points in cartesian-frame, it fits
+        a curve and returns its parameters at the given points (Tangent, Normal, curvature, etc.).
+        Formulas are similar to: dipy.tracking.metrics.frenet_serret() but modified for 2D (rather than 3D), for
+        signed-curvature and for continuity of the Normal vector regardless of the curvature-sign.
+        :param start: [m] start of progress on the curve. The natural value to use here is 0.0
+        :param stop: [m] the end of the curve to use
+        :param step: [m] the constant step-size in meters
+        :param xy_splines: a tuple of the splines objects used for fitting x, y
+        :return:
+        """
+        # TODO: should normalize by step size or is it already normalized? ...
+        # TODO: ... are derivatives of spline-object in meter-units?
+        x = xy_splines[0]
+        x_dot = x.derivative(1)
+        x_dotdot = x.derivative(2)
+        y = xy_splines[1]
+        y_dot = y.derivative(1)
+        y_dotdot = y.derivative(2)
+
+        # parameterization of progress on the curve (in meters)
+        s = np.arange(start, stop, step)
+
+        dxy = np.c_[x_dot(s), y_dot(s)]
+        ddxy = np.c_[x_dotdot(s), y_dotdot(s)]
+
+        dxy_norm = np.linalg.norm(dxy, axis=1)
+
+        # Tangent
+        T = np.divide(dxy, np.c_[dxy_norm])
+
+        # Normal - robust to zero-curvature
+        N = NumpyUtils.row_wise_normal(T)
+
+        # SIGNED (!) Curvature
+        cross_norm = np.sum(NumpyUtils.row_wise_normal(dxy) * ddxy, axis=1)
+        k = cross_norm / dxy_norm ** 3
+
+        # derivative of curvature (by ds)
+        k_tag = np.divide(np.gradient(k), step)
+
+        return T, N, np.c_[k], np.c_[k_tag]
+
+
+    @staticmethod
     def _fit_frenet(xy: CartesianPath2D, ds: float) -> (CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray,
                                                         np.ndarray):
         """
@@ -305,9 +360,6 @@ class FrenetSerret2DFrame:
         # Tangent
         T = np.divide(dxy, np.c_[dxy_norm])
 
-        # Derivative of Tangent
-        dT = np.divide(np.gradient(T)[0], ds)
-
         # Normal - robust to zero-curvature
         N = NumpyUtils.row_wise_normal(T)
 
@@ -316,7 +368,7 @@ class FrenetSerret2DFrame:
         k = np.zeros(len(T))
         k[dxy_norm > 0] = cross_norm[dxy_norm > 0] / (dxy_norm[dxy_norm > 0] ** 3)
 
-        # derivative of curvature
+        # derivative of curvature (by ds)
         k_tag = np.divide(np.gradient(k), ds)
 
         return T, N, np.c_[k], np.c_[k_tag]

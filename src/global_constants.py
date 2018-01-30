@@ -109,10 +109,13 @@ VISUALIZATION_PREDICTION_RESOLUTION = 1.0
 OBJECT_HISTORY_TIMEOUT = 1000*1000*1000*2
 
 # Curve interpolation type (order)
-TRAJECTORY_CURVE_INTERP_TYPE = 'quadratic'
+TRAJECTORY_CURVE_SPLINE_FIT_ORDER = 4
 
 # [m] Do not consider obstacles that are distant than this threshold
 TRAJECTORY_OBSTACLE_LOOKAHEAD = 200.0
+
+# Desired resolution of map [m], used for accuracy test on Frenet-Serret transformations
+ROAD_MAP_REQUIRED_RES = 5
 
 # [m] Cost function clips higher distances before exponentiation
 EXP_CLIP_TH = 50.0
@@ -139,7 +142,6 @@ TRAJECTORY_TIME_RESOLUTION = 0.1
 # Number of trajectory points to send out (to controller) from the TP
 TRAJECTORY_NUM_POINTS = 10
 
-
 # Werling Planner #
 
 # [sec] Time-Resolution for planning
@@ -156,6 +158,9 @@ DX_OFFSET_MIN, DX_OFFSET_MAX = -3, 3
 
 # Linspace number of steps in the constraints parameters grid-search
 SX_STEPS, SV_STEPS, DX_STEPS = 10, 1, 7
+
+# Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
+TD_STEPS = 5
 
 # Frenet-Serret Conversions #
 
