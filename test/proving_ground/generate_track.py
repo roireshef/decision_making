@@ -67,7 +67,8 @@ class OfflineTrajectoryGenerator:
         time_points = np.arange(0.0, T+WERLING_TIME_RESOLUTION, WERLING_TIME_RESOLUTION)
         goal_state = FrenetConstraints(sx=init_constraints._sx + (goal_sv + init_constraints._sv) / 2 * T, sv=goal_sv,
                                        sa=0, dx=init_constraints._dx + delta_dx, dv=0, da=0)
-        ftrajectories, _ = WerlingPlanner._solve_optimization(init_constraints, goal_state, T, time_points)
+        ftrajectories, _, _ = WerlingPlanner._solve_optimization(init_constraints, goal_state, T, np.array([T]),
+                                                                 WERLING_TIME_RESOLUTION)
         ctrajectories = self.frenet.ftrajectories_to_ctrajectories(ftrajectories)
         return ctrajectories[0], goal_state
 
@@ -83,8 +84,8 @@ def main():
 
     # list of intermediate goals [time to goal, goal lateral deviation in lanes, goal velocity]
     CRUISE_IN_LANE_TIME = 7.0
-    LANE_CHANGE_TIME = 4.0
-    CRUISE_VEL = 35 / 3.6  # [m/s]
+    LANE_CHANGE_TIME = 7.0
+    CRUISE_VEL = 50 / 3.6  # [m/s]
     interm_goals = [
         [15.0, 0, CRUISE_VEL],
         [LANE_CHANGE_TIME, 1, CRUISE_VEL],
@@ -137,7 +138,7 @@ def main():
     assert np.all(np.greater(np.linalg.norm(np.diff(trajectory[:, :2], axis=0), axis=-1), 0))
 
     np.savetxt('lane_changes_from_%s_%skmh_change_%ssec_cruise_%ssec.txt' %
-               (init_geo_name, CRUISE_VEL, LANE_CHANGE_TIME, CRUISE_IN_LANE_TIME),
+               (init_geo_name, CRUISE_VEL*3.6, LANE_CHANGE_TIME, CRUISE_IN_LANE_TIME),
                trajectory, delimiter=', ', newline='\n', fmt='%1.8f')
 
 
