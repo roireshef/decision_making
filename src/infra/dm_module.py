@@ -1,6 +1,7 @@
 ##################################################
-### This code has to be written in python 2.7! ###
+### This code has to be python 2.7 compatible! ###
 ##################################################
+
 from abc import abstractmethod, ABCMeta
 from logging import Logger
 
