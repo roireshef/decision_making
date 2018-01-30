@@ -29,8 +29,7 @@ if __name__ == '__main__':
                                                                                              identifier_str=STATE_IDENTIFIER_STRING_TP)
     tp_module_log_timestamp, tp_module_timestamps, tp_module_states = DmLogParser.parse_tp_params(
         log_content=log_content)
-    no_valid_trajectories_log_timestamp, no_valid_trajectories_timestamps, no_valid_trajectories_states = DmLogParser.parse_no_valid_trajectories_message(
-        log_content=log_content)
+    no_valid_trajectories_log_timestamp = DmLogParser.parse_no_valid_trajectories_message(log_content=log_content)
 
     ###########################
     # Plot log analysis
@@ -38,7 +37,7 @@ if __name__ == '__main__':
 
     # Plot messages by message timestamp
     fig = plt.figure()
-    plt.plot(no_valid_trajectories_log_timestamp, np.ones(shape=no_valid_trajectories_timestamps.shape), '*b')
+    #plt.plot(no_valid_trajectories_log_timestamp, np.ones(shape=no_valid_trajectories_timestamps.shape), '*b')
     plt.plot(state_module_log_timestamp[1:], np.diff(state_module_timestamps), '-.r')
     plt.plot(bp_state_log_timestamp[1:], np.diff(bp_state_timestamps), '-g')
     plt.plot(tp_state_log_timestamp[1:], np.diff(tp_state_timestamps), '-c')
@@ -54,7 +53,7 @@ if __name__ == '__main__':
 
     # Plot messages by log timestamp
     fig = plt.figure()
-    plt.plot(no_valid_trajectories_log_timestamp, np.ones(shape=no_valid_trajectories_timestamps.shape), '*b')
+    plt.plot(no_valid_trajectories_log_timestamp, np.ones(shape=no_valid_trajectories_log_timestamp.shape), '*b')
     plt.plot(state_module_log_timestamp[1:], np.diff(state_module_log_timestamp), '-.r')
     plt.plot(bp_state_log_timestamp[1:], np.diff(bp_state_log_timestamp), '-g')
     plt.plot(tp_state_log_timestamp[1:], np.diff(tp_state_log_timestamp), '-c')

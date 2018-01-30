@@ -70,8 +70,8 @@ def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
                          TrajectoryPlanningStrategy.PARKING: planner,
                          TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
     trajectory_planning_module = TrajectoryPlanningFacadeNoLcm(pubsub=pubsub, logger=logger,
-                                                          strategy_handlers=strategy_handlers,
-                                                          short_time_predictor=predictor)
+                                                               strategy_handlers=strategy_handlers,
+                                                               short_time_predictor=predictor)
 
     # Execute TP
     trajectory_planning_module._periodic_action_impl()
@@ -102,8 +102,7 @@ if __name__ == '__main__':
                                                                                              identifier_str=STATE_IDENTIFIER_STRING_TP)
     tp_module_log_timestamp, tp_module_timestamps, tp_module_states = DmLogParser.parse_tp_params(
         log_content=log_content)
-    no_valid_trajectories_log_timestamp, no_valid_trajectories_timestamps, no_valid_trajectories_states = DmLogParser.parse_no_valid_trajectories_message(
-        log_content=log_content)
+    no_valid_trajectories_log_timestamp = DmLogParser.parse_no_valid_trajectories_message(log_content=log_content)
 
     ###########################
     # Find index of relevant messages

@@ -35,7 +35,7 @@ class DmLogParser:
         return (h * 3600 + m * 60 + s + 0.001 * ms) * 1.0
 
     @staticmethod
-    def parse_state_message(log_content: List[str], identifier_str: str) -> (List[float], List[float], List[str]) :
+    def parse_state_message(log_content: List[str], identifier_str: str) -> (np.ndarray, np.ndarray, List[str]) :
         log_timestamp = list()
         state_timestamps = list()
         states = list()
@@ -56,7 +56,7 @@ class DmLogParser:
         return log_timestamp, state_timestamps, states
 
     @staticmethod
-    def parse_tp_params(log_content: List[str]) -> (List[float], List[float], List[str]):
+    def parse_tp_params(log_content: List[str]) -> (np.ndarray, np.ndarray, List[str]):
         log_timestamp = list()
         state_timestamps = list()
         states = list()
@@ -78,7 +78,7 @@ class DmLogParser:
         return log_timestamp, state_timestamps, states
 
     @staticmethod
-    def parse_bp_output(log_content: List[str]) -> (List[float], List[float], List[str]):
+    def parse_bp_output(log_content: List[str]) -> (np.ndarray, np.ndarray, List[str]):
         log_timestamp = list()
         state_timestamps = list()
         states = list()
@@ -102,25 +102,17 @@ class DmLogParser:
         return log_timestamp, state_timestamps, states
 
     @staticmethod
-    def parse_no_valid_trajectories_message(log_content: List[str]) -> (List[float], List[float], List[str]):
+    def parse_no_valid_trajectories_message(log_content: List[str]) -> (np.ndarray):
         log_timestamp = list()
-        state_timestamps = list()
-        states = list()
 
-        identifier_str = "No valid trajectories found."
+        identifier_str = "TP has found 0 valid trajectories to choose from"
         search_pattern = ".*(%s)(.*)%s(.*)" % (LOG_TIME_PATTERN, identifier_str)
         for row in range(len(log_content)):
             state_match = re.match(pattern=search_pattern, string=log_content[row])
             if state_match is not None:
-                states.append(state_match.groups()[2])
-                timestamp_match = re.match(pattern=".*'ego_state': {'obj_id': \d*, 'timestamp': (\d*)",
-                                           string=state_match.groups()[2])
-                timestamp = float(timestamp_match.groups()[0]) * 1E-9
-                state_timestamps.append(timestamp)
                 log_timestamp.append(DmLogParser.parse_log_timestamp(state_match.groups()[0]))
 
-        state_timestamps = np.array(state_timestamps)
         log_timestamp = np.array(log_timestamp)
 
-        return log_timestamp, state_timestamps, states
+        return log_timestamp
 
