@@ -109,27 +109,27 @@ if __name__ == '__main__':
     ###########################
     # target_log_time = 57653.6 # Time where no valid trajectories were found
     # target_log_time = 57652.6  # Time where with valid trajectories
-    target_log_time = 48840.0
-    tp_message_index = np.where(tp_module_log_timestamp > target_log_time)[0][0]
-    state_message_index = np.where(state_module_log_timestamp > target_log_time)[0][0]
+    target_log_time = 60228
+    tp_params_message_index = np.where(tp_module_log_timestamp <= target_log_time)[0][-1]
+    tp_state_message_index = np.where(tp_state_log_timestamp <= target_log_time)[0][-1]
 
     ###########################
     # Send messages to module
     ###########################
 
     # Convert log messages to dict
-    tp_params_msg = LogMsg.convert_message_to_dict(tp_module_states[tp_message_index])
-    state_msg = LogMsg.convert_message_to_dict(state_module_states[state_message_index])
+    tp_params_msg = LogMsg.convert_message_to_dict(tp_module_states[tp_params_message_index])
+    tp_state_msg = LogMsg.convert_message_to_dict(tp_states[tp_state_message_index])
 
     # Deserialize from dict to object
     tp_params = LogMsg.deserialize(class_type=TrajectoryParams, message=tp_params_msg)
-    state = LogMsg.deserialize(class_type=State, message=state_msg)
+    tp_state = LogMsg.deserialize(class_type=State, message=tp_state_msg)
 
     # Serialize object to PubSub dict
-    state_serialized = state.to_dict()
+    tp_state_serialized = tp_state.to_dict()
     tp_params_serialized = tp_params.to_dict()
 
     ###########################
     # Execute TP with relevant inputs
     ###########################
-    execute_tp(state_serialized=state_serialized, tp_params_serialized=tp_params_serialized)
+    execute_tp(state_serialized=tp_state_serialized, tp_params_serialized=tp_params_serialized)

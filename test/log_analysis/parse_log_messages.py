@@ -8,9 +8,9 @@ LOG_TIME_PARSE_PATTERN = ": (\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+),(\d+) :"
 
 #LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2017_12_27/logs/16_02/AV_Log_dm_main_test.log'
 #LOG_PATH_FOR_ANALYSIS = 'C:/Users/xzjsyy/av_code/AV_Log_dm_main_test.log'
-LOG_PATH_FOR_ANALYSIS = '/home/xzjsyy/av_code/spav/logs/AV_Log_dm_main.log'
-STATE_IDENTIFIER_STRING_TP = "trajectory_planning_facade.py:   139: _get_current_state  : Received state: "
-STATE_IDENTIFIER_STRING_BP = "behavioral_facade.py:    76: _get_current_state  : Received State: "
+LOG_PATH_FOR_ANALYSIS = '/home/max/av_code/spav/logs/AV_Log_dm_main-2017_12_27_16_00.log'
+STATE_IDENTIFIER_STRING_TP = "trajectory_planning_facade.py: .*: _get_current_state  : Received state: "
+STATE_IDENTIFIER_STRING_BP = "behavioral_facade.py: .*: _get_current_state  : Received State: "
 STATE_IDENTIFIER_STRING_STATE_MODULE = "_publish_state_if_full: publishing state "
 
 
@@ -53,6 +53,12 @@ class DmLogParser:
         state_timestamps = np.array(state_timestamps)
         log_timestamp = np.array(log_timestamp)
 
+        # Reorder by log timestamp
+        log_msg_order = np.argsort(log_timestamp)
+        state_timestamps = state_timestamps[log_msg_order]
+        log_timestamp = log_timestamp[log_msg_order]
+        states = [states[x] for x in log_msg_order]
+
         return log_timestamp, state_timestamps, states
 
     @staticmethod
@@ -74,6 +80,12 @@ class DmLogParser:
 
         state_timestamps = np.array(state_timestamps)
         log_timestamp = np.array(log_timestamp)
+
+        # Reorder by log timestamp
+        log_msg_order = np.argsort(log_timestamp)
+        state_timestamps = state_timestamps[log_msg_order]
+        log_timestamp = log_timestamp[log_msg_order]
+        states = [states[x] for x in log_msg_order]
 
         return log_timestamp, state_timestamps, states
 
@@ -99,6 +111,12 @@ class DmLogParser:
         state_timestamps = np.array(state_timestamps)
         log_timestamp = np.array(log_timestamp)
 
+        # Reorder by log timestamp
+        log_msg_order = np.argsort(log_timestamp)
+        state_timestamps = state_timestamps[log_msg_order]
+        log_timestamp = log_timestamp[log_msg_order]
+        states = [states[x] for x in log_msg_order]
+
         return log_timestamp, state_timestamps, states
 
     @staticmethod
@@ -113,6 +131,10 @@ class DmLogParser:
                 log_timestamp.append(DmLogParser.parse_log_timestamp(state_match.groups()[0]))
 
         log_timestamp = np.array(log_timestamp)
+
+        # Reorder by log timestamp
+        log_msg_order = np.argsort(log_timestamp)
+        log_timestamp = log_timestamp[log_msg_order]
 
         return log_timestamp
 

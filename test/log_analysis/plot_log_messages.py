@@ -42,7 +42,7 @@ if __name__ == '__main__':
     plt.plot(bp_state_log_timestamp[1:], np.diff(bp_state_timestamps), '-g')
     plt.plot(tp_state_log_timestamp[1:], np.diff(tp_state_timestamps), '-c')
     plt.plot(tp_module_log_timestamp[1:], np.diff(tp_module_timestamps), '-k')
-    plt.title('State time measurements')
+    plt.title('State time measurements (%s)' % LOG_PATH_FOR_ANALYSIS)
     plt.legend(('Times where no valid trajectories were found',
                 'Diff between last ego timestamp in state module',
                 'Diff between last ego timestamp in BP module',
@@ -59,7 +59,7 @@ if __name__ == '__main__':
     plt.plot(tp_state_log_timestamp[1:], np.diff(tp_state_log_timestamp), '-c')
     plt.plot(tp_module_log_timestamp[1:], np.diff(tp_module_log_timestamp), '-k')
     plt.plot(bp_module_log_timestamp[1:], np.diff(bp_module_log_timestamp), '-m')
-    plt.title('Log time measurements')
+    plt.title('Measurements in Log time (%s)' % LOG_PATH_FOR_ANALYSIS)
     plt.legend(('Times where no valid trajectories were found',
                 'Time since last state message in state module',
                 'Time since last state received in BP',
