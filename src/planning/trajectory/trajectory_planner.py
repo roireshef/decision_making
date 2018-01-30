@@ -13,16 +13,19 @@ from decision_making.src.state.state import State
 
 
 class SamplableTrajectory(metaclass=ABCMeta):
-    def __init__(self, timestamp: float, lon_plan_horizon: float):
+    def __init__(self, timestamp: float, T: float):
         """
         Abstract class that holds all the statistics to sample points on a specific planned trajectory
         :param timestamp: [sec] global timestamp *in seconds* to use as a reference
                 (other timestamps will be given relative to it)
-        :param lon_plan_horizon: [sec] longitudinal trajectory duration, relative to ego.
+        :param T: [sec] longitudinal trajectory duration (relative to self.timestamp).
         """
         self.timestamp = timestamp
-        self.lon_plan_horizon = lon_plan_horizon
-        self.max_sample_time = self.timestamp + self.lon_plan_horizon
+        self.T = T
+
+    @property
+    def max_sample_time(self):
+        return  self.timestamp + self.T
 
 
     @abstractmethod
@@ -47,18 +50,17 @@ class TrajectoryPlanner(metaclass=ABCMeta):
 
     @abstractmethod
     @raises(NoValidTrajectoriesFound)
-    def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, lon_plan_horizon: float,
+    def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, time_horizon: float,
              cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
         Plans a trajectory according to the specifications in the arguments
-        :param lon_plan_horizon: defines the longitudinal planning horizon in [sec] for reaching the goal. Enables the target
+        :param time_horizon: defines the planning horizon in [sec] for reaching the goal. Enables the target
             state and time to be determined in the behavioral planner, so that any re-planning iteration is consistent
             in the TP.
         :param state: environment & ego state object
         :param reference_route: a reference route (often the center of lane).
         :param goal: A 1D numpy array of the desired ego-state to plan towards, represented in current
         global-coordinate-frame (see EGO_* in planning.utils.types.py for the fields)
-        :param lon_plan_horizon: longitudinal trajectory planning duration (sec.)
         :param cost_params: Data object with parameters that specify how to build the planning's cost function
         :return: a tuple of: (samplable represantation of the chosen trajectory, tensor of trajectory alternatives,
          trajectories costs correspond to previous output)

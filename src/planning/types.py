@@ -81,6 +81,10 @@ FrenetTrajectories1D = np.ndarray
 FS_X, FS_V, FS_A, = 0, 1, 2
 FS_1D_LEN = 3
 
+
+# [s,d] Polynomials
+S5, S4, S3, S2, S1, S0, D5, D4, D3, D2, D1, D0 = 0, 1, 2, 3, 4, 5
+
 ## MISC ##
 # A (two-cells) 1D numpy array represents limits (min, max)
 Limits = np.ndarray
