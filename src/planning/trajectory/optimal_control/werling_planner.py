@@ -162,18 +162,21 @@ class WerlingPlanner(TrajectoryPlanner):
         ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
                                                                                  T_s, T_d_grid, self.dt)
 
+        # filter resulting trajectories by progress on curve, velocity and (lateral) accelerations limits in frenet
+        frenet_filtered_indices = self._filter_by_frenet_limits(ftrajectories, poly_coefs[:, D5:], T_d_vals,
+                                                                cost_params, frenet.s_limits)
+
         # project trajectories from frenet-frame to vehicle's cartesian frame
-        ctrajectories: CartesianExtendedTrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories)
+        ctrajectories: CartesianExtendedTrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories[frenet_filtered_indices])
 
         # filter resulting trajectories by velocity and accelerations limits - this is now done in Cartesian frame
         # which takes into account the curvature of the road applied to trajectories planned in the Frenet frame
         cartesian_filtered_indices = self._filter_by_cartesian_limits(ctrajectories, cost_params)
-        frenet_filtered_indices = self._filter_by_frenet_limits(ftrajectories, poly_coefs[:, D5:], T_d_vals,
-                                                                cost_params, frenet.s_limits)
-        filtered_indices = np.union1d(cartesian_filtered_indices, frenet_filtered_indices)
 
-        ctrajectories_filtered = ctrajectories[filtered_indices]
-        ftrajectories_filtered = ftrajectories[filtered_indices]
+        filtered_indices = frenet_filtered_indices[cartesian_filtered_indices]
+
+        ctrajectories_filtered = ctrajectories[cartesian_filtered_indices]
+        ftrajectories_filtered = ftrajectories[frenet_filtered_indices][cartesian_filtered_indices]
 
         self._logger.debug("TP has found %d valid trajectories to choose from", len(ctrajectories_filtered))
 
@@ -183,7 +186,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                            "planned velocities range [%s, %s] (limits: %s); "
                                            "planned lon. accelerations range [%s, %s] (limits: %s); "
                                            "planned lat. accelerations range [%s, %s] (limits: %s); "
-                                           "number of trajectories passed according to Cartesian limits: %s/%s;"
+                                           "number of trajectories passed according to Frenet limits: %s/%s;"
                                            "number of trajectories passed according to Cartesian limits: %s/%s;"
                                            "number of trajectories passed according to all limits: %s/%s;" %
                                            (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
@@ -193,9 +196,9 @@ class WerlingPlanner(TrajectoryPlanner):
                                             NumpyUtils.str_log(cost_params.lon_acceleration_limits),
                                             np.min(lat_acc), np.max(lat_acc),
                                             NumpyUtils.str_log(cost_params.lat_acceleration_limits),
+                                            len(frenet_filtered_indices), len(ftrajectories),
                                             len(cartesian_filtered_indices), len(ctrajectories),
-                                            len(frenet_filtered_indices), len(ctrajectories),
-                                            len(filtered_indices), len(ctrajectories)))
+                                            len(filtered_indices), len(ftrajectories)))
 
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
