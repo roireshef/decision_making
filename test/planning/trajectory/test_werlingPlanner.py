@@ -151,7 +151,6 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
         reference_route_latitude = 3 * lane_width / 2
         start_ego_lat = lane_width / 2
         goal_latitude = reference_route_latitude
-        target_lane = int(goal_latitude/lane_width)
 
         lng = 40
         step = 0.2
@@ -170,12 +169,13 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             obs_poses = np.array([np.array([17, 1.4])])
             start_ego_lat = reference_route_latitude = goal_latitude = lane_width / 2
         elif test_idx < 12:  # curve road with obstacles
-            obs_poses = np.array([np.array([4, 0]), np.array([14, 0.6]), np.array([24, 2.1]),
+            obs_poses = np.array([np.array([4, 0]), np.array([14, 0.7]), np.array([24, 2.1]),
                                   np.array([42, -4.6 + (test_idx-9)*0.2])])
         else:  # curve road without obstacles
             obs_poses = np.array([])
             goal_latitude = reference_route_latitude = lane_width / 2 + (test_idx % 2) * lane_width
             start_ego_lat = lane_width / 2 + ((test_idx+1) % 2) * lane_width
+        target_lane = int(goal_latitude/lane_width)
 
         route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step, curvature=curvature)
         ext = 4
@@ -264,7 +264,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
 
         samplable, ctrajectories, costs, cost_components = planner.plan(state=state,
                                                                         reference_route=ext_route_points[:, :2],
-                                                                        goal=goal, lon_plan_horizon=T,
+                                                                        goal=goal, time_horizon=T,
                                                                         cost_params=cost_params)
 
         obs_costs = np.zeros(width * height)
