@@ -141,7 +141,7 @@ NEGLIGIBLE_DISPOSITION_LAT = 3  # lateral (ego's side direction) difference thre
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
 TRAJECTORY_TIME_RESOLUTION = 0.1
 
-# Number of trajectory points to send out (to controller) from the TP
+# Number of trajectory points to send out (to controller) from the TP - including the current state of ego
 TRAJECTORY_NUM_POINTS = 10
 
 # Werling Planner #
@@ -163,6 +163,9 @@ SX_STEPS, SV_STEPS, DX_STEPS = 10, 1, 7
 
 # Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
 TD_STEPS = 5
+
+# Minimal T_d (time-horizon for the lateral movement) - in units of WerlingPlanner.dt
+TD_MIN_DT = 3
 
 # Frenet-Serret Conversions #
 
@@ -210,4 +213,5 @@ BEHAVIORAL_POLICY_NAME_FOR_LOGGING = "Behavioral Policy"
 ACDA_NAME_FOR_LOGGING = "ACDA Module"
 TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 STATE_MODULE_NAME_FOR_LOGGING = "State Module"
+RVIZ_MODULE_NAME_FOR_LOGGING = "Rviz Module"
 

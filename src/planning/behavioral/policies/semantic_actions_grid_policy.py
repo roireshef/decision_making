@@ -419,37 +419,13 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             poly_coefs_d = OptimalControlUtils.QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
 
             # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
-            if SemanticActionsGridPolicy._is_acceleration_in_limits(poly_coefs_s, T, LON_ACC_LIMITS) and \
-                    SemanticActionsGridPolicy._is_acceleration_in_limits(poly_coefs_d, T, LAT_ACC_LIMITS):
+            if OptimalControlUtils.QuinticPoly1D.is_acceleration_in_limits(poly_coefs_s, T, LON_ACC_LIMITS) and \
+                    OptimalControlUtils.QuinticPoly1D.is_acceleration_in_limits(poly_coefs_d, T, LAT_ACC_LIMITS):
                 return SemanticActionSpec(t=T, v=obj_svT, s_rel=constraints_s[3] - ego_sx0,
                                           d_rel=constraints_d[3] - ego_dx0)
 
         raise NoValidTrajectoriesFound("No valid trajectories found. action: %s, state: %s, ",
                                        semantic_action.__dict__, behavioral_state.__dict__)
-
-    @staticmethod
-    def _is_acceleration_in_limits(poly_coefs: np.ndarray, T: float, acc_limits: Limits) -> bool:
-        """
-        given coefficients vector of a quintic polynomial x(t), and restrictions
-        on the acceleration values, return True if restrictions are met, False otherwise
-        :param poly_coefs: 1D numpy array with x(t), x_dot(t) x_dotdot(t) concatenated
-        :param T: planning time horizon [sec]
-        :param acc_limits: minimal and maximal allowed values of acceleration/deceleration [m/sec^2]
-        :return: True if restrictions are met, False otherwise
-        """
-        # TODO: a(0) and a(T) checks are omitted as they they are provided by the user.
-        # compute extrema points, by finding the roots of the 3rd derivative (which is itself a 2nd degree polynomial)
-        acc_suspected_points = np.roots(np.polyder(poly_coefs, m=3))
-        acceleration_poly_coefs = np.polyder(poly_coefs, m=2)
-        acc_suspected_values = np.polyval(acceleration_poly_coefs, acc_suspected_points)
-
-        # filter out extrema points out of [0, T]
-        acc_inlimit_suspected_values = acc_suspected_values[np.greater_equal(acc_suspected_points, 0) &
-                                                            np.less_equal(acc_suspected_points, T)]
-
-        # check if extrema values are within [a_min, a_max] limits
-        return np.all(np.greater_equal(acc_inlimit_suspected_values, acc_limits[LIMIT_MIN]) &
-                      np.less_equal(acc_inlimit_suspected_values, acc_limits[LIMIT_MAX]))
 
     @staticmethod
     def _get_action_ind(semantic_actions: List[SemanticAction], cell: SemanticGridCell):

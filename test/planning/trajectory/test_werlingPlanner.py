@@ -15,8 +15,9 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryCostPar
 from decision_making.src.planning.trajectory.cost_function import Jerk
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, CartesianPoint2D, C_Y, \
-    CartesianExtendedTrajectory, C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX
-from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
+    CartesianExtendedTrajectory, C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX
+from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner, \
+    SamplableWerlingTrajectory
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
@@ -46,15 +47,11 @@ mock_td_steps = 5
 def test_werlingPlanner_toyScenario_noException():
     logger = AV_Logger.get_logger('test_werlingPlanner_toyScenario_noException')
     route_points = CartesianFrame.add_yaw_and_derivatives(
-        RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5))
+        RouteFixture.get_route(lng=10, k=1, step=1, lat=1, offset=-.5))
 
-    v0 = 6
-    vT = 10
-    v_min = 0
-    v_max = 10
-    a_min = -5
-    a_max = 5
-    Ts = 1.5
+    v0 = 5
+    vT = 5
+    Ts = 2
 
     predictor = RoadFollowingPredictor(logger)
 
@@ -89,51 +86,51 @@ def test_werlingPlanner_toyScenario_noException():
                                        dist_from_goal_lat_factor=1.0,
                                        lon_jerk_cost=LON_JERK_COST,
                                        lat_jerk_cost=LAT_JERK_COST,
-                                       velocity_limits=np.array([-np.inf, np.inf]),     # TODO: temporary because this is solved in other PR
-                                       lon_acceleration_limits=np.array([-np.inf, np.inf]),   # TODO: temporary because this is solved in other PR
-                                       lat_acceleration_limits=np.array([-np.inf, np.inf]))   # TODO: temporary because this is solved in other PR
+                                       velocity_limits=VELOCITY_LIMITS,
+                                       lon_acceleration_limits=LON_ACC_LIMITS,
+                                       lat_acceleration_limits=LAT_ACC_LIMITS)
 
     planner = WerlingPlanner(logger, predictor)
 
     start_time = time.time()
 
     samplable, ctrajectories, costs, _ = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
-                                                      lon_plan_horizon=Ts, cost_params=cost_params)
+                                                      time_horizon=Ts, cost_params=cost_params)
 
     samplable.sample(np.arange(0, 1, 0.01) + ego.timestamp_in_sec)
 
     assert True
 
-    # import matplotlib.pyplot as plt
-    # #plt.switch_backend('QT5Agg')
-    #
-    # fig = plt.figure()
-    # p1 = fig.add_subplot(211)
-    # plt.title('A sample from possible trajectories, Ts=%s, TD_STEPS=%s' % (Ts, TD_STEPS))
-    # p2 = fig.add_subplot(212)
-    # plt.title('Chosen trajectory')
-    # time_samples = np.arange(0.0, Ts, 0.1) + ego.timestamp_in_sec
-    # plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost_x.k,
-    #                                                     np.array([cost_params.obstacle_cost_x.offset,
-    #                                                               cost_params.obstacle_cost_y.offset]),
-    #                                                     time_samples, predictor)
-    #                  for o in state.dynamic_objects]
-    # WerlingVisualizer.plot_obstacles(p1, plottable_obs)
-    # WerlingVisualizer.plot_obstacles(p2, plottable_obs)
-    # WerlingVisualizer.plot_route(p1, route_points[:, :2])
-    # WerlingVisualizer.plot_route(p2, route_points[:, :2])
-    #
-    # WerlingVisualizer.plot_best(p2, ctrajectories[0])
-    # WerlingVisualizer.plot_alternatives(p1, ctrajectories, costs)
-    #
-    # print(costs)
-    # print('\n minimal is: ', np.min(costs))
-    #
-    # WerlingVisualizer.plot_route(p1, route_points)
-    # figManager = plt.get_current_fig_manager()
-    # figManager.window.showMaximized()
-    # plt.show()
-    # fig.clear()
+    import matplotlib.pyplot as plt
+    #plt.switch_backend('QT5Agg')
+
+    fig = plt.figure()
+    p1 = fig.add_subplot(211)
+    plt.title('A sample from possible trajectories, Ts=%s, TD_STEPS=%s' % (Ts, TD_STEPS))
+    p2 = fig.add_subplot(212)
+    plt.title('Chosen trajectory')
+    time_samples = np.arange(0.0, Ts, 0.1) + ego.timestamp_in_sec
+    plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost_x.k,
+                                                        np.array([cost_params.obstacle_cost_x.offset,
+                                                                  cost_params.obstacle_cost_y.offset]),
+                                                        time_samples, predictor)
+                     for o in state.dynamic_objects]
+    WerlingVisualizer.plot_obstacles(p1, plottable_obs)
+    WerlingVisualizer.plot_obstacles(p2, plottable_obs)
+    WerlingVisualizer.plot_route(p1, route_points[:, :2])
+    WerlingVisualizer.plot_route(p2, route_points[:, :2])
+
+    WerlingVisualizer.plot_best(p2, ctrajectories[0])
+    WerlingVisualizer.plot_alternatives(p1, ctrajectories, costs)
+
+    print(costs)
+    print('\n minimal is: ', np.min(costs))
+
+    WerlingVisualizer.plot_route(p1, route_points)
+    figManager = plt.get_current_fig_manager()
+    figManager.window.showMaximized()
+    plt.show()
+    fig.clear()
 
 @pytest.mark.skip(reason="takes too long.")
 def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
@@ -362,3 +359,26 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
 
         fig.show()
         fig.clear()
+
+
+def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
+    route_points = RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5)
+
+    frenet = FrenetSerret2DFrame(route_points)
+
+    trajectory = SamplableWerlingTrajectory(
+        timestamp=10.0,
+        T_s=1.5,
+        T_d=1.0,
+        frenet_frame=frenet,
+        poly_s_coefs=np.array([-2.53400421e+00, 8.90980541e+00, -7.72383669e+00, -3.76008007e-03, 6.00604195e+00, 1.00520801e+00]),
+        poly_d_coefs=np.array([-1.44408865e+01, 3.62482582e+01, -2.42818417e+01, -3.62145365e-02, 1.03423064e-02, 5.01250837e-01])
+    )
+
+    fstate_terminal = frenet.cstate_to_fstate(trajectory.sample(
+        np.array([trajectory.timestamp + trajectory.T_s]))[0])
+
+    fstate_after_T_d = frenet.cstate_to_fstate(trajectory.sample(
+        np.array([trajectory.timestamp + (trajectory.T_s + trajectory.T_d) / 2]))[0])
+
+    np.testing.assert_allclose(fstate_after_T_d[FS_DX], fstate_terminal[FS_DX])
