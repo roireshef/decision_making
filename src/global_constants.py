@@ -43,20 +43,20 @@ BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 
 # Trajectory cost parameters
 OBSTACLE_SIGMOID_COST = 1.0 * 1e5           # cost around obstacles (sigmoid)
-OBSTACLE_SIGMOID_K_PARAM = 7.0              # sigmoid k (slope) param of objects on road
+OBSTACLE_SIGMOID_K_PARAM = 8.0              # sigmoid k (slope) param of objects on road
 
-DEVIATION_FROM_LANE_COST = 20               # cost of deviation from lane (sigmoid)
+DEVIATION_FROM_LANE_COST = 2                # cost of deviation from lane (sigmoid)
 LANE_SIGMOID_K_PARAM = 4                    # sigmoid k (slope) param of going out-of-lane-center
 
-DEVIATION_TO_SHOULDER_COST = 3.0 * 1e2      # cost of deviation to shoulders (sigmoid)
+DEVIATION_TO_SHOULDER_COST = 1.0 * 1e2      # cost of deviation to shoulders (sigmoid)
 SHOULDER_SIGMOID_K_PARAM = 6                # sigmoid k (slope) param of going out-of-shoulder
 SHOULDER_SIGMOID_OFFSET = 0.2               # offset param m of going out-of-shoulder: cost = w/(1+e^(k*(m+x)))
 
-DEVIATION_FROM_ROAD_COST = 1.0 * 1e4        # cost of deviation from road (sigmoid)
+DEVIATION_FROM_ROAD_COST = 1.0 * 1e3        # cost of deviation from road (sigmoid)
 ROAD_SIGMOID_K_PARAM = 20                   # sigmoid k (slope) param of going out-of-road
 
-DEVIATION_FROM_GOAL_LAT_FACTOR = 4          # ratio between lateral and longitudinal deviation costs from the goal
-DEVIATION_FROM_GOAL_COST = 1.0 * 1e2        # cost of longitudinal deviation from the goal
+DEVIATION_FROM_GOAL_LAT_FACTOR = 3          # ratio between lateral and longitudinal deviation costs from the goal
+DEVIATION_FROM_GOAL_COST = 2.5 * 1e2        # cost of longitudinal deviation from the goal
 GOAL_SIGMOID_K_PARAM = 0.5                  # sigmoid k (slope) param of going out-of-goal
 GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
 
@@ -150,19 +150,19 @@ TRAJECTORY_NUM_POINTS = 10
 WERLING_TIME_RESOLUTION = 0.1
 
 # [m] Range for grid search in werling planner (long. position)
-SX_OFFSET_MIN, SX_OFFSET_MAX = -10, 0
+SX_OFFSET_MIN, SX_OFFSET_MAX = -8, 0
 
 # [m] Range for grid search in werling planner (long. velocity)
-SV_OFFSET_MIN, SV_OFFSET_MAX = -1.5, 1.5
+SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
 
 # [m] Range for grid search in werling planner (lat. position)
-DX_OFFSET_MIN, DX_OFFSET_MAX = -2.5, 2.5
+DX_OFFSET_MIN, DX_OFFSET_MAX = -2.4, 2.4
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 5, 3, 5
+SX_STEPS, SV_STEPS, DX_STEPS = 5, 1, 13
 
 # Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
-TD_STEPS = 4
+TD_STEPS = 6
 
 # Minimal T_d (time-horizon for the lateral movement) - in units of WerlingPlanner.dt
 TD_MIN_DT = 3

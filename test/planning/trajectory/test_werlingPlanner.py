@@ -143,7 +143,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
     logger = AV_Logger.get_logger('test_werlingPlanner_twoStaticObjScenario_withCostViz')
     predictor = RoadFollowingPredictor(logger)
 
-    for test_idx in range(14):
+    for test_idx in range(40):
 
         lane_width = 3.6
         num_lanes = 2
@@ -154,16 +154,13 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
 
         lng = 40
         step = 0.2
-        if test_idx < 8:
+        if test_idx < 20:
             curvature = 0.0
         else:
             curvature = 0.2
 
-        if test_idx < 4:
-            obs_poses = np.array([np.array([4, 0]), np.array([14, 0.6]), np.array([24, 2.1]),
-                                  np.array([42, -4.6 + test_idx*0.2])])
-        elif test_idx < 8:
-            obs_poses = np.array([np.array([4, 0]), np.array([22, -1.6 - test_idx*0.2])])
+        if test_idx < 40:
+            obs_poses = np.array([np.array([4, 0]), np.array([22, -0.0 - (test_idx%20)*0.2])])
             goal_latitude = lane_width / 2
         elif test_idx == 8:  # go on margin to prevent collision
             obs_poses = np.array([np.array([17, 1.4])])
@@ -232,8 +229,6 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
                                      acceleration_lon=0.0, omega_yaw=0.0))
         #obs = list([])
 
-        state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
-
         objects_dilation_length = ego.size.length / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
         objects_dilation_width = ego.size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
         right_lane_offset = max(0.0, reference_route_latitude - ego.size.width / 2 - target_lane * lane_width)
@@ -243,13 +238,15 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
         right_road_offset = reference_route_latitude - ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
         left_road_offset = (road_width - reference_route_latitude) - ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
 
+        state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
+
         cost_params = TrajectoryCostParams(
-            left_lane_cost=SigmoidFunctionParams(DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, left_lane_offset),
-            right_lane_cost=SigmoidFunctionParams(DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, right_lane_offset),
+            left_lane_cost=SigmoidFunctionParams(DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, left_lane_offset),
+            right_lane_cost=SigmoidFunctionParams(DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, right_lane_offset),
+            left_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM, left_shoulder_offset),
+            right_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM, right_shoulder_offset),
             left_road_cost=SigmoidFunctionParams(DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, left_road_offset),
             right_road_cost=SigmoidFunctionParams(DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, right_road_offset),
-            left_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, ROAD_SIGMOID_K_PARAM, left_shoulder_offset),
-            right_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, ROAD_SIGMOID_K_PARAM, right_shoulder_offset),
             obstacle_cost_x=SigmoidFunctionParams(OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, objects_dilation_length),
             obstacle_cost_y=SigmoidFunctionParams(OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, objects_dilation_width),
             dist_from_goal_cost=SigmoidFunctionParams(DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET),
@@ -357,7 +354,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
         filename = 'test_costs'+str(test_idx)+'.png'
         fig.savefig(filename)
 
-        fig.show()
+        # fig.show()
         fig.clear()
 
 

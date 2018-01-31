@@ -287,12 +287,12 @@ class WerlingPlanner(TrajectoryPlanner):
         # add to deviations_costs the costs of deviations from the left [lane, shoulder, road]
         for exp in [params.left_lane_cost, params.left_shoulder_cost, params.left_road_cost]:
             left_offsets = ftrajectories[:, :, FS_DX] - exp.offset
-            deviations_costs += np.mean(Math.clipped_sigmoid(left_offsets, exp.w, exp.k), axis=1)
+            deviations_costs += np.sum(Math.clipped_sigmoid(left_offsets, exp.w, exp.k), axis=1)
 
         # add to deviations_costs the costs of deviations from the right [lane, shoulder, road]
         for exp in [params.right_lane_cost, params.right_shoulder_cost, params.right_road_cost]:
             right_offsets = np.negative(ftrajectories[:, :, FS_DX]) - exp.offset
-            deviations_costs += np.mean(Math.clipped_sigmoid(right_offsets, exp.w, exp.k), axis=1)
+            deviations_costs += np.sum(Math.clipped_sigmoid(right_offsets, exp.w, exp.k), axis=1)
 
         ''' JERK COST '''
         # first concatenate the current ego state to ctrajectories

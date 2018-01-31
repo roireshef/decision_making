@@ -153,7 +153,7 @@ def state():
     dynamic_objects = [dyn1, dyn2]
     size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
     # TODO - decouple from navigation plan below (1 is the road id). Make this dependency explicit.
-    ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
+    ego_state = EgoState(0, 0, 1, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
     yield State(occupancy_state, dynamic_objects, ego_state)
 
 
