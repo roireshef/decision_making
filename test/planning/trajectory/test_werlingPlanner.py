@@ -136,7 +136,7 @@ def test_werlingPlanner_toyScenario_noException():
     # fig.clear()
 
 @pytest.mark.skip(reason="takes too long.")
-def test_werlingPlanner_twoStaticObjScenario_withCostViz():
+def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
     """
     The route is set to route_points by calling to RouteFixture.get_route(). Currently it is a straight line.
     The test runs with 16 iterations. In each iteration one or more obstacles move.
