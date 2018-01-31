@@ -150,19 +150,19 @@ TRAJECTORY_NUM_POINTS = 10
 WERLING_TIME_RESOLUTION = 0.1
 
 # [m] Range for grid search in werling planner (long. position)
-SX_OFFSET_MIN, SX_OFFSET_MAX = -15, 0
+SX_OFFSET_MIN, SX_OFFSET_MAX = -10, 0
 
 # [m] Range for grid search in werling planner (long. velocity)
-SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
+SV_OFFSET_MIN, SV_OFFSET_MAX = -1.5, 1.5
 
 # [m] Range for grid search in werling planner (lat. position)
-DX_OFFSET_MIN, DX_OFFSET_MAX = -3, 3
+DX_OFFSET_MIN, DX_OFFSET_MAX = -2.5, 2.5
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 10, 1, 7
+SX_STEPS, SV_STEPS, DX_STEPS = 5, 3, 5
 
 # Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
-TD_STEPS = 5
+TD_STEPS = 4
 
 # Minimal T_d (time-horizon for the lateral movement) - in units of WerlingPlanner.dt
 TD_MIN_DT = 3
