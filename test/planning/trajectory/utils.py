@@ -54,7 +54,7 @@ class RouteFixture:
         ), axis=0)
 
     @staticmethod
-    def get_cubic_route(lng: int = 100, lat: float = 0, ext: float = 10, step: float = 1, curvature: float = 0.1):
+    def get_cubic_route(lng: float = 100, lat: float = 0, ext: float = 10, step: float = 1, curvature: float = 0.1):
         return np.array([[x, lat + curvature*lng*((x/lng)**3)] for x in np.arange(-ext, lng+ext, step)])
 
 class PlottableSigmoidBoxObstacle(SigmoidBoxObstacle):
@@ -125,7 +125,8 @@ class WerlingVisualizer:
             costs = np.array([0,]*alternatives.shape[0])
         max_cost = np.log(1+max(costs))
         min_cost = np.log(1+min(costs))
-        for i, alt in enumerate(alternatives):
+        for i in range(alternatives.shape[0]-1, -1, -1):
+            alt = alternatives[i]
             cost = np.log(1+costs[i])
             c = 1 - (cost-min_cost)/(max_cost-min_cost)
             plt.plot(alt[:, 0], alt[:, 1], '-', color=[c, 0, 0.5])

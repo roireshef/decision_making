@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
+from typing import List
 
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_K_PARAM, LATERAL_SAFETY_MARGIN_FROM_OBJECT, \
     OBSTACLE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_LANE_COST, \
@@ -16,7 +17,7 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_grid_poli
 from decision_making.src.planning.trajectory.cost_function import Jerk
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, CartesianPoint2D, C_Y, \
-    CartesianExtendedTrajectory, C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX
+    CartesianExtendedTrajectory, C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, CartesianExtendedState
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner, \
     SamplableWerlingTrajectory
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
@@ -134,7 +135,7 @@ def test_werlingPlanner_toyScenario_noException():
     fig.clear()
 
 # remove this skip if you want to run the test
-#@pytest.mark.skip(reason="takes too long.")
+@pytest.mark.skip(reason="takes too long.")
 def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
     """
     The route is set to route_points by calling to RouteFixture.get_route(). Currently it is a straight line.
@@ -144,18 +145,23 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
     """
     logger = AV_Logger.get_logger('test_werlingPlanner_twoStaticObjScenario_withCostViz')
     predictor = RoadFollowingPredictor(logger)
+    ROAD_ID = 1
+    lane_width = 3.6
+    num_lanes = 2
+    road_width = num_lanes * lane_width
+    lng = 40  # [m] route_points length
+    ext = 4  # [m] extension for route_points to prevent out-of-range Frenet-Seret projection
 
     for test_idx in range(40):
 
-        lane_width = 3.6
-        num_lanes = 2
-        road_width = num_lanes*lane_width
         reference_route_latitude = 3 * lane_width / 2
         start_ego_lat = lane_width / 2
         goal_latitude = reference_route_latitude
 
-        lng = 40
-        step = 0.2
+        v0 = 6   # start velocity
+        vT = 10  # end velocity
+        T = 4.6  # planning time
+
         if test_idx < 20:
             curvature = 0.0
         else:
@@ -174,37 +180,11 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
         #     obs_poses = np.array([])
         #     goal_latitude = reference_route_latitude = lane_width / 2 + (test_idx % 2) * lane_width
         #     start_ego_lat = lane_width / 2 + ((test_idx+1) % 2) * lane_width
-        target_lane = int(goal_latitude/lane_width)
 
-        route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step, curvature=curvature)
-        ext = 4
-        ext_route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=ext, step=step, curvature=curvature)
-
-        ROAD_ID = 1
-        test_map_model = TestMapModelUtils.create_road_map_from_coordinates(points_of_roads=[ext_route_xy],
-                                                                            road_id=ROAD_ID, road_name='y=x^3',
-                                                                            lanes_num=num_lanes, lane_width=lane_width,
-                                                                            frame_origin=[0, 0])
-        map = MapAPI(map_model=test_map_model, logger=logger)
-        MapService().set_instance(map)
-
-        route_points = CartesianFrame.add_yaw_and_derivatives(route_xy)
-        ext_route_points = CartesianFrame.add_yaw_and_derivatives(ext_route_xy)
-
-        xrange = (route_points[0, C_X], route_points[-1, C_X])
-        yrange = (np.min(route_points[:, C_Y]) - reference_route_latitude - ROAD_SHOULDERS_WIDTH,
-                  np.max(route_points[:, C_Y]) - reference_route_latitude + road_width + ROAD_SHOULDERS_WIDTH)
-        x = np.arange(xrange[0], xrange[1], 0.1)
-        y = np.arange(yrange[0], yrange[1], 0.1)
-        width = x.shape[0]
-        height = y.shape[0]
-        pixels = np.transpose([np.tile(x, y.shape[0]), np.repeat(y, x.shape[0])])
-
+        route_points, ext_route_points = create_route_for_test_werlingPlanner(ROAD_ID, num_lanes, lane_width,
+                                                                              reference_route_latitude, lng, ext,
+                                                                              curvature)
         frenet = FrenetSerret2DFrame(ext_route_points[:, :2])
-
-        v0 = 6
-        vT = 10
-        T = 4.6
 
         ftraj_start_goal = np.array([np.array([ext, v0, 0, start_ego_lat - reference_route_latitude, 0, 0]),
                                      np.array([lng + ext, vT, 0, goal_latitude - reference_route_latitude, 0, 0])])
@@ -223,9 +203,8 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             fobs = np.array([pose[FP_SX], pose[FP_DX]])
             cobs = frenet.fpoint_to_cpoint(fobs)
             obs.append(DynamicObject(obj_id=i, timestamp=0, x=cobs[C_X], y=cobs[C_Y], z=0,
-                                     yaw=frenet.get_yaw(pose[FP_SX]),
-                                     size=ObjectSize(4, 1.8, 0), confidence=1.0, v_x=0, v_y=0,
-                                     acceleration_lon=0.0, omega_yaw=0.0))
+                                     yaw=frenet.get_yaw(pose[FP_SX]), size=ObjectSize(4, 1.8, 0), confidence=1.0,
+                                     v_x=0, v_y=0, acceleration_lon=0.0, omega_yaw=0.0))
 
         state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
 
@@ -234,101 +213,198 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
 
         planner = WerlingPlanner(logger, predictor)
 
-        samplable, ctrajectories, costs, cost_components = planner.plan(state=state,
-                                                                        reference_route=ext_route_points[:, :2],
-                                                                        goal=goal, time_horizon=T,
-                                                                        cost_params=cost_params)
+        _, ctrajectories, costs, cost_components = planner.plan(state=state, reference_route=ext_route_points[:, :2],
+                                                                goal=goal, time_horizon=T, cost_params=cost_params)
 
-        # calculate cost components for all image pixels by building a static "trajectory" for every pixel
-        ego_cartesian_state = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
         time_samples = np.arange(0, T + np.finfo(np.float16).eps, planner.dt) + ego.timestamp_in_sec
         assert time_samples.shape[0] == ctrajectories.shape[1]
 
-        cartesian_pixels = np.c_[pixels, np.zeros((height*width, 4))]
-        cartesian_pixels = np.repeat(cartesian_pixels[:, np.newaxis, :], time_samples.shape[0], axis=1)
-
-        pos_x = pixels.reshape(height, width, 2)
-        s_x, a_r, _, N_r, _, _ = frenet._project_cartesian_points(pos_x)
-        d_x = np.einsum('tpi,tpi->tp', pos_x - a_r, N_r)
-        frenet_pixels = np.c_[s_x.flatten()-s_x.flatten()[0], np.zeros((height*width, 2)), d_x.flatten(),
-                              np.zeros((height*width, 2))]
-        frenet_pixels = np.repeat(frenet_pixels[:, np.newaxis, :], time_samples.shape[0], axis=1)
-
-        t = 0
-        obs_costs, deviations_costs, _ = \
-            planner._compute_pointwise_costs(cartesian_pixels[:, t:(t+1), :], frenet_pixels[:, t:(t+1), :], state,
-                                             cost_params, time_samples[t:(t+1)], predictor, planner.dt,
-                                             ego_cartesian_state)
-
-        import matplotlib.pyplot as plt
-
-        fig = plt.figure(figsize=(22, 11))
-        p1 = fig.add_subplot(211)
-        p2 = fig.add_subplot(212)
         offsets = np.array([cost_params.obstacle_cost_x.offset, cost_params.obstacle_cost_y.offset])
         plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost_x.k, offsets, time_samples,
-                                                            predictor)
+                                                            planner.predictor)
                          for o in state.dynamic_objects]
 
-        x = pixels[:, 0].reshape(height, width)
-        y = pixels[:, 1].reshape(height, width)
-        z = obs_costs[:, t].reshape(height, width) + deviations_costs[:, t].reshape(height, width)
+        # compute costs for pixels grid of the visualization image
+        t = 0  # time index of time_samples
+        pixels, pixel_costs = compute_pixel_costs(route_points, reference_route_latitude, road_width, state,
+                                                  cost_params, time_samples[t:(t + 1)], planner, frenet)
 
-        diff = np.diff(route_points[:, :2], axis=0)
-        angles = np.arctan2(diff[:, 1], diff[:, 0])
-        angles = np.concatenate((angles, np.array([angles[-1]])))
+        visualize_test_scenario(route_points, reference_route_latitude, road_width, state, goal, ctrajectories, costs,
+                                pixels, pixel_costs, plottable_obs, 'test_costs' + str(test_idx) + '.png')
 
-        for p in list([p1, p2]):
-            WerlingVisualizer.plot_obstacles(p, plottable_obs)
-            WerlingVisualizer.plot_obstacles(p, plottable_obs)
-            WerlingVisualizer.plot_route(p, route_points[:, :2])
-            d = reference_route_latitude
-            WerlingVisualizer.plot_route(p, np.c_[
-                route_points[:, 0] + d * np.sin(angles), route_points[:, 1] - d * np.cos(angles)], '-k')
-            d = road_width - reference_route_latitude
-            WerlingVisualizer.plot_route(p, np.c_[
-                route_points[:, 0] - d * np.sin(angles), route_points[:, 1] + d * np.cos(angles)], '-k')
-            d = road_width / 2 - reference_route_latitude
-            WerlingVisualizer.plot_route(p, np.c_[
-                route_points[:, 0] - d * np.sin(angles), route_points[:, 1] + d * np.cos(angles)], '--k')
 
-            # plot ego's best position for both obstacles
-            for obs in state.dynamic_objects:
-                min_cost_y = np.argmin(z[:, int((obs.x - xrange[0])/0.1)]) * 0.1 + yrange[0]
-                p.plot(np.arange(- ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x,
-                       np.repeat(np.array([min_cost_y+ego.size.width/2]), np.ceil(ego.size.length)+1), '*w')
-                p.plot(np.arange(- ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x,
-                       np.repeat(np.array([min_cost_y - ego.size.width / 2]), np.ceil(ego.size.length)+1), '*w')
-                p.plot(np.repeat(np.array([-ego.size.length / 2 + obs.x]), np.ceil(ego.size.width)+1),
-                       np.arange(min_cost_y-ego.size.width/2, min_cost_y+ego.size.width/2 + 0.01), '*w')
-                p.plot(np.repeat(np.array([ego.size.length / 2 + obs.x]), np.ceil(ego.size.width)+1),
-                       np.arange(min_cost_y-ego.size.width/2, min_cost_y+ego.size.width/2 + 0.01), '*w')
+def create_route_for_test_werlingPlanner(road_id: int, num_lanes: int, lane_width: float,
+                                         reference_route_latitude: float,
+                                         lng: float, ext: float, curvature: float) -> \
+        [np.array, np.array]:
+    """
+    Create reference route for test_werlingPlanner visualization
+    :param road_id: road id
+    :param num_lanes: number of lanes
+    :param lane_width: [m] lane width
+    :param reference_route_latitude: [m] latitude of the reference route
+    :param lng: [m] length of the reference route
+    :param ext: [m] extension of the reference route (in two sides)
+    :param curvature: curvature of the reference route
+    :return: route_points (reference route), ext_route_points (extended reference route)
+    """
+    logger = AV_Logger.get_logger('test_werlingPlanner_twoStaticObjScenario_withCostViz')
+    step = 0.2
+    route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step, curvature=curvature)
+    ext_route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=ext, step=step,
+                                                curvature=curvature)
 
-        d = reference_route_latitude + ROAD_SHOULDERS_WIDTH
-        WerlingVisualizer.plot_route(p2, np.c_[
-            route_points[:, 0] + d * np.sin(angles), route_points[:, 1] - d * np.cos(angles)], '-r')
-        d = road_width - reference_route_latitude + ROAD_SHOULDERS_WIDTH
-        WerlingVisualizer.plot_route(p2, np.c_[
-            route_points[:, 0] - d * np.sin(angles), route_points[:, 1] + d * np.cos(angles)], '-r')
+    test_map_model = TestMapModelUtils.create_road_map_from_coordinates(points_of_roads=[ext_route_xy],
+                                                                        road_id=road_id, road_name='y=x^3',
+                                                                        lanes_num=num_lanes, lane_width=lane_width,
+                                                                        frame_origin=[0, 0])
+    map = MapAPI(map_model=test_map_model, logger=logger)
+    MapService().set_instance(map)
 
-        z = np.log(1 + z)
-        p2.contourf(x, y, z, 100)
+    route_points = CartesianFrame.add_yaw_and_derivatives(route_xy)
+    ext_route_points = CartesianFrame.add_yaw_and_derivatives(ext_route_xy)
+    return route_points, ext_route_points
 
-        WerlingVisualizer.plot_best(p2, ctrajectories[0])
-        WerlingVisualizer.plot_alternatives(p1, ctrajectories, costs)
 
-        WerlingVisualizer.plot_goal(p1, goal)
-        WerlingVisualizer.plot_goal(p2, goal)
+def compute_pixel_costs(route_points: np.array, reference_route_latitude: float, road_width: float,
+                        state: State, cost_params: TrajectoryCostParams, time_samples: np.array,
+                        planner: WerlingPlanner, frenet: FrenetSerret2DFrame) -> \
+        [np.array, np.array]:
+    """
+    Given a scenario (road, state, goal), trajectory cost params, create a visualization image (whose size fits to
+    route_points) and compute costs for its pixels grid.
+    :param route_points: route points for Werling planner
+    :param reference_route_latitude: [m] reference route latitude relatively to the right edge of the road
+    :param road_width: [m] road width
+    :param state: state including ego and obstacles
+    :param cost_params: trajectory cost parameters, obtained from semantic_actions_grid_policy
+    :param time_samples: time_samples of the planning
+    :param planner: Werling planner
+    :param frenet: Frenet frame based on the route_points
+    :return: 2D pixels array, pixel costs
+    """
+    # create pixels array
+    xrange = (route_points[0, C_X], route_points[-1, C_X])
+    yrange = (np.min(route_points[:, C_Y]) - reference_route_latitude - ROAD_SHOULDERS_WIDTH,
+              np.max(route_points[:, C_Y]) - reference_route_latitude + road_width + ROAD_SHOULDERS_WIDTH)
+    x = np.arange(xrange[0], xrange[1], 0.1)
+    y = np.arange(yrange[0], yrange[1], 0.1)
+    width = x.shape[0]
+    height = y.shape[0]
+    pixels = np.transpose([np.tile(x, y.shape[0]), np.repeat(y, x.shape[0])])
 
-        print(costs)
+    ego = state.ego_state
+    ego_cartesian_state = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
 
-        WerlingVisualizer.plot_route(p1, route_points)
+    # create cartesian pixels array (like pixels but with additional 4 zero columns)
+    cartesian_pixels = np.c_[pixels, np.zeros((height * width, 4))]
+    # duplicate cartesian_pixels for all time samples
+    cartesian_pixels = np.repeat(cartesian_pixels[:, np.newaxis, :], time_samples.shape[0], axis=1)
 
-        filename = 'test_costs'+str(test_idx)+'.png'
-        fig.savefig(filename)
+    # create frenet pixels array by projecting pixels on the Frenet frame
+    pixels2D = pixels.reshape(height, width, 2)
+    s_x, a_r, _, N_r, _, _ = frenet._project_cartesian_points(pixels2D)
+    d_x = np.einsum('tpi,tpi->tp', pixels2D - a_r, N_r)
+    frenet_pixels = np.c_[s_x.flatten() - s_x.flatten()[0], np.zeros((height * width, 2)), d_x.flatten(),
+                          np.zeros((height * width, 2))]
+    # duplicate frenet_pixels for all time samples
+    frenet_pixels = np.repeat(frenet_pixels[:, np.newaxis, :], time_samples.shape[0], axis=1)
 
-        #fig.show()
-        fig.clear()
+    # calculate cost components for all image pixels by building a static "trajectory" for every pixel
+    obs_costs, deviations_costs, _ = \
+        planner._compute_pointwise_costs(cartesian_pixels, frenet_pixels, state, cost_params, time_samples,
+                                         planner.predictor, planner.dt, ego_cartesian_state)
+
+    pixel_costs = (obs_costs + deviations_costs).reshape(height, width, time_samples.shape[0])
+    return pixels2D, pixel_costs
+
+
+def visualize_test_scenario(route_points: np.array, reference_route_latitude: float, road_width: float,
+                            state: State, goal: CartesianExtendedState,
+                            ctrajectories: np.array, traj_costs: np.array,
+                            pixels: np.array, pixel_costs: np.array,
+                            plottable_obs: List[PlottableSigmoidDynamicBoxObstacle],
+                            image_file_name: str):
+    """
+    Given running results (trajectories and their costs) of Werling planner on some scenario (road, state, goal),
+    draw image (including trajectory alternatives and pixel-wise scores), and save it as file
+    :param route_points: route points for Werling planner
+    :param reference_route_latitude: [m] reference route latitude relatively to the right edge of the road
+    :param road_width: [m] road width
+    :param state: state including ego and obstacles
+    :param goal: cartesian extended state of the goal
+    :param ctrajectories: cartesian trajectories, obtained from Werling planner, operated on the state and the goal
+    :param traj_costs: costs of the trajectories, obtained from Werling planner
+    :param pixels: [height, width, 2], 2D array of pairs (x, y) coordinates of the visualization image pixels
+    :param pixel_costs: [height, width] array of costs of pixels
+    :param image_file_name: string
+    :return:
+    """
+
+    import matplotlib.pyplot as plt
+
+    fig = plt.figure(figsize=(22, 11))
+    p1 = fig.add_subplot(211)
+    p2 = fig.add_subplot(212)
+
+    x = pixels[:, :, 0]
+    y = pixels[:, :, 1]
+    z = pixel_costs[:, :, 0]  # the third index is time
+
+    diff = np.diff(route_points[:, :2], axis=0)
+    angles = np.arctan2(diff[:, 1], diff[:, 0])
+    angles = np.concatenate((angles, np.array([angles[-1]])))
+
+    for p in list([p1, p2]):
+        WerlingVisualizer.plot_obstacles(p, plottable_obs)
+        WerlingVisualizer.plot_obstacles(p, plottable_obs)
+        WerlingVisualizer.plot_route(p, route_points[:, :2])
+        d = reference_route_latitude
+        WerlingVisualizer.plot_route(p, np.c_[
+            route_points[:, 0] + d * np.sin(angles), route_points[:, 1] - d * np.cos(angles)], '-k')
+        d = road_width - reference_route_latitude
+        WerlingVisualizer.plot_route(p, np.c_[
+            route_points[:, 0] - d * np.sin(angles), route_points[:, 1] + d * np.cos(angles)], '-k')
+        d = road_width / 2 - reference_route_latitude
+        WerlingVisualizer.plot_route(p, np.c_[
+            route_points[:, 0] - d * np.sin(angles), route_points[:, 1] + d * np.cos(angles)], '--k')
+
+        # plot ego's best position for both obstacles
+        origin = pixels[0, 0, :]
+        ego = state.ego_state
+        for obs in state.dynamic_objects:
+            min_cost_y = np.argmin(z[:, int((obs.x - origin[0]) / 0.1)]) * 0.1 + origin[1]
+            p.plot(np.arange(- ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x,
+                   np.repeat(np.array([min_cost_y + ego.size.width / 2]), np.ceil(ego.size.length) + 1), '*w')
+            p.plot(np.arange(- ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x,
+                   np.repeat(np.array([min_cost_y - ego.size.width / 2]), np.ceil(ego.size.length) + 1), '*w')
+            p.plot(np.repeat(np.array([-ego.size.length / 2 + obs.x]), np.ceil(ego.size.width) + 1),
+                   np.arange(min_cost_y - ego.size.width / 2, min_cost_y + ego.size.width / 2 + 0.01), '*w')
+            p.plot(np.repeat(np.array([ego.size.length / 2 + obs.x]), np.ceil(ego.size.width) + 1),
+                   np.arange(min_cost_y - ego.size.width / 2, min_cost_y + ego.size.width / 2 + 0.01), '*w')
+
+    d = reference_route_latitude + ROAD_SHOULDERS_WIDTH
+    WerlingVisualizer.plot_route(p2, np.c_[
+        route_points[:, 0] + d * np.sin(angles), route_points[:, 1] - d * np.cos(angles)], '-r')
+    d = road_width - reference_route_latitude + ROAD_SHOULDERS_WIDTH
+    WerlingVisualizer.plot_route(p2, np.c_[
+        route_points[:, 0] - d * np.sin(angles), route_points[:, 1] + d * np.cos(angles)], '-r')
+
+    z = np.log(1 + z)
+    p2.contourf(x, y, z, 100)
+
+    WerlingVisualizer.plot_best(p2, ctrajectories[0])
+    WerlingVisualizer.plot_alternatives(p1, ctrajectories, traj_costs)
+
+    WerlingVisualizer.plot_goal(p1, goal)
+    WerlingVisualizer.plot_goal(p2, goal)
+
+    WerlingVisualizer.plot_route(p1, route_points)
+
+    fig.savefig(image_file_name)
+
+    fig.show()
+    fig.clear()
 
 
 def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():

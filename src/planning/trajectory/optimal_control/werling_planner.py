@@ -323,7 +323,7 @@ class WerlingPlanner(TrajectoryPlanner):
         :return: 1. numpy array (1D) of the total cost per trajectory (in ctrajectories and ftrajectories)
                  2. cost_components tuple: obstacles_costs, dist_from_goal_costs, deviations_costs, jerk_costs
         """
-        ''' DEVIATIONS FROM GOAL SCORE '''
+        ''' deviation from goal cost '''
         # make theta_diff to be in [-pi, pi]
         last_fpoints = ftrajectories[:, -1, :]
         goal_vect = np.array([last_fpoints[:, FS_SX] - goal_in_frenet[FS_SX],
@@ -333,7 +333,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                                             params.dist_from_goal_cost.w,
                                                             params.dist_from_goal_cost.k)
 
-        ''' TOTAL '''
+        ''' point-wise costs '''
         obstacles_costs_pnt, deviations_costs_pnt, jerk_costs_pnt = \
             WerlingPlanner._compute_pointwise_costs(ctrajectories, ftrajectories, state, params, global_time_samples,
                                                     predictor, dt, ext_ego_state)
@@ -359,7 +359,8 @@ class WerlingPlanner(TrajectoryPlanner):
         :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
         :param dt: time step of ctrajectories
         :param ext_ego_state: ego cartesian state to be concatenated to ctrajectories for jerk calculation
-        :return: pointwise cost components: obstacles_costs, deviations_costs, jerk_costs
+        :return: point-wise cost components: obstacles_costs, deviations_costs, jerk_costs. Each cost component has
+        the following dimensions: [trajectories_num, time_samples_num]
         """
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
         offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])

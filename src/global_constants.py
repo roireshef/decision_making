@@ -127,7 +127,7 @@ ROAD_MAP_REQUIRED_RES = 5
 EXP_CLIP_TH = 50.0
 
 # Number of (best) trajectories to publish to visualization
-NUM_ALTERNATIVE_TRAJECTORIES = 350
+NUM_ALTERNATIVE_TRAJECTORIES = 50
 
 # Number of points in trajectories for sending out to visualization (currently VizTool freezes when there are too much)
 MAX_NUM_POINTS_FOR_VIZ = 60
