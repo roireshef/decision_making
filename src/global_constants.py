@@ -212,6 +212,7 @@ STATE_MODULE_NAME_FOR_LOGGING = "State Module"
 
 
 ##### Log messages
+# TODO: update decision_making_sim messages
 LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS = "Received mission params"
 LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT = "BehavioralPlanningFacade output is"
 LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES = "TP has found %d valid trajectories to choose from"
