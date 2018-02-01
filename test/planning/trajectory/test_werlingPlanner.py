@@ -224,7 +224,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
                                                             planner.predictor)
                          for o in state.dynamic_objects]
 
-        # compute costs for pixels grid of the visualization image
+        # create pixels grid of the visualization image and compute costs for these pixels for given time samples
         t = 0  # time index of time_samples
         pixels, pixel_costs = compute_pixel_costs(route_points, reference_route_latitude, road_width, state,
                                                   cost_params, time_samples[t:(t + 1)], planner, frenet)
@@ -238,7 +238,7 @@ def create_route_for_test_werlingPlanner(road_id: int, num_lanes: int, lane_widt
                                          lng: float, ext: float, curvature: float) -> \
         [np.array, np.array]:
     """
-    Create reference route for test_werlingPlanner visualization
+    Create reference route for test_werlingPlanner visualization.
     :param road_id: road id
     :param num_lanes: number of lanes
     :param lane_width: [m] lane width
@@ -271,8 +271,9 @@ def compute_pixel_costs(route_points: np.array, reference_route_latitude: float,
                         planner: WerlingPlanner, frenet: FrenetSerret2DFrame) -> \
         [np.array, np.array]:
     """
-    Given a scenario (road, state, goal), trajectory cost params, create a visualization image (whose size fits to
-    route_points) and compute costs for its pixels grid.
+    1. Create visualization image, whose size fits to route_points.
+    2. Given a scenario (road, state, goal), trajectory cost params, create grid of pixels for the visualization image.
+    3. Compute costs for these pixels for the given time samples.
     :param route_points: route points for Werling planner
     :param reference_route_latitude: [m] reference route latitude relatively to the right edge of the road
     :param road_width: [m] road width
@@ -327,7 +328,7 @@ def visualize_test_scenario(route_points: np.array, reference_route_latitude: fl
                             image_file_name: str):
     """
     Given running results (trajectories and their costs) of Werling planner on some scenario (road, state, goal),
-    draw image (including trajectory alternatives and pixel-wise scores), and save it as file
+    draw image (including trajectory alternatives and pixel-wise scores), and save it as PNG file.
     :param route_points: route points for Werling planner
     :param reference_route_latitude: [m] reference route latitude relatively to the right edge of the road
     :param road_width: [m] road width
