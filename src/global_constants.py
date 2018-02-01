@@ -41,6 +41,10 @@ BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON = 2.0
 # This may have an effect on efficiency if the acda computation is costly.
 BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 
+
+# After a change of TP costs run the following test:
+# test_werlingPlanner.test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios
+
 # Trajectory cost parameters
 OBSTACLE_SIGMOID_COST = 1.0 * 1e5           # cost around obstacles (sigmoid)
 OBSTACLE_SIGMOID_K_PARAM = 8.0              # sigmoid k (slope) param of objects on road

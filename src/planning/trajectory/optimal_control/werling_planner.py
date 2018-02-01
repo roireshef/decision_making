@@ -238,6 +238,72 @@ class WerlingPlanner(TrajectoryPlanner):
 
         return np.argwhere(np.logical_and(conforms, frenet_lateral_movement_is_feasible)).flatten()
 
+    # @staticmethod
+    # def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,
+    #                   goal_in_frenet: FrenetState2D, params: TrajectoryCostParams, global_time_samples: np.ndarray,
+    #                   predictor: Predictor, dt: float, ext_ego_state: CartesianExtendedState) -> \
+    #         [np.ndarray, np.ndarray]:
+    #     """
+    #     Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
+    #     :param ctrajectories: numpy tensor of trajectories in cartesian-frame
+    #     :param ftrajectories: numpy tensor of trajectories in frenet-frame
+    #     :param state: the state object (that includes obstacles, etc.)
+    #     :param goal_in_frenet: target state of ego
+    #     :param params: parameters for the cost function (from behavioral layer)
+    #     :param global_time_samples: [sec] time samples for prediction (global, not relative)
+    #     :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
+    #     :param dt: time step of ctrajectories
+    #     :param ext_ego_state: ego cartesian state to be concatenated to ctrajectories for jerk calculation
+    #     :return: 1. numpy array (1D) of the total cost per trajectory (in ctrajectories and ftrajectories)
+    #              2. cost_components tuple: obstacles_costs, dist_from_goal_costs, deviations_costs, jerk_costs
+    #     """
+    #     ''' OBSTACLES (Sigmoid cost from bounding-box) '''
+    #     offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
+    #     close_obstacles = \
+    #         [SigmoidDynamicBoxObstacle.from_object(obj=obs, k=params.obstacle_cost_x.k, offset=offset,
+    #                                                 time_samples=global_time_samples, predictor=predictor)
+    #          for obs in state.dynamic_objects
+    #          if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
+    #
+    #     cost_per_obstacle = [obs.compute_cost(ctrajectories[:, :, 0:2]) for obs in close_obstacles]
+    #     obstacles_costs = params.obstacle_cost_x.w * np.sum(cost_per_obstacle, axis=0)
+    #     if len(cost_per_obstacle) == 0:
+    #         obstacles_costs = np.array([0,]*ctrajectories.shape[0])
+    #
+    #     ''' DEVIATIONS FROM GOAL SCORE '''
+    #     # make theta_diff to be in [-pi, pi]
+    #     last_fpoints = ftrajectories[:, -1, :]
+    #     goal_vect = np.array([last_fpoints[:, FS_SX] - goal_in_frenet[FS_SX],
+    #                           last_fpoints[:, FS_DX] - goal_in_frenet[FS_DX]])
+    #     goal_dist = np.sqrt(goal_vect[0]**2 + (params.dist_from_goal_lat_factor * goal_vect[1])**2)
+    #     dist_from_goal_costs = Math.clipped_sigmoid(goal_dist - params.dist_from_goal_cost.offset,
+    #                                                         params.dist_from_goal_cost.w,
+    #                                                         params.dist_from_goal_cost.k)
+    #
+    #     ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
+    #     deviations_costs = np.zeros(ftrajectories.shape[0])
+    #
+    #     # add to deviations_costs the costs of deviations from the left [lane, shoulder, road]
+    #     for exp in [params.left_lane_cost, params.left_shoulder_cost, params.left_road_cost]:
+    #         left_offsets = ftrajectories[:, :, FS_DX] - exp.offset
+    #         deviations_costs += np.sum(Math.clipped_sigmoid(left_offsets, exp.w, exp.k), axis=1)
+    #
+    #     # add to deviations_costs the costs of deviations from the right [lane, shoulder, road]
+    #     for exp in [params.right_lane_cost, params.right_shoulder_cost, params.right_road_cost]:
+    #         right_offsets = np.negative(ftrajectories[:, :, FS_DX]) - exp.offset
+    #         deviations_costs += np.sum(Math.clipped_sigmoid(right_offsets, exp.w, exp.k), axis=1)
+    #
+    #     ''' JERK COST '''
+    #     # first concatenate the current ego state to ctrajectories
+    #     duplicated_ego_state = np.array([np.array([ext_ego_state]), ] * ctrajectories.shape[0])
+    #     full_ctrajectories = np.concatenate((duplicated_ego_state, ctrajectories), axis=1)
+    #     lon_jerks, lat_jerks = Jerk.compute_jerks(full_ctrajectories, dt)
+    #     jerk_costs = params.lon_jerk_cost * lon_jerks + params.lat_jerk_cost * lat_jerks
+    #
+    #     ''' TOTAL '''
+    #     return obstacles_costs + dist_from_goal_costs + deviations_costs + jerk_costs, \
+    #            np.array([obstacles_costs, dist_from_goal_costs, deviations_costs, jerk_costs])
+
     @staticmethod
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,
                       goal_in_frenet: FrenetState2D, params: TrajectoryCostParams, global_time_samples: np.ndarray,
@@ -257,20 +323,6 @@ class WerlingPlanner(TrajectoryPlanner):
         :return: 1. numpy array (1D) of the total cost per trajectory (in ctrajectories and ftrajectories)
                  2. cost_components tuple: obstacles_costs, dist_from_goal_costs, deviations_costs, jerk_costs
         """
-        # TODO: add jerk cost
-        ''' OBSTACLES (Sigmoid cost from bounding-box) '''
-        offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
-        close_obstacles = \
-            [SigmoidDynamicBoxObstacle.from_object(obj=obs, k=params.obstacle_cost_x.k, offset=offset,
-                                                    time_samples=global_time_samples, predictor=predictor)
-             for obs in state.dynamic_objects
-             if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
-
-        cost_per_obstacle = [obs.compute_cost(ctrajectories[:, :, 0:2]) for obs in close_obstacles]
-        obstacles_costs = params.obstacle_cost_x.w * np.sum(cost_per_obstacle, axis=0)
-        if len(cost_per_obstacle) == 0:
-            obstacles_costs = np.array([0,]*ctrajectories.shape[0])
-
         ''' DEVIATIONS FROM GOAL SCORE '''
         # make theta_diff to be in [-pi, pi]
         last_fpoints = ftrajectories[:, -1, :]
@@ -281,31 +333,68 @@ class WerlingPlanner(TrajectoryPlanner):
                                                             params.dist_from_goal_cost.w,
                                                             params.dist_from_goal_cost.k)
 
+        ''' TOTAL '''
+        obstacles_costs_pnt, deviations_costs_pnt, jerk_costs_pnt = \
+            WerlingPlanner._compute_pointwise_costs(ctrajectories, ftrajectories, state, params, global_time_samples,
+                                                    predictor, dt, ext_ego_state)
+        obstacles_costs = np.sum(obstacles_costs_pnt, axis=1)
+        deviations_costs = np.sum(deviations_costs_pnt, axis=1)
+        jerk_costs = np.sum(jerk_costs_pnt, axis=1)
+        return obstacles_costs + dist_from_goal_costs + deviations_costs + jerk_costs, \
+               np.array([obstacles_costs, dist_from_goal_costs, deviations_costs, jerk_costs])
+
+    @staticmethod
+    def _compute_pointwise_costs(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D,
+                                state: State, params: TrajectoryCostParams,
+                                global_time_samples: np.ndarray, predictor: Predictor, dt: float,
+                                ext_ego_state: CartesianExtendedState) -> \
+            [np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
+        :param ctrajectories: numpy tensor of trajectories in cartesian-frame
+        :param ftrajectories: numpy tensor of trajectories in frenet-frame
+        :param state: the state object (that includes obstacles, etc.)
+        :param params: parameters for the cost function (from behavioral layer)
+        :param global_time_samples: [sec] time samples for prediction (global, not relative)
+        :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
+        :param dt: time step of ctrajectories
+        :param ext_ego_state: ego cartesian state to be concatenated to ctrajectories for jerk calculation
+        :return: pointwise cost components: obstacles_costs, deviations_costs, jerk_costs
+        """
+        ''' OBSTACLES (Sigmoid cost from bounding-box) '''
+        offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
+        close_obstacles = \
+            [SigmoidDynamicBoxObstacle.from_object(obj=obs, k=params.obstacle_cost_x.k, offset=offset,
+                                                   time_samples=global_time_samples, predictor=predictor)
+             for obs in state.dynamic_objects
+             if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
+
+        cost_per_obstacle = [obs.compute_cost_per_point(ctrajectories[:, :, 0:2]) for obs in close_obstacles]
+        obstacles_costs = params.obstacle_cost_x.w * np.sum(cost_per_obstacle, axis=0)
+
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
-        deviations_costs = np.zeros(ftrajectories.shape[0])
+        deviations_costs = np.zeros((ftrajectories.shape[0], ftrajectories.shape[1]))
 
         # add to deviations_costs the costs of deviations from the left [lane, shoulder, road]
         for exp in [params.left_lane_cost, params.left_shoulder_cost, params.left_road_cost]:
             left_offsets = ftrajectories[:, :, FS_DX] - exp.offset
-            deviations_costs += np.sum(Math.clipped_sigmoid(left_offsets, exp.w, exp.k), axis=1)
+            deviations_costs += Math.clipped_sigmoid(left_offsets, exp.w, exp.k)
 
         # add to deviations_costs the costs of deviations from the right [lane, shoulder, road]
         for exp in [params.right_lane_cost, params.right_shoulder_cost, params.right_road_cost]:
             right_offsets = np.negative(ftrajectories[:, :, FS_DX]) - exp.offset
-            deviations_costs += np.sum(Math.clipped_sigmoid(right_offsets, exp.w, exp.k), axis=1)
+            deviations_costs += Math.clipped_sigmoid(right_offsets, exp.w, exp.k)
 
         ''' JERK COST '''
         # first concatenate the current ego state to ctrajectories
         duplicated_ego_state = np.array([np.array([ext_ego_state]), ] * ctrajectories.shape[0])
         full_ctrajectories = np.concatenate((duplicated_ego_state, ctrajectories), axis=1)
-        lon_jerks, lat_jerks = Jerk.compute_jerks(full_ctrajectories, dt)
+        lon_jerks, lat_jerks = Jerk.compute_pointwise_jerk(full_ctrajectories, dt)
         jerk_costs = params.lon_jerk_cost * lon_jerks + params.lat_jerk_cost * lat_jerks
 
-        ''' TOTAL '''
-        return obstacles_costs + dist_from_goal_costs + deviations_costs + jerk_costs, \
-               np.array([obstacles_costs, dist_from_goal_costs, deviations_costs, jerk_costs])
+        return np.array([obstacles_costs, deviations_costs, jerk_costs])
 
-    def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints ,
+    def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints,
                                fconstraints_tT: FrenetConstraints , dt) -> float:
         """
         Calculates the lower bound for the lateral time horizon based on the physical constraints.

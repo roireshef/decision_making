@@ -12,6 +12,7 @@ from decision_making.src.global_constants import OBSTACLE_SIGMOID_K_PARAM, LATER
     DEVIATION_FROM_GOAL_LAT_FACTOR, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, TD_STEPS, \
     LON_JERK_COST, LAT_JERK_COST, LON_MARGIN_FROM_EGO
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
+from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.trajectory.cost_function import Jerk
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, CartesianPoint2D, C_Y, \
@@ -132,7 +133,8 @@ def test_werlingPlanner_toyScenario_noException():
     plt.show()
     fig.clear()
 
-@pytest.mark.skip(reason="takes too long.")
+# remove this skip if you want to run the test
+#@pytest.mark.skip(reason="takes too long.")
 def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
     """
     The route is set to route_points by calling to RouteFixture.get_route(). Currently it is a straight line.
@@ -162,24 +164,25 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
         if test_idx < 40:
             obs_poses = np.array([np.array([4, 0]), np.array([22, -0.0 - (test_idx%20)*0.2])])
             goal_latitude = lane_width / 2
-        elif test_idx == 8:  # go on margin to prevent collision
-            obs_poses = np.array([np.array([17, 1.4])])
-            start_ego_lat = reference_route_latitude = goal_latitude = lane_width / 2
-        elif test_idx < 12:  # curve road with obstacles
-            obs_poses = np.array([np.array([4, 0]), np.array([14, 0.7]), np.array([24, 2.1]),
-                                  np.array([42, -4.6 + (test_idx-9)*0.2])])
-        else:  # curve road without obstacles
-            obs_poses = np.array([])
-            goal_latitude = reference_route_latitude = lane_width / 2 + (test_idx % 2) * lane_width
-            start_ego_lat = lane_width / 2 + ((test_idx+1) % 2) * lane_width
+        # elif test_idx == 8:  # go on margin to prevent collision
+        #     obs_poses = np.array([np.array([17, 1.4])])
+        #     start_ego_lat = reference_route_latitude = goal_latitude = lane_width / 2
+        # elif test_idx < 12:  # curve road with obstacles
+        #     obs_poses = np.array([np.array([4, 0]), np.array([14, 0.7]), np.array([24, 2.1]),
+        #                           np.array([42, -4.6 + (test_idx-9)*0.2])])
+        # else:  # curve road without obstacles
+        #     obs_poses = np.array([])
+        #     goal_latitude = reference_route_latitude = lane_width / 2 + (test_idx % 2) * lane_width
+        #     start_ego_lat = lane_width / 2 + ((test_idx+1) % 2) * lane_width
         target_lane = int(goal_latitude/lane_width)
 
         route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step, curvature=curvature)
         ext = 4
         ext_route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=ext, step=step, curvature=curvature)
 
-        test_map_model = TestMapModelUtils.create_road_map_from_coordinates(points_of_roads=[ext_route_xy], road_id=1,
-                                                                            road_name='y=x^3',
+        ROAD_ID = 1
+        test_map_model = TestMapModelUtils.create_road_map_from_coordinates(points_of_roads=[ext_route_xy],
+                                                                            road_id=ROAD_ID, road_name='y=x^3',
                                                                             lanes_num=num_lanes, lane_width=lane_width,
                                                                             frame_origin=[0, 0])
         map = MapAPI(map_model=test_map_model, logger=logger)
@@ -195,13 +198,9 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
         y = np.arange(yrange[0], yrange[1], 0.1)
         width = x.shape[0]
         height = y.shape[0]
-        points = np.array([np.transpose([np.tile(x, y.shape[0]), np.repeat(y, x.shape[0])])])
+        pixels = np.transpose([np.tile(x, y.shape[0]), np.repeat(y, x.shape[0])])
 
         frenet = FrenetSerret2DFrame(ext_route_points[:, :2])
-        pos_x = points[0].reshape(height, width, 2)
-        s_x, a_r, _, N_r, _, _ = frenet._project_cartesian_points(pos_x)
-        d_x = np.einsum('tpi,tpi->tp', pos_x - a_r, N_r)
-        fpoints = np.c_[s_x.flatten()-s_x.flatten()[0], d_x.flatten()]
 
         v0 = 6
         vT = 10
@@ -227,35 +226,11 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
                                      yaw=frenet.get_yaw(pose[FP_SX]),
                                      size=ObjectSize(4, 1.8, 0), confidence=1.0, v_x=0, v_y=0,
                                      acceleration_lon=0.0, omega_yaw=0.0))
-        #obs = list([])
-
-        objects_dilation_length = ego.size.length / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
-        objects_dilation_width = ego.size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
-        right_lane_offset = max(0.0, reference_route_latitude - ego.size.width / 2 - target_lane * lane_width)
-        left_lane_offset = (road_width - reference_route_latitude) - ego.size.width / 2 - (num_lanes - target_lane - 1) * lane_width
-        right_shoulder_offset = reference_route_latitude - ego.size.width / 2 + SHOULDER_SIGMOID_OFFSET
-        left_shoulder_offset = (road_width - reference_route_latitude) - ego.size.width / 2 + SHOULDER_SIGMOID_OFFSET
-        right_road_offset = reference_route_latitude - ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
-        left_road_offset = (road_width - reference_route_latitude) - ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
 
         state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
 
-        cost_params = TrajectoryCostParams(
-            left_lane_cost=SigmoidFunctionParams(DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, left_lane_offset),
-            right_lane_cost=SigmoidFunctionParams(DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, right_lane_offset),
-            left_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM, left_shoulder_offset),
-            right_shoulder_cost=SigmoidFunctionParams(DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM, right_shoulder_offset),
-            left_road_cost=SigmoidFunctionParams(DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, left_road_offset),
-            right_road_cost=SigmoidFunctionParams(DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, right_road_offset),
-            obstacle_cost_x=SigmoidFunctionParams(OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, objects_dilation_length),
-            obstacle_cost_y=SigmoidFunctionParams(OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, objects_dilation_width),
-            dist_from_goal_cost=SigmoidFunctionParams(DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET),
-            dist_from_goal_lat_factor=DEVIATION_FROM_GOAL_LAT_FACTOR,
-            lon_jerk_cost=LON_JERK_COST,
-            lat_jerk_cost=LAT_JERK_COST,
-            velocity_limits=VELOCITY_LIMITS,
-            lon_acceleration_limits=LON_ACC_LIMITS,
-            lat_acceleration_limits=LAT_ACC_LIMITS)
+        cost_params = SemanticActionsGridPolicy._generate_cost_params(road_id=ROAD_ID, ego_size=ego.size,
+                                                                      reference_route_latitude=reference_route_latitude)
 
         planner = WerlingPlanner(logger, predictor)
 
@@ -264,42 +239,40 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
                                                                         goal=goal, time_horizon=T,
                                                                         cost_params=cost_params)
 
-        obs_costs = np.zeros(width * height)
-        for obj in obs:
-            sobj = PlottableSigmoidStaticBoxObstacle(obj, k=OBSTACLE_SIGMOID_K_PARAM,
-                                                     margin=np.array([objects_dilation_length, objects_dilation_width]))
-            obs_costs += OBSTACLE_SIGMOID_COST * sobj.compute_cost_per_point(points)[0]
+        # calculate cost components for all image pixels by building a static "trajectory" for every pixel
+        ego_cartesian_state = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
+        time_samples = np.arange(0, T + np.finfo(np.float16).eps, planner.dt) + ego.timestamp_in_sec
+        assert time_samples.shape[0] == ctrajectories.shape[1]
 
-        latitudes = fpoints[:, 1]
-        left_lane_offsets = latitudes - left_lane_offset
-        right_lane_offsets = -latitudes - right_lane_offset
-        left_shoulder_offsets = latitudes - left_shoulder_offset
-        right_shoulder_offsets = -latitudes - right_shoulder_offset
-        left_road_offsets = latitudes - left_road_offset
-        right_road_offsets = -latitudes - right_road_offset
+        cartesian_pixels = np.c_[pixels, np.zeros((height*width, 4))]
+        cartesian_pixels = np.repeat(cartesian_pixels[:, np.newaxis, :], time_samples.shape[0], axis=1)
 
-        road_deviations_costs = \
-            Math.clipped_sigmoid(left_lane_offsets, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM) + \
-            Math.clipped_sigmoid(right_lane_offsets, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM) + \
-            Math.clipped_sigmoid(left_shoulder_offsets, DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM) + \
-            Math.clipped_sigmoid(right_shoulder_offsets, DEVIATION_TO_SHOULDER_COST, SHOULDER_SIGMOID_K_PARAM) + \
-            Math.clipped_sigmoid(left_road_offsets, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM) + \
-            Math.clipped_sigmoid(right_road_offsets, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM)
+        pos_x = pixels.reshape(height, width, 2)
+        s_x, a_r, _, N_r, _, _ = frenet._project_cartesian_points(pos_x)
+        d_x = np.einsum('tpi,tpi->tp', pos_x - a_r, N_r)
+        frenet_pixels = np.c_[s_x.flatten()-s_x.flatten()[0], np.zeros((height*width, 2)), d_x.flatten(),
+                              np.zeros((height*width, 2))]
+        frenet_pixels = np.repeat(frenet_pixels[:, np.newaxis, :], time_samples.shape[0], axis=1)
+
+        t = 0
+        obs_costs, deviations_costs, _ = \
+            planner._compute_pointwise_costs(cartesian_pixels[:, t:(t+1), :], frenet_pixels[:, t:(t+1), :], state,
+                                             cost_params, time_samples[t:(t+1)], predictor, planner.dt,
+                                             ego_cartesian_state)
 
         import matplotlib.pyplot as plt
 
         fig = plt.figure(figsize=(22, 11))
         p1 = fig.add_subplot(211)
         p2 = fig.add_subplot(212)
-        time_samples = np.arange(0.0, T, 0.1)
         offsets = np.array([cost_params.obstacle_cost_x.offset, cost_params.obstacle_cost_y.offset])
         plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost_x.k, offsets, time_samples,
                                                             predictor)
                          for o in state.dynamic_objects]
 
-        x = points[0, :, 0].reshape(height, width)
-        y = points[0, :, 1].reshape(height, width)
-        z = obs_costs.reshape(height, width) + road_deviations_costs.reshape(height, width)
+        x = pixels[:, 0].reshape(height, width)
+        y = pixels[:, 1].reshape(height, width)
+        z = obs_costs[:, t].reshape(height, width) + deviations_costs[:, t].reshape(height, width)
 
         diff = np.diff(route_points[:, :2], axis=0)
         angles = np.arctan2(diff[:, 1], diff[:, 0])
@@ -354,7 +327,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
         filename = 'test_costs'+str(test_idx)+'.png'
         fig.savefig(filename)
 
-        # fig.show()
+        #fig.show()
         fig.clear()
 
 
