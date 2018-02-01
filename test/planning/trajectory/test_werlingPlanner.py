@@ -186,6 +186,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
                                                                               curvature)
         frenet = FrenetSerret2DFrame(ext_route_points[:, :2])
 
+        # Convert two points (start and goal) from Frenet to cartesian coordinates.
         ftraj_start_goal = np.array([np.array([ext, v0, 0, start_ego_lat - reference_route_latitude, 0, 0]),
                                      np.array([lng + ext, vT, 0, goal_latitude - reference_route_latitude, 0, 0])])
         ctraj_start_goal = frenet.ftrajectory_to_ctrajectory(ftraj_start_goal)
