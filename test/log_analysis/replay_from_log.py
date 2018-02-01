@@ -1,3 +1,4 @@
+import sys
 from typing import Dict
 
 import numpy as np
@@ -12,12 +13,15 @@ from decision_making.src.prediction.road_following_predictor import RoadFollowin
 from decision_making.src.state.state import State
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.log_analysis.log_messages import LogMsg
-from decision_making.test.log_analysis.parse_log_messages import LOG_PATH_FOR_ANALYSIS, STATE_IDENTIFIER_STRING_BP, \
+from decision_making.test.log_analysis.parse_log_messages import STATE_IDENTIFIER_STRING_BP, \
     STATE_IDENTIFIER_STRING_TP, STATE_IDENTIFIER_STRING_STATE_MODULE, DmLogParser
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
+
+LOG_PATH_FOR_ANALYSIS = '/home/max/AV_Log_dm_main_test-2017_12_12-10_19.log'
+TARGET_LOG_TIME = 37272.6
 
 # TODO: Remove temporary TP facade. used only to bypass the Lcm Ser/Deser methods
 class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
@@ -30,7 +34,6 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         """
         input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
         object_state = LogMsg.deserialize(class_type=State, message=input_state)
-        self.logger.debug('Received state: %s' % object_state)
         return object_state
 
     def _get_mission_params(self) -> TrajectoryParams:
@@ -42,7 +45,6 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         """
         input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_TOPIC, timeout=1)
         object_params = LogMsg.deserialize(class_type=TrajectoryParams, message=input_params)
-        self.logger.debug('Received mission params: {}'.format(object_params))
         return object_params
 
 
@@ -77,8 +79,10 @@ def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
     trajectory_planning_module._periodic_action_impl()
 
 
-if __name__ == '__main__':
-    filename = LOG_PATH_FOR_ANALYSIS
+def main():
+    filename = LOG_PATH_FOR_ANALYSIS if ('log_filename' not in sys.argv) else sys.argv['log_filename']
+    target_log_time = TARGET_LOG_TIME if ('log_time' not in sys.argv) else sys.argv['log_time']
+
     f = open(file=filename, mode='r')
     log_content = f.readlines()
 
@@ -107,9 +111,6 @@ if __name__ == '__main__':
     ###########################
     # Find index of relevant messages
     ###########################
-    # target_log_time = 57653.6 # Time where no valid trajectories were found
-    # target_log_time = 57652.6  # Time where with valid trajectories
-    target_log_time = 60228
     tp_params_message_index = np.where(tp_module_log_timestamp <= target_log_time)[0][-1]
     tp_state_message_index = np.where(tp_state_log_timestamp <= target_log_time)[0][-1]
 
@@ -132,4 +133,12 @@ if __name__ == '__main__':
     ###########################
     # Execute TP with relevant inputs
     ###########################
-    execute_tp(state_serialized=tp_state_serialized, tp_params_serialized=tp_params_serialized)
+    try:
+        execute_tp(state_serialized=tp_state_serialized, tp_params_serialized=tp_params_serialized)
+        assert True
+    except Exception as e:
+        assert False
+
+
+if __name__ == '__main__':
+    main()

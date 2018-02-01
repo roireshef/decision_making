@@ -3,15 +3,17 @@ from typing import List
 
 import numpy as np
 
+from decision_making.src.global_constants import LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, \
+    LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, LOG_MSG_RECEIVED_STATE, \
+    LOG_MSG_STATE_MODULE_PUBLISH_STATE
+
 LOG_TIME_PATTERN = ": \d+-\d+-\d+ \d+:\d+:\d+,\d+ :"
 LOG_TIME_PARSE_PATTERN = ": (\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+),(\d+) :"
 
-#LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2017_12_27/logs/16_02/AV_Log_dm_main_test.log'
-#LOG_PATH_FOR_ANALYSIS = 'C:/Users/xzjsyy/av_code/AV_Log_dm_main_test.log'
-LOG_PATH_FOR_ANALYSIS = '/home/max/av_code/spav/logs/AV_Log_dm_main-2017_12_27_16_00.log'
-STATE_IDENTIFIER_STRING_TP = "trajectory_planning_facade.py: .*: _get_current_state  : Received state: "
-STATE_IDENTIFIER_STRING_BP = "behavioral_facade.py: .*: _get_current_state  : Received State: "
-STATE_IDENTIFIER_STRING_STATE_MODULE = "_publish_state_if_full: publishing state "
+
+STATE_IDENTIFIER_STRING_TP = "trajectory_planning_facade.py.*:%s " % LOG_MSG_RECEIVED_STATE
+STATE_IDENTIFIER_STRING_BP = "behavioral_facade.py.*:%s " % LOG_MSG_RECEIVED_STATE
+STATE_IDENTIFIER_STRING_STATE_MODULE = "state_module.py.*:%s " % LOG_MSG_STATE_MODULE_PUBLISH_STATE
 
 
 class DmLogParser:
@@ -67,7 +69,7 @@ class DmLogParser:
         state_timestamps = list()
         states = list()
 
-        identifier_str = "_get_mission_params : Received mission params: "
+        identifier_str = "trajectory_planning_facade.py .* %s: " % LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS
         search_pattern = ".*(%s)(.*)%s(.*)" % (LOG_TIME_PATTERN, identifier_str)
         for row in range(len(log_content)):
             state_match = re.match(pattern=search_pattern, string=log_content[row])
@@ -95,7 +97,7 @@ class DmLogParser:
         state_timestamps = list()
         states = list()
 
-        identifier_str = "BehavioralPlanningFacade output is "
+        identifier_str = "%s " % LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT
         search_pattern = ".*(%s)(.*)%s(.*)" % (LOG_TIME_PATTERN, identifier_str)
         for row in range(len(log_content)):
             state_match = re.match(pattern=search_pattern, string=log_content[row])
@@ -123,7 +125,7 @@ class DmLogParser:
     def parse_no_valid_trajectories_message(log_content: List[str]) -> (np.ndarray):
         log_timestamp = list()
 
-        identifier_str = "TP has found 0 valid trajectories to choose from"
+        identifier_str = LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES % 0
         search_pattern = ".*(%s)(.*)%s(.*)" % (LOG_TIME_PATTERN, identifier_str)
         for row in range(len(log_content)):
             state_match = re.match(pattern=search_pattern, string=log_content[row])
@@ -137,4 +139,33 @@ class DmLogParser:
         log_timestamp = log_timestamp[log_msg_order]
 
         return log_timestamp
+
+
+    @staticmethod
+    def parse_control_error(log_content: List[str]) -> (np.ndarray, np.ndarray, np.ndarray):
+        log_timestamp = list()
+        control_errors_lon = list()
+        control_errors_lat = list()
+
+        identifier_str = "trajectory_planning_facade.py:.*lon_lat_errors: \[\s+([0-9\.]+)\s+([0-9\.]+).*"
+        search_pattern = ".*(%s).*%s" % (LOG_TIME_PATTERN, identifier_str)
+        for row in range(len(log_content)):
+            state_match = re.match(pattern=search_pattern, string=log_content[row])
+            if state_match is not None:
+                log_timestamp.append(DmLogParser.parse_log_timestamp(state_match.groups()[0]))
+                lon_error, lat_error = state_match.groups()[1], state_match.groups()[2]
+                control_errors_lon.append(lon_error)
+                control_errors_lat.append(lat_error)
+
+        control_errors_lon = np.array(control_errors_lon)
+        control_errors_lat = np.array(control_errors_lat)
+        log_timestamp = np.array(log_timestamp)
+
+        # Reorder by log timestamp
+        log_msg_order = np.argsort(log_timestamp)
+        log_timestamp = log_timestamp[log_msg_order]
+        control_errors_lon = control_errors_lon[log_msg_order]
+        control_errors_lat = control_errors_lat[log_msg_order]
+
+        return log_timestamp, control_errors_lon, control_errors_lat
 
