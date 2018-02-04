@@ -171,12 +171,12 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # filter resulting trajectories by velocity and accelerations limits - this is now done in Cartesian frame
         # which takes into account the curvature of the road applied to trajectories planned in the Frenet frame
-        cartesian_filtered_indices = self._filter_by_cartesian_limits(ctrajectories, cost_params)
+        cartesian_refiltered_indices = self._filter_by_cartesian_limits(ctrajectories, cost_params)
 
-        filtered_indices = frenet_filtered_indices[cartesian_filtered_indices]
+        refiltered_indices = frenet_filtered_indices[cartesian_refiltered_indices]
 
-        ctrajectories_filtered = ctrajectories[cartesian_filtered_indices]
-        ftrajectories_filtered = ftrajectories[frenet_filtered_indices][cartesian_filtered_indices]
+        ctrajectories_filtered = ctrajectories[cartesian_refiltered_indices]
+        ftrajectories_refiltered = ftrajectories[frenet_filtered_indices][cartesian_refiltered_indices]
 
         self._logger.debug("TP has found %d valid trajectories to choose from", len(ctrajectories_filtered))
 
@@ -197,12 +197,12 @@ class WerlingPlanner(TrajectoryPlanner):
                                             np.min(lat_acc), np.max(lat_acc),
                                             NumpyUtils.str_log(cost_params.lat_acceleration_limits),
                                             len(frenet_filtered_indices), len(ftrajectories),
-                                            len(cartesian_filtered_indices), len(ctrajectories),
-                                            len(filtered_indices), len(ftrajectories)))
+                                            len(cartesian_refiltered_indices), len(ctrajectories),
+                                            len(refiltered_indices), len(ftrajectories)))
 
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
-        filtered_trajectory_costs = self._compute_cost(ctrajectories_filtered, ftrajectories_filtered, state,
+        filtered_trajectory_costs = self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state,
                                                        goal_frenet_state, cost_params, global_time_sample, self._predictor)
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
@@ -210,10 +210,10 @@ class WerlingPlanner(TrajectoryPlanner):
         samplable_trajectory = SamplableWerlingTrajectory(
             timestamp=state.ego_state.timestamp_in_sec,
             T_s=T_s,
-            T_d=T_d_vals[filtered_indices[sorted_filtered_idxs[0]]],
+            T_d=T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]],
             frenet_frame=frenet,
-            poly_s_coefs=poly_coefs[filtered_indices[sorted_filtered_idxs[0]]][:6],
-            poly_d_coefs=poly_coefs[filtered_indices[sorted_filtered_idxs[0]]][6:]
+            poly_s_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][:6],
+            poly_d_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][6:]
         )
 
         return samplable_trajectory, \
@@ -257,11 +257,10 @@ class WerlingPlanner(TrajectoryPlanner):
         in the frenet frame used for planning
         :return: Indices along the 1st dimension in <ctrajectories> (trajectory index) for valid trajectories
         """
-        positive_velocity_limits = np.array([0.0, np.inf])
-
+        # validate the progress on the reference-route curve doesn't extrapolate, and that velocity is non-negative
         conforms = np.all(
             NumpyUtils.is_in_limits(ftrajectories[:, :, FS_SX], reference_route_limits) &
-            NumpyUtils.is_in_limits(ftrajectories[:, :, FS_SV], positive_velocity_limits), axis=1)
+            np.greater_equal(ftrajectories[:, :, FS_SV], 0.0), axis=1)
 
         frenet_lateral_movement_is_feasible = \
             OC.QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_d_vals, cost_params.lat_acceleration_limits)
