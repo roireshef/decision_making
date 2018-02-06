@@ -203,9 +203,9 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
-        filtered_trajectory_costs = self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state,
-                                                       goal_frenet_state, cost_params, global_time_sample,
-                                                       self._predictor, self.dt, ego_cartesian_state)
+        filtered_trajectory_costs, cost_components = \
+            self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
+                               global_time_sample, self._predictor, self.dt, ego_cartesian_state)
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
