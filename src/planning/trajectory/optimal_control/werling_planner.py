@@ -404,6 +404,8 @@ class WerlingPlanner(TrajectoryPlanner):
 
         cost_per_obstacle = [obs.compute_cost_per_point(ctrajectories[:, :, 0:2]) for obs in close_obstacles]
         obstacles_costs = params.obstacle_cost_x.w * np.sum(cost_per_obstacle, axis=0)
+        if type(obstacles_costs) is not np.ndarray:  # there are no obstacles
+            obstacles_costs = np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
 
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
         deviations_costs = np.zeros((ftrajectories.shape[0], ftrajectories.shape[1]))

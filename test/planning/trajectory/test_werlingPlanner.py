@@ -151,25 +151,31 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
     road_width = num_lanes * lane_width
     lng = 40  # [m] route_points length
     ext = 4  # [m] extension for route_points to prevent out-of-range Frenet-Seret projection
+    T = 4.6  # planning time
+    v0 = 6  # start velocity
+    vT = 10  # end velocity
 
-    for test_idx in range(40):
+    for test_idx in range(0, 49):
 
         reference_route_latitude = 3 * lane_width / 2
         start_ego_lat = lane_width / 2
         goal_latitude = reference_route_latitude
 
-        v0 = 6   # start velocity
-        vT = 10  # end velocity
-        T = 4.6  # planning time
-
-        if test_idx < 20:
+        if test_idx < 20 or test_idx >= 40:
             curvature = 0.0
         else:
             curvature = 0.2
 
-        if test_idx < 40:
+        if test_idx < 40:  # test safety vs deviations vs goal, and consistency for small changes
             obs_poses = np.array([np.array([4, 0]), np.array([22, -0.0 - (test_idx%20)*0.2])])
             goal_latitude = lane_width / 2
+        else:  # test jerk vs. goal
+            obs_poses = np.array([])
+            goal_latitude = reference_route_latitude = start_ego_lat = lane_width / 2
+            v0 = 8
+            vT = 8
+            T = 2*lng/(v0+vT + (test_idx-40))
+
         # elif test_idx == 8:  # go on margin to prevent collision
         #     obs_poses = np.array([np.array([17, 1.4])])
         #     start_ego_lat = reference_route_latitude = goal_latitude = lane_width / 2
@@ -181,43 +187,28 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
         #     goal_latitude = reference_route_latitude = lane_width / 2 + (test_idx % 2) * lane_width
         #     start_ego_lat = lane_width / 2 + ((test_idx+1) % 2) * lane_width
 
+
+        # Create reference route (normal and extended). The extension is intended to prevent
+        # overflow of projection on the ref route
         route_points, ext_route_points = create_route_for_test_werlingPlanner(ROAD_ID, num_lanes, lane_width,
                                                                               reference_route_latitude, lng, ext,
                                                                               curvature)
         frenet = FrenetSerret2DFrame(ext_route_points[:, :2])
 
-        # Convert two points (start and goal) from Frenet to cartesian coordinates.
-        ftraj_start_goal = np.array([np.array([ext, v0, 0, start_ego_lat - reference_route_latitude, 0, 0]),
-                                     np.array([lng + ext, vT, 0, goal_latitude - reference_route_latitude, 0, 0])])
-        ctraj_start_goal = frenet.ftrajectory_to_ctrajectory(ftraj_start_goal)
+        # create state and goal based on ego parameters and obstacles' location
+        state, goal = create_state_for_test_werlingPlanner(frenet, obs_poses, reference_route_latitude, ext, lng,
+                                                           v0, vT, start_ego_lat, goal_latitude)
 
-        ego = EgoState(obj_id=-1, timestamp=0, x=ctraj_start_goal[0][C_X], y=ctraj_start_goal[0][C_Y], z=0,
-                       yaw=ctraj_start_goal[0][C_YAW], size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
-                       confidence=1.0, v_x=ctraj_start_goal[0][C_V], v_y=0, steering_angle=0.0, acceleration_lon=0.0,
-                       omega_yaw=0.0)
-
-        goal = ctraj_start_goal[1]
-        goal[C_X] -= 0.001
-
-        obs = []
-        for i, pose in enumerate(obs_poses):
-            fobs = np.array([pose[FP_SX], pose[FP_DX]])
-            cobs = frenet.fpoint_to_cpoint(fobs)
-            obs.append(DynamicObject(obj_id=i, timestamp=0, x=cobs[C_X], y=cobs[C_Y], z=0,
-                                     yaw=frenet.get_yaw(pose[FP_SX]), size=ObjectSize(4, 1.8, 0), confidence=1.0,
-                                     v_x=0, v_y=0, acceleration_lon=0.0, omega_yaw=0.0))
-
-        state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
-
-        cost_params = SemanticActionsGridPolicy._generate_cost_params(road_id=ROAD_ID, ego_size=ego.size,
+        cost_params = SemanticActionsGridPolicy._generate_cost_params(road_id=ROAD_ID, ego_size=state.ego_state.size,
                                                                       reference_route_latitude=reference_route_latitude)
 
+        # run Werling planner
         planner = WerlingPlanner(logger, predictor)
-
         _, ctrajectories, costs, cost_components = planner.plan(state=state, reference_route=ext_route_points[:, :2],
                                                                 goal=goal, time_horizon=T, cost_params=cost_params)
 
-        time_samples = np.arange(0, T + np.finfo(np.float16).eps, planner.dt) + ego.timestamp_in_sec
+        time_samples = np.arange(0, Math.round_to_step(T, planner.dt) + np.finfo(np.float16).eps, planner.dt) + \
+                       state.ego_state.timestamp_in_sec
         assert time_samples.shape[0] == ctrajectories.shape[1]
 
         offsets = np.array([cost_params.obstacle_cost_x.offset, cost_params.obstacle_cost_y.offset])
@@ -265,6 +256,47 @@ def create_route_for_test_werlingPlanner(road_id: int, num_lanes: int, lane_widt
     route_points = CartesianFrame.add_yaw_and_derivatives(route_xy)
     ext_route_points = CartesianFrame.add_yaw_and_derivatives(ext_route_xy)
     return route_points, ext_route_points
+
+
+def create_state_for_test_werlingPlanner(frenet: FrenetSerret2DFrame, obs_poses: np.array,
+                                         reference_route_latitude: float, route_ext: float, route_lng: float,
+                                         v0: float, vT: float,
+                                         start_ego_lat: float, goal_latitude: float) -> [State, np.array]:
+    """
+    Given Frenet frame, ego parameters and obstacles in Frenet, create state and goal that are consistent with
+    the Frenet frame.
+    :param frenet: Frenet frame
+    :param obs_poses: [FP_SX, FP_DX] Frenet location of the obstacles
+    :param reference_route_latitude: [m] reference route latitude
+    :param route_ext: [m] extended part of the reference route (to prevent "out of route projection")
+    :param route_lng: [m] reference route length (without extensions)
+    :param start_ego_lat: [m] latitude of ego
+    :param goal_latitude: [m] latitude of the goal
+    :return: state and goal
+    """
+    # Convert two points (start and goal) from Frenet to cartesian coordinates.
+    ftraj_start_goal = np.array([np.array([route_ext, v0, 0, start_ego_lat - reference_route_latitude, 0, 0]),
+                                 np.array([route_lng + route_ext, vT, 0, goal_latitude - reference_route_latitude, 0, 0])])
+    ctraj_start_goal = frenet.ftrajectory_to_ctrajectory(ftraj_start_goal)
+
+    ego = EgoState(obj_id=-1, timestamp=0, x=ctraj_start_goal[0][C_X], y=ctraj_start_goal[0][C_Y], z=0,
+                   yaw=ctraj_start_goal[0][C_YAW], size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
+                   confidence=1.0, v_x=ctraj_start_goal[0][C_V], v_y=0, steering_angle=0.0, acceleration_lon=0.0,
+                   omega_yaw=0.0)
+
+    goal = ctraj_start_goal[1]
+    goal[C_X] -= 0.001
+
+    obs = []
+    for i, pose in enumerate(obs_poses):
+        fobs = np.array([pose[FP_SX], pose[FP_DX]])
+        cobs = frenet.fpoint_to_cpoint(fobs)
+        obs.append(DynamicObject(obj_id=i, timestamp=0, x=cobs[C_X], y=cobs[C_Y], z=0,
+                                 yaw=frenet.get_yaw(pose[FP_SX]), size=ObjectSize(4, 1.8, 0), confidence=1.0,
+                                 v_x=0, v_y=0, acceleration_lon=0.0, omega_yaw=0.0))
+
+    state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
+    return state, goal
 
 
 def compute_pixel_costs(route_points: np.array, reference_route_latitude: float, road_width: float,
@@ -405,7 +437,7 @@ def visualize_test_scenario(route_points: np.array, reference_route_latitude: fl
 
     fig.savefig(image_file_name)
 
-    fig.show()
+    #fig.show()
     fig.clear()
 
 
