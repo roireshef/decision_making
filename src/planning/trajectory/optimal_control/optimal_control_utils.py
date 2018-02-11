@@ -14,6 +14,7 @@ class OptimalControlUtils:
         polynomial elements at time 0 (first 3 rows) and T (last 3 rows) - the 3 rows in each block correspond to
         p, p_dot, p_dotdot.
         """
+
         @staticmethod
         def solve(A_inv: np.ndarray, constraints: np.ndarray) -> np.ndarray:
             """
@@ -67,12 +68,12 @@ class OptimalControlUtils:
             :return: 3D numpy array of shape [len(terminal_times), 6, 6]
             """
             return np.array(
-                [[[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],                                   # x(0)
-                  [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],                                   # x_dot(0)
-                  [0.0, 0.0, 2.0, 0.0, 0.0, 0.0],                                   # x_dotdot(0)
-                  [1.0, T, T ** 2, T ** 3, T ** 4, T ** 5],                         # x(T)
-                  [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],    # x_dot(T)
-                  [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]]           # x_dotdot(T)
+                [[[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],  # x(0)
+                  [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],  # x_dot(0)
+                  [0.0, 0.0, 2.0, 0.0, 0.0, 0.0],  # x_dotdot(0)
+                  [1.0, T, T ** 2, T ** 3, T ** 4, T ** 5],  # x(T)
+                  [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],  # x_dot(T)
+                  [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]]  # x_dotdot(T)
                  for T in terminal_times], dtype=np.float)
 
         @staticmethod
@@ -112,15 +113,17 @@ class OptimalControlUtils:
             # compute extrema points, by finding the roots of the 3rd derivative (which is itself a 2nd degree polynomial)
             jerk_poly = Math.polyder2d(poly_coefs, m=3)
             acc_poly = Math.polyder2d(poly_coefs, m=2)
-            acc_suspected_points = np.apply_along_axis(np.roots, 1, jerk_poly)  # TODO: this should use matrix operations!
+            acc_suspected_points = np.apply_along_axis(np.roots, 1, jerk_poly.astype(np.complex))  # TODO: this should use matrix operations!
             acc_suspected_values = Math.zip_polyval2d(acc_poly, acc_suspected_points)
 
             # are extrema points out of [0, T] range
-            is_suspected_point_in_time_range = np.greater_equal(acc_suspected_points, 0) &\
-                                                 np.less_equal(acc_suspected_points, T_vals[:, np.newaxis])
+            is_suspected_point_in_time_range = np.greater_equal(acc_suspected_points, 0) & \
+                                               np.less_equal(acc_suspected_points, T_vals[:, np.newaxis]) & \
+                                               np.equal(acc_suspected_values, np.real(acc_suspected_values))
 
             # check if extrema values are within [a_min, a_max] limits
             is_suspected_value_in_limits = NumpyUtils.is_in_limits(acc_suspected_values, acc_limits)
 
             # for all extrema points that are inside the time range, verify that their values are inside [a_min, a_max]
-            return np.all(np.logical_or(np.logical_not(is_suspected_point_in_time_range), is_suspected_value_in_limits), axis=1)
+            return np.all(np.logical_or(np.logical_not(is_suspected_point_in_time_range), is_suspected_value_in_limits),
+                          axis=1)
