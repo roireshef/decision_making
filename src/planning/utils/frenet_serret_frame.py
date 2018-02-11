@@ -32,6 +32,10 @@ class FrenetSerret2DFrame:
         self.T, self.N, self.k, self.k_tag = FrenetSerret2DFrame._fit_frenet_from_splines(0.0, self.s_max, self.ds,
                                                                                           splines)
 
+    @property
+    def s_limits(self):
+        return np.array([0, self.s_max])
+
     def get_yaw(self, s: np.ndarray):
         """
         Computes yaw (in radians, relative to the origin in which the curve points (self.O) are given
