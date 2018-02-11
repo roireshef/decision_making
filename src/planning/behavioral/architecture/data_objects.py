@@ -25,22 +25,22 @@ class AggressivenessLevel(Enum):
 
 
 class ActionRecipe:
-    def __init__(self, action_type: ActionType, lane: RelativeLane, aggresiveness: AggressivenessLevel):
+    def __init__(self, action_type: ActionType, lane: RelativeLane, aggressiveness: AggressivenessLevel):
         self.action_type = action_type
         self.lane = lane
-        self.aggresiveness = aggresiveness
+        self.aggressiveness = aggressiveness
 
 
 class StaticActionRecipe(ActionRecipe):
-    def __init__(self, lane: RelativeLane, velocity: float, aggresiveness: AggressivenessLevel):
-        super().__init__(ActionType.FOLLOW_LANE, lane, aggresiveness)
+    def __init__(self, lane: RelativeLane, velocity: float, aggressiveness: AggressivenessLevel):
+        super().__init__(ActionType.FOLLOW_LANE, lane, aggressiveness)
         self.velocity = velocity
 
 
-class DyanmicActionRecipe(ActionRecipe):
-    def __init__(self, action_type: ActionType, lane: RelativeLane, aggresiveness: AggressivenessLevel,
+class DynamicActionRecipe(ActionRecipe):
+    def __init__(self, action_type: ActionType, lane: RelativeLane, aggressiveness: AggressivenessLevel,
                  lon_position: RelativeLongitudinalPosition):
-        super().__init__(action_type, lane, aggresiveness)
+        super().__init__(action_type, lane, aggressiveness)
         self.lon_position = lon_position
 
 
