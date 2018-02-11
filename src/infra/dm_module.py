@@ -11,6 +11,7 @@ class DmModule:
     Abstract class which is implemented in functional DM modules and facades.
     """
     def __init__(self, pubsub, logger):
+        # type: (PubSub, Logger) -> None
         self.pubsub = pubsub
         """
         :param dds: Inter-process communication interface.
@@ -21,34 +22,40 @@ class DmModule:
 
     @abstractmethod
     def _start_impl(self):
+        # type: () -> None
         """
         Implementation specific start script.
         """
         pass
 
     def start(self):
+        # type: () -> None
         self.logger.info("starting module: " + self.__class__.__name__)
         self._start_impl()
 
     @abstractmethod
     def _stop_impl(self):
+        # type: () -> None
         """
         Implementation specific stop script.
         """
         pass
 
     def stop(self):
+        # type: () -> None
         self.logger.info("stopping module: " + self.__class__.__name__)
         self._stop_impl()
 
     @abstractmethod
     def _periodic_action_impl(self):
+        # type: () -> None
         """
         Implementation specific script for execution upon event.
         """
         pass
 
     def periodic_action(self):
+        # type: () -> None
         """
         Perform triggered action and write logging messages.
         """
