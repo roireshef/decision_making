@@ -1,4 +1,5 @@
-from typing import List, Optional
+from logging import Logger
+from typing import List, Optional, Dict
 
 import numpy as np
 
@@ -36,6 +37,11 @@ from mapping.src.service.map_service import MapService
 
 
 class SemanticActionsGridPolicy(SemanticActionsPolicy):
+    def __init__(self, logger: Logger, predictor: Predictor):
+        super().__init__(logger, predictor)
+        self.last_state_timestamp = None
+        self.last_action_horizon: Dict[(SemanticGridCell, ), float] = None
+
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
 
         # create road semantic grid from the raw State object
@@ -99,15 +105,21 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             if semantic_cell[LON_CELL] == SEMANTIC_CELL_LON_FRONT:
                 if len(behavioral_state.road_occupancy_grid[semantic_cell]) > 0:
                     # Select first (closest) object in cell
-                    target_obj = behavioral_state.road_occupancy_grid[semantic_cell][0]
+                    semantic_action = SemanticAction(cell=semantic_cell,
+                                                     target_obj=behavioral_state.road_occupancy_grid[semantic_cell][0],
+                                                     action_type=SemanticActionType.FOLLOW_VEHICLE)
                 else:
                     # There are no objects in cell
-                    target_obj = None
-
-                semantic_action = SemanticAction(cell=semantic_cell, target_obj=target_obj,
-                                                 action_type=SemanticActionType.FOLLOW)
+                    semantic_action = SemanticAction(cell=semantic_cell, target_obj=None,
+                                                     action_type=SemanticActionType.FOLLOW_LANE)
 
                 semantic_actions.append(semantic_action)
+
+        # leave in self.last_action_horizon only keys from the union of his keys and the new semantic-actions list
+        # so actions from the
+        self.last_action_horizon = {k: self.last_action_horizon[k]
+                                    for k in self.last_action_horizon.keys()
+                                    if k in semantic_actions}
 
         return semantic_actions
 
@@ -120,9 +132,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         :param nav_plan: the navigation plan of ego
         :return: semantic action spec (None if no valid trajectories can be found)
         """
-
         try:
-            if semantic_action.target_obj is None:
+            if semantic_action.action_type == SemanticActionType.FOLLOW_LANE:
                 return SemanticActionsGridPolicy._specify_action_to_empty_cell(behavioral_state=behavioral_state,
                                                                                semantic_action=semantic_action)
             else:
@@ -318,7 +329,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         return cost_params
 
-    # TODO: rethink the design of this function
+    # TODO: rethink the design of this function (use quartic polynomial)
+    # TODO: add handling BP-if here
     @staticmethod
     def _specify_action_to_empty_cell(behavioral_state: SemanticActionsGridState,
                                       semantic_action: SemanticAction) -> SemanticActionSpec:
@@ -393,6 +405,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                      semantic_action.target_obj.size.length/2
 
         prediction_timestamps = np.arange(BP_SPECIFICATION_T_MIN, BP_SPECIFICATION_T_MAX, BP_SPECIFICATION_T_RES)
+
+        if self.
 
         for T in prediction_timestamps:
             # TODO: should be cached in advance using OCU.QP1D.time_constraints_tensor
