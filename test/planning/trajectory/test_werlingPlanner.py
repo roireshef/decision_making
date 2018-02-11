@@ -115,8 +115,6 @@ def test_werlingPlanner_toyScenario_noException():
     print('\n minimal is: ', np.min(costs))
 
     WerlingVisualizer.plot_route(p1, route_points)
-    figManager = plt.get_current_fig_manager()
-    figManager.window.showMaximized()
     plt.show()
     fig.clear()
 
