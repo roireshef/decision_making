@@ -10,6 +10,11 @@ from decision_making.src.planning.types import C_V, Limits
 
 
 class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
+    ''' Members annotations for python 2 compliant classes '''
+    w = float
+    k = float
+    offset = float
+
     def __init__(self, w, k, offset):
         # type: (float, float, float)->None
         """
@@ -39,6 +44,22 @@ class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
 
 
 class TrajectoryCostParams(PUBSUB_MSG_IMPL):
+    ''' Members annotations for python 2 compliant classes '''
+    obstacle_cost_x = SigmoidFunctionParams
+    obstacle_cost_y = SigmoidFunctionParams
+    left_lane_cost = SigmoidFunctionParams
+    right_lane_cost = SigmoidFunctionParams
+    left_shoulder_cost = SigmoidFunctionParams
+    right_shoulder_cost = SigmoidFunctionParams
+    left_road_cost = SigmoidFunctionParams
+    right_road_cost = SigmoidFunctionParams
+    dist_from_goal_cost = SigmoidFunctionParams
+    dist_from_goal_lat_factor = float
+    velocity_limits = Limits
+    lon_acceleration_limits = Limits
+    lat_acceleration_limits = Limits
+
+
     def __init__(self, obstacle_cost_x, obstacle_cost_y, left_lane_cost, right_lane_cost, left_shoulder_cost,
                  right_shoulder_cost, left_road_cost, right_road_cost, dist_from_goal_cost, dist_from_goal_lat_factor,
                  velocity_limits, lon_acceleration_limits, lat_acceleration_limits):
@@ -142,6 +163,13 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
 
 
 class TrajectoryParams(PUBSUB_MSG_IMPL):
+    ''' Members annotations for python 2 compliant classes '''
+    strategy = TrajectoryPlanningStrategy
+    reference_route = np.ndarray
+    target_state = np.ndarray
+    cost_params = TrajectoryCostParams
+    time = float
+
     def __init__(self, strategy, reference_route, target_state, cost_params, time):
         # type: (TrajectoryPlanningStrategy, np.ndarray, np.ndarray, TrajectoryCostParams, float)->None
         """

@@ -16,6 +16,7 @@ from mapping.src.service.map_service import MapService
 
 
 class OccupancyState(PUBSUB_MSG_IMPL):
+    ''' Members annotations for python 2 compliant classes '''
     timestamp = int
     free_space = np.ndarray
     confidence = np.ndarray
@@ -61,6 +62,7 @@ class OccupancyState(PUBSUB_MSG_IMPL):
 
 
 class ObjectSize(PUBSUB_MSG_IMPL):
+    ''' Members annotations for python 2 compliant classes '''
     length = float
     width = float
     height = float
@@ -86,6 +88,7 @@ class ObjectSize(PUBSUB_MSG_IMPL):
 
 
 class DynamicObject(PUBSUB_MSG_IMPL):
+    ''' Members annotations for python 2 compliant classes '''
     obj_id = int
     timestamp = int
     x = float
@@ -232,6 +235,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
 
 class EgoState(DynamicObject):
+    ''' Members annotations for python 2 compliant classes '''
     obj_id = int
     timestamp = int
     x = float
@@ -299,6 +303,7 @@ class EgoState(DynamicObject):
 
 
 class State(PUBSUB_MSG_IMPL):
+    ''' Members annotations for python 2 compliant classes '''
     occupancy_state = OccupancyState
     dynamic_objects = List[DynamicObject]
     ego_state = EgoState

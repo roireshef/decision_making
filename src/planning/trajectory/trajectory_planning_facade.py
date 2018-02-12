@@ -148,7 +148,7 @@ class TrajectoryPlanningFacade(DmModule):
         """
         input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
         object_state = State.deserialize(input_state)
-        self.logger.debug('%s %s' % (LOG_MSG_RECEIVED_STATE, object_state))
+        self.logger.debug('%s: %s' % (LOG_MSG_RECEIVED_STATE, object_state))
         return object_state
 
     def _get_mission_params(self) -> TrajectoryParams:

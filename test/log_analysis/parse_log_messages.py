@@ -11,9 +11,9 @@ LOG_TIME_PATTERN = ": \d+-\d+-\d+ \d+:\d+:\d+,\d+ :"
 LOG_TIME_PARSE_PATTERN = ": (\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+),(\d+) :"
 
 
-STATE_IDENTIFIER_STRING_TP = "trajectory_planning_facade.py.*:%s " % LOG_MSG_RECEIVED_STATE
-STATE_IDENTIFIER_STRING_BP = "behavioral_facade.py.*:%s " % LOG_MSG_RECEIVED_STATE
-STATE_IDENTIFIER_STRING_STATE_MODULE = "state_module.py.*:%s " % LOG_MSG_STATE_MODULE_PUBLISH_STATE
+STATE_IDENTIFIER_STRING_TP = "trajectory_planning_facade.py.*%s" % LOG_MSG_RECEIVED_STATE
+STATE_IDENTIFIER_STRING_BP = "behavioral_facade.py.*%s" % LOG_MSG_RECEIVED_STATE
+STATE_IDENTIFIER_STRING_STATE_MODULE = "state_module.py.*%s" % LOG_MSG_STATE_MODULE_PUBLISH_STATE
 
 
 class DmLogParser:
@@ -69,7 +69,7 @@ class DmLogParser:
         state_timestamps = list()
         states = list()
 
-        identifier_str = "trajectory_planning_facade.py .* %s: " % LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS
+        identifier_str = "trajectory_planning_facade.py.*%s: " % LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS
         search_pattern = ".*(%s)(.*)%s(.*)" % (LOG_TIME_PATTERN, identifier_str)
         for row in range(len(log_content)):
             state_match = re.match(pattern=search_pattern, string=log_content[row])

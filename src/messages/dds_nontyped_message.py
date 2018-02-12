@@ -1,4 +1,3 @@
-import traceback
 from enum import Enum
 from pydoc import locate
 
@@ -55,4 +54,4 @@ class DDSNonTypedMsg(DDSMsg):
             return cls(**message_copy)
         except Exception as e:
             raise MsgDeserializationError("MsgDeserializationError error: could not deserialize into " +
-                                          cls.__name__ + " from " + str(message) + ". " + str(traceback.print_exc()))
+                                          cls.__name__ + " from " + str(message) + ". " + str(e.__traceback__))
