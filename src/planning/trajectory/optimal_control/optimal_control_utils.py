@@ -86,7 +86,7 @@ class Poly1D:
                 """
         # TODO: a(0) and a(T) checks are omitted as they they are provided by the user.
         # compute extrema points, by finding the roots of the 3rd derivative
-        jerk_poly = Math.polyder2d(poly_coefs, m=degree+1)
+        jerk_poly = Math.polyder2d(poly_coefs, m=degree + 1)
         acc_poly = Math.polyder2d(poly_coefs, m=degree)
         acc_suspected_points = np.apply_along_axis(np.roots, 1, jerk_poly)  # TODO: this should use matrix operations!
         acc_suspected_values = Math.zip_polyval2d(acc_poly, acc_suspected_points)
@@ -158,11 +158,11 @@ class QuarticPoly1D(Poly1D):
         :return: 3D numpy array of shape [len(terminal_times), 6, 6]
         """
         return np.array(
-            [[[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],                                   # x(0)
-              [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],                                   # x_dot(0)
-              [0.0, 0.0, 2.0, 0.0, 0.0, 0.0],                                   # x_dotdot(0)
-              [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],    # x_dot(T)
-              [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]]           # x_dotdot(T)
+            [[[1.0, 0.0, 0.0, 0.0, 0.0],  # x(0)
+              [0.0, 1.0, 0.0, 0.0, 0.0],  # x_dot(0)
+              [0.0, 0.0, 2.0, 0.0, 0.0],  # x_dotdot(0)
+              [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3],  # x_dot(T)
+              [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2]]  # x_dotdot(T)
              for T in terminal_times], dtype=np.float)
 
 
@@ -174,6 +174,7 @@ class QuinticPoly1D(Poly1D):
     polynomial elements at time 0 (first 3 rows) and T (last 3 rows) - the 3 rows in each block correspond to
     p, p_dot, p_dotdot.
     """
+
     @staticmethod
     def num_coefs():
         return 6
@@ -187,10 +188,10 @@ class QuinticPoly1D(Poly1D):
         :return: 3D numpy array of shape [len(terminal_times), 6, 6]
         """
         return np.array(
-            [[[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],                                   # x(0)
-              [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],                                   # x_dot(0)
-              [0.0, 0.0, 2.0, 0.0, 0.0, 0.0],                                   # x_dotdot(0)
-              [1.0, T, T ** 2, T ** 3, T ** 4, T ** 5],                         # x(T)
-              [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],    # x_dot(T)
-              [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]]           # x_dotdot(T)
+            [[[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],  # x(0)
+              [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],  # x_dot(0)
+              [0.0, 0.0, 2.0, 0.0, 0.0, 0.0],  # x_dotdot(0)
+              [1.0, T, T ** 2, T ** 3, T ** 4, T ** 5],  # x(T)
+              [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],  # x_dot(T)
+              [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]]  # x_dotdot(T)
              for T in terminal_times], dtype=np.float)

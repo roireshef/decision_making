@@ -10,7 +10,7 @@ from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STE
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
-from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D, Poly1D
+from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, Poly1D
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianExtendedTrajectory, \
@@ -432,10 +432,10 @@ class WerlingPlanner(TrajectoryPlanner):
             time_samples_d = np.arange(dt, T_d + np.finfo(np.float16).eps, dt)
 
             # solve for dimension d (with time-horizon T_d)
-            partial_poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T_d, QuarticPoly1D)
+            partial_poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T_d, QuinticPoly1D)
 
             # generate the trajectories for the polynomials of dimension d - within the horizon T_d
-            partial_solutions_d = QuarticPoly1D.polyval_with_derivatives(partial_poly_d, time_samples_d)
+            partial_solutions_d = QuinticPoly1D.polyval_with_derivatives(partial_poly_d, time_samples_d)
 
             # Expand lateral solutions (dimension d) to the size of the longitudinal solutions (dimension s)
             # with its final positions replicated. NOTE: we assume that final (dim d) velocities and accelerations = 0 !
