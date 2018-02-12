@@ -7,7 +7,7 @@ from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
     def __init__(self, timestamp, trajectory, current_speed):
-        # type: (int, np.ndarray, float) -> ()
+        # type: (int, np.ndarray, float) -> None
         """
         A discrete representation of the trajectory to follow - passed from TrajectoryPlanner to Controller
         :param timestamp: ego's timestamp on which the trajectory is based. Used for giving the controller a reference
@@ -27,7 +27,8 @@ class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
         # type: () -> LcmTrajectoryData
         lcm_msg = LcmTrajectoryData()
 
-        lcm_msg.timestamp = self.timestamp
+        # TODO: Uncomment when control message is ready
+        #lcm_msg.timestamp = self.timestamp
         lcm_msg.trajectory = LcmNumpyArray()
         lcm_msg.trajectory.num_dimensions = len(self.trajectory.shape)
         lcm_msg.trajectory.shape = list(self.trajectory.shape)
@@ -41,7 +42,9 @@ class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
     @classmethod
     def deserialize(cls, lcmMsg):
         # type: (LcmTrajectoryData) -> TrajectoryPlanMsg
-        return cls(lcmMsg.timestamp,
+
+        return cls(0.0, # TODO: Currently a placeholder for the timestamp, until control will be ready for integration.
+                        # TODO: Replace with lcmMsg.timestamp when control message is ready
                    np.ndarray(shape=tuple(lcmMsg.trajectory.shape)
                               , buffer=np.array(lcmMsg.trajectory.data)
                               , dtype=float)

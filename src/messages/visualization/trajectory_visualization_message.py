@@ -28,7 +28,8 @@ class TrajectoryVisualizationMsg:
         self.predicted_states = predicted_states
         self.plan_time = plan_time
 
-    def serialize(self) -> LcmTrajectoryVisualizationMsg:
+    def serialize(self):
+        # type: ()->LcmTrajectoryVisualizationMsg
         lcm_msg = LcmTrajectoryVisualizationMsg()
 
         lcm_msg.reference_route = LcmNonTypedNumpyArray()
@@ -57,7 +58,8 @@ class TrajectoryVisualizationMsg:
         return lcm_msg
 
     @classmethod
-    def deserialize(cls, lcmMsg: LcmTrajectoryVisualizationMsg):
+    def deserialize(cls, lcmMsg):
+        # type: (LcmTrajectoryVisualizationMsg)-> TrajectoryVisualizationMsg
         return cls(np.ndarray(shape = tuple(lcmMsg.reference_route.shape)
                             , buffer = np.array(lcmMsg.reference_route.data)
                             , dtype = float)
