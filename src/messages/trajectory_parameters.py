@@ -169,9 +169,10 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
     target_state = np.ndarray
     cost_params = TrajectoryCostParams
     time = float
+    reset_acceleration = bool
 
-    def __init__(self, strategy, reference_route, target_state, cost_params, time):
-        # type: (TrajectoryPlanningStrategy, np.ndarray, np.ndarray, TrajectoryCostParams, float)->None
+    def __init__(self, strategy, reference_route, target_state, cost_params, time, reset_acceleration=False):
+        # type: (TrajectoryPlanningStrategy, np.ndarray, np.ndarray, TrajectoryCostParams, float, bool)->None
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
         :param reference_route: a reference route points (often the center of lane)
@@ -185,6 +186,7 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         self.cost_params = cost_params
         self.strategy = strategy
         self.time = time
+        self.reset_acceleration = reset_acceleration
 
     @property
     def desired_velocity(self):
@@ -212,6 +214,8 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
 
         lcm_msg.time = self.time
 
+        lcm_msg.reset_acceleration = self.reset_acceleration
+
         return lcm_msg
 
     @classmethod
@@ -225,5 +229,6 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
                             , buffer = np.array(lcmMsg.target_state.data)
                             , dtype = float)
                  , TrajectoryCostParams.deserialize(lcmMsg.cost_params)
-                 , lcmMsg.time)
+                 , lcmMsg.time
+                 , lcmMsg.reset_acceleration)
 
