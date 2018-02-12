@@ -10,7 +10,7 @@ from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STE
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
-from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils as OC
+from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D, Poly1D
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianExtendedTrajectory, \
@@ -51,18 +51,18 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         assert max(relative_time_points) <= self.T_s
 
         # assign values from <time_points> in s-axis polynomial
-        fstates_s = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), relative_time_points)[0]
+        fstates_s = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), relative_time_points)[0]
 
         fstates_d = np.empty(shape=np.append(time_points.shape, 3))
 
         is_within_horizon_d = relative_time_points <= self.T_d
 
-        fstates_d[is_within_horizon_d] = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]),
+        fstates_d[is_within_horizon_d] = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]),
                                                                                    relative_time_points[is_within_horizon_d])
 
         # Expand lateral solution to the size of the longitudinal solution with its final positions replicated
         # NOTE: we assume that velocity and accelerations = 0 !!
-        end_of_horizon_state_d = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]),
+        end_of_horizon_state_d = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]),
                                                                            np.array([self.T_d]))[0]
         extrapolation_state_d = WerlingPlanner.repeat_1d_state(
             fstate=end_of_horizon_state_d,
@@ -81,10 +81,9 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
 
 
 class WerlingPlanner(TrajectoryPlanner):
-    def __init__(self, logger: Logger, predictor: Predictor, poly_impl_s: OC.Poly1D, dt=WERLING_TIME_RESOLUTION):
+    def __init__(self, logger: Logger, predictor: Predictor, dt=WERLING_TIME_RESOLUTION):
         super().__init__(logger, predictor)
         self._dt = dt
-        self.poly_impl_s = poly_impl_s
 
     @property
     def dt(self):
@@ -160,11 +159,11 @@ class WerlingPlanner(TrajectoryPlanner):
         T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_s, lower_bound_T_d, self.dt)
 
         # solve problem in frenet-frame
-        ftrajectories, poly_coefs_s, poly_coefs_d, T_d_vals = self._solve_optimization(fconstraints_t0, fconstraints_tT,
-                                                                                       T_s, T_d_grid)
+        ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
+                                                                                 T_s, T_d_grid, self.dt)
 
         # filter resulting trajectories by progress on curve, velocity and (lateral) accelerations limits in frenet
-        frenet_filtered_indices = self._filter_by_frenet_limits(ftrajectories, poly_coefs_d, T_d_vals,
+        frenet_filtered_indices = self._filter_by_frenet_limits(ftrajectories, poly_coefs[:, D5:], T_d_vals,
                                                                 cost_params, frenet.s_limits)
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
@@ -213,101 +212,13 @@ class WerlingPlanner(TrajectoryPlanner):
             T_s=T_s,
             T_d=T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]],
             frenet_frame=frenet,
-            poly_s_coefs=poly_coefs_s[refiltered_indices[sorted_filtered_idxs[0]]],
-            poly_d_coefs=poly_coefs_d[refiltered_indices[sorted_filtered_idxs[0]]]
+            poly_s_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][:6],
+            poly_d_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][6:]
         )
 
         return samplable_trajectory, \
                ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
                filtered_trajectory_costs[sorted_filtered_idxs]
-
-    def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints ,
-                               fconstraints_tT: FrenetConstraints , dt) -> float:
-        """
-        Calculates the lower bound for the lateral time horizon based on the physical constraints.
-        :param fconstraints_t0: a set of constraints over the initial state
-        :param fconstraints_tT: a set of constraints over the terminal state
-        :param dt: [sec] basic time unit from constructor
-        :return: Low bound for lateral time horizon.
-        """
-        min_lat_movement = np.min(np.abs(fconstraints_tT.get_grid_d()[:, 0] - fconstraints_t0.get_grid_d()[0, 0]))
-        low_bound_lat_plan_horizon = max(np.sqrt((2*min_lat_movement) / LAT_ACC_LIMITS[LIMIT_MAX]), dt)
-        return max(low_bound_lat_plan_horizon, TD_MIN_DT * self.dt)
-
-    def _solve_optimization(self, fconst_0: FrenetConstraints, fconst_t: FrenetConstraints, T_s: float,
-                            T_d_vals: np.ndarray) -> Tuple[FrenetTrajectories2D, np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Solves the two-point boundary value problem, given a set of constraints over the initial state
-        and a set of constraints over the terminal state. The solution is a cartesian product of the solutions returned
-        from solving two 1D problems (one for each Frenet dimension). The solutions for the latitudinal direction are
-        aggregated along different Td possible values.When Td happens to be lower than Ts, we expand the latitudinal
-        solution: the last position stays the same while the velocity and acceleration are set to zero.
-        :param fconst_0: a set of constraints over the initial state
-        :param fconst_t: a set of constraints over the terminal state
-        :param T_s: longitudinal trajectory duration (sec.), relative to ego. Ts has to be a multiple of dt.
-        :param T_d_vals: lateral trajectory possible durations (sec.), relative to ego. Higher bound is Ts.
-        :return: a tuple: (points-matrix of rows in the form [sx, sv, sa, dx, dv, da], s-axis (longitudinal)
-        poly-coefficients-matrix of rows in the form [c0_s, c1_s, ...], d-axis poly-coefficients-matrix of rows in the
-        form [c0_d, ..., c5_d], array of the Td values associated with the polynomials)
-        """
-        time_samples_s = np.arange(0, T_s + np.finfo(np.float16).eps, self.dt)
-
-        # Define constraints
-        constraints_s = NumpyUtils.cartesian_product_matrix_rows(fconst_0.get_grid_s(), fconst_t.get_grid_s())
-        constraints_d = NumpyUtils.cartesian_product_matrix_rows(fconst_0.get_grid_d(), fconst_t.get_grid_d())
-
-        # solve for dimension s
-        # TODO: here, constraints_s can be 6-sized or 5-sized (According to poly impl)
-        poly_s = WerlingPlanner._solve_1d_poly(constraints_s, T_s, self.poly_impl_s)
-
-        # generate trajectories for the polynomials of dimension s
-        solutions_s = self.poly_impl_s.polyval_with_derivatives(poly_s, time_samples_s)
-
-        # store a vector of time-horizons for solutions of dimension s
-        horizons_s = np.repeat([T_s], len(constraints_s))
-
-        # Iterate over different time-horizons for dimension d
-        poly_d = np.empty(shape=(0, 6))
-        solutions_d = np.empty(shape=(0, len(time_samples_s), 3))
-        horizons_d = np.empty(shape=0)
-        for T_d in T_d_vals:
-            time_samples_d = np.arange(self.dt, T_d + np.finfo(np.float16).eps, self.dt)
-
-            # solve for dimension d (with time-horizon T_d)
-            partial_poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T_d, OC.QuinticPoly1D)
-
-            # generate the trajectories for the polynomials of dimension d - within the horizon T_d
-            partial_solutions_d = OC.QuinticPoly1D.polyval_with_derivatives(partial_poly_d, time_samples_d)
-
-            # Expand lateral solutions (dimension d) to the size of the longitudinal solutions (dimension s)
-            # with its final positions replicated. NOTE: we assume that final (dim d) velocities and accelerations = 0 !
-            solutions_extrapolation_d = WerlingPlanner.repeat_1d_states(
-                fstates=partial_solutions_d[:, -1, :],
-                repeats=time_samples_s.size - time_samples_d.size,
-                override_values=np.zeros(3),
-                override_mask=np.array([0, 1, 1])
-            )
-            full_horizon_solutions_d = np.concatenate((partial_solutions_d, solutions_extrapolation_d), axis=-2)
-
-            # append polynomials, trajectories and time-horizons to the dimensions d buffers
-            poly_d = np.vstack((poly_d, partial_poly_d))
-            solutions_d = np.vstack((solutions_d, full_horizon_solutions_d))
-            horizons_d = np.append(horizons_d, np.repeat(T_d, len(constraints_d)))
-
-        # generate 2D trajectories by Cartesian product of {horizons, polynomials, and 1D trajectories}
-        # of dimensions {s,d}
-        horizons = NumpyUtils.cartesian_product_matrix_rows(horizons_s[:, np.newaxis], horizons_d[:, np.newaxis])
-        polynoms = NumpyUtils.cartesian_product_matrix_rows(poly_s, poly_d)
-        solutions = NumpyUtils.cartesian_product_matrix_rows(solutions_s, solutions_d)
-
-        # slice the results according to the rule T_s >= T_d since we don't want to generate trajectories whose
-        valid_traj_slice = horizons[:, FP_SX] >= horizons[:, FP_DX]
-
-        polynoms_s = polynoms[:, :(self.poly_impl_s.num_coefs() + 1)]
-        polynoms_d = polynoms[:, (self.poly_impl_s.num_coefs() + 1):]
-
-        return solutions[valid_traj_slice], polynoms_s[valid_traj_slice], polynoms_d[valid_traj_slice], \
-               horizons[valid_traj_slice, FP_DX]
 
     @staticmethod
     def _filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories,
@@ -352,7 +263,7 @@ class WerlingPlanner(TrajectoryPlanner):
             np.greater_equal(ftrajectories[:, :, FS_SV], 0.0), axis=1)
 
         frenet_lateral_movement_is_feasible = \
-            OC.QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_d_vals, cost_params.lat_acceleration_limits)
+            QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_d_vals, cost_params.lat_acceleration_limits)
 
         return np.argwhere(np.logical_and(conforms, frenet_lateral_movement_is_feasible)).flatten()
 
@@ -409,6 +320,19 @@ class WerlingPlanner(TrajectoryPlanner):
         ''' TOTAL '''
         return obstacles_costs + dist_from_goal_costs + deviations_costs
 
+    def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints ,
+                               fconstraints_tT: FrenetConstraints , dt) -> float:
+        """
+        Calculates the lower bound for the lateral time horizon based on the physical constraints.
+        :param fconstraints_t0: a set of constraints over the initial state
+        :param fconstraints_tT: a set of constraints over the terminal state
+        :param dt: [sec] basic time unit from constructor
+        :return: Low bound for lateral time horizon.
+        """
+        min_lat_movement = np.min(np.abs(fconstraints_tT.get_grid_d()[:, 0] - fconstraints_t0.get_grid_d()[0, 0]))
+        low_bound_lat_plan_horizon = max(np.sqrt((2*min_lat_movement) / LAT_ACC_LIMITS[LIMIT_MAX]), dt)
+        return max(low_bound_lat_plan_horizon, TD_MIN_DT * self.dt)
+
     @staticmethod
     def _create_lat_horizon_grid(T_s: float, T_d_low_bound: float, dt: float) -> np.ndarray:
         """
@@ -430,7 +354,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return T_d_vals
 
     @staticmethod
-    def _solve_1d_poly(constraints: np.ndarray, T: float, poly_impl: OC.Poly1D) -> np.ndarray:
+    def _solve_1d_poly(constraints: np.ndarray, T: float, poly_impl: Poly1D) -> np.ndarray:
         """
         Solves the two-point boundary value problem, given a set of constraints over the initial and terminal states.
         :param constraints: 3D numpy array of a set of constraints over the initial and terminal states
@@ -466,3 +390,75 @@ class WerlingPlanner(TrajectoryPlanner):
                           override_mask * np.repeat(override_values[np.newaxis, :], repeats=fstates.shape[0], axis=0)
         repeated_block = np.repeat(repeating_slice[:, np.newaxis, :], repeats=repeats, axis=1)
         return repeated_block
+
+    @staticmethod
+    def _solve_optimization(fconst_0: FrenetConstraints, fconst_t: FrenetConstraints, T_s: float, T_d_vals: np.ndarray,
+                            dt: float) -> Tuple[FrenetTrajectories2D, np.ndarray, np.ndarray]:
+        """
+        Solves the two-point boundary value problem, given a set of constraints over the initial state
+        and a set of constraints over the terminal state. The solution is a cartesian product of the solutions returned
+        from solving two 1D problems (one for each Frenet dimension). The solutions for the latitudinal direction are
+        aggregated along different Td possible values.When Td happens to be lower than Ts, we expand the latitudinal
+        solution: the last position stays the same while the velocity and acceleration are set to zero.
+        :param fconst_0: a set of constraints over the initial state
+        :param fconst_t: a set of constraints over the terminal state
+        :param T_s: longitudinal trajectory duration (sec.), relative to ego. Ts has to be a multiple of dt.
+        :param T_d_vals: lateral trajectory possible durations (sec.), relative to ego. Higher bound is Ts.
+        :param dt: [sec] basic time unit from constructor.
+        :return: a tuple: (points-matrix of rows in the form [sx, sv, sa, dx, dv, da],
+        poly-coefficients-matrix of rows in the form [c0_s, c1_s, ... c5_s, c0_d, ..., c5_d],
+        array of the Td values associated with the polynomials)
+        """
+        time_samples_s = np.arange(0, T_s + np.finfo(np.float16).eps, dt)
+
+        # Define constraints
+        constraints_s = NumpyUtils.cartesian_product_matrix_rows(fconst_0.get_grid_s(), fconst_t.get_grid_s())
+        constraints_d = NumpyUtils.cartesian_product_matrix_rows(fconst_0.get_grid_d(), fconst_t.get_grid_d())
+
+        # solve for dimension s
+        poly_s = WerlingPlanner._solve_1d_poly(constraints_s, T_s, QuinticPoly1D)
+
+        # generate trajectories for the polynomials of dimension s
+        solutions_s = QuinticPoly1D.polyval_with_derivatives(poly_s, time_samples_s)
+
+        # store a vector of time-horizons for solutions of dimension s
+        horizons_s = np.repeat([T_s], len(constraints_s))
+
+        # Iterate over different time-horizons for dimension d
+        poly_d = np.empty(shape=(0, 6))
+        solutions_d = np.empty(shape=(0, len(time_samples_s), 3))
+        horizons_d = np.empty(shape=0)
+        for T_d in T_d_vals:
+            time_samples_d = np.arange(dt, T_d + np.finfo(np.float16).eps, dt)
+
+            # solve for dimension d (with time-horizon T_d)
+            partial_poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T_d, QuarticPoly1D)
+
+            # generate the trajectories for the polynomials of dimension d - within the horizon T_d
+            partial_solutions_d = QuarticPoly1D.polyval_with_derivatives(partial_poly_d, time_samples_d)
+
+            # Expand lateral solutions (dimension d) to the size of the longitudinal solutions (dimension s)
+            # with its final positions replicated. NOTE: we assume that final (dim d) velocities and accelerations = 0 !
+            solutions_extrapolation_d = WerlingPlanner.repeat_1d_states(
+                fstates=partial_solutions_d[:, -1, :],
+                repeats=time_samples_s.size - time_samples_d.size,
+                override_values=np.zeros(3),
+                override_mask=np.array([0, 1, 1])
+            )
+            full_horizon_solutions_d = np.concatenate((partial_solutions_d, solutions_extrapolation_d), axis=-2)
+
+            # append polynomials, trajectories and time-horizons to the dimensions d buffers
+            poly_d = np.vstack((poly_d, partial_poly_d))
+            solutions_d = np.vstack((solutions_d, full_horizon_solutions_d))
+            horizons_d = np.append(horizons_d, np.repeat(T_d, len(constraints_d)))
+
+        # generate 2D trajectories by Cartesian product of {horizons, polynomials, and 1D trajectories}
+        # of dimensions {s,d}
+        horizons = NumpyUtils.cartesian_product_matrix_rows(horizons_s[:, np.newaxis], horizons_d[:, np.newaxis])
+        polynoms = NumpyUtils.cartesian_product_matrix_rows(poly_s, poly_d)
+        solutions = NumpyUtils.cartesian_product_matrix_rows(solutions_s, solutions_d)
+
+        # slice the results according to the rule T_s >= T_d since we don't want to generate trajectories whose
+        valid_traj_slice = horizons[:, FP_SX] >= horizons[:, FP_DX]
+
+        return solutions[valid_traj_slice], polynoms[valid_traj_slice], horizons[valid_traj_slice, FP_DX]

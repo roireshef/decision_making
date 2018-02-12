@@ -14,8 +14,7 @@ from decision_making.src.state.state import State, DynamicObject
 
 
 class SemanticActionType(Enum):
-    FOLLOW_VEHICLE = 1
-    FOLLOW_LANE = 2
+    FOLLOW = 1
 
 
 # Define semantic cell
@@ -73,16 +72,6 @@ class SemanticAction:
         self.cell = cell
         self.target_obj = target_obj
         self.action_type = action_type
-
-    def __eq__(self, other):
-        """Overrides the default implementation - compares two SematicActions according to equality in cell, action_type
-        and the ID of the target vehicle"""
-        if isinstance(self, other.__class__):
-            return self.cell == other.cell and \
-                   self.action_type == other.action_type and \
-                   self.target_obj.obj_id == other.target_obj.obj_id
-
-        return False
 
 
 class SemanticActionSpec:
