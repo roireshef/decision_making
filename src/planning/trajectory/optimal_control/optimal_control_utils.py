@@ -119,7 +119,7 @@ class OptimalControlUtils:
             # are extrema points out of [0, T] range
             is_suspected_point_in_time_range = np.greater_equal(acc_suspected_points, 0) & \
                                                np.less_equal(acc_suspected_points, T_vals[:, np.newaxis]) & \
-                                               np.equal(acc_suspected_values, np.real(acc_suspected_values))
+                                               np.isreal(acc_suspected_values)
 
             # check if extrema values are within [a_min, a_max] limits
             is_suspected_value_in_limits = NumpyUtils.is_in_limits(acc_suspected_values, acc_limits)
