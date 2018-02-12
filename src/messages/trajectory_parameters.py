@@ -11,7 +11,7 @@ from decision_making.src.planning.types import C_V, Limits
 
 class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
     def __init__(self, w, k, offset):
-        # type: (float, float, float)->SigmoidFunctionParams
+        # type: (float, float, float)->None
         """
         A data class that corresponds to a parametrization of a sigmoid function
         :param w: considering sigmoid is: f(x) = w / (1 + exp(k * (x-offset)))
@@ -42,7 +42,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
     def __init__(self, obstacle_cost_x, obstacle_cost_y, left_lane_cost, right_lane_cost, left_shoulder_cost,
                  right_shoulder_cost, left_road_cost, right_road_cost, dist_from_goal_cost, dist_from_goal_lat_factor,
                  velocity_limits, lon_acceleration_limits, lat_acceleration_limits):
-        # type:(SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,float,Limits,Limits,Limits)->TrajectoryCostParams
+        # type:(SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,float,Limits,Limits,Limits)->None
         """
         This class holds all the parameters used to build the cost function of the trajectory planner.
         It is dynamically set and sent by the behavioral planner.
@@ -143,7 +143,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
 
 class TrajectoryParams(PUBSUB_MSG_IMPL):
     def __init__(self, strategy, reference_route, target_state, cost_params, time):
-        # type: (TrajectoryPlanningStrategy, np.ndarray, np.ndarray, TrajectoryCostParams, float)->TrajectoryParams
+        # type: (TrajectoryPlanningStrategy, np.ndarray, np.ndarray, TrajectoryCostParams, float)->None
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
         :param reference_route: a reference route points (often the center of lane)

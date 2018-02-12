@@ -7,7 +7,7 @@ from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
     def __init__(self, timestamp, trajectory, current_speed):
-        # type: (int, np.ndarray, float) -> ()
+        # type: (int, np.ndarray, float) -> None
         """
         A discrete representation of the trajectory to follow - passed from TrajectoryPlanner to Controller
         :param timestamp: ego's timestamp on which the trajectory is based. Used for giving the controller a reference
