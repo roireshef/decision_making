@@ -25,7 +25,7 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_policy im
     SemanticAction, SemanticActionSpec, SemanticActionType, \
     LAT_CELL, LON_CELL, SemanticGridCell
 from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils as SAU
-from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils
+from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import CURVE_X, CURVE_Y
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
@@ -399,7 +399,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         for T in prediction_timestamps:
             # TODO: should be cached in advance using OCU.QP1D.time_constraints_tensor
-            A = OptimalControlUtils.QuinticPoly1D.time_constraints_matrix(T)
+            A = QuinticPoly1D.time_constraints_matrix(T)
             A_inv = np.linalg.inv(A)
 
             # TODO: should be swapped with current implementation of Predictor
@@ -416,12 +416,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             constraints_d = np.array([ego_dx0, ego_dv0, ego_da0, obj_center_lane_latitude, 0.0, 0.0])
 
             # solve for s(t) and d(t)
-            poly_coefs_s = OptimalControlUtils.QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
-            poly_coefs_d = OptimalControlUtils.QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
+            poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
+            poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
 
             # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
-            if OptimalControlUtils.QuinticPoly1D.is_acceleration_in_limits(poly_coefs_s, T, LON_ACC_LIMITS) and \
-                    OptimalControlUtils.QuinticPoly1D.is_acceleration_in_limits(poly_coefs_d, T, LAT_ACC_LIMITS):
+            if QuinticPoly1D.is_acceleration_in_limits(poly_coefs_s, T, LON_ACC_LIMITS) and \
+                    QuinticPoly1D.is_acceleration_in_limits(poly_coefs_d, T, LAT_ACC_LIMITS):
                 return SemanticActionSpec(t=T, v=obj_svT, s_rel=constraints_s[3] - ego_sx0,
                                           d_rel=constraints_d[3] - ego_dx0)
 
