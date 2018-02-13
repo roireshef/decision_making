@@ -7,7 +7,7 @@ from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, \
     BP_ACTION_T_RES, SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL, \
-    BEHAVIORAL_PLANNING_HORIZON, A_LON_EPS, OBSTACLE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
+    BEHAVIORAL_PLANNING_HORIZON, OBSTACLE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
     DEVIATION_FROM_GOAL_COST, DEVIATION_FROM_GOAL_LAT_FACTOR, GOAL_SIGMOID_K_PARAM, \
     GOAL_SIGMOID_OFFSET, LATERAL_SAFETY_MARGIN_FROM_OBJECT, LON_ACC_LIMITS, \
@@ -27,8 +27,8 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_utils imp
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, FS_SA, FS_SV, FS_SX, FS_DX, FS_DV, FS_DA
+from decision_making.src.planning.types import LIMIT_MIN, LIMIT_MAX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.planning.types import Limits, LIMIT_MIN, LIMIT_MAX
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.predictor import Predictor
@@ -123,17 +123,15 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         :return: semantic action spec (None if no valid trajectories can be found)
         """
 
-        try:
-            if semantic_action.target_obj is None:
-                return SemanticActionsGridPolicy._specify_action_to_empty_cell(behavioral_state=behavioral_state,
-                                                                               semantic_action=semantic_action)
-            else:
-                return SemanticActionsGridPolicy._specify_action_towards_object(behavioral_state=behavioral_state,
-                                                                                semantic_action=semantic_action,
-                                                                                navigation_plan=nav_plan,
-                                                                                predictor=self._predictor)
-        except NoValidTrajectoriesFound as e:
-            return None
+        if semantic_action.target_obj is None:
+            return SemanticActionsGridPolicy._specify_action_to_empty_cell(behavioral_state=behavioral_state,
+                                                                           semantic_action=semantic_action)
+        else:
+            return SemanticActionsGridPolicy._specify_action_towards_object(behavioral_state=behavioral_state,
+                                                                            semantic_action=semantic_action,
+                                                                            navigation_plan=nav_plan,
+                                                                            predictor=self._predictor)
+
 
     def _eval_actions(self, behavioral_state: SemanticActionsGridState,
                       semantic_actions: List[SemanticAction],
@@ -359,11 +357,13 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         :return: semantic action specification
         """
         # TODO: in the future - concatenate all roads within the relevant NavigationPlan
-        road = MapService.get_instance().get_road(behavioral_state.ego_state.road_localization.road_id)
-        road_frenet = FrenetSerret2DFrame(road._points)
+        road_id = behavioral_state.ego_state.road_localization.road_id
+        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
+        road_frenet = FrenetSerret2DFrame(road_points)
 
+        road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id)
         desired_lane = behavioral_state.ego_state.road_localization.lane_num + semantic_action.cell[LAT_CELL]
-        desired_center_lane_latitude = road.lane_width * (desired_lane + 0.5)  # TODO: move this logic inside RoadDetails!
+        desired_center_lane_latitude = road_lane_latitudes[desired_lane]
 
         ego_init_fstate = road_frenet.cstate_to_fstate(np.array([
             behavioral_state.ego_state.x, behavioral_state.ego_state.y,
@@ -380,31 +380,31 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         A_inv_s = np.linalg.inv(A_s)
 
         # Quartic polynomial constraints (no constraint on sT)
-        constraints_s = np.c_[
+        constraints_s = np.repeat([[
             ego_init_fstate[FS_SX],
             ego_init_fstate[FS_SV],
             ego_init_fstate[FS_SA],
             BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED,  # desired velocity # TODO: change to the road's target speed
             0.0  # zero acceleration at the end of action
-        ]
+        ]], repeats=len(T_vals), axis=0)
 
         A_d = QuinticPoly1D.time_constraints_tensor(T_vals)
         A_inv_d = np.linalg.inv(A_d)
 
         # Quintic polynomial constraints
-        constraints_d = np.c_[
+        constraints_d = np.repeat([[
             ego_init_fstate[FS_DX],
             ego_init_fstate[FS_DV],
             ego_init_fstate[FS_DA],
             desired_center_lane_latitude,
             0.0,
             0.0
-        ]
+        ]], repeats=len(T_vals), axis=0)
 
-        poly_coefs_s = QuarticPoly1D.solve(A_inv_s, constraints_s)
-        poly_coefs_d = QuinticPoly1D.solve(A_inv_d, constraints_d)
+        poly_coefs_s = QuarticPoly1D.zip_solve(A_inv_s, constraints_s)
+        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv_d, constraints_d)
 
-        target_relative_s = Math.polyval2d(poly_coefs_s, T_vals)
+        target_relative_s = Math.zip_polyval2d(poly_coefs_s, T_vals[:, np.newaxis])
 
         # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
         are_lon_acc_in_limits = QuarticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_vals, LON_ACC_LIMITS)
@@ -417,26 +417,25 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[0]])
         optimum_idx = np.argmin(cost)
 
-        is_interior_optimum = are_lon_acc_in_limits[optimum_idx] & \
-                              are_lat_acc_in_limits[optimum_idx] & \
-                              are_vel_in_limits[optimum_idx] & \
-                              NumpyUtils.is_in_limits(T_vals[optimum_idx], BP_ACTION_T_LIMITS)
+        # are_vel_in_limits[optimum_idx] & \
+        is_interior_optimum = are_lon_acc_in_limits[optimum_idx] & are_lat_acc_in_limits[optimum_idx] & \
+            NumpyUtils.is_in_limits(T_vals[optimum_idx], BP_ACTION_T_LIMITS)
 
-        if not is_interior_optimum:
-            cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[1]])
-            optimum_idx = np.argmin(cost)
-
-            is_interior_optimum = are_lon_acc_in_limits[optimum_idx] & \
-                                  are_lat_acc_in_limits[optimum_idx] & \
-                                  are_vel_in_limits[optimum_idx] & \
-                                  NumpyUtils.is_in_limits(T_vals[optimum_idx], BP_ACTION_T_LIMITS)
+        # if not is_interior_optimum:
+        #     cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[1]])
+        #     optimum_idx = np.argmin(cost)
+        #
+        #     # are_vel_in_limits[optimum_idx] & \
+        #     is_interior_optimum = are_lon_acc_in_limits[optimum_idx] & \
+        #                           are_lat_acc_in_limits[optimum_idx] & \
+        #                           NumpyUtils.is_in_limits(T_vals[optimum_idx], BP_ACTION_T_LIMITS)
 
         if not is_interior_optimum:
             raise NoValidTrajectoriesFound("No valid trajectories found. action: %s, state: %s, optimal T: %s" %
                                            (semantic_action.__dict__, behavioral_state.__dict__, T_vals[optimum_idx]))
 
         return SemanticActionSpec(t=T_vals[optimum_idx], v=constraints_s[optimum_idx, 3],
-                                  s_rel=target_relative_s[optimum_idx] - ego_init_fstate[FS_SX],
+                                  s_rel=target_relative_s[optimum_idx, 0] - ego_init_fstate[FS_SX],
                                   d_rel=constraints_d[optimum_idx, 3] - ego_init_fstate[FS_DX])
 
     @staticmethod
@@ -453,8 +452,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         :return: SemanticActionSpec
         """
         # TODO: in the future - concatenate all roads within the relevant NavigationPlan
-        road = MapService.get_instance().get_road(behavioral_state.ego_state.road_localization.road_id)
-        road_frenet = FrenetSerret2DFrame(road._points)
+        road_id = behavioral_state.ego_state.road_localization.road_id
+        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
+        road_frenet = FrenetSerret2DFrame(road_points)
 
         ego_init_fstate = road_frenet.cstate_to_fstate(np.array([
             behavioral_state.ego_state.x, behavioral_state.ego_state.y,
@@ -466,7 +466,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         obj_init_fstate = road_frenet.cstate_to_fstate(np.array([
             semantic_action.target_obj.x, semantic_action.target_obj.y,
-            semantic_action.target_obj.road_localization.intra_road_yaw,
+            semantic_action.target_obj.yaw,
             semantic_action.target_obj.v_x,
             semantic_action.target_obj.acceleration_lon,
             0.0  # We don't care about other agent's curvature
@@ -496,26 +496,26 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
 
         constraints_s = np.c_[
-            np.full(shape=T_vals, fill_value=ego_init_fstate[FS_SX]),
-            np.full(shape=T_vals, fill_value=ego_init_fstate[FS_SV]),
-            np.full(shape=T_vals, fill_value=ego_init_fstate[FS_SA]),
+            np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SX]),
+            np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SV]),
+            np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SA]),
             obj_sxT - safe_lon_dist - lon_margin,
             obj_svT,
-            obj_saT
+            np.full(shape=len(T_vals), fill_value=obj_saT)
         ]
 
-        constraints_d = np.c_[
-            np.full(shape=T_vals, fill_value=ego_init_fstate[FS_DX]),
-            np.full(shape=T_vals, fill_value=ego_init_fstate[FS_DV]),
-            np.full(shape=T_vals, fill_value=ego_init_fstate[FS_DA]),
+        constraints_d = np.repeat([[
+            ego_init_fstate[FS_DX],
+            ego_init_fstate[FS_DV],
+            ego_init_fstate[FS_DA],
             obj_center_lane_latitude,
             0.0,
             0.0
-        ]
+        ]], repeats=len(T_vals), axis=0)
 
         # solve for s(t) and d(t)
-        poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s)
-        poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d)
+        poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
+        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
 
         # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
         are_lon_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_vals, LON_ACC_LIMITS)
@@ -528,19 +528,19 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[0]])
         optimum_idx = np.argmin(cost)
 
-        is_interior_optimum = are_lon_acc_in_limits[optimum_idx] & \
-                              are_lat_acc_in_limits[optimum_idx] & \
-                              are_vel_in_limits[optimum_idx] & \
+        # are_vel_in_limits[optimum_idx] & \
+
+        is_interior_optimum = are_lon_acc_in_limits[optimum_idx] & are_lat_acc_in_limits[optimum_idx] & \
                               NumpyUtils.is_in_limits(T_vals[optimum_idx], BP_ACTION_T_LIMITS)
 
-        if not is_interior_optimum:
-            cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[1]])
-            optimum_idx = np.argmin(cost)
-
-            is_interior_optimum = are_lon_acc_in_limits[optimum_idx] & \
-                                  are_lat_acc_in_limits[optimum_idx] & \
-                                  are_vel_in_limits[optimum_idx] & \
-                                  NumpyUtils.is_in_limits(T_vals[optimum_idx], BP_ACTION_T_LIMITS)
+        # if not is_interior_optimum:
+        #     cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[1]])
+        #     optimum_idx = np.argmin(cost)
+        #
+        #     is_interior_optimum = are_lon_acc_in_limits[optimum_idx] & \
+        #                           are_lat_acc_in_limits[optimum_idx] & \
+        #                           are_vel_in_limits[optimum_idx] & \
+        #                           NumpyUtils.is_in_limits(T_vals[optimum_idx], BP_ACTION_T_LIMITS)
 
         if not is_interior_optimum:
             raise NoValidTrajectoriesFound("No valid trajectories found. action: %s, state: %s, optimal T: %s" %

@@ -73,7 +73,7 @@ BP_ACTION_T_RES = 0.2
 
 # Behavioral planner action-specification weights for jerk vs time of action (rows are alternative weighting schemes)
 BP_JERK_TIME_WEIGHTS = np.array([
-    [1, 1],
+    [0.5, 1],
     [500, 1]
 ])
 
