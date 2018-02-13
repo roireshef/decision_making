@@ -15,7 +15,7 @@ from decision_making.src.planning.trajectory.trajectory_planner import Trajector
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianExtendedTrajectory, \
     CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, FrenetState2D, C_A, C_K, FrenetState1D, \
-    FrenetTrajectory1D, D5, Limits
+    FrenetTrajectory1D, D5, Limits, C_Y
 from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
@@ -203,7 +203,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
-        filtered_trajectory_costs, cost_components = \
+        filtered_trajectory_costs = \
             self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
                                global_time_sample, self._predictor, self.dt)
 
@@ -272,8 +272,7 @@ class WerlingPlanner(TrajectoryPlanner):
     @staticmethod
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,
                       goal_in_frenet: FrenetState2D, params: TrajectoryCostParams, global_time_samples: np.ndarray,
-                      predictor: Predictor, dt: float) -> \
-            [np.ndarray, np.ndarray]:
+                      predictor: Predictor, dt: float) -> np.ndarray:
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
@@ -285,8 +284,7 @@ class WerlingPlanner(TrajectoryPlanner):
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
         :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
         :param dt: time step of ctrajectories
-        :return: 1. numpy array (1D) of the total cost per trajectory (in ctrajectories and ftrajectories)
-                 2. cost_components tuple: obstacles_costs, dist_from_goal_costs, deviations_costs, jerk_costs
+        :return: numpy array (1D) of the total cost per trajectory (in ctrajectories and ftrajectories)
         """
         ''' deviation from goal cost '''
         last_fpoints = ftrajectories[:, -1, :]
@@ -297,15 +295,11 @@ class WerlingPlanner(TrajectoryPlanner):
         dist_from_goal_costs = Math.clipped_sigmoid(trajectory_end_goal_dist - params.dist_from_goal_cost.offset,
                                                     params.dist_from_goal_cost.w, params.dist_from_goal_cost.k)
 
-        ''' point-wise costs '''
-        obstacles_costs_pnt, deviations_costs_pnt, jerk_costs_pnt = \
-            WerlingPlanner._compute_pointwise_costs(ctrajectories, ftrajectories, state, params, global_time_samples,
-                                                    predictor, dt)
-        obstacles_costs = np.sum(obstacles_costs_pnt, axis=1)
-        deviations_costs = np.sum(deviations_costs_pnt, axis=1)
-        jerk_costs = np.sum(jerk_costs_pnt, axis=1)
-        return obstacles_costs + dist_from_goal_costs + deviations_costs + jerk_costs, \
-               np.array([obstacles_costs, dist_from_goal_costs, deviations_costs, jerk_costs])
+        ''' point-wise costs: obstacles, deviations, jerk '''
+        pointwise_costs = WerlingPlanner._compute_pointwise_costs(ctrajectories, ftrajectories, state, params,
+                                                                  global_time_samples, predictor, dt)
+
+        return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs
 
     @staticmethod
     def _compute_pointwise_costs(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D,
@@ -313,7 +307,8 @@ class WerlingPlanner(TrajectoryPlanner):
                                 global_time_samples: np.ndarray, predictor: Predictor, dt: float) -> \
             [np.ndarray, np.ndarray, np.ndarray]:
         """
-        Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
+        Compute obstacle, deviation and jerk costs for every trajectory point separately.
+        It creates a costs tensor of size N x M x 3, where N is trajectories number, M is trajectory length.
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
         :param ftrajectories: numpy tensor of trajectories in frenet-frame
         :param state: the state object (that includes obstacles, etc.)
@@ -321,8 +316,8 @@ class WerlingPlanner(TrajectoryPlanner):
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
         :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
         :param dt: time step of ctrajectories
-        :return: point-wise cost components: obstacles_costs, deviations_costs, jerk_costs. Each cost component has
-        the following dimensions: [trajectories_num, time_samples_num]
+        :return: point-wise cost components: obstacles_costs, deviations_costs, jerk_costs.
+        The tensor shape: N x M x 3, where N is trajectories number, M is trajectory length.
         """
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
         offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
@@ -332,9 +327,10 @@ class WerlingPlanner(TrajectoryPlanner):
              for obs in state.dynamic_objects
              if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
 
-        cost_per_obstacle = [obs.compute_cost_per_point(ctrajectories[:, :, 0:2]) for obs in close_obstacles]
-        obstacles_costs = params.obstacle_cost_x.w * np.sum(cost_per_obstacle, axis=0)
-        if type(obstacles_costs) is not np.ndarray:  # there are no obstacles
+        if len(close_obstacles) > 0:
+            cost_per_obstacle = [obs.compute_cost_per_point(ctrajectories[:, :, 0:(C_Y+1)]) for obs in close_obstacles]
+            obstacles_costs = params.obstacle_cost_x.w * np.sum(cost_per_obstacle, axis=0)
+        else:
             obstacles_costs = np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
 
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
@@ -354,11 +350,12 @@ class WerlingPlanner(TrajectoryPlanner):
         # first concatenate the current ego state to ctrajectories
         lon_jerks, lat_jerks = Jerk.compute_pointwise_jerk(ctrajectories, dt)
         jerk_costs = params.lon_jerk_cost * lon_jerks + params.lat_jerk_cost * lat_jerks
+        jerk_costs = np.c_[np.zeros(jerk_costs.shape[0]), jerk_costs]
 
-        return np.array([obstacles_costs, deviations_costs, jerk_costs])
+        return np.dstack((obstacles_costs, deviations_costs, jerk_costs))
 
-    def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints,
-                               fconstraints_tT: FrenetConstraints , dt) -> float:
+    def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints, fconstraints_tT: FrenetConstraints,
+                               dt) -> float:
         """
         Calculates the lower bound for the lateral time horizon based on the physical constraints.
         :param fconstraints_t0: a set of constraints over the initial state

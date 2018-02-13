@@ -59,7 +59,7 @@ SHOULDER_SIGMOID_OFFSET = 0.2               # offset param m of going out-of-sho
 DEVIATION_FROM_ROAD_COST = 1.0 * 1e3        # cost of deviation from road (sigmoid)
 ROAD_SIGMOID_K_PARAM = 20                   # sigmoid k (slope) param of going out-of-road
 
-DEVIATION_FROM_GOAL_LAT_FACTOR = 3          # ratio between lateral and longitudinal deviation costs from the goal
+DEVIATION_FROM_GOAL_LAT_LON_RATIO = 3       # ratio between lateral and longitudinal deviation costs from the goal
 DEVIATION_FROM_GOAL_COST = 2.5 * 1e2        # cost of longitudinal deviation from the goal
 GOAL_SIGMOID_K_PARAM = 0.5                  # sigmoid k (slope) param of going out-of-goal
 GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))

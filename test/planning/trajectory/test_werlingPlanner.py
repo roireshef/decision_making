@@ -10,7 +10,7 @@ from decision_making.src.global_constants import OBSTACLE_SIGMOID_K_PARAM, LATER
     ROAD_SIGMOID_K_PARAM, EGO_LENGTH, EGO_WIDTH, \
     SHOULDER_SIGMOID_OFFSET, SHOULDER_SIGMOID_K_PARAM, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LANE_SIGMOID_K_PARAM, \
-    DEVIATION_FROM_GOAL_LAT_FACTOR, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, TD_STEPS, \
+    DEVIATION_FROM_GOAL_LAT_LON_RATIO, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, TD_STEPS, \
     LON_JERK_COST, LAT_JERK_COST, LON_MARGIN_FROM_EGO
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
@@ -96,7 +96,7 @@ def test_werlingPlanner_toyScenario_noException():
 
     start_time = time.time()
 
-    samplable, ctrajectories, costs, _ = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
+    samplable, ctrajectories, costs = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
                                                       time_horizon=Ts, cost_params=cost_params)
 
     samplable.sample(np.arange(0, 1, 0.01) + ego.timestamp_in_sec)
@@ -325,9 +325,6 @@ def compute_pixel_costs(route_points: np.array, reference_route_latitude: float,
     height = y.shape[0]
     pixels = np.transpose([np.tile(x, y.shape[0]), np.repeat(y, x.shape[0])])
 
-    ego = state.ego_state
-    ego_cartesian_state = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
-
     # create cartesian pixels array (like pixels but with additional 4 zero columns)
     cartesian_pixels = np.c_[pixels, np.zeros((height * width, 4))]
     # duplicate cartesian_pixels for all time samples
@@ -343,11 +340,11 @@ def compute_pixel_costs(route_points: np.array, reference_route_latitude: float,
     frenet_pixels = np.repeat(frenet_pixels[:, np.newaxis, :], time_samples.shape[0], axis=1)
 
     # calculate cost components for all image pixels by building a static "trajectory" for every pixel
-    obs_costs, deviations_costs, _ = \
+    pointwise_costs = \
         planner._compute_pointwise_costs(cartesian_pixels, frenet_pixels, state, cost_params, time_samples,
-                                         planner.predictor, planner.dt, ego_cartesian_state)
+                                         planner.predictor, planner.dt)
 
-    pixel_costs = (obs_costs + deviations_costs).reshape(height, width, time_samples.shape[0])
+    pixel_costs = (pointwise_costs[:, :, 0] + pointwise_costs[:, :, 1]).reshape(height, width, time_samples.shape[0])
     return pixels2D, pixel_costs
 
 

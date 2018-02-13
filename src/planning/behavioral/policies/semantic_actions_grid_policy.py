@@ -9,7 +9,7 @@ from decision_making.src.global_constants import BP_SPECIFICATION_T_MIN, BP_SPEC
     SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL, \
     BEHAVIORAL_PLANNING_HORIZON, OBSTACLE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
-    DEVIATION_FROM_GOAL_COST, DEVIATION_FROM_GOAL_LAT_FACTOR, GOAL_SIGMOID_K_PARAM, \
+    DEVIATION_FROM_GOAL_COST, DEVIATION_FROM_GOAL_LAT_LON_RATIO, GOAL_SIGMOID_K_PARAM, \
     GOAL_SIGMOID_OFFSET, LATERAL_SAFETY_MARGIN_FROM_OBJECT, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS, SHOULDER_SIGMOID_OFFSET, LON_JERK_COST, LAT_JERK_COST, LON_MARGIN_FROM_EGO, LANE_SIGMOID_K_PARAM, \
     SHOULDER_SIGMOID_K_PARAM
@@ -301,7 +301,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                offset=objects_dilation_width)  # Very high (inf) cost
         dist_from_goal_cost = SigmoidFunctionParams(w=DEVIATION_FROM_GOAL_COST, k=GOAL_SIGMOID_K_PARAM,
                                                     offset=GOAL_SIGMOID_OFFSET)
-        dist_from_goal_lat_factor = DEVIATION_FROM_GOAL_LAT_FACTOR
+        dist_from_goal_lat_factor = DEVIATION_FROM_GOAL_LAT_LON_RATIO
 
         cost_params = TrajectoryCostParams(obstacle_cost_x=objects_cost_x,
                                            obstacle_cost_y=objects_cost_y,

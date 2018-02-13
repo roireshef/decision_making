@@ -93,7 +93,7 @@ class TrajectoryPlanningFacade(DmModule):
                 updated_state = state_aligned
 
             # plan a trajectory according to specification from upper DM level
-            samplable_trajectory, ctrajectories, costs, _ = self._strategy_handlers[params.strategy]. \
+            samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon, params.cost_params)
 
             # TODO: validate that sampling is consistent with controller!
