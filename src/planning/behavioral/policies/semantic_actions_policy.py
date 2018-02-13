@@ -73,6 +73,15 @@ class SemanticAction:
         self.target_obj = target_obj
         self.action_type = action_type
 
+    def __eq__(self, other):
+        # Check if the same action: compare target object id, and all other action parameters.
+        if self.target_obj is None or other.target_obj is None:
+            is_same_object = (self.target_obj is None and other.target_obj is None)
+        else:
+            is_same_object = (self.target_obj.obj_id == other.target_obj.obj_id)
+        return is_same_object and \
+               self.cell == other.cell and \
+               self.action_type.__dict__ == other.action_type.__dict__
 
 class SemanticActionSpec:
     """

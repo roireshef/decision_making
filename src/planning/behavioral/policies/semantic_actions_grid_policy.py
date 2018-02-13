@@ -1,3 +1,4 @@
+from logging import Logger
 from typing import List, Optional
 
 import numpy as np
@@ -30,12 +31,19 @@ from decision_making.src.planning.types import CURVE_X, CURVE_Y
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.types import Limits, LIMIT_MIN, LIMIT_MAX
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import State, ObjectSize
+from decision_making.src.state.state import State, ObjectSize, EgoState
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
 
 class SemanticActionsGridPolicy(SemanticActionsPolicy):
+
+    def __init__(self, logger: Logger, predictor: Predictor):
+        super().__init__(logger=logger, predictor=predictor)
+        self._last_ego_state : Optional[EgoState] = None
+        self._last_action : Optional[SemanticAction] = None
+        self._last_action_spec : Optional[SemanticActionSpec] = None
+
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
 
         # create road semantic grid from the raw State object
@@ -73,6 +81,11 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                                                      reference_route=reference_trajectory)
 
         visualization_message = BehavioralVisualizationMsg(reference_route=reference_trajectory)
+
+        # updating selected actions in memory
+        self._last_action = semantic_actions[selected_action_index]
+        self._last_action_spec = selected_action_spec
+        self._last_ego_state = state.ego_state
 
         self.logger.debug("Chosen behavioral semantic action is %s, %s",
                           semantic_actions[selected_action_index].__dict__, selected_action_spec.__dict__)
@@ -121,15 +134,22 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         :return: semantic action spec (None if no valid trajectories can be found)
         """
 
+        if self._last_action is not None and semantic_action == self._last_action:
+            continue_action = True
+        else:
+            continue_action = False
+
         try:
             if semantic_action.target_obj is None:
-                return SemanticActionsGridPolicy._specify_action_to_empty_cell(behavioral_state=behavioral_state,
-                                                                               semantic_action=semantic_action)
+                return self._specify_action_to_empty_cell(behavioral_state=behavioral_state,
+                                                                               semantic_action=semantic_action,
+                                                                               continue_action=continue_action)
             else:
-                return SemanticActionsGridPolicy._specify_action_towards_object(behavioral_state=behavioral_state,
+                return self._specify_action_towards_object(behavioral_state=behavioral_state,
                                                                                 semantic_action=semantic_action,
                                                                                 navigation_plan=nav_plan,
-                                                                                predictor=self._predictor)
+                                                                                predictor=self._predictor,
+                                                                                continue_action=continue_action)
         except NoValidTrajectoriesFound as e:
             return None
 
@@ -319,9 +339,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         return cost_params
 
     # TODO: rethink the design of this function
-    @staticmethod
-    def _specify_action_to_empty_cell(behavioral_state: SemanticActionsGridState,
-                                      semantic_action: SemanticAction) -> SemanticActionSpec:
+    def _specify_action_to_empty_cell(self, behavioral_state: SemanticActionsGridState,
+                                      semantic_action: SemanticAction, continue_action: bool) -> SemanticActionSpec:
         """
         This method's purpose is to specify the enumerated actions that the agent can take.
         Each semantic action is translated to a trajectory of the agent.
@@ -335,22 +354,44 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             road_id=behavioral_state.ego_state.road_localization.road_id)
         target_lane = behavioral_state.ego_state.road_localization.lane_num + semantic_action.cell[LAT_CELL]
         target_lane_latitude = road_lane_latitudes[target_lane]
-
-        # We set the desired longitudinal distance to be equal to the distance we
-        # would have travelled for the planning horizon in the average speed between current and target vel.
-        target_relative_s = SAU.compute_distance_by_velocity_diff(behavioral_state.ego_state.v_x)
         target_relative_d = target_lane_latitude - behavioral_state.ego_state.road_localization.intra_road_lat
 
-        return SemanticActionSpec(t=BEHAVIORAL_PLANNING_HORIZON, v=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED,
+        # we are not continuing an action with decreasing time horizon.
+        # Setting the time horizon to default value and computing the target s accordingly.
+        if not continue_action:
+            action_time_horizon = BEHAVIORAL_PLANNING_HORIZON
+            # We set the desired longitudinal distance to be equal to the distance we
+            # would have travelled for the planning horizon in the average speed between current and target vel.
+            target_relative_s = SAU.compute_distance_by_velocity_diff(current_velocity=behavioral_state.ego_state.v_x,
+                                                                      time=action_time_horizon)
+        else:
+            # computing the difference in time since last planning cycle
+            last_time_horizon = self._last_action_spec.t
+            time_since_last_planning = behavioral_state.ego_state.timestamp_in_sec - self._last_ego_state.timestamp_in_sec
+            residual_horizon = last_time_horizon - time_since_last_planning
+             # if (residual_horizon >= BP_SPECIFICATION_T_MIN) else BEHAVIORAL_PLANNING_HORIZON
+
+            if (residual_horizon >= BP_SPECIFICATION_T_MIN):
+                action_time_horizon = residual_horizon
+                map_api = MapService.get_instance()
+                last_road_localization = self._last_ego_state.road_localization
+                # computing the difference in longitude since last planning cycle
+                road_coord_diff = map_api.compute_road_localizations_diff(last_road_localization,
+                                                        behavioral_state.ego_state.road_localization,
+                                                        map_api.get_road_based_navigation_plan(last_road_localization.road_id))
+            target_relative_s = self._last_action_spec.s_rel - road_coord_diff.rel_lon
+
+
+
+        return SemanticActionSpec(t=action_time_horizon, v=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED,
                                   s_rel=target_relative_s, d_rel=target_relative_d)
 
-    @staticmethod
     @raises(NoValidTrajectoriesFound)
     # TODO: modify this function to work with DynamicObject's specific NavigationPlan (and predictor?)
-    def _specify_action_towards_object(behavioral_state: SemanticActionsGridState,
+    def _specify_action_towards_object(self, behavioral_state: SemanticActionsGridState,
                                        semantic_action: SemanticAction,
                                        navigation_plan: NavigationPlanMsg,
-                                       predictor: Predictor) -> SemanticActionSpec:
+                                       predictor: Predictor, continue_action: bool) -> SemanticActionSpec:
         """
         given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec
         :param behavioral_state: semantic actions grid behavioral state
