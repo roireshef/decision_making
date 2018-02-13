@@ -45,6 +45,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         self._last_ego_state : Optional[EgoState] = None
         self._last_action : Optional[SemanticAction] = None
         self._last_action_spec : Optional[SemanticActionSpec] = None
+        self._last_poly_coefs_s : Optional[np.ndarray] = None
 
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
 
@@ -147,7 +148,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                                            continue_action=continue_action)
         else:
             return self._specify_action_towards_object(behavioral_state=behavioral_state,
-                                                                            semantic_action=semantic_action,
+                                                       semantic_action=semantic_action,
+                                                       continue_action=continue_action)
 
 
     def _eval_actions(self, behavioral_state: SemanticActionsGridState,
@@ -335,35 +337,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         return cost_params
 
-    # TODO: rethink the design of this function
     def _specify_action_to_empty_cell(self, behavioral_state: SemanticActionsGridState,
                                       semantic_action: SemanticAction, continue_action: bool) -> SemanticActionSpec:
-        """
-        This method's purpose is to specify the enumerated actions that the agent can take.
-        Each semantic action is translated to a trajectory of the agent.
-        The trajectory specification is created towards a target location/object in given cell,
-         considering ego speed, location.
-        :param behavioral_state:
-        :param semantic_action:
-        :return: semantic action specification
-        """
-        road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(
-            road_id=behavioral_state.ego_state.road_localization.road_id)
-        target_lane = behavioral_state.ego_state.road_localization.lane_num + semantic_action.cell[LAT_CELL]
-        target_lane_latitude = road_lane_latitudes[target_lane]
-        target_relative_d = target_lane_latitude - behavioral_state.ego_state.road_localization.intra_road_lat
-
-        # We set the desired longitudinal distance to be equal to the distance we
-        # would have travelled for the planning horizon in the average speed between current and target vel.
-        target_relative_s = SAU.compute_distance_by_velocity_diff(behavioral_state.ego_state.v_x)
-        target_relative_d = target_lane_latitude - behavioral_state.ego_state.road_localization.intra_road_lat
-
-        return SemanticActionSpec(t=BEHAVIORAL_PLANNING_HORIZON, v=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED,
-                                  s_rel=target_relative_s, d_rel=target_relative_d)
-
-    @staticmethod
-    def _specify_action_to_empty_cell(behavioral_state: SemanticActionsGridState,
-                                      semantic_action: SemanticAction) -> SemanticActionSpec:
         """
         This method's purpose is to specify the enumerated actions that the agent can take.
         Each semantic action is translated to a trajectory of the agent.
@@ -382,6 +357,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         desired_lane = behavioral_state.ego_state.road_localization.lane_num + semantic_action.cell[LAT_CELL]
         desired_center_lane_latitude = road_lane_latitudes[desired_lane]
 
+        # TODO: add "BP IF" (?)
         ego_init_fstate = road_frenet.cstate_to_fstate(np.array([
             behavioral_state.ego_state.x, behavioral_state.ego_state.y,
             behavioral_state.ego_state.road_localization.intra_road_yaw,
@@ -432,11 +408,11 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         jerk_T = np.c_[jerk, T_vals]
 
         cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[0]])
-        optimum_idx = np.argmin(cost)
+        optimum_time_idx = np.argmin(cost)
 
         # are_vel_in_limits[optimum_idx] & \
-        is_interior_optimum = are_lon_acc_in_limits[optimum_idx] & are_lat_acc_in_limits[optimum_idx] & \
-            NumpyUtils.is_in_limits(T_vals[optimum_idx], BP_ACTION_T_LIMITS)
+        is_interior_optimum = are_lon_acc_in_limits[optimum_time_idx] & are_lat_acc_in_limits[optimum_time_idx] & \
+            NumpyUtils.is_in_limits(T_vals[optimum_time_idx], BP_ACTION_T_LIMITS)
 
         # if not is_interior_optimum:
         #     cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[1]])
@@ -448,14 +424,34 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         #                           NumpyUtils.is_in_limits(T_vals[optimum_idx], BP_ACTION_T_LIMITS)
 
         if not is_interior_optimum:
-            raise NoValidTrajectoriesFound("No valid trajectories found. action: %s, state: %s, optimal T: %s" %
-                                           (semantic_action.__dict__, behavioral_state.__dict__, T_vals[optimum_idx]))
+            if continue_action:
+                # Continue same action consistently by decreasing time horizon and updating goal accordingly,
+                # except when time horizon is too small - then we need to reset to the default long time horizon
+                last_time_horizon = self._last_action_spec.t
+                time_since_last_planning = behavioral_state.ego_state.timestamp_in_sec - self._last_ego_state.timestamp_in_sec
+                residual_horizon = last_time_horizon - time_since_last_planning
+                if residual_horizon >= BP_ACTION_T_LIMITS[LIMIT_MIN]:
+                    # Set time horizon to: residual_horizon
+                    optimum_time_idx = np.argmin(np.abs(residual_horizon - T_vals))
+                else:
+                    # Set time horizon to: BEHAVIORAL_PLANNING_HORIZON
+                    optimum_time_idx = np.argmin(np.abs(BEHAVIORAL_PLANNING_HORIZON - T_vals))
+            else:
+                if not NumpyUtils.is_in_limits(T_vals[optimum_time_idx], BP_ACTION_T_LIMITS):
+                    # The small difference between current speed and desired speed causes the time horizon to be short
+                    # due to the fact that we achieve it very quickly. Therefore:
+                    # Set time horizon to: BEHAVIORAL_PLANNING_HORIZON
+                    optimum_time_idx = np.argmin(np.abs(BEHAVIORAL_PLANNING_HORIZON - T_vals))
+                else:
+                    # We hit the constraints limits for some other reason
+                    raise NoValidTrajectoriesFound("No valid trajectories found. action: %s, state: %s, optimal T: %s" %
+                                                   (semantic_action.__dict__, behavioral_state.__dict__, T_vals[optimum_time_idx]))
 
-        return SemanticActionSpec(t=T_vals[optimum_idx], v=constraints_s[optimum_idx, 3],
-                                  s_rel=target_relative_s[optimum_idx, 0] - ego_init_fstate[FS_SX],
-                                  d_rel=constraints_d[optimum_idx, 3] - ego_init_fstate[FS_DX])
+        return SemanticActionSpec(t=T_vals[optimum_time_idx], v=constraints_s[optimum_time_idx, 3],
+                                  s_rel=target_relative_s[optimum_time_idx, 0] - ego_init_fstate[FS_SX],
+                                  d_rel=constraints_d[optimum_time_idx, 3] - ego_init_fstate[FS_DX],
+                                  poly_coefs_s=poly_coefs_s)
 
-    @staticmethod
     @raises(NoValidTrajectoriesFound)
     # TODO: modify this function to work with DynamicObject's specific NavigationPlan (and predictor?)
     def _specify_action_towards_object(self, behavioral_state: SemanticActionsGridState,
@@ -565,7 +561,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         return SemanticActionSpec(t=T_vals[optimum_idx], v=obj_svT[optimum_idx],
                                   s_rel=constraints_s[optimum_idx, 3] - ego_init_fstate[FS_SX],
-                                  d_rel=constraints_d[optimum_idx, 3] - ego_init_fstate[FS_DX])
+                                  d_rel=constraints_d[optimum_idx, 3] - ego_init_fstate[FS_DX],
+                                  poly_coefs_s=poly_coefs_s)
 
     @staticmethod
     def _get_action_ind(semantic_actions: List[SemanticAction], cell: SemanticGridCell):
