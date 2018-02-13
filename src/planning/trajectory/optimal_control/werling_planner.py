@@ -320,6 +320,27 @@ class WerlingPlanner(TrajectoryPlanner):
         The tensor shape: N x M x 3, where N is trajectories number, M is trajectory length.
         """
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
+        obstacles_costs = WerlingPlanner.compute_obstacle_costs(ctrajectories, state, params, global_time_samples,
+                                                                predictor)
+        ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
+        deviations_costs = WerlingPlanner.compute_deviation_costs(ftrajectories, params)
+
+        ''' JERK COST '''
+        jerk_costs = WerlingPlanner.compute_jerk_costs(ctrajectories, params, dt)
+
+        return np.dstack((obstacles_costs, deviations_costs, jerk_costs))
+
+    @staticmethod
+    def compute_obstacle_costs(ctrajectories: CartesianExtendedTrajectories, state: State, params: TrajectoryCostParams,
+                               global_time_samples: np.ndarray, predictor: Predictor):
+        """
+        :param ctrajectories: numpy tensor of trajectories in cartesian-frame
+        :param state: the state object (that includes obstacles, etc.)
+        :param params: parameters for the cost function (from behavioral layer)
+        :param global_time_samples: [sec] time samples for prediction (global, not relative)
+        :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
+        :return: MxN matrix of obstacle costs per point, where N is trajectories number, M is trajectory length
+        """
         offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
         close_obstacles = \
             [SigmoidDynamicBoxObstacle.from_object(obj=obs, k=params.obstacle_cost_x.k, offset=offset,
@@ -332,8 +353,16 @@ class WerlingPlanner(TrajectoryPlanner):
             obstacles_costs = params.obstacle_cost_x.w * np.sum(cost_per_obstacle, axis=0)
         else:
             obstacles_costs = np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
+        return obstacles_costs
 
-        ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
+    @staticmethod
+    def compute_deviation_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams):
+        """
+        Compute point-wise deviation costs from lane, shoulders and road together.
+        :param ftrajectories: numpy tensor of trajectories in frenet-frame
+        :param params: parameters for the cost function (from behavioral layer)
+        :return: MxN matrix of deviation costs per point, where N is trajectories number, M is trajectory length.
+        """
         deviations_costs = np.zeros((ftrajectories.shape[0], ftrajectories.shape[1]))
 
         # add to deviations_costs the costs of deviations from the left [lane, shoulder, road]
@@ -345,14 +374,21 @@ class WerlingPlanner(TrajectoryPlanner):
         for exp in [params.right_lane_cost, params.right_shoulder_cost, params.right_road_cost]:
             right_offsets = np.negative(ftrajectories[:, :, FS_DX]) - exp.offset
             deviations_costs += Math.clipped_sigmoid(right_offsets, exp.w, exp.k)
+        return deviations_costs
 
-        ''' JERK COST '''
-        # first concatenate the current ego state to ctrajectories
+    @staticmethod
+    def compute_jerk_costs(ctrajectories: CartesianExtendedTrajectories, params: TrajectoryCostParams,
+                                     dt: float) -> np.array:
+        """
+        Compute point-wise jerk costs as weighted sum of longitudinal and lateral jerks
+        :param ctrajectories: numpy tensor of trajectories in cartesian-frame
+        :param params: parameters for the cost function (from behavioral layer)
+        :param dt: time step
+        :return: MxN matrix of jerk costs per point, where N is trajectories number, M is trajectory length.
+        """
         lon_jerks, lat_jerks = Jerk.compute_pointwise_jerk(ctrajectories, dt)
         jerk_costs = params.lon_jerk_cost * lon_jerks + params.lat_jerk_cost * lat_jerks
-        jerk_costs = np.c_[np.zeros(jerk_costs.shape[0]), jerk_costs]
-
-        return np.dstack((obstacles_costs, deviations_costs, jerk_costs))
+        return np.c_[np.zeros(jerk_costs.shape[0]), jerk_costs]
 
     def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints, fconstraints_tT: FrenetConstraints,
                                dt) -> float:
