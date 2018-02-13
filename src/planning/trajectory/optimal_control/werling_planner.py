@@ -279,7 +279,8 @@ class WerlingPlanner(TrajectoryPlanner):
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
         :param ftrajectories: numpy tensor of trajectories in frenet-frame
         :param state: the state object (that includes obstacles, etc.)
-        :param goal_in_frenet: target state of ego
+        :param goal_in_frenet: A 1D numpy array of the desired ego-state to plan towards, represented in current
+                global-coordinate-frame (see EGO_* in planning.utils.types.py for the fields)
         :param params: parameters for the cost function (from behavioral layer)
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
         :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
@@ -288,14 +289,13 @@ class WerlingPlanner(TrajectoryPlanner):
                  2. cost_components tuple: obstacles_costs, dist_from_goal_costs, deviations_costs, jerk_costs
         """
         ''' deviation from goal cost '''
-        # make theta_diff to be in [-pi, pi]
         last_fpoints = ftrajectories[:, -1, :]
-        goal_vect = np.array([last_fpoints[:, FS_SX] - goal_in_frenet[FS_SX],
-                              last_fpoints[:, FS_DX] - goal_in_frenet[FS_DX]])
-        goal_dist = np.sqrt(goal_vect[0]**2 + (params.dist_from_goal_lat_factor * goal_vect[1])**2)
-        dist_from_goal_costs = Math.clipped_sigmoid(goal_dist - params.dist_from_goal_cost.offset,
-                                                            params.dist_from_goal_cost.w,
-                                                            params.dist_from_goal_cost.k)
+        trajectory_end_goal_diff = np.array([last_fpoints[:, FS_SX] - goal_in_frenet[FS_SX],
+                                             last_fpoints[:, FS_DX] - goal_in_frenet[FS_DX]])
+        trajectory_end_goal_dist = np.linalg.norm(np.array([trajectory_end_goal_diff[0],
+                                                  params.dist_from_goal_lat_factor * trajectory_end_goal_diff[1]]))
+        dist_from_goal_costs = Math.clipped_sigmoid(trajectory_end_goal_dist - params.dist_from_goal_cost.offset,
+                                                    params.dist_from_goal_cost.w, params.dist_from_goal_cost.k)
 
         ''' point-wise costs '''
         obstacles_costs_pnt, deviations_costs_pnt, jerk_costs_pnt = \
