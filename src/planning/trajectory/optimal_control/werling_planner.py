@@ -424,7 +424,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # first concatenate the current ego state to ctrajectories
         duplicated_ego_state = np.array([np.array([ext_ego_state]), ] * ctrajectories.shape[0])
         full_ctrajectories = np.concatenate((duplicated_ego_state, ctrajectories), axis=1)
-        lon_jerks, lat_jerks = Jerk.compute_pointwise_jerk(full_ctrajectories, dt)
+        lon_jerks, lat_jerks = Jerk.compute_instantaneous_jerk(full_ctrajectories, dt)
         jerk_costs = params.lon_jerk_cost * lon_jerks + params.lat_jerk_cost * lat_jerks
 
         return np.array([obstacles_costs, deviations_costs, jerk_costs])
