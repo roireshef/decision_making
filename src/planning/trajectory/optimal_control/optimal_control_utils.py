@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Union
 
 import numpy as np
 
@@ -19,6 +20,15 @@ class Poly1D:
         pass
 
     @staticmethod
+    @abstractmethod
+    def cumulative_jerk(poly_coefs: np.ndarray, x: Union[float, np.ndarray]):
+        pass
+
+    @classmethod
+    def jerk_between(cls, poly_coefs: np.ndarray, a: Union[float, np.ndarray], b: Union[float, np.ndarray]):
+        return cls.cumulative_jerk(poly_coefs, b) - cls.cumulative_jerk(poly_coefs, a)
+
+    @staticmethod
     def solve(A_inv: np.ndarray, constraints: np.ndarray) -> np.ndarray:
         """
         Given a 1D polynom x(t) with self.num_coefs() differential constraints on t0 (initial time) and tT (terminal time),
@@ -34,6 +44,11 @@ class Poly1D:
         :return: x(t) coefficients
         """
         poly_coefs = np.fliplr(np.dot(constraints, A_inv.transpose()))
+        return poly_coefs
+
+    @staticmethod
+    def zip_solve(A_inv: np.ndarray, constraints: np.ndarray) -> np.ndarray:
+        poly_coefs = np.fliplr(np.einsum('ijk,ik->ij', A_inv, constraints))
         return poly_coefs
 
     @staticmethod
@@ -152,6 +167,14 @@ class QuarticPoly1D(Poly1D):
         return 5
 
     @staticmethod
+    def cumulative_jerk(poly_coefs: np.ndarray, x: Union[float, np.ndarray]):
+        a4, a3, a2, a1, a0 = np.split(poly_coefs, 5, axis=-1)
+        a4, a3, a2, a1, a0 = a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
+        return 36 * (a3 ** 2) * x + \
+               144 * a3 * a4 * x ** 2 + \
+               192 * a4 ** 2 * x ** 3
+
+    @staticmethod
     def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
         """
         Given the quartic polynomial setting, this function returns A as a tensor with the first dimension iterating
@@ -176,6 +199,16 @@ class QuinticPoly1D(Poly1D):
     polynomial elements at time 0 (first 3 rows) and T (last 3 rows) - the 3 rows in each block correspond to
     p, p_dot, p_dotdot.
     """
+
+    @staticmethod
+    def cumulative_jerk(poly_coefs: np.ndarray, x: Union[float, np.ndarray]):
+        a5, a4, a3, a2, a1, a0 = np.split(poly_coefs, 6, axis=-1)
+        a5, a4, a3 ,a2, a1, a0 = a5.flatten(), a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
+        return 36 * a3 ** 2 * x + \
+               144 * a3 * a4 * x ** 2 + \
+               (240 * a3 * a5 + 192 * a4 ** 2) * x ** 3 + \
+               720 * a4 * a5 * x ** 4 + \
+               720 * a5 ** 2 * x ** 5
 
     @staticmethod
     def num_coefs():
