@@ -52,7 +52,7 @@ class TrajectoryPlanner(metaclass=ABCMeta):
     @raises(NoValidTrajectoriesFound)
     def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, time_horizon: float,
              cost_params: TrajectoryCostParams) -> \
-            Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray, np.ndarray]:
+            Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
         Plans a trajectory according to the specifications in the arguments
         :param time_horizon: defines the planning horizon in [sec] for reaching the goal. Enables the target
@@ -64,6 +64,6 @@ class TrajectoryPlanner(metaclass=ABCMeta):
         global-coordinate-frame (see EGO_* in planning.utils.types.py for the fields)
         :param cost_params: Data object with parameters that specify how to build the planning's cost function
         :return: a tuple of: (samplable represantation of the chosen trajectory, tensor of trajectory alternatives,
-         trajectories costs correspond to previous output, tuple of cost components)
+         trajectories costs correspond to previous output)
         """
         pass

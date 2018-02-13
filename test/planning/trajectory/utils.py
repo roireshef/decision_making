@@ -29,7 +29,16 @@ class RouteFixture:
         ), axis=0)
 
     @staticmethod
-    def get_sigmoid_route(lng: int = 200, k: float = 10, step: float = 1, lat: int = 100, offset: float = -50.0):
+    def create_sigmoid_route(lng: int = 200, k: float = 10, step: float = 1, lat: int = 100, offset: float = -50.0):
+        """
+        create route of sigmoid shape
+        :param lng: length
+        :param k: k of the sigmoid
+        :param step: step between points
+        :param lat: initial latitude
+        :param offset: ofset of the sigmoid
+        :return: None
+        """
         def stretch(v):
             min = np.min(v[:, 1])
             max = np.max(v[:, 1])
@@ -42,7 +51,16 @@ class RouteFixture:
         stretch(np.array([[i, 1 / (1 + np.exp(-k * (i/lng - 0.5)))] for i in np.arange(0, lng, step)]))
 
     @staticmethod
-    def get_round_route(lng: int = 100, lat: float = 0, ext: float = 10, step: float = 1, curvature: float = 0.01):
+    def create_round_route(lng: int = 100, lat: float = 0, ext: float = 10, step: float = 1, curvature: float = 0.01):
+        """
+        create route of circle shape segment
+        :param lng: length
+        :param lat: initial latitude
+        :param ext: extension in both sides
+        :param step: step between points
+        :param curvature: 1/radius
+        :return: None
+        """
         ang = (lng - 2*ext) * curvature
         r = 1/curvature
         round_part = np.array([[r*np.sin(a), lat + r - r*np.cos(a)] for a in np.arange(0, ang, step*curvature)])
@@ -54,7 +72,7 @@ class RouteFixture:
         ), axis=0)
 
     @staticmethod
-    def get_cubic_route(lng: float = 100, lat: float = 0, ext: float = 10, step: float = 1, curvature: float = 0.1):
+    def create_cubic_route(lng: float = 100, lat: float = 0, ext: float = 10, step: float = 1, curvature: float = 0.1):
         return np.array([[x, lat + curvature*lng*((x/lng)**3)] for x in np.arange(-ext, lng+ext, step)])
 
 class PlottableSigmoidBoxObstacle(SigmoidBoxObstacle):

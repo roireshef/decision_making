@@ -17,7 +17,7 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_grid_poli
 from decision_making.src.planning.trajectory.cost_function import Jerk
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, CartesianPoint2D, C_Y, \
-    CartesianExtendedTrajectory, C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, CartesianExtendedState
+    CartesianExtendedTrajectory, C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, CartesianExtendedState, CartesianTrajectory
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner, \
     SamplableWerlingTrajectory
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
@@ -202,7 +202,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
 
         # run Werling planner
         planner = WerlingPlanner(logger, predictor)
-        _, ctrajectories, costs, cost_components = planner.plan(state=state, reference_route=ext_route_points[:, :2],
+        _, ctrajectories, costs = planner.plan(state=state, reference_route=ext_route_points[:, :2],
                                                                 goal=goal, time_horizon=T, cost_params=cost_params)
 
         time_samples = np.arange(0, Math.round_to_step(T, planner.dt) + np.finfo(np.float16).eps, planner.dt) + \
@@ -240,9 +240,9 @@ def create_route_for_test_werlingPlanner(road_id: int, num_lanes: int, lane_widt
     """
     logger = AV_Logger.get_logger('test_werlingPlanner_twoStaticObjScenario_withCostViz')
     step = 0.2
-    route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step, curvature=curvature)
-    ext_route_xy = RouteFixture.get_cubic_route(lng=lng, lat=reference_route_latitude, ext=ext, step=step,
-                                                curvature=curvature)
+    route_xy = RouteFixture.create_cubic_route(lng=lng, lat=reference_route_latitude, ext=0, step=step, curvature=curvature)
+    ext_route_xy = RouteFixture.create_cubic_route(lng=lng, lat=reference_route_latitude, ext=ext, step=step,
+                                                   curvature=curvature)
 
     test_map_model = TestMapModelUtils.create_road_map_from_coordinates(points_of_roads=[ext_route_xy],
                                                                         road_id=road_id, road_name='y=x^3',
@@ -460,3 +460,10 @@ def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
         np.array([trajectory.timestamp + (trajectory.T_s + trajectory.T_d) / 2]))[0])
 
     np.testing.assert_allclose(fstate_after_T_d[FS_DX], fstate_terminal[FS_DX])
+
+def test_computeJerk_simpleTrajectory():
+    p1 :CartesianExtendedState = np.array([0, 0, 0, 1, 0, 0.1])
+    p2 :CartesianExtendedState = np.array([0, 0, 0, 2, 1, 0.1])
+    ctrajectory: CartesianTrajectory = np.array([p1, p2])
+    lon_jerks, lat_jerks = Jerk.compute_pointwise_jerk(np.array([ctrajectory]), 0.1)
+    assert np.isclose(lon_jerks[0][0], 10) and np.isclose(lat_jerks[0][0], 0.9)

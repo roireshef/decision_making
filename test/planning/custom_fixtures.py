@@ -3,7 +3,7 @@ import numpy as np
 
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
-    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS
+    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST, LAT_JERK_COST
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
@@ -172,7 +172,8 @@ def trajectory_params():
     mock_sigmoid = SigmoidFunctionParams(1.0, 2.0, 3.0)
     trajectory_cost_params = TrajectoryCostParams(mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
                                                   mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
-                                                  mock_sigmoid, 3.0, 0.1, 0.1, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)
+                                                  mock_sigmoid, 3.0, LON_JERK_COST, LAT_JERK_COST,
+                                                  VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)
     yield TrajectoryParams(reference_route=ref_route, target_state=target_state,
                            cost_params=trajectory_cost_params, time=16,
                            strategy=TrajectoryPlanningStrategy.HIGHWAY)
