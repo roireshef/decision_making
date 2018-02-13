@@ -10,7 +10,7 @@ from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STE
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
-from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import OptimalControlUtils as OC
+from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, Poly1D
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianExtendedTrajectory, \
@@ -51,18 +51,18 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         assert max(relative_time_points) <= self.T_s
 
         # assign values from <time_points> in s-axis polynomial
-        fstates_s = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), relative_time_points)[0]
+        fstates_s = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), relative_time_points)[0]
 
         fstates_d = np.empty(shape=np.append(time_points.shape, 3))
 
         is_within_horizon_d = relative_time_points <= self.T_d
 
-        fstates_d[is_within_horizon_d] = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]),
+        fstates_d[is_within_horizon_d] = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]),
                                                                                    relative_time_points[is_within_horizon_d])
 
         # Expand lateral solution to the size of the longitudinal solution with its final positions replicated
         # NOTE: we assume that velocity and accelerations = 0 !!
-        end_of_horizon_state_d = OC.QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]),
+        end_of_horizon_state_d = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]),
                                                                            np.array([self.T_d]))[0]
         extrapolation_state_d = WerlingPlanner.repeat_1d_state(
             fstate=end_of_horizon_state_d,
@@ -263,7 +263,7 @@ class WerlingPlanner(TrajectoryPlanner):
             np.greater_equal(ftrajectories[:, :, FS_SV], 0.0), axis=1)
 
         frenet_lateral_movement_is_feasible = \
-            OC.QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_d_vals, cost_params.lat_acceleration_limits)
+            QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_d_vals, cost_params.lat_acceleration_limits)
 
         return np.argwhere(np.logical_and(conforms, frenet_lateral_movement_is_feasible)).flatten()
 
@@ -354,24 +354,24 @@ class WerlingPlanner(TrajectoryPlanner):
         return T_d_vals
 
     @staticmethod
-    def _get_werling_poly(constraints: np.ndarray, T: float) -> np.ndarray:
+    def _solve_1d_poly(constraints: np.ndarray, T: float, poly_impl: Poly1D) -> np.ndarray:
         """
         Solves the two-point boundary value problem, given a set of constraints over the initial and terminal states.
         :param constraints: 3D numpy array of a set of constraints over the initial and terminal states
         :param T: longitudinal/lateral trajectory duration (sec.), relative to ego. T has to be a multiple of WerlingPlanner.dt
+        :param poly_impl: OptimalControlUtils 1d polynomial implementation class
         :return: a poly-coefficients-matrix of rows in the form [c0_s, c1_s, ... c5_s, c0_d, ..., c5_d]
         """
-        A = OC.QuinticPoly1D.time_constraints_matrix(T)
+        A = poly_impl.time_constraints_matrix(T)
         A_inv = np.linalg.inv(A)
-        poly = OC.QuinticPoly1D.solve(A_inv, constraints)
-
-        return poly
+        poly_coefs = poly_impl.solve(A_inv, constraints)
+        return poly_coefs
 
     @staticmethod
     def repeat_1d_state(fstate: FrenetState1D, repeats: int,
                         override_values: FrenetState1D, override_mask: FrenetState1D):
         """please see documentation in used method"""
-        return WerlingPlanner.repeat_1d_states(fstate[np.newaxis,:], repeats, override_values, override_mask)[0]
+        return WerlingPlanner.repeat_1d_states(fstate[np.newaxis, :], repeats, override_values, override_mask)[0]
 
     @staticmethod
     def repeat_1d_states(fstates: FrenetTrajectory1D, repeats: int,
@@ -416,10 +416,10 @@ class WerlingPlanner(TrajectoryPlanner):
         constraints_d = NumpyUtils.cartesian_product_matrix_rows(fconst_0.get_grid_d(), fconst_t.get_grid_d())
 
         # solve for dimension s
-        poly_s = WerlingPlanner._get_werling_poly(constraints_s, T_s)
+        poly_s = WerlingPlanner._solve_1d_poly(constraints_s, T_s, QuinticPoly1D)
 
         # generate trajectories for the polynomials of dimension s
-        solutions_s = OC.QuinticPoly1D.polyval_with_derivatives(poly_s, time_samples_s)
+        solutions_s = QuinticPoly1D.polyval_with_derivatives(poly_s, time_samples_s)
 
         # store a vector of time-horizons for solutions of dimension s
         horizons_s = np.repeat([T_s], len(constraints_s))
@@ -432,10 +432,10 @@ class WerlingPlanner(TrajectoryPlanner):
             time_samples_d = np.arange(dt, T_d + np.finfo(np.float16).eps, dt)
 
             # solve for dimension d (with time-horizon T_d)
-            partial_poly_d = WerlingPlanner._get_werling_poly(constraints_d, T_d)
+            partial_poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T_d, QuinticPoly1D)
 
             # generate the trajectories for the polynomials of dimension d - within the horizon T_d
-            partial_solutions_d = OC.QuinticPoly1D.polyval_with_derivatives(partial_poly_d, time_samples_d)
+            partial_solutions_d = QuinticPoly1D.polyval_with_derivatives(partial_poly_d, time_samples_d)
 
             # Expand lateral solutions (dimension d) to the size of the longitudinal solutions (dimension s)
             # with its final positions replicated. NOTE: we assume that final (dim d) velocities and accelerations = 0 !
