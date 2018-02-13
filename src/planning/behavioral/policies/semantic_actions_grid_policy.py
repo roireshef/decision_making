@@ -24,11 +24,12 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_policy im
     SemanticAction, SemanticActionSpec, SemanticActionType, \
     LAT_CELL, LON_CELL, SemanticGridCell
 from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils as SAU
-from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D
+from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, FS_SA, FS_SV, FS_SX, FS_DX, FS_DV, FS_DA
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.types import Limits, LIMIT_MIN, LIMIT_MAX
+from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize
@@ -344,6 +345,99 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         return SemanticActionSpec(t=BEHAVIORAL_PLANNING_HORIZON, v=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED,
                                   s_rel=target_relative_s, d_rel=target_relative_d)
+
+    @staticmethod
+    def _specify_action_to_empty_cell(behavioral_state: SemanticActionsGridState,
+                                      semantic_action: SemanticAction) -> SemanticActionSpec:
+        """
+        This method's purpose is to specify the enumerated actions that the agent can take.
+        Each semantic action is translated to a trajectory of the agent.
+        The trajectory specification is created towards a target location/object in given cell,
+         considering ego speed, location.
+        :param behavioral_state:
+        :param semantic_action:
+        :return: semantic action specification
+        """
+        # TODO: in the future - concatenate all roads within the relevant NavigationPlan
+        road = MapService.get_instance().get_road(behavioral_state.ego_state.road_localization.road_id)
+        road_frenet = FrenetSerret2DFrame(road._points)
+
+        desired_lane = behavioral_state.ego_state.road_localization.lane_num + semantic_action.cell[LAT_CELL]
+        desired_center_lane_latitude = road.lane_width * (desired_lane + 0.5)  # TODO: move this logic inside RoadDetails!
+
+        ego_init_fstate = road_frenet.cstate_to_fstate(np.array([
+            behavioral_state.ego_state.x, behavioral_state.ego_state.y,
+            behavioral_state.ego_state.road_localization.intra_road_yaw,
+            behavioral_state.ego_state.v_x,
+            behavioral_state.ego_state.acceleration_lon,
+            behavioral_state.ego_state.curvature
+        ]))
+
+        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX],
+                           BP_ACTION_T_RES)
+
+        A_s = QuarticPoly1D.time_constraints_tensor(T_vals)
+        A_inv_s = np.linalg.inv(A_s)
+
+        # Quartic polynomial constraints (no constraint on sT)
+        constraints_s = np.c_[
+            ego_init_fstate[FS_SX],
+            ego_init_fstate[FS_SV],
+            ego_init_fstate[FS_SA],
+            BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED,  # desired velocity # TODO: change to the road's target speed
+            0.0  # zero acceleration at the end of action
+        ]
+
+        A_d = QuinticPoly1D.time_constraints_tensor(T_vals)
+        A_inv_d = np.linalg.inv(A_d)
+
+        # Quintic polynomial constraints
+        constraints_d = np.c_[
+            ego_init_fstate[FS_DX],
+            ego_init_fstate[FS_DV],
+            ego_init_fstate[FS_DA],
+            desired_center_lane_latitude,
+            0.0,
+            0.0
+        ]
+
+        poly_coefs_s = QuarticPoly1D.solve(A_inv_s, constraints_s)
+        poly_coefs_d = QuinticPoly1D.solve(A_inv_d, constraints_d)
+
+        target_relative_s = Math.polyval2d(poly_coefs_s, T_vals)
+
+        # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
+        are_lon_acc_in_limits = QuarticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_vals, LON_ACC_LIMITS)
+        are_vel_in_limits = QuarticPoly1D.are_velocities_in_limits(poly_coefs_s, T_vals, VELOCITY_LIMITS)
+        are_lat_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_vals, LAT_ACC_LIMITS)
+
+        jerk = QuarticPoly1D.cumulative_jerk(poly_coefs_s, T_vals)
+        jerk_T = np.c_[jerk, T_vals]
+
+        cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[0]])
+        optimum_idx = np.argmin(cost)
+
+        is_interior_optimum = are_lon_acc_in_limits[optimum_idx] & \
+                              are_lat_acc_in_limits[optimum_idx] & \
+                              are_vel_in_limits[optimum_idx] & \
+                              NumpyUtils.is_in_limits(T_vals[optimum_idx], BP_ACTION_T_LIMITS)
+
+        if not is_interior_optimum:
+            cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[1]])
+            optimum_idx = np.argmin(cost)
+
+            is_interior_optimum = are_lon_acc_in_limits[optimum_idx] & \
+                                  are_lat_acc_in_limits[optimum_idx] & \
+                                  are_vel_in_limits[optimum_idx] & \
+                                  NumpyUtils.is_in_limits(T_vals[optimum_idx], BP_ACTION_T_LIMITS)
+
+        if not is_interior_optimum:
+            raise NoValidTrajectoriesFound("No valid trajectories found. action: %s, state: %s, optimal T: %s" %
+                                           (semantic_action.__dict__, behavioral_state.__dict__, T_vals[optimum_idx]))
+
+        return SemanticActionSpec(t=T_vals[optimum_idx], v=constraints_s[optimum_idx, 3],
+                                  s_rel=target_relative_s[optimum_idx] - ego_init_fstate[FS_SX],
+                                  d_rel=constraints_d[optimum_idx, 3] - ego_init_fstate[FS_DX])
 
     @staticmethod
     @raises(NoValidTrajectoriesFound)
