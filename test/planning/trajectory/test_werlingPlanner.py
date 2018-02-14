@@ -403,14 +403,12 @@ def visualize_test_scenario(route_points: np.array, reference_route_latitude: fl
         ego = state.ego_state
         for obs in state.dynamic_objects:
             min_cost_y = np.argmin(z[:, int((obs.x - origin[0]) / 0.1)]) * 0.1 + origin[1]
-            p.plot(np.arange(- ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x,
-                   np.repeat(np.array([min_cost_y + ego.size.width / 2]), np.ceil(ego.size.length) + 1), '*w')
-            p.plot(np.arange(- ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x,
-                   np.repeat(np.array([min_cost_y - ego.size.width / 2]), np.ceil(ego.size.length) + 1), '*w')
-            p.plot(np.repeat(np.array([-ego.size.length / 2 + obs.x]), np.ceil(ego.size.width) + 1),
-                   np.arange(min_cost_y - ego.size.width / 2, min_cost_y + ego.size.width / 2 + 0.01), '*w')
-            p.plot(np.repeat(np.array([ego.size.length / 2 + obs.x]), np.ceil(ego.size.width) + 1),
-                   np.arange(min_cost_y - ego.size.width / 2, min_cost_y + ego.size.width / 2 + 0.01), '*w')
+            range_x = np.arange(-ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x
+            p.plot(range_x, np.repeat(np.array([min_cost_y + ego.size.width / 2]), np.ceil(ego.size.length) + 1), '*w')
+            p.plot(range_x, np.repeat(np.array([min_cost_y - ego.size.width / 2]), np.ceil(ego.size.length) + 1), '*w')
+            range_y = np.arange(min_cost_y - ego.size.width / 2, min_cost_y + ego.size.width / 2 + 0.01)
+            p.plot(np.repeat(np.array([-ego.size.length / 2 + obs.x]), np.ceil(ego.size.width) + 1), range_y, '*w')
+            p.plot(np.repeat(np.array([ ego.size.length / 2 + obs.x]), np.ceil(ego.size.width) + 1), range_y, '*w')
 
     d = reference_route_latitude + ROAD_SHOULDERS_WIDTH
     WerlingVisualizer.plot_route(p2, np.c_[
