@@ -182,6 +182,11 @@ class WerlingPlanner(TrajectoryPlanner):
 
         if len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
+            if len(ctrajectories) > 0:
+                (min_vel, max_vel) = (np.min(ctrajectories[:, :, C_V]), np.max(ctrajectories[:, :, C_V]))
+                (min_acc, max_acc) = (np.min(ctrajectories[:, :, C_A]), np.max(ctrajectories[:, :, C_A]))
+            else:
+                (min_vel, max_vel, min_acc, max_acc) = (None, None, None, None)
             raise NoValidTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s. "
                                            "planned velocities range [%s, %s] (limits: %s); "
                                            "planned lon. accelerations range [%s, %s] (limits: %s); "
@@ -190,9 +195,9 @@ class WerlingPlanner(TrajectoryPlanner):
                                            "number of trajectories passed according to Cartesian limits: %s/%s;"
                                            "number of trajectories passed according to all limits: %s/%s;" %
                                            (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
-                                            np.min(ctrajectories[:, :, C_V]), np.max(ctrajectories[:, :, C_V]),
+                                            min_vel, max_vel,
                                             NumpyUtils.str_log(cost_params.velocity_limits),
-                                            np.min(ctrajectories[:, :, C_A]), np.max(ctrajectories[:, :, C_A]),
+                                            min_acc, max_acc,
                                             NumpyUtils.str_log(cost_params.lon_acceleration_limits),
                                             np.min(lat_acc), np.max(lat_acc),
                                             NumpyUtils.str_log(cost_params.lat_acceleration_limits),
