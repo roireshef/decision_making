@@ -89,34 +89,34 @@ def test_werlingPlanner_toyScenario_noException():
 
     assert True
 
-    import matplotlib.pyplot as plt
-    #plt.switch_backend('QT5Agg')
-
-    fig = plt.figure()
-    p1 = fig.add_subplot(211)
-    plt.title('A sample from possible trajectories, Ts=%s, TD_STEPS=%s' % (Ts, TD_STEPS))
-    p2 = fig.add_subplot(212)
-    plt.title('Chosen trajectory')
-    time_samples = np.arange(0.0, Ts, 0.1) + ego.timestamp_in_sec
-    plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost_x.k,
-                                                        np.array([cost_params.obstacle_cost_x.offset,
-                                                                  cost_params.obstacle_cost_y.offset]),
-                                                        time_samples, predictor)
-                     for o in state.dynamic_objects]
-    WerlingVisualizer.plot_obstacles(p1, plottable_obs)
-    WerlingVisualizer.plot_obstacles(p2, plottable_obs)
-    WerlingVisualizer.plot_route(p1, route_points[:, :2])
-    WerlingVisualizer.plot_route(p2, route_points[:, :2])
-
-    WerlingVisualizer.plot_best(p2, ctrajectories[0])
-    WerlingVisualizer.plot_alternatives(p1, ctrajectories, costs)
-
-    print(costs)
-    print('\n minimal is: ', np.min(costs))
-
-    WerlingVisualizer.plot_route(p1, route_points)
-    #plt.show()
-    fig.clear()
+    # import matplotlib.pyplot as plt
+    # #plt.switch_backend('QT5Agg')
+    #
+    # fig = plt.figure()
+    # p1 = fig.add_subplot(211)
+    # plt.title('A sample from possible trajectories, Ts=%s, TD_STEPS=%s' % (Ts, TD_STEPS))
+    # p2 = fig.add_subplot(212)
+    # plt.title('Chosen trajectory')
+    # time_samples = np.arange(0.0, Ts, 0.1) + ego.timestamp_in_sec
+    # plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost_x.k,
+    #                                                     np.array([cost_params.obstacle_cost_x.offset,
+    #                                                               cost_params.obstacle_cost_y.offset]),
+    #                                                     time_samples, predictor)
+    #                  for o in state.dynamic_objects]
+    # WerlingVisualizer.plot_obstacles(p1, plottable_obs)
+    # WerlingVisualizer.plot_obstacles(p2, plottable_obs)
+    # WerlingVisualizer.plot_route(p1, route_points[:, :2])
+    # WerlingVisualizer.plot_route(p2, route_points[:, :2])
+    #
+    # WerlingVisualizer.plot_best(p2, ctrajectories[0])
+    # WerlingVisualizer.plot_alternatives(p1, ctrajectories, costs)
+    #
+    # print(costs)
+    # print('\n minimal is: ', np.min(costs))
+    #
+    # WerlingVisualizer.plot_route(p1, route_points)
+    # plt.show()
+    # fig.clear()
 
 @pytest.mark.skip(reason="takes too long.")
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
