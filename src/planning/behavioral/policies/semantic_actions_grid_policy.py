@@ -474,7 +474,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         lookahead_path = MapService.get_instance().get_uniform_path_lookahead(
             road_id=behavioral_state.ego_state.road_localization.road_id,
             lat_shift=target_lane_latitude,
-            starting_lon=max(0, behavioral_state.ego_state.road_localization.road_lon - LON_MARGIN_FROM_EGO),
+            starting_lon=0,
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
             steps_num=int(np.ceil(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
             navigation_plan=navigation_plan)
