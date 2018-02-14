@@ -74,7 +74,7 @@ class StateModule(DmModule):
         """
         try:
             # TODO: think how to print perceived dynamic objects, since they are not our objects
-            self.logger.info("got perceived dynamic objects {}".format(objects))
+            self.logger.debug("got perceived dynamic objects {}".format(objects))
 
             dyn_obj_list = self.create_dyn_obj_list(objects)
 

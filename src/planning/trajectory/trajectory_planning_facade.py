@@ -79,7 +79,7 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
             self.logger.debug("input: ego: v_x: %f, v_y: %f", state.ego_state.v_x, state.ego_state.v_y)
             self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", lon_plan_horizon)
-            self.logger.info("state: %d objects detected", len(state.dynamic_objects))
+            self.logger.debug("state: %d objects detected", len(state.dynamic_objects))
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
@@ -87,7 +87,7 @@ class TrajectoryPlanningFacade(DmModule):
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if self._is_actual_state_close_to_expected_state(state_aligned.ego_state):
                 updated_state = self._get_state_with_expected_ego(state_aligned)
-                self.logger.info("TrajectoryPlanningFacade ego localization was overridden to the expected-state "
+                self.logger.debug("TrajectoryPlanningFacade ego localization was overridden to the expected-state "
                                  "according to previous plan")
             else:
                 updated_state = state_aligned
@@ -180,7 +180,7 @@ class TrajectoryPlanningFacade(DmModule):
         if self._last_trajectory is None or current_time > self._last_trajectory.max_sample_time:
             return False
 
-        self.logger.info("TrajectoryPlanningFacade time-difference from last planned trajectory is %s",
+        self.logger.debug("TrajectoryPlanningFacade time-difference from last planned trajectory is %s",
                          current_time - self._last_trajectory.timestamp)
 
         current_expected_state: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
@@ -195,7 +195,7 @@ class TrajectoryPlanningFacade(DmModule):
 
         distances_in_expected_frame: FrenetPoint = np.abs(errors_in_expected_frame)
 
-        self.logger.info(("TrajectoryPlanningFacade localization stats: "
+        self.logger.debug(("TrajectoryPlanningFacade localization stats: "
                           "{desired_localization: %s, actual_localization: %s, desired_velocity: %s, "
                           "actual_velocity: %s, lon_lat_errors: %s, velocity_error: %s}" %
                           (current_expected_state, current_actual_location, current_expected_state[C_V],
