@@ -147,6 +147,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         else:
             return self._specify_action_towards_object(behavioral_state=behavioral_state,
                                                        semantic_action=semantic_action,
+                                                       navigation_plan=nav_plan,
+                                                       predictor=self._predictor,
                                                        continue_action=continue_action)
 
     def _eval_actions(self, behavioral_state: SemanticActionsGridState,
@@ -458,6 +460,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, desired_center_lane_latitude)
         road_frenet = FrenetSerret2DFrame(road_points)
 
+        # TODO: add handling of self._last_action_spec.samplable_trajectory !!!
+
         ego_init_fstate = road_frenet.cstate_to_fstate(np.array([
             ego.x, ego.y,
             ego.yaw,
@@ -528,15 +532,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # are_vel_in_limits[optimum_idx] & \
         is_interior_optimum = are_lon_acc_in_limits[optimum_time_idx] & are_lat_acc_in_limits[optimum_time_idx] & \
                               NumpyUtils.is_in_limits(T_vals[optimum_time_idx], BP_ACTION_T_LIMITS)
-
-        if not is_interior_optimum:
-            cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[1]])
-            optimum_time_idx = np.argmin(cost)
-
-        if not is_interior_optimum:
-            raise NoValidTrajectoriesFound("No valid trajectories found. action: %s, state: %s, optimal T: %s" %
-                                           (semantic_action.__dict__, behavioral_state.__dict__,
-                                            T_vals[optimum_time_idx]))
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
