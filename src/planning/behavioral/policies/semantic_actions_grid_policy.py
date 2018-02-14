@@ -26,6 +26,7 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_policy im
     LAT_CELL, LON_CELL, SemanticGridCell
 from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils as SAU
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D
+from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, FS_SA, FS_SV, FS_SX, FS_DX, FS_DV, FS_DA
 from decision_making.src.planning.types import LIMIT_MIN, LIMIT_MAX
@@ -39,13 +40,12 @@ from mapping.src.service.map_service import MapService
 
 
 class SemanticActionsGridPolicy(SemanticActionsPolicy):
-
     def __init__(self, logger: Logger, predictor: Predictor):
         super().__init__(logger=logger, predictor=predictor)
-        self._last_ego_state : Optional[EgoState] = None
-        self._last_action : Optional[SemanticAction] = None
-        self._last_action_spec : Optional[SemanticActionSpec] = None
-        self._last_poly_coefs_s : Optional[np.ndarray] = None
+        self._last_ego_state: Optional[EgoState] = None
+        self._last_action: Optional[SemanticAction] = None
+        self._last_action_spec: Optional[SemanticActionSpec] = None
+        self._last_poly_coefs_s: Optional[np.ndarray] = None
 
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
 
@@ -144,13 +144,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         if semantic_action.target_obj is None:
             return self._specify_action_to_empty_cell(behavioral_state=behavioral_state,
-                                                                           semantic_action=semantic_action,
-                                                                           continue_action=continue_action)
+                                                      semantic_action=semantic_action,
+                                                      continue_action=continue_action)
         else:
             return self._specify_action_towards_object(behavioral_state=behavioral_state,
                                                        semantic_action=semantic_action,
                                                        continue_action=continue_action)
-
 
     def _eval_actions(self, behavioral_state: SemanticActionsGridState,
                       semantic_actions: List[SemanticAction],
@@ -311,8 +310,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # Set objects parameters
         # dilate each object by ego length + safety margin
-        objects_dilation_length = ego_size.length/2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
-        objects_dilation_width = ego_size.width/2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
+        objects_dilation_length = ego_size.length / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
+        objects_dilation_width = ego_size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
         objects_cost_x = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
                                                offset=objects_dilation_length)  # Very high (inf) cost
         objects_cost_y = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
@@ -358,13 +357,14 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         desired_center_lane_latitude = road_lane_latitudes[desired_lane]
 
         # TODO: add "BP IF" (?)
-        ego_init_fstate = road_frenet.cstate_to_fstate(np.array([
+        ego_init_cartesian_extended_state = np.array([
             behavioral_state.ego_state.x, behavioral_state.ego_state.y,
             behavioral_state.ego_state.road_localization.intra_road_yaw,
             behavioral_state.ego_state.v_x,
             behavioral_state.ego_state.acceleration_lon,
             behavioral_state.ego_state.curvature
-        ]))
+        ])
+        ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cartesian_extended_state)
 
         T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX],
                            BP_ACTION_T_RES)
@@ -412,7 +412,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # are_vel_in_limits[optimum_idx] & \
         is_interior_optimum = are_lon_acc_in_limits[optimum_time_idx] & are_lat_acc_in_limits[optimum_time_idx] & \
-            NumpyUtils.is_in_limits(T_vals[optimum_time_idx], BP_ACTION_T_LIMITS)
+                              NumpyUtils.is_in_limits(T_vals[optimum_time_idx], BP_ACTION_T_LIMITS)
 
         # if not is_interior_optimum:
         #     cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[1]])
@@ -423,7 +423,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         #                           are_lat_acc_in_limits[optimum_idx] & \
         #                           NumpyUtils.is_in_limits(T_vals[optimum_idx], BP_ACTION_T_LIMITS)
 
-        print("Interior Optimum: " + )
+        # print("Interior Optimum: ")
 
         if not is_interior_optimum:
             if continue_action:
@@ -451,12 +451,24 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                     print("Exterior Optimum - New - out of limits")
                     # We hit the constraints limits for some other reason
                     raise NoValidTrajectoriesFound("No valid trajectories found. action: %s, state: %s, optimal T: %s" %
-                                                   (semantic_action.__dict__, behavioral_state.__dict__, T_vals[optimum_time_idx]))
+                                                   (semantic_action.__dict__, behavioral_state.__dict__,
+                                                    T_vals[optimum_time_idx]))
+
+        # Note: We create the samplable trajectory as a reference trajectory of the current action.from
+        # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
+        samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=behavioral_state.ego_state.timestamp_in_sec,
+                                                          T_s=T_vals[optimum_time_idx], T_d=T_vals[optimum_time_idx],
+                                                          frenet_frame=road_frenet, poly_s_coefs=poly_coefs_s[optimum_time_idx],
+                                                          poly_d_coefs=poly_coefs_d[optimum_time_idx])
+
+        print("Init ego state: %s" % np.array_repr(ego_init_cartesian_extended_state))
+        print("Expected init conditions in 0.1 sec: %s" % np.array_repr(samplable_trajectory.sample(
+                time_points=np.array([behavioral_state.ego_state.timestamp_in_sec + 0.1]))))
 
         return SemanticActionSpec(t=T_vals[optimum_time_idx], v=constraints_s[optimum_time_idx, 3],
                                   s_rel=target_relative_s[optimum_time_idx, 0] - ego_init_fstate[FS_SX],
                                   d_rel=constraints_d[optimum_time_idx, 3] - ego_init_fstate[FS_DX],
-                                  poly_coefs_s=poly_coefs_s)
+                                  samplable_trajectory=samplable_trajectory)
 
     @raises(NoValidTrajectoriesFound)
     # TODO: modify this function to work with DynamicObject's specific NavigationPlan (and predictor?)
@@ -498,7 +510,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # lon_margin = part of ego from its origin to its front + half of target object
         lon_margin = behavioral_state.ego_state.size.length - EGO_ORIGIN_LON_FROM_REAR + \
-                     semantic_action.target_obj.size.length/2
+                     semantic_action.target_obj.size.length / 2
 
         T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX],
                            BP_ACTION_T_RES)
@@ -545,12 +557,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         jerk_T = np.c_[jerk, T_vals]
 
         cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[0]])
-        optimum_idx = np.argmin(cost)
+        optimum_time_idx = np.argmin(cost)
 
         # are_vel_in_limits[optimum_idx] & \
 
-        is_interior_optimum = are_lon_acc_in_limits[optimum_idx] & are_lat_acc_in_limits[optimum_idx] & \
-                              NumpyUtils.is_in_limits(T_vals[optimum_idx], BP_ACTION_T_LIMITS)
+        is_interior_optimum = are_lon_acc_in_limits[optimum_time_idx] & are_lat_acc_in_limits[optimum_time_idx] & \
+                              NumpyUtils.is_in_limits(T_vals[optimum_time_idx], BP_ACTION_T_LIMITS)
 
         # if not is_interior_optimum:
         #     cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[1]])
@@ -563,12 +575,21 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         if not is_interior_optimum:
             raise NoValidTrajectoriesFound("No valid trajectories found. action: %s, state: %s, optimal T: %s" %
-                                           (semantic_action.__dict__, behavioral_state.__dict__, T_vals[optimum_idx]))
+                                           (semantic_action.__dict__, behavioral_state.__dict__,
+                                            T_vals[optimum_time_idx]))
 
-        return SemanticActionSpec(t=T_vals[optimum_idx], v=obj_svT[optimum_idx],
-                                  s_rel=constraints_s[optimum_idx, 3] - ego_init_fstate[FS_SX],
-                                  d_rel=constraints_d[optimum_idx, 3] - ego_init_fstate[FS_DX],
-                                  poly_coefs_s=poly_coefs_s)
+        # Note: We create the samplable trajectory as a reference trajectory of the current action.from
+        # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
+        samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=behavioral_state.ego_state.timestamp_in_sec,
+                                                          T_s=T_vals[optimum_time_idx],
+                                                          T_d=T_vals[optimum_time_idx],
+                                                          frenet_frame=road_frenet, poly_s_coefs=poly_coefs_s[optimum_time_idx],
+                                                          poly_d_coefs=poly_coefs_d[optimum_time_idx])
+
+        return SemanticActionSpec(t=T_vals[optimum_time_idx], v=obj_svT[optimum_time_idx],
+                                  s_rel=constraints_s[optimum_time_idx, 3] - ego_init_fstate[FS_SX],
+                                  d_rel=constraints_d[optimum_time_idx, 3] - ego_init_fstate[FS_DX],
+                                  samplable_trajectory=samplable_trajectory)
 
     @staticmethod
     def _get_action_ind(semantic_actions: List[SemanticAction], cell: SemanticGridCell):

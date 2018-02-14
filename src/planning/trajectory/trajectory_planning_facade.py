@@ -181,7 +181,7 @@ class TrajectoryPlanningFacade(DmModule):
             return False
 
         self.logger.debug("TrajectoryPlanningFacade time-difference from last planned trajectory is %s",
-                         current_time - self._last_trajectory.timestamp)
+                          current_time - self._last_trajectory.timestamp_in_sec)
 
         current_expected_state: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
         current_actual_location = np.array([current_ego_state.x, current_ego_state.y, DEFAULT_OBJECT_Z_VALUE])

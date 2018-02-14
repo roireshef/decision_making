@@ -9,6 +9,7 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.policy import Policy
+from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, DynamicObject
 
@@ -88,7 +89,7 @@ class SemanticActionSpec:
     Holds the actual translation of the semantic action in terms of trajectory specifications.
     """
 
-    def __init__(self, t: float, v: float, s_rel: float, d_rel: float, poly_coefs_s: Optional[np.ndarray] = None):
+    def __init__(self, t: float, v: float, s_rel: float, d_rel: float, samplable_trajectory: SamplableTrajectory = None):
         """
         The trajectory specifications are defined by the target ego state
         :param t: time [sec]
@@ -101,7 +102,7 @@ class SemanticActionSpec:
         self.v = v
         self.s_rel = s_rel
         self.d_rel = d_rel
-        self.poly_coefs_s = poly_coefs_s
+        self.samplable_trajectory = samplable_trajectory
 
 
 class SemanticActionsPolicy(Policy):

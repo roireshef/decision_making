@@ -25,11 +25,11 @@ from decision_making.src.state.state import State
 
 
 class SamplableWerlingTrajectory(SamplableTrajectory):
-    def __init__(self, timestamp: float, T_s: float, T_d: float, frenet_frame: FrenetSerret2DFrame,
+    def __init__(self, timestamp_in_sec: float, T_s: float, T_d: float, frenet_frame: FrenetSerret2DFrame,
                  poly_s_coefs: np.ndarray, poly_d_coefs: np.ndarray):
         """To represent a trajectory that is a result of Werling planner, we store the frenet frame used and
         two polynomial coefficients vectors (for dimensions s and d)"""
-        super().__init__(timestamp, T_s)
+        super().__init__(timestamp_in_sec, T_s)
         self.T_d = T_d
         self.frenet_frame = frenet_frame
         self.poly_s_coefs = poly_s_coefs
@@ -44,7 +44,7 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         (longitudinal) and partially (up to some time-horizon cached in self.lon_plan_horizon) from d-axis polynomial
         (lateral) and extrapolate the rest of the states in d-axis to conform to the trajectory's total duration"""
 
-        relative_time_points = time_points - self.timestamp
+        relative_time_points = time_points - self.timestamp_in_sec
 
         # Make sure no unplanned extrapolation will occur due to overreaching time points
         # This check is done in relative-to-ego units
@@ -208,7 +208,7 @@ class WerlingPlanner(TrajectoryPlanner):
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
         samplable_trajectory = SamplableWerlingTrajectory(
-            timestamp=state.ego_state.timestamp_in_sec,
+            timestamp_in_sec=state.ego_state.timestamp_in_sec,
             T_s=T_s,
             T_d=T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]],
             frenet_frame=frenet,

@@ -18,7 +18,7 @@ from decision_making.test.exceptions import NotTriggeredException
 class FixedSamplableTrajectory(SamplableTrajectory):
 
     def __init__(self, fixed_trajectory: CartesianExtendedTrajectory):
-        super().__init__(timestamp=0, max_sample_time=np.inf)
+        super().__init__(timestamp_in_sec=0, max_sample_time=np.inf)
         self._fixed_trajectory = fixed_trajectory
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
