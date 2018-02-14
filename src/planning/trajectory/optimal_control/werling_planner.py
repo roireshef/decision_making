@@ -366,14 +366,14 @@ class WerlingPlanner(TrajectoryPlanner):
         deviations_costs = np.zeros((ftrajectories.shape[0], ftrajectories.shape[1]))
 
         # add to deviations_costs the costs of deviations from the left [lane, shoulder, road]
-        for exp in [params.left_lane_cost, params.left_shoulder_cost, params.left_road_cost]:
-            left_offsets = ftrajectories[:, :, FS_DX] - exp.offset
-            deviations_costs += Math.clipped_sigmoid(left_offsets, exp.w, exp.k)
+        for sig_cost in [params.left_lane_cost, params.left_shoulder_cost, params.left_road_cost]:
+            left_offsets = ftrajectories[:, :, FS_DX] - sig_cost.offset
+            deviations_costs += Math.clipped_sigmoid(left_offsets, sig_cost.w, sig_cost.k)
 
         # add to deviations_costs the costs of deviations from the right [lane, shoulder, road]
-        for exp in [params.right_lane_cost, params.right_shoulder_cost, params.right_road_cost]:
-            right_offsets = np.negative(ftrajectories[:, :, FS_DX]) - exp.offset
-            deviations_costs += Math.clipped_sigmoid(right_offsets, exp.w, exp.k)
+        for sig_cost in [params.right_lane_cost, params.right_shoulder_cost, params.right_road_cost]:
+            right_offsets = np.negative(ftrajectories[:, :, FS_DX]) - sig_cost.offset
+            deviations_costs += Math.clipped_sigmoid(right_offsets, sig_cost.w, sig_cost.k)
         return deviations_costs
 
     @staticmethod
