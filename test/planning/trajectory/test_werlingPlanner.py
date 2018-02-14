@@ -14,7 +14,7 @@ from decision_making.src.global_constants import OBSTACLE_SIGMOID_K_PARAM, LATER
     LON_JERK_COST, LAT_JERK_COST, LON_MARGIN_FROM_EGO
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
-from decision_making.src.planning.trajectory.cost_function import Jerk
+from decision_making.src.planning.trajectory.cost_function import Costs, Jerk
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, CartesianPoint2D, C_Y, \
     CartesianExtendedTrajectory, C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, CartesianExtendedState, CartesianTrajectory
@@ -341,8 +341,8 @@ def compute_pixel_costs(route_points: np.array, reference_route_latitude: float,
 
     # calculate cost components for all image pixels by building a static "trajectory" for every pixel
     pointwise_costs = \
-        planner._compute_pointwise_costs(cartesian_pixels, frenet_pixels, state, cost_params, time_samples,
-                                         planner.predictor, planner.dt)
+        Costs.compute_pointwise_costs(cartesian_pixels, frenet_pixels, state, cost_params, time_samples,
+                                      planner.predictor, planner.dt)
 
     pixel_costs = (pointwise_costs[:, :, 0] + pointwise_costs[:, :, 1]).reshape(height, width, time_samples.shape[0])
     return pixels2D, pixel_costs
@@ -462,5 +462,5 @@ def test_computeJerk_simpleTrajectory():
     p1 :CartesianExtendedState = np.array([0, 0, 0, 1, 0, 0.1])
     p2 :CartesianExtendedState = np.array([0, 0, 0, 2, 1, 0.1])
     ctrajectory: CartesianTrajectory = np.array([p1, p2])
-    lon_jerks, lat_jerks = Jerk.compute_pointwise_jerk(np.array([ctrajectory]), 0.1)
+    lon_jerks, lat_jerks = Jerk.compute_jerks(np.array([ctrajectory]), 0.1)
     assert np.isclose(lon_jerks[0][0], 10) and np.isclose(lat_jerks[0][0], 0.9)
