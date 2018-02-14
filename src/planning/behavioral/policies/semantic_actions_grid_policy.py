@@ -238,28 +238,29 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         :param reference_route: [nx4] numpy array of (x, y, z, yaw) states
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
+        ego = behavioral_state.ego_state
 
         # Get road details
-        road_id = behavioral_state.ego_state.road_localization.road_id
+        road_id = ego.road_localization.road_id
 
         # TODO: should be replaced with cached road statistics on future feature
         frenet = FrenetSerret2DFrame(reference_route[:, [CURVE_X, CURVE_Y]])
 
         # Create target state
-        target_latitude = behavioral_state.ego_state.road_localization.intra_road_lat + action_spec.d_rel
-        target_longitude = behavioral_state.ego_state.road_localization.road_lon + action_spec.s_rel
+        target_latitude = ego.road_localization.intra_road_lat + action_spec.d_rel
+        target_longitude = ego.road_localization.road_lon + action_spec.s_rel
 
         # DX = 0 assums target falls on the reference route!!
         target_state = frenet.fstate_to_cstate(np.array([target_longitude, action_spec.v, 0, 0, 0, 0]))
 
         cost_params = SemanticActionsGridPolicy._generate_cost_params(
             road_id=road_id,
-            ego_size=behavioral_state.ego_state.size,
+            ego_size=ego.size,
             reference_route_latitude=target_latitude  # this assumes the target falls on the reference route
         )
 
         trajectory_parameters = TrajectoryParams(reference_route=reference_route,
-                                                 time=action_spec.t + behavioral_state.ego_state.timestamp_in_sec,
+                                                 time=action_spec.t + ego.timestamp_in_sec,
                                                  target_state=target_state,
                                                  cost_params=cost_params,
                                                  strategy=TrajectoryPlanningStrategy.HIGHWAY)
@@ -347,22 +348,25 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         :param semantic_action:
         :return: semantic action specification
         """
+        ego = behavioral_state.ego_state
+
         # TODO: in the future - concatenate all roads within the relevant NavigationPlan
-        road_id = behavioral_state.ego_state.road_localization.road_id
+        road_id = ego.road_localization.road_id
         road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
         road_frenet = FrenetSerret2DFrame(road_points)
 
         road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id)
-        desired_lane = behavioral_state.ego_state.road_localization.lane_num + semantic_action.cell[LAT_CELL]
+        desired_lane = ego.road_localization.lane_num + semantic_action.cell[LAT_CELL]
         desired_center_lane_latitude = road_lane_latitudes[desired_lane]
+
 
         # TODO: add "BP IF" (?)
         ego_init_cartesian_extended_state = np.array([
-            behavioral_state.ego_state.x, behavioral_state.ego_state.y,
-            behavioral_state.ego_state.road_localization.intra_road_yaw,
-            behavioral_state.ego_state.v_x,
-            behavioral_state.ego_state.acceleration_lon,
-            behavioral_state.ego_state.curvature
+            ego.x, ego.y,
+            ego.road_localization.intra_road_yaw,
+            ego.v_x,
+            ego.acceleration_lon,
+            ego.curvature
         ])
         ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cartesian_extended_state)
 
@@ -414,23 +418,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         is_interior_optimum = are_lon_acc_in_limits[optimum_time_idx] & are_lat_acc_in_limits[optimum_time_idx] & \
                               NumpyUtils.is_in_limits(T_vals[optimum_time_idx], BP_ACTION_T_LIMITS)
 
-        # if not is_interior_optimum:
-        #     cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[1]])
-        #     optimum_idx = np.argmin(cost)
-        #
-        #     # are_vel_in_limits[optimum_idx] & \
-        #     is_interior_optimum = are_lon_acc_in_limits[optimum_idx] & \
-        #                           are_lat_acc_in_limits[optimum_idx] & \
-        #                           NumpyUtils.is_in_limits(T_vals[optimum_idx], BP_ACTION_T_LIMITS)
-
-        # print("Interior Optimum: ")
-
         if not is_interior_optimum:
             if continue_action:
                 # Continue same action consistently by decreasing time horizon and updating goal accordingly,
                 # except when time horizon is too small - then we need to reset to the default long time horizon
                 last_time_horizon = self._last_action_spec.t
-                time_since_last_planning = behavioral_state.ego_state.timestamp_in_sec - self._last_ego_state.timestamp_in_sec
+                time_since_last_planning = ego.timestamp_in_sec - self._last_ego_state.timestamp_in_sec
                 residual_horizon = last_time_horizon - time_since_last_planning
                 if residual_horizon >= BP_ACTION_T_LIMITS[LIMIT_MIN]:
                     print("Exterior Optimum - Continue - in time limits")
@@ -456,14 +449,16 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
-        samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=behavioral_state.ego_state.timestamp_in_sec,
-                                                          T_s=T_vals[optimum_time_idx], T_d=T_vals[optimum_time_idx],
-                                                          frenet_frame=road_frenet, poly_s_coefs=poly_coefs_s[optimum_time_idx],
+        samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
+                                                          T_s=T_vals[optimum_time_idx],
+                                                          T_d=T_vals[optimum_time_idx],
+                                                          frenet_frame=road_frenet,
+                                                          poly_s_coefs=poly_coefs_s[optimum_time_idx],
                                                           poly_d_coefs=poly_coefs_d[optimum_time_idx])
 
-        print("Init ego state: %s" % np.array_repr(ego_init_cartesian_extended_state))
-        print("Expected init conditions in 0.1 sec: %s" % np.array_repr(samplable_trajectory.sample(
-                time_points=np.array([behavioral_state.ego_state.timestamp_in_sec + 0.1]))))
+        expected_state = samplable_trajectory.sample(time_points=np.array([ego.timestamp_in_sec + 0.1]))
+        print("Init ego state: %s" % NumpyUtils.str_log(ego_init_cartesian_extended_state))
+        print("Expected init conditions in 0.1 sec: %s" % NumpyUtils.str_log(expected_state))
 
         return SemanticActionSpec(t=T_vals[optimum_time_idx], v=constraints_s[optimum_time_idx, 3],
                                   s_rel=target_relative_s[optimum_time_idx, 0] - ego_init_fstate[FS_SX],
@@ -482,17 +477,19 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         :param semantic_action:
         :return: SemanticActionSpec
         """
+        ego = behavioral_state.ego_state
+
         # TODO: in the future - concatenate all roads within the relevant NavigationPlan
-        road_id = behavioral_state.ego_state.road_localization.road_id
+        road_id = ego.road_localization.road_id
         road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
         road_frenet = FrenetSerret2DFrame(road_points)
 
         ego_init_fstate = road_frenet.cstate_to_fstate(np.array([
-            behavioral_state.ego_state.x, behavioral_state.ego_state.y,
-            behavioral_state.ego_state.road_localization.intra_road_yaw,
-            behavioral_state.ego_state.v_x,
-            behavioral_state.ego_state.acceleration_lon,
-            behavioral_state.ego_state.curvature
+            ego.x, ego.y,
+            ego.road_localization.intra_road_yaw,
+            ego.v_x,
+            ego.acceleration_lon,
+            ego.curvature
         ]))
 
         obj_init_fstate = road_frenet.cstate_to_fstate(np.array([
@@ -509,7 +506,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
 
         # lon_margin = part of ego from its origin to its front + half of target object
-        lon_margin = behavioral_state.ego_state.size.length - EGO_ORIGIN_LON_FROM_REAR + \
+        lon_margin = ego.size.length - EGO_ORIGIN_LON_FROM_REAR + \
                      semantic_action.target_obj.size.length / 2
 
         T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX],
@@ -560,18 +557,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         optimum_time_idx = np.argmin(cost)
 
         # are_vel_in_limits[optimum_idx] & \
-
         is_interior_optimum = are_lon_acc_in_limits[optimum_time_idx] & are_lat_acc_in_limits[optimum_time_idx] & \
                               NumpyUtils.is_in_limits(T_vals[optimum_time_idx], BP_ACTION_T_LIMITS)
-
-        # if not is_interior_optimum:
-        #     cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[1]])
-        #     optimum_idx = np.argmin(cost)
-        #
-        #     is_interior_optimum = are_lon_acc_in_limits[optimum_idx] & \
-        #                           are_lat_acc_in_limits[optimum_idx] & \
-        #                           are_vel_in_limits[optimum_idx] & \
-        #                           NumpyUtils.is_in_limits(T_vals[optimum_idx], BP_ACTION_T_LIMITS)
 
         if not is_interior_optimum:
             raise NoValidTrajectoriesFound("No valid trajectories found. action: %s, state: %s, optimal T: %s" %
@@ -580,10 +567,11 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
-        samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=behavioral_state.ego_state.timestamp_in_sec,
+        samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
                                                           T_s=T_vals[optimum_time_idx],
                                                           T_d=T_vals[optimum_time_idx],
-                                                          frenet_frame=road_frenet, poly_s_coefs=poly_coefs_s[optimum_time_idx],
+                                                          frenet_frame=road_frenet,
+                                                          poly_s_coefs=poly_coefs_s[optimum_time_idx],
                                                           poly_d_coefs=poly_coefs_d[optimum_time_idx])
 
         return SemanticActionSpec(t=T_vals[optimum_time_idx], v=obj_svT[optimum_time_idx],
@@ -618,8 +606,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         :param action_spec: the goal of the action
         :return: [nx3] array of reference_route (x,y,yaw) [m,m,rad] in global coordinates
         """
+        ego = behavioral_state.ego_state
 
-        target_lane_latitude = action_spec.d_rel + behavioral_state.ego_state.road_localization.intra_road_lat
+        target_lane_latitude = action_spec.d_rel + ego.road_localization.intra_road_lat
         target_relative_longitude = action_spec.s_rel
 
         # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
@@ -629,13 +618,13 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # Due to that, a point's longitude-value will be different between the 2 curves.
         # This error is accumulated depending on the actual length of the curvature -
         # when it is long, the error will potentially be big.
-        lookahead_distance = behavioral_state.ego_state.road_localization.road_lon + \
+        lookahead_distance = ego.road_localization.road_lon + \
                              target_relative_longitude * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
         # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
         # TODO: better than sending the whole road. and also what happens in the begginning of a road
         lookahead_path = MapService.get_instance().get_uniform_path_lookahead(
-            road_id=behavioral_state.ego_state.road_localization.road_id,
+            road_id=ego.road_localization.road_id,
             lat_shift=target_lane_latitude,
             starting_lon=0,
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
