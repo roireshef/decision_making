@@ -29,6 +29,7 @@ from decision_making.test.planning.trajectory.utils import RouteFixture, Plottab
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from decision_making.src.planning.utils.math import Math
 from mapping.src.model.map_api import MapAPI
+from mapping.src.model.naive_cache_map import NaiveCacheMap
 from mapping.src.service.map_service import MapService
 from mapping.test.model.map_model_utils import TestMapModelUtils
 from mapping.test.model.testable_map_fixtures import testable_map_api
@@ -188,45 +189,47 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
 
         # Create reference route (normal and extended). The extension is intended to prevent
         # overflow of projection on the ref route
-        route_points, ext_route_points = create_route_for_test_werlingPlanner(ROAD_ID, num_lanes, lane_width,
+        route_points, ext_route_points, map = create_route_for_test_werlingPlanner(ROAD_ID, num_lanes, lane_width,
                                                                               reference_route_latitude, lng, ext,
                                                                               curvature)
-        frenet = FrenetSerret2DFrame(ext_route_points[:, :2])
+        with patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=lambda : map):
 
-        # create state and goal based on ego parameters and obstacles' location
-        state, goal = create_state_for_test_werlingPlanner(frenet, obs_poses, reference_route_latitude, ext, lng,
-                                                           v0, vT, start_ego_lat, goal_latitude)
+            frenet = FrenetSerret2DFrame(ext_route_points[:, :2])
 
-        cost_params = SemanticActionsGridPolicy._generate_cost_params(road_id=ROAD_ID, ego_size=state.ego_state.size,
-                                                                      reference_route_latitude=reference_route_latitude)
+            # create state and goal based on ego parameters and obstacles' location
+            state, goal = create_state_for_test_werlingPlanner(frenet, obs_poses, reference_route_latitude, ext, lng,
+                                                               v0, vT, start_ego_lat, goal_latitude)
 
-        # run Werling planner
-        planner = WerlingPlanner(logger, predictor)
-        _, ctrajectories, costs = planner.plan(state=state, reference_route=ext_route_points[:, :2],
-                                                                goal=goal, time_horizon=T, cost_params=cost_params)
+            cost_params = SemanticActionsGridPolicy._generate_cost_params(road_id=ROAD_ID, ego_size=state.ego_state.size,
+                                                                          reference_route_latitude=reference_route_latitude)
 
-        time_samples = np.arange(0, Math.round_to_step(T, planner.dt) + np.finfo(np.float16).eps, planner.dt) + \
-                       state.ego_state.timestamp_in_sec
-        assert time_samples.shape[0] == ctrajectories.shape[1]
+            # run Werling planner
+            planner = WerlingPlanner(logger, predictor)
+            _, ctrajectories, costs = planner.plan(state=state, reference_route=ext_route_points[:, :2],
+                                                                    goal=goal, time_horizon=T, cost_params=cost_params)
 
-        offsets = np.array([cost_params.obstacle_cost_x.offset, cost_params.obstacle_cost_y.offset])
-        plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost_x.k, offsets, time_samples,
-                                                            planner.predictor)
-                         for o in state.dynamic_objects]
+            time_samples = np.arange(0, Math.round_to_step(T, planner.dt) + np.finfo(np.float16).eps, planner.dt) + \
+                           state.ego_state.timestamp_in_sec
+            assert time_samples.shape[0] == ctrajectories.shape[1]
 
-        # create pixels grid of the visualization image and compute costs for these pixels for given time samples
-        t = 0  # time index of time_samples
-        pixels, pixel_costs = compute_pixel_costs(route_points, reference_route_latitude, road_width, state,
-                                                  cost_params, time_samples[t:(t + 1)], planner, frenet)
+            offsets = np.array([cost_params.obstacle_cost_x.offset, cost_params.obstacle_cost_y.offset])
+            plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost_x.k, offsets, time_samples,
+                                                                planner.predictor)
+                             for o in state.dynamic_objects]
 
-        visualize_test_scenario(route_points, reference_route_latitude, road_width, state, goal, ctrajectories, costs,
-                                pixels, pixel_costs, plottable_obs, 'test_costs' + str(test_idx) + '.png')
+            # create pixels grid of the visualization image and compute costs for these pixels for given time samples
+            t = 0  # time index of time_samples
+            pixels, pixel_costs = compute_pixel_costs(route_points, reference_route_latitude, road_width, state,
+                                                      cost_params, time_samples[t:(t + 1)], planner, frenet)
+
+            visualize_test_scenario(route_points, reference_route_latitude, road_width, state, goal, ctrajectories, costs,
+                                    pixels, pixel_costs, plottable_obs, 'test_costs' + str(test_idx) + '.png')
 
 
 def create_route_for_test_werlingPlanner(road_id: int, num_lanes: int, lane_width: float,
                                          reference_route_latitude: float,
                                          lng: float, ext: float, curvature: float) -> \
-        [np.array, np.array]:
+        [np.array, np.array, MapAPI]:
     """
     Create reference route for test_werlingPlanner visualization.
     :param road_id: road id
@@ -236,7 +239,7 @@ def create_route_for_test_werlingPlanner(road_id: int, num_lanes: int, lane_widt
     :param lng: [m] length of the reference route
     :param ext: [m] extension of the reference route (in two sides)
     :param curvature: curvature of the reference route
-    :return: route_points (reference route), ext_route_points (extended reference route)
+    :return: route_points (reference route), ext_route_points (extended reference route), the created map instance
     """
     logger = AV_Logger.get_logger('test_werlingPlanner_twoStaticObjScenario_withCostViz')
     step = 0.2
@@ -249,11 +252,10 @@ def create_route_for_test_werlingPlanner(road_id: int, num_lanes: int, lane_widt
                                                                         lanes_num=num_lanes, lane_width=lane_width,
                                                                         frame_origin=[0, 0])
     map = MapAPI(map_model=test_map_model, logger=logger)
-    MapService().set_instance(map)
 
     route_points = CartesianFrame.add_yaw_and_derivatives(route_xy)
     ext_route_points = CartesianFrame.add_yaw_and_derivatives(ext_route_xy)
-    return route_points, ext_route_points
+    return route_points, ext_route_points, map
 
 
 def create_state_for_test_werlingPlanner(frenet: FrenetSerret2DFrame, obs_poses: np.array,
