@@ -115,7 +115,7 @@ def test_werlingPlanner_toyScenario_noException():
     print('\n minimal is: ', np.min(costs))
 
     WerlingVisualizer.plot_route(p1, route_points)
-    plt.show()
+    #plt.show()
     fig.clear()
 
 @pytest.mark.skip(reason="takes too long.")
@@ -291,7 +291,7 @@ def test_werlingPlanner_twoStaticObjScenario_withCostViz():
         filename = 'test_costs'+str(test_idx)+'.png'
         fig.savefig(filename)
 
-    fig.show()
+    #fig.show()
     fig.clear()
 
 
