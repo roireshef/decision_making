@@ -423,6 +423,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         #                           are_lat_acc_in_limits[optimum_idx] & \
         #                           NumpyUtils.is_in_limits(T_vals[optimum_idx], BP_ACTION_T_LIMITS)
 
+        print("Interior Optimum: " + )
+
         if not is_interior_optimum:
             if continue_action:
                 # Continue same action consistently by decreasing time horizon and updating goal accordingly,
@@ -431,18 +433,22 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                 time_since_last_planning = behavioral_state.ego_state.timestamp_in_sec - self._last_ego_state.timestamp_in_sec
                 residual_horizon = last_time_horizon - time_since_last_planning
                 if residual_horizon >= BP_ACTION_T_LIMITS[LIMIT_MIN]:
+                    print("Exterior Optimum - Continue - in time limits")
                     # Set time horizon to: residual_horizon
                     optimum_time_idx = np.argmin(np.abs(residual_horizon - T_vals))
                 else:
+                    print("Exterior Optimum - Continue - too short")
                     # Set time horizon to: BEHAVIORAL_PLANNING_HORIZON
                     optimum_time_idx = np.argmin(np.abs(BEHAVIORAL_PLANNING_HORIZON - T_vals))
             else:
                 if not NumpyUtils.is_in_limits(T_vals[optimum_time_idx], BP_ACTION_T_LIMITS):
+                    print("Exterior Optimum - New - in time limits")
                     # The small difference between current speed and desired speed causes the time horizon to be short
                     # due to the fact that we achieve it very quickly. Therefore:
                     # Set time horizon to: BEHAVIORAL_PLANNING_HORIZON
                     optimum_time_idx = np.argmin(np.abs(BEHAVIORAL_PLANNING_HORIZON - T_vals))
                 else:
+                    print("Exterior Optimum - New - out of limits")
                     # We hit the constraints limits for some other reason
                     raise NoValidTrajectoriesFound("No valid trajectories found. action: %s, state: %s, optimal T: %s" %
                                                    (semantic_action.__dict__, behavioral_state.__dict__, T_vals[optimum_time_idx]))
