@@ -28,7 +28,7 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_utils imp
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import CURVE_X, CURVE_Y, FS_SA, FS_SV, FS_SX, FS_DX, FS_DV, FS_DA
+from decision_making.src.planning.types import CURVE_X, CURVE_Y, FS_SA, FS_SV, FS_SX, FS_DX, FS_DV, FS_DA, FP_SX, FP_DX
 from decision_making.src.planning.types import LIMIT_MIN, LIMIT_MAX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
@@ -359,15 +359,17 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         desired_lane = ego.road_localization.lane_num + semantic_action.cell[LAT_CELL]
         desired_center_lane_latitude = road_lane_latitudes[desired_lane]
 
+        if continue_action:
+            ego_init_cartesian_extended_state = self._last_action_spec.samplable_trajectory.sample(np.array([ego.timestamp_in_sec]))[0]
+        else:
+            ego_init_cartesian_extended_state = np.array([
+                ego.x, ego.y,
+                ego.yaw,
+                ego.v_x,
+                ego.acceleration_lon,
+                ego.curvature
+            ])
 
-        # TODO: add "BP IF" (?)
-        ego_init_cartesian_extended_state = np.array([
-            ego.x, ego.y,
-            ego.road_localization.intra_road_yaw,
-            ego.v_x,
-            ego.acceleration_lon,
-            ego.curvature
-        ])
         ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cartesian_extended_state)
 
         T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX],
@@ -408,7 +410,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         are_vel_in_limits = QuarticPoly1D.are_velocities_in_limits(poly_coefs_s, T_vals, VELOCITY_LIMITS)
         are_lat_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_vals, LAT_ACC_LIMITS)
 
-        jerk = QuarticPoly1D.cumulative_jerk(poly_coefs_s, T_vals)
+        jerk = QuarticPoly1D.cumulative_jerk(poly_coefs_s, T_vals) + QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
         jerk_T = np.c_[jerk, T_vals]
 
         cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[0]])
@@ -417,35 +419,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # are_vel_in_limits[optimum_idx] & \
         is_interior_optimum = are_lon_acc_in_limits[optimum_time_idx] & are_lat_acc_in_limits[optimum_time_idx] & \
                               NumpyUtils.is_in_limits(T_vals[optimum_time_idx], BP_ACTION_T_LIMITS)
-
-        if not is_interior_optimum:
-            if continue_action:
-                # Continue same action consistently by decreasing time horizon and updating goal accordingly,
-                # except when time horizon is too small - then we need to reset to the default long time horizon
-                last_time_horizon = self._last_action_spec.t
-                time_since_last_planning = ego.timestamp_in_sec - self._last_ego_state.timestamp_in_sec
-                residual_horizon = last_time_horizon - time_since_last_planning
-                if residual_horizon >= BP_ACTION_T_LIMITS[LIMIT_MIN]:
-                    print("Exterior Optimum - Continue - in time limits")
-                    # Set time horizon to: residual_horizon
-                    optimum_time_idx = np.argmin(np.abs(residual_horizon - T_vals))
-                else:
-                    print("Exterior Optimum - Continue - too short")
-                    # Set time horizon to: BEHAVIORAL_PLANNING_HORIZON
-                    optimum_time_idx = np.argmin(np.abs(BEHAVIORAL_PLANNING_HORIZON - T_vals))
-            else:
-                if not NumpyUtils.is_in_limits(T_vals[optimum_time_idx], BP_ACTION_T_LIMITS):
-                    print("Exterior Optimum - New - in time limits")
-                    # The small difference between current speed and desired speed causes the time horizon to be short
-                    # due to the fact that we achieve it very quickly. Therefore:
-                    # Set time horizon to: BEHAVIORAL_PLANNING_HORIZON
-                    optimum_time_idx = np.argmin(np.abs(BEHAVIORAL_PLANNING_HORIZON - T_vals))
-                else:
-                    print("Exterior Optimum - New - out of limits")
-                    # We hit the constraints limits for some other reason
-                    raise NoValidTrajectoriesFound("No valid trajectories found. action: %s, state: %s, optimal T: %s" %
-                                                   (semantic_action.__dict__, behavioral_state.__dict__,
-                                                    T_vals[optimum_time_idx]))
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
@@ -456,9 +429,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                           poly_s_coefs=poly_coefs_s[optimum_time_idx],
                                                           poly_d_coefs=poly_coefs_d[optimum_time_idx])
 
-        expected_state = samplable_trajectory.sample(time_points=np.array([ego.timestamp_in_sec + 0.1]))
-        print("Init ego state: %s" % NumpyUtils.str_log(ego_init_cartesian_extended_state))
-        print("Expected init conditions in 0.1 sec: %s" % NumpyUtils.str_log(expected_state))
+        expected_state = samplable_trajectory.sample(time_points=np.array([ego.timestamp_in_sec + 0.1]))[0]
+        #print("Init ego state: %s" % NumpyUtils.str_log(ego_init_cartesian_extended_state))
+        #print("Expected init conditions in 0.1 sec: %s" % NumpyUtils.str_log(expected_state))
 
         return SemanticActionSpec(t=T_vals[optimum_time_idx], v=constraints_s[optimum_time_idx, 3],
                                   s_rel=target_relative_s[optimum_time_idx, 0] - ego_init_fstate[FS_SX],
@@ -486,7 +459,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         ego_init_fstate = road_frenet.cstate_to_fstate(np.array([
             ego.x, ego.y,
-            ego.road_localization.intra_road_yaw,
+            ego.yaw,
             ego.v_x,
             ego.acceleration_lon,
             ego.curvature
@@ -501,6 +474,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         ]))
 
         # Extract relevant details from state on Reference-Object
+        # TODO: road localization needs to be handled
         obj_on_road = semantic_action.target_obj.road_localization
         road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id=obj_on_road.road_id)
         obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
@@ -550,7 +524,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         are_lat_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_vals, LAT_ACC_LIMITS)
         are_vel_in_limits = QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_vals, VELOCITY_LIMITS)
 
-        jerk = QuinticPoly1D.cumulative_jerk(poly_coefs_s, T_vals)
+        jerk = QuinticPoly1D.cumulative_jerk(poly_coefs_s, T_vals) + QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
         jerk_T = np.c_[jerk, T_vals]
 
         cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[0]])
@@ -559,6 +533,10 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # are_vel_in_limits[optimum_idx] & \
         is_interior_optimum = are_lon_acc_in_limits[optimum_time_idx] & are_lat_acc_in_limits[optimum_time_idx] & \
                               NumpyUtils.is_in_limits(T_vals[optimum_time_idx], BP_ACTION_T_LIMITS)
+
+        if not is_interior_optimum:
+            cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[1]])
+            optimum_time_idx = np.argmin(cost)
 
         if not is_interior_optimum:
             raise NoValidTrajectoriesFound("No valid trajectories found. action: %s, state: %s, optimal T: %s" %

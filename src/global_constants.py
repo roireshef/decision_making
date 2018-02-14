@@ -74,7 +74,7 @@ BP_ACTION_T_RES = 0.2
 # Behavioral planner action-specification weights for jerk vs time of action (rows are alternative weighting schemes)
 BP_JERK_TIME_WEIGHTS = np.array([
     [0.5, 1],
-    [500, 1]
+    [2, 1]
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
@@ -153,16 +153,16 @@ TRAJECTORY_NUM_POINTS = 10
 WERLING_TIME_RESOLUTION = 0.1
 
 # [m] Range for grid search in werling planner (long. position)
-SX_OFFSET_MIN, SX_OFFSET_MAX = -15, 0.1
+SX_OFFSET_MIN, SX_OFFSET_MAX = 0, 0.1
 
 # [m] Range for grid search in werling planner (long. velocity)
 SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
 
 # [m] Range for grid search in werling planner (lat. position)
-DX_OFFSET_MIN, DX_OFFSET_MAX = -3, 3
+DX_OFFSET_MIN, DX_OFFSET_MAX = 0, 0
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 10, 1, 7
+SX_STEPS, SV_STEPS, DX_STEPS = 1, 1, 1
 
 # Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
 TD_STEPS = 5

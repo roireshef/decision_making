@@ -188,4 +188,4 @@ def test_specifyAction_followOtherCar_wellSpecified(semantic_follow_action: Sema
     lon_margin = semantic_actions_state.ego_state.size.length - EGO_ORIGIN_LON_FROM_REAR + obj.size.length / 2
 
     assert specify.v == obj_v
-    assert specify.s_rel + ego_s0 == obj_sT - lon_margin - SAFE_DIST_TIME_DELAY * obj_v
+    assert specify.s + ego_s0 == obj_sT - lon_margin - SAFE_DIST_TIME_DELAY * obj_v

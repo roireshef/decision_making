@@ -76,9 +76,9 @@ def test_evalSemanticActions():
         semantic_actions.append(SemanticAction((0, 1), obs[1], SemanticActionType.FOLLOW))
         semantic_actions.append(SemanticAction((1, 1), obs[2], SemanticActionType.FOLLOW))
         actions_spec = []
-        actions_spec.append(SemanticActionSpec(t=t, v=vel1, s_rel=obs[0].x - ego.x, d_rel=obs[0].y - ego.y))
-        actions_spec.append(SemanticActionSpec(t=t, v=vel2, s_rel=obs[1].x - ego.x, d_rel=obs[1].y - ego.y))
-        actions_spec.append(SemanticActionSpec(t=t, v=vel3, s_rel=obs[2].x - ego.x, d_rel=obs[2].y - ego.y))
+        actions_spec.append(SemanticActionSpec(t=t, v=vel1, s=obs[0].x - ego.x, d=obs[0].y - ego.y))
+        actions_spec.append(SemanticActionSpec(t=t, v=vel2, s=obs[1].x - ego.x, d=obs[1].y - ego.y))
+        actions_spec.append(SemanticActionSpec(t=t, v=vel3, s=obs[2].x - ego.x, d=obs[2].y - ego.y))
 
         costs = policy._eval_actions(behav_state, semantic_actions, actions_spec)
         assert (costs[result[test]] == 0)
@@ -95,7 +95,7 @@ def test_evalSemanticActions():
 def test_get_actionIndByLane():
     logger = AV_Logger.get_logger('test_get_actionIndByLane')
     semantic_action = SemanticAction((SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT), None, SemanticActionType(1))
-    spec1 = SemanticActionSpec(t=5, v=10, s_rel=30, d_rel=-3)
+    spec1 = SemanticActionSpec(t=5, v=10, s=30, d=-3)
     # TODO: move TestPredictorMock to fixtures
     policy = SemanticActionsGridPolicy(Logger("SemanticActionsTest"), TestPredictorMock(logger=logger))
     action_ind = policy._get_action_ind([semantic_action], (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT))
