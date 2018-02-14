@@ -75,10 +75,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         selected_action_index = int(np.argmin(action_costs))
         selected_action_spec = actions_spec[selected_action_index]
 
-        # translate the selected action-specification into a full specification for the TP
-        reference_trajectory = SemanticActionsGridPolicy._generate_reference_route(behavioral_state=behavioral_state,
-                                                                                   action_spec=selected_action_spec,
-                                                                                   navigation_plan=nav_plan)
+        reference_trajectory = self._generate_reference_route(behavioral_state, selected_action_spec, nav_plan)
+
         trajectory_parameters = SemanticActionsGridPolicy._generate_trajectory_specs(behavioral_state=behavioral_state,
                                                                                      action_spec=selected_action_spec,
                                                                                      reference_route=reference_trajectory)
@@ -243,20 +241,14 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # Get road details
         road_id = ego.road_localization.road_id
 
-        # TODO: should be replaced with cached road statistics on future feature
-        frenet = FrenetSerret2DFrame(reference_route[:, [CURVE_X, CURVE_Y]])
+        frenet = FrenetSerret2DFrame(reference_route)
 
-        # Create target state
-        target_latitude = ego.road_localization.intra_road_lat + action_spec.d_rel
-        target_longitude = ego.road_localization.road_lon + action_spec.s_rel
-
-        # DX = 0 assums target falls on the reference route!!
-        target_state = frenet.fstate_to_cstate(np.array([target_longitude, action_spec.v, 0, 0, 0, 0]))
+        target_state = frenet.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0]))
 
         cost_params = SemanticActionsGridPolicy._generate_cost_params(
             road_id=road_id,
             ego_size=ego.size,
-            reference_route_latitude=target_latitude  # this assumes the target falls on the reference route
+            reference_route_latitude=action_spec.reference_route_latitude  # this assumes the target falls on the reference route
         )
 
         trajectory_parameters = TrajectoryParams(reference_route=reference_route,
@@ -352,12 +344,14 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # TODO: in the future - concatenate all roads within the relevant NavigationPlan
         road_id = ego.road_localization.road_id
-        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
-        road_frenet = FrenetSerret2DFrame(road_points)
 
         road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id)
         desired_lane = ego.road_localization.lane_num + semantic_action.cell[LAT_CELL]
         desired_center_lane_latitude = road_lane_latitudes[desired_lane]
+
+        # reference route (frenet) is the center lane that we desire to follow.
+        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, desired_center_lane_latitude)
+        road_frenet = FrenetSerret2DFrame(road_points)
 
         if continue_action:
             ego_init_cartesian_extended_state = self._last_action_spec.samplable_trajectory.sample(np.array([ego.timestamp_in_sec]))[0]
@@ -395,7 +389,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             ego_init_fstate[FS_DX],
             ego_init_fstate[FS_DV],
             ego_init_fstate[FS_DA],
-            desired_center_lane_latitude,
+            0.0,    # lateral position is 0 relative to the reference route (center of desired lane)
             0.0,
             0.0
         ]], repeats=len(T_vals), axis=0)
@@ -430,12 +424,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                           poly_d_coefs=poly_coefs_d[optimum_time_idx])
 
         expected_state = samplable_trajectory.sample(time_points=np.array([ego.timestamp_in_sec + 0.1]))[0]
-        #print("Init ego state: %s" % NumpyUtils.str_log(ego_init_cartesian_extended_state))
-        #print("Expected init conditions in 0.1 sec: %s" % NumpyUtils.str_log(expected_state))
 
-        return SemanticActionSpec(t=T_vals[optimum_time_idx], v=constraints_s[optimum_time_idx, 3],
-                                  s_rel=target_relative_s[optimum_time_idx, 0] - ego_init_fstate[FS_SX],
-                                  d_rel=constraints_d[optimum_time_idx, 3] - ego_init_fstate[FS_DX],
+        return SemanticActionSpec(t=T_vals[optimum_time_idx],
+                                  v=constraints_s[optimum_time_idx, 3],
+                                  s=target_relative_s[optimum_time_idx, 0],
+                                  d=constraints_d[optimum_time_idx, 3],
+                                  reference_route_latitude=desired_center_lane_latitude,
                                   samplable_trajectory=samplable_trajectory)
 
     @raises(NoValidTrajectoriesFound)
@@ -451,10 +445,17 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         :return: SemanticActionSpec
         """
         ego = behavioral_state.ego_state
+        target_obj = semantic_action.target_obj
 
+        # Extract relevant details from state on Reference-Object
         # TODO: in the future - concatenate all roads within the relevant NavigationPlan
+        # TODO: road localization needs to be handled
         road_id = ego.road_localization.road_id
-        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
+        road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id)
+        desired_center_lane_latitude = road_lane_latitudes[target_obj.road_localization.lane_num]
+
+        # reference route lies in the center-lane where target_obj drives.
+        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, desired_center_lane_latitude)
         road_frenet = FrenetSerret2DFrame(road_points)
 
         ego_init_fstate = road_frenet.cstate_to_fstate(np.array([
@@ -466,22 +467,16 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         ]))
 
         obj_init_fstate = road_frenet.cstate_to_fstate(np.array([
-            semantic_action.target_obj.x, semantic_action.target_obj.y,
-            semantic_action.target_obj.yaw,
-            semantic_action.target_obj.v_x,
-            semantic_action.target_obj.acceleration_lon,
+            target_obj.x, target_obj.y,
+            target_obj.yaw,
+            target_obj.v_x,
+            target_obj.acceleration_lon,
             0.0  # We don't care about other agent's curvature
         ]))
 
-        # Extract relevant details from state on Reference-Object
-        # TODO: road localization needs to be handled
-        obj_on_road = semantic_action.target_obj.road_localization
-        road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id=obj_on_road.road_id)
-        obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
-
         # lon_margin = part of ego from its origin to its front + half of target object
         lon_margin = ego.size.length - EGO_ORIGIN_LON_FROM_REAR + \
-                     semantic_action.target_obj.size.length / 2
+                     target_obj.size.length / 2
 
         T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX],
                            BP_ACTION_T_RES)
@@ -510,7 +505,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             ego_init_fstate[FS_DX],
             ego_init_fstate[FS_DV],
             ego_init_fstate[FS_DA],
-            obj_center_lane_latitude,
+            0.0,    # aim for 0 latitude relative to reference route (target_obj's center lane)
             0.0,
             0.0
         ]], repeats=len(T_vals), axis=0)
@@ -553,8 +548,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                           poly_d_coefs=poly_coefs_d[optimum_time_idx])
 
         return SemanticActionSpec(t=T_vals[optimum_time_idx], v=obj_svT[optimum_time_idx],
-                                  s_rel=constraints_s[optimum_time_idx, 3] - ego_init_fstate[FS_SX],
-                                  d_rel=constraints_d[optimum_time_idx, 3] - ego_init_fstate[FS_DX],
+                                  s=constraints_s[optimum_time_idx, 3],
+                                  d=constraints_d[optimum_time_idx, 3],
+                                  reference_route_latitude=desired_center_lane_latitude,
                                   samplable_trajectory=samplable_trajectory)
 
     @staticmethod
@@ -586,8 +582,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         """
         ego = behavioral_state.ego_state
 
-        target_lane_latitude = action_spec.d_rel + ego.road_localization.intra_road_lat
-        target_relative_longitude = action_spec.s_rel
+        target_lane_latitude = action_spec.reference_route_latitude
+        target_relative_longitude = action_spec.s
 
         # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
         # caused by the curve linearization approximation in the resampling process
@@ -596,8 +592,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # Due to that, a point's longitude-value will be different between the 2 curves.
         # This error is accumulated depending on the actual length of the curvature -
         # when it is long, the error will potentially be big.
-        lookahead_distance = ego.road_localization.road_lon + \
-                             target_relative_longitude * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
+        lookahead_distance = target_relative_longitude * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
         # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
         # TODO: better than sending the whole road. and also what happens in the begginning of a road

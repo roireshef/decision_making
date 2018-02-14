@@ -89,19 +89,22 @@ class SemanticActionSpec:
     Holds the actual translation of the semantic action in terms of trajectory specifications.
     """
 
-    def __init__(self, t: float, v: float, s_rel: float, d_rel: float, samplable_trajectory: SamplableTrajectory = None):
+    def __init__(self, t: float, v: float, s: float, d: float, reference_route_latitude: float,
+                 samplable_trajectory: SamplableTrajectory = None):
         """
         The trajectory specifications are defined by the target ego state
         :param t: time [sec]
         :param v: velocity [m/s]
-        :param s_rel: relative longitudinal distance to ego in Frenet frame [m]
-        :param d_rel: relative lateral distance to ego in Frenet frame [m]
+        :param s: longitudinal position in reference route's Frenet frame [m]
+        :param d: lateral position in reference route's Frenet frame [m]
+        :param reference_route_latitude: lateral position of the reference route relative to road's RHS (zero) [m]
         :param poly_coefs_s: coefficients for longitudinal reference trajectory. Used for "BP if".
         """
         self.t = t
         self.v = v
-        self.s_rel = s_rel
-        self.d_rel = d_rel
+        self.s = s
+        self.d = d
+        self.reference_route_latitude = reference_route_latitude
         self.samplable_trajectory = samplable_trajectory
 
 
