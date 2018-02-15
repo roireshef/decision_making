@@ -94,8 +94,7 @@ class TrajectoryPlanningFacade(DmModule):
 
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
-                     params.cost_params)
+                plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon, params.cost_params)
 
             # TODO: validate that sampling is consistent with controller!
             trajectory_points = samplable_trajectory.sample(

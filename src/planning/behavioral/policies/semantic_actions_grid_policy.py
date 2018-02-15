@@ -7,11 +7,12 @@ from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import BP_SPECIFICATION_T_MIN, BP_SPECIFICATION_T_MAX, \
     BP_SPECIFICATION_T_RES, SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL, \
-    BEHAVIORAL_PLANNING_HORIZON, A_LON_EPS, OBSTACLE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
+    BEHAVIORAL_PLANNING_HORIZON, OBSTACLE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
-    DEVIATION_FROM_GOAL_COST, DEVIATION_FROM_GOAL_LAT_FACTOR, GOAL_SIGMOID_K_PARAM, \
+    DEVIATION_FROM_GOAL_COST, DEVIATION_FROM_GOAL_LAT_LON_RATIO, GOAL_SIGMOID_K_PARAM, \
     GOAL_SIGMOID_OFFSET, LATERAL_SAFETY_MARGIN_FROM_OBJECT, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS, SHOULDER_SIGMOID_OFFSET
+    LAT_ACC_LIMITS, SHOULDER_SIGMOID_OFFSET, LON_JERK_COST, LAT_JERK_COST, LON_MARGIN_FROM_EGO, LANE_SIGMOID_K_PARAM, \
+    SHOULDER_SIGMOID_K_PARAM
 from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -277,13 +278,13 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         left_road_offset = (road.road_width - reference_route_latitude) - ego_size.width / 2 + ROAD_SHOULDERS_WIDTH
 
         # Set road-structure-based cost parameters
-        right_lane_cost = SigmoidFunctionParams(w=DEVIATION_FROM_LANE_COST, k=ROAD_SIGMOID_K_PARAM,
+        right_lane_cost = SigmoidFunctionParams(w=DEVIATION_FROM_LANE_COST, k=LANE_SIGMOID_K_PARAM,
                                                 offset=right_lane_offset)  # Zero cost
-        left_lane_cost = SigmoidFunctionParams(w=DEVIATION_FROM_LANE_COST, k=ROAD_SIGMOID_K_PARAM,
+        left_lane_cost = SigmoidFunctionParams(w=DEVIATION_FROM_LANE_COST, k=LANE_SIGMOID_K_PARAM,
                                                offset=left_lane_offset)  # Zero cost
-        right_shoulder_cost = SigmoidFunctionParams(w=DEVIATION_TO_SHOULDER_COST, k=ROAD_SIGMOID_K_PARAM,
+        right_shoulder_cost = SigmoidFunctionParams(w=DEVIATION_TO_SHOULDER_COST, k=SHOULDER_SIGMOID_K_PARAM,
                                                     offset=right_shoulder_offset)  # Very high cost
-        left_shoulder_cost = SigmoidFunctionParams(w=DEVIATION_TO_SHOULDER_COST, k=ROAD_SIGMOID_K_PARAM,
+        left_shoulder_cost = SigmoidFunctionParams(w=DEVIATION_TO_SHOULDER_COST, k=SHOULDER_SIGMOID_K_PARAM,
                                                    offset=left_shoulder_offset)  # Very high cost
         right_road_cost = SigmoidFunctionParams(w=DEVIATION_FROM_ROAD_COST, k=ROAD_SIGMOID_K_PARAM,
                                                 offset=right_road_offset)  # Very high cost
@@ -300,7 +301,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                offset=objects_dilation_width)  # Very high (inf) cost
         dist_from_goal_cost = SigmoidFunctionParams(w=DEVIATION_FROM_GOAL_COST, k=GOAL_SIGMOID_K_PARAM,
                                                     offset=GOAL_SIGMOID_OFFSET)
-        dist_from_goal_lat_factor = DEVIATION_FROM_GOAL_LAT_FACTOR
+        dist_from_goal_lat_factor = DEVIATION_FROM_GOAL_LAT_LON_RATIO
 
         cost_params = TrajectoryCostParams(obstacle_cost_x=objects_cost_x,
                                            obstacle_cost_y=objects_cost_y,
@@ -312,6 +313,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                            right_road_cost=right_road_cost,
                                            dist_from_goal_cost=dist_from_goal_cost,
                                            dist_from_goal_lat_factor=dist_from_goal_lat_factor,
+                                           lon_jerk_cost=LON_JERK_COST,
+                                           lat_jerk_cost=LAT_JERK_COST,
                                            velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
                                            lat_acceleration_limits=LAT_ACC_LIMITS)
@@ -463,11 +466,11 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # Due to that, a point's longitude-value will be different between the 2 curves.
         # This error is accumulated depending on the actual length of the curvature -
         # when it is long, the error will potentially be big.
-        lookahead_distance = behavioral_state.ego_state.road_localization.road_lon + \
+        lookahead_distance = behavioral_state.ego_state.road_localization.road_lon + LON_MARGIN_FROM_EGO + \
                              target_relative_longitude * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
         # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
-        # TODO: better than sending the whole road. and also what happens in the begginning of a road
+        # TODO: better than sending the whole road. and also what happens in the beginning of a road
         lookahead_path = MapService.get_instance().get_uniform_path_lookahead(
             road_id=behavioral_state.ego_state.road_localization.road_id,
             lat_shift=target_lane_latitude,

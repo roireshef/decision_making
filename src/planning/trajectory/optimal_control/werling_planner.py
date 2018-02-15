@@ -5,17 +5,17 @@ import numpy as np
 
 from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
-    SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, TRAJECTORY_OBSTACLE_LOOKAHEAD, SX_OFFSET_MIN, SX_OFFSET_MAX, \
-    TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES
+    SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
+    TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
-from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle
+from decision_making.src.planning.trajectory.cost_function import Costs
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, Poly1D
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianExtendedTrajectory, \
     CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, FrenetState2D, C_A, C_K, FrenetState1D, \
-    FrenetTrajectory1D, D5, Limits
+    FrenetTrajectory1D, D5, Limits, C_Y
 from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
@@ -90,7 +90,8 @@ class WerlingPlanner(TrajectoryPlanner):
         return self._dt
 
     def plan(self, state: State, reference_route: np.ndarray, goal: CartesianExtendedState, time_horizon: float,
-             cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
+             cost_params: TrajectoryCostParams) -> \
+            Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """ see base class """
         T_s = time_horizon
 
@@ -212,8 +213,9 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
-        filtered_trajectory_costs = self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state,
-                                                       goal_frenet_state, cost_params, global_time_sample, self._predictor)
+        filtered_trajectory_costs = \
+            self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
+                               global_time_sample, self._predictor, self.dt)
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
@@ -284,58 +286,37 @@ class WerlingPlanner(TrajectoryPlanner):
     @staticmethod
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,
                       goal_in_frenet: FrenetState2D, params: TrajectoryCostParams, global_time_samples: np.ndarray,
-                      predictor: Predictor) -> np.ndarray:
+                      predictor: Predictor, dt: float) -> np.ndarray:
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
         :param ftrajectories: numpy tensor of trajectories in frenet-frame
         :param state: the state object (that includes obstacles, etc.)
+        :param goal_in_frenet: A 1D numpy array of the desired ego-state to plan towards, represented in current
+                global-coordinate-frame (see EGO_* in planning.utils.types.py for the fields)
         :param params: parameters for the cost function (from behavioral layer)
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
         :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
-        :param goal_in_frenet: target state of ego
+        :param dt: time step of ctrajectories
         :return: numpy array (1D) of the total cost per trajectory (in ctrajectories and ftrajectories)
         """
-        # TODO: add jerk cost
-        ''' OBSTACLES (Sigmoid cost from bounding-box) '''
-        offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
-        close_obstacles = \
-            [SigmoidDynamicBoxObstacle.from_object(obj=obs, k=params.obstacle_cost_x.k, offset=offset,
-                                                    time_samples=global_time_samples, predictor=predictor)
-             for obs in state.dynamic_objects
-             if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
-
-        cost_per_obstacle = [obs.compute_cost(ctrajectories[:, :, 0:2]) for obs in close_obstacles]
-        obstacles_costs = params.obstacle_cost_x.w * np.sum(cost_per_obstacle, axis=0)
-
-        ''' DEVIATIONS FROM GOAL SCORE '''
-        # make theta_diff to be in [-pi, pi]
+        ''' deviation from goal cost '''
         last_fpoints = ftrajectories[:, -1, :]
-        goal_vect = np.array([last_fpoints[:, FS_SX] - goal_in_frenet[FS_SX],
-                              last_fpoints[:, FS_DX] - goal_in_frenet[FS_DX]])
-        goal_dist = np.sqrt(goal_vect[0]**2 + (params.dist_from_goal_lat_factor * goal_vect[1])**2)
-        dist_from_goal_costs = Math.clipped_sigmoid(goal_dist - params.dist_from_goal_cost.offset,
-                                                            params.dist_from_goal_cost.w,
-                                                            params.dist_from_goal_cost.k)
+        trajectory_end_goal_diff = np.array([last_fpoints[:, FS_SX] - goal_in_frenet[FS_SX],
+                                             last_fpoints[:, FS_DX] - goal_in_frenet[FS_DX]])
+        trajectory_end_goal_dist = np.sqrt(trajectory_end_goal_diff[0] ** 2 +
+                                           (params.dist_from_goal_lat_factor * trajectory_end_goal_diff[1]) ** 2)
+        dist_from_goal_costs = Math.clipped_sigmoid(trajectory_end_goal_dist - params.dist_from_goal_cost.offset,
+                                                    params.dist_from_goal_cost.w, params.dist_from_goal_cost.k)
 
-        ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
-        deviations_costs = np.zeros(ftrajectories.shape[0])
+        ''' point-wise costs: obstacles, deviations, jerk '''
+        pointwise_costs = Costs.compute_pointwise_costs(ctrajectories, ftrajectories, state, params,
+                                                                  global_time_samples, predictor, dt)
 
-        # add to deviations_costs the costs of deviations from the left [lane, shoulder, road]
-        for exp in [params.left_lane_cost, params.left_shoulder_cost, params.left_road_cost]:
-            left_offsets = ftrajectories[:, :, FS_DX] - exp.offset
-            deviations_costs += np.mean(Math.clipped_sigmoid(left_offsets, exp.w, exp.k), axis=1)
+        return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs
 
-        # add to deviations_costs the costs of deviations from the right [lane, shoulder, road]
-        for exp in [params.right_lane_cost, params.right_shoulder_cost, params.right_road_cost]:
-            right_offsets = np.negative(ftrajectories[:, :, FS_DX]) - exp.offset
-            deviations_costs += np.mean(Math.clipped_sigmoid(right_offsets, exp.w, exp.k), axis=1)
-
-        ''' TOTAL '''
-        return obstacles_costs + dist_from_goal_costs + deviations_costs
-
-    def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints ,
-                               fconstraints_tT: FrenetConstraints , dt) -> float:
+    def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints, fconstraints_tT: FrenetConstraints,
+                               dt) -> float:
         """
         Calculates the lower bound for the lateral time horizon based on the physical constraints.
         :param fconstraints_t0: a set of constraints over the initial state

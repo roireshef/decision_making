@@ -62,8 +62,9 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
 
     def __init__(self, obstacle_cost_x, obstacle_cost_y, left_lane_cost, right_lane_cost, left_shoulder_cost,
                  right_shoulder_cost, left_road_cost, right_road_cost, dist_from_goal_cost, dist_from_goal_lat_factor,
+                 lon_jerk_cost, lat_jerk_cost,
                  velocity_limits, lon_acceleration_limits, lat_acceleration_limits):
-        # type:(SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,float,Limits,Limits,Limits)->None
+        # type:(SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,float,float,float,Limits,Limits,Limits)->None
         """
         This class holds all the parameters used to build the cost function of the trajectory planner.
         It is dynamically set and sent by the behavioral planner.
@@ -85,6 +86,8 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         :param right_road_cost: defines the sigmoid cost of the right-side of the road
         :param dist_from_goal_cost: cost of distance from the target is a sigmoid.
         :param dist_from_goal_lat_factor: Weight of latitude vs. longitude in the dist from goal cost.
+        :param lon_jerk_cost: longitudinal jerk cost
+        :param lat_jerk_cost: lateral jerk cost
         :param velocity_limits: Limits of allowed velocity in [m/sec]
         :param lon_acceleration_limits: Limits of allowed longitudinal acceleration in [m/sec^2]
         :param lat_acceleration_limits: Limits of allowed signed lateral acceleration in [m/sec^2]
@@ -99,6 +102,8 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         self.right_road_cost = right_road_cost
         self.dist_from_goal_cost = dist_from_goal_cost
         self.dist_from_goal_lat_factor = dist_from_goal_lat_factor
+        self.lon_jerk_cost = lon_jerk_cost
+        self.lat_jerk_cost = lat_jerk_cost
         self.velocity_limits = velocity_limits
         self.lon_acceleration_limits = lon_acceleration_limits
         self.lat_acceleration_limits = lat_acceleration_limits
@@ -117,6 +122,8 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         lcm_msg.right_road_cost = self.right_road_cost.serialize()
         lcm_msg.dist_from_goal_cost = self.dist_from_goal_cost.serialize()
         lcm_msg.dist_from_goal_lat_factor = self.dist_from_goal_lat_factor
+        lcm_msg.lon_jerk_cost = self.lon_jerk_cost
+        lcm_msg.lat_jerk_cost = self.lat_jerk_cost
 
         lcm_msg.velocity_limits = LcmNumpyArray()
         lcm_msg.velocity_limits.num_dimensions = len(self.velocity_limits.shape)
@@ -151,6 +158,8 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
                  , SigmoidFunctionParams.deserialize(lcmMsg.right_road_cost)
                  , SigmoidFunctionParams.deserialize(lcmMsg.dist_from_goal_cost)
                  , lcmMsg.dist_from_goal_lat_factor
+                 , lcmMsg.lon_jerk_cost
+                 , lcmMsg.lat_jerk_cost
                  , np.ndarray(shape = tuple(lcmMsg.velocity_limits.shape)
                             , buffer = np.array(lcmMsg.velocity_limits.data)
                             , dtype = float)
