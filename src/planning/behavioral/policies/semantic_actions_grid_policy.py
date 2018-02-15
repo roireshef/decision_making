@@ -31,7 +31,7 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_policy im
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DX, FS_DV, FS_DA
+from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DX, FS_DV, FS_DA, FP_SX
 from decision_making.src.planning.types import LIMIT_MIN, LIMIT_MAX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
@@ -149,7 +149,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         else:
             return self._specify_action_towards_object(behavioral_state=behavioral_state,
                                                        semantic_action=semantic_action,
-                                                       continue_action=continue_action)
+                                                       continue_action=continue_action,
+                                                       predictor=self._predictor,
+                                                       navigation_plan=nav_plan)
 
     def _eval_actions(self, behavioral_state: SemanticActionsGridState,
                       semantic_actions: List[SemanticAction],
@@ -346,6 +348,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         :return: SemanticActionSpec
         """
         ego = behavioral_state.ego_state
+        target_obj = semantic_action.target_obj
 
         # TODO: in the future - concatenate all roads within the relevant NavigationPlan
         road_id = ego.road_localization.road_id
@@ -360,23 +363,25 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             ego.curvature
         ]))
 
+        target_obj_fpoint = road_frenet.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))
+        _, _, _, road_curvature_at_obj_location , _ = road_frenet._taylor_interp(target_obj_fpoint[FP_SX])
         obj_init_fstate = road_frenet.cstate_to_fstate(np.array([
-            semantic_action.target_obj.x, semantic_action.target_obj.y,
-            semantic_action.target_obj.yaw,
-            semantic_action.target_obj.v_x,
-            semantic_action.target_obj.acceleration_lon,
-            0.0  # We don't care about other agent's curvature
+            target_obj.x, target_obj.y,
+            target_obj.yaw,
+            target_obj.v_x,
+            target_obj.acceleration_lon,
+            road_curvature_at_obj_location  # We don't care about other agent's curvature
         ]))
 
         # Extract relevant details from state on Reference-Object
         # TODO: road localization needs to be handled
-        obj_on_road = semantic_action.target_obj.road_localization
+        obj_on_road = target_obj.road_localization
         road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id=obj_on_road.road_id)
         obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
 
         # lon_margin = part of ego from its origin to its front + half of target object
         lon_margin = ego.size.length - EGO_ORIGIN_LON_FROM_REAR + \
-                     semantic_action.target_obj.size.length / 2
+                     target_obj.size.length / 2
 
         T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX],
                            BP_ACTION_T_RES)
@@ -385,7 +390,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         A_inv = np.linalg.inv(A)
 
         # TODO: should be swapped with current implementation of Predictor
-        obj_saT = obj_init_fstate[FS_SA]  # TODO: should be zeroed?
+        obj_saT = 0  # obj_init_fstate[FS_SA]  # TODO: should be zeroed? (currently assumes 0 acceleration)
         obj_svT = obj_init_fstate[FS_SV] + obj_init_fstate[FS_SA] * T_vals
         obj_sxT = obj_init_fstate[FS_SX] + obj_init_fstate[FS_SV] * T_vals + obj_init_fstate[FS_SA] * T_vals ** 2 / 2
 
@@ -429,15 +434,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         is_interior_optimum = are_lon_acc_in_limits[optimum_time_idx] & are_lat_acc_in_limits[optimum_time_idx] & \
                               NumpyUtils.is_in_limits(T_vals[optimum_time_idx], BP_ACTION_T_LIMITS)
 
-        if not is_interior_optimum:
-            cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[1]])
-            optimum_time_idx = np.argmin(cost)
-
-        if not is_interior_optimum:
-            raise NoValidTrajectoriesFound("No valid trajectories found. action: %s, state: %s, optimal T: %s" %
-                                           (semantic_action.__dict__, behavioral_state.__dict__,
-                                            T_vals[optimum_time_idx]))
-
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
         samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
@@ -448,8 +444,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                           poly_d_coefs=poly_coefs_d[optimum_time_idx])
 
         return SemanticActionSpec(t=T_vals[optimum_time_idx], v=obj_svT[optimum_time_idx],
-                                  s=constraints_s[optimum_time_idx, 3] - ego_init_fstate[FS_SX],
-                                  d=constraints_d[optimum_time_idx, 3] - ego_init_fstate[FS_DX],
+                                  s=constraints_s[optimum_time_idx, 3],
+                                  d=constraints_d[optimum_time_idx, 3],
                                   samplable_trajectory=samplable_trajectory)
 
     @staticmethod
