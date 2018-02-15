@@ -290,8 +290,8 @@ class WerlingPlanner(TrajectoryPlanner):
         last_fpoints = ftrajectories[:, -1, :]
         trajectory_end_goal_diff = np.array([last_fpoints[:, FS_SX] - goal_in_frenet[FS_SX],
                                              last_fpoints[:, FS_DX] - goal_in_frenet[FS_DX]])
-        trajectory_end_goal_dist = np.linalg.norm(np.array([trajectory_end_goal_diff[0],
-                                                  params.dist_from_goal_lat_factor * trajectory_end_goal_diff[1]]))
+        trajectory_end_goal_dist = np.sqrt(trajectory_end_goal_diff[0] ** 2 +
+                                           (params.dist_from_goal_lat_factor * trajectory_end_goal_diff[1]) ** 2)
         dist_from_goal_costs = Math.clipped_sigmoid(trajectory_end_goal_dist - params.dist_from_goal_cost.offset,
                                                     params.dist_from_goal_cost.w, params.dist_from_goal_cost.k)
 
