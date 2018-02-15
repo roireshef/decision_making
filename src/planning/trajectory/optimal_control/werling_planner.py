@@ -3,7 +3,7 @@ from typing import Tuple
 
 import numpy as np
 
-from decision_making.src.exceptions import NoValidTrajectoriesFound
+from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
     TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT
@@ -181,7 +181,17 @@ class WerlingPlanner(TrajectoryPlanner):
 
         self._logger.debug("TP has found %d valid trajectories to choose from", len(ctrajectories_filtered))
 
-        if len(ctrajectories_filtered) == 0:
+        if len(ctrajectories) == 0:
+            raise CouldNotGenerateTrajectories("No valid cartesian trajectories. time: %f, goal: %s, state: %s. "
+                                               "Longitudes range: [%s, %s] (limits: %s)"
+                                               "Min frenet velocity: %s"
+                                               "number of trajectories passed according to Frenet limits: %s/%s;" %
+                                               (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
+                                                np.min(ftrajectories[:, :, FS_SX]), np.max(ftrajectories[:, :, FS_SX]),
+                                                frenet.s_limits,
+                                                np.min(ftrajectories[:, :, FS_SV]),
+                                                len(frenet_filtered_indices), len(ftrajectories)))
+        elif len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             raise NoValidTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s. "
                                            "planned velocities range [%s, %s] (limits: %s); "
@@ -264,6 +274,10 @@ class WerlingPlanner(TrajectoryPlanner):
             NumpyUtils.is_in_limits(ftrajectories[:, :, FS_SX], reference_route_limits) &
             np.greater_equal(ftrajectories[:, :, FS_SV], 0.0), axis=1)
 
+        # here we validate feasible lateral acceleration *directly from the lateral polynomial* because our
+        # discretization of the trajectory (via sampling with constant self.dt) can overlook cases where there is a high
+        # lateral acceleration between two adjacent sampled points (critical in the lateral case because we allow
+        # shorter lateral maneuvers
         frenet_lateral_movement_is_feasible = \
             QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_d_vals, cost_params.lat_acceleration_limits)
 
