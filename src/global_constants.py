@@ -139,8 +139,8 @@ DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION = 0.5
 # iterations. If the distance is lower than this threshold, the TP plans the trajectory as is the ego vehicle is
 # currently in the desired location and not in its actual location.
 # TODO: fix real values for thresholds (after tuning controller)
-NEGLIGIBLE_DISPOSITION_LON = 3  # longitudinal (ego's heading direction) difference threshold
-NEGLIGIBLE_DISPOSITION_LAT = 3  # lateral (ego's side direction) difference threshold
+NEGLIGIBLE_DISPOSITION_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
+NEGLIGIBLE_DISPOSITION_LAT = 0.5  # lateral (ego's side direction) difference threshold
 
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
 TRAJECTORY_TIME_RESOLUTION = 0.1
@@ -160,7 +160,7 @@ SX_OFFSET_MIN, SX_OFFSET_MAX = -8, 0
 SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
 
 # [m] Range for grid search in werling planner (lat. position)
-DX_OFFSET_MIN, DX_OFFSET_MAX = -2.4, 2.4
+DX_OFFSET_MIN, DX_OFFSET_MAX = -2.0, 2.0
 
 # Linspace number of steps in the constraints parameters grid-search
 SX_STEPS, SV_STEPS, DX_STEPS = 5, 1, 13
