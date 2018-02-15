@@ -4,7 +4,7 @@ from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR
 from decision_making.src.global_constants import SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LON_REAR, LON_MARGIN_FROM_EGO
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils as SAU
+from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticBehavioralState, \
     RoadSemanticOccupancyGrid, LON_CELL
 from decision_making.src.state.state import EgoState, State, DynamicObject
@@ -88,7 +88,7 @@ class SemanticActionsGridState(SemanticBehavioralState):
 
                 # We treat the object only if its distance is smaller than the distance we
                 # would have travelled for the planning horizon in the average speed between current and target vel.
-                if dist_from_object_rear_to_ego_front > SAU.compute_distance_by_velocity_diff(ego_state.v_x):
+                if dist_from_object_rear_to_ego_front > SemanticActionsUtils.compute_distance_by_velocity_diff(ego_state.v_x):
                     continue
 
                 if len(semantic_occupancy_dict[occupancy_index]) == 0:

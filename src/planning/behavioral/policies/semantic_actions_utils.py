@@ -1,4 +1,5 @@
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_HORIZON, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_HORIZON
 
 
 class SemanticActionsUtils:

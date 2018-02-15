@@ -84,24 +84,25 @@ class SemanticAction:
                self.cell == other.cell and \
                self.action_type.__dict__ == other.action_type.__dict__
 
+
 class SemanticActionSpec:
     """
     Holds the actual translation of the semantic action in terms of trajectory specifications.
     """
 
-    def __init__(self, t: float, v: float, s_rel: float, d_rel: float, samplable_trajectory: SamplableTrajectory = None):
+    def __init__(self, t: float, v: float, s: float, d: float, samplable_trajectory: SamplableTrajectory = None):
         """
         The trajectory specifications are defined by the target ego state
         :param t: time [sec]
         :param v: velocity [m/s]
-        :param s_rel: relative longitudinal distance to ego in Frenet frame [m]
-        :param d_rel: relative lateral distance to ego in Frenet frame [m]
+        :param s: relative longitudinal distance to ego in Frenet frame [m]
+        :param d: relative lateral distance to ego in Frenet frame [m]
         :param poly_coefs_s: coefficients for longitudinal reference trajectory. Used for "BP if".
         """
         self.t = t
         self.v = v
-        self.s_rel = s_rel
-        self.d_rel = d_rel
+        self.s = s
+        self.d = d
         self.samplable_trajectory = samplable_trajectory
 
 
