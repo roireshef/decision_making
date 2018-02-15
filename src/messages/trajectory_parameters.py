@@ -55,6 +55,8 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
     right_road_cost = SigmoidFunctionParams
     dist_from_goal_cost = SigmoidFunctionParams
     dist_from_goal_lat_factor = float
+    lon_jerk_cost = float
+    lat_jerk_cost = float
     velocity_limits = Limits
     lon_acceleration_limits = Limits
     lat_acceleration_limits = Limits
@@ -178,7 +180,6 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
     target_state = np.ndarray
     cost_params = TrajectoryCostParams
     time = float
-    reset_acceleration = bool
 
     def __init__(self, strategy, reference_route, target_state, cost_params, time):
         # type: (TrajectoryPlanningStrategy, np.ndarray, np.ndarray, TrajectoryCostParams, float)->None

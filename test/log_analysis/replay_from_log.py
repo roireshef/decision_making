@@ -22,7 +22,7 @@ from rte.python.logger.AV_logger import AV_Logger
 
 #LOG_PATH_FOR_ANALYSIS = '/home/max/AV_Log_dm_main_test-2017_12_12-10_19.log'
 LOG_PATH_FOR_ANALYSIS = '/home/xzjsyy/av_code/spav/logs/AV_Log_dm_main.log'
-TARGET_LOG_TIME = 53800.0
+TARGET_LOG_TIME = 57906.0
 
 # TODO: Remove temporary TP facade. used only to bypass the Lcm Ser/Deser methods
 class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
