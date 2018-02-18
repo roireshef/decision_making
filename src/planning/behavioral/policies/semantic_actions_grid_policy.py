@@ -5,18 +5,18 @@ import numpy as np
 
 from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_HORIZON, OBSTACLE_SIGMOID_COST, \
+from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
+    PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS
+from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
     DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
     DEVIATION_FROM_GOAL_COST, DEVIATION_FROM_GOAL_LAT_LON_RATIO, GOAL_SIGMOID_K_PARAM, \
     GOAL_SIGMOID_OFFSET, LATERAL_SAFETY_MARGIN_FROM_OBJECT, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS, SHOULDER_SIGMOID_OFFSET, BP_JERK_TIME_WEIGHTS, LON_JERK_COST, LAT_JERK_COST, LON_MARGIN_FROM_EGO, LANE_SIGMOID_K_PARAM, \
+    LAT_ACC_LIMITS, SHOULDER_SIGMOID_OFFSET, LON_JERK_COST, LAT_JERK_COST, LANE_SIGMOID_K_PARAM, \
     SHOULDER_SIGMOID_K_PARAM, BP_ACTION_T_LIMITS, \
     BP_ACTION_T_RES, SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL, \
     BP_JERK_TIME_WEIGHTS
-from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
-    PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
@@ -365,7 +365,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         ]))
 
         target_obj_fpoint = road_frenet.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))
-        _, _, _, road_curvature_at_obj_location , _ = road_frenet._taylor_interp(target_obj_fpoint[FP_SX])
+        _, _, _, road_curvature_at_obj_location, _ = road_frenet._taylor_interp(target_obj_fpoint[FP_SX])
         obj_init_fstate = road_frenet.cstate_to_fstate(np.array([
             target_obj.x, target_obj.y,
             target_obj.yaw,
@@ -391,7 +391,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         A_inv = np.linalg.inv(A)
 
         # TODO: should be swapped with current implementation of Predictor
-        obj_saT = 0 #obj_init_fstate[FS_SA]  # TODO: should be zeroed?
+        obj_saT = 0  # obj_init_fstate[FS_SA]  # TODO: should be zeroed?
         obj_svT = obj_init_fstate[FS_SV] + obj_saT * T_vals
         obj_sxT = obj_init_fstate[FS_SX] + obj_saT * T_vals + obj_saT * T_vals ** 2 / 2
 
