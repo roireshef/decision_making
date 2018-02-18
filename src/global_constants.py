@@ -168,7 +168,7 @@ SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
 DX_OFFSET_MIN, DX_OFFSET_MAX = -1.6, 1.6
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 5, 1, 9
+SX_STEPS, SV_STEPS, DX_STEPS = 5, 1, 13
 
 # Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
 TD_STEPS = 6
