@@ -1,5 +1,6 @@
 import traceback
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException
+from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
@@ -80,7 +81,7 @@ class BehavioralFacade(DmModule):
     def _get_current_state(self) -> State:
         input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
         object_state = State.deserialize(input_state)
-        self.logger.debug('Received State: {}'.format(object_state))
+        self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, object_state))
         return object_state
 
     def _get_current_navigation_plan(self) -> NavigationPlanMsg:
@@ -91,7 +92,7 @@ class BehavioralFacade(DmModule):
 
     def _publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
         self.pubsub.publish(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, trajectory_parameters.serialize())
-        self.logger.debug("BehavioralPlanningFacade output is %s", str(trajectory_parameters))
+        self.logger.debug("{} {}".format(LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, trajectory_parameters))
 
     def _publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
         self.pubsub.publish(pubsub_topics.VISUALIZATION_TOPIC, visualization_message.serialize())

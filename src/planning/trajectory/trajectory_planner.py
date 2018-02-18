@@ -4,7 +4,7 @@ from typing import Tuple
 
 import numpy as np
 
-from decision_making.src.exceptions import raises, NoValidTrajectoriesFound
+from decision_making.src.exceptions import raises, NoValidTrajectoriesFound, CouldNotGenerateTrajectories
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import CartesianPath2D, CartesianExtendedTrajectory, CartesianTrajectories, \
     CartesianExtendedState
@@ -49,9 +49,10 @@ class TrajectoryPlanner(metaclass=ABCMeta):
         return self._predictor
 
     @abstractmethod
-    @raises(NoValidTrajectoriesFound)
+    @raises(NoValidTrajectoriesFound, CouldNotGenerateTrajectories)
     def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, time_horizon: float,
-             cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
+             cost_params: TrajectoryCostParams) -> \
+            Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
         Plans a trajectory according to the specifications in the arguments
         :param time_horizon: defines the planning horizon in [sec] for reaching the goal. Enables the target

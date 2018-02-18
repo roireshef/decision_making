@@ -3,7 +3,7 @@ import numpy as np
 
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
-    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS
+    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST, LAT_JERK_COST
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
@@ -153,7 +153,7 @@ def state():
     dynamic_objects = [dyn1, dyn2]
     size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
     # TODO - decouple from navigation plan below (1 is the road id). Make this dependency explicit.
-    ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
+    ego_state = EgoState(0, 0, 1, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
     yield State(occupancy_state, dynamic_objects, ego_state)
 
 
@@ -172,7 +172,8 @@ def trajectory_params():
     mock_sigmoid = SigmoidFunctionParams(1.0, 2.0, 3.0)
     trajectory_cost_params = TrajectoryCostParams(mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
                                                   mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
-                                                  mock_sigmoid, 3.0, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)
+                                                  mock_sigmoid, 3.0, LON_JERK_COST, LAT_JERK_COST,
+                                                  VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)
     yield TrajectoryParams(reference_route=ref_route, target_state=target_state,
                            cost_params=trajectory_cost_params, time=16,
                            strategy=TrajectoryPlanningStrategy.HIGHWAY)
@@ -196,8 +197,8 @@ def behavioral_visualization_msg(trajectory_params):
 
 @pytest.fixture(scope='function')
 def trajectory_visualization_msg(state, trajectory):
-    yield TrajectoryVisualizationMsg(reference_route=trajectory.reference_route,
-                                     trajectories=np.array([trajectory.chosen_trajectory]),
+    yield TrajectoryVisualizationMsg(reference_route=trajectory.trajectory,
+                                     trajectories=np.array([trajectory.trajectory]),
                                      costs=np.array([0]),
                                      state=state,
                                      predicted_states=[state],

@@ -27,6 +27,8 @@ class TrjajectoryPlanningException(Exception):
 class NoValidTrajectoriesFound(TrjajectoryPlanningException):
     pass
 
+class CouldNotGenerateTrajectories(TrjajectoryPlanningException):
+    pass
 
 # TRAJECTORY PLANNING
 @six.add_metaclass(ABCMeta)

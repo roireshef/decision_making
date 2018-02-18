@@ -5,7 +5,7 @@ from typing import Optional, List, Dict
 import numpy as np
 
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID, \
-    UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS
+    UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS, LOG_MSG_STATE_MODULE_PUBLISH_STATE
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.planning.types import CartesianPoint3D
 from decision_making.src.state.state import OccupancyState, EgoState, DynamicObject, ObjectSize, State
@@ -233,7 +233,7 @@ class StateModule(DmModule):
         # Update state under lock (so that new events will not corrupt the data)
         with self._occupancy_state_lock, self._ego_state_lock, self._dynamic_objects_lock:
             state = State(self._occupancy_state, self._dynamic_objects, self._ego_state)
-        self.logger.debug("publishing state %s", state)
+        self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
 
         self.pubsub.publish(pubsub_topics.STATE_TOPIC, state.serialize())
 
