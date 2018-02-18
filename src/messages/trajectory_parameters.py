@@ -10,6 +10,11 @@ from decision_making.src.planning.types import C_V, Limits
 
 
 class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
+    ''' Members annotations for python 2 compliant classes '''
+    w = float
+    k = float
+    offset = float
+
     def __init__(self, w, k, offset):
         # type: (float, float, float)->None
         """
@@ -39,10 +44,29 @@ class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
 
 
 class TrajectoryCostParams(PUBSUB_MSG_IMPL):
+    ''' Members annotations for python 2 compliant classes '''
+    obstacle_cost_x = SigmoidFunctionParams
+    obstacle_cost_y = SigmoidFunctionParams
+    left_lane_cost = SigmoidFunctionParams
+    right_lane_cost = SigmoidFunctionParams
+    left_shoulder_cost = SigmoidFunctionParams
+    right_shoulder_cost = SigmoidFunctionParams
+    left_road_cost = SigmoidFunctionParams
+    right_road_cost = SigmoidFunctionParams
+    dist_from_goal_cost = SigmoidFunctionParams
+    dist_from_goal_lat_factor = float
+    lon_jerk_cost = float
+    lat_jerk_cost = float
+    velocity_limits = Limits
+    lon_acceleration_limits = Limits
+    lat_acceleration_limits = Limits
+
+
     def __init__(self, obstacle_cost_x, obstacle_cost_y, left_lane_cost, right_lane_cost, left_shoulder_cost,
                  right_shoulder_cost, left_road_cost, right_road_cost, dist_from_goal_cost, dist_from_goal_lat_factor,
+                 lon_jerk_cost, lat_jerk_cost,
                  velocity_limits, lon_acceleration_limits, lat_acceleration_limits):
-        # type:(SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,float,Limits,Limits,Limits)->None
+        # type:(SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,float,float,float,Limits,Limits,Limits)->None
         """
         This class holds all the parameters used to build the cost function of the trajectory planner.
         It is dynamically set and sent by the behavioral planner.
@@ -64,6 +88,8 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         :param right_road_cost: defines the sigmoid cost of the right-side of the road
         :param dist_from_goal_cost: cost of distance from the target is a sigmoid.
         :param dist_from_goal_lat_factor: Weight of latitude vs. longitude in the dist from goal cost.
+        :param lon_jerk_cost: longitudinal jerk cost
+        :param lat_jerk_cost: lateral jerk cost
         :param velocity_limits: Limits of allowed velocity in [m/sec]
         :param lon_acceleration_limits: Limits of allowed longitudinal acceleration in [m/sec^2]
         :param lat_acceleration_limits: Limits of allowed signed lateral acceleration in [m/sec^2]
@@ -78,6 +104,8 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         self.right_road_cost = right_road_cost
         self.dist_from_goal_cost = dist_from_goal_cost
         self.dist_from_goal_lat_factor = dist_from_goal_lat_factor
+        self.lon_jerk_cost = lon_jerk_cost
+        self.lat_jerk_cost = lat_jerk_cost
         self.velocity_limits = velocity_limits
         self.lon_acceleration_limits = lon_acceleration_limits
         self.lat_acceleration_limits = lat_acceleration_limits
@@ -96,6 +124,8 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         lcm_msg.right_road_cost = self.right_road_cost.serialize()
         lcm_msg.dist_from_goal_cost = self.dist_from_goal_cost.serialize()
         lcm_msg.dist_from_goal_lat_factor = self.dist_from_goal_lat_factor
+        lcm_msg.lon_jerk_cost = self.lon_jerk_cost
+        lcm_msg.lat_jerk_cost = self.lat_jerk_cost
 
         lcm_msg.velocity_limits = LcmNumpyArray()
         lcm_msg.velocity_limits.num_dimensions = len(self.velocity_limits.shape)
@@ -130,6 +160,8 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
                  , SigmoidFunctionParams.deserialize(lcmMsg.right_road_cost)
                  , SigmoidFunctionParams.deserialize(lcmMsg.dist_from_goal_cost)
                  , lcmMsg.dist_from_goal_lat_factor
+                 , lcmMsg.lon_jerk_cost
+                 , lcmMsg.lat_jerk_cost
                  , np.ndarray(shape = tuple(lcmMsg.velocity_limits.shape)
                             , buffer = np.array(lcmMsg.velocity_limits.data)
                             , dtype = float)
@@ -142,8 +174,15 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
 
 
 class TrajectoryParams(PUBSUB_MSG_IMPL):
-    def __init__(self, strategy, reference_route, target_state, cost_params, time, reset_acceleration=False):
-        # type: (TrajectoryPlanningStrategy, np.ndarray, np.ndarray, TrajectoryCostParams, float, bool)->None
+    ''' Members annotations for python 2 compliant classes '''
+    strategy = TrajectoryPlanningStrategy
+    reference_route = np.ndarray
+    target_state = np.ndarray
+    cost_params = TrajectoryCostParams
+    time = float
+
+    def __init__(self, strategy, reference_route, target_state, cost_params, time):
+        # type: (TrajectoryPlanningStrategy, np.ndarray, np.ndarray, TrajectoryCostParams, float)->None
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
         :param reference_route: a reference route points (often the center of lane)
@@ -157,7 +196,6 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         self.cost_params = cost_params
         self.strategy = strategy
         self.time = time
-        self.reset_acceleration = reset_acceleration
 
     @property
     def desired_velocity(self):
@@ -185,8 +223,6 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
 
         lcm_msg.time = self.time
 
-        lcm_msg.reset_acceleration = self.reset_acceleration
-
         return lcm_msg
 
     @classmethod
@@ -200,6 +236,5 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
                             , buffer = np.array(lcmMsg.target_state.data)
                             , dtype = float)
                  , TrajectoryCostParams.deserialize(lcmMsg.cost_params)
-                 , lcmMsg.time
-                 , lcmMsg.reset_acceleration)
+                 , lcmMsg.time)
 

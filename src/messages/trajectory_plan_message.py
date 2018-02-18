@@ -28,7 +28,7 @@ class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
         lcm_msg = LcmTrajectoryData()
 
         # TODO: Uncomment when control message is ready
-        #lcm_msg.timestamp = self.timestamp
+        lcm_msg.timestamp = self.timestamp
         lcm_msg.trajectory = LcmNumpyArray()
         lcm_msg.trajectory.num_dimensions = len(self.trajectory.shape)
         lcm_msg.trajectory.shape = list(self.trajectory.shape)
@@ -43,8 +43,7 @@ class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmTrajectoryData) -> TrajectoryPlanMsg
 
-        return cls(0.0, # TODO: Currently a placeholder for the timestamp, until control will be ready for integration.
-                        # TODO: Replace with lcmMsg.timestamp when control message is ready
+        return cls(lcmMsg.timestamp,
                    np.ndarray(shape=tuple(lcmMsg.trajectory.shape)
                               , buffer=np.array(lcmMsg.trajectory.data)
                               , dtype=float)

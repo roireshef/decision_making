@@ -8,15 +8,14 @@ from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_HORIZON, OBSTACLE_SIGMOID_COST, \
     DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
-    DEVIATION_FROM_GOAL_COST, DEVIATION_FROM_GOAL_LAT_FACTOR, GOAL_SIGMOID_K_PARAM, \
+    DEVIATION_FROM_GOAL_COST, DEVIATION_FROM_GOAL_LAT_LON_RATIO, GOAL_SIGMOID_K_PARAM, \
     GOAL_SIGMOID_OFFSET, LATERAL_SAFETY_MARGIN_FROM_OBJECT, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS, SHOULDER_SIGMOID_OFFSET
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, \
+    LAT_ACC_LIMITS, SHOULDER_SIGMOID_OFFSET, BP_JERK_TIME_WEIGHTS, LON_JERK_COST, LAT_JERK_COST, LON_MARGIN_FROM_EGO, LANE_SIGMOID_K_PARAM, \
+    SHOULDER_SIGMOID_K_PARAM, BP_ACTION_T_LIMITS, \
     BP_ACTION_T_RES, SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL, \
     BP_JERK_TIME_WEIGHTS
-from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR
-from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, \
+from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
@@ -37,8 +36,7 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import ObjectSize
-from decision_making.src.state.state import State, EgoState
+from decision_making.src.state.state import State, ObjectSize, EgoState
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -238,6 +236,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         Each semantic action is translated to a trajectory of the agent.
         The trajectory specification is created towards a target location/object in given cell,
          considering ego speed, location.
+         Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it
         :param behavioral_state:
         :param semantic_action:
         :return: semantic action specification
@@ -327,8 +326,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                           poly_d_coefs=poly_coefs_d[optimum_time_idx])
 
         expected_state = samplable_trajectory.sample(time_points=np.array([ego.timestamp_in_sec + 0.1]))[0]
-        # print("Init ego state: %s" % NumpyUtils.str_log(ego_init_cartesian_extended_state))
-        # print("Expected init conditions in 0.1 sec: %s" % NumpyUtils.str_log(expected_state))
 
         return SemanticActionSpec(t=T_vals[optimum_time_idx], v=constraints_s[optimum_time_idx, 3],
                                   s=target_s[optimum_time_idx, 0],
@@ -350,10 +347,14 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         ego = behavioral_state.ego_state
         target_obj = semantic_action.target_obj
 
+        # Extract relevant details from state on Reference-Object
         # TODO: in the future - concatenate all roads within the relevant NavigationPlan
+        # TODO: road localization needs to be handled
         road_id = ego.road_localization.road_id
         road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
         road_frenet = FrenetSerret2DFrame(road_points)
+
+        # TODO: add handling of self._last_action_spec.samplable_trajectory !!!
 
         ego_init_fstate = road_frenet.cstate_to_fstate(np.array([
             ego.x, ego.y,
@@ -390,12 +391,15 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         A_inv = np.linalg.inv(A)
 
         # TODO: should be swapped with current implementation of Predictor
-        obj_saT = 0  # obj_init_fstate[FS_SA]  # TODO: should be zeroed? (currently assumes 0 acceleration)
-        obj_svT = obj_init_fstate[FS_SV] + obj_init_fstate[FS_SA] * T_vals
-        obj_sxT = obj_init_fstate[FS_SX] + obj_init_fstate[FS_SV] * T_vals + obj_init_fstate[FS_SA] * T_vals ** 2 / 2
+        obj_saT = 0 #obj_init_fstate[FS_SA]  # TODO: should be zeroed?
+        obj_svT = obj_init_fstate[FS_SV] + obj_saT * T_vals
+        obj_sxT = obj_init_fstate[FS_SX] + obj_saT * T_vals + obj_saT * T_vals ** 2 / 2
 
         # TODO: account for acc<>0 (from MobilEye's paper)
         safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
+
+        # lon_margin = part of ego from its origin to its front + half of target object
+        lon_margin = (ego.size.length - EGO_ORIGIN_LON_FROM_REAR) + target_obj.size.length / 2
 
         constraints_s = np.c_[
             np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SX]),
@@ -490,10 +494,10 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         lookahead_distance = action_spec.s * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
         # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
-        # TODO: better than sending the whole road. and also what happens in the begginning of a road
+        # TODO: better than sending the whole road. and also what happens in the beginning of a road
         center_lane_reference_route = MapService.get_instance().get_uniform_path_lookahead(
             road_id=ego.road_localization.road_id,
-            lat_shift=action_spec.d,
+            lat_shift=action_spec.d,  # THIS ASSUMES THE GOAL ALWAYS FALLS ON THE REFERENCE ROUTE
             starting_lon=0,
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
             steps_num=int(np.ceil(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
@@ -558,13 +562,13 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         left_road_offset = (road.road_width - reference_route_latitude) - ego_size.width / 2 + ROAD_SHOULDERS_WIDTH
 
         # Set road-structure-based cost parameters
-        right_lane_cost = SigmoidFunctionParams(w=DEVIATION_FROM_LANE_COST, k=ROAD_SIGMOID_K_PARAM,
+        right_lane_cost = SigmoidFunctionParams(w=DEVIATION_FROM_LANE_COST, k=LANE_SIGMOID_K_PARAM,
                                                 offset=right_lane_offset)  # Zero cost
-        left_lane_cost = SigmoidFunctionParams(w=DEVIATION_FROM_LANE_COST, k=ROAD_SIGMOID_K_PARAM,
+        left_lane_cost = SigmoidFunctionParams(w=DEVIATION_FROM_LANE_COST, k=LANE_SIGMOID_K_PARAM,
                                                offset=left_lane_offset)  # Zero cost
-        right_shoulder_cost = SigmoidFunctionParams(w=DEVIATION_TO_SHOULDER_COST, k=ROAD_SIGMOID_K_PARAM,
+        right_shoulder_cost = SigmoidFunctionParams(w=DEVIATION_TO_SHOULDER_COST, k=SHOULDER_SIGMOID_K_PARAM,
                                                     offset=right_shoulder_offset)  # Very high cost
-        left_shoulder_cost = SigmoidFunctionParams(w=DEVIATION_TO_SHOULDER_COST, k=ROAD_SIGMOID_K_PARAM,
+        left_shoulder_cost = SigmoidFunctionParams(w=DEVIATION_TO_SHOULDER_COST, k=SHOULDER_SIGMOID_K_PARAM,
                                                    offset=left_shoulder_offset)  # Very high cost
         right_road_cost = SigmoidFunctionParams(w=DEVIATION_FROM_ROAD_COST, k=ROAD_SIGMOID_K_PARAM,
                                                 offset=right_road_offset)  # Very high cost
@@ -581,7 +585,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                offset=objects_dilation_width)  # Very high (inf) cost
         dist_from_goal_cost = SigmoidFunctionParams(w=DEVIATION_FROM_GOAL_COST, k=GOAL_SIGMOID_K_PARAM,
                                                     offset=GOAL_SIGMOID_OFFSET)
-        dist_from_goal_lat_factor = DEVIATION_FROM_GOAL_LAT_FACTOR
+        dist_from_goal_lat_factor = DEVIATION_FROM_GOAL_LAT_LON_RATIO
 
         cost_params = TrajectoryCostParams(obstacle_cost_x=objects_cost_x,
                                            obstacle_cost_y=objects_cost_y,
@@ -593,9 +597,10 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                            right_road_cost=right_road_cost,
                                            dist_from_goal_cost=dist_from_goal_cost,
                                            dist_from_goal_lat_factor=dist_from_goal_lat_factor,
+                                           lon_jerk_cost=LON_JERK_COST,
+                                           lat_jerk_cost=LAT_JERK_COST,
                                            velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
                                            lat_acceleration_limits=LAT_ACC_LIMITS)
 
         return cost_params
-

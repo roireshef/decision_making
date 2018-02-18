@@ -11,7 +11,7 @@ from decision_making.src.exceptions import MsgDeserializationError, NoValidTraje
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, DEFAULT_OBJECT_Z_VALUE, VISUALIZATION_PREDICTION_RESOLUTION, \
     MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION, \
-    NUM_ALTERNATIVE_TRAJECTORIES
+    NUM_ALTERNATIVE_TRAJECTORIES, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
@@ -94,8 +94,7 @@ class TrajectoryPlanningFacade(DmModule):
 
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
-                     params.cost_params)
+                plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon, params.cost_params)
 
             # TODO: validate that sampling is consistent with controller!
             trajectory_points = samplable_trajectory.sample(
@@ -148,7 +147,7 @@ class TrajectoryPlanningFacade(DmModule):
         """
         input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
         object_state = State.deserialize(input_state)
-        self.logger.debug('Received state: %s' % object_state)
+        self.logger.debug('%s: %s' % (LOG_MSG_RECEIVED_STATE, object_state))
         return object_state
 
     def _get_mission_params(self) -> TrajectoryParams:
@@ -160,7 +159,7 @@ class TrajectoryPlanningFacade(DmModule):
         """
         input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_TOPIC, timeout=1)
         object_params = TrajectoryParams.deserialize(input_params)
-        self.logger.debug('Received mission params: {}'.format(object_params))
+        self.logger.debug('{}: {}'.format(LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, object_params))
         return object_params
 
     def _publish_trajectory(self, results: TrajectoryPlanMsg) -> None:

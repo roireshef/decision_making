@@ -16,6 +16,11 @@ from mapping.src.service.map_service import MapService
 
 
 class OccupancyState(PUBSUB_MSG_IMPL):
+    ''' Members annotations for python 2 compliant classes '''
+    timestamp = int
+    free_space = np.ndarray
+    confidence = np.ndarray
+
     def __init__(self, timestamp, free_space, confidence):
         # type: (int, np.ndarray, np.ndarray) -> None
         """
@@ -57,6 +62,11 @@ class OccupancyState(PUBSUB_MSG_IMPL):
 
 
 class ObjectSize(PUBSUB_MSG_IMPL):
+    ''' Members annotations for python 2 compliant classes '''
+    length = float
+    width = float
+    height = float
+
     def __init__(self, length, width, height):
         # type: (float, float, float) -> None
         self.length = length
@@ -78,6 +88,20 @@ class ObjectSize(PUBSUB_MSG_IMPL):
 
 
 class DynamicObject(PUBSUB_MSG_IMPL):
+    ''' Members annotations for python 2 compliant classes '''
+    obj_id = int
+    timestamp = int
+    x = float
+    y = float
+    z = float
+    yaw = float
+    size = ObjectSize
+    confidence = float
+    v_x = float
+    v_y = float
+    acceleration_lon = float
+    omega_yaw = float
+
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, acceleration_lon, omega_yaw):
         # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float) -> DynamicObject
         """
@@ -211,6 +235,21 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
 
 class EgoState(DynamicObject):
+    ''' Members annotations for python 2 compliant classes '''
+    obj_id = int
+    timestamp = int
+    x = float
+    y = float
+    z = float
+    yaw = float
+    size = ObjectSize
+    confidence = float
+    v_x = float
+    v_y = float
+    acceleration_lon = float
+    omega_yaw = float
+    steering_angle = float
+
     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence,
                  v_x, v_y, acceleration_lon, omega_yaw, steering_angle):
         # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float, float) -> None
@@ -264,6 +303,11 @@ class EgoState(DynamicObject):
 
 
 class State(PUBSUB_MSG_IMPL):
+    ''' Members annotations for python 2 compliant classes '''
+    occupancy_state = OccupancyState
+    dynamic_objects = List[DynamicObject]
+    ego_state = EgoState
+
     def __init__(self, occupancy_state, dynamic_objects, ego_state):
         # type: (OccupancyState, List[DynamicObject], EgoState) -> None
         """
