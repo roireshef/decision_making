@@ -47,13 +47,13 @@ BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 
 # Trajectory cost parameters
 OBSTACLE_SIGMOID_COST = 1.0 * 1e5           # cost around obstacles (sigmoid)
-OBSTACLE_SIGMOID_K_PARAM = 8.0              # sigmoid k (slope) param of objects on road
+OBSTACLE_SIGMOID_K_PARAM = 9.0              # sigmoid k (slope) param of objects on road
 
 DEVIATION_FROM_LANE_COST = 2                # cost of deviation from lane (sigmoid)
 LANE_SIGMOID_K_PARAM = 4                    # sigmoid k (slope) param of going out-of-lane-center
 
 DEVIATION_TO_SHOULDER_COST = 1.0 * 1e2      # cost of deviation to shoulders (sigmoid)
-SHOULDER_SIGMOID_K_PARAM = 6                # sigmoid k (slope) param of going out-of-shoulder
+SHOULDER_SIGMOID_K_PARAM = 8.0              # sigmoid k (slope) param of going out-of-shoulder
 SHOULDER_SIGMOID_OFFSET = 0.2               # offset param m of going out-of-shoulder: cost = w/(1+e^(k*(m+x)))
 
 DEVIATION_FROM_ROAD_COST = 1.0 * 1e3        # cost of deviation from road (sigmoid)
@@ -168,7 +168,7 @@ SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
 DX_OFFSET_MIN, DX_OFFSET_MAX = -1.6, 1.6
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 5, 1, 13
+SX_STEPS, SV_STEPS, DX_STEPS = 5, 1, 9
 
 # Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
 TD_STEPS = 6
