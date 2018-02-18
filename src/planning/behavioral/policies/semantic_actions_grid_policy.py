@@ -481,9 +481,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             0.0  # We don't care about other agent's curvature
         ]))
 
-        # lon_margin = part of ego from its origin to its front + half of target object
-        lon_margin = ego.size.length - EGO_ORIGIN_LON_FROM_REAR + \
-                     target_obj.size.length / 2
+
 
         T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX],
                            BP_ACTION_T_RES)
@@ -492,12 +490,15 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         A_inv = np.linalg.inv(A)
 
         # TODO: should be swapped with current implementation of Predictor
-        obj_saT = obj_init_fstate[FS_SA]  # TODO: should be zeroed?
-        obj_svT = obj_init_fstate[FS_SV] + obj_init_fstate[FS_SA] * T_vals
-        obj_sxT = obj_init_fstate[FS_SX] + obj_init_fstate[FS_SV] * T_vals + obj_init_fstate[FS_SA] * T_vals ** 2 / 2
+        obj_saT = 0 #obj_init_fstate[FS_SA]  # TODO: should be zeroed?
+        obj_svT = obj_init_fstate[FS_SV] + obj_saT * T_vals
+        obj_sxT = obj_init_fstate[FS_SX] + obj_saT * T_vals + obj_saT * T_vals ** 2 / 2
 
         # TODO: account for acc<>0 (from MobilEye's paper)
         safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
+
+        # lon_margin = part of ego from its origin to its front + half of target object
+        lon_margin = (ego.size.length - EGO_ORIGIN_LON_FROM_REAR) + target_obj.size.length / 2
 
         constraints_s = np.c_[
             np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SX]),
