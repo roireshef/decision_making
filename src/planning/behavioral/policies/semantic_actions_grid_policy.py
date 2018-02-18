@@ -147,9 +147,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         else:
             return self._specify_action_towards_object(behavioral_state=behavioral_state,
                                                        semantic_action=semantic_action,
-                                                       continue_action=continue_action,
+                                                       navigation_plan=nav_plan,
                                                        predictor=self._predictor,
-                                                       navigation_plan=nav_plan)
+                                                       continue_action=continue_action)
 
     def _eval_actions(self, behavioral_state: SemanticActionsGridState,
                       semantic_actions: List[SemanticAction],
@@ -339,7 +339,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                        navigation_plan: NavigationPlanMsg,
                                        predictor: Predictor, continue_action: bool) -> SemanticActionSpec:
         """
-        given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec
+        given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec.
+        Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it.
         :param behavioral_state: semantic actions grid behavioral state
         :param semantic_action:
         :return: SemanticActionSpec
@@ -379,10 +380,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         obj_on_road = target_obj.road_localization
         road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id=obj_on_road.road_id)
         obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
-
-        # lon_margin = part of ego from its origin to its front + half of target object
-        lon_margin = ego.size.length - EGO_ORIGIN_LON_FROM_REAR + \
-                     target_obj.size.length / 2
 
         T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX],
                            BP_ACTION_T_RES)
