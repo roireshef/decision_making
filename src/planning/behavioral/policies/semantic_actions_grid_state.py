@@ -42,7 +42,7 @@ class SemanticActionsGridState(SemanticBehavioralState):
         semantic_occupancy_dict: RoadSemanticOccupancyGrid = dict()
         # We take into consideration only the current and adjacent lanes
         relative_lane_keys = [-1, 0, 1]
-        num_lanes_in_road = MapService.get_instance().get_road(state.ego_state.road_localization.road_id).lanes_num
+        num_lanes_in_road = 2 # TODO (hack for demo) MapService.get_instance().get_road(state.ego_state.road_localization.road_id).lanes_num
         # TODO: treat objects out of road
         filtered_absolute_lane_keys = list(
             filter(lambda relative_lane: 0 <= ego_lane + relative_lane < num_lanes_in_road, relative_lane_keys))
