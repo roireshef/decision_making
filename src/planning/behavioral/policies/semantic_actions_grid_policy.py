@@ -3,7 +3,7 @@ from typing import List, Optional
 
 import numpy as np
 
-from decision_making.src.exceptions import BehavioralPlanningException
+from decision_making.src.exceptions import BehavioralPlanningException, ActionOutOfSpec
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS
@@ -141,15 +141,23 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             continue_action = False
 
         if semantic_action.target_obj is None:
-            return self._specify_action_to_empty_cell(behavioral_state=behavioral_state,
-                                                      semantic_action=semantic_action,
-                                                      continue_action=continue_action)
+            try:
+                return self._specify_action_to_empty_cell(behavioral_state=behavioral_state,
+                                                          semantic_action=semantic_action,
+                                                          continue_action=continue_action)
+            except ActionOutOfSpec as e:
+                self.logger.warning(str(e))
+                return None
         else:
-            return self._specify_action_towards_object(behavioral_state=behavioral_state,
-                                                       semantic_action=semantic_action,
-                                                       navigation_plan=nav_plan,
-                                                       predictor=self._predictor,
-                                                       continue_action=continue_action)
+            try:
+                return self._specify_action_towards_object(behavioral_state=behavioral_state,
+                                                           semantic_action=semantic_action,
+                                                           navigation_plan=nav_plan,
+                                                           predictor=self._predictor,
+                                                           continue_action=continue_action)
+            except ActionOutOfSpec as e:
+                self.logger.warning(str(e))
+                return None
 
     def _eval_actions(self, behavioral_state: SemanticActionsGridState,
                       semantic_actions: List[SemanticAction],
@@ -313,8 +321,23 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         optimum_time_idx = np.argmin(cost)
 
         # are_vel_in_limits[optimum_idx] & \     # TODO: why velocity limits doesn't work well?
-        is_interior_optimum = are_lon_acc_in_limits[optimum_time_idx] & are_lat_acc_in_limits[optimum_time_idx] & \
-                              NumpyUtils.is_in_limits(T_vals[optimum_time_idx], BP_ACTION_T_LIMITS)
+        optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] & are_lat_acc_in_limits[
+            optimum_time_idx]
+
+        if not optimum_time_satisfies_constraints:
+            raise ActionOutOfSpec("Couldn't specify action due to unsatisfied constraints. "
+                                  "Action: %s. "
+                                  "Continue action: %s. "
+                                  "Last action spec: %s. "
+                                  "Optimal time: %f."
+                                  "Longitudinal acceleration in limits: %s. "
+                                  "Latitudinal acceleration in limits: %s." % (
+                                      str(semantic_action),
+                                      continue_action,
+                                      str(self._last_action_spec),
+                                      T_vals[optimum_time_idx],
+                                      are_lon_acc_in_limits[optimum_time_idx],
+                                      are_lat_acc_in_limits[optimum_time_idx]))
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
@@ -324,8 +347,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                           frenet_frame=road_frenet,
                                                           poly_s_coefs=poly_coefs_s[optimum_time_idx],
                                                           poly_d_coefs=poly_coefs_d[optimum_time_idx])
-
-        expected_state = samplable_trajectory.sample(time_points=np.array([ego.timestamp_in_sec + 0.1]))[0]
 
         return SemanticActionSpec(t=T_vals[optimum_time_idx], v=constraints_s[optimum_time_idx, 3],
                                   s=target_s[optimum_time_idx, 0],
@@ -431,9 +452,24 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[0]])
         optimum_time_idx = np.argmin(cost)
 
-        # are_vel_in_limits[optimum_idx] & \
-        is_interior_optimum = are_lon_acc_in_limits[optimum_time_idx] & are_lat_acc_in_limits[optimum_time_idx] & \
-                              NumpyUtils.is_in_limits(T_vals[optimum_time_idx], BP_ACTION_T_LIMITS)
+        # are_vel_in_limits[optimum_idx] & \     # TODO: why velocity limits doesn't work well?
+        optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] & are_lat_acc_in_limits[
+            optimum_time_idx]
+
+        if not optimum_time_satisfies_constraints:
+            raise ActionOutOfSpec("Couldn't specify action due to unsatisfied constraints. "
+                                  "Action: %s. "
+                                  "Continue action: %s. "
+                                  "Last action spec: %s. "
+                                  "Optimal time: %f. "
+                                  "Longitudinal acceleration in limits: %s. "
+                                  "Latitudinal acceleration in limits: %s." % (
+                                      str(semantic_action),
+                                      continue_action,
+                                      str(self._last_action_spec),
+                                      T_vals[optimum_time_idx],
+                                      are_lon_acc_in_limits[optimum_time_idx],
+                                      are_lat_acc_in_limits[optimum_time_idx]))
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.

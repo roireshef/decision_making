@@ -85,6 +85,10 @@ class SemanticAction:
                self.action_type.__dict__ == other.action_type.__dict__
 
 
+    def __str__(self):
+        return str(self.__dict__)
+
+
 class SemanticActionSpec:
     """
     Holds the actual translation of the semantic action in terms of trajectory specifications.
@@ -104,6 +108,9 @@ class SemanticActionSpec:
         self.s = s
         self.d = d
         self.samplable_trajectory = samplable_trajectory
+
+    def __str__(self):
+        return str({k: str(v) for (k, v) in self.__dict__.items()})
 
 
 class SemanticActionsPolicy(Policy):
