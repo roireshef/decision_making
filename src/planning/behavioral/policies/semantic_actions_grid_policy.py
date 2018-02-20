@@ -219,9 +219,17 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS])
         optimum_time_idx = np.argmin(cost)
 
-        is_interior_optimum = are_lon_acc_in_limits[optimum_time_idx] & \
+        optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] & \
                               are_lat_acc_in_limits[optimum_time_idx] & \
                               are_vel_in_limits[optimum_time_idx]
+
+        if not optimum_time_satisfies_constraints:
+            raise ActionOutOfSpec("Couldn't specify action due to unsatisfied constraints. "
+                                  "Action: %s. Continue action: %s. Last action spec: %s. Optimal time: %f."
+                                  "Longitudinal acceleration in limits: %s. Latitudinal acceleration in limits: %s." %
+                                  (str(semantic_action), continue_action, str(self._last_action_spec),
+                                   T_vals[optimum_time_idx], are_lon_acc_in_limits[optimum_time_idx],
+                                   are_lat_acc_in_limits[optimum_time_idx]))
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
@@ -309,9 +317,17 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS])
         optimum_time_idx = np.argmin(cost)
 
-        is_interior_optimum = are_lon_acc_in_limits[optimum_time_idx] & \
+        optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] & \
                               are_lat_acc_in_limits[optimum_time_idx] & \
                               are_vel_in_limits[optimum_time_idx]
+
+        if not optimum_time_satisfies_constraints:
+            raise ActionOutOfSpec("Couldn't specify action due to unsatisfied constraints. "
+                                  "Action: %s. Continue action: %s. Last action spec: %s. Optimal time: %f."
+                                  "Longitudinal acceleration in limits: %s. Latitudinal acceleration in limits: %s." %
+                                  (str(semantic_action), continue_action, str(self._last_action_spec),
+                                   T_vals[optimum_time_idx], are_lon_acc_in_limits[optimum_time_idx],
+                                   are_lat_acc_in_limits[optimum_time_idx]))
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.

@@ -38,6 +38,9 @@ class SamplableTrajectory(metaclass=ABCMeta):
         """
         pass
 
+    def __str__(self):
+        return str({k: str(v) for (k,v) in self.__dict__.items()})
+
 
 class TrajectoryPlanner(metaclass=ABCMeta):
     def __init__(self, logger: Logger, predictor: Predictor):

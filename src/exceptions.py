@@ -35,6 +35,9 @@ class CouldNotGenerateTrajectories(TrjajectoryPlanningException):
 class BehavioralPlanningException(Exception):
     pass
 
+class ActionOutOfSpec(BehavioralPlanningException):
+    pass
+
 
 class InvalidAction(BehavioralPlanningException):
     pass
