@@ -193,7 +193,6 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def road_longitudinal_speed(self):
         # type: () -> float
         """
-        Assuming no lateral slip
         :return: Longitudinal speed (relative to road)
         """
         return self.total_speed * np.cos(self.road_localization.intra_road_yaw)
@@ -203,7 +202,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         # type: () -> float
         """
         Assuming no lateral slip
-        :return: Longitudinal speed (relative to road)
+        :return: Total speed
         """
         return np.linalg.norm([self.v_x, self.v_y])
 
@@ -211,8 +210,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def road_lateral_speed(self):
         # type: () -> float
         """
-        Assuming no lateral slip
-        :return: Longitudinal speed (relative to road)
+        :return: Lateral speed (relative to road)
         """
         return self.total_speed * np.sin(self.road_localization.intra_road_yaw)
 
