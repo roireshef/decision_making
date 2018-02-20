@@ -30,9 +30,13 @@ class NoValidTrajectoriesFound(TrjajectoryPlanningException):
 class CouldNotGenerateTrajectories(TrjajectoryPlanningException):
     pass
 
-# TRAJECTORY PLANNING
+# BEHAVIORAL PLANNING
 @six.add_metaclass(ABCMeta)
 class BehavioralPlanningException(Exception):
+    pass
+
+
+class InvalidAction(BehavioralPlanningException):
     pass
 
 
