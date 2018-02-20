@@ -15,7 +15,8 @@ from decision_making.src.state.state import State, DynamicObject
 
 
 class SemanticActionType(Enum):
-    FOLLOW = 1
+    FOLLOW_VEHICLE = 1
+    FOLLOW_LANE = 2
 
 
 # Define semantic cell
@@ -76,13 +77,12 @@ class SemanticAction:
 
     def __eq__(self, other):
         # Check if the same action: compare target object id, and all other action parameters.
-        if self.target_obj is None or other.target_obj is None:
-            is_same_object = (self.target_obj is None and other.target_obj is None)
-        else:
-            is_same_object = (self.target_obj.obj_id == other.target_obj.obj_id)
-        return is_same_object and \
-               self.cell == other.cell and \
-               self.action_type.__dict__ == other.action_type.__dict__
+        if other is None:
+            return False
+
+        # TODO: the condition on obj_id should change in the future upon implementing MobilEye's dynamic action space
+        return self.cell == other.cell and self.action_type == other.action_type and \
+               self.target_obj.obj_id == other.target_obj.obj_id
 
 
 class SemanticActionSpec:
