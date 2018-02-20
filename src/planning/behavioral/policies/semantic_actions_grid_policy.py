@@ -61,14 +61,21 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         semantic_actions = self._enumerate_actions(behavioral_state=behavioral_state)
 
         # iterate over all HL actions and generate a specification (desired terminal: position, velocity, time-horizon)
-        actions_spec = [self._specify_action(behavioral_state=behavioral_state, semantic_action=semantic_actions[idx],
-                                             nav_plan=nav_plan)
-                        for idx in range(len(semantic_actions))]
+        action_specs = []
+        for semantic_action in semantic_actions:
+            try:
+                action_spec = self._specify_action(behavioral_state=behavioral_state,
+                                                   semantic_action=semantic_action,
+                                                   navigation_plan=nav_plan)
+                action_specs.append(action_spec)
+            except InvalidAction as e:
+                self.logger.warning(str(e) + " SemanticAction: " + str(semantic_action))
+                action_specs.append(None)
 
         # Filter actions with invalid spec
-        valid_spec_indices = [x for x in range(len(actions_spec)) if actions_spec[x] is not None]
+        valid_spec_indices = [x for x in range(len(action_specs)) if action_specs[x] is not None]
         semantic_actions = [semantic_actions[x] for x in valid_spec_indices]
-        actions_spec = [actions_spec[x] for x in valid_spec_indices]
+        actions_spec = [action_specs[x] for x in valid_spec_indices]
 
         # evaluate all action-specifications by computing a cost for each action
         action_costs = self._eval_actions(behavioral_state=behavioral_state, semantic_actions=semantic_actions,
@@ -114,13 +121,14 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             if semantic_cell[LON_CELL] == SEMANTIC_CELL_LON_FRONT:
                 if len(behavioral_state.road_occupancy_grid[semantic_cell]) > 0:
                     # Select first (closest) object in cell
-                    target_obj = behavioral_state.road_occupancy_grid[semantic_cell][0]
+                    semantic_action = SemanticAction(cell=semantic_cell,
+                                                     target_obj=behavioral_state.road_occupancy_grid[semantic_cell][0],
+                                                     action_type=SemanticActionType.FOLLOW_VEHICLE)
                 else:
                     # There are no objects in cell
-                    target_obj = None
-
-                semantic_action = SemanticAction(cell=semantic_cell, target_obj=target_obj,
-                                                 action_type=SemanticActionType.FOLLOW)
+                    semantic_action = SemanticAction(cell=semantic_cell,
+                                                     target_obj=None,
+                                                     action_type=SemanticActionType.FOLLOW_LANE)
 
                 semantic_actions.append(semantic_action)
 
@@ -138,12 +146,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         :return: SemanticActionSpec
         """
         ego = behavioral_state.ego_state
-        last_trajectory = self._last_action_spec.samplable_trajectory
 
         # BP IF - if ego is close to last planned trajectory (in BP), then assume ego is exactly on this trajectory
-        is_same_action = (self._last_action is not None and semantic_action == self._last_action)
-        if is_same_action and LocalizationUtils.is_actual_state_close_to_expected_state(ego, last_trajectory, self.logger):
-            ego_init_cstate = last_trajectory.sample(np.array([ego.timestamp_in_sec]))[0]
+        if self._last_action is not None and semantic_action == self._last_action \
+                and LocalizationUtils.is_actual_state_close_to_expected_state(
+                    ego, self._last_action_spec.samplable_trajectory, self.logger):
+            ego_init_cstate = self._last_action_spec.samplable_trajectory.sample(np.array([ego.timestamp_in_sec]))[0]
         else:
             ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
 
@@ -169,6 +177,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             return self._specify_follow_lane_action(road_frenet, ego_init_fstate, ego.timestamp_in_sec,
                                                     desired_center_lane_latitude)
 
+    @raises(InvalidAction)
     def _specify_follow_lane_action(self, road_frenet: FrenetSerret2DFrame,
                                     ego_init_fstate: np.ndarray, ego_timestamp_in_sec: int,
                                     desired_latitude: float) -> SemanticActionSpec:
@@ -224,11 +233,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                               are_vel_in_limits[optimum_time_idx]
 
         if not optimum_time_satisfies_constraints:
-            raise ActionOutOfSpec("Couldn't specify action due to unsatisfied constraints. "
-                                  "Action: %s. Continue action: %s. Last action spec: %s. Optimal time: %f."
-                                  "Longitudinal acceleration in limits: %s. Latitudinal acceleration in limits: %s." %
-                                  (str(semantic_action), continue_action, str(self._last_action_spec),
-                                   T_vals[optimum_time_idx], are_lon_acc_in_limits[optimum_time_idx],
+            raise InvalidAction("Couldn't specify action due to unsatisfied constraints. "
+                                "Last action spec: %s. Optimal time: %f. Velocity in limits: %s. "
+                                "Longitudinal acceleration in limits: %s. Latitudinal acceleration in limits: %s." %
+                                  (str(self._last_action_spec), T_vals[optimum_time_idx],
+                                   are_vel_in_limits[optimum_time_idx],
+                                   are_lon_acc_in_limits[optimum_time_idx],
                                    are_lat_acc_in_limits[optimum_time_idx]))
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
@@ -245,8 +255,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                   d=constraints_d[optimum_time_idx, 3],
                                   samplable_trajectory=samplable_trajectory)
 
-    @raises(NoValidTrajectoriesFound)
-    # TODO: modify this function to work with DynamicObject's specific NavigationPlan (and predictor?)
+    @raises(InvalidAction)
     def _specify_follow_vehicle_action(self, target_obj: DynamicObject, road_frenet: FrenetSerret2DFrame,
                                        ego_init_fstate: np.ndarray, ego_timestamp_in_sec: int,
                                        lon_margin: float) -> SemanticActionSpec:
@@ -322,11 +331,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                               are_vel_in_limits[optimum_time_idx]
 
         if not optimum_time_satisfies_constraints:
-            raise ActionOutOfSpec("Couldn't specify action due to unsatisfied constraints. "
-                                  "Action: %s. Continue action: %s. Last action spec: %s. Optimal time: %f."
-                                  "Longitudinal acceleration in limits: %s. Latitudinal acceleration in limits: %s." %
-                                  (str(semantic_action), continue_action, str(self._last_action_spec),
-                                   T_vals[optimum_time_idx], are_lon_acc_in_limits[optimum_time_idx],
+            raise InvalidAction("Couldn't specify action due to unsatisfied constraints. "
+                                "Last action spec: %s. Optimal time: %f. Velocity in limits: %s. "
+                                "Longitudinal acceleration in limits: %s. Latitudinal acceleration in limits: %s." %
+                                  (str(self._last_action_spec), T_vals[optimum_time_idx],
+                                   are_vel_in_limits[optimum_time_idx],
+                                   are_lon_acc_in_limits[optimum_time_idx],
                                    are_lat_acc_in_limits[optimum_time_idx]))
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
@@ -342,7 +352,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                   s=constraints_s[optimum_time_idx, 3],
                                   d=constraints_d[optimum_time_idx, 3],
                                   samplable_trajectory=samplable_trajectory)
-
 
     def _eval_actions(self, behavioral_state: SemanticActionsGridState,
                       semantic_actions: List[SemanticAction],

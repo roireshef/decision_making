@@ -80,10 +80,8 @@ class SemanticAction:
         if other is None:
             return False
 
-        # TODO: the condition on obj_id should change in the future upon implementing MobilEye's dynamic action space
-        return self.cell == other.cell and self.action_type == other.action_type and \
-               self.target_obj.obj_id == other.target_obj.obj_id
-
+        # TODO: should we condition on obj_id?
+        return self.cell == other.cell and self.action_type == other.action_type
 
     def __str__(self):
         return str(self.__dict__)
