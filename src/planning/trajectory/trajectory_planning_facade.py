@@ -20,6 +20,7 @@ from decision_making.src.planning.trajectory.trajectory_planner import Trajector
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_Y, C_X, C_YAW, FP_SX, FP_DX, FrenetPoint, \
     CartesianExtendedState, C_V, C_A, CartesianTrajectories, CartesianPath2D, C_K
+from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, EgoState
 from mapping.src.transformations.geometry_utils import CartesianFrame
@@ -85,7 +86,8 @@ class TrajectoryPlanningFacade(DmModule):
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
-            if self._is_actual_state_close_to_expected_state(state_aligned.ego_state):
+            if LocalizationUtils.is_actual_state_close_to_expected_state(
+                    state_aligned.ego_state, self._last_trajectory, self.logger):
                 updated_state = self._get_state_with_expected_ego(state_aligned)
                 self.logger.debug("TrajectoryPlanningFacade ego localization was overridden to the expected-state "
                                  "according to previous plan")
