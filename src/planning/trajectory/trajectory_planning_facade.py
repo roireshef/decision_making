@@ -11,7 +11,8 @@ from decision_making.src.exceptions import MsgDeserializationError, NoValidTraje
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, DEFAULT_OBJECT_Z_VALUE, VISUALIZATION_PREDICTION_RESOLUTION, \
     MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION, \
-    NUM_ALTERNATIVE_TRAJECTORIES, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE
+    NUM_ALTERNATIVE_TRAJECTORIES, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
+    LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
@@ -107,9 +108,10 @@ class TrajectoryPlanningFacade(DmModule):
             # TODO: should we publish v_x at all?
             # TODO: add timestamp here.
             # publish results to the lower DM level (Control)
-            self._publish_trajectory(
-                TrajectoryPlanMsg(timestamp=state.ego_state.timestamp, trajectory=trajectory_points,
-                                  current_speed=state_aligned.ego_state.v_x))
+            trajectory_msg = TrajectoryPlanMsg(timestamp=state.ego_state.timestamp, trajectory=trajectory_points,
+                                  current_speed=state_aligned.ego_state.v_x)
+            self._publish_trajectory(trajectory_msg)
+            self.logger.debug('{}: {}'.format(LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg))
             self._last_trajectory = samplable_trajectory
 
             # publish visualization/debug data - based on actual ego localization (original state)!
