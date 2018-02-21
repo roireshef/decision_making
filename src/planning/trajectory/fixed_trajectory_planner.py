@@ -41,7 +41,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
     """
 
     def __init__(self, logger: Logger, predictor: Predictor, fixed_trajectory: CartesianExtendedTrajectory, step_size: int,
-                 trigger_pos: CartesianPoint2D):
+                 trigger_pos: CartesianPoint2D, sleep_sigma: float, sleep_mu: float):
         """
         :param logger:
         :param fixed_trajectory: a fixed trajectory to advance on
@@ -54,6 +54,8 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         self._trajectory_advancing = 0
         self._trigger_pos = trigger_pos
         self._triggered = False
+        self._sleep_sigma = sleep_sigma
+        self._sleep_mu = sleep_mu
 
     @raises(NotTriggeredException)
     def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, time_horizon: float,
@@ -69,7 +71,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         :return: a tuple of: (samplable represantation of the fixed trajectory, tensor of the fixed trajectory,
          and numpy array of zero as the trajectory's cost)
         """
-        time.sleep(max(FIXED_TRAJECTORY_PLANNER_SLEEP_SIGMA * np.random.randn(), 0) + FIXED_TRAJECTORY_PLANNER_SLEEP_MU)
+        time.sleep(max(self._sleep_sigma * np.random.randn(), 0) + self._sleep_mu)
         current_pos = np.array([state.ego_state.x, state.ego_state.y])
 
         if not self._triggered and np.all(np.abs(current_pos - self._trigger_pos) <
