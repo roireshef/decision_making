@@ -57,6 +57,20 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         behavioral_state = SemanticActionsGridState.create_from_state(state=state,
                                                                       logger=self.logger)
 
+        # # debug: computing distance from other objects, good only for one vehicle in scenario
+        # minimal_distance = 1000
+        # ego_x = state.ego_state.x
+        # ego_y = state.ego_state.y
+        # closest_dyn_obj = None
+        # for dyn_obj in state.dynamic_objects:
+        #     dist = np.sqrt(np.power(dyn_obj.x - ego_x, 2) + np.power(dyn_obj.y - ego_y, 2))
+        #     if dist < minimal_distance:
+        #         minimal_distance = dist
+        #         closest_dyn_obj = dyn_obj
+        # print("Ego/object velocities: " + str(state.ego_state.total_speed) + "/" + str(
+        #     closest_dyn_obj.total_speed) + " x: " + str(closest_dyn_obj.x) + ", y: " + str(
+        #     closest_dyn_obj.y) + ", min dist from obj is: " + str(minimal_distance))
+
         # iterate over the semantic grid and enumerate all relevant HL actions
         semantic_actions = self._enumerate_actions(behavioral_state=behavioral_state)
 
