@@ -30,6 +30,9 @@ class NoValidTrajectoriesFound(TrjajectoryPlanningException):
 class CouldNotGenerateTrajectories(TrjajectoryPlanningException):
     pass
 
+class UnsupportedPolynomialDegree(TrjajectoryPlanningException):
+    pass
+
 # BEHAVIORAL PLANNING
 @six.add_metaclass(ABCMeta)
 class BehavioralPlanningException(Exception):

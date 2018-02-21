@@ -3,6 +3,7 @@ from typing import Union
 
 import numpy as np
 
+from decision_making.src.exceptions import UnsupportedPolynomialDegree
 from decision_making.src.planning.types import Limits
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
@@ -105,17 +106,7 @@ class Poly1D:
         acc_poly = Math.polyder2d(poly_coefs, m=degree)
         # Giving np.apply_along_axis a complex type enables us to get complex roots (which means acceleration doesn't have extrema in range).
 
-        # calculate roots of jerk_poly
-        if jerk_poly.shape[1] == 3:
-            jerk_poly[jerk_poly[:, 0] == 0, 0] = np.finfo(np.float32).eps  # prevent zero first coefficient
-            poly = jerk_poly.astype(np.complex)
-            det = np.sqrt(poly[:, 1]**2 - 4*poly[:, 0]*poly[:, 2])
-            roots1 = (-poly[:, 1] + det) / (2 * poly[:, 0])
-            roots2 = (-poly[:, 1] - det) / (2 * poly[:, 0])
-            acc_suspected_points = np.c_[roots1, roots2]
-        else:  # jerk_poly.shape[0] == 2
-            acc_suspected_points = -jerk_poly[:, 1] / jerk_poly[:, 0]
-
+        acc_suspected_points = Poly1D.calc_polynomial_roots(jerk_poly)
         acc_suspected_values = Math.zip_polyval2d(acc_poly, acc_suspected_points)
 
         # are extrema points out of [0, T] range
@@ -170,6 +161,25 @@ class Poly1D:
         :return: True if restrictions are met, False otherwise
         """
         return cls.are_velocities_in_limits(np.array([poly_coefs]), np.array([T]), vel_limits)[0]
+
+    @staticmethod
+    def calc_polynomial_roots(poly_coefs: np.ndarray):
+        """
+        calculate roots of polynomial with poly_coefs, either square or linear
+        :param poly_coefs:
+        :return:
+        """
+        if poly_coefs.shape[1] == 3:
+            poly_coefs[poly_coefs[:, 0] == 0, 0] = np.finfo(np.float32).eps  # prevent zero first coefficient
+            poly = poly_coefs.astype(np.complex)
+            det = np.sqrt(poly[:, 1]**2 - 4*poly[:, 0]*poly[:, 2])
+            roots1 = (-poly[:, 1] + det) / (2 * poly[:, 0])
+            roots2 = (-poly[:, 1] - det) / (2 * poly[:, 0])
+            return np.c_[roots1, roots2]
+        elif poly_coefs.shape[1] == 2:
+            return -poly_coefs[:, 1] / poly_coefs[:, 0]
+        else:
+            raise UnsupportedPolynomialDegree('poly_coefs.shape = %s', poly_coefs.shape)
 
 
 class QuarticPoly1D(Poly1D):
