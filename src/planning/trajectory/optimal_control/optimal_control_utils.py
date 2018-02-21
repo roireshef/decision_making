@@ -3,7 +3,6 @@ from typing import Union
 
 import numpy as np
 
-from decision_making.src.exceptions import UnsupportedPolynomialDegree
 from decision_making.src.planning.types import Limits
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
@@ -179,7 +178,7 @@ class Poly1D:
         elif poly_coefs.shape[1] == 2:
             return -poly_coefs[:, 1] / poly_coefs[:, 0]
         else:
-            raise UnsupportedPolynomialDegree('poly_coefs.shape = %s', poly_coefs.shape)
+            return np.apply_along_axis(np.roots, 1, poly_coefs.astype(np.complex))
 
 
 class QuarticPoly1D(Poly1D):
