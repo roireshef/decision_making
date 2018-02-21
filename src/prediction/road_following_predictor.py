@@ -116,7 +116,8 @@ class RoadFollowingPredictor(Predictor):
 
         # add yaw and velocity
         route_len = route_xy.shape[0]
-        velocity_column = np.ones(shape=[route_len, 1]) * object_velocity
+        # Using v_x to preserve the v_x field of dynamic object
+        velocity_column = np.ones(shape=[route_len, 1]) * dynamic_object.v_x
 
         if yaw_vector is None:
             route_x_y_theta_v = np.c_[CartesianFrame.add_yaw(route_xy), velocity_column]
