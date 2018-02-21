@@ -21,8 +21,8 @@ from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
 # LOG_PATH_FOR_ANALYSIS = '/home/max/AV_Log_dm_main_test-2017_12_12-10_19.log'
-#LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2018_02_19/2018_02_19_17_08_Proving_Grounds_-_Low_Light/AV_Log_dm_main.log'
-LOG_PATH_FOR_ANALYSIS = 'test_log.txt'
+LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2018_02_19/2018_02_19_16_56_Proving_Grounds_-_Low_Light/AV_Log_dm_main.log'
+#LOG_PATH_FOR_ANALYSIS = 'test_log.txt'
 TARGET_LOG_TIME = 57906.0
 
 
@@ -101,51 +101,51 @@ def main():
             #     file.write(str(object1.timestamp)+","+str(object1.obj_id)+","+str(object1.v_x)+","+str(object1.v_y)+","+str(tp_params.ego_state.v_x)+","+str(tp_params.ego_state.timestamp))
             #     file.write("\n")
 
-        # for tp_params_message_index in range(len(tp_module_states)):
-        #     # Convert log messages to dict
-        #     tp_params_msg = LogMsg.convert_message_to_dict(tp_module_states[tp_params_message_index])
-        #
-        #     # Deserialize from dict to object
-        #     tp_params = LogMsg.deserialize(class_type=TrajectoryParams, message=tp_params_msg)
-        #     tp_params_serialized = tp_params.to_dict()
-        #     tp_params_serialized['msg_type'] = "tp_input_params"
-        #     tp_params_serialized['log_timestamp'] = tp_module_log_timestamp[tp_params_message_index]
-        #     file.write(json.dumps(tp_params_serialized))
-        #     file.write("\n")
-        #
-        # for tp_state_message_index in range(len(tp_states)):
-        #     tp_state_msg = LogMsg.convert_message_to_dict(tp_states[tp_state_message_index])
-        #     tp_state = LogMsg.deserialize(class_type=State, message=tp_state_msg)
-        #
-        #     # Serialize object to PubSub dict
-        #     tp_state_serialized = tp_state.to_dict()
-        #     tp_state_serialized['msg_type'] = "tp_input_state"
-        #     tp_state_serialized['log_timestamp'] = tp_state_log_timestamp[tp_state_message_index]
-        #     file.write(json.dumps(tp_state_serialized))
-        #     file.write("\n")
-        #
-        # for bp_message_index in range(len(bp_states)):
-        #     bp_state_msg = LogMsg.convert_message_to_dict(bp_states[bp_message_index])
-        #     bp_state = LogMsg.deserialize(class_type=State, message=bp_state_msg)
-        #
-        #     # Serialize object to PubSub dict
-        #     bp_state_serialized = bp_state.to_dict()
-        #     bp_state_serialized['msg_type'] = "bp_input_state"
-        #     bp_state_serialized['log_timestamp'] = bp_state_log_timestamp[bp_message_index]
-        #     file.write(json.dumps(bp_state_serialized))
-        #     file.write("\n")
-        #
-        # for bp_params_message_index in range(len(bp_module_states)):
-        #     # Convert log messages to dict
-        #     bp_params_msg = LogMsg.convert_message_to_dict(bp_module_states[bp_params_message_index])
-        #
-        #     # Deserialize from dict to object
-        #     bp_params = LogMsg.deserialize(class_type=TrajectoryParams, message=bp_params_msg)
-        #     bp_params_serialized = bp_params.to_dict()
-        #     bp_params_serialized['msg_type'] = "bp_output_params"
-        #     bp_params_serialized['log_timestamp'] = bp_module_log_timestamp[bp_params_message_index]
-        #     file.write(json.dumps(bp_params_serialized))
-        #     file.write("\n")
+        for tp_params_message_index in range(len(tp_module_states)):
+            # Convert log messages to dict
+            tp_params_msg = LogMsg.convert_message_to_dict(tp_module_states[tp_params_message_index])
+
+            # Deserialize from dict to object
+            tp_params = LogMsg.deserialize(class_type=TrajectoryParams, message=tp_params_msg)
+            tp_params_serialized = tp_params.to_dict()
+            tp_params_serialized['msg_type'] = "tp_input_params"
+            tp_params_serialized['log_timestamp'] = tp_module_log_timestamp[tp_params_message_index]
+            file.write(json.dumps(tp_params_serialized))
+            file.write("\n")
+
+        for tp_state_message_index in range(len(tp_states)):
+            tp_state_msg = LogMsg.convert_message_to_dict(tp_states[tp_state_message_index])
+            tp_state = LogMsg.deserialize(class_type=State, message=tp_state_msg)
+
+            # Serialize object to PubSub dict
+            tp_state_serialized = tp_state.to_dict()
+            tp_state_serialized['msg_type'] = "tp_input_state"
+            tp_state_serialized['log_timestamp'] = tp_state_log_timestamp[tp_state_message_index]
+            file.write(json.dumps(tp_state_serialized))
+            file.write("\n")
+
+        for bp_message_index in range(len(bp_states)):
+            bp_state_msg = LogMsg.convert_message_to_dict(bp_states[bp_message_index])
+            bp_state = LogMsg.deserialize(class_type=State, message=bp_state_msg)
+
+            # Serialize object to PubSub dict
+            bp_state_serialized = bp_state.to_dict()
+            bp_state_serialized['msg_type'] = "bp_input_state"
+            bp_state_serialized['log_timestamp'] = bp_state_log_timestamp[bp_message_index]
+            file.write(json.dumps(bp_state_serialized))
+            file.write("\n")
+
+        for bp_params_message_index in range(len(bp_module_states)):
+            # Convert log messages to dict
+            bp_params_msg = LogMsg.convert_message_to_dict(bp_module_states[bp_params_message_index])
+
+            # Deserialize from dict to object
+            bp_params = LogMsg.deserialize(class_type=TrajectoryParams, message=bp_params_msg)
+            bp_params_serialized = bp_params.to_dict()
+            bp_params_serialized['msg_type'] = "bp_output_params"
+            bp_params_serialized['log_timestamp'] = bp_module_log_timestamp[bp_params_message_index]
+            file.write(json.dumps(bp_params_serialized))
+            file.write("\n")
 
 
 if __name__ == '__main__':

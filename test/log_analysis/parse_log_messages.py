@@ -142,7 +142,7 @@ class DmLogParser:
                 output_timestamps.append(timestamp)
                 log_timestamp.append(DmLogParser.parse_log_timestamp(state_match.groups()[0]))
 
-                output_timestamps = np.array(output_timestamps)
+        output_timestamps = np.array(output_timestamps)
         log_timestamp = np.array(log_timestamp)
 
         # Reorder by log timestamp
