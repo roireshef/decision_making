@@ -16,7 +16,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
-BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 80.0
+BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 60.0
 
 # When retrieving the lookahead path of a given dynamic object, we will multiply the path length
 # by the following ratio in order to avoid extrapolation when resampling the path (due to path sampling
@@ -25,6 +25,7 @@ PREDICTION_LOOKAHEAD_COMPENSATION_RATIO = 1.2
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
+LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 8.0
 
 # A lower and upper thresholds on the longitudinal offset between object and ego.
 # Any object out of this scope won't be accounted in the behavioral planning process
@@ -49,7 +50,7 @@ BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 OBSTACLE_SIGMOID_COST = 1.0 * 1e5           # cost around obstacles (sigmoid)
 OBSTACLE_SIGMOID_K_PARAM = 9.0              # sigmoid k (slope) param of objects on road
 
-DEVIATION_FROM_LANE_COST = 2                # cost of deviation from lane (sigmoid)
+DEVIATION_FROM_LANE_COST = 0.07             # cost of deviation from lane (sigmoid)
 LANE_SIGMOID_K_PARAM = 4                    # sigmoid k (slope) param of going out-of-lane-center
 
 DEVIATION_TO_SHOULDER_COST = 1.0 * 1e2      # cost of deviation to shoulders (sigmoid)
@@ -76,13 +77,13 @@ VELOCITY_LIMITS = np.array([0.0, 20.0])
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
 BP_ACTION_T_LIMITS = np.array([3.0, 20.0])
-BP_ACTION_T_RES = 0.2
+BP_ACTION_T_RES = 0.1
 
-# Behavioral planner action-specification weights for jerk vs time of action (rows are alternative weighting schemes)
-BP_JERK_TIME_WEIGHTS = np.array([6, 1])
+# Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
+BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([0.4, 0.6, 0.3])
 
 # Longitudinal Acceleration Limits [m/sec^2]
-LON_ACC_LIMITS = np.array([-8.0, 3.0])  # taken from SuperCruise presentation
+LON_ACC_LIMITS = np.array([-4.0, 3.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-4.0, 4.0])
