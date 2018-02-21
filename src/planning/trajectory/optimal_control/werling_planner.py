@@ -159,7 +159,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # create a grid on T_d (lateral movement time-grid)
         T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_s, lower_bound_T_d, self.dt)
 
-        self._logger.debug("Lateral horizon grid considered is: ", T_d_grid)
+        self._logger.debug("Lateral horizon grid considered is: ", str(T_d_grid))
 
         # solve problem in frenet-frame
         ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
