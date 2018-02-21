@@ -1,3 +1,5 @@
+from enum import Enum
+
 import numpy as np
 
 from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
@@ -5,6 +7,7 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmSigmoidFunctionParams
 from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryCostParams
 from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryParameters
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.messages.str_serializable import StrSerializable
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_V, Limits
 
@@ -196,6 +199,30 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         self.cost_params = cost_params
         self.strategy = strategy
         self.time = time
+
+    def __str__(self):
+        return str(self.to_dict_without_ref_route())
+
+    def to_dict_without_ref_route(self):
+        """
+        used to create the dds message
+        :return: dict containing all the fields of the class
+        """
+        ser_dict = {}
+        self_fields = {k: v for k, v in self.__dict__.items() if (k[0] != '_' and k != 'reference_route')}
+        for key, val in self_fields.items():
+            if issubclass(type(val), np.ndarray):
+                ser_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': list(val.shape)}
+            elif issubclass(type(val), list):
+                ser_dict[key] = {'iterable': list(map(lambda x: x.to_dict(), val))}
+            elif issubclass(type(val), Enum):
+                ser_dict[key] = {'name': val.name}
+            elif issubclass(type(val), StrSerializable):
+                ser_dict[key] = val.to_dict()
+            else:
+                ser_dict[key] = val
+        return ser_dict
+
 
     @property
     def desired_velocity(self):
