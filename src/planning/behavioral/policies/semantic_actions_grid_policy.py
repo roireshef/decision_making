@@ -6,7 +6,8 @@ import numpy as np
 from decision_making.src.exceptions import BehavioralPlanningException, InvalidAction
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
-    PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS
+    PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS, \
+    SEMANTIC_CELL_LON_REAR
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
     DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
@@ -420,10 +421,38 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                           desired_vel - actions_spec[current_lane_action_ind].v < MIN_OVERTAKE_VEL
 
         # boolean whether the forward-left cell is faster than the forward cell
-        is_forward_left_faster = left_lane_action_ind is not None and (current_lane_action_ind is None or
-                                                                       actions_spec[left_lane_action_ind].v -
-                                                                       actions_spec[
-                                                                           current_lane_action_ind].v >= MIN_OVERTAKE_VEL)
+        is_forward_left_faster = left_lane_action_ind is not None and \
+                                 (current_lane_action_ind is None or
+                                  actions_spec[left_lane_action_ind].v - actions_spec[current_lane_action_ind].v >=
+                                  MIN_OVERTAKE_VEL)
+
+        dist_to_backleft = dist_to_backright = np.inf
+        backleft = backright = []
+        if (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_REAR) in behavioral_state.road_occupancy_grid:
+            backleft = behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_REAR)]
+        if (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_REAR) in behavioral_state.road_occupancy_grid:
+            backright = behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_REAR)]
+
+        ego = behavioral_state.ego_state
+        road_id = ego.road_localization.road_id
+        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
+        road_frenet = FrenetSerret2DFrame(road_points)
+        ego_fpoint = road_frenet.cpoint_to_fpoint(np.array([ego.x, ego.y]))
+        if len(backleft) > 0:
+            backleft_fpoint = road_frenet.cpoint_to_fpoint(np.array([backleft[0].x, backleft[0].y]))
+            dist_to_backleft = ego_fpoint[FP_SX] - backleft_fpoint[FP_SX]
+        if len(backright) > 0:
+            backright_fpoint = road_frenet.cpoint_to_fpoint(np.array([backright[0].x, backright[0].y]))
+            dist_to_backright = ego_fpoint[FP_SX] - backright_fpoint[FP_SX]
+        safe_dist_behind_ego = ego.v_x * SAFE_DIST_TIME_DELAY
+
+        # if dist_to_backleft < np.inf or dist_to_backright < np.inf:
+        #     print('dist_to_backleft=%f dist_to_backright=%f' % (dist_to_backleft, dist_to_backright))
+        # if dist_to_backleft < safe_dist_behind_ego:
+        #     print('NOT SAFE LEFT BACK')
+        # if dist_to_backright < safe_dist_behind_ego:
+        #     print('NOT SAFE RIGHT BACK')
+
         # boolean whether the left cell near ego is occupied
         if (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid:
             is_left_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_LEFT,
@@ -435,11 +464,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # move right if both straight and right lanes are fast
         # if is_forward_right_fast and (is_forward_fast or current_lane_action_ind is None) and not is_right_occupied:
-        if is_forward_right_fast and not is_right_occupied:
+        if is_forward_right_fast and not is_right_occupied and dist_to_backright > safe_dist_behind_ego:
             costs[right_lane_action_ind] = 0.
         # move left if straight is slow and the left is faster than straight
         elif not is_forward_fast and (
-                    is_forward_left_faster or current_lane_action_ind is None) and not is_left_occupied:
+                    is_forward_left_faster or current_lane_action_ind is None) and not is_left_occupied and \
+                        dist_to_backleft > safe_dist_behind_ego:
             costs[left_lane_action_ind] = 0.
         else:
             costs[current_lane_action_ind] = 0.
