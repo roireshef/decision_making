@@ -441,10 +441,11 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         if len(backleft) > 0:
             backleft_fpoint = road_frenet.cpoint_to_fpoint(np.array([backleft[0].x, backleft[0].y]))
             dist_to_backleft = ego_fpoint[FP_SX] - backleft_fpoint[FP_SX]
+            safe_dist_behind_ego = max(ego.v_x, backleft[0].v_x) * SAFE_DIST_TIME_DELAY
         if len(backright) > 0:
             backright_fpoint = road_frenet.cpoint_to_fpoint(np.array([backright[0].x, backright[0].y]))
             dist_to_backright = ego_fpoint[FP_SX] - backright_fpoint[FP_SX]
-        safe_dist_behind_ego = ego.v_x * SAFE_DIST_TIME_DELAY
+            safe_dist_behind_ego = max(ego.v_x, backright[0].v_x) * SAFE_DIST_TIME_DELAY
 
         # if dist_to_backleft < np.inf or dist_to_backright < np.inf:
         #     print('dist_to_backleft=%f dist_to_backright=%f' % (dist_to_backleft, dist_to_backright))
