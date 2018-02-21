@@ -130,6 +130,9 @@ class SemanticActionsGridState(SemanticBehavioralState):
         :param object_in_cell: dynamic object in some cell
         :return: two distances: distance from the object's rear to ego front and from ego rear to the object's front
         """
+
+        # TODO: the relative localization calculated here assumes that all objects are located on the same road.
+        # TODO: Fix after demo and calculate longitudinal difference properly in the general case
         ego_state = state.ego_state
         road_id = ego_state.road_localization.road_id
         road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
