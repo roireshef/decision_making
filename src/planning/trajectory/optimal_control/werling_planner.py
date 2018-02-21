@@ -159,6 +159,8 @@ class WerlingPlanner(TrajectoryPlanner):
         # create a grid on T_d (lateral movement time-grid)
         T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_s, lower_bound_T_d, self.dt)
 
+        self._logger.debug("Lateral horizon grid considered is: {}".format(str(T_d_grid)))
+
         # solve problem in frenet-frame
         ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
                                                                                  T_s, T_d_grid, self.dt)
@@ -218,6 +220,8 @@ class WerlingPlanner(TrajectoryPlanner):
                                global_time_sample, self._predictor, self.dt)
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
+
+        self._logger.debug("Chosen trajectory planned with lateral horizon : {}".format(T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]]))
 
         samplable_trajectory = SamplableWerlingTrajectory(
             timestamp_in_sec=state.ego_state.timestamp_in_sec,

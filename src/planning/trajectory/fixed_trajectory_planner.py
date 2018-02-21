@@ -6,7 +6,7 @@ import time
 
 from decision_making.src.exceptions import raises
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, \
-    WERLING_TIME_RESOLUTION, FIXED_TRAJECTORY_PLANNER_SLEEP_SIGMA, FIXED_TRAJECTORY_PLANNER_SLEEP_MU
+    TRAJECTORY_NUM_POINTS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
@@ -79,8 +79,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
             self._triggered = True
 
         if self._triggered:
-            trajectory_num_points = int(np.ceil(time_horizon / WERLING_TIME_RESOLUTION))
-            current_trajectory = self._fixed_trajectory[self._trajectory_advancing:(self._trajectory_advancing+trajectory_num_points)]
+            current_trajectory = self._fixed_trajectory[self._trajectory_advancing:(self._trajectory_advancing+TRAJECTORY_NUM_POINTS)]
 
             self._trajectory_advancing += self._step_size
 
