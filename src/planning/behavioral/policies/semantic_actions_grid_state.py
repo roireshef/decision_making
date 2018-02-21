@@ -1,7 +1,7 @@
 import numpy as np
 from logging import Logger
 
-from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR
+from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, BEHAVIORAL_PLANNING_LOOKAHEAD_DIST
 from decision_making.src.global_constants import SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LON_REAR, LON_MARGIN_FROM_EGO
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -68,7 +68,7 @@ class SemanticActionsGridState(SemanticBehavioralState):
             # 2. Longitudinal location is defined by the grid structure:
             #       - front cells: starting from ego front + LON_MARGIN_FROM_EGO [m] and forward
             #       - back cells: starting from ego back - LON_MARGIN_FROM_EGO[m] and backwards
-            if object_relative_lane == 0 or object_relative_lane == 1 or object_relative_lane == -1:
+            if object_relative_lane in (-1, 0, 1) and dist_from_object_rear_to_ego_front < BEHAVIORAL_PLANNING_LOOKAHEAD_DIST:
                 # Object is one lane on the left/right
 
                 if dist_from_object_rear_to_ego_front > LON_MARGIN_FROM_EGO:
