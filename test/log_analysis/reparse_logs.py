@@ -6,6 +6,7 @@ import numpy as np
 from common_data.lcm.config import pubsub_topics
 from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
+from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -20,7 +21,8 @@ from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
 # LOG_PATH_FOR_ANALYSIS = '/home/max/AV_Log_dm_main_test-2017_12_12-10_19.log'
-LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2018_02_19/2018_02_19_17_08_Proving_Grounds_-_Low_Light/AV_Log_dm_main.log'
+#LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2018_02_19/2018_02_19_17_08_Proving_Grounds_-_Low_Light/AV_Log_dm_main.log'
+LOG_PATH_FOR_ANALYSIS = 'test_log.txt'
 TARGET_LOG_TIME = 57906.0
 
 
@@ -52,12 +54,38 @@ def main():
         log_content=log_content)
     no_valid_trajectories_log_timestamp = DmLogParser.parse_no_valid_trajectories_message(log_content=log_content)
 
+    tp_plan_log_timestamp, tp_plan_timestamps, tp_plans = DmLogParser.parse_tp_output(log_content=log_content)
+
+    bp_impl_times, tp_impl_times = DmLogParser.parse_impl_time(log_content=log_content)
 
     ###########################
     # Send messages to module
     ###########################
 
     with open("av_log_states.json", 'w') as file:
+
+        for time in bp_impl_times:
+            time_dict = dict()
+            time_dict['bp_impl_time'] = time
+            file.write(json.dumps(time_dict))
+            file.write("\n")
+
+        for time in tp_impl_times:
+            time_dict = dict()
+            time_dict['tp_impl_time'] = time
+            file.write(json.dumps(time_dict))
+            file.write("\n")
+
+        for tp_plan_message_index in range(len(tp_plans)):
+            # Convert log messages to dict
+            plan_msg = LogMsg.convert_message_to_dict(tp_plans[tp_plan_message_index])
+            plan = LogMsg.deserialize(class_type=TrajectoryPlanMsg, message=plan_msg)
+            plan_serialized = plan.to_dict()
+            plan_serialized['msg_type'] = "tp_plan"
+            plan_serialized['log_timestamp'] = tp_plan_log_timestamp[tp_plan_message_index]
+            file.write(json.dumps(plan_serialized))
+            file.write("\n")
+
         for state_message_index in range(len(state_module_states)):
              # Convert log messages to dict
             state_msg = LogMsg.convert_message_to_dict(state_module_states[state_message_index])

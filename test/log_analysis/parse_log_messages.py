@@ -5,7 +5,8 @@ import numpy as np
 
 from decision_making.src.global_constants import LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, \
     LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, LOG_MSG_RECEIVED_STATE, \
-    LOG_MSG_STATE_MODULE_PUBLISH_STATE
+    LOG_MSG_STATE_MODULE_PUBLISH_STATE, LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
+    LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME
 
 LOG_TIME_PATTERN = ": \d+-\d+-\d+ \d+:\d+:\d+,\d+ :"
 LOG_TIME_PARSE_PATTERN = ": (\d+)-(\d+)-(\d+) (\d+):(\d+):(\d+),(\d+) :"
@@ -64,6 +65,35 @@ class DmLogParser:
         return log_timestamp, state_timestamps, states
 
     @staticmethod
+    def parse_impl_time(log_content: List[str]) -> (List[float], List[float]):
+        """
+        :param log_content:
+        :return: bp impl times, tp impl times
+        """
+
+        tp_impl_times = list()
+        bp_impl_times = list()
+
+        tp_identifier_str = "%s " % LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME
+        tp_search_pattern = ".*(%s)(.*)%s(.*)" % (LOG_TIME_PATTERN, tp_identifier_str)
+
+        bp_identifier_str = "%s " % LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME
+        bp_search_pattern = ".*(%s)(.*)%s(.*)" % (LOG_TIME_PATTERN, bp_identifier_str)
+
+        for row in range(len(log_content)):
+
+            bp_impl_time_match = re.match(pattern=bp_search_pattern, string=log_content[row])
+            if bp_impl_time_match is not None:
+                bp_impl_times.append(float(bp_impl_time_match.groups()[2]))
+
+            tp_impl_time_match = re.match(pattern=tp_search_pattern, string=log_content[row])
+            if tp_impl_time_match is not None:
+                tp_impl_times.append(float(tp_impl_time_match.groups()[2]))
+
+
+        return bp_impl_times, tp_impl_times
+
+    @staticmethod
     def parse_tp_params(log_content: List[str]) -> (np.ndarray, np.ndarray, List[str]):
         log_timestamp = list()
         state_timestamps = list()
@@ -90,6 +120,38 @@ class DmLogParser:
         states = [states[x] for x in log_msg_order]
 
         return log_timestamp, state_timestamps, states
+
+    @staticmethod
+    def parse_tp_output(log_content: List[str]) -> (np.ndarray, np.ndarray, List[str]):
+        log_timestamp = list()
+        output_timestamps = list()
+        outputs = list()
+
+        identifier_str = "%s: " % LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG
+
+        search_pattern = ".*(%s)(.*)%s(.*)" % (LOG_TIME_PATTERN, identifier_str)
+
+        for row in range(len(log_content)):
+            state_match = re.match(pattern=search_pattern, string=log_content[row])
+            if state_match is not None:
+                outputs.append(state_match.groups()[2])
+                # TODO: parse timestamp. currently this message isn't written properly to log
+                # timestamp_match = re.match(pattern=".*'time': ([0-9\.]*)", string=state_match.groups()[2])
+                # timestamp = float(timestamp_match.groups()[0])
+                timestamp = 0.0
+                output_timestamps.append(timestamp)
+                log_timestamp.append(DmLogParser.parse_log_timestamp(state_match.groups()[0]))
+
+                output_timestamps = np.array(output_timestamps)
+        log_timestamp = np.array(log_timestamp)
+
+        # Reorder by log timestamp
+        log_msg_order = np.argsort(log_timestamp)
+        output_timestamps = output_timestamps[log_msg_order]
+        log_timestamp = log_timestamp[log_msg_order]
+        outputs = [outputs[x] for x in log_msg_order]
+
+        return log_timestamp, output_timestamps, outputs
 
     @staticmethod
     def parse_bp_output(log_content: List[str]) -> (np.ndarray, np.ndarray, List[str]):
