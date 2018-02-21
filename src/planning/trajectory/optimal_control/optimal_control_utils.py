@@ -165,8 +165,8 @@ class Poly1D:
     def calc_polynomial_roots(poly_coefs: np.ndarray):
         """
         calculate roots of polynomial with poly_coefs, either square or linear
-        :param poly_coefs:
-        :return:
+        :param poly_coefs: 2D numpy array with N polynomials and 6 coefficients each [Nx6]
+        :return: 2D numpy array with Nx2 or Nx1 roots, depending on the polynomials degree
         """
         if poly_coefs.shape[1] == 3:
             poly_coefs[poly_coefs[:, 0] == 0, 0] = np.finfo(np.float32).eps  # prevent zero first coefficient
