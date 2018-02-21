@@ -181,6 +181,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             # part of ego from its origin to its front + half of target object
             lon_margin = (ego.size.length - EGO_ORIGIN_LON_FROM_REAR) + semantic_action.target_obj.size.length / 2
 
+            # TODO: the relative localization calculated here assumes that all objects are located on the same road and Frenet frame.
+            # TODO: Fix after demo and calculate longitudinal difference properly in the general case
             return self._specify_follow_vehicle_action(semantic_action.target_obj, road_frenet, ego_init_fstate,
                                                        ego.timestamp_in_sec, lon_margin)
 
@@ -286,7 +288,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         obj_init_fstate = road_frenet.cstate_to_fstate(np.array([
             target_obj.x, target_obj.y,
             target_obj.yaw,
-            target_obj.v_x,
+            target_obj.total_speed,
             target_obj.acceleration_lon,
             road_curvature_at_obj_location  # We don't care about other agent's curvature, only the road's
         ]))

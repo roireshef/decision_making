@@ -16,6 +16,7 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryCostPar
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.trajectory.cost_function import Costs, Jerk
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
+from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import Poly1D
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, CartesianPoint2D, C_Y, \
     CartesianExtendedTrajectory, C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, CartesianExtendedState, CartesianTrajectory
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner, \
@@ -142,6 +143,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
     At each iteration the image with costs and calculated trajectories is saved in a file.
     The number of obstacles is determined by the length of obs_poses.
     """
+
     logger = AV_Logger.get_logger('test_werlingPlanner_twoStaticObjScenario_withCostViz')
     predictor = RoadFollowingPredictor(logger)
     ROAD_ID = 1
@@ -464,3 +466,15 @@ def test_computeJerk_simpleTrajectory():
     ctrajectory: CartesianTrajectory = np.array([p1, p2])
     lon_jerks, lat_jerks = Jerk.compute_jerks(np.array([ctrajectory]), 0.1)
     assert np.isclose(lon_jerks[0][0], 10) and np.isclose(lat_jerks[0][0], 0.9)
+
+def test_polynomialRoots():
+    poly_sq = np.random.rand(500, 3)
+    roots1 = np.apply_along_axis(np.roots, 1, poly_sq)
+    roots2 = Poly1D.calc_polynomial_roots(poly_sq)
+    assert ((np.isclose(roots1[:, 0], roots2[:, 0]) & np.isclose(roots1[:, 1], roots2[:, 1])) +
+            (np.isclose(roots1[:, 0], roots2[:, 1]) & np.isclose(roots1[:, 1], roots2[:, 0]))).all()
+
+    poly_lin = np.random.rand(500, 2)
+    roots1 = np.apply_along_axis(np.roots, 1, poly_lin)
+    roots2 = Poly1D.calc_polynomial_roots(poly_lin)
+    assert (np.isclose(roots1, roots2)).all()
