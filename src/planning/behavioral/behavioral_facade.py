@@ -1,6 +1,7 @@
 import traceback
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException
-from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE
+from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
+    LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
@@ -66,7 +67,7 @@ class BehavioralFacade(DmModule):
                 else:
                     self.logger.info("No plan was generated.")
 
-            self.logger.info("BehavioralFacade._periodic_action_impl time %s", time.time() - start_time)
+            self.logger.info("{} {}".format(LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, time.time() - start_time))
 
         except MsgDeserializationError as e:
             self.logger.warning("MsgDeserializationError was raised. skipping planning. " +

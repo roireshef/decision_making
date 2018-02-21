@@ -6,6 +6,11 @@ from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 
 class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
+    ''' Members annotations for python 2 compliant classes '''
+    timestamp = int
+    trajectory = np.ndarray
+    current_speed = float
+
     def __init__(self, timestamp, trajectory, current_speed):
         # type: (int, np.ndarray, float) -> None
         """
