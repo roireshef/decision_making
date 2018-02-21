@@ -69,12 +69,7 @@ class RoadFollowingPredictor(Predictor):
         # we assume the object is travelling exactly on a constant latitude. (i.e., lateral speed = 0)
         # TODO: handle objects with negative velocities
         # TODO: If v_y is not small, this computation will be incorrect for ego prediction
-        object_velocity = np.abs(dynamic_object.total_speed)
-        if object_velocity < 0.0:
-            raise PredictedObjectHasNegativeVelocity(
-                'Object with id (%d) velocity is %f. Prediction timestamps: %s. Object data: %s' % (
-                    dynamic_object.obj_id,
-                    object_velocity, prediction_timestamps, dynamic_object))
+        object_velocity = dynamic_object.total_speed
 
         # we assume the objects is travelling with a constant velocity, therefore the lookahead distance is
         lookahead_distance = (prediction_timestamps[-1] - dynamic_object.timestamp_in_sec) * object_velocity
