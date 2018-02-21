@@ -287,7 +287,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         obj_init_fstate = road_frenet.cstate_to_fstate(np.array([
             target_obj.x, target_obj.y,
             target_obj.yaw,
-            target_obj.v_x,
+            target_obj.total_speed,
             target_obj.acceleration_lon,
             road_curvature_at_obj_location  # We don't care about other agent's curvature, only the road's
         ]))
