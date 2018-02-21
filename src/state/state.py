@@ -154,9 +154,9 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         z = 0.0
         yaw = cartesian_state[C_YAW]
 
-        # Assume that object's speed is only in the x axis
+        # currently the velocity being used is self.total_speed (norm(v_x,v_y)) so v_y is important as well
         v_x = cartesian_state[C_V]
-        v_y = 0.0
+        v_y = self.v_y
 
         # Fetch object's public fields
         object_fields = {k: v for k, v in self.__dict__.items() if k[0] != '_'}

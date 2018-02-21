@@ -7,7 +7,7 @@ from decision_making.src.exceptions import BehavioralPlanningException, InvalidA
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
     DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
@@ -30,7 +30,7 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_policy im
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DX, FS_DV, FS_DA, FP_SX
+from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DX, FS_DV, FS_DA, FP_SX, FrenetPoint
 from decision_making.src.planning.types import LIMIT_MIN, LIMIT_MAX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
@@ -180,6 +180,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             # part of ego from its origin to its front + half of target object
             lon_margin = (ego.size.length - EGO_ORIGIN_LON_FROM_REAR) + semantic_action.target_obj.size.length / 2
 
+            # TODO: the relative localization calculated here assumes that all objects are located on the same road and Frenet frame.
+            # TODO: Fix after demo and calculate longitudinal difference properly in the general case
             return self._specify_follow_vehicle_action(semantic_action.target_obj, road_frenet, ego_init_fstate,
                                                        ego.timestamp_in_sec, lon_margin)
 
@@ -285,7 +287,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         obj_init_fstate = road_frenet.cstate_to_fstate(np.array([
             target_obj.x, target_obj.y,
             target_obj.yaw,
-            target_obj.v_x,
+            target_obj.total_speed,
             target_obj.acceleration_lon,
             road_curvature_at_obj_location  # We don't care about other agent's curvature, only the road's
         ]))
@@ -420,10 +422,25 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                           desired_vel - actions_spec[current_lane_action_ind].v < MIN_OVERTAKE_VEL
 
         # boolean whether the forward-left cell is faster than the forward cell
-        is_forward_left_faster = left_lane_action_ind is not None and (current_lane_action_ind is None or
-                                                                       actions_spec[left_lane_action_ind].v -
-                                                                       actions_spec[
-                                                                           current_lane_action_ind].v >= MIN_OVERTAKE_VEL)
+        is_forward_left_faster = left_lane_action_ind is not None and \
+                                 (current_lane_action_ind is None or
+                                  actions_spec[left_lane_action_ind].v - actions_spec[current_lane_action_ind].v >=
+                                  MIN_OVERTAKE_VEL)
+
+        ego = behavioral_state.ego_state
+        road_id = ego.road_localization.road_id
+        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
+        road_frenet = FrenetSerret2DFrame(road_points)
+        ego_fpoint = road_frenet.cpoint_to_fpoint(np.array([ego.x, ego.y]))
+
+        dist_to_backleft, safe_left_dist_behind_ego = SemanticActionsGridPolicy._calc_safe_dist_behind_ego(
+            behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_LEFT)
+        dist_to_backright, safe_right_dist_behind_ego = SemanticActionsGridPolicy._calc_safe_dist_behind_ego(
+            behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_RIGHT)
+
+        self.logger.debug("Distance\safe distance to back left car: %s\%s.", dist_to_backleft, safe_left_dist_behind_ego)
+        self.logger.debug("Distance\safe distance to back right car: %s\%s.", dist_to_backright, safe_right_dist_behind_ego)
+
         # boolean whether the left cell near ego is occupied
         if (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid:
             is_left_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_LEFT,
@@ -435,15 +452,44 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # move right if both straight and right lanes are fast
         # if is_forward_right_fast and (is_forward_fast or current_lane_action_ind is None) and not is_right_occupied:
-        if is_forward_right_fast and not is_right_occupied:
+        if is_forward_right_fast and not is_right_occupied and dist_to_backright > safe_right_dist_behind_ego:
             costs[right_lane_action_ind] = 0.
         # move left if straight is slow and the left is faster than straight
         elif not is_forward_fast and (
-                    is_forward_left_faster or current_lane_action_ind is None) and not is_left_occupied:
+                    is_forward_left_faster or current_lane_action_ind is None) and not is_left_occupied and \
+                        dist_to_backleft > safe_left_dist_behind_ego:
             costs[left_lane_action_ind] = 0.
         else:
             costs[current_lane_action_ind] = 0.
         return costs
+
+    @staticmethod
+    def _calc_safe_dist_behind_ego(behavioral_state: SemanticActionsGridState, road_frenet: FrenetSerret2DFrame,
+                                   ego_fpoint: FrenetPoint, semantic_cell_lat: int) -> [float, float]:
+        """
+        Calculate both actual and safe distances between rear object and ego on the left side or right side.
+        If there is no object, return actual dist = inf and safe dist = 0.
+        :param behavioral_state: semantic behavioral state, containing the semantic grid
+        :param road_frenet: road Frenet frame for ego's road_id
+        :param ego_fpoint: frenet point of ego location
+        :param semantic_cell_lat: either SEMANTIC_CELL_LAT_LEFT or SEMANTIC_CELL_LAT_RIGHT
+        :return: longitudinal distance between ego and rear object, safe distance between ego and the rear object
+        """
+        dist_to_back_obj = np.inf
+        safe_dist_behind_ego = 0
+        back_objects = []
+        if (semantic_cell_lat, SEMANTIC_CELL_LON_REAR) in behavioral_state.road_occupancy_grid:
+            back_objects = behavioral_state.road_occupancy_grid[(semantic_cell_lat, SEMANTIC_CELL_LON_REAR)]
+        if len(back_objects) > 0:
+            back_fpoint = road_frenet.cpoint_to_fpoint(np.array([back_objects[0].x, back_objects[0].y]))
+            dist_to_back_obj = ego_fpoint[FP_SX] - back_fpoint[FP_SX]
+            if behavioral_state.ego_state.v_x > back_objects[0].v_x:
+                safe_dist_behind_ego = back_objects[0].v_x * SAFE_DIST_TIME_DELAY
+            else:
+                safe_dist_behind_ego = back_objects[0].v_x * SAFE_DIST_TIME_DELAY + \
+                        back_objects[0].v_x ** 2 / (2 * abs(LON_ACC_LIMITS[0])) - \
+                        behavioral_state.ego_state.v_x ** 2 / (2 * abs(LON_ACC_LIMITS[0]))
+        return dist_to_back_obj, safe_dist_behind_ego
 
     @staticmethod
     def _get_action_ind(semantic_actions: List[SemanticAction], cell: SemanticGridCell):
