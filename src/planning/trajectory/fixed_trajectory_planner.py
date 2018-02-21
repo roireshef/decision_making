@@ -6,7 +6,7 @@ import time
 
 from decision_making.src.exceptions import raises
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, \
-    WERLING_TIME_RESOLUTION
+    WERLING_TIME_RESOLUTION, FIXED_TRAJECTORY_PLANNER_SLEEP_SIGMA, FIXED_TRAJECTORY_PLANNER_SLEEP_MU
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
@@ -69,7 +69,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         :return: a tuple of: (samplable represantation of the fixed trajectory, tensor of the fixed trajectory,
          and numpy array of zero as the trajectory's cost)
         """
-        time.sleep(max(0.2 * np.random.randn(), 0) + 0.15)
+        time.sleep(max(FIXED_TRAJECTORY_PLANNER_SLEEP_SIGMA * np.random.randn(), 0) + FIXED_TRAJECTORY_PLANNER_SLEEP_MU)
         current_pos = np.array([state.ego_state.x, state.ego_state.y])
 
         if not self._triggered and np.all(np.abs(current_pos - self._trigger_pos) <
