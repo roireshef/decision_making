@@ -105,6 +105,7 @@ class Poly1D:
         acc_poly = Math.polyder2d(poly_coefs, m=degree)
         # Giving np.apply_along_axis a complex type enables us to get complex roots (which means acceleration doesn't have extrema in range).
 
+        # calculate roots of jerk_poly
         if jerk_poly.shape[1] == 3:
             poly = jerk_poly.astype(np.complex)
             det = np.sqrt(poly[:, 1]**2 - 4*poly[:, 0]*poly[:, 2])
