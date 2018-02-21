@@ -104,7 +104,16 @@ class Poly1D:
         jerk_poly = Math.polyder2d(poly_coefs, m=degree + 1)
         acc_poly = Math.polyder2d(poly_coefs, m=degree)
         # Giving np.apply_along_axis a complex type enables us to get complex roots (which means acceleration doesn't have extrema in range).
-        acc_suspected_points = np.apply_along_axis(np.roots, 1, jerk_poly.astype(np.complex))  # TODO: this should use matrix operations!
+
+        if jerk_poly.shape[1] == 3:
+            poly = jerk_poly.astype(np.complex)
+            det = np.sqrt(poly[:, 1]**2 - 4*poly[:, 0]*poly[:, 2])
+            roots1 = (-poly[:, 1] + det) / (2 * poly[:, 0])
+            roots2 = (-poly[:, 1] - det) / (2 * poly[:, 0])
+            acc_suspected_points = np.c_[roots1, roots2]
+        else:  # jerk_poly.shape[0] == 2
+            acc_suspected_points = -jerk_poly[:, 1] / jerk_poly[:, 0]
+
         acc_suspected_values = Math.zip_polyval2d(acc_poly, acc_suspected_points)
 
         # are extrema points out of [0, T] range
