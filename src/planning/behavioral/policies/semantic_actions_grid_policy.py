@@ -437,13 +437,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         dist_to_backright, safe_right_dist_behind_ego = SemanticActionsGridPolicy._calc_safe_dist_behind_ego(
             behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_RIGHT)
 
-        # if dist_to_backleft < np.inf or dist_to_backright < np.inf:
-        #     print('dist_to_backleft=%f dist_to_backright=%f' % (dist_to_backleft, dist_to_backright))
-        # if dist_to_backleft < safe_dist_behind_ego:
-        #     print('NOT SAFE LEFT BACK')
-        # if dist_to_backright < safe_dist_behind_ego:
-        #     print('NOT SAFE RIGHT BACK')
-
         # boolean whether the left cell near ego is occupied
         if (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid:
             is_left_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_LEFT,
