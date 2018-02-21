@@ -469,15 +469,12 @@ def test_computeJerk_simpleTrajectory():
 
 def test_polynomialRoots():
     poly_sq = np.random.rand(500, 3)
-
     roots1 = np.apply_along_axis(np.roots, 1, poly_sq)
     roots2 = Poly1D.calc_polynomial_roots(poly_sq)
     assert ((np.isclose(roots1[:, 0], roots2[:, 0]) & np.isclose(roots1[:, 1], roots2[:, 1])) +
             (np.isclose(roots1[:, 0], roots2[:, 1]) & np.isclose(roots1[:, 1], roots2[:, 0]))).all()
 
     poly_lin = np.random.rand(500, 2)
-
     roots1 = np.apply_along_axis(np.roots, 1, poly_lin)
     roots2 = Poly1D.calc_polynomial_roots(poly_lin)
-    assert ((np.isclose(roots1[0], roots2[0]) & np.isclose(roots1[1], roots2[1])) +
-            (np.isclose(roots1[0], roots2[1]) & np.isclose(roots1[1], roots2[0]))).all()
+    assert (np.isclose(roots1, roots2)).all()

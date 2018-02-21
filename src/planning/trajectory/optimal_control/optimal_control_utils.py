@@ -176,7 +176,8 @@ class Poly1D:
             roots2 = (-poly[:, 1] - det) / (2 * poly[:, 0])
             return np.c_[roots1, roots2]
         elif poly_coefs.shape[1] == 2:
-            return -poly_coefs[:, 1] / poly_coefs[:, 0]
+            roots = -poly_coefs[:, 1] / poly_coefs[:, 0]
+            return roots[:, np.newaxis]
         else:
             return np.apply_along_axis(np.roots, 1, poly_coefs.astype(np.complex))
 
