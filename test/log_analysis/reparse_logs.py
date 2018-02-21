@@ -1,28 +1,21 @@
 import sys
-from typing import Dict
 import json
-import numpy as np
 
-from common_data.lcm.config import pubsub_topics
-from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
-from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
-from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
-from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.planning.types import C_V
+
 from decision_making.src.state.state import State
-from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.log_analysis.log_messages import LogMsg
 from decision_making.test.log_analysis.parse_log_messages import STATE_IDENTIFIER_STRING_BP, \
     STATE_IDENTIFIER_STRING_TP, STATE_IDENTIFIER_STRING_STATE_MODULE, DmLogParser
-from decision_making.test.pubsub.mock_pubsub import PubSubMock
-from mapping.src.service.map_service import MapService
-from rte.python.logger.AV_logger import AV_Logger
+
+import matplotlib.pyplot as plt
+
 
 # LOG_PATH_FOR_ANALYSIS = '/home/max/AV_Log_dm_main_test-2017_12_12-10_19.log'
-LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2018_02_19/2018_02_19_16_56_Proving_Grounds_-_Low_Light/AV_Log_dm_main.log'
-#LOG_PATH_FOR_ANALYSIS = 'test_log.txt'
+#LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2018_02_19/2018_02_19_16_56_Proving_Grounds_-_Low_Light/AV_Log_dm_main.log'
+LOG_PATH_FOR_ANALYSIS = 'AV_Log_rbcar0(1).log'
 TARGET_LOG_TIME = 57906.0
 
 
@@ -86,12 +79,34 @@ def main():
             file.write(json.dumps(plan_serialized))
             file.write("\n")
 
+
+        timestamps = []
+        desired_v = []
+        for tp_plan_message_index in range(len(tp_plans)-1):
+            # Convert log messages to dict
+            plan_msg = LogMsg.convert_message_to_dict(tp_plans[tp_plan_message_index])
+            plan_msg2 = LogMsg.convert_message_to_dict(tp_plans[tp_plan_message_index+1])
+            plan = LogMsg.deserialize(class_type=TrajectoryPlanMsg, message=plan_msg) #type: TrajectoryPlanMsg
+            plan2 = LogMsg.deserialize(class_type=TrajectoryPlanMsg, message=plan_msg2) #type: TrajectoryPlanMsg
+            timestamps.append(plan.timestamp)
+            desired_v.append(plan.trajectory[0, C_V])
+            timestamps.append(plan2.timestamp)
+            desired_v.append(plan2.trajectory[0, C_V])
+
+        plt.plot(timestamps, desired_v,'-r')
+
+
+
+        ego_timestamps = []
+        actual_v = []
         for state_message_index in range(len(state_module_states)):
              # Convert log messages to dict
             state_msg = LogMsg.convert_message_to_dict(state_module_states[state_message_index])
 
             # Deserialize from dict to object
-            state = LogMsg.deserialize(class_type=State, message=state_msg)
+            state = LogMsg.deserialize(class_type=State, message=state_msg) # type: State
+            ego_timestamps.append(state.ego_state.timestamp)
+            actual_v.append(state.ego_state.v_x)
             state_serialized = state.to_dict()
             state_serialized['msg_type'] = "state_output"
             state_serialized['log_timestamp'] = state_module_log_timestamp[state_message_index]
@@ -100,6 +115,9 @@ def main():
             # for object1 in tp_params.dynamic_objects:
             #     file.write(str(object1.timestamp)+","+str(object1.obj_id)+","+str(object1.v_x)+","+str(object1.v_y)+","+str(tp_params.ego_state.v_x)+","+str(tp_params.ego_state.timestamp))
             #     file.write("\n")
+
+        plt.plot(ego_timestamps, actual_v, '-b')
+        plt.show()
 
         for tp_params_message_index in range(len(tp_module_states)):
             # Convert log messages to dict
