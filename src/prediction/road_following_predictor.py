@@ -34,6 +34,7 @@ class RoadFollowingPredictor(Predictor):
         for prediction_timestamp in prediction_timestamps:
             # Advance on road according to plan in constant speed, constant acceleration
             prediction_time_axis = prediction_timestamp - dynamic_object.timestamp_in_sec
+            # TODO: currently acceleration_lon is 0 for dynamic_objects. When it won't be zero, consider that the speed and acceleration should be in the same direction
             predicted_advancement_in_longitude = dynamic_object.total_speed * prediction_time_axis + 0.5 * dynamic_object.acceleration_lon * np.square(
                 prediction_time_axis)
             predicted_road_id, predicted_road_lon = \
