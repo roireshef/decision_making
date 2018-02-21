@@ -15,7 +15,8 @@ from decision_making.src.state.state import State, DynamicObject
 
 
 class SemanticActionType(Enum):
-    FOLLOW = 1
+    FOLLOW_VEHICLE = 1
+    FOLLOW_LANE = 2
 
 
 # Define semantic cell
@@ -76,13 +77,14 @@ class SemanticAction:
 
     def __eq__(self, other):
         # Check if the same action: compare target object id, and all other action parameters.
-        if self.target_obj is None or other.target_obj is None:
-            is_same_object = (self.target_obj is None and other.target_obj is None)
-        else:
-            is_same_object = (self.target_obj.obj_id == other.target_obj.obj_id)
-        return is_same_object and \
-               self.cell == other.cell and \
-               self.action_type.__dict__ == other.action_type.__dict__
+        if other is None:
+            return False
+
+        # TODO: should we condition on obj_id?
+        return self.cell == other.cell and self.action_type == other.action_type
+
+    def __str__(self):
+        return str(self.__dict__)
 
 
 class SemanticActionSpec:
@@ -104,6 +106,9 @@ class SemanticActionSpec:
         self.s = s
         self.d = d
         self.samplable_trajectory = samplable_trajectory
+
+    def __str__(self):
+        return str({k: str(v) for (k, v) in self.__dict__.items()})
 
 
 class SemanticActionsPolicy(Policy):

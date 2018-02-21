@@ -75,14 +75,11 @@ VELOCITY_LIMITS = np.array([0.0, 20.0])
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
-BP_ACTION_T_LIMITS = np.array([2.0, 20.0])
+BP_ACTION_T_LIMITS = np.array([3.0, 20.0])
 BP_ACTION_T_RES = 0.2
 
 # Behavioral planner action-specification weights for jerk vs time of action (rows are alternative weighting schemes)
-BP_JERK_TIME_WEIGHTS = np.array([
-    [1, 1],
-    [2, 1]
-])
+BP_JERK_TIME_WEIGHTS = np.array([6, 1])
 
 # Longitudinal Acceleration Limits [m/sec^2]
 LON_ACC_LIMITS = np.array([-8.0, 3.0])  # taken from SuperCruise presentation
