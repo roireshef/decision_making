@@ -34,7 +34,8 @@ class RoadFollowingPredictor(Predictor):
         for prediction_timestamp in prediction_timestamps:
             # Advance on road according to plan in constant speed, constant acceleration
             prediction_time_axis = prediction_timestamp - dynamic_object.timestamp_in_sec
-            predicted_advancement_in_longitude = dynamic_object.v_x * prediction_time_axis + 0.5 * dynamic_object.acceleration_lon * np.square(
+            # TODO: currently acceleration_lon is 0 for dynamic_objects. When it won't be zero, consider that the speed and acceleration should be in the same direction
+            predicted_advancement_in_longitude = dynamic_object.total_speed * prediction_time_axis + 0.5 * dynamic_object.acceleration_lon * np.square(
                 prediction_time_axis)
             predicted_road_id, predicted_road_lon = \
                 MapService.get_instance().advance_on_plan(initial_road_id=dynamic_object.road_localization.road_id,
@@ -48,6 +49,7 @@ class RoadFollowingPredictor(Predictor):
                 lon=predicted_road_lon,
                 lat=dynamic_object.road_localization.intra_road_lat)
 
+            # TODO: Currently creates a new state using the same v_x, when we actually want to preseve total_speed and not just v_x. Since the rest of the fields are copied unchanged, it does preserve total speed.
             predicted_cartesian_state = np.array(
                 [predicted_location[C_X], predicted_location[C_Y], predicted_orientation, dynamic_object.v_x])
 
@@ -66,12 +68,8 @@ class RoadFollowingPredictor(Predictor):
 
         # we assume the object is travelling exactly on a constant latitude. (i.e., lateral speed = 0)
         # TODO: handle objects with negative velocities
-        object_velocity = np.abs(dynamic_object.v_x)
-        if object_velocity < 0.0:
-            raise PredictedObjectHasNegativeVelocity(
-                'Object with id (%d) velocity is %f. Prediction timestamps: %s. Object data: %s' % (
-                    dynamic_object.obj_id,
-                    object_velocity, prediction_timestamps, dynamic_object))
+        # TODO: If v_y is not small, this computation will be incorrect for ego prediction
+        object_velocity = dynamic_object.total_speed
 
         # we assume the objects is travelling with a constant velocity, therefore the lookahead distance is
         lookahead_distance = (prediction_timestamps[-1] - dynamic_object.timestamp_in_sec) * object_velocity
@@ -118,7 +116,8 @@ class RoadFollowingPredictor(Predictor):
 
         # add yaw and velocity
         route_len = route_xy.shape[0]
-        velocity_column = np.ones(shape=[route_len, 1]) * object_velocity
+        # Using v_x to preserve the v_x field of dynamic object
+        velocity_column = np.ones(shape=[route_len, 1]) * dynamic_object.v_x
 
         if yaw_vector is None:
             route_x_y_theta_v = np.c_[CartesianFrame.add_yaw(route_xy), velocity_column]
