@@ -6,7 +6,8 @@ import numpy as np
 from decision_making.src.exceptions import BehavioralPlanningException, InvalidAction
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
-    PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS
+    PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS, \
+    BP_JERK_S_JERK_D_TIME_WEIGHTS
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
     DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
@@ -236,10 +237,10 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         are_vel_in_limits = QuarticPoly1D.are_velocities_in_limits(poly_coefs_s, T_vals, VELOCITY_LIMITS)
         are_lat_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_vals, LAT_ACC_LIMITS)
 
-        jerk = QuarticPoly1D.cumulative_jerk(poly_coefs_s, T_vals) + QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
-        jerk_T = np.c_[jerk, T_vals]
+        jerk_s = QuarticPoly1D.cumulative_jerk(poly_coefs_s, T_vals)
+        jerk_d = QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
 
-        cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS])
+        cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS])
         optimum_time_idx = np.argmin(cost)
 
         optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] & \
@@ -334,10 +335,10 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         are_lat_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_vals, LAT_ACC_LIMITS)
         are_vel_in_limits = QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_vals, VELOCITY_LIMITS)
 
-        jerk = QuinticPoly1D.cumulative_jerk(poly_coefs_s, T_vals) + QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
-        jerk_T = np.c_[jerk, T_vals]
+        jerk_s = QuinticPoly1D.cumulative_jerk(poly_coefs_s, T_vals)
+        jerk_d = QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
 
-        cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS])
+        cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS])
         optimum_time_idx = np.argmin(cost)
 
         optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] & \

@@ -49,7 +49,7 @@ BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 OBSTACLE_SIGMOID_COST = 1.0 * 1e5           # cost around obstacles (sigmoid)
 OBSTACLE_SIGMOID_K_PARAM = 9.0              # sigmoid k (slope) param of objects on road
 
-DEVIATION_FROM_LANE_COST = 2                # cost of deviation from lane (sigmoid)
+DEVIATION_FROM_LANE_COST = 0.07             # cost of deviation from lane (sigmoid)
 LANE_SIGMOID_K_PARAM = 4                    # sigmoid k (slope) param of going out-of-lane-center
 
 DEVIATION_TO_SHOULDER_COST = 1.0 * 1e2      # cost of deviation to shoulders (sigmoid)
@@ -78,8 +78,8 @@ VELOCITY_LIMITS = np.array([0.0, 20.0])
 BP_ACTION_T_LIMITS = np.array([3.0, 20.0])
 BP_ACTION_T_RES = 0.2
 
-# Behavioral planner action-specification weights for jerk vs time of action (rows are alternative weighting schemes)
-BP_JERK_TIME_WEIGHTS = np.array([6, 1])
+# Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
+BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([0.5, 2, 1])
 
 # Longitudinal Acceleration Limits [m/sec^2]
 LON_ACC_LIMITS = np.array([-8.0, 3.0])  # taken from SuperCruise presentation
