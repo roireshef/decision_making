@@ -2,10 +2,11 @@ from logging import Logger
 from typing import Tuple
 
 import numpy as np
+import time
 
 from decision_making.src.exceptions import raises
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, \
-    TRAJECTORY_NUM_POINTS
+    WERLING_TIME_RESOLUTION
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
@@ -18,7 +19,7 @@ from decision_making.test.exceptions import NotTriggeredException
 class FixedSamplableTrajectory(SamplableTrajectory):
 
     def __init__(self, fixed_trajectory: CartesianExtendedTrajectory):
-        super().__init__(timestamp_in_sec=0, max_sample_time=np.inf)
+        super().__init__(timestamp_in_sec=0, T=np.inf)
         self._fixed_trajectory = fixed_trajectory
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
@@ -55,12 +56,12 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         self._triggered = False
 
     @raises(NotTriggeredException)
-    def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, goal_time: float,
+    def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, time_horizon: float,
              cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
         Once the ego reached the trigger position, every time the trajectory planner is called, output a trajectory
         that advances incrementally on fixed_trajectory by step size. Otherwise raise NotTriggeredException
-        :param goal_time: ignored
+        :param time_horizon: the length of the trajectory snippet (seconds)
         :param state: environment & ego state object
         :param reference_route: ignored
         :param goal: ignored
@@ -68,7 +69,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         :return: a tuple of: (samplable represantation of the fixed trajectory, tensor of the fixed trajectory,
          and numpy array of zero as the trajectory's cost)
         """
-
+        time.sleep(max(0.2 * np.random.randn(), 0) + 0.15)
         current_pos = np.array([state.ego_state.x, state.ego_state.y])
 
         if not self._triggered and np.all(np.abs(current_pos - self._trigger_pos) <
@@ -76,7 +77,8 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
             self._triggered = True
 
         if self._triggered:
-            current_trajectory = self._fixed_trajectory[self._trajectory_advancing:(self._trajectory_advancing+TRAJECTORY_NUM_POINTS)]
+            trajectory_num_points = int(np.ceil(time_horizon / WERLING_TIME_RESOLUTION))
+            current_trajectory = self._fixed_trajectory[self._trajectory_advancing:(self._trajectory_advancing+trajectory_num_points)]
 
             self._trajectory_advancing += self._step_size
 
