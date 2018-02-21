@@ -107,7 +107,7 @@ class Poly1D:
 
         # calculate roots of jerk_poly
         if jerk_poly.shape[1] == 3:
-            jerk_poly[jerk_poly[:, 0] == 0, 0] = np.finfo(np.float32).eps
+            jerk_poly[jerk_poly[:, 0] == 0, 0] = np.finfo(np.float32).eps  # prevent zero first coefficient
             poly = jerk_poly.astype(np.complex)
             det = np.sqrt(poly[:, 1]**2 - 4*poly[:, 0]*poly[:, 2])
             roots1 = (-poly[:, 1] + det) / (2 * poly[:, 0])
