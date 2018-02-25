@@ -5,7 +5,7 @@ import numpy as np
 
 from decision_making.src.exceptions import BehavioralPlanningException, InvalidAction
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
-from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
+from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS, \
     BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
@@ -178,7 +178,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                     frame_position=np.append(current_expected_state[[0, 1]], [0]),
                     frame_orientation=current_expected_state[2]
                 )
-                print('IF FAILED: err=%f %f' % (errors_in_expected_frame[0], errors_in_expected_frame[1]))
+                #print('IF FAILED: err=%f %f' % (errors_in_expected_frame[0], errors_in_expected_frame[1]))
 
             ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
 
@@ -191,7 +191,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         if semantic_action.action_type == SemanticActionType.FOLLOW_VEHICLE:
             # part of ego from its origin to its front + half of target object
-            lon_margin = (ego.size.length - EGO_ORIGIN_LON_FROM_REAR) + semantic_action.target_obj.size.length / 2
+            lon_margin = ego.size.length / 2 + semantic_action.target_obj.size.length / 2 + \
+                         LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+            #(ego.size.length - EGO_ORIGIN_LON_FROM_REAR) + semantic_action.target_obj.size.length / 2
 
             # TODO: the relative localization calculated here assumes that all objects are located on the same road and Frenet frame.
             # TODO: Fix after demo and calculate longitudinal difference properly in the general case
@@ -209,7 +211,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
     @raises(InvalidAction)
     def _specify_follow_lane_action(self, road_frenet: FrenetSerret2DFrame,
                                     ego_init_fstate: np.ndarray, ego_timestamp_in_sec: float,
-                                    desired_latitude: float, ego: EgoState) -> SemanticActionSpec:
+                                    desired_latitude: float, ego: EgoState,
+                                    time_limits: np.array=BP_ACTION_T_LIMITS) -> SemanticActionSpec:
         """
         This method's purpose is to specify the enumerated actions that the agent can take.
         Each semantic action is translated to a trajectory of the agent.
@@ -218,7 +221,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
          Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it
         :return: semantic action specification
         """
-        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX], BP_ACTION_T_RES)
+        T_vals = np.arange(time_limits[LIMIT_MIN], time_limits[LIMIT_MAX] + np.finfo(np.float16).eps, BP_ACTION_T_RES)
 
         # Quartic polynomial constraints (no constraint on sT)
         constraints_s = np.repeat([[
@@ -233,8 +236,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         poly_coefs_s = QuarticPoly1D.zip_solve(A_inv_s, constraints_s)
         target_s = Math.zip_polyval2d(poly_coefs_s, T_vals[:, np.newaxis])
 
-        vel_poly_s = Math.polyder2d(poly_coefs_s, m=1)
-        norm_velocities = Math.polyval2d(vel_poly_s, T_vals) / BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED - 1
+        velocities = SemanticActionsGridPolicy._calc_velocities(poly_coefs_s, time_limits)
 
         # Quintic polynomial constraints
         constraints_d = np.repeat([[
@@ -251,15 +253,15 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
         are_lon_acc_in_limits = QuarticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_vals, LON_ACC_LIMITS)
-        are_vel_in_limits = QuarticPoly1D.are_velocities_in_limits(poly_coefs_s, T_vals, VELOCITY_LIMITS,
-                                                                   vel_poly=vel_poly_s)
         are_lat_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_vals, LAT_ACC_LIMITS)
+        are_vel_in_limits = np.all(NumpyUtils.is_in_limits(velocities, VELOCITY_LIMITS), axis=1)
 
         jerk_s = QuarticPoly1D.cumulative_jerk(poly_coefs_s, T_vals)
         jerk_d = QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
-        high_vel_costs = np.sum(np.maximum(0, norm_velocities) ** 2, axis=1)
+        #norm_velocities = velocities / BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED - 1
+        #high_vel_costs = np.sum(np.maximum(0, norm_velocities) ** 2, axis=1)
 
-        cost = np.dot(np.c_[jerk_s, jerk_d, high_vel_costs, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS])
+        cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS])
         optimum_time_idx = np.argmin(cost)
 
         optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] & \
@@ -284,10 +286,10 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                           poly_s_coefs=poly_coefs_s[optimum_time_idx],
                                                           poly_d_coefs=poly_coefs_d[optimum_time_idx])
 
-        print('%d: T=%f v=%f tar_v=%f dist=%f ego_d=%f tar_d=%f' %
-              (int(ego_timestamp_in_sec), T_vals[optimum_time_idx],
-               ego.v_x, constraints_s[optimum_time_idx, 3], target_s[optimum_time_idx, 0] - ego_init_fstate[0],
-               ego_init_fstate[3], constraints_d[optimum_time_idx, 3]))
+        # print('%d: T=%f v=%f tar_v=%f dist=%f ego_d=%f tar_d=%f' %
+        #       (int(ego_timestamp_in_sec), T_vals[optimum_time_idx],
+        #        ego.v_x, constraints_s[optimum_time_idx, 3], target_s[optimum_time_idx, 0] - ego_init_fstate[0],
+        #        ego_init_fstate[3], constraints_d[optimum_time_idx, 3]))
 
 
         return SemanticActionSpec(t=T_vals[optimum_time_idx], v=constraints_s[optimum_time_idx, 3],
@@ -321,7 +323,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id=obj_on_road.road_id)
         obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
 
-        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX], BP_ACTION_T_RES)
+        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
+                           BP_ACTION_T_RES)
 
         A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_vals))
 
@@ -355,25 +358,32 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
         poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
 
-        vel_poly_s = Math.polyder2d(poly_coefs_s, m=1)
-        norm_velocities = Math.polyval2d(vel_poly_s, T_vals) / BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED - 1
+        velocities = SemanticActionsGridPolicy._calc_velocities(poly_coefs_s, BP_ACTION_T_LIMITS)
 
         # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
         are_lon_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_vals, LON_ACC_LIMITS)
         are_lat_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_vals, LAT_ACC_LIMITS)
-        are_vel_in_limits = QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_vals, VELOCITY_LIMITS,
-                                                                   vel_poly=vel_poly_s)
+        are_vel_in_limits = np.all(NumpyUtils.is_in_limits(velocities, VELOCITY_LIMITS), axis=1)
 
         jerk_s = QuinticPoly1D.cumulative_jerk(poly_coefs_s, T_vals)
         jerk_d = QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
-        high_vel_costs = np.sum(np.maximum(0, norm_velocities) ** 2, axis=1)
+        #norm_velocities = velocities / BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED - 1
+        #high_vel_costs = np.sum(np.maximum(0, norm_velocities) ** 2, axis=1)
 
-        cost = np.dot(np.c_[jerk_s, jerk_d, high_vel_costs, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS])
+        cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS])
         optimum_time_idx = np.argmin(cost)
 
         optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] & \
                               are_lat_acc_in_limits[optimum_time_idx] & \
                               are_vel_in_limits[optimum_time_idx]
+
+        # if found trajectory has velocities faster than desired or too high accelerations,
+        # then call _specify_follow_lane_action
+        if (velocities[optimum_time_idx] > BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED + 1).any() or \
+                        are_lon_acc_in_limits[optimum_time_idx] > LON_ACC_LIMITS[1]:
+            return self._specify_follow_lane_action(
+                road_frenet, ego_init_fstate, ego_timestamp_in_sec, obj_center_lane_latitude, ego,
+                time_limits=np.array([BP_ACTION_T_LIMITS[LIMIT_MIN], T_vals[optimum_time_idx]]))
 
         if not optimum_time_satisfies_constraints:
             raise InvalidAction("Couldn't specify action due to unsatisfied constraints. "
@@ -393,10 +403,33 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                           poly_s_coefs=poly_coefs_s[optimum_time_idx],
                                                           poly_d_coefs=poly_coefs_d[optimum_time_idx])
 
+        # print('%d: T=%f v=%f tar_v=%f dist=%f ego_d=%f tar_d=%f' %
+        #       (int(ego_timestamp_in_sec), T_vals[optimum_time_idx],
+        #        ego.v_x, obj_svT[optimum_time_idx], constraints_s[optimum_time_idx, 3] - ego_init_fstate[0],
+        #        ego_init_fstate[3], constraints_d[optimum_time_idx, 3]))
+
         return SemanticActionSpec(t=T_vals[optimum_time_idx], v=obj_svT[optimum_time_idx],
                                   s=constraints_s[optimum_time_idx, 3],
                                   d=constraints_d[optimum_time_idx, 3],
                                   samplable_trajectory=samplable_trajectory)
+
+    @staticmethod
+    def _calc_velocities(poly_coefs_s: np.array, time_limits: np.array):
+        """
+        Given matrix with longitudinal polynomial coefficients Nx6, calculate velocites matrix of size NxT,
+         where T is the length of the maximal trajectory
+        :param poly_coefs_s: longitudinal polynomial coefficients of size Nx6
+        :param time_limits: min time limit and max time limit
+        :return: matrix of velocites of size NxT for each polynomial and each time sample
+        """
+        T_vals_num = int(round((time_limits[LIMIT_MAX] - time_limits[LIMIT_MIN]) / BP_ACTION_T_RES)) + 1
+        vel_poly_s = Math.polyder2d(poly_coefs_s, m=1)
+        traj_times = np.arange(0, time_limits[LIMIT_MAX] + np.finfo(np.float16).eps, BP_ACTION_T_RES)  # from 0 to max_T
+        times = np.array([traj_times, ] * T_vals_num)  # repeat full traj_times for all T_vals
+        velocities = Math.zip_polyval2d(vel_poly_s, times)  # get velocities for all T_vals and all t[i,j] < T_vals[i]
+        # zero irrelevant velocities to get lower triangular matrix: 0 <= t[i,j] < T_val[i]
+        velocities = np.tril(velocities, time_limits[LIMIT_MIN]/BP_ACTION_T_RES)
+        return velocities
 
     def _eval_actions(self, behavioral_state: SemanticActionsGridState,
                       semantic_actions: List[SemanticAction],
