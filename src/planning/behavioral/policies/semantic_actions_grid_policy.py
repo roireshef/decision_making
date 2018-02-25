@@ -168,18 +168,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                     ego, self._last_action_spec.samplable_trajectory, self.logger, self.__class__.__name__):
             ego_init_cstate = self._last_action_spec.samplable_trajectory.sample(np.array([ego.timestamp_in_sec]))[0]
         else:
-
-            if self._last_action_spec is not None:
-                current_expected_state = self._last_action_spec.samplable_trajectory.sample(np.array([ego.timestamp_in_sec]))[0]
-                current_actual_location = np.array([ego.x, ego.y, 0])
-
-                errors_in_expected_frame, _ = CartesianFrame.convert_global_to_relative_frame(
-                    global_pos=current_actual_location, global_yaw=0.0,
-                    frame_position=np.append(current_expected_state[[0, 1]], [0]),
-                    frame_orientation=current_expected_state[2]
-                )
-                #print('IF FAILED: err=%f %f' % (errors_in_expected_frame[0], errors_in_expected_frame[1]))
-
             ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
 
         road_id = ego.road_localization.road_id
@@ -193,12 +181,11 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             # part of ego from its origin to its front + half of target object
             lon_margin = ego.size.length / 2 + semantic_action.target_obj.size.length / 2 + \
                          LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
-            #(ego.size.length - EGO_ORIGIN_LON_FROM_REAR) + semantic_action.target_obj.size.length / 2
 
             # TODO: the relative localization calculated here assumes that all objects are located on the same road and Frenet frame.
             # TODO: Fix after demo and calculate longitudinal difference properly in the general case
             return self._specify_follow_vehicle_action(semantic_action.target_obj, road_frenet, ego_init_fstate,
-                                                       ego.timestamp_in_sec, lon_margin, ego)
+                                                       ego.timestamp_in_sec, lon_margin)
 
         elif semantic_action.action_type == SemanticActionType.FOLLOW_LANE:
             road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id)
@@ -206,13 +193,13 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             desired_center_lane_latitude = road_lane_latitudes[desired_lane]
 
             return self._specify_follow_lane_action(road_frenet, ego_init_fstate, ego.timestamp_in_sec,
-                                                    desired_center_lane_latitude, ego)
+                                                    desired_center_lane_latitude)
 
     @raises(InvalidAction)
     def _specify_follow_lane_action(self, road_frenet: FrenetSerret2DFrame,
                                     ego_init_fstate: np.ndarray, ego_timestamp_in_sec: float,
-                                    desired_latitude: float, ego: EgoState,
-                                    time_limits: np.array=BP_ACTION_T_LIMITS) -> SemanticActionSpec:
+                                    desired_latitude: float, time_limits: np.array=BP_ACTION_T_LIMITS) -> \
+            SemanticActionSpec:
         """
         This method's purpose is to specify the enumerated actions that the agent can take.
         Each semantic action is translated to a trajectory of the agent.
@@ -258,8 +245,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         jerk_s = QuarticPoly1D.cumulative_jerk(poly_coefs_s, T_vals)
         jerk_d = QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
-        #norm_velocities = velocities / BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED - 1
-        #high_vel_costs = np.sum(np.maximum(0, norm_velocities) ** 2, axis=1)
 
         cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS])
         optimum_time_idx = np.argmin(cost)
@@ -300,7 +285,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
     @raises(InvalidAction)
     def _specify_follow_vehicle_action(self, target_obj: DynamicObject, road_frenet: FrenetSerret2DFrame,
                                        ego_init_fstate: np.ndarray, ego_timestamp_in_sec: float,
-                                       lon_margin: float, ego: EgoState) -> SemanticActionSpec:
+                                       lon_margin: float) -> SemanticActionSpec:
         """
         given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec.
         Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it.
@@ -367,8 +352,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         jerk_s = QuinticPoly1D.cumulative_jerk(poly_coefs_s, T_vals)
         jerk_d = QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
-        #norm_velocities = velocities / BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED - 1
-        #high_vel_costs = np.sum(np.maximum(0, norm_velocities) ** 2, axis=1)
 
         cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS])
         optimum_time_idx = np.argmin(cost)
@@ -382,7 +365,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         if (velocities[optimum_time_idx] > BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED + 1).any() or \
                         are_lon_acc_in_limits[optimum_time_idx] > LON_ACC_LIMITS[1]:
             return self._specify_follow_lane_action(
-                road_frenet, ego_init_fstate, ego_timestamp_in_sec, obj_center_lane_latitude, ego,
+                road_frenet, ego_init_fstate, ego_timestamp_in_sec, obj_center_lane_latitude,
                 time_limits=np.array([BP_ACTION_T_LIMITS[LIMIT_MIN], T_vals[optimum_time_idx]]))
 
         if not optimum_time_satisfies_constraints:

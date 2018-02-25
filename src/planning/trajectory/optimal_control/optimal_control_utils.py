@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Union, Optional
+from typing import Union
 
 import numpy as np
 
@@ -88,26 +88,21 @@ class Poly1D:
         return cls.time_constraints_tensor(np.array([T]))[0]
 
     @staticmethod
-    def are_derivatives_in_limits(degree: int, poly_coefs: np.ndarray, T_vals: np.ndarray, limits: Limits,
-                                  acc_poly: np.ndarray = None, jerk_poly: np.ndarray = None):
+    def are_derivatives_in_limits(degree: int, poly_coefs: np.ndarray, T_vals: np.ndarray, limits: Limits):
         """
-        Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
-        polynomial x(t), and restrictions on its <degree> derivative, return True if restrictions are met,
-        False otherwise
-        :param degree:
-        :param polys_coefs: 2D numpy array with N polynomials and <cls.num_coefs()> coefficients each
-        :param T_vals: 1D numpy array of planning-times [N]
-        :param limits: minimal and maximal allowed values for the <degree> derivative of x(t)
-        :param acc_poly: Optional 2D numpy array with N polynomials, which are degree-derivative of poly_coefs
-        :param jerk_poly: Optional 2D numpy array with N polynomials, which are (degree+1)-derivative of poly_coefs
-        :return: 1D numpy array of booleans where True means the restrictions are met.
-        """
+                Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
+                polynomial x(t), and restrictions on its <degree> derivative, return True if restrictions are met,
+                False otherwise
+                :param degree:
+                :param polys_coefs: 2D numpy array with N polynomials and <cls.num_coefs()> coefficients each
+                :param T_vals: 1D numpy array of planning-times [N]
+                :param limits: minimal and maximal allowed values for the <degree> derivative of x(t)
+                :return: 1D numpy array of booleans where True means the restrictions are met.
+                """
         # TODO: a(0) and a(T) checks are omitted as they they are provided by the user.
         # compute extrema points, by finding the roots of the 3rd derivative
-        if jerk_poly is None:
-            jerk_poly = Math.polyder2d(poly_coefs, m=degree + 1)
-        if acc_poly is None:
-            acc_poly = Math.polyder2d(poly_coefs, m=degree)
+        jerk_poly = Math.polyder2d(poly_coefs, m=degree + 1)
+        acc_poly = Math.polyder2d(poly_coefs, m=degree)
         # Giving np.apply_along_axis a complex type enables us to get complex roots (which means acceleration doesn't have extrema in range).
 
         acc_suspected_points = Poly1D.calc_polynomial_roots(jerk_poly)
@@ -126,10 +121,8 @@ class Poly1D:
                       axis=1)
 
     @classmethod
-    def are_accelerations_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, acc_limits: Limits,
-                                    acc_poly: np.ndarray = None, jerk_poly: np.ndarray = None) -> np.ndarray:
-        return cls.are_derivatives_in_limits(degree=2, poly_coefs=poly_coefs, T_vals=T_vals, limits=acc_limits,
-                                             acc_poly=acc_poly, jerk_poly=jerk_poly)
+    def are_accelerations_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, acc_limits: Limits) -> np.ndarray:
+        return cls.are_derivatives_in_limits(degree=2, poly_coefs=poly_coefs, T_vals=T_vals, limits=acc_limits)
 
     @classmethod
     def is_acceleration_in_limits(cls, poly_coefs: np.ndarray, T: float, acc_limits: Limits) -> bool:
@@ -144,8 +137,7 @@ class Poly1D:
         return cls.are_accelerations_in_limits(np.array([poly_coefs]), np.array([T]), acc_limits)[0]
 
     @classmethod
-    def are_velocities_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, vel_limits: Limits,
-                                 vel_poly: np.ndarray = None, acc_poly: np.ndarray = None) -> np.ndarray:
+    def are_velocities_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, vel_limits: Limits) -> np.ndarray:
         """
         Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
         polynomial x(t), and restrictions on the velocity values, return True if restrictions are met,
@@ -155,8 +147,7 @@ class Poly1D:
         :param vel_limits: minimal and maximal allowed values of velocities [m/sec]
         :return: 1D numpy array of booleans where True means the restrictions are met.
         """
-        return cls.are_derivatives_in_limits(degree=1, poly_coefs=poly_coefs, T_vals=T_vals, limits=vel_limits,
-                                             acc_poly=vel_poly, jerk_poly=acc_poly)
+        return cls.are_derivatives_in_limits(degree=1, poly_coefs=poly_coefs, T_vals=T_vals, limits=vel_limits)
 
     @classmethod
     def is_velocity_in_limits(cls, poly_coefs: np.ndarray, T: float, vel_limits: Limits) -> bool:
