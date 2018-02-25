@@ -195,7 +195,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
     @raises(InvalidAction)
     def _specify_follow_lane_action(self, road_frenet: FrenetSerret2DFrame,
-                                    ego_init_fstate: np.ndarray, ego_timestamp_in_sec: int,
+                                    ego_init_fstate: np.ndarray, ego_timestamp_in_sec: float,
                                     desired_latitude: float) -> SemanticActionSpec:
         """
         This method's purpose is to specify the enumerated actions that the agent can take.
@@ -225,7 +225,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             ego_init_fstate[FS_DX],
             ego_init_fstate[FS_DV],
             ego_init_fstate[FS_DA],
-            desired_latitude,  # Target latitude relative to refernce route (RHS of road)
+            desired_latitude,  # Target latitude relative to reference route (RHS of road)
             0.0,
             0.0
         ]], repeats=len(T_vals), axis=0)
@@ -273,7 +273,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
     @raises(InvalidAction)
     def _specify_follow_vehicle_action(self, target_obj: DynamicObject, road_frenet: FrenetSerret2DFrame,
-                                       ego_init_fstate: np.ndarray, ego_timestamp_in_sec: int,
+                                       ego_init_fstate: np.ndarray, ego_timestamp_in_sec: float,
                                        lon_margin: float) -> SemanticActionSpec:
         """
         given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec.
