@@ -13,11 +13,11 @@ from decision_making.src.state.state import EgoState, DynamicObject, ObjectSize
 from decision_making.src.state.state_module import Logger
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.prediction.test_Predictor import TestPredictorMock
-from mapping.test.model.testable_map_fixtures import testable_map_api
+from mapping.test.model.testable_map_fixtures import testable_map_api, map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
 
 
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=testable_map_api)
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_evalSemanticActions():
     max_velocity = v = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED  # m/s
 
