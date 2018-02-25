@@ -349,6 +349,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         are_lon_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_vals, LON_ACC_LIMITS)
         are_lat_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_vals, LAT_ACC_LIMITS)
         are_vel_in_limits = np.all(NumpyUtils.is_in_limits(velocities, VELOCITY_LIMITS), axis=1)
+        are_vel_in_desired_limit = np.all(velocities < BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED + 1, axis=1)
 
         jerk_s = QuinticPoly1D.cumulative_jerk(poly_coefs_s, T_vals)
         jerk_d = QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
@@ -357,13 +358,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         optimum_time_idx = np.argmin(cost)
 
         optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] & \
-                              are_lat_acc_in_limits[optimum_time_idx] & \
-                              are_vel_in_limits[optimum_time_idx]
+                                             are_lat_acc_in_limits[optimum_time_idx] & \
+                                             are_vel_in_limits[optimum_time_idx]
 
         # if found trajectory has velocities faster than desired or too high accelerations,
         # then call _specify_follow_lane_action
-        if (velocities[optimum_time_idx] > BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED + 1).any() or \
-                        are_lon_acc_in_limits[optimum_time_idx] > LON_ACC_LIMITS[1]:
+        if not are_vel_in_desired_limit[optimum_time_idx] or not are_lon_acc_in_limits[optimum_time_idx]:
             return self._specify_follow_lane_action(
                 road_frenet, ego_init_fstate, ego_timestamp_in_sec, obj_center_lane_latitude,
                 time_limits=np.array([BP_ACTION_T_LIMITS[LIMIT_MIN], T_vals[optimum_time_idx]]))
