@@ -271,12 +271,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                           poly_s_coefs=poly_coefs_s[optimum_time_idx],
                                                           poly_d_coefs=poly_coefs_d[optimum_time_idx])
 
-        # print('%d: T=%f v=%f tar_v=%f dist=%f ego_d=%f tar_d=%f' %
-        #       (int(ego_timestamp_in_sec), T_vals[optimum_time_idx],
-        #        ego.v_x, constraints_s[optimum_time_idx, 3], target_s[optimum_time_idx, 0] - ego_init_fstate[0],
-        #        ego_init_fstate[3], constraints_d[optimum_time_idx, 3]))
-
-
         return SemanticActionSpec(t=T_vals[optimum_time_idx], v=constraints_s[optimum_time_idx, 3],
                                   s=target_s[optimum_time_idx, 0],
                                   d=constraints_d[optimum_time_idx, 3],
@@ -385,11 +379,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                           frenet_frame=road_frenet,
                                                           poly_s_coefs=poly_coefs_s[optimum_time_idx],
                                                           poly_d_coefs=poly_coefs_d[optimum_time_idx])
-
-        # print('%d: T=%f v=%f tar_v=%f dist=%f ego_d=%f tar_d=%f' %
-        #       (int(ego_timestamp_in_sec), T_vals[optimum_time_idx],
-        #        ego.v_x, obj_svT[optimum_time_idx], constraints_s[optimum_time_idx, 3] - ego_init_fstate[0],
-        #        ego_init_fstate[3], constraints_d[optimum_time_idx, 3]))
 
         return SemanticActionSpec(t=T_vals[optimum_time_idx], v=obj_svT[optimum_time_idx],
                                   s=constraints_s[optimum_time_idx, 3],
