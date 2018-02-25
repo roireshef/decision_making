@@ -178,8 +178,6 @@ def test_specifyAction_followOtherCar_wellSpecified(semantic_follow_action: Sema
     #
     # poly_all_coefs_s = OptimalControlUtils.QuinticPoly1D.solve(A_inv, [constraints_s])[0]
 
-    ego_on_road = semantic_actions_state.ego_state.road_localization
-    ego_s0 = ego_on_road.road_lon
 
     obj = semantic_follow_action.target_obj
     obj_on_road = obj.road_localization
@@ -189,4 +187,4 @@ def test_specifyAction_followOtherCar_wellSpecified(semantic_follow_action: Sema
     lon_margin = semantic_actions_state.ego_state.size.length - EGO_ORIGIN_LON_FROM_REAR + obj.size.length / 2
 
     np.testing.assert_almost_equal(specify.v, obj_v, 4)
-    np.testing.assert_almost_equal(specify.s + ego_s0, obj_sT - lon_margin - SAFE_DIST_TIME_DELAY * obj_v, 4)
+    np.testing.assert_almost_equal(specify.s, obj_sT - lon_margin - SAFE_DIST_TIME_DELAY * obj_v, 4)
