@@ -72,9 +72,9 @@ def test_evalSemanticActions():
         policy = SemanticActionsGridPolicy(logger, predictor)
 
         semantic_actions = []
-        semantic_actions.append(SemanticAction((-1, 1), obs[0], SemanticActionType.FOLLOW))
-        semantic_actions.append(SemanticAction((0, 1), obs[1], SemanticActionType.FOLLOW))
-        semantic_actions.append(SemanticAction((1, 1), obs[2], SemanticActionType.FOLLOW))
+        semantic_actions.append(SemanticAction((-1, 1), obs[0], SemanticActionType.FOLLOW_VEHICLE))
+        semantic_actions.append(SemanticAction((0, 1), obs[1], SemanticActionType.FOLLOW_VEHICLE))
+        semantic_actions.append(SemanticAction((1, 1), obs[2], SemanticActionType.FOLLOW_VEHICLE))
         actions_spec = []
         actions_spec.append(SemanticActionSpec(t=t, v=vel1, s=obs[0].x - ego.x, d=obs[0].y - ego.y))
         actions_spec.append(SemanticActionSpec(t=t, v=vel2, s=obs[1].x - ego.x, d=obs[1].y - ego.y))
