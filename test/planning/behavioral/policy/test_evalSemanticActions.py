@@ -13,11 +13,11 @@ from decision_making.src.state.state import EgoState, DynamicObject, ObjectSize
 from decision_making.src.state.state_module import Logger
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.prediction.test_Predictor import TestPredictorMock
-from mapping.test.model.testable_map_fixtures import testable_map_api
+from mapping.test.model.testable_map_fixtures import testable_map_api, map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
 
 
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=testable_map_api)
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_evalSemanticActions():
     max_velocity = v = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED  # m/s
 
@@ -36,7 +36,7 @@ def test_evalSemanticActions():
         vel2 = vel2_list[test]
         vel3 = vel3_list[test]
 
-        ego_x = 0
+        ego_x = 0.001
         t = 5
         # t1 = (pos1[0]-ego_x) / (0.5*(ego_v+vel1))
         # t2 = (pos2[0]-ego_x) / (0.5*(ego_v+vel2))
@@ -44,15 +44,15 @@ def test_evalSemanticActions():
 
         size = ObjectSize(1.5, 0.5, 0)
         obs = list([
-            DynamicObject(obj_id=0, timestamp=0, x=pos1[0], y=pos1[1], z=0, yaw=0, size=size,
+            DynamicObject(obj_id=1, timestamp=0, x=pos1[0], y=pos1[1], z=0, yaw=0, size=size,
                           confidence=1.0, v_x=vel1, v_y=0, acceleration_lon=0.0, omega_yaw=0.0),
-            DynamicObject(obj_id=1, timestamp=0, x=pos2[0], y=pos2[1], z=0, yaw=0, size=size,
+            DynamicObject(obj_id=2, timestamp=0, x=pos2[0], y=pos2[1], z=0, yaw=0, size=size,
                           confidence=1.0, v_x=vel2, v_y=0, acceleration_lon=0.0, omega_yaw=0.0),
-            DynamicObject(obj_id=2, timestamp=0, x=pos3[0], y=pos3[1], z=0, yaw=0, size=size,
+            DynamicObject(obj_id=3, timestamp=0, x=pos3[0], y=pos3[1], z=0, yaw=0, size=size,
                           confidence=1.0, v_x=vel3, v_y=0, acceleration_lon=0.0, omega_yaw=0.0)
         ])
 
-        ego = EgoState(obj_id=-1, timestamp=0, x=ego_x, y=0, z=0, yaw=0, size=size,
+        ego = EgoState(obj_id=0, timestamp=0, x=ego_x, y=0, z=0, yaw=0, size=size,
                        confidence=1.0, v_x=ego_v, v_y=0, steering_angle=0.0, acceleration_lon=0.0, omega_yaw=0.0)
 
         grid = {}
