@@ -5,7 +5,7 @@ from typing import Optional, List, Dict
 import numpy as np
 
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID, \
-    UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS, LOG_MSG_STATE_MODULE_PUBLISH_STATE
+    UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS, LOG_MSG_STATE_MODULE_PUBLISH_STATE, EGO_ORIGIN_LON_FROM_REAR
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.planning.types import CartesianPoint3D
 from decision_making.src.state.state import OccupancyState, EgoState, DynamicObject, ObjectSize, State
@@ -18,6 +18,7 @@ from common_data.src.communication.pubsub.pubsub import PubSub
 from common_data.lcm.config import pubsub_topics
 from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedDynamicObjectList
 from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedSelfLocalization
+from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
 class StateModule(DmModule):
@@ -188,10 +189,25 @@ class StateModule(DmModule):
                 # TODO: replace UNKNOWN_DEFAULT_VAL with actual implementation
                 self._ego_state = EgoState(EGO_ID, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, a_x,
                                            UNKNOWN_DEFAULT_VAL, UNKNOWN_DEFAULT_VAL)
+                self._transform_ego_origin_to_its_center()
 
             self._publish_state_if_full()
+
         except Exception as e:
             self.logger.exception('StateModule._self_localization_callback failed due to')
+
+    def _transform_ego_origin_to_its_center(self):
+        """
+        transform origin of ego from the point defined by EGO_ORIGIN_LON_FROM_REAR to ego's center
+        :return:
+        """
+        global_pos, _ = CartesianFrame.convert_relative_to_global_frame(
+            relative_pos=np.array([self._ego_state.size.length/2 - EGO_ORIGIN_LON_FROM_REAR, 0, 0]), relative_yaw=0,
+            frame_position=np.array([self._ego_state.x, self._ego_state.y, self._ego_state.z]),
+            frame_orientation=self._ego_state.yaw)
+        self._ego_state.x = global_pos[0]
+        self._ego_state.y = global_pos[1]
+
 
     # TODO: convert from lcm...
     # TODO: handle invalid data - occupancy is currently unused throughout the system

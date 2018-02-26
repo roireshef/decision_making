@@ -1,3 +1,4 @@
+import copy
 import time
 import traceback
 from logging import Logger
@@ -9,10 +10,9 @@ from common_data.lcm.config import pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
-    NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, DEFAULT_OBJECT_Z_VALUE, VISUALIZATION_PREDICTION_RESOLUTION, \
-    MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION, \
+    VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION, \
     NUM_ALTERNATIVE_TRAJECTORIES, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
-    LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME
+    LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, EGO_ORIGIN_LON_FROM_REAR
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
@@ -104,6 +104,9 @@ class TrajectoryPlanningFacade(DmModule):
                 np.linspace(start=0,
                             stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
                             num=TRAJECTORY_NUM_POINTS) + state_aligned.ego_state.timestamp_in_sec)
+            self._last_trajectory = samplable_trajectory
+
+            trajectory_points = self._transform_trajectory_to_ego_origin(state_aligned.ego_state, trajectory_points)
 
             # TODO: should we publish v_x at all?
             # TODO: add timestamp here.
@@ -112,7 +115,6 @@ class TrajectoryPlanningFacade(DmModule):
                                   current_speed=state_aligned.ego_state.v_x)
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('{}: {}'.format(LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg))
-            self._last_trajectory = samplable_trajectory
 
             # publish visualization/debug data - based on actual ego localization (original state)!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
@@ -134,6 +136,19 @@ class TrajectoryPlanningFacade(DmModule):
         except Exception:
             self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s",
                                  traceback.format_exc())
+
+    @staticmethod
+    def _transform_trajectory_to_ego_origin(ego: EgoState, trajectory_points: np.array) -> np.array:
+        """
+        transform trajectory points to represent the real origin of ego, rather than ego center
+        :param trajectory_points: trajectory points representing ego center
+        :return: transformed trajectory_points representing real ego origin
+        """
+        transformed_points = copy.deepcopy(trajectory_points)
+        shift = EGO_ORIGIN_LON_FROM_REAR - ego.size.length/2
+        transformed_points[:, 0] += shift * np.cos(trajectory_points[:, 2])
+        transformed_points[:, 1] += shift * np.sin(trajectory_points[:, 2])
+        return transformed_points
 
     def _validate_strategy_handlers(self) -> None:
         for elem in TrajectoryPlanningStrategy.__members__.values():

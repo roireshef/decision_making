@@ -1,7 +1,7 @@
 import numpy as np
 from logging import Logger
 
-from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, BEHAVIORAL_PLANNING_LOOKAHEAD_DIST
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_LOOKAHEAD_DIST
 from decision_making.src.global_constants import SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LON_REAR, LON_MARGIN_FROM_EGO
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -157,8 +157,6 @@ class SemanticActionsGridState(SemanticBehavioralState):
         # Relative longitudinal distance
         object_lon_dist = obj_init_fstate[FS_SX] - ego_init_fstate[FS_SX]
 
-        dist_from_object_rear_to_ego_front = object_lon_dist - object_in_cell.size.length / 2 - \
-                                             (ego_state.size.length - EGO_ORIGIN_LON_FROM_REAR)
-        dist_from_ego_rear_to_object_front = object_lon_dist + object_in_cell.size.length / 2 + \
-                                             EGO_ORIGIN_LON_FROM_REAR
+        dist_from_object_rear_to_ego_front = object_lon_dist - object_in_cell.size.length/2 - ego_state.size.length/2
+        dist_from_ego_rear_to_object_front = object_lon_dist + object_in_cell.size.length/2 + ego_state.size.length/2
         return dist_from_object_rear_to_ego_front, dist_from_ego_rear_to_object_front
