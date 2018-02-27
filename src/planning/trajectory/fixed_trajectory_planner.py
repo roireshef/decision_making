@@ -68,14 +68,15 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         :param reference_route: ignored
         :param goal: ignored
         :param cost_params: ignored
-        :return: a tuple of: (samplable represantation of the fixed trajectory, tensor of the fixed trajectory,
+        :return: a tuple of: (samplable representation of the fixed trajectory, tensor of the fixed trajectory,
          and numpy array of zero as the trajectory's cost)
         """
         time.sleep(max(self._sleep_sigma * np.random.randn(), 0) + self._sleep_mu)
         current_pos = np.array([state.ego_state.x, state.ego_state.y])
 
-        if not self._triggered and np.all(np.abs(current_pos - self._trigger_pos) <
-                                          np.array([NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT])):
+        if not self._triggered and np.all(np.linalg.norm(current_pos - self._trigger_pos) <
+                                          np.linalg.norm(np.array([NEGLIGIBLE_DISPOSITION_LON,
+                                                                   NEGLIGIBLE_DISPOSITION_LAT]))):
             self._triggered = True
 
         if self._triggered:

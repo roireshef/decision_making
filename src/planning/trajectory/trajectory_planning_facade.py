@@ -91,7 +91,7 @@ class TrajectoryPlanningFacade(DmModule):
                     state_aligned.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
                 updated_state = self._get_state_with_expected_ego(state_aligned)
                 self.logger.debug("TrajectoryPlanningFacade ego localization was overridden to the expected-state "
-                                 "according to previous plan")
+                                  "according to previous plan")
             else:
                 updated_state = state_aligned
 
@@ -112,7 +112,7 @@ class TrajectoryPlanningFacade(DmModule):
             # TODO: add timestamp here.
             # publish results to the lower DM level (Control)
             trajectory_msg = TrajectoryPlanMsg(timestamp=state.ego_state.timestamp, trajectory=trajectory_points,
-                                  current_speed=state_aligned.ego_state.v_x)
+                                               current_speed=state_aligned.ego_state.v_x)
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('{}: {}'.format(LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg))
 
