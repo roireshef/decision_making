@@ -1,10 +1,12 @@
 from unittest.mock import patch
 
-from decision_making.src.global_constants import SAFE_DIST_TIME_DELAY, EGO_ORIGIN_LON_FROM_REAR
+from decision_making.src.global_constants import SAFE_DIST_TIME_DELAY, EGO_ORIGIN_LON_FROM_REAR, BP_ACTION_T_LIMITS, \
+    BP_ACTION_T_RES, VELOCITY_LIMITS
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import \
     SemanticActionsGridState
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticAction
+from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import Poly1D
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import semantic_actions_state, \
@@ -12,6 +14,7 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import s
     state_with_ego_on_right_lane, state_with_ego_on_left_lane
 from mapping.test.model.testable_map_fixtures import map_api_mock, navigation_fixture, testable_map_api
 from rte.python.logger.AV_logger import AV_Logger
+import numpy as np
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
@@ -189,3 +192,18 @@ def test_specifyAction_followOtherCar_wellSpecified(semantic_follow_action: Sema
 
     assert specify.v == obj_v
     assert specify.s + ego_s0 == obj_sT - lon_margin - SAFE_DIST_TIME_DELAY * obj_v
+
+
+def test_velocitiesInLimits_testQuinticAndQuartic():
+    T_vals = np.arange(7, 7.10001, 0.1)
+    poly_coefs1 = np.array([np.array([4.5551256270804475e-05, -0.0031261275542158826, 0.079508383655999507,
+                                      -0.90949571395743578, 3.8062370283689084, 88.016858456033745]), ]
+                          * T_vals.shape[0])
+    in_limits1 = Poly1D.are_velocities_in_limits(poly_coefs1, T_vals, VELOCITY_LIMITS)
+    assert in_limits1[0] == False and in_limits1[1] == False
+
+    poly_coefs2 = np.array([np.array([-0.0031261275542158826, 0.079508383655999507,
+                                      -0.90949571395743578, 3.8062370283689084, 88.016858456033745]), ]
+                           * T_vals.shape[0])
+    in_limits2 = Poly1D.are_velocities_in_limits(poly_coefs2, T_vals, VELOCITY_LIMITS)
+    assert in_limits2[0] == True and in_limits2[1] == True
