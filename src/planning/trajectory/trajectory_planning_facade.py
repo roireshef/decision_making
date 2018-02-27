@@ -144,11 +144,10 @@ class TrajectoryPlanningFacade(DmModule):
         :param trajectory_points: trajectory points representing ego center
         :return: transformed trajectory_points representing real ego origin
         """
-        transformed_points = copy.deepcopy(trajectory_points)
-        shift = EGO_ORIGIN_LON_FROM_REAR - ego.size.length/2
-        transformed_points[:, 0] += shift * np.cos(trajectory_points[:, 2])
-        transformed_points[:, 1] += shift * np.sin(trajectory_points[:, 2])
-        return transformed_points
+        yaw_vec = trajectory_points[:, C_YAW]
+        zero_vec = np.zeros(trajectory_points.shape[0])
+        return trajectory_points + (EGO_ORIGIN_LON_FROM_REAR - ego.size.length/2) * \
+                                   np.c_[np.cos(yaw_vec), np.sin(yaw_vec), zero_vec, zero_vec, zero_vec, zero_vec]
 
     def _validate_strategy_handlers(self) -> None:
         for elem in TrajectoryPlanningStrategy.__members__.values():

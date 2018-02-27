@@ -155,8 +155,10 @@ class SemanticActionsGridState(SemanticBehavioralState):
         ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cstate)
 
         # Relative longitudinal distance
-        object_lon_dist = obj_init_fstate[FS_SX] - ego_init_fstate[FS_SX]
+        object_relative_lon_dist = obj_init_fstate[FS_SX] - ego_init_fstate[FS_SX]
 
-        dist_from_object_rear_to_ego_front = object_lon_dist - object_in_cell.size.length/2 - ego_state.size.length/2
-        dist_from_ego_rear_to_object_front = object_lon_dist + object_in_cell.size.length/2 + ego_state.size.length/2
+        dist_from_object_rear_to_ego_front = object_relative_lon_dist - \
+                                             (object_in_cell.size.length/2 + ego_state.size.length/2)
+        dist_from_ego_rear_to_object_front = object_relative_lon_dist + \
+                                             (object_in_cell.size.length/2 + ego_state.size.length/2)
         return dist_from_object_rear_to_ego_front, dist_from_ego_rear_to_object_front
