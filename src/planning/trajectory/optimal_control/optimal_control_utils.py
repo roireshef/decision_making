@@ -103,15 +103,18 @@ class Poly1D:
         # compute extrema points, by finding the roots of the 3rd derivative
         jerk_poly = Math.polyder2d(poly_coefs, m=degree + 1)
         acc_poly = Math.polyder2d(poly_coefs, m=degree)
-        # Giving np.apply_along_axis a complex type enables us to get complex roots (which means acceleration doesn't have extrema in range).
+        # Giving np.apply_along_axis a complex type enables us to get complex roots (which means acceleration doesn't
+        # have extrema in range).
 
         acc_suspected_points = Poly1D.calc_polynomial_roots(jerk_poly)
+        is_real = np.isclose(np.imag(acc_suspected_points), 0.0).astype(int)
+        acc_suspected_points = np.real(acc_suspected_points) * is_real + acc_suspected_points * (1-is_real)
         acc_suspected_values = Math.zip_polyval2d(acc_poly, acc_suspected_points)
 
         # are extrema points out of [0, T] range
         is_suspected_point_in_time_range = np.greater_equal(acc_suspected_points, 0) & \
                                            np.less_equal(acc_suspected_points, T_vals[:, np.newaxis]) & \
-                                           np.isreal(acc_suspected_values)
+                                           is_real
 
         # check if extrema values are within [a_min, a_max] limits
         is_suspected_value_in_limits = NumpyUtils.is_in_limits(acc_suspected_values, limits)
@@ -153,7 +156,6 @@ class Poly1D:
         # For quintic polynomials 3rd degree np.roots calculation is in for loop and inefficient.
         # Then in this case check limits by velocities calculation in all sampled points.
         (min_T, max_T, dt) = (np.min(T_vals), np.max(T_vals), T_vals[1] - T_vals[0])
-        #assert len(T_vals) == int(round((max_T - min_T) / dt)) + 1
         vel_poly_s = Math.polyder2d(poly_coefs, m=1)
         traj_times = np.arange(dt, max_T - np.finfo(np.float16).eps, dt)  # from dt to max_T-dt
         times = np.array([traj_times, ] * len(T_vals))  # repeat full traj_times for all T_vals
