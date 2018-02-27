@@ -147,7 +147,20 @@ class Poly1D:
         :param vel_limits: minimal and maximal allowed values of velocities [m/sec]
         :return: 1D numpy array of booleans where True means the restrictions are met.
         """
-        return cls.are_derivatives_in_limits(degree=1, poly_coefs=poly_coefs, T_vals=T_vals, limits=vel_limits)
+        if poly_coefs.shape[1] == 5:  # for quartic polynomial calculate second derivative roots analytically
+            return cls.are_derivatives_in_limits(degree=1, poly_coefs=poly_coefs, T_vals=T_vals, limits=vel_limits)
+
+        # For quintic polynomials 3rd degree np.roots calculation is in for loop and inefficient.
+        # Then in this case check limits by velocities calculation in all sampled points.
+        (min_T, max_T, dt) = (np.min(T_vals), np.max(T_vals), T_vals[1] - T_vals[0])
+        #assert len(T_vals) == int(round((max_T - min_T) / dt)) + 1
+        vel_poly_s = Math.polyder2d(poly_coefs, m=1)
+        traj_times = np.arange(dt, max_T - np.finfo(np.float16).eps, dt)  # from dt to max_T-dt
+        times = np.array([traj_times, ] * len(T_vals))  # repeat full traj_times for all T_vals
+        velocities = Math.zip_polyval2d(vel_poly_s, times)  # get velocities for all T_vals and all t[i,j] < T_vals[i]
+        # zero irrelevant velocities to get lower triangular matrix: 0 <= t[i,j] < T_val[i]
+        velocities = np.tril(velocities, int(round(min_T/dt))-2)
+        return np.all(NumpyUtils.is_in_limits(velocities, vel_limits), axis=1)
 
     @classmethod
     def is_velocity_in_limits(cls, poly_coefs: np.ndarray, T: float, vel_limits: Limits) -> bool:
