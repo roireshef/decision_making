@@ -5,7 +5,7 @@ import numpy as np
 
 from decision_making.src.exceptions import BehavioralPlanningException, InvalidAction
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
-from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, \
+from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS, \
     BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
@@ -40,7 +40,6 @@ from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
-from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
 class SemanticActionsGridPolicy(SemanticActionsPolicy):
@@ -179,8 +178,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         if semantic_action.action_type == SemanticActionType.FOLLOW_VEHICLE:
             # part of ego from its origin to its front + half of target object
-            lon_margin = ego.size.length / 2 + semantic_action.target_obj.size.length / 2 + \
-                         LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+            lon_margin = (ego.size.length - EGO_ORIGIN_LON_FROM_REAR) + semantic_action.target_obj.size.length / 2
 
             # TODO: the relative localization calculated here assumes that all objects are located on the same road and Frenet frame.
             # TODO: Fix after demo and calculate longitudinal difference properly in the general case
