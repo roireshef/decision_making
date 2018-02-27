@@ -207,3 +207,6 @@ def test_velocitiesInLimits_testQuinticAndQuartic():
                            * T_vals.shape[0])
     in_limits2 = Poly1D.are_velocities_in_limits(poly_coefs2, T_vals, VELOCITY_LIMITS)
     assert in_limits2[0] == True and in_limits2[1] == True
+
+    in_limits3 = Poly1D.are_derivatives_in_limits(1, poly_coefs1, T_vals, VELOCITY_LIMITS)
+    assert in_limits3[0] == True and in_limits3[1] == False
