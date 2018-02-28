@@ -141,7 +141,6 @@ DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION = 0.5
 # [m] "Negligible distance" threshold between the desired location and the actual location between two TP planning
 # iterations. If the distance is lower than this threshold, the TP plans the trajectory as is the ego vehicle is
 # currently in the desired location and not in its actual location.
-# TODO: fix real values for thresholds (after tuning controller)
 NEGLIGIBLE_DISPOSITION_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
 NEGLIGIBLE_DISPOSITION_LAT = 0.5  # lateral (ego's side direction) difference threshold
 

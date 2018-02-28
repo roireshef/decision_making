@@ -145,18 +145,13 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :return: Returns a new DynamicObject with updated state
         """
 
-        # TODO: set other attributes, as:
-        # TODO: z coordinate, acceleration
-
         timestamp = int(timestamp_in_sec * 1e9)
         x = cartesian_state[C_X]
         y = cartesian_state[C_Y]
-        z = 0.0
         yaw = cartesian_state[C_YAW]
 
         # currently the velocity being used is self.total_speed (norm(v_x,v_y)) so v_y is important as well
         v_x = cartesian_state[C_V]
-        v_y = self.v_y
 
         # Fetch object's public fields
         object_fields = {k: v for k, v in self.__dict__.items() if k[0] != '_'}
@@ -165,15 +160,14 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         object_fields['timestamp'] = timestamp
         object_fields['x'] = x
         object_fields['y'] = y
-        object_fields['z'] = z
         object_fields['yaw'] = yaw
         object_fields['v_x'] = v_x
-        object_fields['v_y'] = v_y
 
         # Construct a new object
         return self.__class__(**object_fields)
 
     @property
+    # TODO: road localization needs to use frenet transformations
     def road_localization(self):
         # type: () -> RoadLocalization
         if self._cached_road_localization is None:
@@ -198,6 +192,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         return self.total_speed * np.cos(self.road_localization.intra_road_yaw)
 
     @property
+    #TODO: remove this when yaw issue is fixed
     def total_speed(self):
         # type: () -> float
         """

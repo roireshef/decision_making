@@ -233,7 +233,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         A_inv_d = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_vals))
         poly_coefs_d = QuinticPoly1D.zip_solve(A_inv_d, constraints_d)
 
-        # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
         are_lon_acc_in_limits = QuarticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_vals, LON_ACC_LIMITS)
         are_vel_in_limits = QuarticPoly1D.are_velocities_in_limits(poly_coefs_s, T_vals, VELOCITY_LIMITS)
         are_lat_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_vals, LAT_ACC_LIMITS)
@@ -293,7 +292,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         ]))
 
         # Extract relevant details from state on Reference-Object
-        obj_on_road = target_obj.road_localization  # TODO: road localization needs to be handled
+        obj_on_road = target_obj.road_localization
         road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id=obj_on_road.road_id)
         obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
 
@@ -301,12 +300,11 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_vals))
 
-        # TODO: should be swapped with current implementation of Predictor
+        # TODO: should be swapped with current implementation of Predictor.predict_object_on_road
         obj_saT = 0  # obj_init_fstate[FS_SA]
         obj_svT = obj_init_fstate[FS_SV] + obj_saT * T_vals
         obj_sxT = obj_init_fstate[FS_SX] + obj_svT * T_vals + obj_saT * T_vals ** 2 / 2
 
-        # TODO: account for acc<>0 (from MobilEye's paper)
         safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
 
         constraints_s = np.c_[
@@ -522,7 +520,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         """
         ego = behavioral_state.ego_state
 
-        # TODO: fix that compensation that once used to be multiplied by the relative_s from ego.
         # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
         # caused by the curve linearization approximation in the resampling process
         # The compensation here is multiplicative because of the different curve-fittings we use:
@@ -533,7 +530,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         lookahead_distance = action_spec.s * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
         # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
-        # TODO: better than sending the whole road. and also what happens in the beginning of a road
+        # TODO: better than sending the whole road. Fix when map service is redesigned!
         center_lane_reference_route = MapService.get_instance().get_uniform_path_lookahead(
             road_id=ego.road_localization.road_id,
             lat_shift=action_spec.d,  # THIS ASSUMES THE GOAL ALWAYS FALLS ON THE REFERENCE ROUTE

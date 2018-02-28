@@ -99,7 +99,7 @@ class Poly1D:
                 :param limits: minimal and maximal allowed values for the <degree> derivative of x(t)
                 :return: 1D numpy array of booleans where True means the restrictions are met.
                 """
-        # TODO: a(0) and a(T) checks are omitted as they they are provided by the user.
+        # a(0) and a(T) checks are omitted as they they are provided by the user.
         # compute extrema points, by finding the roots of the 3rd derivative
         jerk_poly = Math.polyder2d(poly_coefs, m=degree + 1)
         acc_poly = Math.polyder2d(poly_coefs, m=degree)
