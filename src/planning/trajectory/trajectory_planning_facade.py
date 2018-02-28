@@ -12,15 +12,15 @@ from decision_making.src.exceptions import MsgDeserializationError, NoValidTraje
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION, \
     NUM_ALTERNATIVE_TRAJECTORIES, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
-    LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, EGO_ORIGIN_LON_FROM_REAR
+    LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import C_Y, C_X, C_YAW, FP_SX, FP_DX, FrenetPoint, \
-    CartesianExtendedState, C_V, C_A, CartesianTrajectories, CartesianPath2D, C_K
+from decision_making.src.planning.types import C_Y, C_X, C_YAW, CartesianExtendedState, C_V, C_A, \
+    CartesianTrajectories, CartesianPath2D, C_K
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, EgoState
@@ -106,7 +106,8 @@ class TrajectoryPlanningFacade(DmModule):
                             num=TRAJECTORY_NUM_POINTS) + state_aligned.ego_state.timestamp_in_sec)
             self._last_trajectory = samplable_trajectory
 
-            trajectory_points = self._transform_trajectory_to_ego_origin(state_aligned.ego_state, trajectory_points)
+            trajectory_points = LocalizationUtils.transform_ego_trajectory_from_ego_center_to_ego_origin(
+                state_aligned.ego_state.size.length, trajectory_points)
 
             # TODO: should we publish v_x at all?
             # TODO: add timestamp here.
@@ -136,18 +137,6 @@ class TrajectoryPlanningFacade(DmModule):
         except Exception:
             self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s",
                                  traceback.format_exc())
-
-    @staticmethod
-    def _transform_trajectory_to_ego_origin(ego: EgoState, trajectory_points: np.array) -> np.array:
-        """
-        transform trajectory points to represent the real origin of ego, rather than ego center
-        :param trajectory_points: trajectory points representing ego center
-        :return: transformed trajectory_points representing real ego origin
-        """
-        yaw_vec = trajectory_points[:, C_YAW]
-        zero_vec = np.zeros(trajectory_points.shape[0])
-        return trajectory_points + (EGO_ORIGIN_LON_FROM_REAR - ego.size.length/2) * \
-                                   np.c_[np.cos(yaw_vec), np.sin(yaw_vec), zero_vec, zero_vec, zero_vec, zero_vec]
 
     def _validate_strategy_handlers(self) -> None:
         for elem in TrajectoryPlanningStrategy.__members__.values():
