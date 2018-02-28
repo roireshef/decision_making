@@ -113,8 +113,8 @@ class TrajectoryPlanningFacade(DmModule):
 
             # publish visualization/debug data - based on actual ego localization (original state)!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
-                state, params.reference_route, ctrajectories, costs, params.time - state.ego_state.timestamp_in_sec,
-                self._strategy_handlers[params.strategy].predictor)
+                state_aligned, params.reference_route, ctrajectories, costs,
+                params.time - state.ego_state.timestamp_in_sec, self._strategy_handlers[params.strategy].predictor)
 
             self._publish_debug(debug_results)
 
@@ -212,12 +212,9 @@ class TrajectoryPlanningFacade(DmModule):
         :param planning_horizon: [sec] the (relative) planning-horizon used for planning
         :return:
         """
-        # TODO: remove this section and solve timestamps-sync in StateModule?
-        objects_timestamp_in_sec = [dyn_obj.timestamp_in_sec for dyn_obj in state.dynamic_objects]
-        objects_timestamp_in_sec.append(state.ego_state.timestamp_in_sec)
-        most_recent_timestamp = np.max(objects_timestamp_in_sec)
-
-        prediction_timestamps = np.arange(most_recent_timestamp, state.ego_state.timestamp_in_sec + planning_horizon,
+        # this assumes the state is already aligned by short time prediction
+        most_recent_timestamp = state.ego_state.timestamp_in_sec
+        prediction_timestamps = np.arange(most_recent_timestamp, most_recent_timestamp + planning_horizon,
                                           VISUALIZATION_PREDICTION_RESOLUTION, float)
 
         # TODO: move this to visualizer!
