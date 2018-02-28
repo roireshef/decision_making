@@ -6,7 +6,7 @@ import time
 
 from decision_making.src.exceptions import raises
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, \
-    TRAJECTORY_NUM_POINTS
+    TRAJECTORY_NUM_POINTS, EGO_ORIGIN_LON_FROM_REAR
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
@@ -40,7 +40,8 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
             that advances incrementally on fixed_trajectory by step size
     """
 
-    def __init__(self, logger: Logger, predictor: Predictor, fixed_trajectory: CartesianExtendedTrajectory, step_size: int,
+    def __init__(self, logger: Logger, predictor: Predictor, fixed_trajectory: CartesianExtendedTrajectory,
+                 step_size: int,
                  trigger_pos: CartesianPoint2D, sleep_sigma: float, sleep_mu: float):
         """
         :param logger:
@@ -74,13 +75,19 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         time.sleep(max(self._sleep_sigma * np.random.randn(), 0) + self._sleep_mu)
         current_pos = np.array([state.ego_state.x, state.ego_state.y])
 
+        # Since we want to compare current ego position to a point on trajectory, and ego_state was transformed to be
+        # around vehicle center, we have to transform the state back.
+        current_pos += (EGO_ORIGIN_LON_FROM_REAR - state.ego_state.size.length / 2) * \
+                       np.c_[np.cos(state.ego_state.yaw), np.sin(state.ego_state.yaw)]
+
         if not self._triggered and np.all(np.linalg.norm(current_pos - self._trigger_pos) <
                                           np.linalg.norm(np.array([NEGLIGIBLE_DISPOSITION_LON,
                                                                    NEGLIGIBLE_DISPOSITION_LAT]))):
             self._triggered = True
 
         if self._triggered:
-            current_trajectory = self._fixed_trajectory[self._trajectory_advancing:(self._trajectory_advancing+TRAJECTORY_NUM_POINTS)]
+            current_trajectory = self._fixed_trajectory[
+                                 self._trajectory_advancing:(self._trajectory_advancing + TRAJECTORY_NUM_POINTS)]
 
             self._trajectory_advancing += self._step_size
 
@@ -91,4 +98,4 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
                    np.array([current_trajectory[:, :(C_V + 1)]]), zero_trajectory_cost
         else:
             raise NotTriggeredException("Didn't reach trigger point yet [%s]. Current localization is [%s]" %
-                                           (self._trigger_pos, current_pos))
+                                        (self._trigger_pos, current_pos))
