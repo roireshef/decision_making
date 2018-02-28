@@ -83,7 +83,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
 
             self._trajectory_advancing += self._step_size
 
-            # TODO: currently no one does anything with the cost, the array here is dummy
+            # Currently no one does anything with the cost, the array here is dummy
             zero_trajectory_cost = np.array([0])
 
             return FixedSamplableTrajectory(current_trajectory), \

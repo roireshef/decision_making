@@ -306,8 +306,7 @@ class FrenetSerret2DFrame:
         :param xy_splines: a tuple of the splines objects used for fitting x, y
         :return:
         """
-        # TODO: should normalize by step size or is it already normalized? ...
-        # TODO: ... are derivatives of spline-object in meter-units?
+
         x = xy_splines[0]
         x_dot = x.derivative(1)
         x_dotdot = x.derivative(2)

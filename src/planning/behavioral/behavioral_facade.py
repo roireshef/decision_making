@@ -54,18 +54,13 @@ class BehavioralFacade(DmModule):
 
             navigation_plan = self._get_current_navigation_plan()
 
-            if state_aligned is not None:
-                # Plan if the behavioral state has valid timestamp
-                trajectory_params, behavioral_visualization_message = self._policy.plan(state_aligned, navigation_plan)
+            trajectory_params, behavioral_visualization_message = self._policy.plan(state_aligned, navigation_plan)
 
-                if trajectory_params is not None:
-                    # Send plan to trajectory
-                    self._publish_results(trajectory_params)
+            # Send plan to trajectory
+            self._publish_results(trajectory_params)
 
-                    # Send visualization data
-                    self._publish_visualization(behavioral_visualization_message)
-                else:
-                    self.logger.info("No plan was generated.")
+            # Send visualization data
+            self._publish_visualization(behavioral_visualization_message)
 
             self.logger.info("{} {}".format(LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, time.time() - start_time))
 
