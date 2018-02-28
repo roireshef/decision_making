@@ -201,13 +201,9 @@ class StateModule(DmModule):
         transform origin of ego from the point defined by EGO_ORIGIN_LON_FROM_REAR to ego's center
         :return:
         """
-        global_pos, _ = CartesianFrame.convert_relative_to_global_frame(
-            relative_pos=np.array([self._ego_state.size.length/2 - EGO_ORIGIN_LON_FROM_REAR, 0, 0]), relative_yaw=0,
-            frame_position=np.array([self._ego_state.x, self._ego_state.y, self._ego_state.z]),
-            frame_orientation=self._ego_state.yaw)
-        self._ego_state.x = global_pos[0]
-        self._ego_state.y = global_pos[1]
-
+        shift = self._ego_state.size.length/2 - EGO_ORIGIN_LON_FROM_REAR
+        self._ego_state.x += shift * np.cos(self._ego_state.yaw)
+        self._ego_state.y += shift * np.sin(self._ego_state.yaw)
 
     # TODO: convert from lcm...
     # TODO: handle invalid data - occupancy is currently unused throughout the system
