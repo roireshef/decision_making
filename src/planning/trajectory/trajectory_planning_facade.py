@@ -146,6 +146,9 @@ class TrajectoryPlanningFacade(DmModule):
         :return: deserialized State
         """
         input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
+        if input_state is None:
+            raise MsgDeserializationError('LCM message queue for %s topic is empty or topic isn\'t subscribed',
+                                          pubsub_topics.STATE_TOPIC)
         object_state = State.deserialize(input_state)
         self.logger.debug('%s: %s' % (LOG_MSG_RECEIVED_STATE, object_state))
         return object_state
