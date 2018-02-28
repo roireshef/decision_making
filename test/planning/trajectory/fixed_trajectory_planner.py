@@ -18,7 +18,7 @@ from decision_making.test.exceptions import NotTriggeredException
 class FixedSamplableTrajectory(SamplableTrajectory):
 
     def __init__(self, fixed_trajectory: CartesianExtendedTrajectory):
-        super().__init__(timestamp_in_sec=0, max_sample_time=np.inf)
+        super().__init__(timestamp_in_sec=0, T=np.inf)
         self._fixed_trajectory = fixed_trajectory
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
@@ -80,7 +80,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
 
             self._trajectory_advancing += self._step_size
 
-            # TODO: currently no one does anything with the cost, the array here is dummy
+            # Currently no one does anything with the cost, the array here is dummy
             zero_trajectory_cost = np.array([0])
 
             return FixedSamplableTrajectory(current_trajectory), \
