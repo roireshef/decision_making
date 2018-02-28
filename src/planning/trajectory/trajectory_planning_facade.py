@@ -11,7 +11,8 @@ from decision_making.src.exceptions import MsgDeserializationError, NoValidTraje
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, DEFAULT_OBJECT_Z_VALUE, VISUALIZATION_PREDICTION_RESOLUTION, \
     MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION, \
-    NUM_ALTERNATIVE_TRAJECTORIES, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE
+    NUM_ALTERNATIVE_TRAJECTORIES, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
+    LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
@@ -87,7 +88,7 @@ class TrajectoryPlanningFacade(DmModule):
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
-                    state_aligned.ego_state, self._last_trajectory, self.logger):
+                    state_aligned.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
                 updated_state = self._get_state_with_expected_ego(state_aligned)
                 self.logger.debug("TrajectoryPlanningFacade ego localization was overridden to the expected-state "
                                  "according to previous plan")
@@ -107,9 +108,10 @@ class TrajectoryPlanningFacade(DmModule):
             # TODO: should we publish v_x at all?
             # TODO: add timestamp here.
             # publish results to the lower DM level (Control)
-            self._publish_trajectory(
-                TrajectoryPlanMsg(timestamp=state.ego_state.timestamp, trajectory=trajectory_points,
-                                  current_speed=state_aligned.ego_state.v_x))
+            trajectory_msg = TrajectoryPlanMsg(timestamp=state.ego_state.timestamp, trajectory=trajectory_points,
+                                  current_speed=state_aligned.ego_state.v_x)
+            self._publish_trajectory(trajectory_msg)
+            self.logger.debug('{}: {}'.format(LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg))
             self._last_trajectory = samplable_trajectory
 
             # publish visualization/debug data - based on actual ego localization (original state)!
@@ -119,7 +121,7 @@ class TrajectoryPlanningFacade(DmModule):
 
             self._publish_debug(debug_results)
 
-            self.logger.info("TrajectoryPlanningFacade._periodic_action_impl time %f", time.time() - start_time)
+            self.logger.info("{} {}".format(LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time))
 
         except MsgDeserializationError:
             self.logger.warn("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
@@ -169,42 +171,6 @@ class TrajectoryPlanningFacade(DmModule):
 
     def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
         self.pubsub.publish(pubsub_topics.TRAJECTORY_VISUALIZATION_TOPIC, debug_msg.serialize())
-
-    def _is_actual_state_close_to_expected_state(self, current_ego_state: EgoState) -> bool:
-        """
-        checks if the actual ego state at time t[current] is close (currently in terms of Euclidean distance of position
-        [x,y] only) to the desired state at t[current] according to the plan of the last trajectory.
-        :param current_ego_state: the current EgoState object representing the actual state of ego vehicle
-        :return: true if actual state is closer than NEGLIGIBLE_LOCATION_DIFF to the planned state. false otherwise
-        """
-        current_time = current_ego_state.timestamp_in_sec
-        if self._last_trajectory is None or current_time > self._last_trajectory.max_sample_time:
-            return False
-
-        self.logger.debug("TrajectoryPlanningFacade time-difference from last planned trajectory is %s",
-                          current_time - self._last_trajectory.timestamp_in_sec)
-
-        current_expected_state: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
-        current_actual_location = np.array([current_ego_state.x, current_ego_state.y, DEFAULT_OBJECT_Z_VALUE])
-
-        errors_in_expected_frame, _ = CartesianFrame.convert_global_to_relative_frame(
-            global_pos=current_actual_location,
-            global_yaw=0.0,  # irrelevant since yaw isn't used.
-            frame_position=np.append(current_expected_state[[C_X, C_Y]], [DEFAULT_OBJECT_Z_VALUE]),
-            frame_orientation=current_expected_state[C_YAW]
-        )
-
-        distances_in_expected_frame: FrenetPoint = np.abs(errors_in_expected_frame)
-
-        self.logger.debug(("TrajectoryPlanningFacade localization stats: "
-                          "{desired_localization: %s, actual_localization: %s, desired_velocity: %s, "
-                          "actual_velocity: %s, lon_lat_errors: %s, velocity_error: %s}" %
-                          (current_expected_state, current_actual_location, current_expected_state[C_V],
-                           current_ego_state.v_x, distances_in_expected_frame,
-                           current_ego_state.v_x - current_expected_state[C_V])).replace('\n', ' '))
-
-        return distances_in_expected_frame[FP_SX] <= NEGLIGIBLE_DISPOSITION_LON and \
-               distances_in_expected_frame[FP_DX] <= NEGLIGIBLE_DISPOSITION_LAT
 
     def _get_state_with_expected_ego(self, state: State) -> State:
         """

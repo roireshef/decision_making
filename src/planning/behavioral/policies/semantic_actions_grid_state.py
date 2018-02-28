@@ -1,12 +1,15 @@
+import numpy as np
 from logging import Logger
 
-from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR
+from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, BEHAVIORAL_PLANNING_LOOKAHEAD_DIST
 from decision_making.src.global_constants import SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LON_REAR, LON_MARGIN_FROM_EGO
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticBehavioralState, \
     RoadSemanticOccupancyGrid, LON_CELL
+from decision_making.src.planning.types import FP_SX, FS_SX
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.state.state import EgoState, State, DynamicObject
 from mapping.src.service.map_service import MapService
 
@@ -42,7 +45,7 @@ class SemanticActionsGridState(SemanticBehavioralState):
         semantic_occupancy_dict: RoadSemanticOccupancyGrid = dict()
         # We take into consideration only the current and adjacent lanes
         relative_lane_keys = [-1, 0, 1]
-        num_lanes_in_road = 2 # TODO (hack for demo) MapService.get_instance().get_road(state.ego_state.road_localization.road_id).lanes_num
+        num_lanes_in_road = MapService.get_instance().get_road(state.ego_state.road_localization.road_id).lanes_num
         # TODO: treat objects out of road
         filtered_absolute_lane_keys = list(
             filter(lambda relative_lane: 0 <= ego_lane + relative_lane < num_lanes_in_road, relative_lane_keys))
@@ -65,7 +68,7 @@ class SemanticActionsGridState(SemanticBehavioralState):
             # 2. Longitudinal location is defined by the grid structure:
             #       - front cells: starting from ego front + LON_MARGIN_FROM_EGO [m] and forward
             #       - back cells: starting from ego back - LON_MARGIN_FROM_EGO[m] and backwards
-            if object_relative_lane == 0 or object_relative_lane == 1 or object_relative_lane == -1:
+            if object_relative_lane in (-1, 0, 1) and dist_from_object_rear_to_ego_front < BEHAVIORAL_PLANNING_LOOKAHEAD_DIST:
                 # Object is one lane on the left/right
 
                 if dist_from_object_rear_to_ego_front > LON_MARGIN_FROM_EGO:
@@ -88,7 +91,8 @@ class SemanticActionsGridState(SemanticBehavioralState):
 
                 # We treat the object only if its distance is smaller than the distance we
                 # would have travelled for the planning horizon in the average speed between current and target vel.
-                if dist_from_object_rear_to_ego_front > SemanticActionsUtils.compute_distance_by_velocity_diff(ego_state.v_x):
+                if dist_from_object_rear_to_ego_front > SemanticActionsUtils.compute_distance_by_velocity_diff(
+                        ego_state.v_x):
                     continue
 
                 if len(semantic_occupancy_dict[occupancy_index]) == 0:
@@ -126,13 +130,33 @@ class SemanticActionsGridState(SemanticBehavioralState):
         :param object_in_cell: dynamic object in some cell
         :return: two distances: distance from the object's rear to ego front and from ego rear to the object's front
         """
+
+        # TODO: the relative localization calculated here assumes that all objects are located on the same road.
+        # TODO: Fix after demo and calculate longitudinal difference properly in the general case
         ego_state = state.ego_state
-        object_relative_localization = MapService.get_instance().compute_road_localizations_diff(
-                        reference_localization=ego_state.road_localization,
-                        object_localization=object_in_cell.road_localization,
-                        navigation_plan=default_navigation_plan
-                    )
-        object_lon_dist = object_relative_localization.rel_lon
+        road_id = ego_state.road_localization.road_id
+        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
+        road_frenet = FrenetSerret2DFrame(road_points)
+
+        # Object Frenet state
+        target_obj_fpoint = road_frenet.cpoint_to_fpoint(np.array([object_in_cell.x, object_in_cell.y]))
+        _, _, _, road_curvature_at_obj_location, _ = road_frenet._taylor_interp(target_obj_fpoint[FP_SX])
+        obj_init_fstate = road_frenet.cstate_to_fstate(np.array([
+            object_in_cell.x, object_in_cell.y,
+            object_in_cell.yaw,
+            object_in_cell.v_x,
+            object_in_cell.acceleration_lon,
+            road_curvature_at_obj_location  # We don't care about other agent's curvature, only the road's
+        ]))
+
+        # Ego Frenet state
+        ego_init_cstate = np.array(
+            [ego_state.x, ego_state.y, ego_state.yaw, ego_state.v_x, ego_state.acceleration_lon, ego_state.curvature])
+        ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cstate)
+
+        # Relative longitudinal distance
+        object_lon_dist = obj_init_fstate[FS_SX] - ego_init_fstate[FS_SX]
+
         dist_from_object_rear_to_ego_front = object_lon_dist - object_in_cell.size.length / 2 - \
                                              (ego_state.size.length - EGO_ORIGIN_LON_FROM_REAR)
         dist_from_ego_rear_to_object_front = object_lon_dist + object_in_cell.size.length / 2 + \

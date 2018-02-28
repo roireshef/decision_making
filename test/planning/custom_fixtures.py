@@ -149,7 +149,7 @@ def dynamic_objects_not_on_road():
 @pytest.fixture(scope='function')
 def state():
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
-    dyn1 = DynamicObject(1, 34, 0.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
+    dyn1 = DynamicObject(1, 34, 0.1, 0.1, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
     dyn2 = DynamicObject(1, 35, 10.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
     dynamic_objects = [dyn1, dyn2]
     size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)

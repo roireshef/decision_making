@@ -86,4 +86,5 @@ def test_behavioralPlanningFacade_semanticPolicy_anyResult(pubsub: PubSub, state
     behavioral_planner_module.start()
     behavioral_planner_module.periodic_action()
 
+    # if this fails, that means BP did not publish a message - debug exceptions in BehavioralFacade
     behavioral_publish_mock.assert_called_once()

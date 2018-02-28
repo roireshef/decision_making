@@ -104,7 +104,8 @@ class Poly1D:
         jerk_poly = Math.polyder2d(poly_coefs, m=degree + 1)
         acc_poly = Math.polyder2d(poly_coefs, m=degree)
         # Giving np.apply_along_axis a complex type enables us to get complex roots (which means acceleration doesn't have extrema in range).
-        acc_suspected_points = np.apply_along_axis(np.roots, 1, jerk_poly.astype(np.complex))  # TODO: this should use matrix operations!
+
+        acc_suspected_points = Poly1D.calc_polynomial_roots(jerk_poly)
         acc_suspected_values = Math.zip_polyval2d(acc_poly, acc_suspected_points)
 
         # are extrema points out of [0, T] range
@@ -159,6 +160,26 @@ class Poly1D:
         :return: True if restrictions are met, False otherwise
         """
         return cls.are_velocities_in_limits(np.array([poly_coefs]), np.array([T]), vel_limits)[0]
+
+    @staticmethod
+    def calc_polynomial_roots(poly_coefs: np.ndarray):
+        """
+        calculate roots of polynomial with poly_coefs, either square or linear
+        :param poly_coefs: 2D numpy array with N polynomials and 6 coefficients each [Nx6]
+        :return: 2D numpy array with Nx2 or Nx1 roots, depending on the polynomials degree
+        """
+        if poly_coefs.shape[1] == 3:
+            poly_coefs[poly_coefs[:, 0] == 0, 0] = np.finfo(np.float32).eps  # prevent zero first coefficient
+            poly = poly_coefs.astype(np.complex)
+            det = np.sqrt(poly[:, 1]**2 - 4*poly[:, 0]*poly[:, 2])
+            roots1 = (-poly[:, 1] + det) / (2 * poly[:, 0])
+            roots2 = (-poly[:, 1] - det) / (2 * poly[:, 0])
+            return np.c_[roots1, roots2]
+        elif poly_coefs.shape[1] == 2:
+            roots = -poly_coefs[:, 1] / poly_coefs[:, 0]
+            return roots[:, np.newaxis]
+        else:
+            return np.apply_along_axis(np.roots, 1, poly_coefs.astype(np.complex))
 
 
 class QuarticPoly1D(Poly1D):
