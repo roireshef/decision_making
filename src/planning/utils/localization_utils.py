@@ -16,8 +16,7 @@ class LocalizationUtils:
     @staticmethod
     def is_actual_state_close_to_expected_state(current_ego_state: EgoState,
                                                 last_trajectory: SamplableTrajectory,
-                                                logger: Logger,
-                                                calling_class_name: str) -> bool:
+                                                logger: Logger) -> bool:
         """
         checks if the actual ego state at time t[current] is close (currently in terms of Euclidean distance of position
         [x,y] only) to the desired state at t[current] according to the plan of the last trajectory.
@@ -29,8 +28,8 @@ class LocalizationUtils:
         if last_trajectory is None or current_time > last_trajectory.max_sample_time:
             return False
 
-        logger.debug("%s time-difference from last planned trajectory is %s",
-                     calling_class_name, current_time - last_trajectory.timestamp_in_sec)
+        logger.debug("Time-difference from last planned trajectory is %s",
+                     current_time - last_trajectory.timestamp_in_sec)
 
         current_expected_state: CartesianExtendedState = last_trajectory.sample(np.array([current_time]))[0]
         current_actual_location = np.array([current_ego_state.x, current_ego_state.y, DEFAULT_OBJECT_Z_VALUE])
