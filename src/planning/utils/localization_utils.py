@@ -43,10 +43,9 @@ class LocalizationUtils:
 
         distances_in_expected_frame: FrenetPoint = np.abs(errors_in_expected_frame)
 
-        logger.debug(("is_actual_state_close_to_expected_state stats called from %s: "
-                      "{desired_localization: %s, actual_localization: %s, desired_velocity: %s, "
+        logger.debug(("{desired_localization: %s, actual_localization: %s, desired_velocity: %s, "
                       "actual_velocity: %s, lon_lat_errors: %s, velocity_error: %s}" %
-                      (calling_class_name, current_expected_state, current_actual_location, current_expected_state[C_V],
+                      (current_expected_state, current_actual_location, current_expected_state[C_V],
                        current_ego_state.v_x, distances_in_expected_frame,
                        current_ego_state.v_x - current_expected_state[C_V])).replace('\n', ' '))
 
