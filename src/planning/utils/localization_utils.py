@@ -22,6 +22,9 @@ class LocalizationUtils:
         checks if the actual ego state at time t[current] is close (currently in terms of Euclidean distance of position
         [x,y] only) to the desired state at t[current] according to the plan of the last trajectory.
         :param current_ego_state: the current EgoState object representing the actual state of ego vehicle
+        :param last_trajectory: the last trajectory that serves as a reference plan
+        :param logger: the logger
+        :param calling_class_name: [string] calling class name, used only by the logger
         :return: true if actual state is closer than NEGLIGIBLE_LOCATION_DIFF to the planned state. false otherwise
         """
         # TODO: update docstring
