@@ -150,19 +150,7 @@ class Poly1D:
         :param vel_limits: minimal and maximal allowed values of velocities [m/sec]
         :return: 1D numpy array of booleans where True means the restrictions are met.
         """
-        if poly_coefs.shape[1] == 5:  # for quartic polynomial calculate second derivative roots analytically
-            return cls.are_derivatives_in_limits(degree=1, poly_coefs=poly_coefs, T_vals=T_vals, limits=vel_limits)
-
-        # For quintic polynomials 3rd degree np.roots calculation is in for loop and inefficient.
-        # Then in this case check limits by velocities calculation in all sampled points.
-        (min_T, max_T, dt) = (np.min(T_vals), np.max(T_vals), T_vals[1] - T_vals[0])
-        vel_poly_s = Math.polyder2d(poly_coefs, m=1)
-        traj_times = np.arange(dt, max_T - np.finfo(np.float16).eps, dt)  # from dt to max_T-dt
-        times = np.array([traj_times, ] * len(T_vals))  # repeat full traj_times for all T_vals
-        velocities = Math.zip_polyval2d(vel_poly_s, times)  # get velocities for all T_vals and all t[i,j] < T_vals[i]
-        # zero irrelevant velocities to get lower triangular matrix: 0 <= t[i,j] < T_val[i]
-        velocities = np.tril(velocities, int(round(min_T/dt))-2)
-        return np.all(NumpyUtils.is_in_limits(velocities, vel_limits), axis=1)
+        pass
 
     @classmethod
     def is_velocity_in_limits(cls, poly_coefs: np.ndarray, T: float, vel_limits: Limits) -> bool:
@@ -226,6 +214,19 @@ class QuarticPoly1D(Poly1D):
               [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2]]  # x_dotdot(T)
              for T in terminal_times], dtype=np.float)
 
+    @classmethod
+    def are_velocities_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, vel_limits: Limits) -> np.ndarray:
+        """
+        Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
+        polynomial x(t), and restrictions on the velocity values, return True if restrictions are met,
+        False otherwise
+        :param polys_coefs: 2D numpy array with N polynomials and 6 coefficients each [Nx6]
+        :param T_vals: 1D numpy array of planning-times [N]
+        :param vel_limits: minimal and maximal allowed values of velocities [m/sec]
+        :return: 1D numpy array of booleans where True means the restrictions are met.
+        """
+        return cls.are_derivatives_in_limits(degree=1, poly_coefs=poly_coefs, T_vals=T_vals, limits=vel_limits)
+
 
 class QuinticPoly1D(Poly1D):
     """
@@ -266,3 +267,25 @@ class QuinticPoly1D(Poly1D):
               [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],  # x_dot(T)
               [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]]  # x_dotdot(T)
              for T in terminal_times], dtype=np.float)
+
+    @classmethod
+    def are_velocities_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, vel_limits: Limits) -> np.ndarray:
+        """
+        Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
+        polynomial x(t), and restrictions on the velocity values, return True if restrictions are met,
+        False otherwise
+        :param polys_coefs: 2D numpy array with N polynomials and 6 coefficients each [Nx6]
+        :param T_vals: 1D numpy array of planning-times [N]
+        :param vel_limits: minimal and maximal allowed values of velocities [m/sec]
+        :return: 1D numpy array of booleans where True means the restrictions are met.
+        """
+        # For quintic polynomials 3rd degree np.roots calculation is in for loop and inefficient.
+        # Then in this case check limits by velocities calculation in all sampled points.
+        (min_T, max_T, dt) = (np.min(T_vals), np.max(T_vals), T_vals[1] - T_vals[0])
+        vel_poly_s = Math.polyder2d(poly_coefs, m=1)
+        traj_times = np.arange(dt, max_T - np.finfo(np.float16).eps, dt)  # from dt to max_T-dt
+        times = np.array([traj_times, ] * len(T_vals))  # repeat full traj_times for all T_vals
+        velocities = Math.zip_polyval2d(vel_poly_s, times)  # get velocities for all T_vals and all t[i,j] < T_vals[i]
+        # zero irrelevant velocities to get lower triangular matrix: 0 <= t[i,j] < T_val[i]
+        velocities = np.tril(velocities, int(round(min_T/dt))-2)
+        return np.all(NumpyUtils.is_in_limits(velocities, vel_limits), axis=1)
