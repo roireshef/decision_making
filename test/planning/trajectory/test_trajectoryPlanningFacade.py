@@ -31,7 +31,9 @@ def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTr
                            DEFAULT_OBJECT_Z_VALUE, exact_desired_state[C_YAW], ObjectSize(0, 0, 0), 1.0,
                            exact_desired_state[C_V], 0.0, exact_desired_state[C_A], 0.0, 0.0)
 
-    assert LocalizationUtils.is_actual_state_close_to_expected_state(close_state, facade._last_trajectory, facade.logger)
+    assert LocalizationUtils.is_actual_state_close_to_expected_state(close_state, facade._last_trajectory,
+                                                                     facade.logger,
+                                                                     TrajectoryPlanningFacadeMock.__class__.__name__)
 
 
 def test_isActualStateCloseToExpectedState_nonCloseTranslatedOnlyEgoState_returnsFalse():
@@ -53,7 +55,9 @@ def test_isActualStateCloseToExpectedState_nonCloseTranslatedOnlyEgoState_return
                            DEFAULT_OBJECT_Z_VALUE, exact_desired_state[C_YAW], ObjectSize(0, 0, 0), 1.0,
                            exact_desired_state[C_V], 0.0, exact_desired_state[C_A], 0.0, 0.0)
 
-    assert not LocalizationUtils.is_actual_state_close_to_expected_state(close_state, facade._last_trajectory, facade.logger)
+    assert not LocalizationUtils.is_actual_state_close_to_expected_state(close_state, facade._last_trajectory,
+                                                                         facade.logger,
+                                                                         TrajectoryPlanningFacadeMock.__class__.__name__)
 
 
 def test_getStateWithExpectedEgo_getsState_modifiesEgoStateInIt(state):
