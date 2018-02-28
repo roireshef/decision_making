@@ -2,18 +2,23 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
+from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
+from decision_making.src.planning.types import C_V
+from decision_making.src.state.state import State
+from decision_making.test.log_analysis.log_messages import LogMsg
 from decision_making.test.log_analysis.parse_log_messages import DmLogParser, \
     STATE_IDENTIFIER_STRING_BP, STATE_IDENTIFIER_STRING_TP, STATE_IDENTIFIER_STRING_STATE_MODULE
 
 #LOG_PATH_FOR_ANALYSIS = '/home/max/av_code/spav/logs/AV_Log_dm_main-2017_12_27_16_18.log'
 #LOG_PATH_FOR_ANALYSIS = '/home/max/AV_Log_dm_main_test-2017_12_12-10_19.log'
-LOG_PATH_FOR_ANALYSIS = '/home/xzjsyy/av_code/spav/logs/AV_Log_dm_main.log'
-#LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2017_12_27/logs/16_18/AV_Log_dm_main_test.log'
+#LOG_PATH_FOR_ANALYSIS = '/home/xzjsyy/av_code/spav/logs/AV_Log_dm_main.log'
+LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2017_12_27/logs/16_18/AV_Log_dm_main_test.log'
 
 def main():
     filename = LOG_PATH_FOR_ANALYSIS if ('log_filename' not in sys.argv) else sys.argv['log_filename']
     f = open(file=filename, mode='r')
     log_content = f.readlines()
+
 
     ###########################
     # Load relevant messages
@@ -36,6 +41,8 @@ def main():
     tp_module_log_timestamp, tp_module_timestamps, tp_module_states = DmLogParser.parse_tp_params(
         log_content=log_content)
     no_valid_trajectories_log_timestamp = DmLogParser.parse_no_valid_trajectories_message(log_content=log_content)
+
+    tp_plan_log_timestamp, tp_plan_timestamps, tp_plans = DmLogParser.parse_tp_output(log_content=log_content)
 
     # Control Errors
     control_errors_log_timestamp, control_errors_lon, control_errors_lat = DmLogParser.parse_control_error(
@@ -96,6 +103,34 @@ def main():
     plt.xlabel('Log time [sec]')
     plt.ylabel('Error [m]')
 
+    plt.show()
+
+    fig = plt.subplot(111)
+
+    # Plot ego velocity
+    timestamps = []
+    desired_v = []
+    for tp_plan_message_index in range(len(tp_plans)):
+        # Convert log messages to dict
+        plan_msg = LogMsg.convert_message_to_dict(tp_plans[tp_plan_message_index])
+        plan = LogMsg.deserialize(class_type=TrajectoryPlanMsg, message=plan_msg)  # type: TrajectoryPlanMsg
+        timestamps.append(plan.timestamp)
+        desired_v.append(plan.trajectory[0, C_V])
+
+    plt.plot(timestamps, desired_v, '-r')
+
+    # Plot ego desired velocity
+    actual_v = []
+    ego_timestamps = []
+    for state_message_index in range(len(state_module_states)):
+        # Convert log messages to dict
+        state_msg = LogMsg.convert_message_to_dict(state_module_states[state_message_index])
+        # Deserialize from dict to object
+        state = LogMsg.deserialize(class_type=State, message=state_msg)  # type: State
+        actual_v.append(state.ego_state.v_x)
+        ego_timestamps.append(state.ego_state.timestamp)
+
+    plt.plot(ego_timestamps, actual_v, '-b')
     plt.show()
 
 if __name__ == '__main__':

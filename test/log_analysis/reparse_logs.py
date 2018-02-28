@@ -13,13 +13,18 @@ from decision_making.test.log_analysis.parse_log_messages import STATE_IDENTIFIE
 import matplotlib.pyplot as plt
 
 
+# Log filename
 # LOG_PATH_FOR_ANALYSIS = '/home/max/AV_Log_dm_main_test-2017_12_12-10_19.log'
 #LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2018_02_19/2018_02_19_16_56_Proving_Grounds_-_Low_Light/AV_Log_dm_main.log'
-LOG_PATH_FOR_ANALYSIS = 'AV_Log_rbcar0(1).log'
-TARGET_LOG_TIME = 57906.0
+#LOG_PATH_FOR_ANALYSIS = 'AV_Log_rbcar0(1).log'
+LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2018_02_19/2018_02_19_15_56_Proving_Grounds_-_Daytime/AV_Log_dm_main_2018-02-19_15-58-06.log'
 
 
 def main():
+    """
+    Use the log parsing tool to parse relevant messages and rewrite them as a JSON file.
+    """
+
     filename = LOG_PATH_FOR_ANALYSIS if ('log_filename' not in sys.argv) else sys.argv['log_filename']
 
     f = open(file=filename, mode='r')
@@ -57,18 +62,21 @@ def main():
 
     with open("av_log_states.json", 'w') as file:
 
+        # Write BP implementation times
         for time in bp_impl_times:
             time_dict = dict()
             time_dict['bp_impl_time'] = time
             file.write(json.dumps(time_dict))
             file.write("\n")
 
+        # TP implementation times
         for time in tp_impl_times:
             time_dict = dict()
             time_dict['tp_impl_time'] = time
             file.write(json.dumps(time_dict))
             file.write("\n")
 
+        # TP plan
         for tp_plan_message_index in range(len(tp_plans)):
             # Convert log messages to dict
             plan_msg = LogMsg.convert_message_to_dict(tp_plans[tp_plan_message_index])
@@ -79,30 +87,13 @@ def main():
             file.write(json.dumps(plan_serialized))
             file.write("\n")
 
-
-        timestamps = []
-        desired_v = []
-        for tp_plan_message_index in range(len(tp_plans)):
-            # Convert log messages to dict
-            plan_msg = LogMsg.convert_message_to_dict(tp_plans[tp_plan_message_index])
-            plan = LogMsg.deserialize(class_type=TrajectoryPlanMsg, message=plan_msg) #type: TrajectoryPlanMsg
-            timestamps.append(plan.timestamp)
-            desired_v.append(plan.trajectory[0, C_V])
-
-        plt.plot(timestamps, desired_v,'-r')
-
-
-
-        ego_timestamps = []
-        actual_v = []
+        # State module output
         for state_message_index in range(len(state_module_states)):
              # Convert log messages to dict
             state_msg = LogMsg.convert_message_to_dict(state_module_states[state_message_index])
 
             # Deserialize from dict to object
             state = LogMsg.deserialize(class_type=State, message=state_msg) # type: State
-            ego_timestamps.append(state.ego_state.timestamp)
-            actual_v.append(state.ego_state.v_x)
             state_serialized = state.to_dict()
             state_serialized['msg_type'] = "state_output"
             state_serialized['log_timestamp'] = state_module_log_timestamp[state_message_index]
@@ -112,54 +103,57 @@ def main():
             #     file.write(str(object1.timestamp)+","+str(object1.obj_id)+","+str(object1.v_x)+","+str(object1.v_y)+","+str(tp_params.ego_state.v_x)+","+str(tp_params.ego_state.timestamp))
             #     file.write("\n")
 
-        plt.plot(ego_timestamps, actual_v, '-b')
-        plt.show()
+        # TP input: TP params
+        for tp_params_message_index in range(len(tp_module_states)):
+            # Convert log messages to dict
+            tp_params_msg = LogMsg.convert_message_to_dict(tp_module_states[tp_params_message_index])
+
+            # Deserialize from dict to object
+            tp_params = LogMsg.deserialize(class_type=TrajectoryParams, message=tp_params_msg)
+            tp_params_serialized = tp_params.to_dict()
+            tp_params_serialized['msg_type'] = "tp_input_params"
+            tp_params_serialized['log_timestamp'] = tp_module_log_timestamp[tp_params_message_index]
+            file.write(json.dumps(tp_params_serialized))
+            file.write("\n")
+
+        # TP input: state
+        for tp_state_message_index in range(len(tp_states)):
+            tp_state_msg = LogMsg.convert_message_to_dict(tp_states[tp_state_message_index])
+            tp_state = LogMsg.deserialize(class_type=State, message=tp_state_msg)
+
+            # Serialize object to PubSub dict
+            tp_state_serialized = tp_state.to_dict()
+            tp_state_serialized['msg_type'] = "tp_input_state"
+            tp_state_serialized['log_timestamp'] = tp_state_log_timestamp[tp_state_message_index]
+            file.write(json.dumps(tp_state_serialized))
+            file.write("\n")
+
+        # BP input: state
+        for bp_message_index in range(len(bp_states)):
+            bp_state_msg = LogMsg.convert_message_to_dict(bp_states[bp_message_index])
+            bp_state = LogMsg.deserialize(class_type=State, message=bp_state_msg)
+
+            # Serialize object to PubSub dict
+            bp_state_serialized = bp_state.to_dict()
+            bp_state_serialized['msg_type'] = "bp_input_state"
+            bp_state_serialized['log_timestamp'] = bp_state_log_timestamp[bp_message_index]
+            file.write(json.dumps(bp_state_serialized))
+            file.write("\n")
+
+        # BP output: TP params
+        for bp_params_message_index in range(len(bp_module_states)):
+            # Convert log messages to dict
+            bp_params_msg = LogMsg.convert_message_to_dict(bp_module_states[bp_params_message_index])
+
+            # Deserialize from dict to object
+            bp_params = LogMsg.deserialize(class_type=TrajectoryParams, message=bp_params_msg)
+            bp_params_serialized = bp_params.to_dict()
+            bp_params_serialized['msg_type'] = "bp_output_params"
+            bp_params_serialized['log_timestamp'] = bp_module_log_timestamp[bp_params_message_index]
+            file.write(json.dumps(bp_params_serialized))
+            file.write("\n")
+
         print("finish")
-        # for tp_params_message_index in range(len(tp_module_states)):
-        #     # Convert log messages to dict
-        #     tp_params_msg = LogMsg.convert_message_to_dict(tp_module_states[tp_params_message_index])
-        #
-        #     # Deserialize from dict to object
-        #     tp_params = LogMsg.deserialize(class_type=TrajectoryParams, message=tp_params_msg)
-        #     tp_params_serialized = tp_params.to_dict()
-        #     tp_params_serialized['msg_type'] = "tp_input_params"
-        #     tp_params_serialized['log_timestamp'] = tp_module_log_timestamp[tp_params_message_index]
-        #     file.write(json.dumps(tp_params_serialized))
-        #     file.write("\n")
-        #
-        # for tp_state_message_index in range(len(tp_states)):
-        #     tp_state_msg = LogMsg.convert_message_to_dict(tp_states[tp_state_message_index])
-        #     tp_state = LogMsg.deserialize(class_type=State, message=tp_state_msg)
-        #
-        #     # Serialize object to PubSub dict
-        #     tp_state_serialized = tp_state.to_dict()
-        #     tp_state_serialized['msg_type'] = "tp_input_state"
-        #     tp_state_serialized['log_timestamp'] = tp_state_log_timestamp[tp_state_message_index]
-        #     file.write(json.dumps(tp_state_serialized))
-        #     file.write("\n")
-        #
-        # for bp_message_index in range(len(bp_states)):
-        #     bp_state_msg = LogMsg.convert_message_to_dict(bp_states[bp_message_index])
-        #     bp_state = LogMsg.deserialize(class_type=State, message=bp_state_msg)
-        #
-        #     # Serialize object to PubSub dict
-        #     bp_state_serialized = bp_state.to_dict()
-        #     bp_state_serialized['msg_type'] = "bp_input_state"
-        #     bp_state_serialized['log_timestamp'] = bp_state_log_timestamp[bp_message_index]
-        #     file.write(json.dumps(bp_state_serialized))
-        #     file.write("\n")
-        #
-        # for bp_params_message_index in range(len(bp_module_states)):
-        #     # Convert log messages to dict
-        #     bp_params_msg = LogMsg.convert_message_to_dict(bp_module_states[bp_params_message_index])
-        #
-        #     # Deserialize from dict to object
-        #     bp_params = LogMsg.deserialize(class_type=TrajectoryParams, message=bp_params_msg)
-        #     bp_params_serialized = bp_params.to_dict()
-        #     bp_params_serialized['msg_type'] = "bp_output_params"
-        #     bp_params_serialized['log_timestamp'] = bp_module_log_timestamp[bp_params_message_index]
-        #     file.write(json.dumps(bp_params_serialized))
-        #     file.write("\n")
 
 
 if __name__ == '__main__':
