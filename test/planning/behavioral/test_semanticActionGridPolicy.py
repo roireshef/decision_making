@@ -12,6 +12,7 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import s
     state_with_ego_on_right_lane, state_with_ego_on_left_lane
 from mapping.test.model.testable_map_fixtures import map_api_mock, navigation_fixture, testable_map_api
 from rte.python.logger.AV_logger import AV_Logger
+import numpy as np
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
@@ -177,8 +178,6 @@ def test_specifyAction_followOtherCar_wellSpecified(semantic_follow_action: Sema
     #
     # poly_all_coefs_s = OptimalControlUtils.QuinticPoly1D.solve(A_inv, [constraints_s])[0]
 
-    ego_on_road = semantic_actions_state.ego_state.road_localization
-    ego_s0 = ego_on_road.road_lon
 
     obj = semantic_follow_action.target_obj
     obj_on_road = obj.road_localization
@@ -187,5 +186,5 @@ def test_specifyAction_followOtherCar_wellSpecified(semantic_follow_action: Sema
     obj_sT = obj_s0 + specify.t * obj_v
     lon_margin = semantic_actions_state.ego_state.size.length - EGO_ORIGIN_LON_FROM_REAR + obj.size.length / 2
 
-    assert specify.v == obj_v
-    assert specify.s_rel + ego_s0 == obj_sT - lon_margin - SAFE_DIST_TIME_DELAY * obj_v
+    np.testing.assert_almost_equal(specify.v, obj_v, 4)
+    np.testing.assert_almost_equal(specify.s, obj_sT - lon_margin - SAFE_DIST_TIME_DELAY * obj_v, 4)

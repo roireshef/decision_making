@@ -2,12 +2,15 @@ from abc import abstractmethod
 
 import numpy as np
 
-from decision_making.src.global_constants import EXP_CLIP_TH
+from decision_making.src.global_constants import EXP_CLIP_TH, TRAJECTORY_OBSTACLE_LOOKAHEAD
+from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import CartesianTrajectory, C_YAW, CartesianState, C_Y, C_X, \
-    CartesianTrajectories, CartesianPaths2D, CartesianPoint2D
+    CartesianTrajectories, CartesianPaths2D, CartesianPoint2D, C_A, C_K, C_V, CartesianExtendedTrajectories, \
+    FrenetTrajectories2D, FS_DX
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import DynamicObject
+from decision_making.src.state.state import DynamicObject, State
 from mapping.src.transformations.geometry_utils import CartesianFrame
+from decision_making.src.planning.utils.math import Math
 
 
 class SigmoidBoxObstacle:
@@ -37,7 +40,7 @@ class SigmoidBoxObstacle:
         """
         Takes a list of points in vehicle's coordinate frame and returns cost of proximity (to self) for each point
         :param points: either a CartesianPath2D or CartesianPaths2D
-        :return: numpy vector of corresponding trajectory-costs
+        :return: numpy vector of corresponding costs per point
         """
         if len(points.shape) == 2:
             points = np.array([points])
@@ -154,3 +157,111 @@ class SigmoidStaticBoxObstacle(SigmoidBoxObstacle):
         :return: new instance
         """
         return cls(np.array([obj.x, obj.y, obj.yaw, 0]), obj.size.length, obj.size.width, k, offset)
+
+
+class Costs:
+
+    @staticmethod
+    def compute_pointwise_costs(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D,
+                                state: State, params: TrajectoryCostParams,
+                                global_time_samples: np.ndarray, predictor: Predictor, dt: float) -> \
+            [np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Compute obstacle, deviation and jerk costs for every trajectory point separately.
+        It creates a costs tensor of size N x M x 3, where N is trajectories number, M is trajectory length.
+        :param ctrajectories: numpy tensor of trajectories in cartesian-frame
+        :param ftrajectories: numpy tensor of trajectories in frenet-frame
+        :param state: the state object (that includes obstacles, etc.)
+        :param params: parameters for the cost function (from behavioral layer)
+        :param global_time_samples: [sec] time samples for prediction (global, not relative)
+        :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
+        :param dt: time step of ctrajectories
+        :return: point-wise cost components: obstacles_costs, deviations_costs, jerk_costs.
+        The tensor shape: N x M x 3, where N is trajectories number, M is trajectory length.
+        """
+        ''' OBSTACLES (Sigmoid cost from bounding-box) '''
+        obstacles_costs = Costs.compute_obstacle_costs(ctrajectories, state, params, global_time_samples,
+                                                                predictor)
+        ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
+        deviations_costs = Costs.compute_deviation_costs(ftrajectories, params)
+
+        ''' JERK COST '''
+        jerk_costs = Costs.compute_jerk_costs(ctrajectories, params, dt)
+
+        return np.dstack((obstacles_costs, deviations_costs, jerk_costs))
+
+    @staticmethod
+    def compute_obstacle_costs(ctrajectories: CartesianExtendedTrajectories, state: State, params: TrajectoryCostParams,
+                               global_time_samples: np.ndarray, predictor: Predictor):
+        """
+        :param ctrajectories: numpy tensor of trajectories in cartesian-frame
+        :param state: the state object (that includes obstacles, etc.)
+        :param params: parameters for the cost function (from behavioral layer)
+        :param global_time_samples: [sec] time samples for prediction (global, not relative)
+        :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
+        :return: MxN matrix of obstacle costs per point, where N is trajectories number, M is trajectory length
+        """
+        offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
+        close_obstacles = \
+            [SigmoidDynamicBoxObstacle.from_object(obj=obs, k=params.obstacle_cost_x.k, offset=offset,
+                                                   time_samples=global_time_samples, predictor=predictor)
+             for obs in state.dynamic_objects
+             if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
+
+        if len(close_obstacles) > 0:
+            cost_per_obstacle = [obs.compute_cost_per_point(ctrajectories[:, :, 0:(C_Y+1)]) for obs in close_obstacles]
+            obstacles_costs = params.obstacle_cost_x.w * np.sum(cost_per_obstacle, axis=0)
+        else:
+            obstacles_costs = np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
+        return obstacles_costs
+
+    @staticmethod
+    def compute_deviation_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams):
+        """
+        Compute point-wise deviation costs from lane, shoulders and road together.
+        :param ftrajectories: numpy tensor of trajectories in frenet-frame
+        :param params: parameters for the cost function (from behavioral layer)
+        :return: MxN matrix of deviation costs per point, where N is trajectories number, M is trajectory length.
+        """
+        deviations_costs = np.zeros((ftrajectories.shape[0], ftrajectories.shape[1]))
+
+        # add to deviations_costs the costs of deviations from the left [lane, shoulder, road]
+        for sig_cost in [params.left_lane_cost, params.left_shoulder_cost, params.left_road_cost]:
+            left_offsets = ftrajectories[:, :, FS_DX] - sig_cost.offset
+            deviations_costs += Math.clipped_sigmoid(left_offsets, sig_cost.w, sig_cost.k)
+
+        # add to deviations_costs the costs of deviations from the right [lane, shoulder, road]
+        for sig_cost in [params.right_lane_cost, params.right_shoulder_cost, params.right_road_cost]:
+            right_offsets = np.negative(ftrajectories[:, :, FS_DX]) - sig_cost.offset
+            deviations_costs += Math.clipped_sigmoid(right_offsets, sig_cost.w, sig_cost.k)
+        return deviations_costs
+
+    @staticmethod
+    def compute_jerk_costs(ctrajectories: CartesianExtendedTrajectories, params: TrajectoryCostParams, dt: float) -> \
+            np.array:
+        """
+        Compute point-wise jerk costs as weighted sum of longitudinal and lateral jerks
+        :param ctrajectories: numpy tensor of trajectories in cartesian-frame
+        :param params: parameters for the cost function (from behavioral layer)
+        :param dt: time step
+        :return: MxN matrix of jerk costs per point, where N is trajectories number, M is trajectory length.
+        """
+        lon_jerks, lat_jerks = Jerk.compute_jerks(ctrajectories, dt)
+        jerk_costs = params.lon_jerk_cost * lon_jerks + params.lat_jerk_cost * lat_jerks
+        return np.c_[np.zeros(jerk_costs.shape[0]), jerk_costs]
+
+
+class Jerk:
+    @staticmethod
+    def compute_jerks(ctrajectories: CartesianExtendedTrajectories, dt: float):
+        """
+        Compute longitudinal and lateral jerks based on cartesian trajectories.
+        :param ctrajectories: array[trajectories_num, timesteps_num, 6] of cartesian trajectories
+        :param dt: time step for acceleration derivative by time
+        :return: two ndarrays of size ctrajectories.shape[0]. Longitudinal and lateral jerks for all ctrajectories
+        """
+        # divide by dt^2 (squared a_dot) and multiply by dt (in the integral)
+        lon_jerks = np.square(np.diff(ctrajectories[:, :, C_A], axis=1)) / dt
+        lat_jerks = np.square(np.diff(ctrajectories[:, :, C_K] * np.square(ctrajectories[:, :, C_V]), axis=1)) / dt
+        return lon_jerks, lat_jerks
+

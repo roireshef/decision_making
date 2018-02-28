@@ -2,6 +2,7 @@ from logging import Logger
 from typing import Tuple
 
 import numpy as np
+import time
 
 from decision_making.src.exceptions import raises
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, \
@@ -18,7 +19,7 @@ from decision_making.test.exceptions import NotTriggeredException
 class FixedSamplableTrajectory(SamplableTrajectory):
 
     def __init__(self, fixed_trajectory: CartesianExtendedTrajectory):
-        super().__init__(timestamp=0, max_sample_time=np.inf)
+        super().__init__(timestamp_in_sec=0, T=np.inf)
         self._fixed_trajectory = fixed_trajectory
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
@@ -40,7 +41,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
     """
 
     def __init__(self, logger: Logger, predictor: Predictor, fixed_trajectory: CartesianExtendedTrajectory, step_size: int,
-                 trigger_pos: CartesianPoint2D):
+                 trigger_pos: CartesianPoint2D, sleep_sigma: float, sleep_mu: float):
         """
         :param logger:
         :param fixed_trajectory: a fixed trajectory to advance on
@@ -53,14 +54,16 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         self._trajectory_advancing = 0
         self._trigger_pos = trigger_pos
         self._triggered = False
+        self._sleep_sigma = sleep_sigma
+        self._sleep_mu = sleep_mu
 
     @raises(NotTriggeredException)
-    def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, goal_time: float,
+    def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, time_horizon: float,
              cost_params: TrajectoryCostParams) -> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
         Once the ego reached the trigger position, every time the trajectory planner is called, output a trajectory
         that advances incrementally on fixed_trajectory by step size. Otherwise raise NotTriggeredException
-        :param goal_time: ignored
+        :param time_horizon: the length of the trajectory snippet (seconds)
         :param state: environment & ego state object
         :param reference_route: ignored
         :param goal: ignored
@@ -68,7 +71,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         :return: a tuple of: (samplable represantation of the fixed trajectory, tensor of the fixed trajectory,
          and numpy array of zero as the trajectory's cost)
         """
-
+        time.sleep(max(self._sleep_sigma * np.random.randn(), 0) + self._sleep_mu)
         current_pos = np.array([state.ego_state.x, state.ego_state.y])
 
         if not self._triggered and np.all(np.abs(current_pos - self._trigger_pos) <
@@ -80,7 +83,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
 
             self._trajectory_advancing += self._step_size
 
-            # TODO: currently no one does anything with the cost, the array here is dummy
+            # Currently no one does anything with the cost, the array here is dummy
             zero_trajectory_cost = np.array([0])
 
             return FixedSamplableTrajectory(current_trajectory), \
