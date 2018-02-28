@@ -201,7 +201,7 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         self.time = time
 
     def __str__(self):
-        return str(self.to_dict(left_out_fields='reference_route'))
+        return str(self.to_dict(left_out_fields=['reference_route']))
 
     @property
     def desired_velocity(self):
