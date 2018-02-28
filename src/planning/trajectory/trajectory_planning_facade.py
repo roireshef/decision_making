@@ -88,7 +88,7 @@ class TrajectoryPlanningFacade(DmModule):
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
-                    state_aligned.ego_state, self._last_trajectory, self.logger):
+                    state_aligned.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
                 updated_state = self._get_state_with_expected_ego(state_aligned)
                 self.logger.debug("TrajectoryPlanningFacade ego localization was overridden to the expected-state "
                                   "according to previous plan")

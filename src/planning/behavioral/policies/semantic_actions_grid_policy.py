@@ -164,7 +164,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # BP IF - if ego is close to last planned trajectory (in BP), then assume ego is exactly on this trajectory
         if self._last_action is not None and semantic_action == self._last_action \
                 and LocalizationUtils.is_actual_state_close_to_expected_state(
-                    ego, self._last_action_spec.samplable_trajectory, self.logger):
+            ego, self._last_action_spec.samplable_trajectory, self.logger, self.__class__.__name__):
             ego_init_cstate = self._last_action_spec.samplable_trajectory.sample(np.array([ego.timestamp_in_sec]))[0]
         else:
             ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
