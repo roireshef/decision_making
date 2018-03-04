@@ -104,6 +104,7 @@ class TrajectoryPlanningFacade(DmModule):
                             num=TRAJECTORY_NUM_POINTS) + state_aligned.ego_state.timestamp_in_sec)
 
             # publish results to the lower DM level (Control)
+            # TODO: remove ego_state.v_x from the message in version 2.0
             trajectory_msg = TrajectoryPlanMsg(timestamp=state.ego_state.timestamp, trajectory=trajectory_points,
                                                current_speed=state_aligned.ego_state.v_x)
 
