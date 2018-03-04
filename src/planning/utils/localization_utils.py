@@ -57,21 +57,8 @@ class LocalizationUtils:
                distances_in_expected_frame[FP_DX] <= NEGLIGIBLE_DISPOSITION_LAT
 
     @staticmethod
-    def transform_ego_origin_to_its_center(ego: EgoState) -> EgoState:
-        """
-        transform origin of ego from the point defined by EGO_ORIGIN_LON_FROM_REAR to ego's center
-        :param ego: ego state. it's changed by the function
-        :return: updated ego state
-        """
-        cartesian_state = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, 0])
-        shift = ego.size.length/2 - EGO_ORIGIN_LON_FROM_REAR
-        cartesian_state[C_X] += shift * np.cos(ego.yaw)
-        cartesian_state[C_Y] += shift * np.sin(ego.yaw)
-        updated_ego = ego.clone_cartesian_state(ego.timestamp_in_sec, cartesian_state)
-        return updated_ego
-
-    @staticmethod
-    def transform_ego_trajectory_from_ego_center_to_ego_origin(ego_length: float, trajectory: np.array) -> np.array:
+    def transform_trajectory_between_ego_center_and_ego_origin(ego_length: float, trajectory: np.array,
+                                                               direction: int) -> np.array:
         """
         transform ego trajectory points to represent the real origin of ego positions, rather than ego center
         :param ego_length: the length of ego
@@ -80,5 +67,5 @@ class LocalizationUtils:
         """
         yaw_vec = trajectory[:, C_YAW]
         zero_vec = np.zeros(trajectory.shape[0])
-        shift = EGO_ORIGIN_LON_FROM_REAR - ego_length/2
+        shift = direction * (EGO_ORIGIN_LON_FROM_REAR - ego_length/2)
         return trajectory + shift * np.c_[np.cos(yaw_vec), np.sin(yaw_vec), zero_vec, zero_vec, zero_vec, zero_vec]

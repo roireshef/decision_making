@@ -78,8 +78,8 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
 
         # Since we want to compare current ego position to a point on trajectory, and ego_state was transformed to be
         # around vehicle center, we have to transform the state back.
-        aligned_currect_state = LocalizationUtils.transform_ego_trajectory_from_ego_center_to_ego_origin(
-            state.ego_state.size.length, np.array([currect_state]))[0]
+        aligned_currect_state = LocalizationUtils.transform_trajectory_between_ego_center_and_ego_origin(
+            state.ego_state.size.length, np.array([currect_state]), direction=1)[0]
         current_pos = aligned_currect_state[C_X:(C_Y+1)]
 
         if not self._triggered and np.all(np.linalg.norm(current_pos - self._trigger_pos) <

@@ -7,7 +7,7 @@ import numpy as np
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID, \
     UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS, LOG_MSG_STATE_MODULE_PUBLISH_STATE
 from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.planning.types import CartesianPoint3D
+from decision_making.src.planning.types import CartesianPoint3D, C_X, C_Y
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.state.state import OccupancyState, EgoState, DynamicObject, ObjectSize, State
 from mapping.src.exceptions import MapCellNotFound, raises
@@ -190,7 +190,10 @@ class StateModule(DmModule):
                 self._ego_state = EgoState(EGO_ID, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, a_x,
                                            UNKNOWN_DEFAULT_VAL, UNKNOWN_DEFAULT_VAL)
 
-                self._ego_state = LocalizationUtils.transform_ego_origin_to_its_center(self._ego_state)
+                ego_pos = np.array([self._ego_state.x, self._ego_state.y, self._ego_state.yaw, 0, 0, 0])
+                transformed_ego_pos = LocalizationUtils.transform_trajectory_between_ego_center_and_ego_origin(
+                    self._ego_state.size.length, np.array([ego_pos]), direction=-1)[0]
+                (self._ego_state.x, self._ego_state.y) = (transformed_ego_pos[C_X], transformed_ego_pos[C_Y])
 
             self._publish_state_if_full()
 

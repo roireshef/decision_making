@@ -106,8 +106,8 @@ class TrajectoryPlanningFacade(DmModule):
                             num=TRAJECTORY_NUM_POINTS) + state_aligned.ego_state.timestamp_in_sec)
             self._last_trajectory = samplable_trajectory
 
-            trajectory_points = LocalizationUtils.transform_ego_trajectory_from_ego_center_to_ego_origin(
-                state_aligned.ego_state.size.length, trajectory_points)
+            trajectory_points = LocalizationUtils.transform_trajectory_between_ego_center_and_ego_origin(
+                state_aligned.ego_state.size.length, trajectory_points, direction=1)
 
             # TODO: should we publish v_x at all?
             # TODO: add timestamp here.
