@@ -190,10 +190,7 @@ class StateModule(DmModule):
                 self._ego_state = EgoState(EGO_ID, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, a_x,
                                            UNKNOWN_DEFAULT_VAL, UNKNOWN_DEFAULT_VAL)
 
-                ego_pos = np.array([self._ego_state.x, self._ego_state.y, self._ego_state.yaw, 0, 0, 0])
-                transformed_ego_pos = LocalizationUtils.transform_trajectory_between_ego_center_and_ego_origin(
-                    self._ego_state.size.length, np.array([ego_pos]), direction=-1)[0]
-                (self._ego_state.x, self._ego_state.y) = (transformed_ego_pos[C_X], transformed_ego_pos[C_Y])
+                self._ego_state = LocalizationUtils.transform_ego_from_origin_to_center(self._ego_state)
 
             self._publish_state_if_full()
 

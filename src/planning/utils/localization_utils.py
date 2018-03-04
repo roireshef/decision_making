@@ -60,7 +60,7 @@ class LocalizationUtils:
     def transform_trajectory_between_ego_center_and_ego_origin(ego_length: float, trajectory: np.array,
                                                                direction: int) -> np.array:
         """
-        transform ego trajectory points to represent the real origin of ego positions, rather than ego center
+        Transform ego trajectory points to represent the real origin of ego positions, rather than ego center
         :param ego_length: the length of ego
         :param trajectory: trajectory points representing ego center
         :return: transformed trajectory_points representing real ego origin
@@ -69,3 +69,18 @@ class LocalizationUtils:
         zero_vec = np.zeros(trajectory.shape[0])
         shift = direction * (EGO_ORIGIN_LON_FROM_REAR - ego_length/2)
         return trajectory + shift * np.c_[np.cos(yaw_vec), np.sin(yaw_vec), zero_vec, zero_vec, zero_vec, zero_vec]
+
+    @staticmethod
+    def transform_ego_from_origin_to_center(ego: EgoState) -> EgoState:
+        """
+        Transform ego state from ego origin to ego center
+        :param ego: original ego state
+        :return: transformed ego state
+        """
+        ego_pos = np.array([ego.x, ego.y, ego.yaw, 0, 0, 0])
+        transformed_ego_pos = LocalizationUtils.transform_trajectory_between_ego_center_and_ego_origin(
+            ego.size.length, np.array([ego_pos]), direction=-1)[0]
+        # return cloned ego state with transformed position (since road_localization should be recomputed)
+        cartesian_state = np.array([transformed_ego_pos[0], transformed_ego_pos[1], ego.yaw, ego.v_x,
+                                    ego.acceleration_lon, 0])
+        return ego.clone_cartesian_state(ego.timestamp_in_sec, cartesian_state)
