@@ -16,13 +16,15 @@ class LocalizationUtils:
     @staticmethod
     def is_actual_state_close_to_expected_state(current_ego_state: EgoState,
                                                 last_trajectory: SamplableTrajectory,
-                                                logger: Logger,
-                                                calling_class_name: str) -> bool:
+                                                logger: Logger, calling_class_name: str) -> bool:
         """
         checks if the actual ego state at time t[current] is close (currently in terms of Euclidean distance of position
         [x,y] only) to the desired state at t[current] according to the plan of the last trajectory.
         :param current_ego_state: the current EgoState object representing the actual state of ego vehicle
-        :return: true if actual state is closer than NEGLIGIBLE_LOCATION_DIFF to the planned state. false otherwise
+        :param last_trajectory: the trajectory object from the last plan (used to extract expected state)
+        :param logger: the logger to use for logging the status of the test in this function
+        :param calling_class_name: the name of the calling class (BP policy / TP facade)
+        :return: true if actual state is closer than NEGLIGIBLE_DISPOSITION_* to the planned state. false otherwise
         """
         # TODO: update docstring
         current_time = current_ego_state.timestamp_in_sec

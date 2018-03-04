@@ -3,13 +3,16 @@ import numpy as np
 
 
 class StrSerializable:
-    def to_dict(self):
+    def to_dict(self, left_out_fields=None):
         """
-        used to create the dds message
+        used to create the lcm message
+        :param: left_out_fields: A list containing the fields we want to leave out while converting to dictionary
         :return: dict containing all the fields of the class
         """
+        if left_out_fields is None:
+            left_out_fields = []
         ser_dict = {}
-        self_fields = {k: v for k, v in self.__dict__.items() if k[0] != '_'}
+        self_fields = {k: v for k, v in self.__dict__.items() if (k[0] != '_' and k not in left_out_fields)}
         for key, val in self_fields.items():
             if issubclass(type(val), np.ndarray):
                 ser_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': list(val.shape)}
@@ -25,7 +28,7 @@ class StrSerializable:
 
     def __str__(self):
         """
-        used to create the dds message
+        used to create the lcm message
         :return: dict containing all the fields of the class
         """
         return str(self.to_dict())
