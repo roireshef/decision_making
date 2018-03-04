@@ -78,7 +78,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         # Since we want to compare current ego position to a point on trajectory, and ego_state was transformed to be
         # around vehicle center, we have to transform the state back.
         current_pos += (EGO_ORIGIN_LON_FROM_REAR - state.ego_state.size.length / 2) * \
-                       np.c_[np.cos(state.ego_state.yaw), np.sin(state.ego_state.yaw)]
+                       np.array([np.cos(state.ego_state.yaw), np.sin(state.ego_state.yaw)])
 
         if not self._triggered and np.all(np.linalg.norm(current_pos - self._trigger_pos) <
                                           np.linalg.norm(np.array([NEGLIGIBLE_DISPOSITION_LON,
