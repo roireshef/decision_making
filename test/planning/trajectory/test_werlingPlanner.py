@@ -176,7 +176,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             vT = 8
             T = 2*lng/(v0+vT + (test_idx-40))
 
-        # TODO: additional tests that probably will be used in the future
+        # Additional tests that probably will be used in the future
         # elif test_idx == 8:  # go on margin to prevent collision
         #     obs_poses = np.array([np.array([17, 1.4])])
         #     start_ego_lat = reference_route_latitude = goal_latitude = lane_width / 2
