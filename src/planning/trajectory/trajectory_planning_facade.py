@@ -111,7 +111,7 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.debug('{}: {}'.format(LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg))
             self._last_trajectory = samplable_trajectory
 
-            # publish visualization/debug data - based on actual ego localization (original state)!
+            # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
                 state_aligned, params.reference_route, ctrajectories, costs,
                 params.time - state.ego_state.timestamp_in_sec, self._strategy_handlers[params.strategy].predictor)
@@ -205,7 +205,7 @@ class TrajectoryPlanningFacade(DmModule):
                                    planning_horizon: float, predictor: Predictor):
         """
         prepares visualization message for visualization purposes
-        :param state: the original (raw, unedited) state got by this facade
+        :param state: short-term prediction aligned state
         :param reference_route: the reference route got from BP
         :param ctrajectories: alternative trajectories in cartesian-frame
         :param costs: costs computed for each alternative trajectory
