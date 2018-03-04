@@ -16,8 +16,7 @@ class LocalizationUtils:
     @staticmethod
     def is_actual_state_close_to_expected_state(current_ego_state: EgoState,
                                                 last_trajectory: SamplableTrajectory,
-                                                logger: Logger,
-                                                calling_class_name: str) -> bool:
+                                                logger: Logger, calling_class_name: str) -> bool:
         """
         checks if the actual ego state at time t[current] is close (currently in terms of Euclidean distance of position
         [x,y] only) to the desired state at t[current] according to the plan of the last trajectory.
