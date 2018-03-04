@@ -14,9 +14,6 @@ import matplotlib.pyplot as plt
 
 
 # Log filename
-# LOG_PATH_FOR_ANALYSIS = '/home/max/AV_Log_dm_main_test-2017_12_12-10_19.log'
-#LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2018_02_19/2018_02_19_16_56_Proving_Grounds_-_Low_Light/AV_Log_dm_main.log'
-#LOG_PATH_FOR_ANALYSIS = 'AV_Log_rbcar0(1).log'
 LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2018_02_19/2018_02_19_15_56_Proving_Grounds_-_Daytime/AV_Log_dm_main_2018-02-19_15-58-06.log'
 
 
@@ -99,9 +96,6 @@ def main():
             state_serialized['log_timestamp'] = state_module_log_timestamp[state_message_index]
             file.write(json.dumps(state_serialized))
             file.write("\n")
-            # for object1 in tp_params.dynamic_objects:
-            #     file.write(str(object1.timestamp)+","+str(object1.obj_id)+","+str(object1.v_x)+","+str(object1.v_y)+","+str(tp_params.ego_state.v_x)+","+str(tp_params.ego_state.timestamp))
-            #     file.write("\n")
 
         # TP input: TP params
         for tp_params_message_index in range(len(tp_module_states)):
