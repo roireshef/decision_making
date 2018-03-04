@@ -10,7 +10,7 @@ from decision_making.src.dm_main import DmInitialization
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
     DM_MANAGER_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_TIME_RESOLUTION, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, \
-    FIXED_TRAJECTORY_PLANNER_SLEEP_SIGMA, FIXED_TRAJECTORY_PLANNER_SLEEP_MU
+    FIXED_TRAJECTORY_PLANNER_SLEEP_STD, FIXED_TRAJECTORY_PLANNER_SLEEP_MEAN
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
@@ -49,8 +49,8 @@ class DmMockInitialization:
         step_size = TRAJECTORY_PLANNING_MODULE_PERIOD / TRAJECTORY_TIME_RESOLUTION
         planner = FixedTrajectoryPlanner(logger, predictor, fixed_trajectory, step_size,
                                          fixed_trajectory[0, :(C_Y+1)],
-                                         FIXED_TRAJECTORY_PLANNER_SLEEP_SIGMA,
-                                         FIXED_TRAJECTORY_PLANNER_SLEEP_MU)
+                                         FIXED_TRAJECTORY_PLANNER_SLEEP_STD,
+                                         FIXED_TRAJECTORY_PLANNER_SLEEP_MEAN)
 
         strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
                              TrajectoryPlanningStrategy.PARKING: planner,

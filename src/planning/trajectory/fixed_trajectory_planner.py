@@ -40,9 +40,8 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
             that advances incrementally on fixed_trajectory by step size
     """
 
-    def __init__(self, logger: Logger, predictor: Predictor, fixed_trajectory: CartesianExtendedTrajectory,
-                 step_size: int,
-                 trigger_pos: CartesianPoint2D, sleep_sigma: float, sleep_mu: float):
+    def __init__(self, logger: Logger, predictor: Predictor, fixed_trajectory: CartesianExtendedTrajectory, step_size: int,
+                 trigger_pos: CartesianPoint2D, sleep_std: float, sleep_mean: float):
         """
         :param logger:
         :param fixed_trajectory: a fixed trajectory to advance on
@@ -55,8 +54,8 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         self._trajectory_advancing = 0
         self._trigger_pos = trigger_pos
         self._triggered = False
-        self._sleep_sigma = sleep_sigma
-        self._sleep_mu = sleep_mu
+        self._sleep_std = sleep_std
+        self._sleep_mean = sleep_mean
 
     @raises(NotTriggeredException)
     def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, time_horizon: float,
@@ -72,7 +71,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         :return: a tuple of: (samplable representation of the fixed trajectory, tensor of the fixed trajectory,
          and numpy array of zero as the trajectory's cost)
         """
-        time.sleep(max(self._sleep_sigma * np.random.randn(), 0) + self._sleep_mu)
+        time.sleep(max(self._sleep_std * np.random.randn(), 0) + self._sleep_mean)
         current_pos = np.array([state.ego_state.x, state.ego_state.y])
 
         # Since we want to compare current ego position to a point on trajectory, and ego_state was transformed to be
@@ -91,7 +90,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
 
             self._trajectory_advancing += self._step_size
 
-            # TODO: currently no one does anything with the cost, the array here is dummy
+            # Currently no one does anything with the cost, the array here is dummy
             zero_trajectory_cost = np.array([0])
 
             return FixedSamplableTrajectory(current_trajectory), \

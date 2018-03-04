@@ -151,7 +151,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
     # TODO: modify this function to work with DynamicObject's specific NavigationPlan (and predictor?)
     @raises(InvalidAction)
     def _specify_action(self, behavioral_state: SemanticActionsGridState, semantic_action: SemanticAction,
-                        navigation_plan: NavigationPlanMsg) -> Optional[SemanticActionSpec]:
+                        navigation_plan: NavigationPlanMsg) -> SemanticActionSpec:
         """
         given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec.
         Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it.
@@ -164,7 +164,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # BP IF - if ego is close to last planned trajectory (in BP), then assume ego is exactly on this trajectory
         if self._last_action is not None and semantic_action == self._last_action \
                 and LocalizationUtils.is_actual_state_close_to_expected_state(
-                    ego, self._last_action_spec.samplable_trajectory, self.logger, self.__class__.__name__):
+            ego, self._last_action_spec.samplable_trajectory, self.logger, self.__class__.__name__):
             ego_init_cstate = self._last_action_spec.samplable_trajectory.sample(np.array([ego.timestamp_in_sec]))[0]
         else:
             ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
@@ -245,9 +245,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS])
         optimum_time_idx = np.argmin(cost)
 
-        optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] & \
-                              are_lat_acc_in_limits[optimum_time_idx] & \
-                              are_vel_in_limits[optimum_time_idx]
+        optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] and \
+                                             are_lat_acc_in_limits[optimum_time_idx] and \
+                                             are_vel_in_limits[optimum_time_idx]
 
         if not optimum_time_satisfies_constraints:
             raise InvalidAction("Couldn't specify action due to unsatisfied constraints. "
@@ -343,9 +343,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS])
         optimum_time_idx = np.argmin(cost)
 
-        optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] & \
-                              are_lat_acc_in_limits[optimum_time_idx] & \
-                              are_vel_in_limits[optimum_time_idx]
+        optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] and \
+                                             are_lat_acc_in_limits[optimum_time_idx] and \
+                                             are_vel_in_limits[optimum_time_idx]
 
         if not optimum_time_satisfies_constraints:
             raise InvalidAction("Couldn't specify action due to unsatisfied constraints. "
