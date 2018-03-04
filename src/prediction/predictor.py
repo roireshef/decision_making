@@ -99,7 +99,7 @@ class Predictor:
         objects_timestamp_in_sec.append(ego_timestamp_in_sec)
         most_recent_timestamp = np.max(objects_timestamp_in_sec)
         most_recent_timestamp = np.maximum(most_recent_timestamp, current_timestamp)
-
+        self._logger.debug("Prediction of ego by: %s sec", most_recent_timestamp - ego_timestamp_in_sec)
         return self.predict_state(state=state, prediction_timestamps=np.array([most_recent_timestamp]))[0]
 
     @staticmethod

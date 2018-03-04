@@ -1,3 +1,5 @@
+from enum import Enum
+
 import numpy as np
 
 from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
@@ -5,6 +7,7 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmSigmoidFunctionParams
 from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryCostParams
 from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryParameters
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.messages.str_serializable import StrSerializable
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_V, Limits
 
@@ -196,6 +199,9 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         self.cost_params = cost_params
         self.strategy = strategy
         self.time = time
+
+    def __str__(self):
+        return str(self.to_dict(left_out_fields=['reference_route']))
 
     @property
     def desired_velocity(self):

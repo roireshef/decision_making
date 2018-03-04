@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Union
 
 import numpy as np
 
@@ -19,6 +20,15 @@ class Poly1D:
         pass
 
     @staticmethod
+    @abstractmethod
+    def cumulative_jerk(poly_coefs: np.ndarray, x: Union[float, np.ndarray]):
+        pass
+
+    @classmethod
+    def jerk_between(cls, poly_coefs: np.ndarray, a: Union[float, np.ndarray], b: Union[float, np.ndarray]):
+        return cls.cumulative_jerk(poly_coefs, b) - cls.cumulative_jerk(poly_coefs, a)
+
+    @staticmethod
     def solve(A_inv: np.ndarray, constraints: np.ndarray) -> np.ndarray:
         """
         Given a 1D polynom x(t) with self.num_coefs() differential constraints on t0 (initial time) and tT (terminal time),
@@ -34,6 +44,11 @@ class Poly1D:
         :return: x(t) coefficients
         """
         poly_coefs = np.fliplr(np.dot(constraints, A_inv.transpose()))
+        return poly_coefs
+
+    @staticmethod
+    def zip_solve(A_inv: np.ndarray, constraints: np.ndarray) -> np.ndarray:
+        poly_coefs = np.fliplr(np.einsum('ijk,ik->ij', A_inv, constraints))
         return poly_coefs
 
     @staticmethod
@@ -84,12 +99,13 @@ class Poly1D:
                 :param limits: minimal and maximal allowed values for the <degree> derivative of x(t)
                 :return: 1D numpy array of booleans where True means the restrictions are met.
                 """
-        # TODO: a(0) and a(T) checks are omitted as they they are provided by the user.
+        # a(0) and a(T) checks are omitted as they they are provided by the user.
         # compute extrema points, by finding the roots of the 3rd derivative
         jerk_poly = Math.polyder2d(poly_coefs, m=degree + 1)
         acc_poly = Math.polyder2d(poly_coefs, m=degree)
         # Giving np.apply_along_axis a complex type enables us to get complex roots (which means acceleration doesn't have extrema in range).
-        acc_suspected_points = np.apply_along_axis(np.roots, 1, jerk_poly.astype(np.complex))  # TODO: this should use matrix operations!
+
+        acc_suspected_points = Poly1D.calc_polynomial_roots(jerk_poly)
         acc_suspected_values = Math.zip_polyval2d(acc_poly, acc_suspected_points)
 
         # are extrema points out of [0, T] range
@@ -145,11 +161,39 @@ class Poly1D:
         """
         return cls.are_velocities_in_limits(np.array([poly_coefs]), np.array([T]), vel_limits)[0]
 
+    @staticmethod
+    def calc_polynomial_roots(poly_coefs: np.ndarray):
+        """
+        calculate roots of polynomial with poly_coefs, either square or linear
+        :param poly_coefs: 2D numpy array with N polynomials and 6 coefficients each [Nx6]
+        :return: 2D numpy array with Nx2 or Nx1 roots, depending on the polynomials degree
+        """
+        if poly_coefs.shape[1] == 3:
+            poly_coefs[poly_coefs[:, 0] == 0, 0] = np.finfo(np.float32).eps  # prevent zero first coefficient
+            poly = poly_coefs.astype(np.complex)
+            det = np.sqrt(poly[:, 1]**2 - 4*poly[:, 0]*poly[:, 2])
+            roots1 = (-poly[:, 1] + det) / (2 * poly[:, 0])
+            roots2 = (-poly[:, 1] - det) / (2 * poly[:, 0])
+            return np.c_[roots1, roots2]
+        elif poly_coefs.shape[1] == 2:
+            roots = -poly_coefs[:, 1] / poly_coefs[:, 0]
+            return roots[:, np.newaxis]
+        else:
+            return np.apply_along_axis(np.roots, 1, poly_coefs.astype(np.complex))
+
 
 class QuarticPoly1D(Poly1D):
     @staticmethod
     def num_coefs():
         return 5
+
+    @staticmethod
+    def cumulative_jerk(poly_coefs: np.ndarray, x: Union[float, np.ndarray]):
+        a4, a3, a2, a1, a0 = np.split(poly_coefs, 5, axis=-1)
+        a4, a3, a2, a1, a0 = a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
+        return 36 * (a3 ** 2) * x + \
+               144 * a3 * a4 * x ** 2 + \
+               192 * a4 ** 2 * x ** 3
 
     @staticmethod
     def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
@@ -176,6 +220,16 @@ class QuinticPoly1D(Poly1D):
     polynomial elements at time 0 (first 3 rows) and T (last 3 rows) - the 3 rows in each block correspond to
     p, p_dot, p_dotdot.
     """
+
+    @staticmethod
+    def cumulative_jerk(poly_coefs: np.ndarray, x: Union[float, np.ndarray]):
+        a5, a4, a3, a2, a1, a0 = np.split(poly_coefs, 6, axis=-1)
+        a5, a4, a3 ,a2, a1, a0 = a5.flatten(), a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
+        return 36 * a3 ** 2 * x + \
+               144 * a3 * a4 * x ** 2 + \
+               (240 * a3 * a5 + 192 * a4 ** 2) * x ** 3 + \
+               720 * a4 * a5 * x ** 4 + \
+               720 * a5 ** 2 * x ** 5
 
     @staticmethod
     def num_coefs():

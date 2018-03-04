@@ -25,11 +25,11 @@ from decision_making.src.state.state import State
 
 
 class SamplableWerlingTrajectory(SamplableTrajectory):
-    def __init__(self, timestamp: float, T_s: float, T_d: float, frenet_frame: FrenetSerret2DFrame,
+    def __init__(self, timestamp_in_sec: float, T_s: float, T_d: float, frenet_frame: FrenetSerret2DFrame,
                  poly_s_coefs: np.ndarray, poly_d_coefs: np.ndarray):
         """To represent a trajectory that is a result of Werling planner, we store the frenet frame used and
         two polynomial coefficients vectors (for dimensions s and d)"""
-        super().__init__(timestamp, T_s)
+        super().__init__(timestamp_in_sec, T_s)
         self.T_d = T_d
         self.frenet_frame = frenet_frame
         self.poly_s_coefs = poly_s_coefs
@@ -44,7 +44,7 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         (longitudinal) and partially (up to some time-horizon cached in self.lon_plan_horizon) from d-axis polynomial
         (lateral) and extrapolate the rest of the states in d-axis to conform to the trajectory's total duration"""
 
-        relative_time_points = time_points - self.timestamp
+        relative_time_points = time_points - self.timestamp_in_sec
 
         # Make sure no unplanned extrapolation will occur due to overreaching time points
         # This check is done in relative-to-ego units
@@ -118,12 +118,10 @@ class WerlingPlanner(TrajectoryPlanner):
         # define constraints for the terminal (goal) state
         goal_frenet_state: FrenetState2D = frenet.cstate_to_fstate(goal)
 
-        # TODO: Determine desired final state search grid - this should be fixed with introducing different T_s, T_d
         sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_frenet_state[FS_SX],
                                        (goal_frenet_state[FS_SX] + ego_frenet_state[FS_SX]) / 2)),
                                np.min((SX_OFFSET_MAX + goal_frenet_state[FS_SX], (len(frenet.O) - 1) * frenet.ds)),
                                SX_STEPS)
-        # sx_range = np.linspace(goal_frenet_state[FS_SX]  / 2, goal_frenet_state[FS_SX], SX_STEPS)
 
         sv_range = np.linspace(
             np.max((SV_OFFSET_MIN + goal_frenet_state[FS_SV], cost_params.velocity_limits[LIMIT_MIN])),
@@ -147,7 +145,6 @@ class WerlingPlanner(TrajectoryPlanner):
         planning_time_points = np.arange(0, T_s + np.finfo(np.float16).eps, self.dt)
 
         # Latitudinal planning horizon(Td) lower bound, now approximated from x=a*t^2
-        # TODO: determine tighter lower bound according to physical constraints and ego control limitations
         lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, self.dt)
 
         assert T_s >= lower_bound_T_d
@@ -158,6 +155,8 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # create a grid on T_d (lateral movement time-grid)
         T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_s, lower_bound_T_d, self.dt)
+
+        self._logger.debug("Lateral horizon grid considered is: {}".format(str(T_d_grid)))
 
         # solve problem in frenet-frame
         ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
@@ -219,8 +218,10 @@ class WerlingPlanner(TrajectoryPlanner):
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
+        self._logger.debug("Chosen trajectory planned with lateral horizon : {}".format(T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]]))
+
         samplable_trajectory = SamplableWerlingTrajectory(
-            timestamp=state.ego_state.timestamp_in_sec,
+            timestamp_in_sec=state.ego_state.timestamp_in_sec,
             T_s=T_s,
             T_d=T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]],
             frenet_frame=frenet,
@@ -315,6 +316,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs
 
+    # TODO: determine tighter lower bound according to physical constraints and ego control limitations
     def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints, fconstraints_tT: FrenetConstraints,
                                dt) -> float:
         """

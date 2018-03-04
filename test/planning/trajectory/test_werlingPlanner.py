@@ -16,6 +16,7 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryCostPar
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.trajectory.cost_function import Costs, Jerk
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
+from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import Poly1D
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, CartesianPoint2D, C_Y, \
     CartesianExtendedTrajectory, C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, CartesianExtendedState, CartesianTrajectory
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner, \
@@ -142,6 +143,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
     At each iteration the image with costs and calculated trajectories is saved in a file.
     The number of obstacles is determined by the length of obs_poses.
     """
+
     logger = AV_Logger.get_logger('test_werlingPlanner_twoStaticObjScenario_withCostViz')
     predictor = RoadFollowingPredictor(logger)
     ROAD_ID = 1
@@ -174,7 +176,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             vT = 8
             T = 2*lng/(v0+vT + (test_idx-40))
 
-        # TODO: additional tests that probably will be used in the future
+        # Additional tests that probably will be used in the future
         # elif test_idx == 8:  # go on margin to prevent collision
         #     obs_poses = np.array([np.array([17, 1.4])])
         #     start_ego_lat = reference_route_latitude = goal_latitude = lane_width / 2
@@ -442,7 +444,7 @@ def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
     frenet = FrenetSerret2DFrame(route_points)
 
     trajectory = SamplableWerlingTrajectory(
-        timestamp=10.0,
+        timestamp_in_sec=10.0,
         T_s=1.5,
         T_d=1.0,
         frenet_frame=frenet,
@@ -451,10 +453,10 @@ def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
     )
 
     fstate_terminal = frenet.cstate_to_fstate(trajectory.sample(
-        np.array([trajectory.timestamp + trajectory.T_s]))[0])
+        np.array([trajectory.timestamp_in_sec + trajectory.T_s]))[0])
 
     fstate_after_T_d = frenet.cstate_to_fstate(trajectory.sample(
-        np.array([trajectory.timestamp + (trajectory.T_s + trajectory.T_d) / 2]))[0])
+        np.array([trajectory.timestamp_in_sec + (trajectory.T_s + trajectory.T_d) / 2]))[0])
 
     np.testing.assert_allclose(fstate_after_T_d[FS_DX], fstate_terminal[FS_DX])
 
@@ -464,3 +466,15 @@ def test_computeJerk_simpleTrajectory():
     ctrajectory: CartesianTrajectory = np.array([p1, p2])
     lon_jerks, lat_jerks = Jerk.compute_jerks(np.array([ctrajectory]), 0.1)
     assert np.isclose(lon_jerks[0][0], 10) and np.isclose(lat_jerks[0][0], 0.9)
+
+def test_polynomialRoots():
+    poly_sq = np.random.rand(10000, 3)
+    roots1 = np.apply_along_axis(np.roots, 1, poly_sq.astype(complex))
+    roots2 = Poly1D.calc_polynomial_roots(poly_sq)
+    assert ((np.isclose(roots1[:, 0], roots2[:, 0]) & np.isclose(roots1[:, 1], roots2[:, 1])) +
+            (np.isclose(roots1[:, 0], roots2[:, 1]) & np.isclose(roots1[:, 1], roots2[:, 0]))).all()
+
+    poly_lin = np.random.rand(10000, 2)
+    roots1 = np.apply_along_axis(np.roots, 1, poly_lin)
+    roots2 = Poly1D.calc_polynomial_roots(poly_lin)
+    assert (np.isclose(roots1, roots2)).all()
