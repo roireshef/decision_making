@@ -184,9 +184,9 @@ DEFAULT_ACCELERATION = 0.0
 # [-+1/m] when curvature is not specified - TP uses this as goal curvature
 DEFAULT_CURVATURE = 0.0
 
-# FixedTrajectoryPlanner.plan performs sleep with time = MU + max(0, N(0, SIGMA))
-FIXED_TRAJECTORY_PLANNER_SLEEP_MU = 0.15
-FIXED_TRAJECTORY_PLANNER_SLEEP_SIGMA = 0.2
+# FixedTrajectoryPlanner.plan performs sleep with time = mean + max(0, N(0, std))
+FIXED_TRAJECTORY_PLANNER_SLEEP_MEAN = 0.15
+FIXED_TRAJECTORY_PLANNER_SLEEP_STD = 0.2
 
 
 # State #

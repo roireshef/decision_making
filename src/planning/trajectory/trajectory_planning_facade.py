@@ -90,7 +90,7 @@ class TrajectoryPlanningFacade(DmModule):
                     state_aligned.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
                 updated_state = self._get_state_with_expected_ego(state_aligned)
                 self.logger.debug("TrajectoryPlanningFacade ego localization was overridden to the expected-state "
-                                 "according to previous plan")
+                                  "according to previous plan")
             else:
                 updated_state = state_aligned
 
@@ -107,9 +107,8 @@ class TrajectoryPlanningFacade(DmModule):
             # TODO: remove ego_state.v_x from the message in version 2.0
             trajectory_msg = TrajectoryPlanMsg(timestamp=state.ego_state.timestamp, trajectory=trajectory_points,
                                                current_speed=state_aligned.ego_state.v_x)
-
             self._publish_trajectory(trajectory_msg)
-            self.logger.debug('{}: {}'.format(LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg))
+            self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
             self._last_trajectory = samplable_trajectory
 
             # publish visualization/debug data - based on short term prediction aligned state!
@@ -119,7 +118,7 @@ class TrajectoryPlanningFacade(DmModule):
 
             self._publish_debug(debug_results)
 
-            self.logger.info("{} {}".format(LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time))
+            self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
 
         except MsgDeserializationError:
             self.logger.error("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
@@ -162,7 +161,7 @@ class TrajectoryPlanningFacade(DmModule):
         """
         input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_TOPIC, timeout=1)
         object_params = TrajectoryParams.deserialize(input_params)
-        self.logger.debug('{}: {}'.format(LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, object_params))
+        self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, object_params)
         return object_params
 
     def _publish_trajectory(self, results: TrajectoryPlanMsg) -> None:
@@ -225,7 +224,7 @@ class TrajectoryPlanningFacade(DmModule):
         predicted_states = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps)
 
         _, downsampled_reference_route, _ = CartesianFrame.resample_curve(reference_route,
-                                                                       step_size=DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION)
+                                                                          step_size=DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION)
 
         # slice alternative trajectories by skipping indices - for visualization
         alternative_ids_skip_range = range(0, len(ctrajectories),
