@@ -10,7 +10,9 @@ from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEG
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
-    CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D
+    CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D, C_X, \
+    C_Y
+from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 from decision_making.test.exceptions import NotTriggeredException
@@ -72,12 +74,13 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
          and numpy array of zero as the trajectory's cost)
         """
         time.sleep(max(self._sleep_std * np.random.randn(), 0) + self._sleep_mean)
-        current_pos = np.array([state.ego_state.x, state.ego_state.y])
+        currect_state = np.array([state.ego_state.x, state.ego_state.y, state.ego_state.yaw, 0, 0, 0])
 
         # Since we want to compare current ego position to a point on trajectory, and ego_state was transformed to be
         # around vehicle center, we have to transform the state back.
-        current_pos += (EGO_ORIGIN_LON_FROM_REAR - state.ego_state.size.length / 2) * \
-                       np.array([np.cos(state.ego_state.yaw), np.sin(state.ego_state.yaw)])
+        currect_state = LocalizationUtils.transform_ego_trajectory_from_ego_center_to_ego_origin(
+            state.ego_state.size.length, np.array([currect_state]))
+        current_pos = currect_state[0][C_X:(C_Y+1)]
 
         if not self._triggered and np.all(np.linalg.norm(current_pos - self._trigger_pos) <
                                           np.linalg.norm(np.array([NEGLIGIBLE_DISPOSITION_LON,
