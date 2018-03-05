@@ -106,8 +106,13 @@ class Poly1D:
         # Giving np.apply_along_axis a complex type enables us to get complex roots (which means acceleration doesn't
         # have extrema in range).
 
+        #  Find roots of jerk_poly, either real or complex.
         acc_suspected_points = Poly1D.calc_polynomial_roots(jerk_poly)
+        # Check whether the roots are real or complex. The problem is that real roots may have very small
+        # imaginary part (e.g. 1e-15), which are identified as complex by numpy.
+        # Therefore, we check if the imaginary part is close to 0.
         is_real = np.isclose(np.imag(acc_suspected_points), 0.0).astype(int)
+        # If a root is found as real, then take it's real part. Otherwise take it as is.
         acc_suspected_points = np.real(acc_suspected_points) * is_real + acc_suspected_points * (1-is_real)
         acc_suspected_values = Math.zip_polyval2d(acc_poly, acc_suspected_points)
 
