@@ -17,3 +17,8 @@ def test_localizationUtils_transformEgoFromOriginToCenter():
     transformed_ego = LocalizationUtils.transform_ego_from_origin_to_center(ego_state)
     assert transformed_ego.x == ego_pos[0] and \
            transformed_ego.y == ego_pos[1] + (ego_size.length/2 - EGO_ORIGIN_LON_FROM_REAR)
+
+    trajectory = np.array([np.array([transformed_ego.x, transformed_ego.y, ego_yaw, 0, 0, 0])])
+    transformed_traj = LocalizationUtils.transform_trajectory_between_ego_center_and_ego_origin(ego_size.length,
+                                                                                                trajectory, 1)[0]
+    assert transformed_traj[0] == ego_pos[0] and transformed_traj[1] == ego_pos[1]
