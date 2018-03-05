@@ -7,7 +7,7 @@ import numpy as np
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID, \
     UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS, LOG_MSG_STATE_MODULE_PUBLISH_STATE
 from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.planning.types import CartesianPoint3D, C_X, C_Y
+from decision_making.src.planning.types import CartesianPoint3D
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.state.state import OccupancyState, EgoState, DynamicObject, ObjectSize, State
 from mapping.src.exceptions import MapCellNotFound, raises
