@@ -82,7 +82,7 @@ class LocalizationUtils:
         """
         ego_pos = np.array([ego_state.x, ego_state.y, ego_state.yaw, 0, 0, 0])
         transformed_ego_pos = LocalizationUtils.transform_trajectory_between_ego_center_and_ego_origin(
-            ego_state.size.length, np.array([ego_pos]), direction=-1)[0]
+            ego_length=ego_state.size.length, trajectory=np.array([ego_pos]), direction=-1)[0]
         # return cloned ego state with transformed position (since road_localization should be recomputed)
         cartesian_state = np.array([transformed_ego_pos[0], transformed_ego_pos[1], ego_state.yaw, ego_state.v_x,
                                     ego_state.acceleration_lon, 0])
