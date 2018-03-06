@@ -129,6 +129,7 @@ class SemanticActionsGridState(SemanticBehavioralState):
         :param default_navigation_plan:
         :param object_in_cell: dynamic object in some cell
         :return: two distances: distance from the object's rear to ego front and from ego rear to the object's front
+        Only one of the distances is relevant
         """
 
         # TODO: the relative localization calculated here assumes that all objects are located on the same road.
@@ -155,8 +156,8 @@ class SemanticActionsGridState(SemanticBehavioralState):
         ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cstate)
 
         # Relative longitudinal distance
-        object_relative_lon_dist = obj_init_fstate[FS_SX] - ego_init_fstate[FS_SX]
+        object_relative_lon = obj_init_fstate[FS_SX] - ego_init_fstate[FS_SX]
 
-        obj_rear_relative_lon = object_relative_lon_dist - (object_in_cell.size.length/2 + ego_state.size.length/2)
-        obj_front_relative_lon = object_relative_lon_dist + (object_in_cell.size.length/2 + ego_state.size.length/2)
-        return obj_rear_relative_lon, obj_front_relative_lon
+        lon_obj_rear_by_ego_front = object_relative_lon - (object_in_cell.size.length/2 + ego_state.size.length/2)
+        lon_obj_front_by_ego_rear = object_relative_lon + (object_in_cell.size.length/2 + ego_state.size.length/2)
+        return lon_obj_rear_by_ego_front, lon_obj_front_by_ego_rear
