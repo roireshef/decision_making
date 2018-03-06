@@ -128,8 +128,10 @@ class SemanticActionsGridState(SemanticBehavioralState):
         :param state: the State
         :param default_navigation_plan:
         :param object_in_cell: dynamic object in some cell
-        :return: two distances: distance from the object's rear to ego front and from ego rear to the object's front
-        Only one of the distances is relevant
+        :return: two relative longitudes:
+        1. longitude of object's rear relatively to ego front
+        2. longitude of object's front relatively to ego rear
+        Only one of the longitudes is relevant, depending on the sign of object's relative longitude.
         """
 
         # TODO: the relative localization calculated here assumes that all objects are located on the same road.
