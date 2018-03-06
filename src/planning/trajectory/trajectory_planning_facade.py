@@ -62,7 +62,6 @@ class TrajectoryPlanningFacade(DmModule):
         :return: no return value. results are published in self.__publish_results()
         """
         try:
-            # TODO: Read time from central time module to support also simulation & recording time.
             # Monitor execution time of a time-critical component (prints to logging at the end of method)
             start_time = time.time()
 
@@ -99,38 +98,37 @@ class TrajectoryPlanningFacade(DmModule):
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon, params.cost_params)
 
-            # TODO: validate that sampling is consistent with controller!
             trajectory_points = samplable_trajectory.sample(
                 np.linspace(start=0,
                             stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
                             num=TRAJECTORY_NUM_POINTS) + state_aligned.ego_state.timestamp_in_sec)
 
-            # TODO: should we publish v_x at all?
-            # TODO: add timestamp here.
             # publish results to the lower DM level (Control)
+            # TODO: remove ego_state.v_x from the message in version 2.0
             trajectory_msg = TrajectoryPlanMsg(timestamp=state.ego_state.timestamp, trajectory=trajectory_points,
                                                current_speed=state_aligned.ego_state.v_x)
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
             self._last_trajectory = samplable_trajectory
 
-            # publish visualization/debug data - based on actual ego localization (original state)!
+            # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
-                state, params.reference_route, ctrajectories, costs, params.time - state.ego_state.timestamp_in_sec,
-                self._strategy_handlers[params.strategy].predictor)
+                state_aligned, params.reference_route, ctrajectories, costs,
+                params.time - state.ego_state.timestamp_in_sec, self._strategy_handlers[params.strategy].predictor)
 
             self._publish_debug(debug_results)
 
             self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
 
         except MsgDeserializationError:
-            self.logger.warn("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
+            self.logger.error("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
                              traceback.format_exc())
+
         # TODO - we need to handle this as an emergency.
         except NoValidTrajectoriesFound:
-            self.logger.warn("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s",
+            self.logger.error("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s",
                              traceback.format_exc())
-        # TODO: remove this handler
+
         except Exception:
             self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s",
                                  traceback.format_exc())
@@ -150,6 +148,9 @@ class TrajectoryPlanningFacade(DmModule):
         :return: deserialized State
         """
         input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
+        if input_state is None:
+            raise MsgDeserializationError('LCM message queue for %s topic is empty or topic isn\'t subscribed',
+                                          pubsub_topics.STATE_TOPIC)
         object_state = State.deserialize(input_state)
         self.logger.debug('%s: %s' % (LOG_MSG_RECEIVED_STATE, object_state))
         return object_state
@@ -193,7 +194,7 @@ class TrajectoryPlanningFacade(DmModule):
             v_x=expected_state_vec[C_V],
             v_y=0.0,  # this is ok because we don't PLAN for drift velocity
             acceleration_lon=expected_state_vec[C_A],
-            omega_yaw=state.ego_state.omega_yaw,  # TODO: fill this properly
+            omega_yaw=state.ego_state.omega_yaw,  # TODO: remove this field
             steering_angle=np.arctan(state.ego_state.size.length * expected_state_vec[C_K]),
         )
 
@@ -207,19 +208,16 @@ class TrajectoryPlanningFacade(DmModule):
                                    planning_horizon: float, predictor: Predictor):
         """
         prepares visualization message for visualization purposes
-        :param state: the original (raw, unedited) state got by this facade
+        :param state: short-term prediction aligned state
         :param reference_route: the reference route got from BP
         :param ctrajectories: alternative trajectories in cartesian-frame
         :param costs: costs computed for each alternative trajectory
         :param planning_horizon: [sec] the (relative) planning-horizon used for planning
         :return:
         """
-        # TODO: remove this section and solve timestamps-sync in StateModule?
-        objects_timestamp_in_sec = [dyn_obj.timestamp_in_sec for dyn_obj in state.dynamic_objects]
-        objects_timestamp_in_sec.append(state.ego_state.timestamp_in_sec)
-        most_recent_timestamp = np.max(objects_timestamp_in_sec)
-
-        prediction_timestamps = np.arange(most_recent_timestamp, state.ego_state.timestamp_in_sec + planning_horizon,
+        # this assumes the state is already aligned by short time prediction
+        most_recent_timestamp = state.ego_state.timestamp_in_sec
+        prediction_timestamps = np.arange(most_recent_timestamp, most_recent_timestamp + planning_horizon,
                                           VISUALIZATION_PREDICTION_RESOLUTION, float)
 
         # TODO: move this to visualizer!

@@ -32,7 +32,6 @@ class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
         # type: () -> LcmTrajectoryData
         lcm_msg = LcmTrajectoryData()
 
-        # TODO: Uncomment when control message is ready
         lcm_msg.timestamp = self.timestamp
         lcm_msg.trajectory = LcmNumpyArray()
         lcm_msg.trajectory.num_dimensions = len(self.trajectory.shape)
