@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR
+from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_CENTER
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.state.state import EgoState, ObjectSize
 
@@ -16,7 +16,7 @@ def test_localizationUtils_transformEgoFromOriginToCenter():
                          acceleration_lon=0.0, omega_yaw=0.0)
     transformed_ego = LocalizationUtils.transform_ego_from_origin_to_center(ego_state)
     assert transformed_ego.x == ego_pos[0] and \
-           transformed_ego.y == ego_pos[1] + (ego_size.length/2 - EGO_ORIGIN_LON_FROM_REAR)
+           transformed_ego.y == ego_pos[1] - EGO_ORIGIN_LON_FROM_CENTER
 
     trajectory = np.array([np.array([transformed_ego.x, transformed_ego.y, ego_yaw, 0, 0, 0])])
     transformed_traj = LocalizationUtils.transform_trajectory_between_ego_center_and_ego_origin(ego_size.length,

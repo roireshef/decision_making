@@ -6,7 +6,7 @@ import time
 
 from decision_making.src.exceptions import raises
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, \
-    TRAJECTORY_NUM_POINTS, EGO_ORIGIN_LON_FROM_REAR
+    TRAJECTORY_NUM_POINTS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
@@ -73,6 +73,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         :return: a tuple of: (samplable representation of the fixed trajectory, tensor of the fixed trajectory,
          and numpy array of zero as the trajectory's cost)
         """
+        # add a Gaussian noise to sleep time, to simulate time delays in control
         time.sleep(max(self._sleep_std * np.random.randn(), 0) + self._sleep_mean)
         currect_state = np.array([state.ego_state.x, state.ego_state.y, state.ego_state.yaw, 0, 0, 0])
 

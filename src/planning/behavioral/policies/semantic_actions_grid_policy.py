@@ -38,6 +38,7 @@ from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
+from decision_making.src.planning.utils.semantic_actions_utils import SemanticActionsUtils
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -177,14 +178,11 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cstate)
 
         if semantic_action.action_type == SemanticActionType.FOLLOW_VEHICLE:
-            # part of ego from its origin to its front + half of target object
-            lon_margin = ego.size.length / 2 + semantic_action.target_obj.size.length / 2 + \
-                         LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
-
             # TODO: the relative localization calculated here assumes that all objects are located on the same road and Frenet frame.
             # TODO: Fix after demo and calculate longitudinal difference properly in the general case
             return self._specify_follow_vehicle_action(semantic_action.target_obj, road_frenet, ego_init_fstate,
-                                                       ego.timestamp_in_sec, lon_margin)
+                    ego.timestamp_in_sec,
+                    SemanticActionsUtils.get_ego_lon_margin(ego.size) + semantic_action.target_obj.size.length / 2)
 
         elif semantic_action.action_type == SemanticActionType.FOLLOW_LANE:
             road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id)
@@ -617,8 +615,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # Set objects parameters
         # dilate each object by ego length + safety margin
-        objects_dilation_length = ego_size.length / 2 + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
-        objects_dilation_width = ego_size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
+        objects_dilation_length = SemanticActionsUtils.get_ego_lon_margin(ego_size)
+        objects_dilation_width = SemanticActionsUtils.get_ego_lat_margin(ego_size)
         objects_cost_x = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
                                                offset=objects_dilation_length)  # Very high (inf) cost
         objects_cost_y = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,

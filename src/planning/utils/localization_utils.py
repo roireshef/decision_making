@@ -2,7 +2,7 @@ from decision_making.src.planning.types import Limits
 from logging import Logger
 
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, NEGLIGIBLE_DISPOSITION_LAT, \
-    NEGLIGIBLE_DISPOSITION_LON, EGO_ORIGIN_LON_FROM_REAR
+    NEGLIGIBLE_DISPOSITION_LON, EGO_ORIGIN_LON_FROM_CENTER
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, FrenetPoint, FP_SX, FP_DX, C_V
 from decision_making.src.state.state import EgoState
@@ -70,7 +70,7 @@ class LocalizationUtils:
         """
         yaw_vec = trajectory[:, C_YAW]
         zero_vec = np.zeros(trajectory.shape[0])
-        shift = direction * (EGO_ORIGIN_LON_FROM_REAR - ego_length/2)
+        shift = direction * EGO_ORIGIN_LON_FROM_CENTER
         return trajectory + shift * np.c_[np.cos(yaw_vec), np.sin(yaw_vec), zero_vec, zero_vec, zero_vec, zero_vec]
 
     @staticmethod

@@ -6,6 +6,7 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_grid_stat
     SemanticActionsGridState
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticAction
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.planning.utils.semantic_actions_utils import SemanticActionsUtils
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import semantic_actions_state, \
     semantic_follow_action, semantic_state, semantic_grid_policy, state_with_sorrounding_objects, \
@@ -183,8 +184,7 @@ def test_specifyAction_followOtherCar_wellSpecified(semantic_follow_action: Sema
     obj_s0 = obj_on_road.road_lon
     obj_v = obj.road_longitudinal_speed
     obj_sT = obj_s0 + specify.t * obj_v
-    lon_margin = semantic_actions_state.ego_state.size.length / 2 + obj.size.length / 2 + \
-                 LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+    lon_margin = SemanticActionsUtils.get_ego_lon_margin(semantic_actions_state.ego_state.size) + obj.size.length / 2
 
     np.testing.assert_almost_equal(specify.v, obj_v, 4)
     np.testing.assert_almost_equal(specify.s, obj_sT - lon_margin - SAFE_DIST_TIME_DELAY * obj_v, 4)
