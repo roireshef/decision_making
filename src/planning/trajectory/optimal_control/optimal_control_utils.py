@@ -116,7 +116,7 @@ class Poly1D:
         acc_suspected_points = np.real(acc_suspected_points) * is_real + acc_suspected_points * (1-is_real)
         acc_suspected_values = Math.zip_polyval2d(acc_poly, acc_suspected_points)
 
-        # are extrema points out of [0, T] range
+        # are extrema points out of [0, T] range and are they non-complex
         is_suspected_point_in_time_range = np.greater_equal(acc_suspected_points, 0) & \
                                            np.less_equal(acc_suspected_points, T_vals[:, np.newaxis]) & \
                                            is_real
@@ -124,7 +124,7 @@ class Poly1D:
         # check if extrema values are within [a_min, a_max] limits
         is_suspected_value_in_limits = NumpyUtils.is_in_limits(acc_suspected_values, limits)
 
-        # for all extrema points that are inside the time range, verify that their values are inside [a_min, a_max]
+        # for all non-complex extrema points that are inside the time range, verify their values are in [a_min, a_max]
         return np.all(np.logical_or(np.logical_not(is_suspected_point_in_time_range), is_suspected_value_in_limits),
                       axis=1)
 
