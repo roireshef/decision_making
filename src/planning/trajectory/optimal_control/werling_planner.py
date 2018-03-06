@@ -118,12 +118,10 @@ class WerlingPlanner(TrajectoryPlanner):
         # define constraints for the terminal (goal) state
         goal_frenet_state: FrenetState2D = frenet.cstate_to_fstate(goal)
 
-        # TODO: Determine desired final state search grid - this should be fixed with introducing different T_s, T_d
         sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_frenet_state[FS_SX],
                                        (goal_frenet_state[FS_SX] + ego_frenet_state[FS_SX]) / 2)),
                                np.min((SX_OFFSET_MAX + goal_frenet_state[FS_SX], (len(frenet.O) - 1) * frenet.ds)),
                                SX_STEPS)
-        # sx_range = np.linspace(goal_frenet_state[FS_SX]  / 2, goal_frenet_state[FS_SX], SX_STEPS)
 
         sv_range = np.linspace(
             np.max((SV_OFFSET_MIN + goal_frenet_state[FS_SV], cost_params.velocity_limits[LIMIT_MIN])),
@@ -147,7 +145,6 @@ class WerlingPlanner(TrajectoryPlanner):
         planning_time_points = np.arange(0, T_s + np.finfo(np.float16).eps, self.dt)
 
         # Latitudinal planning horizon(Td) lower bound, now approximated from x=a*t^2
-        # TODO: determine tighter lower bound according to physical constraints and ego control limitations
         lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, self.dt)
 
         assert T_s >= lower_bound_T_d
@@ -319,6 +316,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs
 
+    # TODO: determine tighter lower bound according to physical constraints and ego control limitations
     def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints, fconstraints_tT: FrenetConstraints,
                                dt) -> float:
         """

@@ -14,6 +14,7 @@ from mapping.src.transformations.geometry_utils import CartesianFrame
 
 class LocalizationUtils:
     @staticmethod
+    # TODO: can we remove calling_class_name assuming we use the right class logger?
     def is_actual_state_close_to_expected_state(current_ego_state: EgoState,
                                                 last_trajectory: SamplableTrajectory,
                                                 logger: Logger, calling_class_name: str) -> bool:
@@ -26,7 +27,6 @@ class LocalizationUtils:
         :param calling_class_name: the name of the calling class (BP policy / TP facade)
         :return: true if actual state is closer than NEGLIGIBLE_DISPOSITION_* to the planned state. false otherwise
         """
-        # TODO: update docstring
         current_time = current_ego_state.timestamp_in_sec
         if last_trajectory is None or current_time > last_trajectory.max_sample_time:
             return False

@@ -80,7 +80,7 @@ BP_ACTION_T_LIMITS = np.array([3.0, 20.0])
 BP_ACTION_T_RES = 0.1
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
-BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([0.4, 0.6, 0.3])
+BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([4, 6, 3])
 
 # Longitudinal Acceleration Limits [m/sec^2]
 LON_ACC_LIMITS = np.array([-4.0, 3.0])  # taken from SuperCruise presentation
@@ -141,7 +141,6 @@ DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION = 0.5
 # [m] "Negligible distance" threshold between the desired location and the actual location between two TP planning
 # iterations. If the distance is lower than this threshold, the TP plans the trajectory as is the ego vehicle is
 # currently in the desired location and not in its actual location.
-# TODO: fix real values for thresholds (after tuning controller)
 NEGLIGIBLE_DISPOSITION_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
 NEGLIGIBLE_DISPOSITION_LAT = 0.5  # lateral (ego's side direction) difference threshold
 
