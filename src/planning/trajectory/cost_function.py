@@ -192,7 +192,7 @@ class Costs:
 
     @staticmethod
     def compute_obstacle_costs(ctrajectories: CartesianExtendedTrajectories, state: State, params: TrajectoryCostParams,
-                               global_time_samples: np.ndarray, predictor: Predictor) -> np.array:
+                               global_time_samples: np.ndarray, predictor: Predictor):
         """
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
         :param state: the state object (that includes obstacles, etc.)
@@ -216,7 +216,7 @@ class Costs:
         return obstacles_costs
 
     @staticmethod
-    def compute_deviation_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams) -> np.array:
+    def compute_deviation_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams):
         """
         Compute point-wise deviation costs from lane, shoulders and road together.
         :param ftrajectories: numpy tensor of trajectories in frenet-frame

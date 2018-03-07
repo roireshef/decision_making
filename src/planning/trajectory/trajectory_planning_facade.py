@@ -98,18 +98,19 @@ class TrajectoryPlanningFacade(DmModule):
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon, params.cost_params)
 
-            trajectory_points = samplable_trajectory.sample(
+            center_vehicle_trajectory_points = samplable_trajectory.sample(
                 np.linspace(start=0,
                             stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
                             num=TRAJECTORY_NUM_POINTS) + state_aligned.ego_state.timestamp_in_sec)
             self._last_trajectory = samplable_trajectory
 
-            trajectory_points = LocalizationUtils.transform_trajectory_between_ego_center_and_ego_origin(
-                state_aligned.ego_state.size.length, trajectory_points, direction=1)
+            vehicle_origin_trajectory_points = LocalizationUtils.transform_trajectory_between_ego_center_and_ego_origin(
+                state_aligned.ego_state.size.length, center_vehicle_trajectory_points, direction=1)
 
             # publish results to the lower DM level (Control)
             # TODO: remove ego_state.v_x from the message in version 2.0
-            trajectory_msg = TrajectoryPlanMsg(timestamp=state.ego_state.timestamp, trajectory=trajectory_points,
+            trajectory_msg = TrajectoryPlanMsg(timestamp=state.ego_state.timestamp,
+                                               trajectory=vehicle_origin_trajectory_points,
                                                current_speed=state_aligned.ego_state.v_x)
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
