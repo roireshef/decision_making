@@ -75,13 +75,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         """
         # add a Gaussian noise to sleep time, to simulate time delays in control
         time.sleep(max(self._sleep_std * np.random.randn(), 0) + self._sleep_mean)
-        currect_state = np.array([state.ego_state.x, state.ego_state.y, state.ego_state.yaw, 0, 0, 0])
-
-        # Since we want to compare current ego position to a point on trajectory, and ego_state was transformed to be
-        # around vehicle center, we have to transform the state back.
-        aligned_currect_state = LocalizationUtils.transform_trajectory_between_ego_center_and_ego_origin(
-            state.ego_state.size.length, np.array([currect_state]), direction=1)[0]
-        current_pos = aligned_currect_state[C_X:(C_Y+1)]
+        current_pos = np.array([state.ego_state.x, state.ego_state.y])
 
         if not self._triggered and np.all(np.linalg.norm(current_pos - self._trigger_pos) <
                                           np.linalg.norm(np.array([NEGLIGIBLE_DISPOSITION_LON,
