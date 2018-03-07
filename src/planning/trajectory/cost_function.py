@@ -246,14 +246,29 @@ class Costs:
         :param dt: time step
         :return: MxN matrix of jerk costs per point, where N is trajectories number, M is trajectory length.
         """
-        lon_jerks, lat_jerks = Jerk.compute_jerks(ctrajectories, dt)
+        lon_jerks, lat_jerks = Costs.compute_jerks(ctrajectories, dt)
         jerk_costs = params.lon_jerk_cost * lon_jerks + params.lat_jerk_cost * lat_jerks
         return np.c_[np.zeros(jerk_costs.shape[0]), jerk_costs]
 
-
-class Jerk:
     @staticmethod
-    def compute_jerks(ctrajectories: CartesianExtendedTrajectories, dt: float):
+    def compute_efficiency_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams) -> np.array:
+        """
+        calculate efficiency (velocity) cost by parabola function
+        C(vel) = P(v) = a*v*v + b*v, where v = abs(1 - vel/vel_des), C(vel_des) = 0, C(0) = 1, C'(0)/C'(vel_des) = r
+        :param ftrajectories: trajectories in frenet
+        :param params: cost params contain: the cost weight
+        :return:
+        """
+        r = EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO  # C'(0)/C'(vel_des) = P'(1)/P'(0)
+        # the following two lines are the solution of two equations on a and b: P(1) = 1, P'(1)/P'(0) = r
+        a = (r-1)/(r+1)
+        b = 2/(r+1)
+        v = np.abs(1 - ftrajectories[:, :, FS_SV] / BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
+        costs = params.efficiency_cost * v * (a * v + b)
+        return costs
+
+    @staticmethod
+    def compute_jerk_costs(ctrajectories: CartesianExtendedTrajectories, dt: float):
         """
         Compute longitudinal and lateral jerks based on cartesian trajectories.
         :param ctrajectories: array[trajectories_num, timesteps_num, 6] of cartesian trajectories
@@ -264,4 +279,3 @@ class Jerk:
         lon_jerks = np.square(np.diff(ctrajectories[:, :, C_A], axis=1)) / dt
         lat_jerks = np.square(np.diff(ctrajectories[:, :, C_K] * np.square(ctrajectories[:, :, C_V]), axis=1)) / dt
         return lon_jerks, lat_jerks
-
