@@ -130,7 +130,7 @@ def semantic_actions_state(semantic_state: State):
 @pytest.fixture(scope='function')
 def semantic_follow_action(semantic_actions_state: SemanticActionsGridState):
     obj = semantic_actions_state.road_occupancy_grid[(-1, 1)][0]
-    yield SemanticAction((-1, 1), obj, SemanticActionType.FOLLOW)
+    yield SemanticAction((-1, 1), obj, SemanticActionType.FOLLOW_VEHICLE)
 
 
 @pytest.fixture(scope='function')

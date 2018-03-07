@@ -6,6 +6,11 @@ from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 
 class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
+    ''' Members annotations for python 2 compliant classes '''
+    timestamp = int
+    trajectory = np.ndarray
+    current_speed = float
+
     def __init__(self, timestamp, trajectory, current_speed):
         # type: (int, np.ndarray, float) -> None
         """
@@ -27,7 +32,6 @@ class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
         # type: () -> LcmTrajectoryData
         lcm_msg = LcmTrajectoryData()
 
-        # TODO: Uncomment when control message is ready
         lcm_msg.timestamp = self.timestamp
         lcm_msg.trajectory = LcmNumpyArray()
         lcm_msg.trajectory.num_dimensions = len(self.trajectory.shape)

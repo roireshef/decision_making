@@ -3,10 +3,11 @@ from typing import List, Optional
 
 import numpy as np
 
-from decision_making.src.exceptions import BehavioralPlanningException
+from decision_making.src.exceptions import BehavioralPlanningException, InvalidAction
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
-    PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS
+    PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS, \
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
     DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
@@ -15,8 +16,7 @@ from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
     LAT_ACC_LIMITS, SHOULDER_SIGMOID_OFFSET, LON_JERK_COST, LAT_JERK_COST, LANE_SIGMOID_K_PARAM, \
     SHOULDER_SIGMOID_K_PARAM, BP_ACTION_T_LIMITS, \
     BP_ACTION_T_RES, SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
-    SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL, \
-    BP_JERK_TIME_WEIGHTS
+    SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
@@ -30,13 +30,14 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_policy im
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DX, FS_DV, FS_DA, FP_SX
+from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DX, FS_DV, FS_DA, FP_SX, FrenetPoint
 from decision_making.src.planning.types import LIMIT_MIN, LIMIT_MAX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import State, ObjectSize, EgoState
+from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -56,18 +57,39 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         behavioral_state = SemanticActionsGridState.create_from_state(state=state,
                                                                       logger=self.logger)
 
+        # # debug: computing distance from other objects, good only for one vehicle in scenario
+        # minimal_distance = 1000
+        # ego_x = state.ego_state.x
+        # ego_y = state.ego_state.y
+        # closest_dyn_obj = None
+        # for dyn_obj in state.dynamic_objects:
+        #     dist = np.sqrt(np.power(dyn_obj.x - ego_x, 2) + np.power(dyn_obj.y - ego_y, 2))
+        #     if dist < minimal_distance:
+        #         minimal_distance = dist
+        #         closest_dyn_obj = dyn_obj
+        # print("Ego/object velocities: " + str(state.ego_state.total_speed) + "/" + str(
+        #     closest_dyn_obj.total_speed) + " x: " + str(closest_dyn_obj.x) + ", y: " + str(
+        #     closest_dyn_obj.y) + ", min dist from obj is: " + str(minimal_distance))
+
         # iterate over the semantic grid and enumerate all relevant HL actions
         semantic_actions = self._enumerate_actions(behavioral_state=behavioral_state)
 
         # iterate over all HL actions and generate a specification (desired terminal: position, velocity, time-horizon)
-        actions_spec = [self._specify_action(behavioral_state=behavioral_state, semantic_action=semantic_actions[idx],
-                                             nav_plan=nav_plan)
-                        for idx in range(len(semantic_actions))]
+        action_specs = []
+        for semantic_action in semantic_actions:
+            try:
+                action_spec = self._specify_action(behavioral_state=behavioral_state,
+                                                   semantic_action=semantic_action,
+                                                   navigation_plan=nav_plan)
+                action_specs.append(action_spec)
+            except InvalidAction as e:
+                self.logger.warning(str(e) + " SemanticAction: " + str(semantic_action))
+                action_specs.append(None)
 
         # Filter actions with invalid spec
-        valid_spec_indices = [x for x in range(len(actions_spec)) if actions_spec[x] is not None]
+        valid_spec_indices = [x for x in range(len(action_specs)) if action_specs[x] is not None]
         semantic_actions = [semantic_actions[x] for x in valid_spec_indices]
-        actions_spec = [actions_spec[x] for x in valid_spec_indices]
+        actions_spec = [action_specs[x] for x in valid_spec_indices]
 
         # evaluate all action-specifications by computing a cost for each action
         action_costs = self._eval_actions(behavioral_state=behavioral_state, semantic_actions=semantic_actions,
@@ -113,43 +135,239 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             if semantic_cell[LON_CELL] == SEMANTIC_CELL_LON_FRONT:
                 if len(behavioral_state.road_occupancy_grid[semantic_cell]) > 0:
                     # Select first (closest) object in cell
-                    target_obj = behavioral_state.road_occupancy_grid[semantic_cell][0]
+                    semantic_action = SemanticAction(cell=semantic_cell,
+                                                     target_obj=behavioral_state.road_occupancy_grid[semantic_cell][0],
+                                                     action_type=SemanticActionType.FOLLOW_VEHICLE)
                 else:
                     # There are no objects in cell
-                    target_obj = None
-
-                semantic_action = SemanticAction(cell=semantic_cell, target_obj=target_obj,
-                                                 action_type=SemanticActionType.FOLLOW)
+                    semantic_action = SemanticAction(cell=semantic_cell,
+                                                     target_obj=None,
+                                                     action_type=SemanticActionType.FOLLOW_LANE)
 
                 semantic_actions.append(semantic_action)
 
         return semantic_actions
 
-    def _specify_action(self, behavioral_state: SemanticActionsGridState,
-                        semantic_action: SemanticAction, nav_plan: NavigationPlanMsg) -> Optional[SemanticActionSpec]:
+    # TODO: modify this function to work with DynamicObject's specific NavigationPlan (and predictor?)
+    @raises(InvalidAction)
+    def _specify_action(self, behavioral_state: SemanticActionsGridState, semantic_action: SemanticAction,
+                        navigation_plan: NavigationPlanMsg) -> SemanticActionSpec:
         """
-        For each semantic action, generate a trajectory specifications that will be passed through to the TP
+        given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec.
+        Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it.
         :param behavioral_state: semantic actions grid behavioral state
         :param semantic_action:
-        :param nav_plan: the navigation plan of ego
-        :return: semantic action spec (None if no valid trajectories can be found)
+        :return: SemanticActionSpec
         """
+        ego = behavioral_state.ego_state
 
-        if self._last_action is not None and semantic_action == self._last_action:
-            continue_action = True
+        # BP IF - if ego is close to last planned trajectory (in BP), then assume ego is exactly on this trajectory
+        if self._last_action is not None and semantic_action == self._last_action \
+                and LocalizationUtils.is_actual_state_close_to_expected_state(
+            ego, self._last_action_spec.samplable_trajectory, self.logger, self.__class__.__name__):
+            ego_init_cstate = self._last_action_spec.samplable_trajectory.sample(np.array([ego.timestamp_in_sec]))[0]
         else:
-            continue_action = False
+            ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
 
-        if semantic_action.target_obj is None:
-            return self._specify_action_to_empty_cell(behavioral_state=behavioral_state,
-                                                      semantic_action=semantic_action,
-                                                      continue_action=continue_action)
-        else:
-            return self._specify_action_towards_object(behavioral_state=behavioral_state,
-                                                       semantic_action=semantic_action,
-                                                       navigation_plan=nav_plan,
-                                                       predictor=self._predictor,
-                                                       continue_action=continue_action)
+        road_id = ego.road_localization.road_id
+
+        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)  # TODO: use nav_plan
+        road_frenet = FrenetSerret2DFrame(road_points)
+
+        ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cstate)
+
+        if semantic_action.action_type == SemanticActionType.FOLLOW_VEHICLE:
+            # part of ego from its origin to its front + half of target object
+            lon_margin = (ego.size.length - EGO_ORIGIN_LON_FROM_REAR) + semantic_action.target_obj.size.length / 2
+
+            # TODO: the relative localization calculated here assumes that all objects are located on the same road and Frenet frame.
+            # TODO: Fix after demo and calculate longitudinal difference properly in the general case
+            return self._specify_follow_vehicle_action(semantic_action.target_obj, road_frenet, ego_init_fstate,
+                                                       ego.timestamp_in_sec, lon_margin)
+
+        elif semantic_action.action_type == SemanticActionType.FOLLOW_LANE:
+            road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id)
+            desired_lane = ego.road_localization.lane_num + semantic_action.cell[LAT_CELL]
+            desired_center_lane_latitude = road_lane_latitudes[desired_lane]
+
+            return self._specify_follow_lane_action(road_frenet, ego_init_fstate, ego.timestamp_in_sec,
+                                                    desired_center_lane_latitude)
+
+    @raises(InvalidAction)
+    def _specify_follow_lane_action(self, road_frenet: FrenetSerret2DFrame,
+                                    ego_init_fstate: np.ndarray, ego_timestamp_in_sec: float,
+                                    desired_latitude: float) -> SemanticActionSpec:
+        """
+        This method's purpose is to specify the enumerated actions that the agent can take.
+        Each semantic action is translated to a trajectory of the agent.
+        The trajectory specification is created towards a target location/object in given cell,
+         considering ego speed, location.
+         Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it
+        :return: semantic action specification
+        """
+        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
+                           BP_ACTION_T_RES)
+
+        # Quartic polynomial constraints (no constraint on sT)
+        constraints_s = np.repeat([[
+            ego_init_fstate[FS_SX],
+            ego_init_fstate[FS_SV],
+            ego_init_fstate[FS_SA],
+            BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED,  # desired velocity # TODO: change to the road's target speed
+            0.0  # zero acceleration at the end of action
+        ]], repeats=len(T_vals), axis=0)
+
+        A_inv_s = np.linalg.inv(QuarticPoly1D.time_constraints_tensor(T_vals))
+        poly_coefs_s = QuarticPoly1D.zip_solve(A_inv_s, constraints_s)
+        target_s = Math.zip_polyval2d(poly_coefs_s, T_vals[:, np.newaxis])
+
+        # Quintic polynomial constraints
+        constraints_d = np.repeat([[
+            ego_init_fstate[FS_DX],
+            ego_init_fstate[FS_DV],
+            ego_init_fstate[FS_DA],
+            desired_latitude,  # Target latitude relative to reference route (RHS of road)
+            0.0,
+            0.0
+        ]], repeats=len(T_vals), axis=0)
+
+        A_inv_d = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_vals))
+        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv_d, constraints_d)
+
+        are_lon_acc_in_limits = QuarticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_vals, LON_ACC_LIMITS)
+        are_lat_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_vals, LAT_ACC_LIMITS)
+        are_vel_in_limits = QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_vals, VELOCITY_LIMITS)
+
+        jerk_s = QuarticPoly1D.cumulative_jerk(poly_coefs_s, T_vals)
+        jerk_d = QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
+
+        cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS])
+        optimum_time_idx = np.argmin(cost)
+
+        optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] and \
+                                             are_lat_acc_in_limits[optimum_time_idx] and \
+                                             are_vel_in_limits[optimum_time_idx]
+
+        if not optimum_time_satisfies_constraints:
+            raise InvalidAction("Couldn't specify action due to unsatisfied constraints. "
+                                "Last action spec: %s. Optimal time: %f. Velocity in limits: %s. "
+                                "Longitudinal acceleration in limits: %s. Latitudinal acceleration in limits: %s." %
+                                  (str(self._last_action_spec), T_vals[optimum_time_idx],
+                                   are_vel_in_limits[optimum_time_idx],
+                                   are_lon_acc_in_limits[optimum_time_idx],
+                                   are_lat_acc_in_limits[optimum_time_idx]))
+
+        # Note: We create the samplable trajectory as a reference trajectory of the current action.from
+        # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
+        samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=ego_timestamp_in_sec,
+                                                          T_s=T_vals[optimum_time_idx],
+                                                          T_d=T_vals[optimum_time_idx],
+                                                          frenet_frame=road_frenet,
+                                                          poly_s_coefs=poly_coefs_s[optimum_time_idx],
+                                                          poly_d_coefs=poly_coefs_d[optimum_time_idx])
+
+        return SemanticActionSpec(t=T_vals[optimum_time_idx], v=constraints_s[optimum_time_idx, 3],
+                                  s=target_s[optimum_time_idx, 0],
+                                  d=constraints_d[optimum_time_idx, 3],
+                                  samplable_trajectory=samplable_trajectory)
+
+    @raises(InvalidAction)
+    def _specify_follow_vehicle_action(self, target_obj: DynamicObject, road_frenet: FrenetSerret2DFrame,
+                                       ego_init_fstate: np.ndarray, ego_timestamp_in_sec: float,
+                                       lon_margin: float) -> SemanticActionSpec:
+        """
+        given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec.
+        Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it.
+        :param behavioral_state: semantic actions grid behavioral state
+        :param semantic_action:
+        :return: SemanticActionSpec
+        """
+        target_obj_fpoint = road_frenet.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))
+        _, _, _, road_curvature_at_obj_location, _ = road_frenet._taylor_interp(target_obj_fpoint[FP_SX])
+        obj_init_fstate = road_frenet.cstate_to_fstate(np.array([
+            target_obj.x, target_obj.y,
+            target_obj.yaw,
+            target_obj.total_speed,
+            target_obj.acceleration_lon,
+            road_curvature_at_obj_location  # We don't care about other agent's curvature, only the road's
+        ]))
+
+        # Extract relevant details from state on Reference-Object
+        obj_on_road = target_obj.road_localization
+        road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id=obj_on_road.road_id)
+        obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
+
+        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
+                           BP_ACTION_T_RES)
+
+        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_vals))
+
+        # TODO: should be swapped with current implementation of Predictor.predict_object_on_road
+        obj_saT = 0  # obj_init_fstate[FS_SA]
+        obj_svT = obj_init_fstate[FS_SV] + obj_saT * T_vals
+        obj_sxT = obj_init_fstate[FS_SX] + obj_svT * T_vals + obj_saT * T_vals ** 2 / 2
+
+        safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
+
+        constraints_s = np.c_[
+            np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SX]),
+            np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SV]),
+            np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SA]),
+            obj_sxT - safe_lon_dist - lon_margin,
+            obj_svT,
+            np.full(shape=len(T_vals), fill_value=obj_saT)
+        ]
+
+        constraints_d = np.repeat([[
+            ego_init_fstate[FS_DX],
+            ego_init_fstate[FS_DV],
+            ego_init_fstate[FS_DA],
+            obj_center_lane_latitude,
+            0.0,
+            0.0
+        ]], repeats=len(T_vals), axis=0)
+
+        # solve for s(t) and d(t)
+        poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
+        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
+
+        # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
+        are_lon_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_vals, LON_ACC_LIMITS)
+        are_lat_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_vals, LAT_ACC_LIMITS)
+        are_vel_in_limits = QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_vals, VELOCITY_LIMITS)
+
+        jerk_s = QuinticPoly1D.cumulative_jerk(poly_coefs_s, T_vals)
+        jerk_d = QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
+
+        cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS])
+        optimum_time_idx = np.argmin(cost)
+
+        optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] and \
+                                             are_lat_acc_in_limits[optimum_time_idx] and \
+                                             are_vel_in_limits[optimum_time_idx]
+
+        if not optimum_time_satisfies_constraints:
+            raise InvalidAction("Couldn't specify action due to unsatisfied constraints. "
+                                "Last action spec: %s. Optimal time: %f. Velocity in limits: %s. "
+                                "Longitudinal acceleration in limits: %s. Latitudinal acceleration in limits: %s." %
+                                  (str(self._last_action_spec), T_vals[optimum_time_idx],
+                                   are_vel_in_limits[optimum_time_idx],
+                                   are_lon_acc_in_limits[optimum_time_idx],
+                                   are_lat_acc_in_limits[optimum_time_idx]))
+
+        # Note: We create the samplable trajectory as a reference trajectory of the current action.from
+        # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
+        samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=ego_timestamp_in_sec,
+                                                          T_s=T_vals[optimum_time_idx],
+                                                          T_d=T_vals[optimum_time_idx],
+                                                          frenet_frame=road_frenet,
+                                                          poly_s_coefs=poly_coefs_s[optimum_time_idx],
+                                                          poly_d_coefs=poly_coefs_d[optimum_time_idx])
+
+        return SemanticActionSpec(t=T_vals[optimum_time_idx], v=obj_svT[optimum_time_idx],
+                                  s=constraints_s[optimum_time_idx, 3],
+                                  d=constraints_d[optimum_time_idx, 3],
+                                  samplable_trajectory=samplable_trajectory)
 
     def _eval_actions(self, behavioral_state: SemanticActionsGridState,
                       semantic_actions: List[SemanticAction],
@@ -204,10 +422,25 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                           desired_vel - actions_spec[current_lane_action_ind].v < MIN_OVERTAKE_VEL
 
         # boolean whether the forward-left cell is faster than the forward cell
-        is_forward_left_faster = left_lane_action_ind is not None and (current_lane_action_ind is None or
-                                                                       actions_spec[left_lane_action_ind].v -
-                                                                       actions_spec[
-                                                                           current_lane_action_ind].v >= MIN_OVERTAKE_VEL)
+        is_forward_left_faster = left_lane_action_ind is not None and \
+                                 (current_lane_action_ind is None or
+                                  actions_spec[left_lane_action_ind].v - actions_spec[current_lane_action_ind].v >=
+                                  MIN_OVERTAKE_VEL)
+
+        ego = behavioral_state.ego_state
+        road_id = ego.road_localization.road_id
+        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
+        road_frenet = FrenetSerret2DFrame(road_points)
+        ego_fpoint = road_frenet.cpoint_to_fpoint(np.array([ego.x, ego.y]))
+
+        dist_to_backleft, safe_left_dist_behind_ego = SemanticActionsGridPolicy._calc_safe_dist_behind_ego(
+            behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_LEFT)
+        dist_to_backright, safe_right_dist_behind_ego = SemanticActionsGridPolicy._calc_safe_dist_behind_ego(
+            behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_RIGHT)
+
+        self.logger.debug("Distance\safe distance to back left car: %s\%s.", dist_to_backleft, safe_left_dist_behind_ego)
+        self.logger.debug("Distance\safe distance to back right car: %s\%s.", dist_to_backright, safe_right_dist_behind_ego)
+
         # boolean whether the left cell near ego is occupied
         if (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid:
             is_left_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_LEFT,
@@ -219,235 +452,44 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # move right if both straight and right lanes are fast
         # if is_forward_right_fast and (is_forward_fast or current_lane_action_ind is None) and not is_right_occupied:
-        if is_forward_right_fast and not is_right_occupied:
+        if is_forward_right_fast and not is_right_occupied and dist_to_backright > safe_right_dist_behind_ego:
             costs[right_lane_action_ind] = 0.
         # move left if straight is slow and the left is faster than straight
         elif not is_forward_fast and (
-                    is_forward_left_faster or current_lane_action_ind is None) and not is_left_occupied:
+                    is_forward_left_faster or current_lane_action_ind is None) and not is_left_occupied and \
+                        dist_to_backleft > safe_left_dist_behind_ego:
             costs[left_lane_action_ind] = 0.
         else:
             costs[current_lane_action_ind] = 0.
         return costs
 
-    def _specify_action_to_empty_cell(self, behavioral_state: SemanticActionsGridState,
-                                      semantic_action: SemanticAction, continue_action: bool) -> SemanticActionSpec:
+    @staticmethod
+    def _calc_safe_dist_behind_ego(behavioral_state: SemanticActionsGridState, road_frenet: FrenetSerret2DFrame,
+                                   ego_fpoint: FrenetPoint, semantic_cell_lat: int) -> [float, float]:
         """
-        This method's purpose is to specify the enumerated actions that the agent can take.
-        Each semantic action is translated to a trajectory of the agent.
-        The trajectory specification is created towards a target location/object in given cell,
-         considering ego speed, location.
-         Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it
-        :param behavioral_state:
-        :param semantic_action:
-        :return: semantic action specification
+        Calculate both actual and safe distances between rear object and ego on the left side or right side.
+        If there is no object, return actual dist = inf and safe dist = 0.
+        :param behavioral_state: semantic behavioral state, containing the semantic grid
+        :param road_frenet: road Frenet frame for ego's road_id
+        :param ego_fpoint: frenet point of ego location
+        :param semantic_cell_lat: either SEMANTIC_CELL_LAT_LEFT or SEMANTIC_CELL_LAT_RIGHT
+        :return: longitudinal distance between ego and rear object, safe distance between ego and the rear object
         """
-        ego = behavioral_state.ego_state
-
-        # TODO: in the future - concatenate all roads within the relevant NavigationPlan
-        road_id = ego.road_localization.road_id
-
-        road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id)
-        desired_lane = ego.road_localization.lane_num + semantic_action.cell[LAT_CELL]
-        desired_center_lane_latitude = road_lane_latitudes[desired_lane]
-
-        # reference route is now the desired center-lane
-        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
-        road_frenet = FrenetSerret2DFrame(road_points)
-
-        if continue_action:
-            ego_init_cartesian_extended_state = \
-                self._last_action_spec.samplable_trajectory.sample(np.array([ego.timestamp_in_sec]))[0]
-        else:
-            ego_init_cartesian_extended_state = np.array([
-                ego.x, ego.y,
-                ego.yaw,
-                ego.v_x,
-                ego.acceleration_lon,
-                ego.curvature
-            ])
-
-        ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cartesian_extended_state)
-
-        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX],
-                           BP_ACTION_T_RES)
-
-        A_s = QuarticPoly1D.time_constraints_tensor(T_vals)
-        A_inv_s = np.linalg.inv(A_s)
-
-        # Quartic polynomial constraints (no constraint on sT)
-        constraints_s = np.repeat([[
-            ego_init_fstate[FS_SX],
-            ego_init_fstate[FS_SV],
-            ego_init_fstate[FS_SA],
-            BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED,  # desired velocity # TODO: change to the road's target speed
-            0.0  # zero acceleration at the end of action
-        ]], repeats=len(T_vals), axis=0)
-
-        A_d = QuinticPoly1D.time_constraints_tensor(T_vals)
-        A_inv_d = np.linalg.inv(A_d)
-
-        # Quintic polynomial constraints
-        constraints_d = np.repeat([[
-            ego_init_fstate[FS_DX],
-            ego_init_fstate[FS_DV],
-            ego_init_fstate[FS_DA],
-            desired_center_lane_latitude,  # Target latitude relative to refernce route (RHS of road)
-            0.0,
-            0.0
-        ]], repeats=len(T_vals), axis=0)
-
-        poly_coefs_s = QuarticPoly1D.zip_solve(A_inv_s, constraints_s)
-        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv_d, constraints_d)
-
-        target_s = Math.zip_polyval2d(poly_coefs_s, T_vals[:, np.newaxis])
-
-        # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
-        are_lon_acc_in_limits = QuarticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_vals, LON_ACC_LIMITS)
-        are_vel_in_limits = QuarticPoly1D.are_velocities_in_limits(poly_coefs_s, T_vals, VELOCITY_LIMITS)
-        are_lat_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_vals, LAT_ACC_LIMITS)
-
-        jerk = QuarticPoly1D.cumulative_jerk(poly_coefs_s, T_vals) + QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
-        jerk_T = np.c_[jerk, T_vals]
-
-        cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[0]])
-        optimum_time_idx = np.argmin(cost)
-
-        # are_vel_in_limits[optimum_idx] & \     # TODO: why velocity limits doesn't work well?
-        is_interior_optimum = are_lon_acc_in_limits[optimum_time_idx] & are_lat_acc_in_limits[optimum_time_idx] & \
-                              NumpyUtils.is_in_limits(T_vals[optimum_time_idx], BP_ACTION_T_LIMITS)
-
-        # Note: We create the samplable trajectory as a reference trajectory of the current action.from
-        # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
-        samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
-                                                          T_s=T_vals[optimum_time_idx],
-                                                          T_d=T_vals[optimum_time_idx],
-                                                          frenet_frame=road_frenet,
-                                                          poly_s_coefs=poly_coefs_s[optimum_time_idx],
-                                                          poly_d_coefs=poly_coefs_d[optimum_time_idx])
-
-        expected_state = samplable_trajectory.sample(time_points=np.array([ego.timestamp_in_sec + 0.1]))[0]
-
-        return SemanticActionSpec(t=T_vals[optimum_time_idx], v=constraints_s[optimum_time_idx, 3],
-                                  s=target_s[optimum_time_idx, 0],
-                                  d=constraints_d[optimum_time_idx, 3],
-                                  samplable_trajectory=samplable_trajectory)
-
-    @raises(NoValidTrajectoriesFound)
-    # TODO: modify this function to work with DynamicObject's specific NavigationPlan (and predictor?)
-    def _specify_action_towards_object(self, behavioral_state: SemanticActionsGridState,
-                                       semantic_action: SemanticAction,
-                                       navigation_plan: NavigationPlanMsg,
-                                       predictor: Predictor, continue_action: bool) -> SemanticActionSpec:
-        """
-        given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec.
-        Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it.
-        :param behavioral_state: semantic actions grid behavioral state
-        :param semantic_action:
-        :return: SemanticActionSpec
-        """
-        ego = behavioral_state.ego_state
-        target_obj = semantic_action.target_obj
-
-        # Extract relevant details from state on Reference-Object
-        # TODO: in the future - concatenate all roads within the relevant NavigationPlan
-        # TODO: road localization needs to be handled
-        road_id = ego.road_localization.road_id
-        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
-        road_frenet = FrenetSerret2DFrame(road_points)
-
-        # TODO: add handling of self._last_action_spec.samplable_trajectory !!!
-
-        ego_init_fstate = road_frenet.cstate_to_fstate(np.array([
-            ego.x, ego.y,
-            ego.yaw,
-            ego.v_x,
-            ego.acceleration_lon,
-            ego.curvature
-        ]))
-
-        target_obj_fpoint = road_frenet.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))
-        _, _, _, road_curvature_at_obj_location, _ = road_frenet._taylor_interp(target_obj_fpoint[FP_SX])
-        obj_init_fstate = road_frenet.cstate_to_fstate(np.array([
-            target_obj.x, target_obj.y,
-            target_obj.yaw,
-            target_obj.v_x,
-            target_obj.acceleration_lon,
-            road_curvature_at_obj_location  # We don't care about other agent's curvature
-        ]))
-
-        # Extract relevant details from state on Reference-Object
-        # TODO: road localization needs to be handled
-        obj_on_road = target_obj.road_localization
-        road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id=obj_on_road.road_id)
-        obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
-
-        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX],
-                           BP_ACTION_T_RES)
-
-        A = QuinticPoly1D.time_constraints_tensor(T_vals)
-        A_inv = np.linalg.inv(A)
-
-        # TODO: should be swapped with current implementation of Predictor
-        obj_saT = 0  # obj_init_fstate[FS_SA]  # TODO: should be zeroed?
-        obj_svT = obj_init_fstate[FS_SV] + obj_saT * T_vals
-        obj_sxT = obj_init_fstate[FS_SX] + obj_saT * T_vals + obj_saT * T_vals ** 2 / 2
-
-        # TODO: account for acc<>0 (from MobilEye's paper)
-        safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
-
-        # lon_margin = part of ego from its origin to its front + half of target object
-        lon_margin = (ego.size.length - EGO_ORIGIN_LON_FROM_REAR) + target_obj.size.length / 2
-
-        constraints_s = np.c_[
-            np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SX]),
-            np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SV]),
-            np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SA]),
-            obj_sxT - safe_lon_dist - lon_margin,
-            obj_svT,
-            np.full(shape=len(T_vals), fill_value=obj_saT)
-        ]
-
-        constraints_d = np.repeat([[
-            ego_init_fstate[FS_DX],
-            ego_init_fstate[FS_DV],
-            ego_init_fstate[FS_DA],
-            obj_center_lane_latitude,
-            0.0,
-            0.0
-        ]], repeats=len(T_vals), axis=0)
-
-        # solve for s(t) and d(t)
-        poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
-        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
-
-        # TODO: acceleration is computed in frenet frame and not cartesian. if road is curved, this is problematic
-        are_lon_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_vals, LON_ACC_LIMITS)
-        are_lat_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_vals, LAT_ACC_LIMITS)
-        are_vel_in_limits = QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_vals, VELOCITY_LIMITS)
-
-        jerk = QuinticPoly1D.cumulative_jerk(poly_coefs_s, T_vals) + QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
-        jerk_T = np.c_[jerk, T_vals]
-
-        cost = np.dot(jerk_T, np.c_[BP_JERK_TIME_WEIGHTS[0]])
-        optimum_time_idx = np.argmin(cost)
-
-        # are_vel_in_limits[optimum_idx] & \
-        is_interior_optimum = are_lon_acc_in_limits[optimum_time_idx] & are_lat_acc_in_limits[optimum_time_idx] & \
-                              NumpyUtils.is_in_limits(T_vals[optimum_time_idx], BP_ACTION_T_LIMITS)
-
-        # Note: We create the samplable trajectory as a reference trajectory of the current action.from
-        # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
-        samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
-                                                          T_s=T_vals[optimum_time_idx],
-                                                          T_d=T_vals[optimum_time_idx],
-                                                          frenet_frame=road_frenet,
-                                                          poly_s_coefs=poly_coefs_s[optimum_time_idx],
-                                                          poly_d_coefs=poly_coefs_d[optimum_time_idx])
-
-        return SemanticActionSpec(t=T_vals[optimum_time_idx], v=obj_svT[optimum_time_idx],
-                                  s=constraints_s[optimum_time_idx, 3],
-                                  d=constraints_d[optimum_time_idx, 3],
-                                  samplable_trajectory=samplable_trajectory)
+        dist_to_back_obj = np.inf
+        safe_dist_behind_ego = 0
+        back_objects = []
+        if (semantic_cell_lat, SEMANTIC_CELL_LON_REAR) in behavioral_state.road_occupancy_grid:
+            back_objects = behavioral_state.road_occupancy_grid[(semantic_cell_lat, SEMANTIC_CELL_LON_REAR)]
+        if len(back_objects) > 0:
+            back_fpoint = road_frenet.cpoint_to_fpoint(np.array([back_objects[0].x, back_objects[0].y]))
+            dist_to_back_obj = ego_fpoint[FP_SX] - back_fpoint[FP_SX]
+            if behavioral_state.ego_state.v_x > back_objects[0].v_x:
+                safe_dist_behind_ego = back_objects[0].v_x * SAFE_DIST_TIME_DELAY
+            else:
+                safe_dist_behind_ego = back_objects[0].v_x * SAFE_DIST_TIME_DELAY + \
+                        back_objects[0].v_x ** 2 / (2 * abs(LON_ACC_LIMITS[0])) - \
+                        behavioral_state.ego_state.v_x ** 2 / (2 * abs(LON_ACC_LIMITS[0]))
+        return dist_to_back_obj, safe_dist_behind_ego
 
     @staticmethod
     def _get_action_ind(semantic_actions: List[SemanticAction], cell: SemanticGridCell):
@@ -480,7 +522,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         """
         ego = behavioral_state.ego_state
 
-        # TODO: fix that compensation that once used to be multiplied by the relative_s from ego.
         # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
         # caused by the curve linearization approximation in the resampling process
         # The compensation here is multiplicative because of the different curve-fittings we use:
@@ -491,7 +532,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         lookahead_distance = action_spec.s * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
         # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
-        # TODO: better than sending the whole road. and also what happens in the beginning of a road
+        # TODO: better than sending the whole road. Fix when map service is redesigned!
         center_lane_reference_route = MapService.get_instance().get_uniform_path_lookahead(
             road_id=ego.road_localization.road_id,
             lat_shift=action_spec.d,  # THIS ASSUMES THE GOAL ALWAYS FALLS ON THE REFERENCE ROUTE
@@ -574,7 +615,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # Set objects parameters
         # dilate each object by ego length + safety margin
-        objects_dilation_length = ego_size.length / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
+        objects_dilation_length = ego_size.length / 2 + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
         objects_dilation_width = ego_size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
         objects_cost_x = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
                                                offset=objects_dilation_length)  # Very high (inf) cost

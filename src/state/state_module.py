@@ -75,9 +75,6 @@ class StateModule(DmModule):
         :param objects: Serialized dynamic object list
         """
         try:
-            # TODO: think how to print perceived dynamic objects, since they are not our objects
-            self.logger.debug("got perceived dynamic objects {}".format(objects))
-
             dyn_obj_list = self.create_dyn_obj_list(objects)
 
             with self._dynamic_objects_lock:
@@ -120,8 +117,13 @@ class StateModule(DmModule):
                 omega_yaw = lcm_dyn_obj.velocity.omega_yaw
 
                 # convert velocity from map coordinates to relative to its own yaw
+                # TODO: ask perception to send v_x, v_y in dynamic vehicle's coordinate frame and not global frame.
                 v_x = np.cos(yaw) * glob_v_x + np.sin(yaw) * glob_v_y
                 v_y = -np.sin(yaw) * glob_v_x + np.cos(yaw) * glob_v_y
+
+                # TODO: currently acceleration_lon is 0 for dynamic_objects.
+                # TODO: When it won't be zero, consider that the speed and acceleration should be in the same direction
+                acceleration_lon = UNKNOWN_DEFAULT_VAL
 
                 is_predicted = lcm_dyn_obj.tracking_status.is_predicted
 
@@ -132,7 +134,7 @@ class StateModule(DmModule):
                 if not FILTER_OFF_ROAD_OBJECTS or self._is_object_on_road(global_coordinates, global_yaw):
                     dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
                                             global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
-                                            UNKNOWN_DEFAULT_VAL, omega_yaw)
+                                            acceleration_lon, omega_yaw)
                     self._dynamic_objects_memory_map[id] = dyn_obj
                     dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
                 else:
@@ -173,8 +175,6 @@ class StateModule(DmModule):
         :param self_localization: Serialized self localization message.
         """
         try:
-            # TODO: think how to print perceived self localization, since it's not our object
-            self.logger.debug("got perceived self localization {}".format(self_localization))
             confidence = self_localization.location.confidence
             timestamp = self_localization.timestamp
             x = self_localization.location.x
@@ -188,7 +188,7 @@ class StateModule(DmModule):
 
             # Update state information under lock
             with self._ego_state_lock:
-                # TODO: replace UNKNOWN_DEFAULT_VAL with actual implementation
+                # TODO: replace two last fields with curvature
                 self._ego_state = EgoState(EGO_ID, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, a_x,
                                            UNKNOWN_DEFAULT_VAL, UNKNOWN_DEFAULT_VAL)
 
@@ -196,32 +196,7 @@ class StateModule(DmModule):
         except Exception as e:
             self.logger.exception('StateModule._self_localization_callback failed due to')
 
-    # TODO: convert from lcm...
-    # TODO: handle invalid data - occupancy is currently unused throughout the system
     @prof.ProfileFunction()
-    def _occupancy_state_callback(self, occupancy: dict) -> None:
-        """
-        De-serialize occupancy message and update state information.
-        :param occupancy: Serialized occupancy state message.
-        """
-        try:
-            # TODO: think how to print occupancy status, since it's not our object
-            self.logger.debug("got occupancy status %s", occupancy)
-            timestamp = occupancy["timestamp"]
-
-            # de-serialize relevant information
-            free_space_points = np.array(occupancy["free_space_points"], dtype=float)
-            points_list = free_space_points[:, :3]
-            confidence_list = free_space_points[:, 3]
-
-            # Update state information under lock
-            with self._occupancy_state_lock:
-                self._occupancy_state = OccupancyState(timestamp, np.array(points_list), np.array(confidence_list))
-
-            self._publish_state_if_full()
-        except Exception as e:
-            self.logger.error("StateModule._occupancy_state_callback failed due to {}".format(e))
-
     def _publish_state_if_full(self) -> None:
         """
         Publish the currently updated state information.
@@ -240,15 +215,3 @@ class StateModule(DmModule):
         self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
 
         self.pubsub.publish(pubsub_topics.STATE_TOPIC, state.serialize())
-
-    # TODO: LCM?
-    # TODO: solve the fact that actuator status can be outdated and no one will ever know
-    @prof.ProfileFunction()
-    def _actuator_status_callback(self, actuator: dict) -> None:
-        """
-        Placeholder for future utilization of actuator information (e.g., steering and gas pedal).
-        :param actuator: Serialized actuator message.
-        """
-        self.logger.debug("got actuator status %s", actuator)
-        pass  # TODO: update self._ego_state.steering_angle. Don't forget to lock self._ego_state!
-
