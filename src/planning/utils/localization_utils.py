@@ -34,7 +34,7 @@ class LocalizationUtils:
         logger.debug("%s time-difference from last planned trajectory is %s",
                      calling_class_name, current_time - last_trajectory.timestamp_in_sec)
 
-        current_expected_state: CartesianExtendedState = last_trajectory.sample(np.array([current_time]))[0]
+        current_expected_state: CartesianExtendedState = last_trajectory.sample(np.array([current_time]))[0][0]
         current_actual_location = np.array([current_ego_state.x, current_ego_state.y, DEFAULT_OBJECT_Z_VALUE])
 
         errors_in_expected_frame, _ = CartesianFrame.convert_global_to_relative_frame(

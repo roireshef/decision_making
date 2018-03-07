@@ -2,11 +2,12 @@ from abc import abstractmethod
 
 import numpy as np
 
-from decision_making.src.global_constants import EXP_CLIP_TH, TRAJECTORY_OBSTACLE_LOOKAHEAD
+from decision_making.src.global_constants import EXP_CLIP_TH, TRAJECTORY_OBSTACLE_LOOKAHEAD, \
+    EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import CartesianTrajectory, C_YAW, CartesianState, C_Y, C_X, \
     CartesianTrajectories, CartesianPaths2D, CartesianPoint2D, C_A, C_K, C_V, CartesianExtendedTrajectories, \
-    FrenetTrajectories2D, FS_DX
+    FrenetTrajectories2D, FS_DX, FS_SV
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject, State
 from mapping.src.transformations.geometry_utils import CartesianFrame
@@ -180,11 +181,9 @@ class Costs:
         The tensor shape: N x M x 3, where N is trajectories number, M is trajectory length.
         """
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
-        obstacles_costs = Costs.compute_obstacle_costs(ctrajectories, state, params, global_time_samples,
-                                                                predictor)
+        obstacles_costs = Costs.compute_obstacle_costs(ctrajectories, state, params, global_time_samples, predictor)
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
         deviations_costs = Costs.compute_deviation_costs(ftrajectories, params)
-
         ''' JERK COST '''
         jerk_costs = Costs.compute_jerk_costs(ctrajectories, params, dt)
 
@@ -192,7 +191,7 @@ class Costs:
 
     @staticmethod
     def compute_obstacle_costs(ctrajectories: CartesianExtendedTrajectories, state: State, params: TrajectoryCostParams,
-                               global_time_samples: np.ndarray, predictor: Predictor):
+                               global_time_samples: np.ndarray, predictor: Predictor) -> np.array:
         """
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
         :param state: the state object (that includes obstacles, etc.)
@@ -216,7 +215,7 @@ class Costs:
         return obstacles_costs
 
     @staticmethod
-    def compute_deviation_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams):
+    def compute_deviation_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams) -> np.array:
         """
         Compute point-wise deviation costs from lane, shoulders and road together.
         :param ftrajectories: numpy tensor of trajectories in frenet-frame
@@ -246,7 +245,7 @@ class Costs:
         :param dt: time step
         :return: MxN matrix of jerk costs per point, where N is trajectories number, M is trajectory length.
         """
-        lon_jerks, lat_jerks = Costs.compute_jerks(ctrajectories, dt)
+        lon_jerks, lat_jerks = Jerk.compute_jerks(ctrajectories, dt)
         jerk_costs = params.lon_jerk_cost * lon_jerks + params.lat_jerk_cost * lat_jerks
         return np.c_[np.zeros(jerk_costs.shape[0]), jerk_costs]
 
@@ -268,7 +267,17 @@ class Costs:
         return costs
 
     @staticmethod
-    def compute_jerk_costs(ctrajectories: CartesianExtendedTrajectories, dt: float):
+    def compute_non_right_lane_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams) -> np.array:
+        """
+        calculate cost for using non-right lane
+        :param ftrajectories:
+        :param params:
+        :return:
+        """
+
+class Jerk:
+    @staticmethod
+    def compute_jerks(ctrajectories: CartesianExtendedTrajectories, dt: float) -> [np.array, np.array]:
         """
         Compute longitudinal and lateral jerks based on cartesian trajectories.
         :param ctrajectories: array[trajectories_num, timesteps_num, 6] of cartesian trajectories

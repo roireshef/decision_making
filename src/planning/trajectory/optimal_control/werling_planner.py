@@ -15,7 +15,7 @@ from decision_making.src.planning.trajectory.trajectory_planner import Trajector
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianExtendedTrajectory, \
     CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, FrenetState2D, C_A, C_K, FrenetState1D, \
-    FrenetTrajectory1D, D5, Limits, C_Y
+    FrenetTrajectory1D, D5, Limits, C_Y, FrenetTrajectory2D
 from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
@@ -39,7 +39,7 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
     def T_s(self):
         return self.T
 
-    def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
+    def sample(self, time_points: np.ndarray) -> [CartesianExtendedTrajectory, FrenetTrajectory2D]:
         """See base method for API. In this specific representation of the trajectory, we sample from s-axis polynomial
         (longitudinal) and partially (up to some time-horizon cached in self.lon_plan_horizon) from d-axis polynomial
         (lateral) and extrapolate the rest of the states in d-axis to conform to the trajectory's total duration"""
@@ -77,7 +77,7 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         # project from road coordinates to cartesian coordinate frame
         cstates = self.frenet_frame.ftrajectory_to_ctrajectory(fstates)
 
-        return cstates
+        return cstates, fstates
 
 
 class WerlingPlanner(TrajectoryPlanner):

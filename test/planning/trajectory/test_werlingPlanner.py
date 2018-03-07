@@ -14,7 +14,7 @@ from decision_making.src.global_constants import OBSTACLE_SIGMOID_K_PARAM, LATER
     LON_JERK_COST, LAT_JERK_COST, LON_MARGIN_FROM_EGO
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
-from decision_making.src.planning.trajectory.cost_function import Costs
+from decision_making.src.planning.trajectory.cost_function import Costs, Jerk
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import Poly1D
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, CartesianPoint2D, C_Y, \
@@ -453,10 +453,10 @@ def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
     )
 
     fstate_terminal = frenet.cstate_to_fstate(trajectory.sample(
-        np.array([trajectory.timestamp_in_sec + trajectory.T_s]))[0])
+        np.array([trajectory.timestamp_in_sec + trajectory.T_s]))[0][0])
 
     fstate_after_T_d = frenet.cstate_to_fstate(trajectory.sample(
-        np.array([trajectory.timestamp_in_sec + (trajectory.T_s + trajectory.T_d) / 2]))[0])
+        np.array([trajectory.timestamp_in_sec + (trajectory.T_s + trajectory.T_d) / 2]))[0][0])
 
     np.testing.assert_allclose(fstate_after_T_d[FS_DX], fstate_terminal[FS_DX])
 
@@ -464,7 +464,7 @@ def test_computeJerk_simpleTrajectory():
     p1 :CartesianExtendedState = np.array([0, 0, 0, 1, 0, 0.1])
     p2 :CartesianExtendedState = np.array([0, 0, 0, 2, 1, 0.1])
     ctrajectory: CartesianTrajectory = np.array([p1, p2])
-    lon_jerks, lat_jerks = Costs.compute_jerk_costs(np.array([ctrajectory]), 0.1)
+    lon_jerks, lat_jerks = Jerk.compute_jerks(np.array([ctrajectory]), 0.1)
     assert np.isclose(lon_jerks[0][0], 10) and np.isclose(lat_jerks[0][0], 0.9)
 
 def test_polynomialRoots():

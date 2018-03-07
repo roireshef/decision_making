@@ -26,7 +26,7 @@ def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTr
 
     facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 
-    exact_desired_state = samplable_trajectory.sample(np.array([1001]))[0]
+    exact_desired_state = samplable_trajectory.sample(np.array([1001]))[0][0]
     close_state = EgoState(-1, 1001e9, exact_desired_state[C_X] + 0.1, exact_desired_state[C_Y] + 0.1,
                            DEFAULT_OBJECT_Z_VALUE, exact_desired_state[C_YAW], ObjectSize(0, 0, 0), 1.0,
                            exact_desired_state[C_V], 0.0, exact_desired_state[C_A], 0.0, 0.0)
@@ -50,7 +50,7 @@ def test_isActualStateCloseToExpectedState_nonCloseTranslatedOnlyEgoState_return
 
     facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 
-    exact_desired_state = samplable_trajectory.sample(np.array([1001]))[0]
+    exact_desired_state = samplable_trajectory.sample(np.array([1001]))[0][0]
     close_state = EgoState(-1, 1001e9, exact_desired_state[C_X] + 200, exact_desired_state[C_Y] + 200,
                            DEFAULT_OBJECT_Z_VALUE, exact_desired_state[C_YAW], ObjectSize(0, 0, 0), 1.0,
                            exact_desired_state[C_V], 0.0, exact_desired_state[C_A], 0.0, 0.0)
@@ -78,7 +78,7 @@ def test_getStateWithExpectedEgo_getsState_modifiesEgoStateInIt(state):
     state.ego_state.timestamp = 1001 * 1e9
     modified_state = facade._get_state_with_expected_ego(state)
 
-    sampled_ego_state_vec = samplable_trajectory.sample(np.array([1001]))[0]
+    sampled_ego_state_vec = samplable_trajectory.sample(np.array([1001]))[0][0]
 
     # assert that ego-state has been changed
     np.testing.assert_almost_equal(modified_state.ego_state.x, sampled_ego_state_vec[C_X])

@@ -7,7 +7,8 @@ from decision_making.src.exceptions import BehavioralPlanningException, InvalidA
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
+    WERLING_TIME_RESOLUTION
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
     DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
@@ -27,10 +28,13 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_policy im
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticActionsPolicy, \
     SemanticAction, SemanticActionType, \
     LAT_CELL, LON_CELL, SemanticGridCell
+from decision_making.src.planning.trajectory.cost_function import Costs
+from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DX, FS_DV, FS_DA, FP_SX, FrenetPoint
+from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DX, FS_DV, FS_DA, FP_SX, FrenetPoint, \
+    FrenetState2D
 from decision_making.src.planning.types import LIMIT_MIN, LIMIT_MAX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
@@ -49,6 +53,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         self._last_action: Optional[SemanticAction] = None
         self._last_action_spec: Optional[SemanticActionSpec] = None
         self._last_poly_coefs_s: Optional[np.ndarray] = None
+        self._predictor = predictor
 
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
 
@@ -92,8 +97,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         actions_spec = [action_specs[x] for x in valid_spec_indices]
 
         # evaluate all action-specifications by computing a cost for each action
-        action_costs = self._eval_actions(behavioral_state=behavioral_state, semantic_actions=semantic_actions,
-                                          actions_spec=actions_spec)
+        action_costs = self._eval_actions_by_cost(state, actions_spec, nav_plan)
 
         # select an action-specification with minimal cost
         selected_action_index = int(np.argmin(action_costs))
@@ -165,7 +169,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         if self._last_action is not None and semantic_action == self._last_action \
                 and LocalizationUtils.is_actual_state_close_to_expected_state(
             ego, self._last_action_spec.samplable_trajectory, self.logger, self.__class__.__name__):
-            ego_init_cstate = self._last_action_spec.samplable_trajectory.sample(np.array([ego.timestamp_in_sec]))[0]
+            ego_init_cstate = self._last_action_spec.samplable_trajectory.sample(np.array([ego.timestamp_in_sec]))[0][0]
         else:
             ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
 
@@ -462,6 +466,68 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         else:
             costs[current_lane_action_ind] = 0.
         return costs
+
+    def _eval_actions_by_cost(self, state: State, actions_spec: List[SemanticActionSpec], nav_plan: NavigationPlanMsg) \
+            -> np.ndarray:
+
+        """
+        Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
+        Gets a list of actions to evaluate and returns a vector representing their costs.
+        A set of actions is provided, enabling us to assess them independently.
+        Note: the semantic actions were generated using the behavioral state and don't necessarily capture
+         all relevant details in the scene. Therefore the evaluation is done using the behavioral state.
+        :param state: the general state
+        :param semantic_actions: semantic actions list
+        :param actions_spec: specifications of semantic actions
+        :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
+        """
+
+        lookahead_distance = 0
+        for spec in actions_spec:
+            lookahead_distance = max(lookahead_distance, spec.s * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO)
+
+        ego = state.ego_state
+
+        # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
+        # TODO: better than sending the whole road. Fix when map service is redesigned!
+        # The frenet frame used in specify (RightHandSide of road)
+        rhs_reference_route = MapService.get_instance().get_uniform_path_lookahead(
+            road_id=ego.road_localization.road_id,
+            lat_shift=0,
+            starting_lon=0,
+            lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
+            steps_num=int(np.ceil(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
+            navigation_plan=nav_plan)
+
+        action_costs = np.zeros(len(actions_spec))
+        for i, spec in enumerate(actions_spec):
+            time_points = ego.timestamp_in_sec + np.arange(0, spec.t + np.finfo(np.float16).eps, WERLING_TIME_RESOLUTION)
+            # create cartesian trajectory for the current action spec
+            ctrajectory, ftrajectory = spec.samplable_trajectory.sample(time_points)
+            # shift dx values of ftrajectory to be relative to spec.d (reference route latitude)
+            ftrajectory[:, FS_DX] -= spec.d
+
+            # A LONGER WAY TO CALCULATE ftrajectory:
+            # shift reference_route to the given latitude
+            # reference_route = MapService.get_instance()._shift_road_points(rhs_reference_route, spec.d)
+            # # create road coordinate-frame
+            # frenet = FrenetSerret2DFrame(reference_route)
+            # # create trajectory in Frenet frame
+            # ftrajectory = frenet.ctrajectory_to_ftrajectory(ctrajectory)
+
+            cost_params = SemanticActionsGridPolicy._generate_cost_params(ego.road_localization.road_id, ego.size, spec.d)
+
+            # compute the trajectory cost
+            obstacles_costs = Costs.compute_obstacle_costs(np.array([ctrajectory]), state, cost_params, time_points,
+                                                           self._predictor)
+            deviations_costs = Costs.compute_deviation_costs(np.array([ftrajectory]), cost_params)
+            jerk_costs = Costs.compute_jerk_costs(np.array([ctrajectory]), cost_params, WERLING_TIME_RESOLUTION)
+            efficiency_costs = Costs.compute_efficiency_costs(np.array([ftrajectory]), cost_params)
+
+            # sum all costs by cost type and by time along the trajectory
+            action_costs[i] = np.sum(np.dstack((obstacles_costs, deviations_costs, jerk_costs, efficiency_costs)),
+                                     axis=(1, 2))[0]
+        return action_costs
 
     @staticmethod
     def _calc_safe_dist_behind_ego(behavioral_state: SemanticActionsGridState, road_frenet: FrenetSerret2DFrame,
