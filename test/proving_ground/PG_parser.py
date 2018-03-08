@@ -29,7 +29,7 @@ def plot_dynamics_and_if_errors(log_path):
         if '\'trajectory\': {\'array\': [' in text:
             v_agent.append(float(text.split('\'trajectory\': {\'array\': [')[1].split(', ')[9]))
             a_agent.append(float(text.split('\'trajectory\': {\'array\': [')[1].split(', ')[10]))
-        elif ('lon_lat_errors: [' in text) and ('TrajectoryPlanningFacade' in text):
+        elif ('lon_lat_errors: [' in text) and ('TrajectoryPlanningFacade' in text or 'TrajectoryPlanningSimulationFacade' in text):
             lon_if_error.append(float(text.split('lon_lat_errors: [ ')[1].split()[0]))
             lat_if_error.append(float(text.split('lon_lat_errors: [ ')[1].split()[1]))
         elif 'NoValidTrajectoriesFound' in text:
