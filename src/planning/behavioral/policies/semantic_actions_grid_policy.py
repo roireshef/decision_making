@@ -205,7 +205,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
          Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it
         :return: semantic action specification
         """
-        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX], BP_ACTION_T_RES)
+        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
+                           BP_ACTION_T_RES)
 
         # Quartic polynomial constraints (no constraint on sT)
         constraints_s = np.repeat([[
@@ -234,8 +235,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         poly_coefs_d = QuinticPoly1D.zip_solve(A_inv_d, constraints_d)
 
         are_lon_acc_in_limits = QuarticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_vals, LON_ACC_LIMITS)
-        are_vel_in_limits = QuarticPoly1D.are_velocities_in_limits(poly_coefs_s, T_vals, VELOCITY_LIMITS)
         are_lat_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_vals, LAT_ACC_LIMITS)
+        are_vel_in_limits = QuarticPoly1D.are_velocities_in_limits(poly_coefs_s, T_vals, VELOCITY_LIMITS)
 
         jerk_s = QuarticPoly1D.cumulative_jerk(poly_coefs_s, T_vals)
         jerk_d = QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
@@ -296,7 +297,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id=obj_on_road.road_id)
         obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
 
-        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX], BP_ACTION_T_RES)
+        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
+                           BP_ACTION_T_RES)
 
         A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_vals))
 
