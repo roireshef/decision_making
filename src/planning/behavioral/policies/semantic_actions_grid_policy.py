@@ -235,7 +235,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         are_lon_acc_in_limits = QuarticPoly1D.are_accelerations_in_limits(poly_coefs_s, T_vals, LON_ACC_LIMITS)
         are_lat_acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_vals, LAT_ACC_LIMITS)
-        are_vel_in_limits = QuinticPoly1D.are_velocities_in_limits(poly_coefs_s, T_vals, VELOCITY_LIMITS)
+        are_vel_in_limits = QuarticPoly1D.are_velocities_in_limits(poly_coefs_s, T_vals, VELOCITY_LIMITS)
 
         jerk_s = QuarticPoly1D.cumulative_jerk(poly_coefs_s, T_vals)
         jerk_d = QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
