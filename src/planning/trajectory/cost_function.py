@@ -215,6 +215,19 @@ class Costs:
         return obstacles_costs
 
     @staticmethod
+    def compute_goal_achievement_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams,
+                                       target_road_id: int, target_lanes_list: np.array, target_lon: float=None):
+        """
+        calculate goal achievement costs
+        :param ftrajectories:
+        :param params:
+        :param target_road_id:
+        :param target_lanes_list:
+        :param target_lon:
+        :return:
+        """
+
+    @staticmethod
     def compute_deviation_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams) -> np.array:
         """
         Compute point-wise deviation costs from lane, shoulders and road together.

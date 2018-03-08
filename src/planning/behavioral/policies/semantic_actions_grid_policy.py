@@ -484,18 +484,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         lookahead_distance = 0
         for spec in actions_spec:
             lookahead_distance = max(lookahead_distance, spec.s * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO)
-        ego = state.ego_state
 
-        # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
-        # TODO: better than sending the whole road. Fix when map service is redesigned!
-        # The frenet frame used in specify (RightHandSide of road)
-        # rhs_reference_route = MapService.get_instance().get_uniform_path_lookahead(
-        #     road_id=ego.road_localization.road_id,
-        #     lat_shift=0,
-        #     starting_lon=0,
-        #     lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
-        #     steps_num=int(np.ceil(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
-        #     navigation_plan=nav_plan)
+        ego = state.ego_state
         road = MapService.get_instance().get_road(ego.road_localization.road_id)
 
         action_costs = np.zeros(len(actions_spec))
@@ -505,14 +495,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             ctrajectory, ftrajectory = spec.samplable_trajectory.sample(time_points)
             # shift dx values of ftrajectory to be relative to spec.d (reference route latitude)
             ftrajectory[:, FS_DX] -= spec.d
-
-            # A LONGER WAY TO CALCULATE ftrajectory:
-            # shift reference_route to the given latitude
-            # reference_route = MapService.get_instance()._shift_road_points(rhs_reference_route, spec.d)
-            # # create road coordinate-frame
-            # frenet = FrenetSerret2DFrame(reference_route)
-            # # create trajectory in Frenet frame
-            # ftrajectory = frenet.ctrajectory_to_ftrajectory(ctrajectory)
 
             cost_params = SemanticActionsGridPolicy._generate_cost_params(ego.road_localization.road_id, ego.size, spec.d)
 
