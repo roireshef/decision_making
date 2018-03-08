@@ -267,13 +267,21 @@ class Costs:
         return costs
 
     @staticmethod
-    def compute_non_right_lane_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams) -> np.array:
+    def compute_non_right_lane_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams,
+                                     reference_route_lat: float, lane_width: float) -> np.array:
         """
         calculate cost for using non-right lane
-        :param ftrajectories:
-        :param params:
-        :return:
+        :param ftrajectories: array of trajectories in Frenet frame
+        :param params: trajectory cost params
+        :param reference_route_lat: [m] reference route road latitude
+        :param lane_width: [m] lane width of the road
+        :return: point-wise costs
         """
+        latitudes = ftrajectories[:, :, FS_DX] + reference_route_lat
+        target_lane_num = np.floor(latitudes / lane_width).astype(int)
+        costs = params.non_right_lane_cost * target_lane_num
+        return costs
+
 
 class Jerk:
     @staticmethod

@@ -97,7 +97,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         actions_spec = [action_specs[x] for x in valid_spec_indices]
 
         # evaluate all action-specifications by computing a cost for each action
-        action_costs = self._eval_actions_by_cost(state, actions_spec, nav_plan)
+        action_costs = self._eval_actions_by_cost(state, actions_spec)
 
         # select an action-specification with minimal cost
         selected_action_index = int(np.argmin(action_costs))
@@ -467,8 +467,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             costs[current_lane_action_ind] = 0.
         return costs
 
-    def _eval_actions_by_cost(self, state: State, actions_spec: List[SemanticActionSpec], nav_plan: NavigationPlanMsg) \
-            -> np.ndarray:
+    def _eval_actions_by_cost(self, state: State, actions_spec: List[SemanticActionSpec]) -> np.ndarray:
 
         """
         Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
@@ -485,19 +484,19 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         lookahead_distance = 0
         for spec in actions_spec:
             lookahead_distance = max(lookahead_distance, spec.s * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO)
-
         ego = state.ego_state
 
         # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
         # TODO: better than sending the whole road. Fix when map service is redesigned!
         # The frenet frame used in specify (RightHandSide of road)
-        rhs_reference_route = MapService.get_instance().get_uniform_path_lookahead(
-            road_id=ego.road_localization.road_id,
-            lat_shift=0,
-            starting_lon=0,
-            lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
-            steps_num=int(np.ceil(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
-            navigation_plan=nav_plan)
+        # rhs_reference_route = MapService.get_instance().get_uniform_path_lookahead(
+        #     road_id=ego.road_localization.road_id,
+        #     lat_shift=0,
+        #     starting_lon=0,
+        #     lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
+        #     steps_num=int(np.ceil(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
+        #     navigation_plan=nav_plan)
+        road = MapService.get_instance().get_road(ego.road_localization.road_id)
 
         action_costs = np.zeros(len(actions_spec))
         for i, spec in enumerate(actions_spec):
@@ -523,10 +522,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             deviations_costs = Costs.compute_deviation_costs(np.array([ftrajectory]), cost_params)
             jerk_costs = Costs.compute_jerk_costs(np.array([ctrajectory]), cost_params, WERLING_TIME_RESOLUTION)
             efficiency_costs = Costs.compute_efficiency_costs(np.array([ftrajectory]), cost_params)
+            non_right_lane_costs = Costs.compute_non_right_lane_costs(np.array([ftrajectory]), cost_params, spec.d,
+                                                                      road.lane_width)
 
             # sum all costs by cost type and by time along the trajectory
-            action_costs[i] = np.sum(np.dstack((obstacles_costs, deviations_costs, jerk_costs, efficiency_costs)),
-                                     axis=(1, 2))[0]
+            action_costs[i] = np.sum(np.dstack((obstacles_costs, deviations_costs, jerk_costs, efficiency_costs,
+                                                non_right_lane_costs)), axis=(1, 2))[0]
         return action_costs
 
     @staticmethod
