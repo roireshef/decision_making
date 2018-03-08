@@ -387,8 +387,10 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         """
 
         lookahead_distance = 0
+        T = 0
         for spec in actions_spec:
             lookahead_distance = max(lookahead_distance, spec.s * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO)
+            T = max(T, spec.t)
 
         ego = state.ego_state
         road = MapService.get_instance().get_road(ego.road_localization.road_id)
@@ -415,6 +417,11 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             # sum all costs by cost type and by time along the trajectory
             action_costs[i] = np.sum(np.dstack((obstacles_costs, deviations_costs, jerk_costs, efficiency_costs,
                                                 non_right_lane_costs)), axis=(1, 2))[0]
+            # Since there are short and long actions, we have to align the total cost to the longest action.
+            # Therefore, add duplicated last efficiency and non-right costs.
+            action_costs[i] += (efficiency_costs[0, -1] + non_right_lane_costs[0, -1]) * \
+                               (T - spec.t) * WERLING_TIME_RESOLUTION
+
         return action_costs
 
     @staticmethod
