@@ -8,7 +8,7 @@ from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS, \
     BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    WERLING_TIME_RESOLUTION
+    WERLING_TIME_RESOLUTION, EFFICIENCY_COST, NON_RIGHT_LANE_COST
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
     DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
@@ -373,100 +373,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                   d=constraints_d[optimum_time_idx, 3],
                                   samplable_trajectory=samplable_trajectory)
 
-    def _eval_actions(self, behavioral_state: SemanticActionsGridState,
-                      semantic_actions: List[SemanticAction],
-                      actions_spec: List[SemanticActionSpec]) -> np.ndarray:
-        """
-        Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
-        Gets a list of actions to evaluate and returns a vector representing their costs.
-        A set of actions is provided, enabling us to assess them independently.
-        Note: the semantic actions were generated using the behavioral state and don't necessarily capture
-         all relevant details in the scene. Therefore the evaluation is done using the behavioral state.
-        :param behavioral_state: semantic behavioral state, containing the semantic grid
-        :param semantic_actions: semantic actions list
-        :param actions_spec: specifications of semantic actions
-        :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
-        """
-
-        if len(semantic_actions) != len(actions_spec):
-            self.logger.error(
-                "The input arrays have different sizes: len(semantic_actions)=%d, len(actions_spec)=%d",
-                len(semantic_actions), len(actions_spec))
-            raise BehavioralPlanningException(
-                "The input arrays have different sizes: len(semantic_actions)=%d, len(actions_spec)=%d",
-                len(semantic_actions), len(actions_spec))
-
-        # get indices of semantic_actions array for 3 actions: goto-right, straight, goto-left
-        current_lane_action_ind = SemanticActionsGridPolicy._get_action_ind(
-            semantic_actions, (SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT))
-        left_lane_action_ind = SemanticActionsGridPolicy._get_action_ind(
-            semantic_actions, (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_FRONT))
-        right_lane_action_ind = SemanticActionsGridPolicy._get_action_ind(
-            semantic_actions, (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT))
-
-        # The cost for each action is assigned so that the preferred policy would be:
-        # Go to right if right and current lanes are fast enough.
-        # Go to left if the current lane is slow and the left lane is faster than the current.
-        # Otherwise remain on the current lane.
-
-        # TODO - this needs to come from map
-        desired_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-
-        # boolean whether the forward-right cell is fast enough (may be empty grid cell)
-        is_forward_right_fast = right_lane_action_ind is not None and \
-                                desired_vel - actions_spec[right_lane_action_ind].v < MIN_OVERTAKE_VEL
-        # boolean whether the right cell near ego is occupied
-        is_right_occupied = True
-        if (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid:
-            is_right_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_RIGHT,
-                                                                          SEMANTIC_CELL_LON_SAME)]) > 0
-
-        # boolean whether the forward cell is fast enough (may be empty grid cell)
-        is_forward_fast = current_lane_action_ind is not None and \
-                          desired_vel - actions_spec[current_lane_action_ind].v < MIN_OVERTAKE_VEL
-
-        # boolean whether the forward-left cell is faster than the forward cell
-        is_forward_left_faster = left_lane_action_ind is not None and \
-                                 (current_lane_action_ind is None or
-                                  actions_spec[left_lane_action_ind].v - actions_spec[current_lane_action_ind].v >=
-                                  MIN_OVERTAKE_VEL)
-
-        ego = behavioral_state.ego_state
-        road_id = ego.road_localization.road_id
-        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
-        road_frenet = FrenetSerret2DFrame(road_points)
-        ego_fpoint = road_frenet.cpoint_to_fpoint(np.array([ego.x, ego.y]))
-
-        dist_to_backleft, safe_left_dist_behind_ego = SemanticActionsGridPolicy._calc_safe_dist_behind_ego(
-            behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_LEFT)
-        dist_to_backright, safe_right_dist_behind_ego = SemanticActionsGridPolicy._calc_safe_dist_behind_ego(
-            behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_RIGHT)
-
-        self.logger.debug("Distance\safe distance to back left car: %s\%s.", dist_to_backleft, safe_left_dist_behind_ego)
-        self.logger.debug("Distance\safe distance to back right car: %s\%s.", dist_to_backright, safe_right_dist_behind_ego)
-
-        # boolean whether the left cell near ego is occupied
-        if (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid:
-            is_left_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_LEFT,
-                                                                         SEMANTIC_CELL_LON_SAME)]) > 0
-        else:
-            is_left_occupied = True
-
-        costs = np.ones(len(semantic_actions))
-
-        # move right if both straight and right lanes are fast
-        # if is_forward_right_fast and (is_forward_fast or current_lane_action_ind is None) and not is_right_occupied:
-        if is_forward_right_fast and not is_right_occupied and dist_to_backright > safe_right_dist_behind_ego:
-            costs[right_lane_action_ind] = 0.
-        # move left if straight is slow and the left is faster than straight
-        elif not is_forward_fast and (
-                    is_forward_left_faster or current_lane_action_ind is None) and not is_left_occupied and \
-                        dist_to_backleft > safe_left_dist_behind_ego:
-            costs[left_lane_action_ind] = 0.
-        else:
-            costs[current_lane_action_ind] = 0.
-        return costs
-
     def _eval_actions_by_cost(self, state: State, actions_spec: List[SemanticActionSpec]) -> np.ndarray:
 
         """
@@ -476,7 +382,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         Note: the semantic actions were generated using the behavioral state and don't necessarily capture
          all relevant details in the scene. Therefore the evaluation is done using the behavioral state.
         :param state: the general state
-        :param semantic_actions: semantic actions list
         :param actions_spec: specifications of semantic actions
         :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
         """
@@ -493,7 +398,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             time_points = ego.timestamp_in_sec + np.arange(0, spec.t + np.finfo(np.float16).eps, WERLING_TIME_RESOLUTION)
             # create cartesian trajectory for the current action spec
             ctrajectory, ftrajectory = spec.samplable_trajectory.sample(time_points)
-            # shift dx values of ftrajectory to be relative to spec.d (reference route latitude)
+            # shift dx values of ftrajectory to be relative to the reference route latitude
             ftrajectory[:, FS_DX] -= spec.d
 
             cost_params = SemanticActionsGridPolicy._generate_cost_params(ego.road_localization.road_id, ego.size, spec.d)
@@ -688,6 +593,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                            lat_jerk_cost=LAT_JERK_COST,
                                            velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
-                                           lat_acceleration_limits=LAT_ACC_LIMITS)
+                                           lat_acceleration_limits=LAT_ACC_LIMITS,
+                                           efficiency_cost=EFFICIENCY_COST,
+                                           non_right_lane_cost=NON_RIGHT_LANE_COST)
 
         return cost_params

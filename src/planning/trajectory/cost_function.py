@@ -218,7 +218,7 @@ class Costs:
     def compute_goal_achievement_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams,
                                        reference_route_lon: float, reference_route_lat: float, lane_width: float,
                                        target_road_id: int, target_lanes_list: np.array, target_lon: float=None) -> np.array:
-
+        pass
 
     @staticmethod
     def compute_deviation_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams) -> np.array:

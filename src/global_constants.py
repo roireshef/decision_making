@@ -68,7 +68,9 @@ GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goa
 LON_JERK_COST = 1.0                         # cost of longitudinal jerk
 LAT_JERK_COST = 1.0                         # cost of lateral jerk
 
+EFFICIENCY_COST = 5                         # cost of zero velocity on one trajectory point
 EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO = 3  # ratio UNDER_C'(0) / UNDER_C'(v_desired)
+NON_RIGHT_LANE_COST = 0.1                   # cost of using non-right lane on one trajectory point
 
 # [m/sec] speed to plan towards by default in BP
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map

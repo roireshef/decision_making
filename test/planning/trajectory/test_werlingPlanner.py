@@ -11,7 +11,7 @@ from decision_making.src.global_constants import OBSTACLE_SIGMOID_K_PARAM, LATER
     SHOULDER_SIGMOID_OFFSET, SHOULDER_SIGMOID_K_PARAM, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LANE_SIGMOID_K_PARAM, \
     DEVIATION_FROM_GOAL_LAT_LON_RATIO, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, TD_STEPS, \
-    LON_JERK_COST, LAT_JERK_COST, LON_MARGIN_FROM_EGO
+    LON_JERK_COST, LAT_JERK_COST, LON_MARGIN_FROM_EGO, EFFICIENCY_COST, NON_RIGHT_LANE_COST
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.trajectory.cost_function import Costs, Jerk
@@ -92,7 +92,9 @@ def test_werlingPlanner_toyScenario_noException():
                                        lat_jerk_cost=LAT_JERK_COST,
                                        velocity_limits=VELOCITY_LIMITS,
                                        lon_acceleration_limits=LON_ACC_LIMITS,
-                                       lat_acceleration_limits=LAT_ACC_LIMITS)
+                                       lat_acceleration_limits=LAT_ACC_LIMITS,
+                                       efficiency_cost=EFFICIENCY_COST,
+                                       non_right_lane_cost=NON_RIGHT_LANE_COST)
 
     planner = WerlingPlanner(logger, predictor)
 
