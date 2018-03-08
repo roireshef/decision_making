@@ -160,6 +160,7 @@ class SemanticActionsGridState(SemanticBehavioralState):
         # Relative longitudinal distance
         object_relative_lon = obj_init_fstate[FS_SX] - ego_init_fstate[FS_SX]
 
-        lon_obj_rear_by_ego_front = object_relative_lon - (object_in_cell.size.length/2 + ego_state.size.length/2)
-        lon_obj_front_by_ego_rear = object_relative_lon + (object_in_cell.size.length/2 + ego_state.size.length/2)
-        return lon_obj_rear_by_ego_front, lon_obj_front_by_ego_rear
+        # the following two distances are signed
+        lon_obj_rear_from_ego_front = object_relative_lon - (object_in_cell.size.length/2 + ego_state.size.length/2)
+        lon_obj_front_from_ego_rear = object_relative_lon + (object_in_cell.size.length/2 + ego_state.size.length/2)
+        return lon_obj_rear_from_ego_front, lon_obj_front_from_ego_rear
