@@ -10,9 +10,7 @@ from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEG
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
-    CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D, C_X, \
-    C_Y
-from decision_making.src.planning.utils.localization_utils import LocalizationUtils
+    CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 from decision_making.test.exceptions import NotTriggeredException
