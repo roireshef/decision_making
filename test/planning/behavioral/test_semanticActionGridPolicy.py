@@ -6,7 +6,7 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_grid_stat
     SemanticActionsGridState
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticAction
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.planning.utils.semantic_actions_utils import SemanticActionsUtils
+from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import semantic_actions_state, \
     semantic_follow_action, semantic_state, semantic_grid_policy, state_with_sorrounding_objects, \

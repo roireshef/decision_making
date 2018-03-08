@@ -38,7 +38,7 @@ from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
-from decision_making.src.planning.utils.semantic_actions_utils import SemanticActionsUtils
+from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -202,6 +202,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         The trajectory specification is created towards a target location/object in given cell,
          considering ego speed, location.
          Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it
+        :param road_frenet: Frenet frame
+        :param ego_init_fstate: Frenet state of ego at initial point
+        :param ego_timestamp_in_sec: current timestamp of ego
         :return: semantic action specification
         """
         T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
@@ -275,11 +278,14 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                        ego_init_fstate: np.ndarray, ego_timestamp_in_sec: float,
                                        lon_margin: float) -> SemanticActionSpec:
         """
-        given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec.
+        Given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec.
         Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it.
-        :param behavioral_state: semantic actions grid behavioral state
-        :param semantic_action:
-        :return: SemanticActionSpec
+        :param target_obj: the object followed by the semantic action
+        :param road_frenet: Frenet frame
+        :param ego_init_fstate: Frenet state of ego at initial point
+        :param ego_timestamp_in_sec: current timestamp of ego
+        :param lon_margin: the margin of safe distance between ego and the object (sum of half-sizes of both cars + margin)
+        :return: semantic action specification
         """
         target_obj_fpoint = road_frenet.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))
         _, _, _, road_curvature_at_obj_location, _ = road_frenet._taylor_interp(target_obj_fpoint[FP_SX])
