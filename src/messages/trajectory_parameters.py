@@ -63,16 +63,13 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
     velocity_limits = Limits
     lon_acceleration_limits = Limits
     lat_acceleration_limits = Limits
-    efficiency_cost = float
-    non_right_lane_cost = float
 
 
     def __init__(self, obstacle_cost_x, obstacle_cost_y, left_lane_cost, right_lane_cost, left_shoulder_cost,
                  right_shoulder_cost, left_road_cost, right_road_cost, dist_from_goal_cost, dist_from_goal_lat_factor,
                  lon_jerk_cost, lat_jerk_cost,
-                 velocity_limits, lon_acceleration_limits, lat_acceleration_limits,
-                 efficiency_cost, non_right_lane_cost):
-        # type:(SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,float,float,float,Limits,Limits,Limits,float,float)->None
+                 velocity_limits, lon_acceleration_limits, lat_acceleration_limits):
+        # type:(SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,float,float,float,Limits,Limits,Limits)->None
         """
         This class holds all the parameters used to build the cost function of the trajectory planner.
         It is dynamically set and sent by the behavioral planner.
@@ -117,8 +114,6 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         self.velocity_limits = velocity_limits
         self.lon_acceleration_limits = lon_acceleration_limits
         self.lat_acceleration_limits = lat_acceleration_limits
-        self.efficiency_cost = efficiency_cost
-        self.non_right_lane_cost = non_right_lane_cost
 
     def serialize(self):
         # type: ()-> LcmTrajectoryCostParams
@@ -155,9 +150,6 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         lcm_msg.lat_acceleration_limits.length = self.lat_acceleration_limits.size
         lcm_msg.lat_acceleration_limits.data = self.lat_acceleration_limits.flat.__array__().tolist()
 
-        lcm_msg.efficiency_cost = self.efficiency_cost
-        lcm_msg.non_right_lane_cost = self.non_right_lane_cost
-
         return lcm_msg
 
     @classmethod
@@ -183,9 +175,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
                             , dtype = float)
                  , np.ndarray(shape = tuple(lcmMsg.lat_acceleration_limits.shape)
                             , buffer = np.array(lcmMsg.lat_acceleration_limits.data)
-                            , dtype = float)
-                 , lcmMsg.efficiency_cost
-                 , lcmMsg.non_right_lane_cost)
+                            , dtype = float))
 
 
 class TrajectoryParams(PUBSUB_MSG_IMPL):

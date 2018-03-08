@@ -256,12 +256,12 @@ class Costs:
         return np.c_[np.zeros(jerk_costs.shape[0]), jerk_costs]
 
     @staticmethod
-    def compute_efficiency_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams) -> np.array:
+    def compute_efficiency_costs(ftrajectories: FrenetTrajectories2D, efficiency_cost: float) -> np.array:
         """
         calculate efficiency (velocity) cost by parabola function
         C(vel) = P(v) = a*v*v + b*v, where v = abs(1 - vel/vel_des), C(vel_des) = 0, C(0) = 1, C'(0)/C'(vel_des) = r
         :param ftrajectories: trajectories in frenet
-        :param params: cost params contain: the cost weight
+        :param efficiency_cost: the efficiency cost weight
         :return:
         """
         r = EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO  # C'(0)/C'(vel_des) = P'(1)/P'(0)
@@ -269,23 +269,23 @@ class Costs:
         a = (r-1)/(r+1)
         b = 2/(r+1)
         v = np.abs(1 - ftrajectories[:, :, FS_SV] / BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
-        costs = params.efficiency_cost * v * (a * v + b)
+        costs = efficiency_cost * v * (a * v + b)
         return costs
 
     @staticmethod
-    def compute_non_right_lane_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams,
+    def compute_non_right_lane_costs(ftrajectories: FrenetTrajectories2D, non_right_lane_cost: float,
                                      reference_route_lat: float, lane_width: float) -> np.array:
         """
         calculate cost for using non-right lane
         :param ftrajectories: array of trajectories in Frenet frame
-        :param params: trajectory cost params
+        :param non_right_lane_cost: the non_right_lane cost weight
         :param reference_route_lat: [m] reference route road latitude
         :param lane_width: [m] lane width of the road
         :return: point-wise costs
         """
         latitudes = ftrajectories[:, :, FS_DX] + reference_route_lat
         target_lane_num = np.floor(latitudes / lane_width).astype(int)
-        costs = params.non_right_lane_cost * target_lane_num
+        costs = non_right_lane_cost * target_lane_num
         return costs
 
 

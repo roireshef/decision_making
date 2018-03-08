@@ -408,9 +408,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                            self._predictor)
             deviations_costs = Costs.compute_deviation_costs(np.array([ftrajectory]), cost_params)
             jerk_costs = Costs.compute_jerk_costs(np.array([ctrajectory]), cost_params, WERLING_TIME_RESOLUTION)
-            efficiency_costs = Costs.compute_efficiency_costs(np.array([ftrajectory]), cost_params)
-            non_right_lane_costs = Costs.compute_non_right_lane_costs(np.array([ftrajectory]), cost_params, spec.d,
-                                                                      road.lane_width)
+            efficiency_costs = Costs.compute_efficiency_costs(np.array([ftrajectory]), EFFICIENCY_COST)
+            non_right_lane_costs = Costs.compute_non_right_lane_costs(np.array([ftrajectory]), NON_RIGHT_LANE_COST,
+                                                                      spec.d, road.lane_width)
 
             # sum all costs by cost type and by time along the trajectory
             action_costs[i] = np.sum(np.dstack((obstacles_costs, deviations_costs, jerk_costs, efficiency_costs,
@@ -593,8 +593,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                            lat_jerk_cost=LAT_JERK_COST,
                                            velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
-                                           lat_acceleration_limits=LAT_ACC_LIMITS,
-                                           efficiency_cost=EFFICIENCY_COST,
-                                           non_right_lane_cost=NON_RIGHT_LANE_COST)
+                                           lat_acceleration_limits=LAT_ACC_LIMITS)
 
         return cost_params
