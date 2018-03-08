@@ -420,7 +420,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             # Since there are short and long actions, we have to align the total cost to the longest action.
             # Therefore, add duplicated last efficiency and non-right costs.
             action_costs[i] += (efficiency_costs[0, -1] + non_right_lane_costs[0, -1]) * \
-                               (T - spec.t) * WERLING_TIME_RESOLUTION
+                               (T - spec.t) / WERLING_TIME_RESOLUTION
 
         return action_costs
 
