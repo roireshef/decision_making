@@ -22,6 +22,7 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.types import C_Y, C_X, C_YAW, CartesianExtendedState, C_V, C_A, \
     CartesianTrajectories, CartesianPath2D, C_K
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
+from decision_making.src.planning.utils.transformations import Transformations
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, EgoState
 from mapping.src.transformations.geometry_utils import CartesianFrame
@@ -104,8 +105,8 @@ class TrajectoryPlanningFacade(DmModule):
                             num=TRAJECTORY_NUM_POINTS) + state_aligned.ego_state.timestamp_in_sec)
             self._last_trajectory = samplable_trajectory
 
-            vehicle_origin_trajectory_points = LocalizationUtils.transform_trajectory_between_ego_center_and_ego_origin(
-                state_aligned.ego_state.size.length, center_vehicle_trajectory_points, direction=1)
+            vehicle_origin_trajectory_points = Transformations.transform_trajectory_between_ego_center_and_ego_origin(
+                center_vehicle_trajectory_points, direction=1)
 
             # publish results to the lower DM level (Control)
             # TODO: remove ego_state.v_x from the message in version 2.0
