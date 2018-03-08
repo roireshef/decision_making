@@ -1,7 +1,7 @@
 import numpy as np
 from logging import Logger
 
-from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, BEHAVIORAL_PLANNING_LOOKAHEAD_DIST
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_LOOKAHEAD_DIST
 from decision_making.src.global_constants import SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LON_REAR, LON_MARGIN_FROM_EGO
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -128,7 +128,10 @@ class SemanticActionsGridState(SemanticBehavioralState):
         :param state: the State
         :param default_navigation_plan:
         :param object_in_cell: dynamic object in some cell
-        :return: two distances: distance from the object's rear to ego front and from ego rear to the object's front
+        :return: two relative longitudes:
+        1. longitude of object's rear relatively to ego front
+        2. longitude of object's front relatively to ego rear
+        Only one of the longitudes is relevant, depending on the sign of object's relative longitude.
         """
 
         # TODO: the relative localization calculated here assumes that all objects are located on the same road.
@@ -155,10 +158,9 @@ class SemanticActionsGridState(SemanticBehavioralState):
         ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cstate)
 
         # Relative longitudinal distance
-        object_lon_dist = obj_init_fstate[FS_SX] - ego_init_fstate[FS_SX]
+        object_relative_lon = obj_init_fstate[FS_SX] - ego_init_fstate[FS_SX]
 
-        dist_from_object_rear_to_ego_front = object_lon_dist - object_in_cell.size.length / 2 - \
-                                             (ego_state.size.length - EGO_ORIGIN_LON_FROM_REAR)
-        dist_from_ego_rear_to_object_front = object_lon_dist + object_in_cell.size.length / 2 + \
-                                             EGO_ORIGIN_LON_FROM_REAR
-        return dist_from_object_rear_to_ego_front, dist_from_ego_rear_to_object_front
+        # the following two distances are signed
+        lon_obj_rear_from_ego_front = object_relative_lon - (object_in_cell.size.length/2 + ego_state.size.length/2)
+        lon_obj_front_from_ego_rear = object_relative_lon + (object_in_cell.size.length/2 + ego_state.size.length/2)
+        return lon_obj_rear_from_ego_front, lon_obj_front_from_ego_rear

@@ -1,3 +1,4 @@
+import copy
 import time
 import traceback
 from logging import Logger
@@ -9,8 +10,7 @@ from common_data.lcm.config import pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
-    NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, DEFAULT_OBJECT_Z_VALUE, VISUALIZATION_PREDICTION_RESOLUTION, \
-    MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION, \
+    VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION, \
     NUM_ALTERNATIVE_TRAJECTORIES, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME
 from decision_making.src.infra.dm_module import DmModule
@@ -19,9 +19,10 @@ from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanM
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import C_Y, C_X, C_YAW, FP_SX, FP_DX, FrenetPoint, \
-    CartesianExtendedState, C_V, C_A, CartesianTrajectories, CartesianPath2D, C_K
+from decision_making.src.planning.types import C_Y, C_X, C_YAW, CartesianExtendedState, C_V, C_A, \
+    CartesianTrajectories, CartesianPath2D, C_K
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
+from decision_making.src.planning.utils.transformations import Transformations
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, EgoState
 from mapping.src.transformations.geometry_utils import CartesianFrame
@@ -98,18 +99,22 @@ class TrajectoryPlanningFacade(DmModule):
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon, params.cost_params)
 
-            trajectory_points, _ = samplable_trajectory.sample(
+            center_vehicle_trajectory_points, _ = samplable_trajectory.sample(
                 np.linspace(start=0,
                             stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
                             num=TRAJECTORY_NUM_POINTS) + state_aligned.ego_state.timestamp_in_sec)
+            self._last_trajectory = samplable_trajectory
+
+            vehicle_origin_trajectory_points = Transformations.transform_trajectory_between_ego_center_and_ego_origin(
+                center_vehicle_trajectory_points, direction=1)
 
             # publish results to the lower DM level (Control)
             # TODO: remove ego_state.v_x from the message in version 2.0
-            trajectory_msg = TrajectoryPlanMsg(timestamp=state.ego_state.timestamp, trajectory=trajectory_points,
+            trajectory_msg = TrajectoryPlanMsg(timestamp=state.ego_state.timestamp,
+                                               trajectory=vehicle_origin_trajectory_points,
                                                current_speed=state_aligned.ego_state.v_x)
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
-            self._last_trajectory = samplable_trajectory
 
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(

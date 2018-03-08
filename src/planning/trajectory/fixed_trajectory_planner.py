@@ -69,18 +69,21 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         :param reference_route: ignored
         :param goal: ignored
         :param cost_params: ignored
-        :return: a tuple of: (samplable represantation of the fixed trajectory, tensor of the fixed trajectory,
+        :return: a tuple of: (samplable representation of the fixed trajectory, tensor of the fixed trajectory,
          and numpy array of zero as the trajectory's cost)
         """
+        # add a Gaussian noise to sleep time, to simulate time delays in control
         time.sleep(max(self._sleep_std * np.random.randn(), 0) + self._sleep_mean)
         current_pos = np.array([state.ego_state.x, state.ego_state.y])
 
-        if not self._triggered and np.all(np.abs(current_pos - self._trigger_pos) <
-                                          np.array([NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT])):
+        if not self._triggered and np.all(np.linalg.norm(current_pos - self._trigger_pos) <
+                                          np.linalg.norm(np.array([NEGLIGIBLE_DISPOSITION_LON,
+                                                                   NEGLIGIBLE_DISPOSITION_LAT]))):
             self._triggered = True
 
         if self._triggered:
-            current_trajectory = self._fixed_trajectory[self._trajectory_advancing:(self._trajectory_advancing+TRAJECTORY_NUM_POINTS)]
+            current_trajectory = self._fixed_trajectory[
+                                 self._trajectory_advancing:(self._trajectory_advancing + TRAJECTORY_NUM_POINTS)]
 
             self._trajectory_advancing += self._step_size
 
@@ -91,4 +94,4 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
                    np.array([current_trajectory[:, :(C_V + 1)]]), zero_trajectory_cost
         else:
             raise NotTriggeredException("Didn't reach trigger point yet [%s]. Current localization is [%s]" %
-                                           (self._trigger_pos, current_pos))
+                                        (self._trigger_pos, current_pos))

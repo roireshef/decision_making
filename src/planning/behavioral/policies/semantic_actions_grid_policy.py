@@ -5,7 +5,7 @@ import numpy as np
 
 from decision_making.src.exceptions import BehavioralPlanningException, InvalidAction
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
-from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_REAR, TRAJECTORY_ARCLEN_RESOLUTION, \
+from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS, \
     BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     WERLING_TIME_RESOLUTION, EFFICIENCY_COST, NON_RIGHT_LANE_COST
@@ -42,6 +42,7 @@ from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
+from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -181,13 +182,11 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cstate)
 
         if semantic_action.action_type == SemanticActionType.FOLLOW_VEHICLE:
-            # part of ego from its origin to its front + half of target object
-            lon_margin = (ego.size.length - EGO_ORIGIN_LON_FROM_REAR) + semantic_action.target_obj.size.length / 2
-
             # TODO: the relative localization calculated here assumes that all objects are located on the same road and Frenet frame.
             # TODO: Fix after demo and calculate longitudinal difference properly in the general case
             return self._specify_follow_vehicle_action(semantic_action.target_obj, road_frenet, ego_init_fstate,
-                                                       ego.timestamp_in_sec, lon_margin)
+                    ego.timestamp_in_sec,
+                    SemanticActionsUtils.get_ego_lon_margin(ego.size) + semantic_action.target_obj.size.length / 2)
 
         elif semantic_action.action_type == SemanticActionType.FOLLOW_LANE:
             road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id)
@@ -207,6 +206,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         The trajectory specification is created towards a target location/object in given cell,
          considering ego speed, location.
          Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it
+        :param road_frenet: Frenet frame
+        :param ego_init_fstate: Frenet state of ego at initial point
+        :param ego_timestamp_in_sec: current timestamp of ego
         :return: semantic action specification
         """
         T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
@@ -280,11 +282,14 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                        ego_init_fstate: np.ndarray, ego_timestamp_in_sec: float,
                                        lon_margin: float) -> SemanticActionSpec:
         """
-        given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec.
+        Given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec.
         Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it.
-        :param behavioral_state: semantic actions grid behavioral state
-        :param semantic_action:
-        :return: SemanticActionSpec
+        :param target_obj: the object followed by the semantic action
+        :param road_frenet: Frenet frame
+        :param ego_init_fstate: Frenet state of ego at initial point
+        :param ego_timestamp_in_sec: current timestamp of ego
+        :param lon_margin: the margin of safe distance between ego and the object (sum of half-sizes of both cars + margin)
+        :return: semantic action specification
         """
         target_obj_fpoint = road_frenet.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))
         _, _, _, road_curvature_at_obj_location, _ = road_frenet._taylor_interp(target_obj_fpoint[FP_SX])
@@ -576,8 +581,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         # Set objects parameters
         # dilate each object by ego length + safety margin
-        objects_dilation_length = ego_size.length / 2 + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
-        objects_dilation_width = ego_size.width / 2 + LATERAL_SAFETY_MARGIN_FROM_OBJECT
+        objects_dilation_length = SemanticActionsUtils.get_ego_lon_margin(ego_size)
+        objects_dilation_width = SemanticActionsUtils.get_ego_lat_margin(ego_size)
         objects_cost_x = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
                                                offset=objects_dilation_length)  # Very high (inf) cost
         objects_cost_y = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,

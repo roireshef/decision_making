@@ -200,7 +200,7 @@ FIXED_TRAJECTORY_PLANNER_SLEEP_STD = 0.2
 EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 5.0, 2.0, 2.0
 
 # [m] The distance from ego frame origin to ego rear
-EGO_ORIGIN_LON_FROM_REAR = 4
+EGO_ORIGIN_LON_FROM_CENTER = 1.5
 
 #The id of the ego object
 EGO_ID = 0

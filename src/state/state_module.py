@@ -8,6 +8,7 @@ from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LEN
     UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS, LOG_MSG_STATE_MODULE_PUBLISH_STATE
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.planning.types import CartesianPoint3D
+from decision_making.src.planning.utils.transformations import Transformations
 from decision_making.src.state.state import OccupancyState, EgoState, DynamicObject, ObjectSize, State
 from mapping.src.exceptions import MapCellNotFound, raises
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
@@ -189,7 +190,10 @@ class StateModule(DmModule):
                 self._ego_state = EgoState(EGO_ID, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, a_x,
                                            UNKNOWN_DEFAULT_VAL, UNKNOWN_DEFAULT_VAL)
 
+                self._ego_state = Transformations.transform_ego_from_origin_to_center(self._ego_state)
+
             self._publish_state_if_full()
+
         except Exception as e:
             self.logger.exception('StateModule._self_localization_callback failed due to')
 
