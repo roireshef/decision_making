@@ -200,6 +200,7 @@ class StateModule(DmModule):
         except Exception as e:
             self.logger.exception('StateModule._self_localization_callback failed due to')
 
+    @prof.ProfileFunction()
     def _publish_state_if_full(self) -> None:
         """
         Publish the currently updated state information.
