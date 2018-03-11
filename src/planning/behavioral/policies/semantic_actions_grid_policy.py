@@ -413,19 +413,17 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             # compute the trajectory cost
             obstacles_costs = Costs.compute_obstacle_costs(np.array([ctrajectory]), state, cost_params, time_points,
                                                            self._predictor)
-            deviations_costs = Costs.compute_deviation_costs(np.array([ftrajectory]), cost_params)
             jerk_costs = Costs.compute_jerk_costs(np.array([ctrajectory]), cost_params, WERLING_TIME_RESOLUTION)
             efficiency_costs = Costs.compute_efficiency_costs(np.array([ftrajectory]), EFFICIENCY_COST)
             non_right_lane_costs = Costs.compute_non_right_lane_costs(np.array([ftrajectory]), NON_RIGHT_LANE_COST,
                                                                       spec.d, road.lane_width)
 
             # sum all costs by cost type and by time along the trajectory
-            action_costs[i] = np.sum(np.dstack((obstacles_costs, deviations_costs, jerk_costs, efficiency_costs,
-                                                non_right_lane_costs)), axis=(1, 2))[0]
+            action_costs[i] = np.sum(np.dstack((obstacles_costs, jerk_costs, efficiency_costs, non_right_lane_costs)),
+                                     axis=(1, 2))[0]
             # Since there are short and long actions, we have to align the total cost to the longest action.
             # Therefore, add duplicated last efficiency and non-right costs.
-            action_costs[i] += (efficiency_costs[0, -1] + non_right_lane_costs[0, -1]) * \
-                               (T - spec.t) / WERLING_TIME_RESOLUTION
+            action_costs[i] += (efficiency_costs[0, -1] + non_right_lane_costs[0, -1]) * (T - spec.t) / WERLING_TIME_RESOLUTION
 
         return action_costs
 
