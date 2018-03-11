@@ -4,6 +4,7 @@ import numpy as np
 
 from decision_making.src.global_constants import EXP_CLIP_TH, TRAJECTORY_OBSTACLE_LOOKAHEAD, \
     EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+from decision_making.src.messages.str_serializable import StrSerializable
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import CartesianTrajectory, C_YAW, CartesianState, C_Y, C_X, \
     CartesianTrajectories, CartesianPaths2D, CartesianPoint2D, C_A, C_K, C_V, CartesianExtendedTrajectories, \
@@ -158,6 +159,20 @@ class SigmoidStaticBoxObstacle(SigmoidBoxObstacle):
         :return: new instance
         """
         return cls(np.array([obj.x, obj.y, obj.yaw, 0]), obj.size.length, obj.size.width, k, offset)
+
+
+# class Metric(StrSerializable):
+#     @staticmethod
+#     def calc_costs() -> np.ndarray:
+#         pass
+#
+#
+# class SafetyMetric(Metric):
+#     @staticmethod
+#     def calc_costs(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D,
+#                     state: State, params: TrajectoryCostParams,
+#                     global_time_samples: np.ndarray, predictor: Predictor, dt: float) -> np.ndarray:
+#
 
 
 class Costs:
