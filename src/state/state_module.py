@@ -19,6 +19,7 @@ from common_data.src.communication.pubsub.pubsub import PubSub
 from common_data.lcm.config import pubsub_topics
 from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedDynamicObjectList
 from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedSelfLocalization
+import rte.python.profiler as prof
 
 
 class StateModule(DmModule):
@@ -68,6 +69,7 @@ class StateModule(DmModule):
     def _periodic_action_impl(self) -> None:
         pass
 
+    @prof.ProfileFunction()
     def _dynamic_obj_callback(self, objects: LcmPerceivedDynamicObjectList):
         """
         Deserialize dynamic objects message and replace pointer reference to dynamic object list under lock
@@ -167,6 +169,7 @@ class StateModule(DmModule):
                 "Couldn't localize object on road. Object location: ({}, {}, {})".format(id, x, y, z))
             return False
 
+    @prof.ProfileFunction()
     def _self_localization_callback(self, self_localization: LcmPerceivedSelfLocalization) -> None:
         """
         Deserialize localization information, convert to road coordinates and update state information.
