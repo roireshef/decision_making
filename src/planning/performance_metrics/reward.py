@@ -36,5 +36,5 @@ class Reward:
         :return: NxM matrix of total rewards per input trajectory and time point
         """
         costs = np.array([metric.calc_pointwise_cost(pm_state, params) for metric in self.metrics])
-        weights = np.swapaxes(np.swapaxes(np.tile(self.weights, (costs.shape[1], costs.shape[2], 1)), 1, 2), 0, 1)
+        weights = np.transpose(np.tile(self.weights, (costs.shape[1], costs.shape[2], 1)), (2, 0, 1))
         return np.sum(costs * weights, axis=0)
