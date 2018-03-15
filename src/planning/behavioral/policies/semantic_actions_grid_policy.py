@@ -8,7 +8,7 @@ from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS, \
     BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    WERLING_TIME_RESOLUTION, EFFICIENCY_COST, NON_RIGHT_LANE_COST
+    WERLING_TIME_RESOLUTION, EFFICIENCY_COST, RIGHT_LANE_COST
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
     DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
@@ -28,7 +28,10 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_policy im
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticActionsPolicy, \
     SemanticAction, SemanticActionType, \
     LAT_CELL, LON_CELL, SemanticGridCell
-from decision_making.src.planning.trajectory.cost_function import Costs
+from decision_making.src.planning.performance_metrics.cost_functions import SafetyMetric, ComfortMetric, \
+    EfficiencyMetric, RightLaneMetric
+from decision_making.src.planning.performance_metrics.metric import PMState
+from decision_making.src.planning.performance_metrics.reward import Reward
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory
@@ -410,20 +413,25 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
             cost_params = SemanticActionsGridPolicy._generate_cost_params(ego.road_localization.road_id, ego.size, spec.d)
 
-            # compute the trajectory cost
-            obstacles_costs = Costs.compute_obstacle_costs(np.array([ctrajectory]), state, cost_params, time_points,
-                                                           self._predictor)
-            jerk_costs = Costs.compute_jerk_costs(np.array([ctrajectory]), cost_params, WERLING_TIME_RESOLUTION)
-            efficiency_costs = Costs.compute_efficiency_costs(np.array([ftrajectory]), EFFICIENCY_COST)
-            non_right_lane_costs = Costs.compute_non_right_lane_costs(np.array([ftrajectory]), NON_RIGHT_LANE_COST,
-                                                                      spec.d, road.lane_width)
+            # compute point-wise costs components separately (instead of using Reward class), since we need
+            # the last point costs of two of them
+            pm_state = PMState(state, np.array([ctrajectory]), np.array([ftrajectory]), time_points, self._predictor,
+                               road.lane_width, spec.d)
+            safety_costs = SafetyMetric.calc_pointwise_cost(pm_state, cost_params)
+            comfort_costs = ComfortMetric.calc_pointwise_cost(pm_state, cost_params)
+            efficiency_costs = EfficiencyMetric.calc_pointwise_cost(pm_state, cost_params)
+            right_lane_costs = RightLaneMetric.calc_pointwise_cost(pm_state, cost_params)
 
-            # sum all costs by cost type and by time along the trajectory
-            action_costs[i] = np.sum(np.dstack((obstacles_costs, jerk_costs, efficiency_costs, non_right_lane_costs)),
+            # compute the trajectory cost
+            action_costs[i] = np.sum(np.dstack((cost_params.obstacle_cost_x.w * safety_costs,
+                                                (cost_params.lon_jerk_cost + cost_params.lat_jerk_cost) * comfort_costs,
+                                                EFFICIENCY_COST * efficiency_costs,
+                                                RIGHT_LANE_COST * right_lane_costs)),
                                      axis=(1, 2))[0]
+
             # Since there are short and long actions, we have to align the total cost to the longest action.
             # Therefore, add duplicated last efficiency and non-right costs.
-            action_costs[i] += (efficiency_costs[0, -1] + non_right_lane_costs[0, -1]) * (T - spec.t) / WERLING_TIME_RESOLUTION
+            action_costs[i] += (efficiency_costs[0, -1] + right_lane_costs[0, -1]) * (T - spec.t) / WERLING_TIME_RESOLUTION
 
         return action_costs
 
