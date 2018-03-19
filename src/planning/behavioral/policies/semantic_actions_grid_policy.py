@@ -7,7 +7,7 @@ from decision_making.src.exceptions import BehavioralPlanningException, InvalidA
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR, \
     WERLING_TIME_RESOLUTION, EFFICIENCY_COST, RIGHT_LANE_COST
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
     DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
@@ -319,7 +319,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         obj_svT = obj_init_fstate[FS_SV] + obj_saT * T_vals
         obj_sxT = obj_init_fstate[FS_SX] + obj_svT * T_vals + obj_saT * T_vals ** 2 / 2
 
-        safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
+        safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY + 15  # increase the margin to enable safe overtake
 
         constraints_s = np.c_[
             np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SX]),
@@ -353,9 +353,10 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS])
         optimum_time_idx = np.argmin(cost)
+        optimum_time_idx_d = min(optimum_time_idx, np.where(T_vals <= 7)[0][-1])  # don't change lane more than 7 sec for the sake of safety
 
         optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] and \
-                                             are_lat_acc_in_limits[optimum_time_idx] and \
+                                             are_lat_acc_in_limits[optimum_time_idx_d] and \
                                              are_vel_in_limits[optimum_time_idx]
 
         if not optimum_time_satisfies_constraints:
@@ -365,20 +366,20 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                   (str(self._last_action_spec), T_vals[optimum_time_idx],
                                    are_vel_in_limits[optimum_time_idx],
                                    are_lon_acc_in_limits[optimum_time_idx],
-                                   are_lat_acc_in_limits[optimum_time_idx]))
+                                   are_lat_acc_in_limits[optimum_time_idx_d]))
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
         samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=ego_timestamp_in_sec,
                                                           T_s=T_vals[optimum_time_idx],
-                                                          T_d=T_vals[optimum_time_idx],
+                                                          T_d=T_vals[optimum_time_idx_d],
                                                           frenet_frame=road_frenet,
                                                           poly_s_coefs=poly_coefs_s[optimum_time_idx],
-                                                          poly_d_coefs=poly_coefs_d[optimum_time_idx])
+                                                          poly_d_coefs=poly_coefs_d[optimum_time_idx_d])
 
         return SemanticActionSpec(t=T_vals[optimum_time_idx], v=obj_svT[optimum_time_idx],
                                   s=constraints_s[optimum_time_idx, 3],
-                                  d=constraints_d[optimum_time_idx, 3],
+                                  d=constraints_d[optimum_time_idx_d, 3],
                                   samplable_trajectory=samplable_trajectory)
 
     def _eval_actions_by_cost(self, state: State, actions_spec: List[SemanticActionSpec]) -> np.ndarray:
@@ -428,6 +429,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                 EFFICIENCY_COST * efficiency_costs,
                                                 RIGHT_LANE_COST * right_lane_costs)),
                                      axis=(1, 2))[0]
+
+            # print('d=%f s=%f v=%f T=%f' % (spec.d, spec.s, spec.v, spec.t))
+            # print('safety %s jerk %s efficiency %s right %s' % (np.sum(safety_costs), np.sum(comfort_costs),
+            #         np.sum(efficiency_costs) + efficiency_costs[0, -1] * (T - spec.t) / WERLING_TIME_RESOLUTION,
+            #         np.sum(right_lane_costs) + right_lane_costs[0, -1] * (T - spec.t) / WERLING_TIME_RESOLUTION))
+            # print('safety %s\njerk %s\nefficiency%s\nright %s' % (safety_costs, comfort_costs, efficiency_costs, right_lane_costs))
 
             # Since there are short and long actions, we have to align the total cost to the longest action.
             # Therefore, add duplicated last efficiency and non-right costs.
