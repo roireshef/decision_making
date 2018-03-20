@@ -68,7 +68,7 @@ GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goa
 LON_JERK_COST = 1.0                         # cost of longitudinal jerk
 LAT_JERK_COST = 1.0                         # cost of lateral jerk
 
-EFFICIENCY_COST = 2.0                       # cost of zero velocity on one trajectory point
+EFFICIENCY_COST = 1.0                       # cost of zero velocity on one trajectory point
 EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO = 3  # ratio UNDER_C'(0) / UNDER_C'(v_desired)
 RIGHT_LANE_COST = 0.1                   # cost of using non-right lane on one trajectory point
 

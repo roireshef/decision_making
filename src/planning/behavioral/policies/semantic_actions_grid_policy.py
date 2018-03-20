@@ -319,7 +319,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         obj_svT = obj_init_fstate[FS_SV] + obj_saT * T_vals
         obj_sxT = obj_init_fstate[FS_SX] + obj_svT * T_vals + obj_saT * T_vals ** 2 / 2
 
-        safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY + 10  # increase the margin to enable safe overtake
+        safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
 
         constraints_s = np.c_[
             np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SX]),
@@ -431,14 +431,17 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                      axis=(1, 2))[0]
 
             # print('d=%f s=%f v=%f T=%f' % (spec.d, spec.s, spec.v, spec.t))
-            # print('safety %s jerk %s efficiency %s right %s' % (np.sum(safety_costs), np.sum(comfort_costs),
-            #         np.sum(efficiency_costs) + efficiency_costs[0, -1] * (T - spec.t) / WERLING_TIME_RESOLUTION,
-            #         np.sum(right_lane_costs) + right_lane_costs[0, -1] * (T - spec.t) / WERLING_TIME_RESOLUTION))
-            # print('safety %s\njerk %s\nefficiency%s\nright %s' % (safety_costs, comfort_costs, efficiency_costs, right_lane_costs))
+            # print('safety %s jerk %s efficiency %s right %s' %
+            #       (cost_params.obstacle_cost_x.w * np.sum(safety_costs),
+            #        (cost_params.lon_jerk_cost + cost_params.lat_jerk_cost) * np.sum(comfort_costs),
+            #        EFFICIENCY_COST * (np.sum(efficiency_costs) + efficiency_costs[0, -1] * (T - spec.t) / WERLING_TIME_RESOLUTION),
+            #        RIGHT_LANE_COST * (np.sum(right_lane_costs) + right_lane_costs[0, -1] * (T - spec.t) / WERLING_TIME_RESOLUTION)))
+            #print('safety %s\njerk %s\nefficiency%s\nright %s' % (safety_costs, comfort_costs, efficiency_costs, right_lane_costs))
 
             # Since there are short and long actions, we have to align the total cost to the longest action.
             # Therefore, add duplicated last efficiency and non-right costs.
-            action_costs[i] += (efficiency_costs[0, -1] + right_lane_costs[0, -1]) * (T - spec.t) / WERLING_TIME_RESOLUTION
+            action_costs[i] += (EFFICIENCY_COST * efficiency_costs[0, -1] + RIGHT_LANE_COST * right_lane_costs[0, -1]) \
+                               * (T - spec.t) / WERLING_TIME_RESOLUTION
 
         return action_costs
 
