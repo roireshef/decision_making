@@ -14,11 +14,11 @@ import matplotlib.pyplot as plt
 
 
 # LOG_PATH_FOR_ANALYSIS = '/home/max/AV_Log_dm_main_test-2017_12_12-10_19.log'
-LOG_PATH_FOR_ANALYSIS = '/home/nz2v30/recordings/2018_03_12_12_34_Proving_Grounds_Daytime/logs/AV_Log_dm_main.log'
+LOG_PATH_FOR_ANALYSIS = '/local/flash/recordings/2018_03_19/AV_Log_dm_main.log'
 #LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2018_02_19/2018_02_19_16_56_Proving_Grounds_-_Low_Light/AV_Log_dm_main.log'
 # LOG_PATH_FOR_ANALYSIS = 'AV_Log_rbcar0.log'
 TARGET_LOG_TIME = 57906.0
-TARGET_OUTPUT_DIR = '/home/nz2v30/reparser_output/'
+TARGET_OUTPUT_DIR = '/home/vzt9fl/av_code/spcog/decision_making_sim/config/reparser_output/2018_03_19_11_18/'
 
 def main():
     filename = LOG_PATH_FOR_ANALYSIS if ('log_filename' not in sys.argv) else sys.argv['log_filename']
@@ -127,7 +127,7 @@ def main():
 
                 if dyn_obj.timestamp_in_sec > prev_timestamps[dyn_obj.obj_id]:
                     out_str = str(dyn_obj.timestamp_in_sec) + ", " + str(dyn_obj.x) + ", " + str(dyn_obj.y) + ", " + \
-                              str(dyn_obj.yaw) + "\n"
+                              str(dyn_obj.yaw) + ", " + str(dyn_obj.v_x) + ", " + str(dyn_obj.v_y) + "\n"
                     agent_file_dict[dyn_obj.obj_id].write(out_str)
                     prev_timestamps[dyn_obj.obj_id] = dyn_obj.timestamp_in_sec
 
