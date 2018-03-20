@@ -319,7 +319,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         obj_svT = obj_init_fstate[FS_SV] + obj_saT * T_vals
         obj_sxT = obj_init_fstate[FS_SX] + obj_svT * T_vals + obj_saT * T_vals ** 2 / 2
 
-        safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY + 15  # increase the margin to enable safe overtake
+        safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY + 10  # increase the margin to enable safe overtake
 
         constraints_s = np.c_[
             np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SX]),
