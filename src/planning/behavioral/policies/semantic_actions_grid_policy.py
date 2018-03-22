@@ -352,16 +352,16 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                              are_vel_in_limits[optimum_time_idx]
 
         # In case of sharp braking (obj is slow and close), the optimal T may be too large, such that the final part
-        # of the samplable trajectory has negative velocity. Choosing a smaller T satisfying constraints
-        # (positive velocity) still comply with goal consistency over time, so the action should not be rejected.
+        # of the samplable trajectory has negative velocity. Choosing a smaller T satisfying positive velocity,
+        # still complies with goal consistency over time, so the action should not be rejected.
+        # If velocity constraints are not satisfied because of LIMIT_MAX, then any smaller T can't satisfy them. So,
+        # in this case the action will be rejected.
         if not are_vel_in_limits[optimum_time_idx] and \
                 are_lon_acc_in_limits[optimum_time_idx] and are_lat_acc_in_limits[optimum_time_idx] and \
                 ego_init_fstate[FS_SV] > obj_svT[optimum_time_idx]:
-            is_vel_in_upper_limit = QuinticPoly1D.is_velocity_in_limits(poly_coefs_s[optimum_time_idx],
-                T_vals[optimum_time_idx], np.array([-np.inf, VELOCITY_LIMITS[LIMIT_MAX]]))
-            vel_in_limits_idxs = np.where(are_vel_in_limits[:optimum_time_idx])[0]
-            if is_vel_in_upper_limit and len(vel_in_limits_idxs) > 0:
-                optimum_time_idx = vel_in_limits_idxs[-1]
+            vel_in_limits_idxs = np.where(are_vel_in_limits[:optimum_time_idx])[0]  # all T < optimum, for which vel_in_limits
+            if len(vel_in_limits_idxs) > 0:
+                optimum_time_idx = vel_in_limits_idxs[-1]  # choose the largest T, for which vel_in_limits
                 optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] and \
                                                      are_lat_acc_in_limits[optimum_time_idx]
 
