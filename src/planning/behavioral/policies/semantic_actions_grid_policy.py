@@ -8,7 +8,7 @@ from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS, \
     BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR, \
-    WERLING_TIME_RESOLUTION, EFFICIENCY_COST, RIGHT_LANE_COST
+    WERLING_TIME_RESOLUTION, EFFICIENCY_COST, RIGHT_LANE_COST, MAX_HYSTERESIS_COST, HYSTERESIS_TIMEOUT
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
     DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
@@ -56,6 +56,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         self._last_ego_state: Optional[EgoState] = None
         self._last_action: Optional[SemanticAction] = None
         self._last_action_spec: Optional[SemanticActionSpec] = None
+        self._last_action_change_time: float = None
         self._last_poly_coefs_s: Optional[np.ndarray] = None
         self._predictor = predictor
 
@@ -101,7 +102,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         actions_spec = [action_specs[x] for x in valid_spec_indices]
 
         # evaluate all action-specifications by computing a cost for each action
-        action_costs = self._eval_actions_by_cost(state, actions_spec)
+        action_costs = self._eval_actions(state, semantic_actions, actions_spec)
 
         # select an action-specification with minimal cost
         selected_action_index = int(np.argmin(action_costs))
@@ -114,6 +115,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         visualization_message = BehavioralVisualizationMsg(reference_route=trajectory_parameters.reference_route)
 
         # updating selected actions in memory
+        if self._last_action is not None and (semantic_actions[selected_action_index] != self._last_action):
+            self._last_action_change_time = state.ego_state.timestamp_in_sec
         self._last_action = semantic_actions[selected_action_index]
         self._last_action_spec = selected_action_spec
         self._last_ego_state = state.ego_state
@@ -382,8 +385,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                   d=constraints_d[optimum_time_idx_d, 3],
                                   samplable_trajectory=samplable_trajectory)
 
-    def _eval_actions_by_cost(self, state: State, actions_spec: List[SemanticActionSpec]) -> np.ndarray:
-
+    def _eval_actions(self, state: State, semantic_actions: List[SemanticAction],
+                      actions_spec: List[SemanticActionSpec]) -> np.ndarray:
         """
         Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
         Gets a list of actions to evaluate and returns a vector representing their costs.
@@ -395,12 +398,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
         """
 
-        lookahead_distance = 0
-        T = 0
-        for spec in actions_spec:
-            lookahead_distance = max(lookahead_distance, spec.s * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO)
-            T = max(T, spec.t)
-
+        T = BP_ACTION_T_LIMITS[LIMIT_MAX]
         ego = state.ego_state
         road = MapService.get_instance().get_road(ego.road_localization.road_id)
 
@@ -430,18 +428,32 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                                 RIGHT_LANE_COST * right_lane_costs)),
                                      axis=(1, 2))[0]
 
-            # print('d=%f s=%f v=%f T=%f' % (spec.d, spec.s, spec.v, spec.t))
-            # print('safety %s jerk %s efficiency %s right %s' %
-            #       (cost_params.obstacle_cost_x.w * np.sum(safety_costs),
-            #        (cost_params.lon_jerk_cost + cost_params.lat_jerk_cost) * np.sum(comfort_costs),
-            #        EFFICIENCY_COST * (np.sum(efficiency_costs) + efficiency_costs[0, -1] * (T - spec.t) / WERLING_TIME_RESOLUTION),
-            #        RIGHT_LANE_COST * (np.sum(right_lane_costs) + right_lane_costs[0, -1] * (T - spec.t) / WERLING_TIME_RESOLUTION)))
-            #print('safety %s\njerk %s\nefficiency%s\nright %s' % (safety_costs, comfort_costs, efficiency_costs, right_lane_costs))
-
             # Since there are short and long actions, we have to align the total cost to the longest action.
             # Therefore, add duplicated last efficiency and non-right costs.
             action_costs[i] += (EFFICIENCY_COST * efficiency_costs[0, -1] + RIGHT_LANE_COST * right_lane_costs[0, -1]) \
                                * (T - spec.t) / WERLING_TIME_RESOLUTION
+
+            # add hysteresis cost
+            hysteresis_cost = 0
+            if self._last_action_change_time is not None:
+                time_factor = 1. - min(1., (ego.timestamp_in_sec - self._last_action_change_time) / HYSTERESIS_TIMEOUT)
+                # we don't compare action_type and LON_CELL, since in last_action the target may be behind the horizon,
+                # and the same target may move from one LON_CELL to another
+                if semantic_actions[i].cell[LAT_CELL] != self._last_action.cell[LAT_CELL]:
+                    hysteresis_cost = MAX_HYSTERESIS_COST * time_factor
+            action_costs[i] += hysteresis_cost
+
+            # print('d=%f s=%f v=%f T=%f' % (spec.d, spec.s, spec.v, spec.t))
+            # print('safety %s jerk %s efficiency %s right %s hyst %f total %s' %
+            #       (cost_params.obstacle_cost_x.w * np.sum(safety_costs),
+            #        (cost_params.lon_jerk_cost + cost_params.lat_jerk_cost) * np.sum(comfort_costs),
+            #        EFFICIENCY_COST * (
+            #        np.sum(efficiency_costs) + efficiency_costs[0, -1] * (T - spec.t) / WERLING_TIME_RESOLUTION),
+            #        RIGHT_LANE_COST * (
+            #        np.sum(right_lane_costs) + right_lane_costs[0, -1] * (T - spec.t) / WERLING_TIME_RESOLUTION),
+            #        hysteresis_cost,
+            #        action_costs[i]))
+            # print('safety %s\njerk %s\nefficiency%s\nright %s' % (safety_costs, comfort_costs, efficiency_costs, right_lane_costs))
 
         return action_costs
 

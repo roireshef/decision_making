@@ -147,7 +147,7 @@ class SemanticActionsPolicy(Policy):
         """
         pass
 
-    def _eval_actions(self, behavioral_state: SemanticBehavioralState, semantic_actions: List[SemanticAction],
+    def _eval_actions(self, state: State, semantic_actions: List[SemanticAction],
                       actions_spec: List[SemanticActionSpec]) -> np.ndarray:
         """
         Evaluate the generated actions using the full state.
