@@ -8,7 +8,8 @@ from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS, \
     BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR, \
-    WERLING_TIME_RESOLUTION, EFFICIENCY_COST, RIGHT_LANE_COST, MAX_HYSTERESIS_COST, HYSTERESIS_TIMEOUT
+    WERLING_TIME_RESOLUTION, EFFICIENCY_COST, RIGHT_LANE_COST, MAX_HYSTERESIS_COST, HYSTERESIS_TIMEOUT, \
+    FOLLOW_CAR_LON_MARGIN
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
     DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
@@ -322,7 +323,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         obj_svT = obj_init_fstate[FS_SV] + obj_saT * T_vals
         obj_sxT = obj_init_fstate[FS_SX] + obj_svT * T_vals + obj_saT * T_vals ** 2 / 2
 
-        safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
+        safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY + FOLLOW_CAR_LON_MARGIN
 
         constraints_s = np.c_[
             np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SX]),

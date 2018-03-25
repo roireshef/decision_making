@@ -109,6 +109,9 @@ MIN_OVERTAKE_VEL = 3
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
 
+# [m] Additional margin from the followed car to ease its overtake (it doesn't depend on velocity but on acceleration)
+FOLLOW_CAR_LON_MARGIN = 10
+
 
 # Trajectory Planner #
 
