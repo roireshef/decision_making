@@ -287,7 +287,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
     @raises(InvalidAction)
     def _specify_follow_vehicle_action(self, target_obj: DynamicObject, road_frenet: FrenetSerret2DFrame,
                                        ego_init_fstate: np.ndarray, ego_timestamp_in_sec: float,
-                                       lon_margin: float) -> SemanticActionSpec:
+                                       cars_size_lon_margin: float) -> SemanticActionSpec:
         """
         Given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec.
         Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it.
@@ -295,7 +295,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         :param road_frenet: Frenet frame
         :param ego_init_fstate: Frenet state of ego at initial point
         :param ego_timestamp_in_sec: current timestamp of ego
-        :param lon_margin: the margin of safe distance between ego and the object (sum of half-sizes of both cars + margin)
+        :param cars_size_lon_margin: the margin of safe distance between ego and the object (sum of half-sizes of both cars + margin)
         :return: semantic action specification
         """
         target_obj_fpoint = road_frenet.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))
@@ -323,13 +323,13 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         obj_svT = obj_init_fstate[FS_SV] + obj_saT * T_vals
         obj_sxT = obj_init_fstate[FS_SX] + obj_svT * T_vals + obj_saT * T_vals ** 2 / 2
 
-        safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY + FOLLOW_CAR_LON_MARGIN
+        safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
 
         constraints_s = np.c_[
             np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SX]),
             np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SV]),
             np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SA]),
-            obj_sxT - safe_lon_dist - lon_margin,
+            obj_sxT - safe_lon_dist - FOLLOW_CAR_LON_MARGIN - cars_size_lon_margin,
             obj_svT,
             np.full(shape=len(T_vals), fill_value=obj_saT)
         ]
