@@ -437,7 +437,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             hysteresis_cost = 0
             if self._last_action_change_time is not None:
                 time_factor = 1. - min(1., (ego.timestamp_in_sec - self._last_action_change_time) / HYSTERESIS_TIMEOUT)
-                # we don't compare action_type and LON_CELL, since in last_action the target may be behind the horizon,
+                # we don't compare action_type and LON_CELL, since in last_action the target may be beyond the horizon,
                 # and the same target may move from one LON_CELL to another
                 if semantic_actions[i].cell[LAT_CELL] != self._last_action.cell[LAT_CELL]:
                     hysteresis_cost = MAX_HYSTERESIS_COST * time_factor
