@@ -11,10 +11,10 @@ from decision_making.test.log_analysis.parse_log_messages import STATE_IDENTIFIE
     STATE_IDENTIFIER_STRING_TP, STATE_IDENTIFIER_STRING_STATE_MODULE, DmLogParser
 
 import matplotlib.pyplot as plt
-
+import numpy as np
 
 # Log filename
-LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2018_02_19/2018_02_19_15_56_Proving_Grounds_-_Daytime/AV_Log_dm_main_2018-02-19_15-58-06.log'
+LOG_PATH_FOR_ANALYSIS = '/home/nz2v30/Desktop/logs/15.14/AV_Log_dm_main.log'
 
 
 def main():
@@ -147,8 +147,46 @@ def main():
             file.write(json.dumps(bp_params_serialized))
             file.write("\n")
 
+        # range of dynamic objects analysis
+        np.random.seed(0)
+        colors = np.random.random([64, 3])
+        targets = {}
+        first_time = -1
+        for state_message_index in range(len(state_module_states)):
+             # Convert log messages to dict
+            state_msg = LogMsg.convert_message_to_dict(state_module_states[state_message_index])
+            # Deserialize from dict to object
+            state = LogMsg.deserialize(class_type=State, message=state_msg) # type: State
+            if first_time < 0:
+                first_time = state.ego_state.timestamp_in_sec
+            ego_x, ego_y = state.ego_state.x, state.ego_state.y
+            t = state.ego_state.timestamp_in_sec - first_time
+            for dyn_obj in state.dynamic_objects:
+                obj_id = dyn_obj.obj_id
+                obj_x, obj_y = dyn_obj.x, dyn_obj.y
+                obj_range = rng(ego_x, ego_y, obj_x, obj_y)
+                if obj_id in targets:
+                    targets[obj_id]["rng"].append(obj_range)
+                    targets[obj_id]["t"].append(t)
+                else:
+                    targets[obj_id] = {"rng": [obj_range], "t": [t]}
+
+        plt.figure(figsize=[15, 5])
+        plt.ioff()
+        for tid, trg in targets.items():
+            clr = colors[tid % 64, :]
+            plt.plot(trg["t"], trg["rng"], "-", color=clr)
+
+        plt.xlabel("time")
+        plt.ylabel("rng [m]")
+        plt.title("Range of objects as a function of time")
+        # plt.savefig(os.path.join(dump_dir, f.split(".dmp.")[1] + "_range.png"))
+        # plt.show()
+
         print("finish")
 
+def rng(x1, y1, x2, y2):
+    return ((x1-x2)**2 + (y1-y2)**2)**0.5
 
 if __name__ == '__main__':
     main()
