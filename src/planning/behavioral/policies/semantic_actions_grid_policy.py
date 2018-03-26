@@ -357,10 +357,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS])
         optimum_time_idx = np.argmin(cost)
-        optimum_time_idx_d = min(optimum_time_idx, np.where(T_vals <= 7)[0][-1])  # don't change lane more than 7 sec for the sake of safety
 
         optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] and \
-                                             are_lat_acc_in_limits[optimum_time_idx_d] and \
+                                             are_lat_acc_in_limits[optimum_time_idx] and \
                                              are_vel_in_limits[optimum_time_idx]
 
         if not optimum_time_satisfies_constraints:
@@ -370,20 +369,20 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                   (str(self._last_action_spec), T_vals[optimum_time_idx],
                                    are_vel_in_limits[optimum_time_idx],
                                    are_lon_acc_in_limits[optimum_time_idx],
-                                   are_lat_acc_in_limits[optimum_time_idx_d]))
+                                   are_lat_acc_in_limits[optimum_time_idx]))
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
         samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=ego_timestamp_in_sec,
                                                           T_s=T_vals[optimum_time_idx],
-                                                          T_d=T_vals[optimum_time_idx_d],
+                                                          T_d=T_vals[optimum_time_idx],
                                                           frenet_frame=road_frenet,
                                                           poly_s_coefs=poly_coefs_s[optimum_time_idx],
-                                                          poly_d_coefs=poly_coefs_d[optimum_time_idx_d])
+                                                          poly_d_coefs=poly_coefs_d[optimum_time_idx])
 
         return SemanticActionSpec(t=T_vals[optimum_time_idx], v=obj_svT[optimum_time_idx],
                                   s=constraints_s[optimum_time_idx, 3],
-                                  d=constraints_d[optimum_time_idx_d, 3],
+                                  d=constraints_d[optimum_time_idx, 3],
                                   samplable_trajectory=samplable_trajectory)
 
     def _eval_actions(self, state: State, semantic_actions: List[SemanticAction],
