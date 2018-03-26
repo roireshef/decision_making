@@ -100,8 +100,10 @@ def main():
         actual_v = []
         prev_timestamps = {}
         agent_file_dict = {}
+        ego_file = open(TARGET_OUTPUT_DIR + "ego.txt", 'w')
         minimal_dyn_obj_timestamp = float("inf")
         ego_in_minimal_dyn_obj_timestamp = None
+
         for state_message_index in range(len(state_module_states)):
             # Convert log messages to dict
             state_msg = LogMsg.convert_message_to_dict(state_module_states[state_message_index])
@@ -135,14 +137,15 @@ def main():
                     minimal_dyn_obj_timestamp = dyn_obj.timestamp_in_sec
                     ego_in_minimal_dyn_obj_timestamp = state.ego_state
 
-        # done with all states, creating ego description
-        f = open(TARGET_OUTPUT_DIR + "ego.txt", 'w')
-        out_str = str(ego_in_minimal_dyn_obj_timestamp.timestamp_in_sec) + ", " +\
-                  str(ego_in_minimal_dyn_obj_timestamp.x) + ", " + \
-                  str(ego_in_minimal_dyn_obj_timestamp.y) + ", " + \
-                  str(ego_in_minimal_dyn_obj_timestamp.yaw) + "\n"
-        f.write(out_str)
-        f.close()
+
+            #also exporting ego data
+            out_str = str(state.ego_state.timestamp_in_sec) + ", " +\
+                      str(state.ego_state.x) + ", " + \
+                      str(state.ego_state.y) + ", " + \
+                      str(state.ego_state.yaw) + ", " + \
+                      str(state.ego_state.v_x) + ", " + \
+                      str(state.ego_state.v_y) + "\n"
+            ego_file.write(out_str)
 
 
 
@@ -154,6 +157,8 @@ def main():
 
     for f in agent_file_dict.values():
         f.close()
+
+    ego_file.close()
 
 
 
