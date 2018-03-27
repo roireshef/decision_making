@@ -457,6 +457,26 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         return action_costs
 
+    def _eval_actions(self, state: State, semantic_actions: List[SemanticAction]) -> np.ndarray:
+        """
+        Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
+        Gets a list of actions to evaluate and returns a vector representing their costs.
+        A set of actions is provided, enabling us to assess them independently.
+        Note: the semantic actions were generated using the behavioral state and don't necessarily capture
+         all relevant details in the scene. Therefore the evaluation is done using the behavioral state.
+        :param state: the general state
+        :param actions_spec: specifications of semantic actions
+        :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
+        """
+
+        T = BP_ACTION_T_LIMITS[LIMIT_MAX]
+        ego = state.ego_state
+        road = MapService.get_instance().get_road(ego.road_localization.road_id)
+
+        action_costs = np.zeros(len(semantic_actions))
+        for action in semantic_actions:
+
+
     @staticmethod
     def _calc_safe_dist_behind_ego(behavioral_state: SemanticActionsGridState, road_frenet: FrenetSerret2DFrame,
                                    ego_fpoint: FrenetPoint, semantic_cell_lat: int) -> [float, float]:
