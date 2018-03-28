@@ -458,7 +458,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         return action_costs
 
     def _eval_actions(self, behavioral_state: SemanticActionsGridState,
-                      semantic_actions: List[SemanticAction]) -> np.ndarray:
+                      semantic_actions: List[SemanticAction], actions_spec: List[SemanticActionSpec]) -> np.ndarray:
         """
         Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
         Gets a list of actions to evaluate and returns a vector representing their costs.
@@ -563,10 +563,11 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
 
 
-
         action_costs = np.zeros(len(semantic_actions))
-        for action in semantic_actions:
-            pass
+        for i, action in enumerate(semantic_actions):
+            spec = actions_spec[i]
+            a = 2 * (spec.s - ego_vel * spec.t) / (spec.t * spec.t)
+
 
 
 
