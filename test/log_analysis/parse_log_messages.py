@@ -20,7 +20,7 @@ STATE_IDENTIFIER_STRING_TP = "trajectory_planning_facade.py.*%s" % LOG_MSG_RECEI
 STATE_IDENTIFIER_STRING_BP = "behavioral_facade.py.*%s" % LOG_MSG_RECEIVED_STATE
 # identifier of the state message send by the state module
 STATE_IDENTIFIER_STRING_STATE_MODULE = "state_module.py.*%s" % LOG_MSG_STATE_MODULE_PUBLISH_STATE
-
+STATE_IDENTIFIER_STRING_STATE_MODULE_SIMULATION = "state_module_simulation.py.*%s" % LOG_MSG_STATE_MODULE_PUBLISH_STATE
 
 class DmLogParser:
     """
