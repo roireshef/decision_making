@@ -486,10 +486,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         ego_fstate = road_frenet.cstate_to_fstate(
             np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature]))
         ego_fpoint = np.array([ego_fstate[FS_SX], ego_fstate[FS_DX]])
+        ego_vel = ego_fstate[FS_SV]
         intra_lane_lat = ego.road_localization.intra_lane_lat
 
+        # calculate longitudes and velocities of the 3 forward cars
         forward_right_x = forward_left_x = forward_x = np.inf
-        forward_right_vel = forward_left_vel = forward_vel = np.inf
+        forward_right_vel = forward_left_vel = forward_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
         if right_lane_action_ind is not None and semantic_actions[right_lane_action_ind].target_obj is not None:
             forward_right = semantic_actions[right_lane_action_ind].target_obj
             forward_right_x = road_frenet.cpoint_to_fpoint(np.array([forward_right.x, forward_right.y]))[FP_SX]
@@ -508,13 +510,59 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         dist_to_backright, safe_right_dist_behind_ego = SemanticActionsGridPolicy._calc_safe_dist_behind_ego(
             behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_RIGHT)
 
+        # time to completing left/right lane change
+        NORMAL_ACCELERATION = 1.5
         lat_avg_v = 0.5
         lat_avg_acc = 0.28
         if ego_fstate[FS_DV] > 0:
-            time_to_end_lat_right = ego_fstate[FS_DV]/lat_avg_acc +
-            time_to_end_lat_left = (lane_width - intra_lane_lat) / lat_avg_v
+            time1_right = \
+                ego_fstate[FS_DV]/lat_avg_acc + \
+                (ego_fstate[FS_DV]*ego_fstate[FS_DV]/(2*lat_avg_acc) + lane_width + intra_lane_lat) / lat_avg_v
+            time1_left = (lane_width - intra_lane_lat) / lat_avg_v
         else:
-            time_to_end_lat_right = (lane_width + intra_lane_lat) / lat_avg_v
+            time1_right = (lane_width + intra_lane_lat) / lat_avg_v
+            time1_left = \
+                -ego_fstate[FS_DV] / lat_avg_acc + \
+                (ego_fstate[FS_DV] * ego_fstate[FS_DV] / (2 * lat_avg_acc) + lane_width - intra_lane_lat) / lat_avg_v
+
+        # acceleration before overtaking F
+        dist_to_F = forward_x - ego_fpoint[FP_SX] - SAFE_DIST_TIME_DELAY * max(ego_vel, forward_vel)
+        acc1_left = 2 * (dist_to_F - ego_vel * time1_left) / (time1_left * time1_left)
+        acc1_left = min(acc1_left, NORMAL_ACCELERATION)
+        acc1_right = 2 * (dist_to_F - ego_vel * time1_right) / (time1_right * time1_right)
+        acc1_right = min(acc1_right, NORMAL_ACCELERATION)
+
+        avg_vel1_left = ego_vel + acc1_left * time1_left/2
+        avg_vel1_right = ego_vel + acc1_right * time1_right/2
+
+        efficiency1_left = time1_left * EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel1_left]))[0]
+        efficiency1_right = time1_right * EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel1_right]))[0]
+
+        ego_x1_left = ego_fstate[FP_SX] + ego_vel * time1_left + acc1_left * time1_left * time1_left / 2
+        ego_x1_right = ego_fstate[FP_SX] + ego_vel * time1_right + acc1_right * time1_right * time1_right / 2
+        ego_vel1_left = ego_vel + acc1_left * time1_left
+        ego_vel1_right = ego_vel + acc1_right * time1_right
+
+        if forward_left_x < np.inf:
+            dist_to_LF = forward_left_x - ego_x1_left - SAFE_DIST_TIME_DELAY * forward_left_vel
+            time2_left = 2 * dist_to_LF / (ego_vel1_left + forward_left_vel)
+        else:
+            time2_left = (BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED - ego_vel1_left) / NORMAL_ACCELERATION
+
+        if forward_right_x < np.inf:
+            dist_to_RF = forward_right_x - ego_x1_right - SAFE_DIST_TIME_DELAY * forward_right_vel
+            time2_right = 2 * dist_to_RF / (ego_vel1_right + forward_right_vel)
+        else:
+            time2_right = (BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED - ego_vel1_right) / NORMAL_ACCELERATION
+
+        avg_vel2_left = (ego_vel1_left + forward_left_vel) / 2
+        avg_vel2_right = (ego_vel1_right + forward_right_vel) / 2
+
+        efficiency2_left = time2_left * EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel2_left]))[0]
+        efficiency2_right = time2_right * EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel2_right]))[0]
+
+
+
 
         action_costs = np.zeros(len(semantic_actions))
         for action in semantic_actions:

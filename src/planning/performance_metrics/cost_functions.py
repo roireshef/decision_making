@@ -53,6 +53,22 @@ class ComfortMetric(Metric):
 
 class EfficiencyMetric(Metric):
     @staticmethod
+    def calc_pointwise_cost_for_velocities(vel: np.ndarray) -> np.ndarray:
+        """
+        calculate efficiency (velocity) cost by parabola function
+        C(vel) = P(v) = a*v*v + b*v, where v = abs(1 - vel/vel_des), C(vel_des) = 0, C(0) = 1, C'(0)/C'(vel_des) = r
+        :param vel: input velocities: either 1D or 2D array
+        :return: array of size vel.shape of efficiency costs per point
+        """
+        r = EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO  # C'(0)/C'(vel_des) = P'(1)/P'(0)
+        # the following two lines are the solution of two equations on a and b: P(1) = 1, P'(1)/P'(0) = r
+        a = (r-1)/(r+1)
+        b = 2/(r+1)
+        normalized_vel = np.absolute(1 - vel / BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
+        costs = normalized_vel * (a * normalized_vel + b)
+        return costs
+
+    @staticmethod
     def calc_pointwise_cost(pm_state: PMState, params: TrajectoryCostParams) -> np.ndarray:
         """
         calculate efficiency (velocity) cost by parabola function
@@ -61,13 +77,7 @@ class EfficiencyMetric(Metric):
         :param params: parameters for the cost function (from behavioral layer)
         :return: NxM matrix of efficiency costs per point, where N is trajectories number, M is trajectory length.
         """
-        r = EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO  # C'(0)/C'(vel_des) = P'(1)/P'(0)
-        # the following two lines are the solution of two equations on a and b: P(1) = 1, P'(1)/P'(0) = r
-        a = (r-1)/(r+1)
-        b = 2/(r+1)
-        v = np.absolute(1 - pm_state.ftrajectories[:, :, FS_SV] / BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
-        costs = v * (a * v + b)
-        return costs
+        return EfficiencyMetric.calc_pointwise_cost_for_velocities(pm_state.ftrajectories[:, :, FS_SV])
 
 
 class LaneDeviationMetric(Metric):
