@@ -6,8 +6,8 @@ import numpy as np
 from decision_making.src.global_constants import LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, \
     LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_STATE_MODULE_PUBLISH_STATE, LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
-    LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME
-
+    LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, LOG_MSG_BEHAVIORAL_PLANNER_SEMANTIC_ACTION, \
+    LOG_MSG_BEHAVIORAL_PLANNER_ACTION_SPEC
 
 # Pattern to find the log timestamp within every log line
 LOG_TIME_PATTERN = ": \d+-\d+-\d+ \d+:\d+:\d+,\d+ :"
@@ -182,6 +182,47 @@ class DmLogParser:
         messages = [messages[x] for x in log_msg_order]
 
         return log_timestamp, output_timestamps, messages
+
+    @staticmethod
+    def parse_bp_action(log_content: List[str]) -> (np.ndarray, np.ndarray, List[str]):
+        """
+        Parse the output sent by the BP
+        :param log_content: list of strings of the log lines
+        :return: list of the occurrences of the message inside the log (log timestamp, ego timestamp, string of
+          the serialized message)
+        """
+        semantic_action_messages = list()
+        semantic_action_log_timestamp = list()
+        action_spec_messages = list()
+        action_spec_log_timestamp = list()
+
+        semantic_action_identifier_str = "%s " % LOG_MSG_BEHAVIORAL_PLANNER_SEMANTIC_ACTION
+        action_spec_identifier_str = "%s " % LOG_MSG_BEHAVIORAL_PLANNER_ACTION_SPEC
+        semantic_action_search_pattern = ".*(%s)(.*)%s(.*)" % (LOG_TIME_PATTERN, semantic_action_identifier_str)
+        action_spec_search_pattern = ".*(%s)(.*)%s(.*)" % (LOG_TIME_PATTERN, action_spec_identifier_str)
+        for row in range(len(log_content)):
+            semantic_action_match = re.match(pattern=semantic_action_search_pattern, string=log_content[row])
+            action_spec_match = re.match(pattern=action_spec_search_pattern, string=log_content[row])
+            if semantic_action_match is not None:
+                semantic_action_messages.append(semantic_action_match.groups()[2])
+                semantic_action_log_timestamp.append(DmLogParser.parse_log_timestamp(semantic_action_match.groups()[0]))
+            if action_spec_match is not None:
+                action_spec_messages.append(action_spec_match.groups()[2])
+                action_spec_log_timestamp.append(DmLogParser.parse_log_timestamp(action_spec_match.groups()[0]))
+
+        semantic_action_log_timestamp = np.array(semantic_action_log_timestamp)
+        action_spec_log_timestamp = np.array(action_spec_log_timestamp)
+
+        # Reorder by log timestamp
+        semantic_action_log_msg_order = np.argsort(semantic_action_log_timestamp)
+        semantic_action_log_timestamp = semantic_action_log_timestamp[semantic_action_log_msg_order]
+        semantic_action_messages = [semantic_action_messages[x] for x in semantic_action_log_msg_order]
+
+        action_spec_log_msg_order = np.argsort(action_spec_log_timestamp)
+        action_spec_log_timestamp = action_spec_log_timestamp[action_spec_log_msg_order]
+        action_spec_messages = [action_spec_messages[x] for x in action_spec_log_msg_order]
+
+        return semantic_action_log_timestamp, semantic_action_messages, action_spec_log_timestamp, action_spec_messages
 
     @staticmethod
     def parse_bp_output(log_content: List[str]) -> (np.ndarray, np.ndarray, List[str]):

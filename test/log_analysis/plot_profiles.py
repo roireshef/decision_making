@@ -1,8 +1,11 @@
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
+import re
 
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
+from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticActionType
 from decision_making.src.planning.types import C_V
 from decision_making.src.state.state import State
 from decision_making.test.log_analysis.log_messages import LogMsg
@@ -35,7 +38,6 @@ def main():
         log_content=log_content,
         identifier_str=STATE_IDENTIFIER_STRING_STATE_MODULE_SIMULATION)
 
-
     # state_module_log_timestamp2, state_module_timestamps2, state_module_states2 = DmLogParser.parse_state_message(
     #     log_content=log_content2,
     #     identifier_str=STATE_IDENTIFIER_STRING_STATE_MODULE_SIMULATION)
@@ -45,7 +47,7 @@ def main():
     ###########################
 
 
-    ax1 = plt.subplot(311)
+    ax1 = plt.subplot(511)
 
     # Plot ego velocity
     actual_v = []
@@ -77,29 +79,15 @@ def main():
             else:
                 targets[obj_id] = {"rng": [obj_range], "t": [t], "vel": [target_vel]}
 
-
     plt.plot(ego_timestamps, actual_v, '-b')
 
-    # actual_v = []
-    # ego_timestamps = []
-    # for state_message_index in range(len(state_module_states2)):
-    #     # Convert log messages to dict
-    #     state_msg = LogMsg.convert_message_to_dict(state_module_states2[state_message_index])
-    #     # Deserialize from dict to object
-    #     state = LogMsg.deserialize(class_type=State, message=state_msg)  # type: State
-    #     if state_message_index == 0:
-    #         baseline_timestamp = state.ego_state.timestamp_in_sec
-    #     actual_v.append(state.ego_state.v_x)
-    #     ego_timestamps.append(state.ego_state.timestamp_in_sec - baseline_timestamp)
-    #
-    # plt.plot(ego_timestamps, actual_v, '-r')
     plt.ylabel('$m \cdot s^{-1}$')
     for tid, trg in targets.items():
         clr = colors[tid % 64, :]
         plt.plot(trg["t"], trg["vel"], "-", color=clr)
 
 
-    ax2 = plt.subplot(312, sharex=ax1)
+    ax2 = plt.subplot(512, sharex=ax1)
     for tid, trg in targets.items():
         clr = colors[tid % 64, :]
         plt.plot(trg["t"], trg["rng"], "-", color=clr)
@@ -108,41 +96,51 @@ def main():
     plt.ylabel("rng [m]")
     plt.title("Range of objects as a function of time")
 
-
-
-    plt.subplot(313, sharex=ax2)
-
-    # Plot ego acceleration
-    # accel = []
-    # ego_timestamps = []
-    # for state_message_index in range(len(state_module_states)):
-    #     # Convert log messages to dict
-    #     state_msg = LogMsg.convert_message_to_dict(state_module_states[state_message_index])
-    #     # Deserialize from dict to object
-    #     state = LogMsg.deserialize(class_type=State, message=state_msg)  # type: State
-    #     if state_message_index == 0:
-    #         baseline_timestamp = state.ego_state.timestamp_in_sec
-    #     accel.append(state.ego_state.acceleration_lon)
-    #     ego_timestamps.append(state.ego_state.timestamp_in_sec - baseline_timestamp)
+    ax3 = plt.subplot(513, sharex=ax2)
 
     plt.plot(ego_timestamps, accel, '-b')
 
-    # Plot ego acceleration
-    # accel = []
-    # ego_timestamps = []
-    # for state_message_index in range(len(state_module_states2)):
-    #     # Convert log messages to dict
-    #     state_msg = LogMsg.convert_message_to_dict(state_module_states2[state_message_index])
-    #     # Deserialize from dict to object
-    #     state = LogMsg.deserialize(class_type=State, message=state_msg)  # type: State
-    #     if state_message_index == 0:
-    #         baseline_timestamp = state.ego_state.timestamp_in_sec
-    #     accel.append(state.ego_state.acceleration_lon)
-    #     ego_timestamps.append(state.ego_state.timestamp_in_sec - baseline_timestamp)
-    #
-    # plt.plot(ego_timestamps, accel, '-r')
     plt.ylabel('$m \cdot s^{-2}$')
-    plt.xlabel('seconds')
+
+
+    # # BP module action specification time
+    # _, _, bp_msgs_content = DmLogParser.parse_bp_output(log_content=log_content)
+    # bp_t_specifications = []
+    # bp_ego_timestamps = []
+    # for bp_message_index in range(len(bp_msgs_content)):
+    #     bp_msg_dict = LogMsg.convert_message_to_dict(bp_msgs_content[bp_message_index])
+    #     specify_global_t = bp_msg_dict['time']
+    #     planning_t = BEHAVIORAL_PLANNING_MODULE_PERIOD * bp_message_index
+    #     bp_ego_timestamps.append(planning_t)
+    #     bp_t_specifications.append(specify_global_t - planning_t)
+
+    # BP type of semantic action
+    _, semnatic_actions, _, action_specs = DmLogParser.parse_bp_action(log_content=log_content)
+    bp_t_specifications = []
+    bp_semantic_action_type = []
+    bp_ego_timestamps = []
+    for bp_message_index in range(len(action_specs)):
+        bp_action_dict = LogMsg.convert_message_to_dict(semnatic_actions[bp_message_index])
+        bp_action_specs_dict = LogMsg.convert_message_to_dict(action_specs[bp_message_index])
+
+        planning_t = BEHAVIORAL_PLANNING_MODULE_PERIOD * bp_message_index
+        bp_ego_timestamps.append(planning_t)
+
+        bp_semantic_action_type.append(int(
+            re.match(pattern='.*: (\d+).*', string=bp_action_dict['action_type']).groups()[0]))
+        bp_t_specifications.append(bp_action_specs_dict['t'])
+
+    ax4 = plt.subplot(514, sharex=ax3)
+
+    plt.plot(bp_ego_timestamps, bp_t_specifications)
+    plt.ylabel('$t (specify) [sec.]$')
+
+    ax5 = plt.subplot(515, sharex=ax4)
+
+    plt.plot(bp_ego_timestamps, bp_semantic_action_type)
+    plt.ylabel('action type index\n1 - follow vehicle\n2 - follow lane)')
+
+    plt.xlabel('$timestamp [sec.]$')
 
     plt.show()
 
