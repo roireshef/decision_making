@@ -247,7 +247,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         jerk_d = QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
 
         # TODO: the selection of weights should reflect desired action aggressiveness
-        cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS[2]])
+        cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS[1]])
         optimum_time_idx = np.argmin(cost)
 
         optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] and \

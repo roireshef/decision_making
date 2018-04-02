@@ -13,7 +13,7 @@ from decision_making.test.log_analysis.parse_log_messages import DmLogParser, \
     STATE_IDENTIFIER_STRING_BP, STATE_IDENTIFIER_STRING_TP, STATE_IDENTIFIER_STRING_STATE_MODULE, \
     STATE_IDENTIFIER_STRING_STATE_MODULE_SIMULATION
 
-#LOG_PATH_FOR_ANALYSIS = '/local/flash/recordings/2018_03_26/2018_03_26_16_28/AV_Log_dm_main.log'
+# LOG_PATH_FOR_ANALYSIS = '/media/kz430x/New Volume/code/AV_Log_dm_main_old_version.log'
 LOG_PATH_FOR_ANALYSIS = '/home/kz430x/BitBucket/spav/logs/AV_Log_rbcar0.log'
 
 def rng(x1, y1, x2, y2):
