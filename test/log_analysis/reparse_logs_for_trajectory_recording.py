@@ -18,7 +18,7 @@ LOG_PATH_FOR_ANALYSIS = '/local/flash/recordings/2018_03_19/AV_Log_dm_main.log'
 #LOG_PATH_FOR_ANALYSIS = '/data/recordings/cdrive/Database/2018_02_19/2018_02_19_16_56_Proving_Grounds_-_Low_Light/AV_Log_dm_main.log'
 # LOG_PATH_FOR_ANALYSIS = 'AV_Log_rbcar0.log'
 TARGET_LOG_TIME = 57906.0
-TARGET_OUTPUT_DIR = '/home/vzt9fl/av_code/spcog/decision_making_sim/config/reparser_output/2018_03_19_11_18/'
+TARGET_OUTPUT_DIR = '/home/nz2v30/av_code/spcog/decision_making_sim/config/reparser_output/2018_03_19/'
 
 def main():
     filename = LOG_PATH_FOR_ANALYSIS if ('log_filename' not in sys.argv) else sys.argv['log_filename']

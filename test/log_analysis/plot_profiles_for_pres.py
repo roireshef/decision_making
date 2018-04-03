@@ -11,7 +11,7 @@ from decision_making.test.log_analysis.parse_log_messages import DmLogParser, \
     STATE_IDENTIFIER_STRING_STATE_MODULE_SIMULATION
 
 #LOG_PATH_FOR_ANALYSIS = '/local/flash/recordings/2018_03_26/2018_03_26_16_28/AV_Log_dm_main.log'
-LOG_PATH_FOR_ANALYSIS = '/home/vzt9fl/av_code/spav/logs/AV_Log_rbcar0.log'
+LOG_PATH_FOR_ANALYSIS = '/home/nz2v30/av_code/spav/logs/AV_Log_rbcar0.log'
 
 def rng(x1, y1, x2, y2):
     return np.sqrt((x1 - x2)**2 + (y1 - y2)**2)
@@ -158,8 +158,12 @@ def main():
 
     for axis in ['top', 'bottom', 'left', 'right']:
         ax_accel.spines[axis].set_linewidth(2)
+    # range_ax.set_ylim([0,62])
+    ax_accel.set_xlim([5, 23])
+    # ax_accel.set_ylim([-3, 0.5])
 
-    ax_accel.set_xlim([0, 25])
+    plt.axhline(y=60, color='r', linestyle='--')
+    plt.axhline(y=37.53, color='b', linestyle='--')
 
     plt.xlabel('Seconds')
 
