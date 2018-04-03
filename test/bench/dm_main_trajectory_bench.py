@@ -54,7 +54,7 @@ class DmMockInitialization:
         return state_module
 
     @staticmethod
-    def create_trajectory_planner(fixed_trajectory: CartesianExtendedTrajectory = None) -> TrajectoryPlanningFacade:
+    def create_trajectory_planner(fixed_trajectory_file: str = None) -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
 
@@ -62,8 +62,10 @@ class DmMockInitialization:
         MapService.initialize()
         predictor = RoadFollowingPredictor(logger)
 
-        if fixed_trajectory is None:
+        if fixed_trajectory_file is None:
             fixed_trajectory = Utils.read_trajectory(TP_MOCK_FIXED_TRAJECTORY_FILENAME)
+        else:
+            fixed_trajectory = Utils.read_trajectory(fixed_trajectory_file)
 
         step_size = TRAJECTORY_PLANNING_MODULE_PERIOD / TRAJECTORY_TIME_RESOLUTION
         planner = FixedTrajectoryPlanner(logger, predictor, fixed_trajectory, step_size,
@@ -75,8 +77,10 @@ class DmMockInitialization:
                              TrajectoryPlanningStrategy.PARKING: planner,
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
+        predictor = RoadFollowingPredictor(logger)
         trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
-                                                              strategy_handlers=strategy_handlers)
+                                                              strategy_handlers=strategy_handlers,
+                                                              short_time_predictor=predictor)
         return trajectory_planning_module
 
     @staticmethod
@@ -136,7 +140,7 @@ class DmMockInitialization:
         return behavioral_module
 
 
-def main(fixed_trajectory: CartesianExtendedTrajectory = None):
+def main(fixed_trajectory_file: str = None):
     """
     initializes DM planning pipeline. for switching between BP/TP impl./mock make sure to comment out the relevant
     instantiation in modules_list.
@@ -151,11 +155,11 @@ def main(fixed_trajectory: CartesianExtendedTrajectory = None):
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={}),
 
-            DmProcess(DmMockInitialization.create_behavioral_planner,
+            DmProcess(DmInitialization.create_behavioral_planner,
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
-            DmProcess(lambda: DmMockInitialization.create_trajectory_planner(fixed_trajectory=fixed_trajectory),
+            DmProcess(lambda: DmMockInitialization.create_trajectory_planner(fixed_trajectory_file=fixed_trajectory_file),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD})
         ]
