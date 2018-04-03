@@ -160,10 +160,12 @@ def main():
         ax_accel.spines[axis].set_linewidth(2)
     # range_ax.set_ylim([0,62])
     ax_accel.set_xlim([5, 23])
-    # ax_accel.set_ylim([-3, 0.5])
+    ax_accel.set_ylim([-1.5, 1.5])
 
-    plt.axhline(y=60, color='r', linestyle='--')
-    plt.axhline(y=37.53, color='b', linestyle='--')
+    range_ax.set_ylim([20,70])
+
+    plt.axhline(y=60, color='r', linestyle='--', label="Line of Sight")
+    plt.axhline(y=45.0, color='b', linestyle='--')
 
     plt.xlabel('Seconds')
 
