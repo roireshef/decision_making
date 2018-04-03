@@ -457,10 +457,10 @@ def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
     )
 
     fstate_terminal = frenet.cstate_to_fstate(trajectory.sample(
-        np.array([trajectory.timestamp_in_sec + trajectory.T_s]))[0][0])
+        np.array([trajectory.timestamp_in_sec + trajectory.T_s]))[0])
 
     fstate_after_T_d = frenet.cstate_to_fstate(trajectory.sample(
-        np.array([trajectory.timestamp_in_sec + (trajectory.T_s + trajectory.T_d) / 2]))[0][0])
+        np.array([trajectory.timestamp_in_sec + (trajectory.T_s + trajectory.T_d) / 2]))[0])
 
     np.testing.assert_allclose(fstate_after_T_d[FS_DX], fstate_terminal[FS_DX])
 

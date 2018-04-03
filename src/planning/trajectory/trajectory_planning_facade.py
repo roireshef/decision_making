@@ -99,7 +99,7 @@ class TrajectoryPlanningFacade(DmModule):
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon, params.cost_params)
 
-            center_vehicle_trajectory_points, _ = samplable_trajectory.sample(
+            center_vehicle_trajectory_points = samplable_trajectory.sample(
                 np.linspace(start=0,
                             stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
                             num=TRAJECTORY_NUM_POINTS) + state_aligned.ego_state.timestamp_in_sec)
@@ -188,7 +188,7 @@ class TrajectoryPlanningFacade(DmModule):
         :return: a new state object with a new ego-vehicle localization
         """
         current_time = state.ego_state.timestamp_in_sec
-        expected_state_vec: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0][0]
+        expected_state_vec: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
 
         expected_ego_state = EgoState(
             obj_id=state.ego_state.obj_id,

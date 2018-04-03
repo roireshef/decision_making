@@ -10,8 +10,7 @@ from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEG
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
-    CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D, \
-    FrenetTrajectory2D
+    CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 from decision_making.test.exceptions import NotTriggeredException
@@ -23,7 +22,7 @@ class FixedSamplableTrajectory(SamplableTrajectory):
         super().__init__(timestamp_in_sec=0, T=np.inf)
         self._fixed_trajectory = fixed_trajectory
 
-    def sample(self, time_points: np.ndarray) -> [CartesianExtendedTrajectory, FrenetTrajectory2D]:
+    def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
         """
         This function takes an array of time stamps and returns aCartesianExtendedTrajectory.
         Note: this function ignores the time_points parameter and returns the
@@ -31,7 +30,7 @@ class FixedSamplableTrajectory(SamplableTrajectory):
         :param time_points: 1D numpy array of time stamps *in seconds* (global self.timestamp)
         :return: CartesianExtendedTrajectory
         """
-        return self._fixed_trajectory, None
+        return self._fixed_trajectory
 
 
 class FixedTrajectoryPlanner(TrajectoryPlanner):

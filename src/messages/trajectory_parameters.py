@@ -96,8 +96,6 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         :param velocity_limits: Limits of allowed velocity in [m/sec]
         :param lon_acceleration_limits: Limits of allowed longitudinal acceleration in [m/sec^2]
         :param lat_acceleration_limits: Limits of allowed signed lateral acceleration in [m/sec^2]
-        :param efficiency_cost: cost of deviation from the desired velocity
-        :param non_right_lane_cost: cost of using non_right lane: the farther from the right lane the greater the cost
         """
         self.obstacle_cost_x = obstacle_cost_x
         self.obstacle_cost_y = obstacle_cost_y

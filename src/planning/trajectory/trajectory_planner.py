@@ -7,7 +7,7 @@ import numpy as np
 from decision_making.src.exceptions import raises, NoValidTrajectoriesFound, CouldNotGenerateTrajectories
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import CartesianPath2D, CartesianExtendedTrajectory, CartesianTrajectories, \
-    CartesianExtendedState, FrenetTrajectory2D
+    CartesianExtendedState
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 
@@ -29,13 +29,12 @@ class SamplableTrajectory(metaclass=ABCMeta):
 
 
     @abstractmethod
-    def sample(self, time_points: np.ndarray) -> [CartesianExtendedTrajectory, FrenetTrajectory2D]:
+    def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
         """
         This function takes an array of time stamps and returns an array of points <x, y, theta, v, acceleration,
         curvature> along the trajectory
         :param time_points: 1D numpy array of time stamps *in seconds* (global self.timestamp)
-        :return: 1. 2D numpy array with every row having cartesian extended state: <x, y, yaw, velocity, a, k>
-                 2. 2D numpy array with every row having Frenet state
+        :return: 2D numpy array with every row having the format of <x, y, yaw, velocity, a, k>
         """
         pass
 

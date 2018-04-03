@@ -50,7 +50,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         self._last_ego_state: Optional[EgoState] = None
         self._last_action: Optional[SemanticAction] = None
         self._last_action_spec: Optional[SemanticActionSpec] = None
-        self._last_action_change_time: float = None
         self._last_poly_coefs_s: Optional[np.ndarray] = None
         self._predictor = predictor
 
@@ -108,9 +107,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
         visualization_message = BehavioralVisualizationMsg(reference_route=trajectory_parameters.reference_route)
 
-        # updating selected actions in memory
-        if self._last_action is not None and (semantic_actions[selected_action_index] != self._last_action):
-            self._last_action_change_time = state.ego_state.timestamp_in_sec
         self._last_action = semantic_actions[selected_action_index]
         self._last_action_spec = selected_action_spec
         self._last_ego_state = state.ego_state
@@ -170,7 +166,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         if self._last_action is not None and semantic_action == self._last_action \
                 and LocalizationUtils.is_actual_state_close_to_expected_state(
             ego, self._last_action_spec.samplable_trajectory, self.logger, self.__class__.__name__):
-            ego_init_cstate = self._last_action_spec.samplable_trajectory.sample(np.array([ego.timestamp_in_sec]))[0][0]
+            ego_init_cstate = self._last_action_spec.samplable_trajectory.sample(np.array([ego.timestamp_in_sec]))[0]
         else:
             ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
 
