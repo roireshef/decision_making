@@ -1,4 +1,5 @@
 from unittest.mock import patch
+import pytest
 
 import numpy as np
 
@@ -16,6 +17,7 @@ from mapping.test.model.testable_map_fixtures import testable_map_api, map_api_m
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.planning.custom_fixtures import predictor
 
+@pytest.mark.skip(reason="eval_action was replaced")
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_evalSemanticActions(predictor):
     max_velocity = v = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED  # m/s
@@ -78,7 +80,7 @@ def test_evalSemanticActions(predictor):
         actions_spec.append(SemanticActionSpec(t=t, v=vel2, s=obs[1].x - ego.x, d=obs[1].y - ego.y))
         actions_spec.append(SemanticActionSpec(t=t, v=vel3, s=obs[2].x - ego.x, d=obs[2].y - ego.y))
 
-        costs = policy._eval_actions(behav_state, semantic_actions, actions_spec)
+        costs = policy._eval_actions(behav_state, semantic_actions)
         assert (costs[result[test]] == 0)
 
         # from bokeh.plotting import figure, show, output_file

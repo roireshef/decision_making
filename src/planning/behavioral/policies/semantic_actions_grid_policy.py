@@ -8,13 +8,12 @@ from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS, \
     BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR, \
-    WERLING_TIME_RESOLUTION, EFFICIENCY_COST, RIGHT_LANE_COST, MAX_HYSTERESIS_COST, HYSTERESIS_TIMEOUT, \
-    FOLLOW_CAR_LON_MARGIN
+    WERLING_TIME_RESOLUTION, EFFICIENCY_COST_WEIGHT, RIGHT_LANE_COST_WEIGHT
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
     DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
     DEVIATION_FROM_GOAL_COST, DEVIATION_FROM_GOAL_LAT_LON_RATIO, GOAL_SIGMOID_K_PARAM, \
-    GOAL_SIGMOID_OFFSET, LATERAL_SAFETY_MARGIN_FROM_OBJECT, LON_ACC_LIMITS, \
+    GOAL_SIGMOID_OFFSET, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS, SHOULDER_SIGMOID_OFFSET, LON_JERK_COST, LAT_JERK_COST, LANE_SIGMOID_K_PARAM, \
     SHOULDER_SIGMOID_K_PARAM, BP_ACTION_T_LIMITS, \
     BP_ACTION_T_RES, SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
@@ -29,21 +28,15 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_policy im
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticActionsPolicy, \
     SemanticAction, SemanticActionType, \
     LAT_CELL, LON_CELL, SemanticGridCell
-from decision_making.src.planning.performance_metrics.cost_functions import SafetyMetric, ComfortMetric, \
-    EfficiencyMetric, RightLaneMetric
-from decision_making.src.planning.performance_metrics.metric import PMState
-from decision_making.src.planning.performance_metrics.reward import Reward
-from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
+from decision_making.src.planning.performance_metrics.plan_cost_functions import PlanEfficiencyMetric
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DX, FS_DV, FS_DA, FP_SX, FrenetPoint, \
-    FrenetState2D
+from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DX, FS_DV, FS_DA, FP_SX, FrenetPoint
 from decision_making.src.planning.types import LIMIT_MIN, LIMIT_MAX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.planning.utils.math import Math
-from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils
@@ -103,7 +96,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         actions_spec = [action_specs[x] for x in valid_spec_indices]
 
         # evaluate all action-specifications by computing a cost for each action
-        action_costs = self._eval_actions(state, semantic_actions, actions_spec)
+        action_costs = self._eval_actions(behavioral_state, semantic_actions)
 
         # select an action-specification with minimal cost
         selected_action_index = int(np.argmin(action_costs))
@@ -329,7 +322,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SX]),
             np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SV]),
             np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SA]),
-            obj_sxT - safe_lon_dist - FOLLOW_CAR_LON_MARGIN - cars_size_lon_margin,
+            obj_sxT - safe_lon_dist - cars_size_lon_margin,
             obj_svT,
             np.full(shape=len(T_vals), fill_value=obj_saT)
         ]
@@ -385,286 +378,66 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                   d=constraints_d[optimum_time_idx, 3],
                                   samplable_trajectory=samplable_trajectory)
 
-    def _eval_actions(self, state: State, semantic_actions: List[SemanticAction],
-                      actions_spec: List[SemanticActionSpec]) -> np.ndarray:
+    def _eval_actions(self, behavioral_state: SemanticActionsGridState, semantic_actions: List[SemanticAction]) -> \
+            np.ndarray:
         """
-        Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
         Gets a list of actions to evaluate and returns a vector representing their costs.
         A set of actions is provided, enabling us to assess them independently.
         Note: the semantic actions were generated using the behavioral state and don't necessarily capture
-         all relevant details in the scene. Therefore the evaluation is done using the behavioral state.
-        :param state: the general state
-        :param actions_spec: specifications of semantic actions
-        :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
+        all relevant details in the scene. Therefore the evaluation is done using the behavioral state.
+        :param behavioral_state: semantic actions grid behavioral state
+        :param semantic_actions: array of semantic actions
+        :return: array of costs (one cost per action)
         """
-
-        T = BP_ACTION_T_LIMITS[LIMIT_MAX]
-        ego = state.ego_state
-        road = MapService.get_instance().get_road(ego.road_localization.road_id)
-
-        action_costs = np.zeros(len(actions_spec))
-        for i, spec in enumerate(actions_spec):
-            time_points = ego.timestamp_in_sec + np.arange(0, spec.t + np.finfo(np.float16).eps, WERLING_TIME_RESOLUTION)
-            # create cartesian trajectory for the current action spec
-            ctrajectory, ftrajectory = spec.samplable_trajectory.sample(time_points)
-            # shift dx values of ftrajectory to be relative to the reference route latitude
-            ftrajectory[:, FS_DX] -= spec.d
-
-            cost_params = SemanticActionsGridPolicy._generate_cost_params(ego.road_localization.road_id, ego.size, spec.d)
-
-            # compute point-wise costs components separately (instead of using Reward class), since we need
-            # the last point costs of two of them
-            pm_state = PMState(state, np.array([ctrajectory]), np.array([ftrajectory]), time_points, self._predictor,
-                               road.lane_width, spec.d)
-            safety_costs = SafetyMetric.calc_pointwise_cost(pm_state, cost_params)
-            comfort_costs = ComfortMetric.calc_pointwise_cost(pm_state, cost_params)
-            efficiency_costs = EfficiencyMetric.calc_pointwise_cost(pm_state, cost_params)
-            right_lane_costs = RightLaneMetric.calc_pointwise_cost(pm_state, cost_params)
-
-            # compute the trajectory cost
-            action_costs[i] = np.sum(np.dstack((cost_params.obstacle_cost_x.w * safety_costs,
-                                                (cost_params.lon_jerk_cost + cost_params.lat_jerk_cost) * comfort_costs,
-                                                EFFICIENCY_COST * efficiency_costs,
-                                                RIGHT_LANE_COST * right_lane_costs)),
-                                     axis=(1, 2))[0]
-
-            # Since there are short and long actions, we have to align the total cost to the longest action.
-            # Therefore, add duplicated last efficiency and non-right costs.
-            action_costs[i] += (EFFICIENCY_COST * efficiency_costs[0, -1] + RIGHT_LANE_COST * right_lane_costs[0, -1]) \
-                               * (T - spec.t) / WERLING_TIME_RESOLUTION
-
-            # add hysteresis cost
-            hysteresis_cost = 0
-            if self._last_action_change_time is not None:
-                time_factor = 1. - min(1., (ego.timestamp_in_sec - self._last_action_change_time) / HYSTERESIS_TIMEOUT)
-                # we don't compare action_type and LON_CELL, since in last_action the target may be beyond the horizon,
-                # and the same target may move from one LON_CELL to another
-                if semantic_actions[i].cell[LAT_CELL] != self._last_action.cell[LAT_CELL]:
-                    hysteresis_cost = MAX_HYSTERESIS_COST * time_factor
-            action_costs[i] += hysteresis_cost
-
-            # print('d=%f s=%f v=%f T=%f' % (spec.d, spec.s, spec.v, spec.t))
-            # print('safety %s jerk %s efficiency %s right %s hyst %f total %s' %
-            #       (cost_params.obstacle_cost_x.w * np.sum(safety_costs),
-            #        (cost_params.lon_jerk_cost + cost_params.lat_jerk_cost) * np.sum(comfort_costs),
-            #        EFFICIENCY_COST * (
-            #        np.sum(efficiency_costs) + efficiency_costs[0, -1] * (T - spec.t) / WERLING_TIME_RESOLUTION),
-            #        RIGHT_LANE_COST * (
-            #        np.sum(right_lane_costs) + right_lane_costs[0, -1] * (T - spec.t) / WERLING_TIME_RESOLUTION),
-            #        hysteresis_cost,
-            #        action_costs[i]))
-            # print('safety %s\njerk %s\nefficiency%s\nright %s' % (safety_costs, comfort_costs, efficiency_costs, right_lane_costs))
-
-        return action_costs
-
-    def _eval_actions(self, behavioral_state: SemanticActionsGridState,
-                      semantic_actions: List[SemanticAction], actions_spec: List[SemanticActionSpec]) -> np.ndarray:
-        """
-        Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
-        Gets a list of actions to evaluate and returns a vector representing their costs.
-        A set of actions is provided, enabling us to assess them independently.
-        Note: the semantic actions were generated using the behavioral state and don't necessarily capture
-         all relevant details in the scene. Therefore the evaluation is done using the behavioral state.
-        :param state: the general state
-        :param actions_spec: specifications of semantic actions
-        :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
-        """
-
         # get indices of semantic_actions array for 3 actions: goto-right, straight, goto-left
-        forward_action_ind = SemanticActionsGridPolicy._get_action_ind(
-            semantic_actions, (SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT))
-        left_lane_action_ind = SemanticActionsGridPolicy._get_action_ind(
-            semantic_actions, (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_FRONT))
-        right_lane_action_ind = SemanticActionsGridPolicy._get_action_ind(
-            semantic_actions, (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT))
-
-        ego = behavioral_state.ego_state
-        road_id = ego.road_localization.road_id
-        lane_width = MapService.get_instance().get_road(road_id).lane_width
-        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
-        road_frenet = FrenetSerret2DFrame(road_points)
-        ego_fstate = road_frenet.cstate_to_fstate(
-            np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature]))
-        ego_fpoint = np.array([ego_fstate[FS_SX], ego_fstate[FS_DX]])
-        ego_vel = ego_fstate[FS_SV]
-        intra_lane_lat = ego.road_localization.intra_lane_lat
-
-        # calculate longitudes and velocities of the 3 forward cars
-        forward_right_x = forward_left_x = forward_x = np.inf
-        forward_right_vel = forward_left_vel = forward_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-        if right_lane_action_ind is not None and semantic_actions[right_lane_action_ind].target_obj is not None:
-            forward_right = semantic_actions[right_lane_action_ind].target_obj
-            forward_right_x = road_frenet.cpoint_to_fpoint(np.array([forward_right.x, forward_right.y]))[FP_SX]
-            forward_right_vel = forward_right.v_x
-        if left_lane_action_ind is not None and semantic_actions[left_lane_action_ind].target_obj is not None:
-            forward_left = semantic_actions[left_lane_action_ind].target_obj
-            forward_left_x = road_frenet.cpoint_to_fpoint(np.array([forward_left.x, forward_left.y]))[FP_SX]
-            forward_left_vel = forward_left.v_x
-        if forward_action_ind is not None and semantic_actions[forward_action_ind].target_obj is not None:
-            forward = semantic_actions[forward_action_ind].target_obj
-            forward_x = road_frenet.cpoint_to_fpoint(np.array([forward.x, forward.y]))[FP_SX]
-            forward_vel = forward.v_x
-
-        dist_to_backleft, safe_left_dist_behind_ego = SemanticActionsGridPolicy._calc_safe_dist_behind_ego(
-            behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_LEFT)
-        dist_to_backright, safe_right_dist_behind_ego = SemanticActionsGridPolicy._calc_safe_dist_behind_ego(
-            behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_RIGHT)
-
-        # time to completing left/right lane change
-        NORMAL_ACCELERATION = 1.5
-        lat_avg_v = 0.5
-        lat_avg_acc = 0.28
-        if ego_fstate[FS_DV] > 0:
-            time1_right = \
-                ego_fstate[FS_DV]/lat_avg_acc + \
-                (ego_fstate[FS_DV]*ego_fstate[FS_DV]/(2*lat_avg_acc) + lane_width + intra_lane_lat) / lat_avg_v
-            time1_left = (lane_width - intra_lane_lat) / lat_avg_v
-        else:
-            time1_right = (lane_width + intra_lane_lat) / lat_avg_v
-            time1_left = \
-                -ego_fstate[FS_DV] / lat_avg_acc + \
-                (ego_fstate[FS_DV] * ego_fstate[FS_DV] / (2 * lat_avg_acc) + lane_width - intra_lane_lat) / lat_avg_v
-
-        # acceleration before overtaking F
-        dist_to_F = forward_x - ego_fpoint[FP_SX] - SAFE_DIST_TIME_DELAY * max(ego_vel, forward_vel)
-        acc1_left = 2 * (dist_to_F - ego_vel * time1_left) / (time1_left * time1_left)
-        acc1_left = min(acc1_left, NORMAL_ACCELERATION)
-        acc1_right = 2 * (dist_to_F - ego_vel * time1_right) / (time1_right * time1_right)
-        acc1_right = min(acc1_right, NORMAL_ACCELERATION)
-
-        avg_vel1_left = ego_vel + acc1_left * time1_left/2
-        avg_vel1_right = ego_vel + acc1_right * time1_right/2
-
-        efficiency1_left = time1_left * EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel1_left]))[0]
-        efficiency1_right = time1_right * EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel1_right]))[0]
-
-        ego_x1_left = ego_fstate[FP_SX] + ego_vel * time1_left + acc1_left * time1_left * time1_left / 2
-        ego_x1_right = ego_fstate[FP_SX] + ego_vel * time1_right + acc1_right * time1_right * time1_right / 2
-        ego_vel1_left = ego_vel + acc1_left * time1_left
-        ego_vel1_right = ego_vel + acc1_right * time1_right
-
-        if forward_left_x < np.inf:
-            dist_to_LF = forward_left_x - ego_x1_left - SAFE_DIST_TIME_DELAY * forward_left_vel
-            time2_left = 2 * dist_to_LF / (ego_vel1_left + forward_left_vel)
-        else:
-            time2_left = (BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED - ego_vel1_left) / NORMAL_ACCELERATION
-
-        if forward_right_x < np.inf:
-            dist_to_RF = forward_right_x - ego_x1_right - SAFE_DIST_TIME_DELAY * forward_right_vel
-            time2_right = 2 * dist_to_RF / (ego_vel1_right + forward_right_vel)
-        else:
-            time2_right = (BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED - ego_vel1_right) / NORMAL_ACCELERATION
-
-        avg_vel2_left = (ego_vel1_left + forward_left_vel) / 2
-        avg_vel2_right = (ego_vel1_right + forward_right_vel) / 2
-
-        efficiency2_left = time2_left * EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel2_left]))[0]
-        efficiency2_right = time2_right * EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel2_right]))[0]
-
-
-
-        action_costs = np.zeros(len(semantic_actions))
-        for i, action in enumerate(semantic_actions):
-            spec = actions_spec[i]
-            a = 2 * (spec.s - ego_vel * spec.t) / (spec.t * spec.t)
-
-
-
-
-    def _eval_actions(self, behavioral_state: SemanticActionsGridState,
-                      semantic_actions: List[SemanticAction],
-                      actions_spec: List[SemanticActionSpec]) -> np.ndarray:
-        """
-        Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
-        Gets a list of actions to evaluate and returns a vector representing their costs.
-        A set of actions is provided, enabling us to assess them independently.
-        Note: the semantic actions were generated using the behavioral state and don't necessarily capture
-         all relevant details in the scene. Therefore the evaluation is done using the behavioral state.
-        :param behavioral_state: semantic behavioral state, containing the semantic grid
-        :param semantic_actions: semantic actions list
-        :param actions_spec: specifications of semantic actions
-        :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
-        """
-
-        if len(semantic_actions) != len(actions_spec):
-            self.logger.error(
-                "The input arrays have different sizes: len(semantic_actions)=%d, len(actions_spec)=%d",
-                len(semantic_actions), len(actions_spec))
-            raise BehavioralPlanningException(
-                "The input arrays have different sizes: len(semantic_actions)=%d, len(actions_spec)=%d",
-                len(semantic_actions), len(actions_spec))
-
-        # get indices of semantic_actions array for 3 actions: goto-right, straight, goto-left
-        current_lane_action_ind = SemanticActionsGridPolicy._get_action_ind(
-            semantic_actions, (SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT))
-        left_lane_action_ind = SemanticActionsGridPolicy._get_action_ind(
-            semantic_actions, (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_FRONT))
-        right_lane_action_ind = SemanticActionsGridPolicy._get_action_ind(
-            semantic_actions, (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT))
-
-        # The cost for each action is assigned so that the preferred policy would be:
-        # Go to right if right and current lanes are fast enough.
-        # Go to left if the current lane is slow and the left lane is faster than the current.
-        # Otherwise remain on the current lane.
-
-        # TODO - this needs to come from map
-        desired_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-
-        # boolean whether the forward-right cell is fast enough (may be empty grid cell)
-        is_forward_right_fast = right_lane_action_ind is not None and \
-                                desired_vel - actions_spec[right_lane_action_ind].v < MIN_OVERTAKE_VEL
-        # boolean whether the right cell near ego is occupied
-        is_right_occupied = True
-        if (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid:
-            is_right_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_RIGHT,
-                                                                          SEMANTIC_CELL_LON_SAME)]) > 0
-
-        # boolean whether the forward cell is fast enough (may be empty grid cell)
-        is_forward_fast = current_lane_action_ind is not None and \
-                          desired_vel - actions_spec[current_lane_action_ind].v < MIN_OVERTAKE_VEL
-
-        # boolean whether the forward-left cell is faster than the forward cell
-        is_forward_left_faster = left_lane_action_ind is not None and \
-                                 (current_lane_action_ind is None or
-                                  actions_spec[left_lane_action_ind].v - actions_spec[current_lane_action_ind].v >=
-                                  MIN_OVERTAKE_VEL)
+        lat_action_idxs = np.array([
+            SemanticActionsGridPolicy._get_action_ind(semantic_actions, (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT)),
+            SemanticActionsGridPolicy._get_action_ind(semantic_actions, (SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT)),
+            SemanticActionsGridPolicy._get_action_ind(semantic_actions, (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_FRONT))
+        ])
 
         ego = behavioral_state.ego_state
         road_id = ego.road_localization.road_id
         road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
         road_frenet = FrenetSerret2DFrame(road_points)
         ego_fpoint = road_frenet.cpoint_to_fpoint(np.array([ego.x, ego.y]))
+        ego_lane = ego.road_localization.lane_num
 
-        dist_to_backleft, safe_left_dist_behind_ego = SemanticActionsGridPolicy._calc_safe_dist_behind_ego(
-            behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_LEFT)
-        dist_to_backright, safe_right_dist_behind_ego = SemanticActionsGridPolicy._calc_safe_dist_behind_ego(
-            behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_RIGHT)
+        time_horizon = BP_ACTION_T_LIMITS[LIMIT_MAX]
+        lane_change_lateral_jerk = 0.2  # TODO: calculate the jerk analytically
 
-        self.logger.debug("Distance\safe distance to back left car: %s\%s.", dist_to_backleft, safe_left_dist_behind_ego)
-        self.logger.debug("Distance\safe distance to back right car: %s\%s.", dist_to_backright, safe_right_dist_behind_ego)
+        action_costs = np.zeros(len(semantic_actions))
+        for i, action in enumerate(semantic_actions):
+            lat_action_ind = lat_action_idxs[action.cell[LAT_CELL] - SEMANTIC_CELL_LAT_RIGHT]
+            target_obj = semantic_actions[lat_action_ind].target_obj
 
-        # boolean whether the left cell near ego is occupied
-        if (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid:
-            is_left_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_LEFT,
-                                                                         SEMANTIC_CELL_LON_SAME)]) > 0
-        else:
-            is_left_occupied = True
+            # comfort cost
+            # TODO: calculate both jerks analytically based on 5 or 6 constraints
+            if action.cell[LAT_CELL] == SEMANTIC_CELL_LAT_RIGHT:
+                lat_comfort_cost = lane_change_lateral_jerk
+            elif semantic_actions[i].cell[LAT_CELL] == SEMANTIC_CELL_LAT_LEFT:
+                lat_comfort_cost = lane_change_lateral_jerk
+            else:  # same lane
+                lat_comfort_cost = 0
 
-        costs = np.ones(len(semantic_actions))
+            # efficiency cost
+            if target_obj is not None:
+                obj_vel = target_obj.v_x
+                obj_lon = road_frenet.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))[FP_SX]
+            else:
+                obj_vel = obj_lon = None
+            efficiency_cost = PlanEfficiencyMetric.calc_cost(ego_fpoint[FP_SX], ego.v_x, obj_lon, obj_vel, time_horizon)
 
-        # move right if both straight and right lanes are fast
-        # if is_forward_right_fast and (is_forward_fast or current_lane_action_ind is None) and not is_right_occupied:
-        if is_forward_right_fast and not is_right_occupied and dist_to_backright > safe_right_dist_behind_ego:
-            costs[right_lane_action_ind] = 0.
-        # move left if straight is slow and the left is faster than straight
-        elif not is_forward_fast and (
-                    is_forward_left_faster or current_lane_action_ind is None) and not is_left_occupied and \
-                        dist_to_backleft > safe_left_dist_behind_ego:
-            costs[left_lane_action_ind] = 0.
-        else:
-            costs[current_lane_action_ind] = 0.
-        return costs
+            right_lane_cost = (ego_lane + action.cell[LAT_CELL]) * time_horizon / WERLING_TIME_RESOLUTION
 
+            action_costs[i] = efficiency_cost * EFFICIENCY_COST_WEIGHT + right_lane_cost * RIGHT_LANE_COST_WEIGHT + \
+                lat_comfort_cost * LAT_JERK_COST
+
+            # print('action %d: obj_vel=%s eff %s com %s right %s: tot %s' %
+            #      (action.cell[LAT_CELL], obj_vel, efficiency_cost * EFFICIENCY_COST_WEIGHT,
+            #       lat_comfort_cost * LAT_JERK_COST, right_lane_cost * RIGHT_LANE_COST_WEIGHT, action_costs[i]))
+
+        return action_costs
 
     @staticmethod
     def _calc_safe_dist_behind_ego(behavioral_state: SemanticActionsGridState, road_frenet: FrenetSerret2DFrame,

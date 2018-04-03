@@ -53,7 +53,7 @@ class ComfortMetric(Metric):
 
 class EfficiencyMetric(Metric):
     @staticmethod
-    def calc_pointwise_cost_for_velocities(vel: np.ndarray) -> np.ndarray:
+    def calc_pointwise_cost_for_velocities(vel: np.array) -> np.array:
         """
         calculate efficiency (velocity) cost by parabola function
         C(vel) = P(v) = a*v*v + b*v, where v = abs(1 - vel/vel_des), C(vel_des) = 0, C(0) = 1, C'(0)/C'(vel_des) = r

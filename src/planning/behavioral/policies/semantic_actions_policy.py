@@ -147,8 +147,8 @@ class SemanticActionsPolicy(Policy):
         """
         pass
 
-    def _eval_actions(self, state: State, semantic_actions: List[SemanticAction],
-                      actions_spec: List[SemanticActionSpec]) -> np.ndarray:
+    def _eval_actions(self, behavioral_state: SemanticBehavioralState, semantic_actions: List[SemanticAction]) -> \
+            np.ndarray:
         """
         Evaluate the generated actions using the full state.
         Gets a list of actions to evaluate so and returns a vector representing their costs.
@@ -157,7 +157,6 @@ class SemanticActionsPolicy(Policy):
          all relevant details in the scene. Therefore the evaluation is done using the full state.
         :param state: world state
         :param semantic_actions: semantic actions list
-        :param actions_spec: specifications of semantic actions
         :return: numpy array of costs of semantic actions
         """
         pass

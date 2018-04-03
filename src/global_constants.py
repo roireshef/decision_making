@@ -16,7 +16,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
-BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 60.0
+BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 100.0
 
 # When retrieving the lookahead path of a given dynamic object, we will multiply the path length
 # by the following ratio in order to avoid extrapolation when resampling the path (due to path sampling
@@ -68,9 +68,9 @@ GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goa
 LON_JERK_COST = 1.0                         # cost of longitudinal jerk
 LAT_JERK_COST = 1.0                         # cost of lateral jerk
 
-EFFICIENCY_COST = 0.5                       # cost of zero velocity on one trajectory point
+EFFICIENCY_COST_WEIGHT = 0.6                # cost of zero velocity on one trajectory point
 EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO = 3  # ratio UNDER_C'(0) / UNDER_C'(v_desired)
-RIGHT_LANE_COST = 0.05                      # cost of using non-right lane on one trajectory point
+RIGHT_LANE_COST_WEIGHT = 0.05               # cost of using non-right lane on one trajectory point
 
 MAX_HYSTERESIS_COST = 5                     # additional constant cost for changing action
 HYSTERESIS_TIMEOUT = 10                     # in how many sec. after last action change hysteresis becomes irrelevant
@@ -108,9 +108,6 @@ MIN_OVERTAKE_VEL = 3
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
-
-# [m] Additional margin from the followed car to ease its overtake (it doesn't depend on velocity but on acceleration)
-FOLLOW_CAR_LON_MARGIN = 10
 
 
 # Trajectory Planner #
