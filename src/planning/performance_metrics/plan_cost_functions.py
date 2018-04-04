@@ -1,7 +1,7 @@
 import numpy as np
 
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, SAFE_DIST_TIME_DELAY, \
-    WERLING_TIME_RESOLUTION
+    WERLING_TIME_RESOLUTION, AGGRESSIVENESS_TO_LON_ACC, AGGRESSIVENESS_TO_LAT_ACC, ACC_TO_COST_FACTOR
 from decision_making.src.planning.performance_metrics.cost_functions import EfficiencyMetric
 
 
@@ -47,8 +47,9 @@ class PlanEfficiencyMetric:
         return efficiency_cost * time_horizon / WERLING_TIME_RESOLUTION
 
     @staticmethod
-    def calc_velocity_profile(init_lon: float, init_vel: float, obj_lon: float, target_vel: float) -> VelocityProfile:
-        des_acc = 1.5  # desired acceleration TODO: should be defined by action's aggressiveness level
+    def calc_velocity_profile(init_lon: float, init_vel: float, obj_lon: float, target_vel: float,
+                              aggressiveness_level: int) -> VelocityProfile:
+        des_acc = AGGRESSIVENESS_TO_LON_ACC[aggressiveness_level]  # desired acceleration
         max_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
         if obj_lon is not None:  # follow car
             s = obj_lon - init_lon - SAFE_DIST_TIME_DELAY * target_vel - 5  # TODO: replace 5 by cars' half sizes sum
@@ -78,13 +79,18 @@ class PlanEfficiencyMetric:
         return: acc_time, mid_vel, mid_time, dec_time (time periods of the 3 velocity segments and maximal achieved velocity)
         """
         init_vel_rel = init_vel - end_vel  # relative velocity; may be negative
-        max_vel_rel = max(max_vel - end_vel, max(init_vel_rel, 1))  # let max_vel > end_vel to enable reaching the car
-        if init_vel_rel > 0 and init_vel_rel * init_vel_rel > 2 * acc * tot_dist:  # the braking should be stronger than acc
-            acc_time = 2 * tot_dist / init_vel_rel
+        max_vel_rel = max(max_vel - end_vel, max(init_vel_rel, 1.))  # let max_vel > end_vel to enable reaching the car
+        if init_vel_rel > 0 and init_vel_rel * init_vel_rel > 2 * acc * abs(tot_dist):  # the braking should be stronger than acc
+            acc_time = abs(2 * tot_dist / init_vel_rel)  # tot_dist may be negative
             return acc_time, end_vel, 0, 0
         else:  # acceleration = acc
-            mid_vel_rel = np.sqrt(init_vel_rel * init_vel_rel / 2 + acc * tot_dist)  # since mv^2/2a - v^2/2a + mv^2/2a = tot_dist
-            if mid_vel_rel <= max_vel_rel:  # to high vel
+            mid_vel_rel_sqr = init_vel_rel * init_vel_rel / 2 + acc * tot_dist  # since mv^2/2a - v^2/2a + mv^2/2a = tot_dist
+            if mid_vel_rel_sqr > 0:
+                mid_vel_rel = np.sqrt(mid_vel_rel_sqr)
+                mid_vel_rel = max(mid_vel_rel, init_vel_rel)
+            else:  # the target is behind ego, then just slow down
+                mid_vel_rel = init_vel_rel
+            if mid_vel_rel <= max_vel_rel:  # ego does not reach max_vel, then mid_time = 0
                 acc_time = (mid_vel_rel - init_vel_rel) / acc
                 dec_time = mid_vel_rel / acc
                 return acc_time, mid_vel_rel + end_vel, 0, dec_time
@@ -92,7 +98,7 @@ class PlanEfficiencyMetric:
                 acc_time = (max_vel_rel - init_vel_rel) / acc
                 dec_time = max_vel_rel / acc
                 mid_dist = tot_dist - (2 * max_vel_rel * max_vel_rel - init_vel_rel * init_vel_rel) / (2 * acc)
-                mid_time = mid_dist / max_vel_rel
+                mid_time = max(0., mid_dist / max_vel_rel)
                 return acc_time, max_vel, mid_time, dec_time
 
     @staticmethod
@@ -111,11 +117,14 @@ class PlanComfortMetric:
 
     @staticmethod
     def calc_cost(vel_profile: VelocityProfile, change_lane: bool, aggressiveness_level: int):
-        # TODO: calculate jerk analytically
-        aggressiveness_factor = aggressiveness_level * 0.01
+        # TODO: if T is known, calculate jerk analytically
+        lon_acc = AGGRESSIVENESS_TO_LON_ACC[aggressiveness_level]
+        lat_acc = AGGRESSIVENESS_TO_LAT_ACC[aggressiveness_level]
+        lane_width = 3.6
         if change_lane:
-            lat_cost = 3 * aggressiveness_factor
+            lane_change_time = 2 * np.sqrt(lane_width / lat_acc)
+            lat_cost = lane_change_time * lat_acc * ACC_TO_COST_FACTOR
         else:
             lat_cost = 0
-        lon_cost = (vel_profile.acc_time + vel_profile.dec_time) * aggressiveness_factor
+        lon_cost = (vel_profile.acc_time + vel_profile.dec_time) * lon_acc * ACC_TO_COST_FACTOR
         return lat_cost + lon_cost

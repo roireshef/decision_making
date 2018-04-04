@@ -413,7 +413,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                 target_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
                 obj_lon = None
 
-            vel_profile = PlanEfficiencyMetric.calc_velocity_profile(ego_fpoint[FP_SX], ego.v_x, obj_lon, target_vel)
+            aggressiveness_level = 1  # TODO: should be defined in the action
+            vel_profile = PlanEfficiencyMetric.calc_velocity_profile(ego_fpoint[FP_SX], ego.v_x, obj_lon, target_vel,
+                                                                     aggressiveness_level)
 
             # efficiency cost
             efficiency_cost = PlanEfficiencyMetric.calc_cost(ego.v_x, target_vel, vel_profile, time_horizon)
