@@ -429,9 +429,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             action_costs[i] = efficiency_cost * EFFICIENCY_COST_WEIGHT + right_lane_cost * RIGHT_LANE_COST_WEIGHT + \
                 lat_comfort_cost * LAT_JERK_COST
 
-            # print('action %d: obj_vel=%s eff %s com %s right %s: tot %s' %
-            #      (action.cell[LAT_CELL], obj_vel, efficiency_cost * EFFICIENCY_COST_WEIGHT,
-            #       lat_comfort_cost * LAT_JERK_COST, right_lane_cost * RIGHT_LANE_COST_WEIGHT, action_costs[i]))
+            print('action %d: obj_vel=%s eff %s com %s right %s: tot %s' %
+                 (action.cell[LAT_CELL], obj_vel, efficiency_cost * EFFICIENCY_COST_WEIGHT,
+                  lat_comfort_cost * LAT_JERK_COST, right_lane_cost * RIGHT_LANE_COST_WEIGHT, action_costs[i]))
 
         return action_costs
 

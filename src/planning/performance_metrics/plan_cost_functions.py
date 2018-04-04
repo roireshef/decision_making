@@ -35,7 +35,7 @@ class PlanEfficiencyMetric:
         avg_vel = (t1 * 0.5 * (ego_vel + v_mid) + t2 * v_mid +
                    t3 * 0.5 * (v_mid + follow_vel) + t_follow * follow_vel) / (t1 + t2 + t3 + t_follow)
 
-        # print('t_follow=%f avg_vel=%f' % (t_follow, avg_vel))
+        print('t_follow=%f avg_vel=%f' % (t_follow, avg_vel))
 
         efficiency_cost = EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel]))[0]
         return efficiency_cost * time_horizon / WERLING_TIME_RESOLUTION
@@ -63,8 +63,12 @@ class PlanEfficiencyMetric:
             t1 = 2 * s / v
             return t1, 0, 0, v1
         else:  # acceleration = a
-            v_mid_rel = np.sqrt(v * v / 2 + a * s)  # since vm^2/2a - v^2/2a + vm^2/2a = s
-            if v_mid_rel <= v_max_rel:  # to high vel
+            v_mid_rel_sqr = v * v / 2 + a * s  # since vm^2/2a - v^2/2a + vm^2/2a = s
+            if v_mid_rel_sqr > 0:
+                v_mid_rel = np.sqrt(v_mid_rel_sqr)
+            else:  # the target is behind ego, then just slow down
+                v_mid_rel = v
+            if v_mid_rel <= v_max_rel:  # ego does not reach v_max
                 t1 = (v_mid_rel - v) / a
                 t3 = v_mid_rel / a
                 return t1, 0, t3, v_mid_rel + v1
