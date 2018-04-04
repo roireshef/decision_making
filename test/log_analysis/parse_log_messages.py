@@ -73,8 +73,8 @@ class DmLogParser:
         state_timestamps = np.array(state_timestamps)
         log_timestamp = np.array(log_timestamp)
 
-        # Reorder by log timestamp
-        log_msg_order = np.argsort(log_timestamp)
+        # Reorder by state timestamp
+        log_msg_order = np.argsort(state_timestamps)
         state_timestamps = state_timestamps[log_msg_order]
         log_timestamp = log_timestamp[log_msg_order]
         states = [states[x] for x in log_msg_order]

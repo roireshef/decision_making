@@ -16,7 +16,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
-BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 60.0
+BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 50.0
 
 # When retrieving the lookahead path of a given dynamic object, we will multiply the path length
 # by the following ratio in order to avoid extrapolation when resampling the path (due to path sampling
@@ -81,9 +81,9 @@ BP_ACTION_T_RES = 0.05
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
-    [2, 0.01, 0.1],
-    [0.5, 0.01, 0.1],
-    [0.01, 0.01, 0.1]
+    [12, 0.05, 0.1],
+    [2, 0.05, 0.1],
+    [0.01, 0.05, 0.1]
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
