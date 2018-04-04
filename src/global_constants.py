@@ -106,6 +106,10 @@ MIN_OVERTAKE_VEL = 3
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
 
+# [m/s^2] accelerations for different aggressiveness levels
+AGGRESSIVENESS_TO_LON_ACC = np.array([1, 1.5, 2.25])
+AGGRESSIVENESS_TO_LAT_ACC = np.array([0.3, 0.5, 0.9])
+ACC_TO_COST_FACTOR = 0.01
 
 # Trajectory Planner #
 
