@@ -164,7 +164,7 @@ def main():
 
     range_ax.set_ylim([20,70])
 
-    plt.axhline(y=60, color='r', linestyle='--', label="Line of Sight")
+    plt.axhline(y=62, color='r', linestyle='--', label="Line of Sight")
     plt.axhline(y=45.0, color='b', linestyle='--')
 
     plt.xlabel('Seconds')
