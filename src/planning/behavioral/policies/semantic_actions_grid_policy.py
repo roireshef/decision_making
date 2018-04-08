@@ -434,6 +434,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                   (action.cell[LAT_CELL], target_vel, efficiency_cost * EFFICIENCY_COST_WEIGHT,
                    comfort_cost * LAT_JERK_COST, right_lane_cost * RIGHT_LANE_COST_WEIGHT, action_costs[i]))
 
+        best_action = np.argmin(action_costs)
+        print('action %d; lane %d\n' % (best_action, ego_lane + semantic_actions[best_action].cell[LAT_CELL]))
         return action_costs
 
     @staticmethod

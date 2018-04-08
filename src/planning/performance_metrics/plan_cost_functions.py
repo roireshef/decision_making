@@ -81,8 +81,7 @@ class PlanEfficiencyMetric:
         init_vel_rel = init_vel - end_vel  # relative velocity; may be negative
         max_vel_rel = max(max_vel - end_vel, max(init_vel_rel, 1.))  # let max_vel > end_vel to enable reaching the car
         if init_vel_rel > 0 and init_vel_rel * init_vel_rel > 2 * acc * abs(tot_dist):  # the braking should be stronger than acc
-            acc_time = abs(2 * tot_dist / init_vel_rel)  # tot_dist may be negative
-            return acc_time, end_vel, 0, 0
+            return 0, -1000, 1, 0  # illegal action creates infinite cost
         else:  # acceleration = acc
             mid_vel_rel_sqr = init_vel_rel * init_vel_rel / 2 + acc * tot_dist  # since mv^2/2a - v^2/2a + mv^2/2a = tot_dist
             if mid_vel_rel_sqr > 0:
@@ -100,17 +99,6 @@ class PlanEfficiencyMetric:
                 mid_dist = tot_dist - (2 * max_vel_rel * max_vel_rel - init_vel_rel * init_vel_rel) / (2 * acc)
                 mid_time = max(0., mid_dist / max_vel_rel)
                 return acc_time, max_vel, mid_time, dec_time
-
-    @staticmethod
-    def _calc_velocity_profile_follow_lane(init_vel: float, acc: float, target_vel: float) -> float:
-        """
-        given start and target velocities, calculate velocity profile
-        :param init_vel: start velocity
-        :param acc: acceleration
-        :param target_vel: target velocity
-        return: acc_time, target_vel
-        """
-        return abs(target_vel - init_vel) / acc
 
 
 class PlanComfortMetric:
