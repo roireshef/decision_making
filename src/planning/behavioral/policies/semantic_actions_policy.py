@@ -9,12 +9,14 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.policy import Policy
+from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, DynamicObject
 
 
 class SemanticActionType(Enum):
-    FOLLOW = 1
+    FOLLOW_VEHICLE = 1
+    FOLLOW_LANE = 2
 
 
 # Define semantic cell
@@ -73,24 +75,40 @@ class SemanticAction:
         self.target_obj = target_obj
         self.action_type = action_type
 
+    def __eq__(self, other):
+        # Check if the same action: compare target object id, and all other action parameters.
+        if other is None:
+            return False
+
+        # TODO: should we condition on obj_id?
+        return self.cell == other.cell and self.action_type == other.action_type
+
+    def __str__(self):
+        return str(self.__dict__)
+
 
 class SemanticActionSpec:
     """
     Holds the actual translation of the semantic action in terms of trajectory specifications.
     """
 
-    def __init__(self, t: float, v: float, s_rel: float, d_rel: float):
+    def __init__(self, t: float, v: float, s: float, d: float, samplable_trajectory: SamplableTrajectory = None):
         """
         The trajectory specifications are defined by the target ego state
         :param t: time [sec]
         :param v: velocity [m/s]
-        :param s_rel: relative longitudinal distance to ego in Frenet frame [m]
-        :param d_rel: relative lateral distance to ego in Frenet frame [m]
+        :param s: relative longitudinal distance to ego in Frenet frame [m]
+        :param d: relative lateral distance to ego in Frenet frame [m]
+        :param poly_coefs_s: coefficients for longitudinal reference trajectory. Used for "BP if".
         """
         self.t = t
         self.v = v
-        self.s_rel = s_rel
-        self.d_rel = d_rel
+        self.s = s
+        self.d = d
+        self.samplable_trajectory = samplable_trajectory
+
+    def __str__(self):
+        return str({k: str(v) for (k, v) in self.__dict__.items()})
 
 
 class SemanticActionsPolicy(Policy):

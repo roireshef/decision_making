@@ -1,5 +1,7 @@
 import traceback
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException
+from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
+    LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
@@ -52,20 +54,15 @@ class BehavioralFacade(DmModule):
 
             navigation_plan = self._get_current_navigation_plan()
 
-            if state_aligned is not None:
-                # Plan if the behavioral state has valid timestamp
-                trajectory_params, behavioral_visualization_message = self._policy.plan(state_aligned, navigation_plan)
+            trajectory_params, behavioral_visualization_message = self._policy.plan(state_aligned, navigation_plan)
 
-                if trajectory_params is not None:
-                    # Send plan to trajectory
-                    self._publish_results(trajectory_params)
+            # Send plan to trajectory
+            self._publish_results(trajectory_params)
 
-                    # Send visualization data
-                    self._publish_visualization(behavioral_visualization_message)
-                else:
-                    self.logger.info("No plan was generated.")
+            # Send visualization data
+            self._publish_visualization(behavioral_visualization_message)
 
-            self.logger.info("BehavioralFacade._periodic_action_impl time %s", time.time() - start_time)
+            self.logger.info("{} {}".format(LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, time.time() - start_time))
 
         except MsgDeserializationError as e:
             self.logger.warning("MsgDeserializationError was raised. skipping planning. " +
@@ -79,8 +76,12 @@ class BehavioralFacade(DmModule):
 
     def _get_current_state(self) -> State:
         input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
+        # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
+        if input_state is None:
+            raise MsgDeserializationError('LCM message queue for %s topic is empty or topic isn\'t subscribed',
+                                          pubsub_topics.STATE_TOPIC)
         object_state = State.deserialize(input_state)
-        self.logger.debug('Received State: {}'.format(object_state))
+        self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, object_state))
         return object_state
 
     def _get_current_navigation_plan(self) -> NavigationPlanMsg:
@@ -91,7 +92,7 @@ class BehavioralFacade(DmModule):
 
     def _publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
         self.pubsub.publish(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, trajectory_parameters.serialize())
-        self.logger.debug("BehavioralPlanningFacade output is %s", str(trajectory_parameters))
+        self.logger.debug("{} {}".format(LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, trajectory_parameters))
 
     def _publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
         self.pubsub.publish(pubsub_topics.VISUALIZATION_TOPIC, visualization_message.serialize())

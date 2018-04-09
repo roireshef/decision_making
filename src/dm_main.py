@@ -32,7 +32,7 @@ from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 
-# TODO: move this into test package
+# TODO: move this into config?
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))
 
 
@@ -55,6 +55,7 @@ class DmInitialization:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
         MapService.initialize()
+        #TODO: figure out if we want to use OccupancyState at all
         default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
                                                  np.array([0.1], dtype=np.float))
         state_module = StateModule(pubsub, logger, default_occupancy_state, None, None)
@@ -65,9 +66,6 @@ class DmInitialization:
         logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
 
-        # TODO: fill navigation planning handlers
-        # navigator = NavigationPlannerMock(plan)
-        # navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, handler=navigator)
         navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, plan=NAVIGATION_PLAN)
         return navigation_module
 
@@ -75,7 +73,6 @@ class DmInitialization:
     def create_behavioral_planner() -> BehavioralFacade:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
-        # TODO: fill the policy
         # Init map
         MapService.initialize()
         predictor = RoadFollowingPredictor(logger)
@@ -94,7 +91,6 @@ class DmInitialization:
         MapService.initialize()
         predictor = RoadFollowingPredictor(logger)
 
-        # TODO: fill the strategy handlers
         planner = WerlingPlanner(logger, predictor)
         strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
                              TrajectoryPlanningStrategy.PARKING: planner,
@@ -140,3 +136,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
