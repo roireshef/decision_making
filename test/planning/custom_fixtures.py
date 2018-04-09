@@ -3,7 +3,7 @@ import numpy as np
 
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
-    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS
+    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST, LAT_JERK_COST
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
@@ -12,6 +12,7 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.state.state import OccupancyState, ObjectSize, EgoState, State, DynamicObject
+from decision_making.test.prediction.mock_predictor import TestPredictorMock
 
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
@@ -148,19 +149,17 @@ def dynamic_objects_not_on_road():
 @pytest.fixture(scope='function')
 def state():
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
-    dyn1 = DynamicObject(1, 34, 0.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
+    dyn1 = DynamicObject(1, 34, 0.1, 0.1, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
     dyn2 = DynamicObject(1, 35, 10.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
     dynamic_objects = [dyn1, dyn2]
     size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
-    # TODO - decouple from navigation plan below (1 is the road id). Make this dependency explicit.
-    ego_state = EgoState(0, 0, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
+    ego_state = EgoState(0, 0, 1, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
     yield State(occupancy_state, dynamic_objects, ego_state)
 
 
 @pytest.fixture(scope='function')
 def ego_state_fix():
     size = ObjectSize(0, 0, 0)
-    # TODO - decouple from navigation plan below (1 is the road id). Make this dependency explicit.
     ego_state = EgoState(0, 5, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
     yield ego_state
 
@@ -172,7 +171,8 @@ def trajectory_params():
     mock_sigmoid = SigmoidFunctionParams(1.0, 2.0, 3.0)
     trajectory_cost_params = TrajectoryCostParams(mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
                                                   mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
-                                                  mock_sigmoid, 3.0, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)
+                                                  mock_sigmoid, 3.0, LON_JERK_COST, LAT_JERK_COST,
+                                                  VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)
     yield TrajectoryParams(reference_route=ref_route, target_state=target_state,
                            cost_params=trajectory_cost_params, time=16,
                            strategy=TrajectoryPlanningStrategy.HIGHWAY)
@@ -184,7 +184,7 @@ def trajectory():
         [[1.0, 0.0, 0.0, 0.0], [2.0, -0.33, 0.0, 0.0], [3.0, -0.66, 0.0, 0.0], [4.0, -1.0, 0.0, 0.0],
          [5.0, -1.33, 0.0, 0.0], [6.0, -1.66, 0.0, 0.0], [7.0, -2.0, 0.0, 0.0], [8.0, -2.0, 0.0, 0.0],
          [9.0, -2.0, 0.0, 0.0], [10.0, -2.0, 0.0, 0.0], [11.0, -2.0, 0.0, 0.0]])
-    yield TrajectoryPlanMsg(timestamp=0.0, trajectory=chosen_trajectory, current_speed=5.0)
+    yield TrajectoryPlanMsg(timestamp=0, trajectory=chosen_trajectory, current_speed=5.0)
 
 
 ### VIZ MESSAGES ###
@@ -196,8 +196,8 @@ def behavioral_visualization_msg(trajectory_params):
 
 @pytest.fixture(scope='function')
 def trajectory_visualization_msg(state, trajectory):
-    yield TrajectoryVisualizationMsg(reference_route=trajectory.reference_route,
-                                     trajectories=np.array([trajectory.chosen_trajectory]),
+    yield TrajectoryVisualizationMsg(reference_route=trajectory.trajectory,
+                                     trajectories=np.array([trajectory.trajectory]),
                                      costs=np.array([0]),
                                      state=state,
                                      predicted_states=[state],
@@ -256,3 +256,7 @@ def trajectory_planner_facade(pubsub, trajectory, trajectory_visualization_msg):
     yield trajectory_planning_module
     trajectory_planning_module.stop()
 
+@pytest.fixture(scope='function')
+def predictor():
+    logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
+    yield TestPredictorMock(logger)

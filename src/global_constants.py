@@ -16,7 +16,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
-BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 80.0
+BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 60.0
 
 # When retrieving the lookahead path of a given dynamic object, we will multiply the path length
 # by the following ratio in order to avoid extrapolation when resampling the path (due to path sampling
@@ -25,6 +25,7 @@ PREDICTION_LOOKAHEAD_COMPENSATION_RATIO = 1.2
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
+LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 2.0
 
 # A lower and upper thresholds on the longitudinal offset between object and ego.
 # Any object out of this scope won't be accounted in the behavioral planning process
@@ -41,24 +42,31 @@ BEHAVIORAL_PLANNING_TRAJECTORY_HORIZON = 2.0
 # This may have an effect on efficiency if the acda computation is costly.
 BEHAVIORAL_PLANNING_TIME_RESOLUTION = 0.1
 
-# Trajectory cost parameters
-OBSTACLE_SIGMOID_COST = 1.0 * 1e4           # cost around obstacles (sigmoid)
-OBSTACLE_SIGMOID_K_PARAM = 5.5              # sigmoid k (slope) param of objects on road
 
-DEVIATION_FROM_LANE_COST = 20               # cost of deviation from lane (sigmoid)
+# After a change of TP costs run the following test:
+# test_werlingPlanner.test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios
+
+# Trajectory cost parameters
+OBSTACLE_SIGMOID_COST = 1.0 * 1e5           # cost around obstacles (sigmoid)
+OBSTACLE_SIGMOID_K_PARAM = 9.0              # sigmoid k (slope) param of objects on road
+
+DEVIATION_FROM_LANE_COST = 0.07             # cost of deviation from lane (sigmoid)
 LANE_SIGMOID_K_PARAM = 4                    # sigmoid k (slope) param of going out-of-lane-center
 
-DEVIATION_TO_SHOULDER_COST = 3.0 * 1e2      # cost of deviation to shoulders (sigmoid)
-SHOULDER_SIGMOID_K_PARAM = 6                # sigmoid k (slope) param of going out-of-shoulder
+DEVIATION_TO_SHOULDER_COST = 1.0 * 1e2      # cost of deviation to shoulders (sigmoid)
+SHOULDER_SIGMOID_K_PARAM = 8.0              # sigmoid k (slope) param of going out-of-shoulder
 SHOULDER_SIGMOID_OFFSET = 0.2               # offset param m of going out-of-shoulder: cost = w/(1+e^(k*(m+x)))
 
-DEVIATION_FROM_ROAD_COST = 1.0 * 1e4        # cost of deviation from road (sigmoid)
+DEVIATION_FROM_ROAD_COST = 1.0 * 1e3        # cost of deviation from road (sigmoid)
 ROAD_SIGMOID_K_PARAM = 20                   # sigmoid k (slope) param of going out-of-road
 
-DEVIATION_FROM_GOAL_LAT_FACTOR = 4          # ratio between lateral and longitudinal deviation costs from the goal
-DEVIATION_FROM_GOAL_COST = 1.0 * 1e2        # cost of longitudinal deviation from the goal
+DEVIATION_FROM_GOAL_LAT_LON_RATIO = 3       # ratio between lateral and longitudinal deviation costs from the goal
+DEVIATION_FROM_GOAL_COST = 2.5 * 1e2        # cost of longitudinal deviation from the goal
 GOAL_SIGMOID_K_PARAM = 0.5                  # sigmoid k (slope) param of going out-of-goal
 GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
+
+LON_JERK_COST = 1.0                         # cost of longitudinal jerk
+LAT_JERK_COST = 1.0                         # cost of lateral jerk
 
 # [m/sec] speed to plan towards by default in BP
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
@@ -68,20 +76,21 @@ VELOCITY_LIMITS = np.array([0.0, 20.0])
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
-BP_SPECIFICATION_T_MIN = 2.0
-BP_SPECIFICATION_T_MAX = 20.0
-BP_SPECIFICATION_T_RES = 0.2
+BP_ACTION_T_LIMITS = np.array([3.0, 20.0])
+BP_ACTION_T_RES = 0.1
+
+# Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
+BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([4, 6, 3])
 
 # Longitudinal Acceleration Limits [m/sec^2]
-LON_ACC_LIMITS = np.array([-8.0, 3.0])  # taken from SuperCruise presentation
-A_LON_EPS = 2.0
+LON_ACC_LIMITS = np.array([-4.0, 3.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
-LAT_ACC_LIMITS = np.array([-3.0, 3.0])
+LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
-SAFE_DIST_TIME_DELAY = 1.0
+SAFE_DIST_TIME_DELAY = 2.0
 
 # Semantic Grid indices
 SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR = 1, 0, -1
@@ -121,7 +130,7 @@ ROAD_MAP_REQUIRED_RES = 5
 EXP_CLIP_TH = 50.0
 
 # Number of (best) trajectories to publish to visualization
-NUM_ALTERNATIVE_TRAJECTORIES = 75
+NUM_ALTERNATIVE_TRAJECTORIES = 50
 
 # Number of points in trajectories for sending out to visualization (currently VizTool freezes when there are too much)
 MAX_NUM_POINTS_FOR_VIZ = 60
@@ -132,9 +141,8 @@ DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION = 0.5
 # [m] "Negligible distance" threshold between the desired location and the actual location between two TP planning
 # iterations. If the distance is lower than this threshold, the TP plans the trajectory as is the ego vehicle is
 # currently in the desired location and not in its actual location.
-# TODO: fix real values for thresholds (after tuning controller)
-NEGLIGIBLE_DISPOSITION_LON = 3  # longitudinal (ego's heading direction) difference threshold
-NEGLIGIBLE_DISPOSITION_LAT = 3  # lateral (ego's side direction) difference threshold
+NEGLIGIBLE_DISPOSITION_LON = 1.5  # longitudinal (ego's heading direction) difference threshold
+NEGLIGIBLE_DISPOSITION_LAT = 0.5  # lateral (ego's side direction) difference threshold
 
 # [sec] Time-Resolution for the trajectory's discrete points that are sent to the controller
 TRAJECTORY_TIME_RESOLUTION = 0.1
@@ -148,19 +156,19 @@ TRAJECTORY_NUM_POINTS = 10
 WERLING_TIME_RESOLUTION = 0.1
 
 # [m] Range for grid search in werling planner (long. position)
-SX_OFFSET_MIN, SX_OFFSET_MAX = -15, 0.1
+SX_OFFSET_MIN, SX_OFFSET_MAX = -8, 0
 
 # [m] Range for grid search in werling planner (long. velocity)
 SV_OFFSET_MIN, SV_OFFSET_MAX = 0, 0
 
 # [m] Range for grid search in werling planner (lat. position)
-DX_OFFSET_MIN, DX_OFFSET_MAX = -3, 3
+DX_OFFSET_MIN, DX_OFFSET_MAX = -1.6, 1.6
 
 # Linspace number of steps in the constraints parameters grid-search
-SX_STEPS, SV_STEPS, DX_STEPS = 10, 1, 7
+SX_STEPS, SV_STEPS, DX_STEPS = 5, 1, 9
 
 # Linspace number of steps in latitudinal horizon planning time (from Td_low_bound to Ts)
-TD_STEPS = 5
+TD_STEPS = 6
 
 # Minimal T_d (time-horizon for the lateral movement) - in units of WerlingPlanner.dt
 TD_MIN_DT = 3
@@ -176,6 +184,10 @@ DEFAULT_ACCELERATION = 0.0
 # [-+1/m] when curvature is not specified - TP uses this as goal curvature
 DEFAULT_CURVATURE = 0.0
 
+# FixedTrajectoryPlanner.plan performs sleep with time = mean + max(0, N(0, std))
+FIXED_TRAJECTORY_PLANNER_SLEEP_MEAN = 0.15
+FIXED_TRAJECTORY_PLANNER_SLEEP_STD = 0.2
+
 
 # State #
 
@@ -184,7 +196,7 @@ DEFAULT_CURVATURE = 0.0
 EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT = 5.0, 2.0, 2.0
 
 # [m] The distance from ego frame origin to ego rear
-EGO_ORIGIN_LON_FROM_REAR = 4
+EGO_ORIGIN_LON_FROM_CENTER = 1.5
 
 #The id of the ego object
 EGO_ID = 0
@@ -213,3 +225,15 @@ TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 STATE_MODULE_NAME_FOR_LOGGING = "State Module"
 RVIZ_MODULE_NAME_FOR_LOGGING = "Rviz Module"
 
+
+
+##### Log messages
+# TODO: update decision_making_sim messages
+LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS = "Received mission params"
+LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG = "Publishing Trajectory"
+LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT = "BehavioralPlanningFacade output is"
+LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES = "TP has found %d valid trajectories to choose from"
+LOG_MSG_RECEIVED_STATE = "Received state"
+LOG_MSG_STATE_MODULE_PUBLISH_STATE = "publishing state"
+LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME = "TrajectoryPlanningFacade._periodic_action_impl time"
+LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME = "BehavioralFacade._periodic_action_impl time"

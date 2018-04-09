@@ -9,7 +9,8 @@ from decision_making.src import global_constants
 from decision_making.src.dm_main import DmInitialization
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
     DM_MANAGER_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_TIME_RESOLUTION, \
-    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
+    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, \
+    FIXED_TRAJECTORY_PLANNER_SLEEP_STD, FIXED_TRAJECTORY_PLANNER_SLEEP_MEAN
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
@@ -26,7 +27,7 @@ from decision_making.src.state.state import ObjectSize
 from decision_making.test import constants
 from decision_making.test.constants import TP_MOCK_FIXED_TRAJECTORY_FILENAME, BP_MOCK_FIXED_SPECS
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
-from decision_making.test.planning.trajectory.fixed_trajectory_planner import FixedTrajectoryPlanner
+from decision_making.src.planning.trajectory.fixed_trajectory_planner import FixedTrajectoryPlanner
 from decision_making.test.utils import Utils
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
@@ -47,7 +48,9 @@ class DmMockInitialization:
 
         step_size = TRAJECTORY_PLANNING_MODULE_PERIOD / TRAJECTORY_TIME_RESOLUTION
         planner = FixedTrajectoryPlanner(logger, predictor, fixed_trajectory, step_size,
-                                         fixed_trajectory[0, :(C_Y+1)])
+                                         fixed_trajectory[0, :(C_Y+1)],
+                                         FIXED_TRAJECTORY_PLANNER_SLEEP_STD,
+                                         FIXED_TRAJECTORY_PLANNER_SLEEP_MEAN)
 
         strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
                              TrajectoryPlanningStrategy.PARKING: planner,
