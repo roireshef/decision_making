@@ -14,7 +14,7 @@ from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
     DEVIATION_FROM_GOAL_COST, DEVIATION_FROM_GOAL_LAT_LON_RATIO, GOAL_SIGMOID_K_PARAM, \
     GOAL_SIGMOID_OFFSET, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS, SHOULDER_SIGMOID_OFFSET, LON_JERK_COST, LAT_JERK_COST, LANE_SIGMOID_K_PARAM, \
+    LAT_ACC_LIMITS, SHOULDER_SIGMOID_OFFSET, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LANE_SIGMOID_K_PARAM, \
     SHOULDER_SIGMOID_K_PARAM, BP_ACTION_T_LIMITS, \
     BP_ACTION_T_RES, SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL
@@ -28,7 +28,8 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_policy im
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticActionsPolicy, \
     SemanticAction, SemanticActionType, \
     LAT_CELL, LON_CELL, SemanticGridCell
-from decision_making.src.planning.performance_metrics.plan_cost_functions import PlanEfficiencyMetric, PlanComfortMetric
+from decision_making.src.planning.performance_metrics.plan_cost_functions import PlanEfficiencyMetric, \
+    PlanComfortMetric, ValueFunction, PlanRightLaneMetric
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -408,14 +409,17 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
             if target_obj is not None:
                 target_vel = target_obj.v_x
+                target_acc = target_obj.acceleration_lon
                 obj_lon = road_frenet.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))[FP_SX]
             else:
                 target_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+                target_acc = 0
                 obj_lon = None
 
             aggressiveness_level = 1  # TODO: should be defined in the action
-            vel_profile = PlanEfficiencyMetric.calc_velocity_profile(ego_fpoint[FP_SX], ego.v_x, obj_lon, target_vel,
-                                                                     aggressiveness_level)
+            vel_profile = PlanEfficiencyMetric.calc_velocity_profile(
+                ego_fpoint[FP_SX], ego.v_x, obj_lon, target_vel, target_acc, aggressiveness_level)
+            vel_profile_time = vel_profile.acc_time + vel_profile.mid_time + vel_profile.dec_time
 
             # efficiency cost
             efficiency_cost = PlanEfficiencyMetric.calc_cost(ego.v_x, target_vel, vel_profile, time_horizon)
@@ -425,17 +429,19 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             comfort_cost = PlanComfortMetric.calc_cost(vel_profile, action.cell[LAT_CELL] != SEMANTIC_CELL_LAT_SAME,
                                                        aggressiveness_level)
 
-            right_lane_cost = (ego_lane + action.cell[LAT_CELL]) * time_horizon / WERLING_TIME_RESOLUTION
+            target_lane = ego_lane + action.cell[LAT_CELL]
+            right_lane_cost = PlanRightLaneMetric.calc_cost(vel_profile_time, target_lane)
 
-            action_costs[i] = efficiency_cost * EFFICIENCY_COST_WEIGHT + right_lane_cost * RIGHT_LANE_COST_WEIGHT + \
-                              comfort_cost * (LAT_JERK_COST + LON_JERK_COST)
+            value_function = ValueFunction.calc_cost(time_horizon - vel_profile_time, target_vel, target_lane)
 
-            print('action %d: obj_vel=%s eff %s com %s right %s: tot %s' %
-                  (action.cell[LAT_CELL], target_vel, efficiency_cost * EFFICIENCY_COST_WEIGHT,
-                   comfort_cost * LAT_JERK_COST, right_lane_cost * RIGHT_LANE_COST_WEIGHT, action_costs[i]))
+            action_costs[i] = efficiency_cost + right_lane_cost + comfort_cost + value_function
+
+            print('time %f; action %d: obj_vel=%s eff %s com %s right %s value %f: tot %s' %
+                  (ego.timestamp_in_sec, action.cell[LAT_CELL], target_vel, efficiency_cost, comfort_cost,
+                   right_lane_cost, value_function, action_costs[i]))
 
         best_action = np.argmin(action_costs)
-        print('action %d; lane %d\n' % (best_action, ego_lane + semantic_actions[best_action].cell[LAT_CELL]))
+        print('best action %d; lane %d\n' % (best_action, ego_lane + semantic_actions[best_action].cell[LAT_CELL]))
         return action_costs
 
     @staticmethod
@@ -610,8 +616,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                                            right_road_cost=right_road_cost,
                                            dist_from_goal_cost=dist_from_goal_cost,
                                            dist_from_goal_lat_factor=dist_from_goal_lat_factor,
-                                           lon_jerk_cost=LON_JERK_COST,
-                                           lat_jerk_cost=LAT_JERK_COST,
+                                           lon_jerk_cost=LON_JERK_COST_WEIGHT,
+                                           lat_jerk_cost=LAT_JERK_COST_WEIGHT,
                                            velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
                                            lat_acceleration_limits=LAT_ACC_LIMITS)

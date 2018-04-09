@@ -65,8 +65,8 @@ DEVIATION_FROM_GOAL_COST = 2.5 * 1e2        # cost of longitudinal deviation fro
 GOAL_SIGMOID_K_PARAM = 0.5                  # sigmoid k (slope) param of going out-of-goal
 GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
 
-LON_JERK_COST = 1.0                         # cost of longitudinal jerk
-LAT_JERK_COST = 1.0                         # cost of lateral jerk
+LON_JERK_COST_WEIGHT = 1.0                         # cost of longitudinal jerk
+LAT_JERK_COST_WEIGHT = 1.0                         # cost of lateral jerk
 
 EFFICIENCY_COST_WEIGHT = 0.6                # cost of zero velocity on one trajectory point
 EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO = 3  # ratio UNDER_C'(0) / UNDER_C'(v_desired)

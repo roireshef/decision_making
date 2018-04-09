@@ -11,7 +11,7 @@ from decision_making.src.global_constants import OBSTACLE_SIGMOID_K_PARAM, LATER
     SHOULDER_SIGMOID_OFFSET, SHOULDER_SIGMOID_K_PARAM, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LANE_SIGMOID_K_PARAM, \
     DEVIATION_FROM_GOAL_LAT_LON_RATIO, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, TD_STEPS, \
-    LON_JERK_COST, LAT_JERK_COST, LON_MARGIN_FROM_EGO, EFFICIENCY_COST_WEIGHT, RIGHT_LANE_COST_WEIGHT
+    LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_MARGIN_FROM_EGO, EFFICIENCY_COST_WEIGHT, RIGHT_LANE_COST_WEIGHT
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.performance_metrics.cost_functions import Jerk, SafetyMetric, \
@@ -91,8 +91,8 @@ def test_werlingPlanner_toyScenario_noException():
                                        obstacle_cost_y=SigmoidFunctionParams(100, 10.0, 0.3),
                                        dist_from_goal_cost=SigmoidFunctionParams(100, 10.0, 0.3),
                                        dist_from_goal_lat_factor=1.0,
-                                       lon_jerk_cost=LON_JERK_COST,
-                                       lat_jerk_cost=LAT_JERK_COST,
+                                       lon_jerk_cost=LON_JERK_COST_WEIGHT,
+                                       lat_jerk_cost=LAT_JERK_COST_WEIGHT,
                                        velocity_limits=VELOCITY_LIMITS,
                                        lon_acceleration_limits=LON_ACC_LIMITS,
                                        lat_acceleration_limits=LAT_ACC_LIMITS)
