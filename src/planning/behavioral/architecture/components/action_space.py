@@ -15,9 +15,10 @@ from decision_making.src.planning.behavioral.architecture.data_objects import Ac
 from decision_making.src.planning.behavioral.architecture.data_objects import RelativeLane, AggressivenessLevel, \
     ActionRecipe
 from decision_making.src.planning.behavioral.architecture.components.filtering.recipe_filtering import RecipeFiltering, RecipeFilter
+from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
+    SemanticBehavioralGridState
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.utils.math import Math
-from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import SemanticActionsGridState
 from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D, \
     Poly1D
@@ -119,7 +120,7 @@ class StaticActionSpace(ActionSpace):
         self.recipe_filtering.add_filter(
             RecipeFilter(name='AlwaysFalse', filtering_method=recipe_filter_methods.always_false), is_active=True)
 
-    def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: SemanticActionsGridState) -> Optional[ActionSpec]:
+    def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: SemanticBehavioralGridState) -> Optional[ActionSpec]:
         ego = behavioral_state.ego_state
         ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
         road_id = ego.road_localization.road_id
@@ -210,7 +211,7 @@ class DynamicActionSpace(ActionSpace):
                                          is_active=True)
 
     def specify_goal(self, action_recipe: DynamicActionRecipe,
-                     behavioral_state: SemanticActionsGridState) -> Optional[ActionSpec]:
+                     behavioral_state: SemanticBehavioralGridState) -> Optional[ActionSpec]:
         """
         Given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec.
         Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it.
@@ -322,7 +323,7 @@ class CombinedActionSpace(ActionSpace):
         return self.static_action_space.recipes + self.dynamic_action_space.recipes
 
     @raises(NotImplemented)
-    def specify_goal(self, action_recipe: ActionRecipe, behavioral_state: SemanticActionsGridState) -> ActionSpec:
+    def specify_goal(self, action_recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> ActionSpec:
         if isinstance(action_recipe, StaticActionRecipe):
             return self.static_action_space.specify_goal(action_recipe, behavioral_state)
         elif isinstance(action_recipe, DynamicActionRecipe):
@@ -332,7 +333,7 @@ class CombinedActionSpace(ActionSpace):
                                  action_recipe)
 
     @raises(NotImplemented)
-    def filter_recipe(self, action_recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
+    def filter_recipe(self, action_recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> bool:
         if isinstance(action_recipe, StaticActionRecipe):
             return self.static_action_space.filter_recipe(action_recipe, behavioral_state)
         elif isinstance(action_recipe, DynamicActionRecipe):

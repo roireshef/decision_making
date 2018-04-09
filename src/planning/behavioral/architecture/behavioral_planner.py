@@ -1,7 +1,7 @@
-import numpy as np
+from logging import Logger
+from typing import Optional
 
-from decision_making.src.planning.behavioral.architecture.components.state_action_evaluator import StateActionEvaluator
-from decision_making.src.planning.behavioral.architecture.components.value_approximator import ValueApproximator
+import numpy as np
 
 from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, TRAJECTORY_ARCLEN_RESOLUTION, \
     SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, \
@@ -14,17 +14,17 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParams,
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.architecture.components.action_space import ActionSpace
 from decision_making.src.planning.behavioral.architecture.components.action_validator import ActionValidator
+from decision_making.src.planning.behavioral.architecture.components.state_action_evaluator import StateActionEvaluator
+from decision_making.src.planning.behavioral.architecture.components.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe
-from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import SemanticActionsGridState
+from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
+    SemanticBehavioralGridState
 from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize, EgoState
-from logging import Logger
-from typing import Optional
-
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -70,7 +70,7 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
 
         # create road semantic grid from the raw State object
         # behavioral_state contains road_occupancy_grid and ego_state
-        behavioral_state = SemanticActionsGridState.create_from_state(state=state,
+        behavioral_state = SemanticBehavioralGridState.create_from_state(state=state,
                                                                       logger=self.logger)
 
         current_state_value = self.value_approximator.evaluate_state(behavioral_state)
@@ -113,7 +113,7 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
         return trajectory_parameters, visualization_message
 
     @staticmethod
-    def _generate_trajectory_specs(behavioral_state: SemanticActionsGridState,
+    def _generate_trajectory_specs(behavioral_state: SemanticBehavioralGridState,
                                    action_spec: ActionSpec,
                                    navigation_plan: NavigationPlanMsg) -> TrajectoryParams:
         """
@@ -249,13 +249,13 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
 
         return cost_params
 
-    def _maintain_consistency(self, behavioral_state: SemanticActionsGridState,
-                              action_recipe: ActionRecipe) -> SemanticActionsGridState:
+    def _maintain_consistency(self, behavioral_state: SemanticBehavioralGridState,
+                              action_recipe: ActionRecipe) -> SemanticBehavioralGridState:
         """
         Updates behavioral_state in order to maintain consistency.
         :param behavioral_state: processed behavioral state
         :param action_recipe:
-        :return: updated behavioral_state [SemanticActionsGridState]
+        :return: updated behavioral_state [SemanticBehavioralGridState]
         """
         ego_state = behavioral_state.ego_state
 
