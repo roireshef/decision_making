@@ -80,7 +80,7 @@ BP_ACTION_T_LIMITS = np.array([3.0, 20.0])
 BP_ACTION_T_RES = 0.1
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
-BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([4, 6, 3])
+BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([[4, 6, 3], [4, 6, 3], [4, 6, 3]])
 
 # Longitudinal Acceleration Limits [m/sec^2]
 LON_ACC_LIMITS = np.array([-4.0, 3.0])  # taken from SuperCruise presentation
