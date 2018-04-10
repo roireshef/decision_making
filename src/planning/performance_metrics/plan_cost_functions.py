@@ -9,20 +9,19 @@ from decision_making.src.planning.performance_metrics.cost_functions import Effi
 
 
 class VelocityProfile:
-    def __init__(self, init_vel: float, acc_time: float, mid_vel: float, mid_time: float, dec_time: float,
-                 end_vel: float):
-        self.init_vel = init_vel  # initial ego velocity
-        self.acc_time = acc_time  # acceleration/deceleration time period
-        self.mid_vel = mid_vel    # maximal velocity after acceleration
-        self.mid_time = mid_time  # time period for going with maximal velocity
-        self.dec_time = dec_time  # deceleration/acceleration time
-        self.end_vel = end_vel    # end velocity
+    def __init__(self, v_init: float, t1: float, v_mid: float, t2: float, t3: float, v_end: float):
+        self.v_init = v_init    # initial ego velocity
+        self.t1 = t1            # acceleration/deceleration time period
+        self.v_mid = v_mid      # maximal velocity after acceleration
+        self.t2 = t2            # time period for going with maximal velocity
+        self.t3 = t3            # deceleration/acceleration time
+        self.v_end = v_end      # end velocity
 
 
 class PlanEfficiencyMetric:
 
     @staticmethod
-    def calc_cost(ego_vel: float, target_vel: float, vel_profile: VelocityProfile, time_horizon: float) -> float:
+    def calc_cost(ego_vel: float, target_vel: float, vel_profile: VelocityProfile) -> float:
         """
         Calculate efficiency cost for a planned following car or lane.
         Do it by calculation of average velocity during achieving the followed car and then following it with
@@ -30,44 +29,42 @@ class PlanEfficiencyMetric:
         :param ego_vel: [m/s] ego initial velocity
         :param target_vel: [m/s] target car / lane velocity
         :param vel_profile: velocity profile
-        :param time_horizon: [sec] considered time horizon for average velocity and cost calculation
         :return: the efficiency cost
         """
-        profile_time = vel_profile.acc_time + vel_profile.mid_time + vel_profile.dec_time
+        profile_time = vel_profile.t1 + vel_profile.t2 + vel_profile.t3
 
-        avg_vel = (vel_profile.acc_time * 0.5 * (ego_vel + vel_profile.mid_vel) +
-                   vel_profile.mid_time * vel_profile.mid_vel +
-                   vel_profile.dec_time * 0.5 * (vel_profile.mid_vel + target_vel)) / profile_time
+        avg_vel = (vel_profile.t1 * 0.5 * (ego_vel + vel_profile.v_mid) +
+                   vel_profile.t2 * vel_profile.v_mid +
+                   vel_profile.t3 * 0.5 * (vel_profile.v_mid + target_vel)) / profile_time
 
         print('profile_time=%f avg_vel=%f t1=%f t2=%f t3=%f v_mid=%f obj_vel=%f' %
-              (profile_time, avg_vel, vel_profile.acc_time, vel_profile.mid_time, vel_profile.dec_time,
-               vel_profile.mid_vel, target_vel))
+              (profile_time, avg_vel, vel_profile.t1, vel_profile.t2, vel_profile.t3,
+               vel_profile.v_mid, target_vel))
 
         efficiency_cost = EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel]))[0]
         return EFFICIENCY_COST_WEIGHT * efficiency_cost * profile_time / WERLING_TIME_RESOLUTION
 
     @staticmethod
-    def calc_velocity_profile(init_lon: float, init_vel: float, obj_lon: float, target_vel: float, target_acc: float,
+    def calc_velocity_profile(lon_init: float, v_init: float, lon_target: float, v_target: float, a_target: float,
                               aggressiveness_level: int) -> Optional[VelocityProfile]:
         """
         calculate velocities profile for semantic action: either following car or following lane
-        :param init_lon: [m] initial longitude of ego
-        :param init_vel: [m/s] initial velocity of ego
-        :param obj_lon: [m] initial longitude of followed object (None if follow lane)
-        :param target_vel: [m/s] followed object's velocity or target velocity for follow lane
-        :param target_acc: [m/s^2] followed object's acceleration
+        :param lon_init: [m] initial longitude of ego
+        :param v_init: [m/s] initial velocity of ego
+        :param lon_target: [m] initial longitude of followed object (None if follow lane)
+        :param v_target: [m/s] followed object's velocity or target velocity for follow lane
+        :param a_target: [m/s^2] followed object's acceleration
         :param aggressiveness_level: [int] attribute of the semantic action
         :return: VelocityProfile class includes times and velocities
         """
-        acc = AGGRESSIVENESS_TO_LON_ACC[aggressiveness_level]  # desired acceleration
-        max_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-        if obj_lon is not None:  # follow car
-            dist = obj_lon - init_lon - SAFE_DIST_TIME_DELAY * target_vel - 5  # TODO: replace 5 by cars' half sizes sum
-            return PlanEfficiencyMetric._calc_velocity_profile_follow_car(init_vel, acc, max_vel, dist,
-                                                                          target_vel, target_acc)
+        acc = AGGRESSIVENESS_TO_LON_ACC[aggressiveness_level]  # profile acceleration
+        v_max = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+        if lon_target is not None:  # follow car
+            dist = lon_target - lon_init - SAFE_DIST_TIME_DELAY * v_target - 5  # TODO: replace 5 by cars' half sizes sum
+            return PlanEfficiencyMetric._calc_velocity_profile_follow_car(v_init, acc, v_max, dist, v_target, a_target)
         else:  # follow lane
-            acc_time = abs(target_vel - init_vel) / acc
-            return VelocityProfile(init_vel, acc_time, target_vel, 0, 0, target_vel)
+            t1 = abs(v_target - v_init) / acc
+            return VelocityProfile(v_init=v_init, t1=t1, v_mid=v_target, t2=0, t3=0, v_end=v_target)
 
     @staticmethod
     def _calc_velocity_profile_follow_car(v_init: float, a: float, v_max: float, dist: float, v_tar: float,
@@ -178,7 +175,7 @@ class PlanComfortMetric:
             lat_cost = 0
 
         lon_acc = AGGRESSIVENESS_TO_LON_ACC[aggressiveness_level]
-        lon_cost = (vel_profile.acc_time + vel_profile.dec_time) * lon_acc * lon_acc * ACC_TO_COST_FACTOR * \
+        lon_cost = (vel_profile.t1 + vel_profile.t3) * lon_acc * lon_acc * ACC_TO_COST_FACTOR * \
                    LON_JERK_COST_WEIGHT
         return lat_cost + lon_cost
 

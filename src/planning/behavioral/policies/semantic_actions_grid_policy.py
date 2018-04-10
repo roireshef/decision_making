@@ -419,10 +419,10 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             aggressiveness_level = 1  # TODO: should be defined in the action
             vel_profile = PlanEfficiencyMetric.calc_velocity_profile(
                 ego_fpoint[FP_SX], ego.v_x, obj_lon, target_vel, target_acc, aggressiveness_level)
-            vel_profile_time = vel_profile.acc_time + vel_profile.mid_time + vel_profile.dec_time
+            vel_profile_time = vel_profile.t1 + vel_profile.t2 + vel_profile.t3
 
             # efficiency cost
-            efficiency_cost = PlanEfficiencyMetric.calc_cost(ego.v_x, target_vel, vel_profile, time_horizon)
+            efficiency_cost = PlanEfficiencyMetric.calc_cost(ego.v_x, target_vel, vel_profile)
 
             # comfort cost
             aggressiveness_level = 1  # TODO: get it from action
