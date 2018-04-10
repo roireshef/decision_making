@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, SAFE_DIST_TIME_DELAY, \
@@ -10,10 +12,10 @@ class VelocityProfile:
     def __init__(self, init_vel: float, acc_time: float, mid_vel: float, mid_time: float, dec_time: float,
                  end_vel: float):
         self.init_vel = init_vel  # initial ego velocity
-        self.acc_time = acc_time  # acceleration time period
+        self.acc_time = acc_time  # acceleration/deceleration time period
         self.mid_vel = mid_vel    # maximal velocity after acceleration
         self.mid_time = mid_time  # time period for going with maximal velocity
-        self.dec_time = dec_time  # deceleration time
+        self.dec_time = dec_time  # deceleration/acceleration time
         self.end_vel = end_vel    # end velocity
 
 
@@ -46,7 +48,7 @@ class PlanEfficiencyMetric:
 
     @staticmethod
     def calc_velocity_profile(init_lon: float, init_vel: float, obj_lon: float, target_vel: float, target_acc: float,
-                              aggressiveness_level: int) -> VelocityProfile:
+                              aggressiveness_level: int) -> Optional[VelocityProfile]:
         """
         calculate velocities profile for semantic action: either following car or following lane
         :param init_lon: [m] initial longitude of ego
@@ -57,22 +59,19 @@ class PlanEfficiencyMetric:
         :param aggressiveness_level: [int] attribute of the semantic action
         :return: VelocityProfile class includes times and velocities
         """
-        des_acc = AGGRESSIVENESS_TO_LON_ACC[aggressiveness_level]  # desired acceleration
+        acc = AGGRESSIVENESS_TO_LON_ACC[aggressiveness_level]  # desired acceleration
         max_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
         if obj_lon is not None:  # follow car
-            s = obj_lon - init_lon - SAFE_DIST_TIME_DELAY * target_vel - 5  # TODO: replace 5 by cars' half sizes sum
-            acc_time, mid_vel, mid_time, dec_time = \
-                PlanEfficiencyMetric._calc_velocity_profile_follow_car(init_vel, des_acc, max_vel, s,
-                                                                       target_vel, target_acc)
+            dist = obj_lon - init_lon - SAFE_DIST_TIME_DELAY * target_vel - 5  # TODO: replace 5 by cars' half sizes sum
+            return PlanEfficiencyMetric._calc_velocity_profile_follow_car(init_vel, acc, max_vel, dist,
+                                                                          target_vel, target_acc)
         else:  # follow lane
-            dec_time = mid_time = 0
-            mid_vel = target_vel
-            acc_time = abs(target_vel - init_vel) / des_acc
-        return VelocityProfile(init_vel, acc_time, mid_vel, mid_time, dec_time, target_vel)
+            acc_time = abs(target_vel - init_vel) / acc
+            return VelocityProfile(init_vel, acc_time, target_vel, 0, 0, target_vel)
 
     @staticmethod
     def _calc_velocity_profile_follow_car(v_init: float, a: float, v_max: float, dist: float, v_tar: float,
-                                          a_tar: float) -> [float, float, float, float]:
+                                          a_tar: float) -> Optional[VelocityProfile]:
         """
         Given start & end velocities and distance to the followed car, calculate velocity profile:
             1. acceleration to a velocity v_mid <= v_max for t1 time,
@@ -91,10 +90,9 @@ class PlanEfficiencyMetric:
         """
         print('CALC PROFILE: v_init=%f dist=%f' % (v_init, dist))
 
-        ILLEGAL_VEL = -1000  # illegal velocity creates "infinite" cost
         v_init_rel = v_init - v_tar  # relative velocity; may be negative
         v_max_rel = max(v_max - v_tar, max(v_init_rel, 1.))  # let max_vel > end_vel to enable reaching the car
-        if np.math.isclose(a, a_tar, rel_tol=1e-02) or np.math.isclose(a, -a_tar, rel_tol=1e-02):
+        if a > 0 and (np.math.isclose(a, a_tar, rel_tol=0.05) or np.math.isclose(a, -a_tar, rel_tol=0.05)):
             a -= 0.1  # slightly change the acceleration to prevent instability in calculations
 
         # here we use formula (vm^2 - v^2)/2(a-a_tar) + vm^2/2(a+a_tar) = dist
@@ -117,19 +115,19 @@ class PlanEfficiencyMetric:
             v_mid_rel_sqr = (v_init_rel * v_init_rel / 2 - dist * (a + a_tar)) * (a - a_tar) / a
             if v_mid_rel_sqr < 0:  # the target is unreachable
                 print('BAD: negative v_mid_rel_sqr=%f tot_dist=%f' % (v_mid_rel_sqr, dist))
-                return 0, ILLEGAL_VEL, 1, 0  # illegal action
+                return None  # illegal action
             v_mid_rel = -np.sqrt(v_mid_rel_sqr)
             t1 = (v_init_rel - v_mid_rel) / (a - a_tar)   # deceleration time
             t3 = -v_mid_rel / (a + a_tar)                 # acceleration time
             if t1 < 0 or t3 < 0:
                 print('BAD: negative t1 or t3 or v_mid: v_mid_rel=%f t1=%f t3=%f' % (v_mid_rel, t1, t3))
-                return 0, ILLEGAL_VEL, 1, 0  # illegal action
+                return None  # illegal action
 
         if v_init + t1 * a <= v_max or dist < 0:  # ego does not reach max_vel, then t2 = 0
             if t3 < 0 or v_mid_rel + v_tar < 0:  # negative t3 or negative v_mid
                 print('BAD: negative t3 or v_mid: t3=%f v_mid_rel=%f' % (t3, v_mid_rel))
-                return 0, ILLEGAL_VEL, 1, 0  # illegal action
-            return t1, v_mid_rel + v_tar, 0, t3
+                return None  # illegal action
+            return VelocityProfile(v_init, t1, v_mid_rel + v_tar, 0, t3, v_tar)
 
         # from now: ego reaches max_vel, such that t2 > 0
 
@@ -138,7 +136,7 @@ class PlanEfficiencyMetric:
             t3 = v_max_rel / a  # deceleration time
             dist_mid = dist - (2 * v_max_rel * v_max_rel - v_init_rel * v_init_rel) / (2 * a)
             t2 = max(0., dist_mid / v_max_rel)  # constant velocity (max_vel) time
-            return t1, v_max, t2, t3
+            return VelocityProfile(v_init, t1, v_max, t2, t3, v_tar)
 
         # from now the most general case: t2 > 0 and the followed car has non-zero acceleration
 
@@ -155,14 +153,14 @@ class PlanEfficiencyMetric:
         # after substitution of vm2 = vm1 - a1*t and simplification, solve quadratic equation on t2:
         # a*a_tar * t^2 - 2*vm1*a * t2 - (vm1^2 + 2(a+a_tar) * ((vm1^2 - v^2)/2(a-a_tar) - dist)) = 0
         c = vm1*vm1 + 2*(a + a_tar) * ((vm1 * vm1 - v * v) / (2 * (a - a_tar)) - dist)  # free coefficient
-        discriminant = vm1*vm1 * a * a + a * a_tar * c  # discriminant of the quadratic equation
+        discriminant = vm1*vm1 * a*a + a*a_tar * c  # discriminant of the quadratic equation
         if discriminant < 0:
             print('BAD: general case: det < 0')
-            return 0, ILLEGAL_VEL, 1, 0  # illegal action
+            return None  # illegal action
         t2 = (vm1 * a + np.sqrt(discriminant)) / (a * a_tar)
         vm2 = vm1 - a_tar*t2
         t3 = vm2 / (a + a_tar)
-        return t1, v_max, t2, t3
+        return VelocityProfile(v_init, t1, v_max, t2, t3, v_tar)
 
 
 class PlanComfortMetric:
