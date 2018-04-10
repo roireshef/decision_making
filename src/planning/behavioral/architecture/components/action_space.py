@@ -165,7 +165,7 @@ class StaticActionSpace(ActionSpace):
                                                                                                       action_recipe.aggressiveness)
 
         if not optimum_time_satisfies_constraints:
-            self.logger.warning("can\'t specify Recipe %s given ego state %s ", str(action_recipe), str(ego))
+            self.logger.warning("Can\'t specify Recipe %s given ego state %s ", str(action_recipe), str(ego))
             return None
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from

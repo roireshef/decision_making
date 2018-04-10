@@ -54,7 +54,7 @@ class BehavioralPlanner:
         cost params and strategy.
         :param state:
         :param nav_plan:
-        :return: a tuple: (TrajectoryParams for TP,visualization_message for e.g. VizTool)
+        :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
         pass
 
@@ -75,13 +75,13 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
 
         current_state_value = self.value_approximator.evaluate_state(behavioral_state)
 
-        # recipe filtering
+        # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
 
         recipes_cost = self.state_action_evaluator.evaluate_recipes(behavioral_state, action_recipes, recipes_mask)
 
         action_specs = []
-
+        # Action specification
         for i in range(len(action_recipes)):
             spec = None
             if recipes_mask[i]:
@@ -90,8 +90,10 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
 
             action_specs.append(spec)
 
+        # ActionSpec filtering
         action_specs_mask = self.action_validator.validate_actions(action_specs, behavioral_state)
 
+        # State-Action Evaluation
         action_costs = self.state_action_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
 
         selected_action_index = int(np.argmin(action_costs))
@@ -102,7 +104,7 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
                                                                                       navigation_plan=nav_plan)
         visualization_message = BehavioralVisualizationMsg(reference_route=trajectory_parameters.reference_route)
 
-        # updating selected actions in memory
+        # keeping selected actions for next iteration use
         self._last_action = action_recipes[selected_action_index]
         self._last_action_spec = selected_action_spec
         self._last_ego_state = state.ego_state
