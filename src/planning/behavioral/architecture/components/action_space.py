@@ -23,7 +23,8 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_utils imp
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D, \
     Poly1D
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory
-from decision_making.src.planning.types import FP_SX, LIMIT_MAX, FS_SV, FS_SX, LIMIT_MIN, FS_SA, FS_DX, FS_DV, FS_DA
+from decision_making.src.planning.types import FP_SX, LIMIT_MAX, FS_SV, FS_SX, LIMIT_MIN, FS_SA, FS_DX, FS_DV, FS_DA, \
+    FrenetState2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.predictor import Predictor
 from mapping.src.service.map_service import MapService
@@ -103,6 +104,59 @@ class ActionSpace:
 
         return optimum_time_idx, optimum_time_satisfies_constraints
 
+    @staticmethod
+    def define_lon_constraints(repeat_factor: int, ego_init_fstate: FrenetState2D, desired_acc: float,
+                               desired_vel: np.ndarray, desired_lon: np.ndarray = None):
+        """
+        Defines longitudinal constraints for Werling trajectory planning
+        :param repeat_factor: number of planning horizons, determines the shape of returned tensor.
+        :param ego_init_fstate: ego initial frenet-frame state
+        :param desired_acc: desired acceleration when action is finished (for each planning horizon)
+        :param desired_vel: desired velocity when action is finished(for each planning horizon)
+        :param desired_lon: desired longitudinal position when action is finished (for each planning horizon, optional)
+        :return: a tensor with the constraints of third-order dynamics in initial and terminal action phase.
+        """
+        if desired_lon:
+            # Quintic polynomial constraints
+            constraints_s = np.c_[np.full(shape=repeat_factor, fill_value=ego_init_fstate[FS_SX]),
+                                  np.full(shape=repeat_factor, fill_value=ego_init_fstate[FS_SV]),
+                                  np.full(shape=repeat_factor, fill_value=ego_init_fstate[FS_SA]),
+                                  desired_lon,
+                                  desired_vel,
+                                  np.full(shape=repeat_factor, fill_value=desired_acc)]
+        else:
+            # Quartic polynomial constraints (no constraint on sT)
+            constraints_s = np.repeat([[
+                ego_init_fstate[FS_SX],
+                ego_init_fstate[FS_SV],
+                ego_init_fstate[FS_SA],
+                desired_vel,  # desired velocity
+                0.0  # zero acceleration at the end of action
+            ]], repeats=repeat_factor, axis=0)
+
+        return constraints_s
+
+    @staticmethod
+    def define_lat_constraints(repeat_factor: int, ego_init_fstate: FrenetState2D, desired_lat: float):
+        """
+        Defines lateral constraints for Werling trajectory planning
+        :param repeat_factor: number of planning horizons, determines the shape of returned tensor.
+        :param ego_init_fstate: ego initial frenet-frame state
+        :param desired_lat: desired lateral position when action is finished (for each planning horizon)
+        :return: a tensor with the constraints of third-order dynamics in initial and terminal action phase.
+        """
+        # Quintic polynomial constraints
+        constraints_d = np.repeat([[
+            ego_init_fstate[FS_DX],
+            ego_init_fstate[FS_DV],
+            ego_init_fstate[FS_DA],
+            desired_lat,
+            0.0,
+            0.0
+        ]], repeats=repeat_factor, axis=0)
+
+        return constraints_d
+
 
 class StaticActionSpace(ActionSpace):
 
@@ -134,27 +188,14 @@ class StaticActionSpace(ActionSpace):
         T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
                            BP_ACTION_T_RES)
 
-        # Quartic polynomial constraints (no constraint on sT)
-        constraints_s = np.repeat([[
-            ego_init_fstate[FS_SX],
-            ego_init_fstate[FS_SV],
-            ego_init_fstate[FS_SA],
-            action_recipe.velocity,  # desired velocity
-            0.0  # zero acceleration at the end of action
-        ]], repeats=len(T_vals), axis=0)
-        A_inv_s = np.linalg.inv(QuarticPoly1D.time_constraints_tensor(T_vals))
-        poly_coefs_s = QuarticPoly1D.zip_solve(A_inv_s, constraints_s)
+        constraints_s = ActionSpace.define_lon_constraints(len(T_vals), ego_init_fstate, 0.0, action_recipe.velocity)
+        constraints_d = ActionSpace.define_lat_constraints(len(T_vals), ego_init_fstate, desired_center_lane_latitude)
 
-        # Quintic polynomial constraints
-        constraints_d = np.repeat([[
-            ego_init_fstate[FS_DX],
-            ego_init_fstate[FS_DV],
-            ego_init_fstate[FS_DA],
-            desired_center_lane_latitude,  # Target latitude relative to reference route (RHS of road)
-            0.0,
-            0.0
-        ]], repeats=len(T_vals), axis=0)
+        A_inv_s = np.linalg.inv(QuarticPoly1D.time_constraints_tensor(T_vals))
         A_inv_d = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_vals))
+
+        # solve for s(t) and d(t)
+        poly_coefs_s = QuarticPoly1D.zip_solve(A_inv_s, constraints_s)
         poly_coefs_d = QuinticPoly1D.zip_solve(A_inv_d, constraints_d)
 
         optimum_time_idx, optimum_time_satisfies_constraints = ActionSpace.find_optimum_planning_time(T_vals,
@@ -200,13 +241,13 @@ class DynamicActionSpace(ActionSpace):
             RecipeFilter(name='AlwaysTrue', filtering_method=recipe_filter_methods.filter_if_none), is_active=True)
         self.recipe_filtering.add_filter(
             RecipeFilter(name='AlwaysFalse', filtering_method=recipe_filter_methods.always_false), is_active=False)
-        self.recipe_filtering.add_filter(RecipeFilter(name="filter_actions_towards_non_occupied_cells",
+        self.recipe_filtering.add_filter(RecipeFilter(name="FilterActionsTowardsNonOccupiedCells",
                                                       filtering_method=recipe_filter_methods.filter_actions_towards_non_occupied_cells),
                                          is_active=True)
-        self.recipe_filtering.add_filter(RecipeFilter(name="filter_actions_toward_back_and_parallel_cells",
+        self.recipe_filtering.add_filter(RecipeFilter(name="FilterActionsTowardBackAndParallelCells",
                                                       filtering_method=recipe_filter_methods.filter_actions_toward_back_and_parallel_cells),
                                          is_active=True)
-        self.recipe_filtering.add_filter(RecipeFilter(name="filter_over_take_actions",
+        self.recipe_filtering.add_filter(RecipeFilter(name="FilterOverTakeActions",
                                                       filtering_method=recipe_filter_methods.filter_over_take_actions),
                                          is_active=True)
 
@@ -261,21 +302,8 @@ class DynamicActionSpace(ActionSpace):
         else:
             raise NotImplemented("Action Type %s is not handled in DynamicActionSpace specification", action_recipe.action_type)
 
-        constraints_s = np.c_[np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SX]),
-            np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SV]),
-            np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SA]),
-            desired_lon,
-            obj_svT,
-            np.full(shape=len(T_vals), fill_value=obj_saT)]
-        constraints_d = np.repeat([[
-            ego_init_fstate[FS_DX],
-            ego_init_fstate[FS_DV],
-            ego_init_fstate[FS_DA],
-            obj_center_lane_latitude,
-            0.0,
-            0.0
-        ]], repeats=len(T_vals), axis=0)
-
+        constraints_s = ActionSpace.define_lon_constraints(len(T_vals), ego_init_fstate, obj_saT, obj_svT, desired_lon)
+        constraints_d = ActionSpace.define_lat_constraints(len(T_vals), ego_init_fstate, obj_center_lane_latitude)
         A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_vals))
 
         # solve for s(t) and d(t)
@@ -290,6 +318,7 @@ class DynamicActionSpace(ActionSpace):
                                                                                                       action_recipe.aggressiveness)
 
         if not optimum_time_satisfies_constraints:
+            self.logger.warning("Can\'t specify Recipe %s given ego state %s ", str(action_recipe), str(ego))
             return None
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
