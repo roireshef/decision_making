@@ -126,18 +126,21 @@ class PlanEfficiencyMetric:
                 return 0, ILLEGAL_VEL, 1, 0  # illegal action
 
         if init_vel + t1 * acc <= max_vel or tot_dist < 0:  # ego does not reach max_vel, then t2 = 0
-            if t3 < 0 or mid_vel_rel + end_vel < 0:  # negative t3 or mid_vel
+            if t3 < 0 or mid_vel_rel + end_vel < 0:  # negative t3 or negative mid_vel
                 print('BAD: negative t3 or mid_vel: t3=%f mid_vel_rel=%f' % (t3, mid_vel_rel))
                 return 0, ILLEGAL_VEL, 1, 0  # illegal action
             return t1, mid_vel_rel + end_vel, 0, t3
 
-        # ego reaches max_vel and moves with this velocity mid_time
-        t1 = (max_vel - init_vel) / acc
-        if end_acc == 0:
-            t3 = max_vel_rel / acc
+        # from now: ego reaches max_vel, such that t2 > 0
+
+        t1 = (max_vel - init_vel) / acc  # acceleration time
+        if end_acc == 0:  # a simple case: the followed car has constant velocity
+            t3 = max_vel_rel / acc  # deceleration time
             mid_dist = tot_dist - (2 * max_vel_rel * max_vel_rel - init_vel_rel * init_vel_rel) / (2 * acc)
-            t2 = max(0., mid_dist / max_vel_rel)
+            t2 = max(0., mid_dist / max_vel_rel)  # constant velocity (max_vel) time
             return t1, max_vel, t2, t3
+
+        # from now the most general case: t2 > 0 and the followed car has non-zero acceleration
 
         # Notations:
         #   v is initial relative velocity
@@ -152,11 +155,11 @@ class PlanEfficiencyMetric:
         # after substitution of vm2 = vm1 - a1*t and simplification, solve quadratic equation on t2:
         # a*a1*t^2 - 2*vm1*a*t2 - (vm1^2 + 2*(a+a1)*((vm1^2 - v^2) / 2*(a-a1) - tot_dist)) = 0
         c = vm1*vm1 + 2*(a+a1) * ((vm1*vm1 - v*v)/(2*(a-a1)) - tot_dist)  # free coefficient
-        det = vm1*vm1*a*a + a*a1*c
-        if det < 0:
+        discriminant = vm1*vm1*a*a + a*a1*c  # discriminant of the quadratic equation
+        if discriminant < 0:
             print('BAD: general case: det < 0')
             return 0, ILLEGAL_VEL, 1, 0  # illegal action
-        t2 = (vm1*a + np.sqrt(det)) / (a*a1)
+        t2 = (vm1*a + np.sqrt(discriminant)) / (a*a1)
         vm2 = vm1 - a1*t2
         t3 = vm2 / (a + a1)
         return t1, max_vel, t2, t3
