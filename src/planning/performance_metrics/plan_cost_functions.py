@@ -28,7 +28,7 @@ class VelocityProfile:
         :param v_target: [m/s] followed object's velocity or target velocity for follow lane
         :param a_target: [m/s^2] followed object's acceleration
         :param aggressiveness_level: [int] attribute of the semantic action
-        :return: VelocityProfile class includes times and velocities
+        :return: VelocityProfile class or None in case of infeasible semantic action
         """
         acc = AGGRESSIVENESS_TO_LON_ACC[aggressiveness_level]  # profile acceleration
         v_max = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
@@ -56,7 +56,7 @@ class VelocityProfile:
         :param dist: initial distance to the safe location from the target
         :param v_tar: target object velocity
         :param a_tar: target object acceleration
-        return: t1, v_mid, t2, t3 (time periods of the 3 profile segments and maximal achieved velocity)
+        return: VelocityProfile class or None in case of infeasible semantic action
         """
         print('CALC PROFILE: v_init=%f dist=%f' % (v_init, dist))
 

@@ -419,6 +419,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             aggressiveness_level = 1  # TODO: should be defined in the action
             vel_profile = VelocityProfile.calc_velocity_profile(
                 ego_fpoint[FP_SX], ego.v_x, obj_lon, target_vel, target_acc, aggressiveness_level)
+
+            if vel_profile is None:
+                action_costs[i] = np.inf
+                print('infeasible action')
+                continue
+
             vel_profile_time = vel_profile.t1 + vel_profile.t2 + vel_profile.t3
 
             # efficiency cost
@@ -436,7 +442,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
             action_costs[i] = efficiency_cost + right_lane_cost + comfort_cost + value_function
 
-            print('time %f; action %d: obj_vel=%s eff %s com %s right %s value %f: tot %s' %
+            print('time %f; action %d: obj_vel=%s eff %s comf %s right %s value %f: tot %s' %
                   (ego.timestamp_in_sec, action.cell[LAT_CELL], target_vel, efficiency_cost, comfort_cost,
                    right_lane_cost, value_function, action_costs[i]))
 
