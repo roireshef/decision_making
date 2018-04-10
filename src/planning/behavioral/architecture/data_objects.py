@@ -1,7 +1,6 @@
 from enum import Enum
-from typing import Tuple, TypeVar, Union
+from typing import Tuple
 
-from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuarticPoly1D, QuinticPoly1D
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 
 
