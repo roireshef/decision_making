@@ -44,40 +44,41 @@ class SemanticBehavioralGridState(SemanticBehavioralState):
         # Generate grid cells
         semantic_occupancy_dict: RoadSemanticOccupancyGrid = dict()
 
+        # We filter out objects that are more than one lane away from ego (consider only the current and adjacent lanes)
+        filtered_dynamic_objects = filter(lambda x: (x.road_localization.lane_num-ego_lane) in (-1, 0, 1), dynamic_objects)
+
+        # We treat the object only if its distance is smaller than the distance we
+        # would have travelled for the planning horizon in the average speed between current and target vel.
+        maximal_considered_distance = min(BEHAVIORAL_PLANNING_LOOKAHEAD_DIST, SemanticActionsUtils.
+                                          compute_distance_by_velocity_diff(ego_state.v_x))
+
         # Allocate dynamic objects
-        for dynamic_object in dynamic_objects:
+        for dynamic_object in filtered_dynamic_objects:
 
             dist_from_object_rear_to_ego_front, dist_from_ego_rear_to_object_front = \
                 SemanticBehavioralGridState.calc_relative_distances(state, default_navigation_plan, dynamic_object)
             object_relative_lane = dynamic_object.road_localization.lane_num - ego_lane
 
-            # We treat the object only if its distance is smaller than the distance we
-            # would have travelled for the planning horizon in the average speed between current and target vel.
-            maximal_considered_distance = min(BEHAVIORAL_PLANNING_LOOKAHEAD_DIST, SemanticActionsUtils.
-                                              compute_distance_by_velocity_diff(ego_state.v_x))
+            if dist_from_object_rear_to_ego_front > maximal_considered_distance:
+                continue
 
-            # Determine cell index in occupancy grid (lane and longitudinal location), under the following assumptions:
-            # 1. We filter out objects that are more than one lane away from ego (take into consideration only the
-            #    current and adjacent lanes)
-            # 2. Longitudinal location is defined by the grid structure:
+            # Determine cell index in occupancy grid (lane and longitudinal location), under the assumption:
+            #   Longitudinal location is defined by the grid structure:
             #       - front cells: starting from ego front + LON_MARGIN_FROM_EGO [m] and forward
             #       - back cells: starting from ego back - LON_MARGIN_FROM_EGO[m] and backwards
-            if object_relative_lane in (-1, 0, 1) and dist_from_object_rear_to_ego_front < maximal_considered_distance:
-                # Object is one lane on the left/right and not very far
 
-                if dist_from_object_rear_to_ego_front > LON_MARGIN_FROM_EGO:
-                    # Object in front of vehicle
-                    occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_FRONT)
+            # Object is one lane on the left/right and not very far
+            if dist_from_object_rear_to_ego_front > LON_MARGIN_FROM_EGO:
+                # Object in front of vehicle
+                occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_FRONT)
 
-                elif dist_from_ego_rear_to_object_front < -LON_MARGIN_FROM_EGO:
-                    # Object behind rear of vehicle
-                    occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_REAR)
+            elif dist_from_ego_rear_to_object_front < -LON_MARGIN_FROM_EGO:
+                # Object behind rear of vehicle
+                occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_REAR)
 
-                else:
-                    # Object vehicle aside of ego
-                    occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_SAME)
             else:
-                continue
+                # Object vehicle aside of ego
+                occupancy_index = (object_relative_lane, SEMANTIC_CELL_LON_SAME)
 
             # Add object to occupancy grid
             # keeping only a single dynamic object per cell. List is used for future dev.
