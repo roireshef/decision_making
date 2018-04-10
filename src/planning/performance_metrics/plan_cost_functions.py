@@ -17,36 +17,9 @@ class VelocityProfile:
         self.t3 = t3            # deceleration/acceleration time
         self.v_end = v_end      # end velocity
 
-
-class PlanEfficiencyMetric:
-
-    @staticmethod
-    def calc_cost(ego_vel: float, target_vel: float, vel_profile: VelocityProfile) -> float:
-        """
-        Calculate efficiency cost for a planned following car or lane.
-        Do it by calculation of average velocity during achieving the followed car and then following it with
-        constant velocity. Total considered time is given by time_horizon.
-        :param ego_vel: [m/s] ego initial velocity
-        :param target_vel: [m/s] target car / lane velocity
-        :param vel_profile: velocity profile
-        :return: the efficiency cost
-        """
-        profile_time = vel_profile.t1 + vel_profile.t2 + vel_profile.t3
-
-        avg_vel = (vel_profile.t1 * 0.5 * (ego_vel + vel_profile.v_mid) +
-                   vel_profile.t2 * vel_profile.v_mid +
-                   vel_profile.t3 * 0.5 * (vel_profile.v_mid + target_vel)) / profile_time
-
-        print('profile_time=%f avg_vel=%f t1=%f t2=%f t3=%f v_mid=%f obj_vel=%f' %
-              (profile_time, avg_vel, vel_profile.t1, vel_profile.t2, vel_profile.t3,
-               vel_profile.v_mid, target_vel))
-
-        efficiency_cost = EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel]))[0]
-        return EFFICIENCY_COST_WEIGHT * efficiency_cost * profile_time / WERLING_TIME_RESOLUTION
-
-    @staticmethod
-    def calc_velocity_profile(lon_init: float, v_init: float, lon_target: float, v_target: float, a_target: float,
-                              aggressiveness_level: int) -> Optional[VelocityProfile]:
+    @classmethod
+    def calc_velocity_profile(cls, lon_init: float, v_init: float, lon_target: float, v_target: float, a_target: float,
+                              aggressiveness_level: int):
         """
         calculate velocities profile for semantic action: either following car or following lane
         :param lon_init: [m] initial longitude of ego
@@ -61,14 +34,14 @@ class PlanEfficiencyMetric:
         v_max = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
         if lon_target is not None:  # follow car
             dist = lon_target - lon_init - SAFE_DIST_TIME_DELAY * v_target - 5  # TODO: replace 5 by cars' half sizes sum
-            return PlanEfficiencyMetric._calc_velocity_profile_follow_car(v_init, acc, v_max, dist, v_target, a_target)
+            return VelocityProfile._calc_velocity_profile_follow_car(v_init, acc, v_max, dist, v_target, a_target)
         else:  # follow lane
             t1 = abs(v_target - v_init) / acc
-            return VelocityProfile(v_init=v_init, t1=t1, v_mid=v_target, t2=0, t3=0, v_end=v_target)
+            return cls(v_init=v_init, t1=t1, v_mid=v_target, t2=0, t3=0, v_end=v_target)
 
-    @staticmethod
-    def _calc_velocity_profile_follow_car(v_init: float, a: float, v_max: float, dist: float, v_tar: float,
-                                          a_tar: float) -> Optional[VelocityProfile]:
+    @classmethod
+    def _calc_velocity_profile_follow_car(cls, v_init: float, a: float, v_max: float, dist: float, v_tar: float,
+                                          a_tar: float):
         """
         Given start & end velocities and distance to the followed car, calculate velocity profile:
             1. acceleration to a velocity v_mid <= v_max for t1 time,
@@ -158,6 +131,33 @@ class PlanEfficiencyMetric:
         vm2 = vm1 - a_tar*t2
         t3 = vm2 / (a + a_tar)
         return VelocityProfile(v_init, t1, v_max, t2, t3, v_tar)
+
+
+class PlanEfficiencyMetric:
+
+    @staticmethod
+    def calc_cost(ego_vel: float, target_vel: float, vel_profile: VelocityProfile) -> float:
+        """
+        Calculate efficiency cost for a planned following car or lane.
+        Do it by calculation of average velocity during achieving the followed car and then following it with
+        constant velocity. Total considered time is given by time_horizon.
+        :param ego_vel: [m/s] ego initial velocity
+        :param target_vel: [m/s] target car / lane velocity
+        :param vel_profile: velocity profile
+        :return: the efficiency cost
+        """
+        profile_time = vel_profile.t1 + vel_profile.t2 + vel_profile.t3
+
+        avg_vel = (vel_profile.t1 * 0.5 * (ego_vel + vel_profile.v_mid) +
+                   vel_profile.t2 * vel_profile.v_mid +
+                   vel_profile.t3 * 0.5 * (vel_profile.v_mid + target_vel)) / profile_time
+
+        print('profile_time=%f avg_vel=%f t1=%f t2=%f t3=%f v_mid=%f obj_vel=%f' %
+              (profile_time, avg_vel, vel_profile.t1, vel_profile.t2, vel_profile.t3,
+               vel_profile.v_mid, target_vel))
+
+        efficiency_cost = EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel]))[0]
+        return EFFICIENCY_COST_WEIGHT * efficiency_cost * profile_time / WERLING_TIME_RESOLUTION
 
 
 class PlanComfortMetric:

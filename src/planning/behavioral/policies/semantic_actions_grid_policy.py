@@ -29,7 +29,7 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_policy im
     SemanticAction, SemanticActionType, \
     LAT_CELL, LON_CELL, SemanticGridCell
 from decision_making.src.planning.performance_metrics.plan_cost_functions import PlanEfficiencyMetric, \
-    PlanComfortMetric, ValueFunction, PlanRightLaneMetric
+    PlanComfortMetric, ValueFunction, PlanRightLaneMetric, VelocityProfile
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -417,7 +417,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                 obj_lon = None
 
             aggressiveness_level = 1  # TODO: should be defined in the action
-            vel_profile = PlanEfficiencyMetric.calc_velocity_profile(
+            vel_profile = VelocityProfile.calc_velocity_profile(
                 ego_fpoint[FP_SX], ego.v_x, obj_lon, target_vel, target_acc, aggressiveness_level)
             vel_profile_time = vel_profile.t1 + vel_profile.t2 + vel_profile.t3
 
