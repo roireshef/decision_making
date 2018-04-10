@@ -76,13 +76,14 @@ class PlanEfficiencyMetric:
             [float, float, float, float]:
         """
         Given start & end velocities and distance to the followed car, calculate velocity profile:
-            1. acceleration/deceleration to mid_vel,
-            2. moving by max_vel (empty if mid_vel < max_vel or in case of initial deceleration),
-            3. deceleration/acceleration to end_vel.
+            1. acceleration to a velocity mid_vel <= max_vel for t1 time,
+            2. moving by max_vel for t2 time (t2 = 0 if mid_vel < max_vel),
+            3. deceleration to end_vel for t3 time.
+        If this profile is infeasible, then try an opposite order of accelerations: 1. deceleration, 3. acceleration.
+        In the case of opposite order, the constant velocity segment is missing.
         In each velocity segment the acceleration is constant.
-        Here we assume that the target car moves with constant velocity.
-        :param init_vel: start velocity
-        :param acc: absolute ego acceleration in the first and the last profile segment
+        :param init_vel: start ego velocity
+        :param acc: absolute ego acceleration in the first and the last profile segments
         :param max_vel: maximal desired velocity of ego
         :param tot_dist: initial distance to the safe location from the target
         :param end_vel: target object velocity
@@ -104,11 +105,11 @@ class PlanEfficiencyMetric:
         mid_vel_rel = init_vel_rel
         if mid_vel_rel_sqr >= 0:
             mid_vel_rel = np.sqrt(mid_vel_rel_sqr)
-            t1 = (mid_vel_rel - init_vel_rel) / (acc - end_acc)
-            t3 = mid_vel_rel / (acc + end_acc)
-            if t1 < 0 or t3 < 0:
+            t1 = (mid_vel_rel - init_vel_rel) / (acc - end_acc)  # acceleration time
+            t3 = mid_vel_rel / (acc + end_acc)                   # deceleration time
+            if t1 < 0 or t3 < 0:  # illegal time, try the opposite order of accelerations
                 try_opposite_order = True
-        else:  # the target is unreachable
+        else:  # the target is unreachable, try the opposite order of accelerations
             try_opposite_order = True
 
         # try_opposite_order: first deceleration, then acceleration
