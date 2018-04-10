@@ -7,8 +7,8 @@ from decision_making.src.planning.behavioral.behavioral_state import BehavioralS
 # NOTE: All methods have to get as input ActionRecipe (or one of its children) and  BehavioralState (or one of its
 #       children) even if they don't actually use them.
 
-# ActionRecipe filtering methods (common to both dynamic and static recipes)
 # These methods are used as filters and are used to initialize ActionRecipeFilter objects.
+# ActionRecipe filtering methods (common to both dynamic and static recipes)
 
 
 def filter_if_none(recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
