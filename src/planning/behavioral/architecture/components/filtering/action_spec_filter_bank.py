@@ -17,10 +17,7 @@ def filter_if_none(action_spec: ActionSpec, behavioral_state: BehavioralState) -
 
 
 def always_false(action_spec: ActionSpec, behavioral_state: BehavioralState) -> bool:
-    if action_spec and behavioral_state:
-        return False
-    else:
-        return True
+    return False
 
 
 # Filter list definition
