@@ -271,11 +271,8 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
             ego_cstate = self._last_action_spec.samplable_trajectory.sample(np.array([ego_state.timestamp_in_sec]))[0]
 
             new_ego_state = ego_state
-            new_ego_state.x = ego_cstate[0]
-            new_ego_state.y = ego_cstate[1]
-            new_ego_state.yaw = ego_cstate[2]
-            new_ego_state.v_x = ego_cstate[3]
-            new_ego_state.acceleration_lon = ego_cstate[4]
+            new_ego_state.x, new_ego_state.y, new_ego_state.yaw, new_ego_state.v_x, new_ego_state.acceleration_lon\
+                = ego_cstate[0:5]
             new_ego_state.steering_angle = np.arctan(new_ego_state.size.length * ego_cstate[5])  # steering_angle=atan(ego_len*curvature)
             new_ego_state.omega_yaw = new_ego_state.curvature * new_ego_state.v_x
 
