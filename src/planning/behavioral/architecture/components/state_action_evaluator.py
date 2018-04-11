@@ -81,6 +81,7 @@ class StateActionEvaluator:
                                 desired_vel - action_specs[right_lane_action_ind].v < MIN_OVERTAKE_VEL
         # boolean whether the right cell near ego is occupied
         is_right_occupied = True
+        # TODO: instead of the following check, check if there is a right lane
         if (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid:
             is_right_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_RIGHT,
                                                                           SEMANTIC_CELL_LON_SAME)]) > 0
@@ -112,6 +113,7 @@ class StateActionEvaluator:
                           safe_right_dist_behind_ego)
 
         # boolean whether the left cell near ego is occupied
+        # TODO: instead of the following check, check if there is a left lane
         if (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid:
             is_left_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_LEFT,
                                                                          SEMANTIC_CELL_LON_SAME)]) > 0

@@ -116,15 +116,7 @@ class ActionSpace:
         :param desired_lon: desired longitudinal position when action is finished (for each planning horizon, optional)
         :return: a tensor with the constraints of third-order dynamics in initial and terminal action phase.
         """
-        if desired_lon:
-            # Quintic polynomial constraints
-            constraints_s = np.c_[np.full(shape=repeat_factor, fill_value=ego_init_fstate[FS_SX]),
-                                  np.full(shape=repeat_factor, fill_value=ego_init_fstate[FS_SV]),
-                                  np.full(shape=repeat_factor, fill_value=ego_init_fstate[FS_SA]),
-                                  desired_lon,
-                                  desired_vel,
-                                  np.full(shape=repeat_factor, fill_value=desired_acc)]
-        else:
+        if desired_lon is None:
             # Quartic polynomial constraints (no constraint on sT)
             constraints_s = np.repeat([[
                 ego_init_fstate[FS_SX],
@@ -133,6 +125,15 @@ class ActionSpace:
                 desired_vel,  # desired velocity
                 0.0  # zero acceleration at the end of action
             ]], repeats=repeat_factor, axis=0)
+
+        else:
+            # Quintic polynomial constraints
+            constraints_s = np.c_[np.full(shape=repeat_factor, fill_value=ego_init_fstate[FS_SX]),
+                                  np.full(shape=repeat_factor, fill_value=ego_init_fstate[FS_SV]),
+                                  np.full(shape=repeat_factor, fill_value=ego_init_fstate[FS_SA]),
+                                  desired_lon,
+                                  desired_vel,
+                                  np.full(shape=repeat_factor, fill_value=desired_acc)]
 
         return constraints_s
 
