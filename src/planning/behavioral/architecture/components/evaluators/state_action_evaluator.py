@@ -35,22 +35,3 @@ class StateActionEvaluator:
     @abstractmethod
     def evaluate_action_spec(self, behavioral_state: SemanticActionsGridState, action_spec: ActionSpec)->float:
         pass
-
-    def evaluate(self, behavioral_state: SemanticActionsGridState,
-                 action_recipes: List[ActionRecipe],
-                 action_specs: List[ActionSpec],
-                 action_specs_mask: List[bool]) -> np.ndarray:
-        """
-        Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
-        Gets a list of actions to evaluate and returns a vector representing their costs.
-        A set of actions is provided, enabling us to assess them independently.
-        Note: the semantic actions were generated using the behavioral state and don't necessarily capture
-         all relevant details in the scene. Therefore the evaluation is done using the behavioral state.
-        :param behavioral_state: semantic behavioral state, containing the semantic grid.
-        :param action_recipes: semantic actions list.
-        :param action_specs: specifications of action_recipes.
-        :param action_specs_mask: a boolean mask, showing True where actions_spec is valid (and thus will be evaluated).
-        :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
-        """
-
-        pass

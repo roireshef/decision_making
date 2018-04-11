@@ -8,7 +8,8 @@ from decision_making.src.global_constants import SEMANTIC_CELL_LAT_SAME, SEMANTI
     SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR, SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS
 from decision_making.src.planning.behavioral.architecture.components.evaluators.state_action_evaluator import \
     StateActionEvaluator
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe, SemanticGridCell, LAT_CELL
+from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe, \
+    SemanticGridCell, LAT_CELL
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import SemanticActionsGridState
 from decision_making.src.planning.types import FrenetPoint, FP_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
@@ -20,12 +21,14 @@ class RuleBasedStateActionEvaluator(StateActionEvaluator):
     def __init__(self, logger: Logger):
         super().__init__(logger)
 
-    def evaluate_recipe(self, behavioral_state: SemanticActionsGridState, action_recipe: ActionRecipe)->float:
+    def evaluate_recipe(self, behavioral_state: SemanticActionsGridState, action_recipe: ActionRecipe) -> float:
         pass
 
-    def evaluate_action_spec(self, behavioral_state: SemanticActionsGridState, action_spec: ActionSpec)->float:
+    def evaluate_action_spec(self, behavioral_state: SemanticActionsGridState, action_spec: ActionSpec) -> float:
         pass
 
+    # This method is hre for now just for backward compatibility and will be removed after some content will be
+    # inserted into the other interface methods
     def evaluate(self, behavioral_state: SemanticActionsGridState,
                  action_recipes: List[ActionRecipe],
                  action_specs: List[ActionSpec],
@@ -160,5 +163,6 @@ class RuleBasedStateActionEvaluator(StateActionEvaluator):
         :param cell:
         :return: the action index or None if the action does not exist
         """
-        action_ind = [i for i, recipe in enumerate(action_recipes) if recipe.relative_lane.value == cell[LAT_CELL] and recipes_mask[i]]
+        action_ind = [i for i, recipe in enumerate(action_recipes) if
+                      recipe.relative_lane.value == cell[LAT_CELL] and recipes_mask[i]]
         return action_ind[0] if len(action_ind) > 0 else None
