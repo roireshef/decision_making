@@ -87,7 +87,7 @@ BP_ACTION_T_RES = 0.1
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([4, 6, 3])
 
 # Longitudinal Acceleration Limits [m/sec^2]
-LON_ACC_LIMITS = np.array([-4.0, 3.0])  # taken from SuperCruise presentation
+LON_ACC_LIMITS = np.array([-8.0, 3.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-4.0, 4.0])
@@ -108,8 +108,16 @@ LON_MARGIN_FROM_EGO = 1
 
 # [m/s^2] accelerations for different aggressiveness levels
 AGGRESSIVENESS_TO_LON_ACC = np.array([1, 1.5, 2.25])
-AGGRESSIVENESS_TO_LAT_ACC = np.array([0.3, 0.5, 0.9])
-ACC_TO_COST_FACTOR = 0.01
+#AGGRESSIVENESS_TO_LAT_ACC = np.array([0.3, 0.5, 0.9])
+LON_ACC_TO_COST_FACTOR = 0.01
+LAT_ACC_TO_COST_FACTOR = 1.
+
+# [sec] minimal time period for semantic action
+MIN_ACTION_PERIOD = 4
+
+# [m/s] typical lateral velocity for planning
+PLAN_LATERAL_VELOCITY = 0.7
+
 
 # Trajectory Planner #
 

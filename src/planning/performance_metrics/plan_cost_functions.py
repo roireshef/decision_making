@@ -3,19 +3,62 @@ from typing import Optional
 import numpy as np
 
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, SAFE_DIST_TIME_DELAY, \
-    WERLING_TIME_RESOLUTION, AGGRESSIVENESS_TO_LON_ACC, AGGRESSIVENESS_TO_LAT_ACC, ACC_TO_COST_FACTOR, \
-    RIGHT_LANE_COST_WEIGHT, EFFICIENCY_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT
+    WERLING_TIME_RESOLUTION, AGGRESSIVENESS_TO_LON_ACC, LON_ACC_TO_COST_FACTOR, LAT_ACC_TO_COST_FACTOR, \
+    RIGHT_LANE_COST_WEIGHT, EFFICIENCY_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, LON_ACC_LIMITS, \
+    MIN_ACTION_PERIOD, PLAN_LATERAL_VELOCITY
 from decision_making.src.planning.performance_metrics.cost_functions import EfficiencyMetric
+from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FP_SX, FP_DX
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.state.state import DynamicObject, EgoState, ObjectSize
 
 
 class VelocityProfile:
-    def __init__(self, v_init: float, t1: float, v_mid: float, t2: float, t3: float, v_end: float):
+    def __init__(self, v_init: float, t1: float, v_mid: float, t2: float, t3: float, v_tar: float):
         self.v_init = v_init    # initial ego velocity
         self.t1 = t1            # acceleration/deceleration time period
         self.v_mid = v_mid      # maximal velocity after acceleration
         self.t2 = t2            # time period for going with maximal velocity
         self.t3 = t3            # deceleration/acceleration time
-        self.v_end = v_end      # end velocity
+        self.v_tar = v_tar      # end velocity
+        self.t_follow = max(0., MIN_ACTION_PERIOD - self.t1 - self.t2 - self.t3)  # time for following the target car
+
+    def get_details(self, max_time: float=np.inf) -> [np.array, np.array, np.array, np.array, np.array]:
+        """
+        Return times, longitudes, velocities, accelerations for the current profile.
+        :param max_time: if the profile is longer than max_time, then truncate it
+        :return: numpy arrays per segment:
+            times: time period of each segment
+            cumulative times: cumulative times of the segments, with leading 0
+            longitudes: cumulated distances per segment (except the last one), with leading 0
+            velocities: velocities per segment
+            accelerations: accelerations per segment
+        All arrays' size is equal to the (truncated) segments number, except t_cum having extra 0 at the beginning.
+        """
+        t = np.array([self.t1, self.t2, self.t3, self.t_follow])
+        t_cum = np.concatenate(([0], np.cumsum(t)))
+        max_time = max(0., max_time)
+
+        acc1 = acc3 = 0
+        if self.t1 > 0:
+            acc1 = (self.v_mid - self.v_init) / self.t1
+        if self.t3 > 0:
+            acc3 = (self.v_tar - self.v_mid) / self.t3
+        a = np.array([acc1, 0, acc3, 0])
+        v = np.array([self.v_init, self.v_mid, self.v_mid, self.v_tar])
+        s = np.array([0, 0.5 * (self.v_init + self.v_mid) * self.t1, self.v_mid * self.t2,
+                      0.5 * (self.v_mid + self.v_tar) * self.t3])
+
+        if t_cum[-1] > max_time:  # then truncate all arrays by max_time
+            truncated_size = np.where(t_cum[:-1] < max_time)[0][-1] + 1
+            t = t[:truncated_size]  # truncate times array
+            t[-1] -= t_cum[-1] - max_time  # decrease the last segment time
+            t_cum = np.concatenate(([0], np.cumsum(t)))
+            a = a[:truncated_size]  # truncate accelerations array
+            v = v[:truncated_size]  # truncate velocities array
+            s = s[:truncated_size]  # truncate distances array
+
+        s_cum = np.concatenate(([0], np.cumsum(s[:-1])))
+        return t, t_cum, s_cum, v, a
 
     @classmethod
     def calc_velocity_profile(cls, lon_init: float, v_init: float, lon_target: float, v_target: float, a_target: float,
@@ -40,8 +83,8 @@ class VelocityProfile:
             return cls(v_init=v_init, t1=t1, v_mid=v_target, t2=0, t3=0, v_end=v_target)
 
     @classmethod
-    def _calc_velocity_profile_follow_car(cls, v_init: float, a: float, v_max: float, dist: float, v_tar: float,
-                                          a_tar: float):
+    def _calc_velocity_profile_follow_car(cls, v_init: float, a: float, v_max: float, dist: float,
+                                          v_tar: float, a_tar: float):
         """
         Given start & end velocities and distance to the followed car, calculate velocity profile:
             1. acceleration to a velocity v_mid <= v_max for t1 time,
@@ -133,6 +176,111 @@ class VelocityProfile:
         return VelocityProfile(v_init, t1, v_max, t2, t3, v_tar)
 
 
+class ProfileSafety:
+
+    @staticmethod
+    def calc_last_safe_time(ego_fpoint: np.array, ego_size: ObjectSize, vel_profile: VelocityProfile,
+                            target_lat: float, dyn_obj: DynamicObject,
+                            road_frenet: FrenetSerret2DFrame, restrict_time: bool) -> float:
+        """
+        Given ego velocity profile and dynamic object, calculate the last time, when the safety complies.
+        :param ego_fpoint: ego initial Frenet point
+        :param ego_size: size of ego
+        :param vel_profile: ego velocity profile
+        :param target_lat: target latitude in Frenet
+        :param dyn_obj: the dynamic object, for which the safety is tested
+        :param road_frenet: road Frenet frame
+        :param restrict_time: [bool] true if the safety testing is limited in time, until the lane change is completed
+        :return: last safe time
+        """
+        max_time = np.inf
+        if restrict_time:  # check safety until completing the lane change
+            max_time = abs(target_lat - ego_fpoint[FP_DX]) / PLAN_LATERAL_VELOCITY
+            if max_time < 1.:  # if ego is close to target_lat, then don't check safety
+                return np.inf
+        margin = 0.5 * (ego_size.length + dyn_obj.size.length)
+        # initialization of motion parameters
+        (init_s_ego, init_v_obj, a_obj) = (ego_fpoint[FP_SX], dyn_obj.v_x, dyn_obj.acceleration_lon)
+        init_s_obj = road_frenet.cpoint_to_fpoint(np.array([dyn_obj.x, dyn_obj.y]))[FP_SX]
+
+        t, t_cum, s_ego, v_ego, a_ego = vel_profile.get_details(max_time)
+        s_ego += init_s_ego
+        s_obj = init_s_obj + init_v_obj * t_cum[:-1] + 0.5 * a_obj * t_cum[:-1] * t_cum[:-1]
+        v_obj = init_v_obj + a_obj * t_cum[:-1]
+
+        # create (ego, obj) pairs of longitudes, velocities and accelerations for all segments
+        (s, v, a) = (np.c_[s_ego, s_obj], np.c_[v_ego, v_obj], np.c_[a_ego, np.repeat(a_obj, t.shape[0])])
+
+        front = int(init_s_ego < init_s_obj)  # 0 if the object is behind ego; 1 otherwise
+        back = 1 - front
+
+        # calculate last_safe_time
+        last_safe_time = 0
+        for seg in range(t.shape[0]):
+            last_safe_time += ProfileSafety._calc_largest_time_for_segment(
+                s[seg, front], v[seg, front], a[seg, front], s[seg, back], v[seg, back], a[seg, back], t[seg], margin)
+            if last_safe_time < t_cum[seg+1]:  # becomes unsafe inside this segment
+                return last_safe_time
+        return t_cum[-1]  # always safe
+
+    @staticmethod
+    def _calc_largest_time_for_segment(s1: float, v1: float, a1: float, s2: float, v2: float, a2: float,
+                                       T: float, margin: float) -> float:
+        """
+        Given two vehicles with constant acceleration in time period [0, T], calculate the largest 0 <= t <= T,
+        for which the second car (rear) is safe w.r.t. the first car in [0, t].
+        :param s1: first car longitude
+        :param v1: first car initial velocity
+        :param a1: first car acceleration
+        :param s2: second car longitude
+        :param v2: second car initial velocity
+        :param a2: second car acceleration
+        :param T: time period
+        :param margin: size margin of the cars
+        :return: the largest safe time; if unsafe for t=0, return -1
+        """
+        if T < 0:
+            return -1
+        # the first vehicle is in front of the second one
+        # dist = (s1 + v1*t + 0.5*a1*t*t) - (s2 + v2*t + 0.5*a2*t*t)
+        # let v1_t = v1 + a1*t
+        # let v2_t = v2 + a2*t
+        # safe_dist = (v2_t*v2_t - v1_t*v1_t) / (2*a_max) + v2_t*time_delay + margin
+        # solve quadratic inequality: dist - safe_dist = A*t^2 + B*t + C >= 0
+
+        a_max = -LON_ACC_LIMITS[LIMIT_MIN]
+        time_delay = SAFE_DIST_TIME_DELAY
+
+        C = s1 - s2 + (v1*v1 - v2*v2)/(2*a_max) - v2*time_delay - margin
+        if C < 0:
+            return -1  # the current state (for t=0) is not safe
+        if T == 0:
+            return 0  # the current state (for t=0) is safe
+
+        A = (a1-a2) * (a_max+a1+a2) / (2*a_max)
+        B = (a1*v1 - a2*v2)/a_max + v1 - v2 - a2*time_delay
+        if A == 0 and B == 0:  # constant function C > 0
+            return T  # for all t it's safe
+        if A == 0:  # B != 0; linear inequality
+            t = -C/B
+            if t >= 0:
+                return min(T, t)
+            return T  # for all t it's safe
+
+        # solve quadratic inequality
+        disc = B*B - 4*A*C
+        if disc < 0:
+            return T  # for all t it's safe
+        sqrt_disc = np.sqrt(disc)
+        t1 = (-B - sqrt_disc)/(2*A)
+        t2 = (-B + sqrt_disc)/(2*A)
+        if t1 >= 0:
+            return min(t1, T)
+        if t2 >= 0:
+            return min(t2, T)
+        return T
+
+
 class PlanEfficiencyMetric:
 
     @staticmethod
@@ -161,21 +309,18 @@ class PlanEfficiencyMetric:
 
 
 class PlanComfortMetric:
-
     @staticmethod
-    def calc_cost(vel_profile: VelocityProfile, change_lane: bool, aggressiveness_level: int):
+    def calc_cost(vel_profile: VelocityProfile, lat_dist: float, aggressiveness_level: int,
+                  max_lateral_time: float):
         # TODO: if T is known, calculate jerks analytically
-
-        lat_acc = AGGRESSIVENESS_TO_LAT_ACC[aggressiveness_level]
-        lane_width = 3.6  # TODO: take it from the map
-        if change_lane:
-            lane_change_time = 2 * np.sqrt(lane_width / lat_acc)
-            lat_cost = lane_change_time * lat_acc * lat_acc * ACC_TO_COST_FACTOR * LAT_JERK_COST_WEIGHT
-        else:
-            lat_cost = 0
+        lat_time = min(max_lateral_time, lat_dist / PLAN_LATERAL_VELOCITY)
+        if lat_time <= 0:
+            return np.inf
+        lat_acc = 4 * lat_dist / (lat_time * lat_time)  # lateral acceleration and then deceleration
+        lat_cost = lat_time * (lat_acc ** 4) * LAT_ACC_TO_COST_FACTOR * LAT_JERK_COST_WEIGHT
 
         lon_acc = AGGRESSIVENESS_TO_LON_ACC[aggressiveness_level]
-        lon_cost = (vel_profile.t1 + vel_profile.t3) * lon_acc * lon_acc * ACC_TO_COST_FACTOR * \
+        lon_cost = (vel_profile.t1 + vel_profile.t3) * lon_acc * lon_acc * LON_ACC_TO_COST_FACTOR * \
                    LON_JERK_COST_WEIGHT
         return lat_cost + lon_cost
 
