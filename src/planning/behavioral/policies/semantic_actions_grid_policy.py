@@ -429,28 +429,18 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
             target_lane = ego_lane + action.cell[LAT_CELL]
 
-            followed_obj = None
-            if target_obj is None:  # static action
-                followed_obj = get_followed_object(ego_fpoint[FP_DX], action.cell[LAT_CELL])
-            overtaken_obj = get_overtaken_object(ego_fpoint[FP_DX], action.cell[LAT_CELL])
-            interfer_obj = get_interferred_object(ego_fpoint[FP_DX], action.cell[LAT_CELL])
-
             safe_time = np.inf
-            if overtaken_obj is not None:
-                overtaken_safe_time = ProfileSafety.calc_last_safe_time(
-                    ego_fpoint, ego.size, vel_profile, target_lane * lane_width, overtaken_obj, road_frenet,
-                    restrict_time=True)
-                safe_time = min(safe_time, overtaken_safe_time)
-            if interfer_obj is not None:
-                interfer_safe_time = ProfileSafety.calc_last_safe_time(
-                    ego_fpoint, ego.size, vel_profile, target_lane * lane_width, interfer_obj, road_frenet,
-                    restrict_time=True)
-                safe_time = min(safe_time, interfer_safe_time)
-            if followed_obj is not None:
-                followed_safe_time = ProfileSafety.calc_last_safe_time(
-                    ego_fpoint, ego.size, vel_profile, target_lane * lane_width, followed_obj, road_frenet,
-                    restrict_time=False)
-                safe_time = min(safe_time, followed_safe_time)
+            if action.cell[LAT_CELL] != SEMANTIC_CELL_LAT_SAME:  # lane change
+                overtaken_obj = behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT)]
+                interfer_obj = behavioral_state.road_occupancy_grid[(action.cell[LAT_CELL], SEMANTIC_CELL_LON_REAR)]
+                if len(overtaken_obj) > 0:
+                    overtaken_safe_time = ProfileSafety.calc_last_safe_time(
+                        ego_fpoint, ego.size, vel_profile, target_lane * lane_width, overtaken_obj[0], road_frenet)
+                    safe_time = min(safe_time, overtaken_safe_time)
+                if len(interfer_obj) > 0:
+                    interfer_safe_time = ProfileSafety.calc_last_safe_time(
+                        ego_fpoint, ego.size, vel_profile, target_lane * lane_width, interfer_obj[0], road_frenet)
+                    safe_time = min(safe_time, interfer_safe_time)
 
             vel_profile_time = vel_profile.t1 + vel_profile.t2 + vel_profile.t3
 
@@ -475,13 +465,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         best_action = np.argmin(action_costs)
         print('best action %d; lane %d\n' % (best_action, ego_lane + semantic_actions[best_action].cell[LAT_CELL]))
         return action_costs
-
-    @staticmethod
-    def _get_followed_object(behavioral_state: SemanticActionsGridState, lat_action: int) -> DynamicObject:
-        followed_objects = behavioral_state.road_occupancy_grid[(lat_action, SEMANTIC_CELL_LON_FRONT)]
-        if len(followed_objects) > 0:
-            return followed_objects[0]
-
 
     @staticmethod
     def _calc_safe_dist_behind_ego(behavioral_state: SemanticActionsGridState, road_frenet: FrenetSerret2DFrame,

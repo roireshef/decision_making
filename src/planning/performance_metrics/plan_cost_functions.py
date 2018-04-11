@@ -180,8 +180,7 @@ class ProfileSafety:
 
     @staticmethod
     def calc_last_safe_time(ego_fpoint: np.array, ego_size: ObjectSize, vel_profile: VelocityProfile,
-                            target_lat: float, dyn_obj: DynamicObject,
-                            road_frenet: FrenetSerret2DFrame, restrict_time: bool) -> float:
+                            target_lat: float, dyn_obj: DynamicObject, road_frenet: FrenetSerret2DFrame) -> float:
         """
         Given ego velocity profile and dynamic object, calculate the last time, when the safety complies.
         :param ego_fpoint: ego initial Frenet point
@@ -190,14 +189,12 @@ class ProfileSafety:
         :param target_lat: target latitude in Frenet
         :param dyn_obj: the dynamic object, for which the safety is tested
         :param road_frenet: road Frenet frame
-        :param restrict_time: [bool] true if the safety testing is limited in time, until the lane change is completed
         :return: last safe time
         """
-        max_time = np.inf
-        if restrict_time:  # check safety until completing the lane change
-            max_time = abs(target_lat - ego_fpoint[FP_DX]) / PLAN_LATERAL_VELOCITY
-            if max_time < 1.:  # if ego is close to target_lat, then don't check safety
-                return np.inf
+        # check safety until completing the lane change
+        max_time = abs(target_lat - ego_fpoint[FP_DX]) / PLAN_LATERAL_VELOCITY
+        if max_time < 1.:  # if ego is close to target_lat, then don't check safety
+            return np.inf
         margin = 0.5 * (ego_size.length + dyn_obj.size.length)
         # initialization of motion parameters
         (init_s_ego, init_v_obj, a_obj) = (ego_fpoint[FP_SX], dyn_obj.v_x, dyn_obj.acceleration_lon)
