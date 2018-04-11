@@ -8,7 +8,7 @@ from logging import Logger
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_ACTION_T_RES, SAFE_DIST_TIME_DELAY, \
     LON_ACC_LIMITS, LAT_ACC_LIMITS, VELOCITY_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS
 from decision_making.src.exceptions import raises
-from decision_making.src.planning.behavioral.architecture.components.filtering import recipe_filter_methods
+from decision_making.src.planning.behavioral.architecture.components.filtering import recipe_filter_bank
 from decision_making.src.planning.behavioral.architecture.constants import VELOCITY_STEP, MAX_VELOCITY, MIN_VELOCITY
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, StaticActionRecipe, \
     DynamicActionRecipe, ActionType, RelativeLongitudinalPosition
@@ -33,7 +33,7 @@ class ActionSpace:
     def __init__(self, logger: Logger, recipes: List[ActionRecipe]=None, recipe_filtering: RecipeFiltering=None):
         self.logger = logger
         self._recipes = [] if recipes is None else recipes
-        self.recipe_filtering = RecipeFiltering(self._init_filters()) if recipe_filtering is None else recipe_filtering
+        self.recipe_filtering = RecipeFiltering() if recipe_filtering is None else recipe_filtering
 
     @property
     def action_space_size(self) -> int:
@@ -49,13 +49,6 @@ class ActionSpace:
     def filter_recipes(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralState):
         """"""
         return self.recipe_filtering.filter_recipes(action_recipes, behavioral_state)
-
-    def _init_filters(self):
-        """
-        Uses method add_filter of self.recipe_filtering to add RecipeFilter objects which will be applied on recipes
-        when methods self.filter_recipe or self.filter_recipes will be used.
-        """
-        pass
 
     @abstractmethod
     def specify_goal(self, action_recipe: ActionRecipe, behavioral_state: BehavioralState) -> Optional[ActionSpec]:
@@ -105,18 +98,13 @@ class ActionSpace:
 
 class StaticActionSpace(ActionSpace):
 
-    def __init__(self, logger):
-        super().__init__(logger)
-        # TODO: should we get velocity_grid from constructor?
-        self.velocity_grid = np.append(0,
-                                       np.arange(MIN_VELOCITY, MAX_VELOCITY + np.finfo(np.float16).eps, VELOCITY_STEP))
+    def __init__(self, logger, velocity_grid=None):
+        super().__init__(logger, recipe_filtering=recipe_filter_bank.static_filters)
+        if velocity_grid is None:
+            velocity_grid = np.append(0, np.arange(MIN_VELOCITY, MAX_VELOCITY + np.finfo(np.float16).eps, VELOCITY_STEP))
+        self.velocity_grid = velocity_grid
         for comb in cartesian([RelativeLane, self.velocity_grid, AggressivenessLevel]):
             self._recipes.append(StaticActionRecipe(comb[0], comb[1], comb[2]))
-
-    def _init_filters(self):
-        filters = [RecipeFilter(name='filter_if_none', filtering_method=recipe_filter_methods.filter_if_none),
-                   RecipeFilter(name='always_false', filtering_method=recipe_filter_methods.always_false)]
-        return filters
 
     def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: SemanticActionsGridState) -> Optional[
         ActionSpec]:
@@ -187,23 +175,12 @@ class StaticActionSpace(ActionSpace):
 class DynamicActionSpace(ActionSpace):
 
     def __init__(self, logger: Logger, predictor: Predictor):
-        super().__init__(logger)
+        super().__init__(logger, recipe_filtering=recipe_filter_bank.dynamic_filters)
         for comb in cartesian(
                 [RelativeLane, RelativeLongitudinalPosition, [ActionType.FOLLOW_VEHICLE, ActionType.TAKE_OVER_VEHICLE],
                  AggressivenessLevel]):
             self._recipes.append(DynamicActionRecipe(comb[0], comb[1], comb[2], comb[3]))
         self.predictor = predictor
-
-    def _init_filters(self):
-        filters = [RecipeFilter(name='filter_if_none', filtering_method=recipe_filter_methods.filter_if_none),
-                   RecipeFilter(name="filter_actions_towards_non_occupied_cells",
-                                filtering_method=recipe_filter_methods.filter_actions_towards_non_occupied_cells),
-                   RecipeFilter(name="filter_actions_toward_back_and_parallel_cells",
-                                filtering_method=recipe_filter_methods.filter_actions_toward_back_and_parallel_cells),
-                   RecipeFilter(name="filter_over_take_actions",
-                                filtering_method=recipe_filter_methods.filter_over_take_actions)
-                   ]
-        return filters
 
     def specify_goal(self, action_recipe: DynamicActionRecipe,
                      behavioral_state: SemanticActionsGridState) -> Optional[ActionSpec]:
