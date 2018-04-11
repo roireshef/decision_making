@@ -14,8 +14,8 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParams,
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.architecture.components.action_space import ActionSpace
 from decision_making.src.planning.behavioral.architecture.components.action_validator import ActionValidator
-from decision_making.src.planning.behavioral.architecture.components.state_action_evaluator import StateActionEvaluator
-from decision_making.src.planning.behavioral.architecture.components.value_approximator import ValueApproximator
+from decision_making.src.planning.behavioral.architecture.components.evaluators.state_action_evaluator import StateActionEvaluator
+from decision_making.src.planning.behavioral.architecture.components.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe
 from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
     SemanticBehavioralGridState
