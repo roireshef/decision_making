@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from typing import List, Optional
 
+import itertools
 import numpy as np
 from sklearn.utils.extmath import cartesian
 from logging import Logger
@@ -31,10 +32,10 @@ from mapping.src.service.map_service import MapService
 
 
 class ActionSpace:
-    def __init__(self, logger: Logger, recipes: List[ActionRecipe]=None, recipe_filtering: RecipeFiltering=None):
+    def __init__(self, logger: Logger, recipe_filtering: RecipeFiltering=None):
         self.logger = logger
-        self._recipes = recipes or []
         self.recipe_filtering = recipe_filtering or RecipeFiltering()
+        self._recipes: List[ActionRecipe] = None
 
     @property
     def action_space_size(self) -> int:
@@ -152,12 +153,11 @@ class ActionSpace:
 
 
 class StaticActionSpace(ActionSpace):
-
-    def __init__(self, logger, velocity_grid=None):
+    def __init__(self, logger):
         super().__init__(logger, recipe_filtering=recipe_filter_bank.static_filters)
-        self.velocity_grid = velocity_grid or np.append(0, np.arange(MIN_VELOCITY, MAX_VELOCITY + np.finfo(np.float16).eps, VELOCITY_STEP))
-        for comb in cartesian([RelativeLane, self.velocity_grid, AggressivenessLevel]):
-            self._recipes.append(StaticActionRecipe(comb[0], comb[1], comb[2]))
+        self._velocity_grid = np.append(0, np.arange(MIN_VELOCITY, MAX_VELOCITY + np.finfo(np.float16).eps, VELOCITY_STEP))
+        self._recipes = [StaticActionRecipe.from_args_list(comb)
+                         for comb in cartesian([RelativeLane, self._velocity_grid, AggressivenessLevel])]
 
     def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: SemanticBehavioralGridState) -> Optional[
         ActionSpec]:
@@ -216,10 +216,11 @@ class DynamicActionSpace(ActionSpace):
 
     def __init__(self, logger: Logger, predictor: Predictor):
         super().__init__(logger, recipe_filtering=recipe_filter_bank.dynamic_filters)
-        for comb in cartesian(
-                [RelativeLane, RelativeLongitudinalPosition, [ActionType.FOLLOW_VEHICLE, ActionType.TAKE_OVER_VEHICLE],
-                 AggressivenessLevel]):
-            self._recipes.append(DynamicActionRecipe(comb[0], comb[1], comb[2], comb[3]))
+        self._recipes = [DynamicActionRecipe.from_args_list(comb)
+                         for comb in cartesian([RelativeLane,
+                                                RelativeLongitudinalPosition,
+                                                [ActionType.FOLLOW_VEHICLE, ActionType.TAKE_OVER_VEHICLE],
+                                                AggressivenessLevel])]
         self.predictor = predictor
 
     def specify_goal(self, action_recipe: DynamicActionRecipe,
@@ -308,37 +309,36 @@ class DynamicActionSpace(ActionSpace):
                           samplable_trajectory=samplable_trajectory)
 
 
-class CombinedActionSpace(ActionSpace):
-    def __init__(self, logger: Logger, static_action_space: StaticActionSpace,
-                 dynamic_action_space: DynamicActionSpace):
+class ActionSpaceContainer(ActionSpace):
+    def __init__(self, logger: Logger, action_spaces: List[ActionSpace]):
         super().__init__(logger)
-        self.static_action_space = static_action_space
-        self.dynamic_action_space = dynamic_action_space
+        self._action_spaces = action_spaces
+
+        self._recipe_handler = {}
+        for aspace in action_spaces:
+            for recipe in aspace.recipes:
+                self._recipe_handler[recipe] = aspace
 
     @property
     def action_space_size(self) -> int:
-        return self.static_action_space.action_space_size + self.dynamic_action_space.action_space_size
+        return sum([aspace.action_space_size for aspace in self._action_spaces])
 
     @property
     def recipes(self) -> List[ActionRecipe]:
-        return self.static_action_space.recipes + self.dynamic_action_space.recipes
+        return list(itertools.chain.from_iterable([aspace.recipes for aspace in self._action_spaces]))
 
     @raises(NotImplemented)
     def specify_goal(self, action_recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> ActionSpec:
-        if isinstance(action_recipe, StaticActionRecipe):
-            return self.static_action_space.specify_goal(action_recipe, behavioral_state)
-        elif isinstance(action_recipe, DynamicActionRecipe):
-            return self.dynamic_action_space.specify_goal(action_recipe, behavioral_state)
-        else:
-            raise NotImplemented('action_recipe %s is not a StaticActionRecipe nor a DynamicActionRecipe',
-                                 action_recipe)
+        try:
+            return self._recipe_handler[action_recipe].specify_goal(action_recipe, behavioral_state)
+        except Exception:
+            raise NotImplemented('action_recipe %s could not be handled by current action spaces %s',
+                                 action_recipe, str(self._action_spaces))
 
     @raises(NotImplemented)
     def filter_recipe(self, action_recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> bool:
-        if isinstance(action_recipe, StaticActionRecipe):
-            return self.static_action_space.filter_recipe(action_recipe, behavioral_state)
-        elif isinstance(action_recipe, DynamicActionRecipe):
-            return self.dynamic_action_space.filter_recipe(action_recipe, behavioral_state)
-        else:
-            raise NotImplemented('action_recipe %s is not a StaticActionRecipe nor a DynamicActionRecipe',
-                                 action_recipe)
+        try:
+            return self._recipe_handler[action_recipe].filter_recipe(action_recipe, behavioral_state)
+        except Exception:
+            raise NotImplemented('action_recipe %s could not be handled by current action spaces %s',
+                                 action_recipe, str(self._action_spaces))
