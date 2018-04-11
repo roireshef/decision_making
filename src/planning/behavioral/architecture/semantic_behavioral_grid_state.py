@@ -15,9 +15,12 @@ from mapping.src.service.map_service import MapService
 
 
 class SemanticBehavioralGridState(SemanticBehavioralState):
-    def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState):
+    def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState, right_lane_exists: bool,
+                 left_lane_exists: bool):
         super().__init__(road_occupancy_grid=road_occupancy_grid)
         self.ego_state = ego_state
+        self.right_lane_exists = right_lane_exists
+        self.left_lane_exists = left_lane_exists
 
     @classmethod
     def create_from_state(cls, state: State, logger: Logger):
@@ -38,6 +41,7 @@ class SemanticBehavioralGridState(SemanticBehavioralState):
 
         default_navigation_plan = MapService.get_instance().get_road_based_navigation_plan(
             current_road_id=ego_state.road_localization.road_id)
+        lanes_num = MapService.get_instance().get_road(ego_state.road_localization.road_id).lanes_num
 
         ego_lane = ego_state.road_localization.lane_num
 
@@ -104,7 +108,7 @@ class SemanticBehavioralGridState(SemanticBehavioralState):
                 # dynamic_object is the first one seen in this occupancy cell
                 semantic_occupancy_dict[occupancy_index] = [dynamic_object]
 
-        return cls(semantic_occupancy_dict, ego_state)
+        return cls(semantic_occupancy_dict, ego_state, right_lane_exists=ego_lane > 1, left_lane_exists=ego_lane < lanes_num)
 
     @staticmethod
     def calc_relative_distances(state: State,
