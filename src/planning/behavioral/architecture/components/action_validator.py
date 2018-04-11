@@ -6,7 +6,7 @@ from decision_making.src.planning.behavioral.behavioral_state import BehavioralS
 
 class ActionValidator:
     def __init__(self, action_spec_filtering: ActionSpecFiltering=None):
-        self.action_spec_filtering = ActionSpecFiltering() if action_spec_filtering is None else action_spec_filtering
+        self.action_spec_filtering = action_spec_filtering or ActionSpecFiltering()
 
     def validate_action(self, action_spec: ActionSpec, behavioral_state: BehavioralState) -> bool:
         return self.action_spec_filtering.filter_action_spec(action_spec, behavioral_state)
