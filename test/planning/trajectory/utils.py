@@ -28,6 +28,52 @@ class RouteFixture:
             np.array([[i + 2 * lng, lat + offset] for i in range(0, lng, step)])
         ), axis=0)
 
+    @staticmethod
+    def create_sigmoid_route(lng: int = 200, k: float = 10, step: float = 1, lat: int = 100, offset: float = -50.0):
+        """
+        create route of sigmoid shape
+        :param lng: length
+        :param k: k of the sigmoid
+        :param step: step between points
+        :param lat: initial latitude
+        :param offset: ofset of the sigmoid
+        :return: None
+        """
+        def stretch(v):
+            min = np.min(v[:, 1])
+            max = np.max(v[:, 1])
+
+            for i in range(len(v)):
+                v[i, 1] = lat * (v[i, 1] - min) / (max - min) + offset
+
+            return v
+
+        stretch(np.array([[i, 1 / (1 + np.exp(-k * (i/lng - 0.5)))] for i in np.arange(0, lng, step)]))
+
+    @staticmethod
+    def create_round_route(lng: int = 100, lat: float = 0, ext: float = 10, step: float = 1, curvature: float = 0.01):
+        """
+        create route of circle shape segment
+        :param lng: length
+        :param lat: initial latitude
+        :param ext: extension in both sides
+        :param step: step between points
+        :param curvature: 1/radius
+        :return: None
+        """
+        ang = (lng - 2*ext) * curvature
+        r = 1/curvature
+        round_part = np.array([[r*np.sin(a), lat + r - r*np.cos(a)] for a in np.arange(0, ang, step*curvature)])
+        last_round = round_part[-1]
+        return np.concatenate((
+            np.array([[i, lat] for i in np.arange(-ext, 0, step)]),
+            round_part,
+            np.array([last_round + i * np.array([np.cos(ang), np.sin(ang)]) for i in np.arange(1, ext, step)])
+        ), axis=0)
+
+    @staticmethod
+    def create_cubic_route(lng: float = 100, lat: float = 0, ext: float = 10, step: float = 1, curvature: float = 0.1):
+        return np.array([[x, lat + curvature*lng*((x/lng)**3)] for x in np.arange(-ext, lng+ext, step)])
 
 class PlottableSigmoidBoxObstacle(SigmoidBoxObstacle):
     def plot(self, plt):
@@ -84,8 +130,8 @@ class PlottableSigmoidDynamicBoxObstacle(SigmoidDynamicBoxObstacle, PlottableSig
 
 class WerlingVisualizer:
     @staticmethod
-    def plot_route(plt, route):
-        plt.plot(route[:, 0], route[:, 1], '-b')
+    def plot_route(plt, route, param='-b'):
+        plt.plot(route[:, 0], route[:, 1], param)
 
     @staticmethod
     def plot_obstacles(plt, obs: List[PlottableSigmoidBoxObstacle]):
@@ -93,9 +139,12 @@ class WerlingVisualizer:
 
     @staticmethod
     def plot_alternatives(plt, alternatives: np.ndarray, costs: np.ndarray):
+        if costs is None:
+            costs = np.array([0,]*alternatives.shape[0])
         max_cost = np.log(1+max(costs))
         min_cost = np.log(1+min(costs))
-        for i, alt in enumerate(alternatives):
+        for i in range(alternatives.shape[0]-1, -1, -1):
+            alt = alternatives[i]
             cost = np.log(1+costs[i])
             c = 1 - (cost-min_cost)/(max_cost-min_cost)
             plt.plot(alt[:, 0], alt[:, 1], '-', color=[c, 0, 0.5])
@@ -103,7 +152,7 @@ class WerlingVisualizer:
 
     @staticmethod
     def plot_best(plt, traj):
-        plt.plot(traj[:, 0], traj[:, 1], '-g')
+        plt.plot(traj[:, 0], traj[:, 1], '-g', linewidth=2)
         plt.plot(traj[-1, 0], traj[-1, 1], 'og')
 
     @staticmethod
