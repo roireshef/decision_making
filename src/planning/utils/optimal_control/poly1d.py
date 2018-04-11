@@ -245,7 +245,7 @@ class QuinticPoly1D(Poly1D):
     @staticmethod
     def cumulative_jerk(poly_coefs: np.ndarray, x: Union[float, np.ndarray]):
         a5, a4, a3, a2, a1, a0 = np.split(poly_coefs, 6, axis=-1)
-        a5, a4, a3 ,a2, a1, a0 = a5.flatten(), a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
+        a5, a4, a3, a2, a1, a0 = a5.flatten(), a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
         return 36 * a3 ** 2 * x + \
                144 * a3 * a4 * x ** 2 + \
                (240 * a3 * a5 + 192 * a4 ** 2) * x ** 3 + \

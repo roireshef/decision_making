@@ -1,13 +1,14 @@
-import numpy as np
 from logging import Logger
+
+import numpy as np
 
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_LOOKAHEAD_DIST
 from decision_making.src.global_constants import SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LON_REAR, LON_MARGIN_FROM_EGO
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticBehavioralState, \
     RoadSemanticOccupancyGrid, LON_CELL
+from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.types import FP_SX, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.state.state import EgoState, State, DynamicObject
