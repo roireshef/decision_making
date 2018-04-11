@@ -32,8 +32,8 @@ from mapping.src.service.map_service import MapService
 class ActionSpace:
     def __init__(self, logger: Logger, recipes: List[ActionRecipe]=None, recipe_filtering: RecipeFiltering=None):
         self.logger = logger
-        self._recipes = [] if recipes is None else recipes
-        self.recipe_filtering = RecipeFiltering() if recipe_filtering is None else recipe_filtering
+        self._recipes = recipes or []
+        self.recipe_filtering = recipe_filtering or RecipeFiltering()
 
     @property
     def action_space_size(self) -> int:
@@ -100,9 +100,7 @@ class StaticActionSpace(ActionSpace):
 
     def __init__(self, logger, velocity_grid=None):
         super().__init__(logger, recipe_filtering=recipe_filter_bank.static_filters)
-        if velocity_grid is None:
-            velocity_grid = np.append(0, np.arange(MIN_VELOCITY, MAX_VELOCITY + np.finfo(np.float16).eps, VELOCITY_STEP))
-        self.velocity_grid = velocity_grid
+        self.velocity_grid = velocity_grid or np.append(0, np.arange(MIN_VELOCITY, MAX_VELOCITY + np.finfo(np.float16).eps, VELOCITY_STEP))
         for comb in cartesian([RelativeLane, self.velocity_grid, AggressivenessLevel]):
             self._recipes.append(StaticActionRecipe(comb[0], comb[1], comb[2]))
 
