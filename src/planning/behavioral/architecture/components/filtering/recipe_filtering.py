@@ -14,12 +14,11 @@ class RecipeFilter(object):
 
 class RecipeFiltering:
     def __init__(self, filters: List[RecipeFilter]=None):
-        self._filters = [] if filters is None else filters
+        self._filters: List[RecipeFilter] = filters or []
 
     def filter_recipe(self, recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
         for recipe_filter in self._filters:
-            result = recipe_filter.filtering_method(recipe, behavioral_state)
-            if not result:
+            if not recipe_filter.filtering_method(recipe, behavioral_state):
                 return False
         return True
 

@@ -14,14 +14,11 @@ class ActionSpecFilter(object):
 
 class ActionSpecFiltering:
     def __init__(self, filters: List[ActionSpecFilter]=None):
-        if filters is None:
-            filters = []
-        self._filters = filters
+        self._filters: List[ActionSpecFilter] = filters or []
 
     def filter_action_spec(self, action_spec: ActionSpec, behavioral_state: BehavioralState) -> bool:
         for action_spec_filter in self._filters:
-            result = action_spec_filter.filtering_method(action_spec, behavioral_state)
-            if not result:
+            if not action_spec_filter.filtering_method(action_spec, behavioral_state):
                 return False
         return True
 
