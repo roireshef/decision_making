@@ -14,9 +14,7 @@ class RecipeFilter(object):
 
 class RecipeFiltering:
     def __init__(self, filters: List[RecipeFilter]=None):
-        if filters is None:
-            filters = []
-        self._filters = filters
+        self._filters = [] if filters is None else filters
 
     def filter_recipe(self, recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
         for recipe_filter in self._filters:
