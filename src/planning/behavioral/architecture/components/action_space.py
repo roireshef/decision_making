@@ -8,15 +8,15 @@ from logging import Logger
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_ACTION_T_RES, SAFE_DIST_TIME_DELAY, \
     LON_ACC_LIMITS, LAT_ACC_LIMITS, VELOCITY_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS
 from decision_making.src.exceptions import raises
-from decision_making.src.planning.behavioral.architecture.components.filtering import recipe_filter_methods
+from decision_making.src.planning.behavioral.architecture.components.filtering import recipe_filter_bank
 from decision_making.src.planning.behavioral.architecture.constants import VELOCITY_STEP, MAX_VELOCITY, MIN_VELOCITY
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, StaticActionRecipe, \
     DynamicActionRecipe, ActionType, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.architecture.data_objects import RelativeLane, AggressivenessLevel, \
     ActionRecipe
-from decision_making.src.planning.behavioral.architecture.components.filtering.recipe_filtering import RecipeFiltering, RecipeFilter
 from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
     SemanticBehavioralGridState
+from decision_making.src.planning.behavioral.architecture.components.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils
@@ -31,11 +31,10 @@ from mapping.src.service.map_service import MapService
 
 
 class ActionSpace:
-    def __init__(self, logger: Logger):
-        self._recipes = []
+    def __init__(self, logger: Logger, recipes: List[ActionRecipe]=None, recipe_filtering: RecipeFiltering=None):
         self.logger = logger
-        self.recipe_filtering = RecipeFiltering()
-        self._init_filters()
+        self._recipes = [] if recipes is None else recipes
+        self.recipe_filtering = RecipeFiltering() if recipe_filtering is None else recipe_filtering
 
     @property
     def action_space_size(self) -> int:
@@ -50,14 +49,7 @@ class ActionSpace:
 
     def filter_recipes(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralState):
         """"""
-        return [self.filter_recipe(action_recipe, behavioral_state) for action_recipe in action_recipes]
-
-    def _init_filters(self):
-        """
-        Uses method add_filter of self.recipe_filtering to add RecipeFilter objects which will be applied on recipes
-        when methods self.filter_recipe or self.filter_recipes will be used.
-        """
-        pass
+        return self.recipe_filtering.filter_recipes(action_recipes, behavioral_state)
 
     @abstractmethod
     def specify_goal(self, action_recipe: ActionRecipe, behavioral_state: BehavioralState) -> Optional[ActionSpec]:
@@ -161,21 +153,16 @@ class ActionSpace:
 
 class StaticActionSpace(ActionSpace):
 
-    def __init__(self, logger):
-        super().__init__(logger)
-        # TODO: should we get velocity_grid from constructor?
-        self.velocity_grid = np.append(0,
-                                       np.arange(MIN_VELOCITY, MAX_VELOCITY + np.finfo(np.float16).eps, VELOCITY_STEP))
+    def __init__(self, logger, velocity_grid=None):
+        super().__init__(logger, recipe_filtering=recipe_filter_bank.static_filters)
+        if velocity_grid is None:
+            velocity_grid = np.append(0, np.arange(MIN_VELOCITY, MAX_VELOCITY + np.finfo(np.float16).eps, VELOCITY_STEP))
+        self.velocity_grid = velocity_grid
         for comb in cartesian([RelativeLane, self.velocity_grid, AggressivenessLevel]):
             self._recipes.append(StaticActionRecipe(comb[0], comb[1], comb[2]))
 
-    def _init_filters(self):
-        self.recipe_filtering.add_filter(
-            RecipeFilter(name='FilterIfNone', filtering_method=recipe_filter_methods.filter_if_none), is_active=True)
-        self.recipe_filtering.add_filter(
-            RecipeFilter(name='AlwaysFalse', filtering_method=recipe_filter_methods.always_false), is_active=True)
-
-    def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: SemanticBehavioralGridState) -> Optional[ActionSpec]:
+    def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: SemanticBehavioralGridState) -> Optional[
+        ActionSpec]:
         ego = behavioral_state.ego_state
         ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
         road_id = ego.road_localization.road_id
@@ -184,7 +171,7 @@ class StaticActionSpace(ActionSpace):
         ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cstate)
 
         road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id)
-        desired_lane = ego.road_localization.lane_num + action_recipe.rel_lane.value
+        desired_lane = ego.road_localization.lane_num + action_recipe.relative_lane.value
         desired_center_lane_latitude = road_lane_latitudes[desired_lane]
         T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
                            BP_ACTION_T_RES)
@@ -230,27 +217,12 @@ class StaticActionSpace(ActionSpace):
 class DynamicActionSpace(ActionSpace):
 
     def __init__(self, logger: Logger, predictor: Predictor):
-        super().__init__(logger)
+        super().__init__(logger, recipe_filtering=recipe_filter_bank.dynamic_filters)
         for comb in cartesian(
                 [RelativeLane, RelativeLongitudinalPosition, [ActionType.FOLLOW_VEHICLE, ActionType.TAKE_OVER_VEHICLE],
                  AggressivenessLevel]):
             self._recipes.append(DynamicActionRecipe(comb[0], comb[1], comb[2], comb[3]))
         self.predictor = predictor
-
-    def _init_filters(self):
-        self.recipe_filtering.add_filter(
-            RecipeFilter(name='AlwaysTrue', filtering_method=recipe_filter_methods.filter_if_none), is_active=True)
-        self.recipe_filtering.add_filter(
-            RecipeFilter(name='AlwaysFalse', filtering_method=recipe_filter_methods.always_false), is_active=False)
-        self.recipe_filtering.add_filter(RecipeFilter(name="FilterActionsTowardsNonOccupiedCells",
-                                                      filtering_method=recipe_filter_methods.filter_actions_towards_non_occupied_cells),
-                                         is_active=True)
-        self.recipe_filtering.add_filter(RecipeFilter(name="FilterActionsTowardBackAndParallelCells",
-                                                      filtering_method=recipe_filter_methods.filter_actions_toward_back_and_parallel_cells),
-                                         is_active=True)
-        self.recipe_filtering.add_filter(RecipeFilter(name="FilterOverTakeActions",
-                                                      filtering_method=recipe_filter_methods.filter_over_take_actions),
-                                         is_active=True)
 
     def specify_goal(self, action_recipe: DynamicActionRecipe,
                      behavioral_state: SemanticBehavioralGridState) -> Optional[ActionSpec]:
@@ -268,8 +240,8 @@ class DynamicActionSpace(ActionSpace):
         road_frenet = FrenetSerret2DFrame(road_points)
         ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cstate)
 
-        target_obj = behavioral_state.road_occupancy_grid[(action_recipe.rel_lane.value, action_recipe.rel_lon.value)][
-            0]
+        target_obj = behavioral_state.road_occupancy_grid[(action_recipe.relative_lane.value,
+                                                           action_recipe.relative_lon.value)][0]
         target_obj_fpoint = road_frenet.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))
         _, _, _, road_curvature_at_obj_location, _ = road_frenet._taylor_interp(target_obj_fpoint[FP_SX])
         obj_init_fstate = road_frenet.cstate_to_fstate(np.array([
@@ -301,7 +273,8 @@ class DynamicActionSpace(ActionSpace):
         elif action_recipe.action_type == ActionType.TAKE_OVER_VEHICLE:
             desired_lon = obj_sxT + safe_lon_dist + lon_margin
         else:
-            raise NotImplemented("Action Type %s is not handled in DynamicActionSpace specification", action_recipe.action_type)
+            raise NotImplemented("Action Type %s is not handled in DynamicActionSpace specification",
+                                 action_recipe.action_type)
 
         constraints_s = ActionSpace.define_lon_constraints(len(T_vals), ego_init_fstate, obj_saT, obj_svT, desired_lon)
         constraints_d = ActionSpace.define_lat_constraints(len(T_vals), ego_init_fstate, obj_center_lane_latitude)

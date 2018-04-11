@@ -1,5 +1,6 @@
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionRecipe, ActionSpec
+from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
+from typing import List
 
 
 class ActionSpecFilter(object):
@@ -12,21 +13,18 @@ class ActionSpecFilter(object):
 
 
 class ActionSpecFiltering:
-    def __init__(self):
-        self.filters = {}
-
-    def add_filter(self, action_spec_filter: ActionSpecFilter, is_active: bool) -> None:
-        if action_spec_filter not in self.filters:
-            self.filters[action_spec_filter] = is_active
-
-    def activate_filter(self, action_spec_filter: ActionSpecFilter, is_active: bool) -> None:
-        if action_spec_filter in self.filters:
-            self.filters[action_spec_filter] = is_active
+    def __init__(self, filters: List[ActionSpecFilter]=None):
+        if filters is None:
+            filters = []
+        self._filters = filters
 
     def filter_action_spec(self, action_spec: ActionSpec, behavioral_state: BehavioralState) -> bool:
-        for action_spec_filter in self.filters.keys():
-            if self.filters[action_spec_filter]:
-                result = action_spec_filter.filtering_method(action_spec, behavioral_state)
-                if not result:
-                    return False
+        for action_spec_filter in self._filters:
+            result = action_spec_filter.filtering_method(action_spec, behavioral_state)
+            if not result:
+                return False
         return True
+
+    def filter_action_specs(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState) -> List[bool]:
+        return [self.filter_action_spec(action_spec, behavioral_state) for action_spec in action_specs]
+

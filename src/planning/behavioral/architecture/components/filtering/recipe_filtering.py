@@ -1,5 +1,6 @@
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionRecipe
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
+from typing import List
 
 
 class RecipeFilter(object):
@@ -12,21 +13,15 @@ class RecipeFilter(object):
 
 
 class RecipeFiltering:
-    def __init__(self):
-        self.filters = {}
-
-    def add_filter(self, recipe_filter: RecipeFilter, is_active: bool) -> None:
-        if recipe_filter not in self.filters:
-            self.filters[recipe_filter] = is_active
-
-    def activate_filter(self, recipe_filter: RecipeFilter, is_active: bool) -> None:
-        if recipe_filter in self.filters:
-            self.filters[recipe_filter] = is_active
+    def __init__(self, filters: List[RecipeFilter]=None):
+        self._filters = [] if filters is None else filters
 
     def filter_recipe(self, recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
-        for recipe_filter in self.filters.keys():
-            if self.filters[recipe_filter]:
-                result = recipe_filter.filtering_method(recipe, behavioral_state)
-                if not result:
-                    return False
+        for recipe_filter in self._filters:
+            result = recipe_filter.filtering_method(recipe, behavioral_state)
+            if not result:
+                return False
         return True
+
+    def filter_recipes(self, recipes: List[ActionRecipe], behavioral_state: BehavioralState) -> List[bool]:
+        return [self.filter_recipe(recipe, behavioral_state) for recipe in recipes]

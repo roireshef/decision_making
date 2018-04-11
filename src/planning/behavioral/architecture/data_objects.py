@@ -5,24 +5,36 @@ from decision_making.src.planning.trajectory.trajectory_planner import Samplable
 
 
 class RelativeLane(Enum):
+    """"
+    The lane associated with a certain Recipe, relative to ego
+    """
     LEFT_LANE = -1
     SAME_LANE = 0
     RIGHT_LANE = 1
 
 
 class RelativeLongitudinalPosition(Enum):
+    """"
+    The high-level longitudinal position associated with a certain Recipe, relative to ego
+    """
     REAR = -1
     PARALLEL = 0
     FRONT = 1
 
 
 class ActionType(Enum):
+    """"
+    Type of Recipe, when "follow lane" is a static action while "follow vehicle" and "takeover vehicle" are dynamic ones.
+    """
     FOLLOW_LANE = 1
     FOLLOW_VEHICLE = 2
     TAKE_OVER_VEHICLE = 3
 
 
 class AggressivenessLevel(Enum):
+    """"
+    Aggressiveness driving level, which affects the urgency in reaching the specified goal.
+    """
     CALM = 0
     STANDARD = 1
     AGGRESSIVE = 2
@@ -36,22 +48,28 @@ LAT_CELL, LON_CELL = 0, 1
 
 
 class ActionRecipe:
-    def __init__(self, rel_lane: RelativeLane, action_type: ActionType, aggressiveness: AggressivenessLevel):
-        self.rel_lane = rel_lane
+    def __init__(self, relative_lane: RelativeLane, action_type: ActionType, aggressiveness: AggressivenessLevel):
+        self.relative_lane = relative_lane
         self.action_type = action_type
         self.aggressiveness = aggressiveness
 
 
 class StaticActionRecipe(ActionRecipe):
-    def __init__(self, rel_lane: RelativeLane, velocity: float, aggressiveness: AggressivenessLevel):
-        super().__init__(rel_lane, ActionType.FOLLOW_LANE, aggressiveness)
+    """"
+    Data object containing the fields needed for specifying a certain static action, together with the state.
+    """
+    def __init__(self, relative_lane: RelativeLane, velocity: float, aggressiveness: AggressivenessLevel):
+        super().__init__(relative_lane, ActionType.FOLLOW_LANE, aggressiveness)
         self.velocity = velocity
 
 
 class DynamicActionRecipe(ActionRecipe):
-    def __init__(self, rel_lane: RelativeLane, rel_lon: RelativeLongitudinalPosition,  action_type: ActionType, aggressiveness: AggressivenessLevel):
-        super().__init__(rel_lane, action_type, aggressiveness)
-        self.rel_lon = rel_lon
+    """"
+    Data object containing the fields needed for specifying a certain dynamic action, together with the state.
+    """
+    def __init__(self, relative_lane: RelativeLane, relative_lon: RelativeLongitudinalPosition,  action_type: ActionType, aggressiveness: AggressivenessLevel):
+        super().__init__(relative_lane, action_type, aggressiveness)
+        self.relative_lon = relative_lon
 
 
 class ActionSpec:
