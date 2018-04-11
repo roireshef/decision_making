@@ -1,18 +1,9 @@
 from abc import abstractmethod
-from typing import List
-import numpy as np
 from logging import Logger
+from typing import List
 
-from decision_making.src.exceptions import BehavioralPlanningException
-from decision_making.src.global_constants import SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT, \
-    SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MIN_OVERTAKE_VEL, \
-    SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR, SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe, ActionType, \
-    SemanticGridCell, LAT_CELL, LON_CELL
+from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import SemanticActionsGridState
-from decision_making.src.planning.types import FrenetPoint, FP_SX
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from mapping.src.service.map_service import MapService
 
 
 class StateActionEvaluator:
