@@ -6,29 +6,22 @@ from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.global_constants import SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT, \
     SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MIN_OVERTAKE_VEL, \
     SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR, SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe, ActionType, \
-    SemanticGridCell, LAT_CELL, LON_CELL
+from decision_making.src.planning.behavioral.architecture.components.evaluators.state_action_evaluator import \
+    StateActionEvaluator
+from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe, SemanticGridCell, LAT_CELL
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import SemanticActionsGridState
 from decision_making.src.planning.types import FrenetPoint, FP_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from mapping.src.service.map_service import MapService
 
 
-class StateActionEvaluator:
+class RuleBasedStateActionEvaluator(StateActionEvaluator):
 
     def __init__(self, logger: Logger):
-        self.logger = logger
-
-    def evaluate_recipes(self, behavioral_state: SemanticActionsGridState, action_recipes: List[ActionRecipe],
-                         action_recipes_mask: List[bool])->List[float or None]:
-        return [self.evaluate_recipe(behavioral_state, action_recipe) for action_recipe in action_recipes]
+        super().__init__(logger)
 
     def evaluate_recipe(self, behavioral_state: SemanticActionsGridState, action_recipe: ActionRecipe)->float:
         pass
-
-    def evaluate_action_specs(self, behavioral_state: SemanticActionsGridState, action_specs: List[ActionSpec],
-                              action_specs_mask: List[bool])->List[float or None]:
-        return [self.evaluate_action_spec(behavioral_state, action_spec) for action_spec in action_specs]
 
     def evaluate_action_spec(self, behavioral_state: SemanticActionsGridState, action_spec: ActionSpec)->float:
         pass
@@ -59,11 +52,11 @@ class StateActionEvaluator:
                 len(action_recipes), len(action_specs))
 
         # get indices of semantic_actions array for 3 actions: goto-right, straight, goto-left
-        current_lane_action_ind = StateActionEvaluator._get_action_ind(
+        current_lane_action_ind = RuleBasedStateActionEvaluator._get_action_ind(
             action_recipes, action_specs_mask, (SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT))
-        left_lane_action_ind = StateActionEvaluator._get_action_ind(
+        left_lane_action_ind = RuleBasedStateActionEvaluator._get_action_ind(
             action_recipes, action_specs_mask, (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_FRONT))
-        right_lane_action_ind = StateActionEvaluator._get_action_ind(
+        right_lane_action_ind = RuleBasedStateActionEvaluator._get_action_ind(
             action_recipes, action_specs_mask, (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT))
 
         # The cost for each action is assigned so that the preferred policy would be:
@@ -99,9 +92,9 @@ class StateActionEvaluator:
         road_frenet = FrenetSerret2DFrame(road_points)
         ego_fpoint = road_frenet.cpoint_to_fpoint(np.array([ego.x, ego.y]))
 
-        dist_to_backleft, safe_left_dist_behind_ego = StateActionEvaluator._calc_safe_dist_behind_ego(
+        dist_to_backleft, safe_left_dist_behind_ego = RuleBasedStateActionEvaluator._calc_safe_dist_behind_ego(
             behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_LEFT)
-        dist_to_backright, safe_right_dist_behind_ego = StateActionEvaluator._calc_safe_dist_behind_ego(
+        dist_to_backright, safe_right_dist_behind_ego = RuleBasedStateActionEvaluator._calc_safe_dist_behind_ego(
             behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_RIGHT)
 
         self.logger.debug("Distance\safe distance to back left car: %s\%s.", dist_to_backleft,
@@ -167,5 +160,5 @@ class StateActionEvaluator:
         :param cell:
         :return: the action index or None if the action does not exist
         """
-        action_ind = [i for i, recipe in enumerate(action_recipes) if recipe.rel_lane.value == cell[LAT_CELL] and recipes_mask[i]]
+        action_ind = [i for i, recipe in enumerate(action_recipes) if recipe.relative_lane.value == cell[LAT_CELL] and recipes_mask[i]]
         return action_ind[0] if len(action_ind) > 0 else None

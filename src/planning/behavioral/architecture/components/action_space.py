@@ -14,7 +14,8 @@ from decision_making.src.planning.behavioral.architecture.data_objects import Ac
     DynamicActionRecipe, ActionType, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.architecture.data_objects import RelativeLane, AggressivenessLevel, \
     ActionRecipe
-from decision_making.src.planning.behavioral.architecture.components.filtering.recipe_filtering import RecipeFiltering, RecipeFilter
+from decision_making.src.planning.behavioral.architecture.components.filtering.recipe_filtering import RecipeFiltering, \
+    RecipeFilter
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import SemanticActionsGridState
@@ -29,11 +30,10 @@ from mapping.src.service.map_service import MapService
 
 
 class ActionSpace:
-    def __init__(self, logger: Logger):
-        self._recipes = []
+    def __init__(self, logger: Logger, recipes: List[ActionRecipe]=None, recipe_filtering: RecipeFiltering=None):
         self.logger = logger
-        self.recipe_filtering = RecipeFiltering()
-        self._init_filters()
+        self._recipes = [] if recipes is None else recipes
+        self.recipe_filtering = RecipeFiltering(self._init_filters()) if recipe_filtering is None else recipe_filtering
 
     @property
     def action_space_size(self) -> int:
@@ -48,7 +48,7 @@ class ActionSpace:
 
     def filter_recipes(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralState):
         """"""
-        return [self.filter_recipe(action_recipe, behavioral_state) for action_recipe in action_recipes]
+        return self.recipe_filtering.filter_recipes(action_recipes, behavioral_state)
 
     def _init_filters(self):
         """
@@ -114,12 +114,12 @@ class StaticActionSpace(ActionSpace):
             self._recipes.append(StaticActionRecipe(comb[0], comb[1], comb[2]))
 
     def _init_filters(self):
-        self.recipe_filtering.add_filter(
-            RecipeFilter(name='FilterIfNone', filtering_method=recipe_filter_methods.filter_if_none), is_active=True)
-        self.recipe_filtering.add_filter(
-            RecipeFilter(name='AlwaysFalse', filtering_method=recipe_filter_methods.always_false), is_active=True)
+        filters = [RecipeFilter(name='filter_if_none', filtering_method=recipe_filter_methods.filter_if_none),
+                   RecipeFilter(name='always_false', filtering_method=recipe_filter_methods.always_false)]
+        return filters
 
-    def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: SemanticActionsGridState) -> Optional[ActionSpec]:
+    def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: SemanticActionsGridState) -> Optional[
+        ActionSpec]:
         ego = behavioral_state.ego_state
         ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
         road_id = ego.road_localization.road_id
@@ -128,7 +128,7 @@ class StaticActionSpace(ActionSpace):
         ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cstate)
 
         road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id)
-        desired_lane = ego.road_localization.lane_num + action_recipe.rel_lane.value
+        desired_lane = ego.road_localization.lane_num + action_recipe.relative_lane.value
         desired_center_lane_latitude = road_lane_latitudes[desired_lane]
         T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
                            BP_ACTION_T_RES)
@@ -195,19 +195,15 @@ class DynamicActionSpace(ActionSpace):
         self.predictor = predictor
 
     def _init_filters(self):
-        self.recipe_filtering.add_filter(
-            RecipeFilter(name='AlwaysTrue', filtering_method=recipe_filter_methods.filter_if_none), is_active=True)
-        self.recipe_filtering.add_filter(
-            RecipeFilter(name='AlwaysFalse', filtering_method=recipe_filter_methods.always_false), is_active=False)
-        self.recipe_filtering.add_filter(RecipeFilter(name="filter_actions_towards_non_occupied_cells",
-                                                      filtering_method=recipe_filter_methods.filter_actions_towards_non_occupied_cells),
-                                         is_active=True)
-        self.recipe_filtering.add_filter(RecipeFilter(name="filter_actions_toward_back_and_parallel_cells",
-                                                      filtering_method=recipe_filter_methods.filter_actions_toward_back_and_parallel_cells),
-                                         is_active=True)
-        self.recipe_filtering.add_filter(RecipeFilter(name="filter_over_take_actions",
-                                                      filtering_method=recipe_filter_methods.filter_over_take_actions),
-                                         is_active=True)
+        filters = [RecipeFilter(name='filter_if_none', filtering_method=recipe_filter_methods.filter_if_none),
+                   RecipeFilter(name="filter_actions_towards_non_occupied_cells",
+                                filtering_method=recipe_filter_methods.filter_actions_towards_non_occupied_cells),
+                   RecipeFilter(name="filter_actions_toward_back_and_parallel_cells",
+                                filtering_method=recipe_filter_methods.filter_actions_toward_back_and_parallel_cells),
+                   RecipeFilter(name="filter_over_take_actions",
+                                filtering_method=recipe_filter_methods.filter_over_take_actions)
+                   ]
+        return filters
 
     def specify_goal(self, action_recipe: DynamicActionRecipe,
                      behavioral_state: SemanticActionsGridState) -> Optional[ActionSpec]:
@@ -225,8 +221,8 @@ class DynamicActionSpace(ActionSpace):
         road_frenet = FrenetSerret2DFrame(road_points)
         ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cstate)
 
-        target_obj = behavioral_state.road_occupancy_grid[(action_recipe.rel_lane.value, action_recipe.rel_lon.value)][
-            0]
+        target_obj = behavioral_state.road_occupancy_grid[(action_recipe.relative_lane.value,
+                                                           action_recipe.relative_lon.value)][0]
         target_obj_fpoint = road_frenet.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))
         _, _, _, road_curvature_at_obj_location, _ = road_frenet._taylor_interp(target_obj_fpoint[FP_SX])
         obj_init_fstate = road_frenet.cstate_to_fstate(np.array([
@@ -258,14 +254,15 @@ class DynamicActionSpace(ActionSpace):
         elif action_recipe.action_type == ActionType.TAKE_OVER_VEHICLE:
             desired_lon = obj_sxT + safe_lon_dist + lon_margin
         else:
-            raise NotImplemented("Action Type %s is not handled in DynamicActionSpace specification", action_recipe.action_type)
+            raise NotImplemented("Action Type %s is not handled in DynamicActionSpace specification",
+                                 action_recipe.action_type)
 
         constraints_s = np.c_[np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SX]),
-            np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SV]),
-            np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SA]),
-            desired_lon,
-            obj_svT,
-            np.full(shape=len(T_vals), fill_value=obj_saT)]
+                              np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SV]),
+                              np.full(shape=len(T_vals), fill_value=ego_init_fstate[FS_SA]),
+                              desired_lon,
+                              obj_svT,
+                              np.full(shape=len(T_vals), fill_value=obj_saT)]
         constraints_d = np.repeat([[
             ego_init_fstate[FS_DX],
             ego_init_fstate[FS_DV],
