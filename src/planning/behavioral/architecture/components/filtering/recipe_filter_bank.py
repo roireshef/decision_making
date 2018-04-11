@@ -4,6 +4,7 @@ from decision_making.src.planning.behavioral.architecture.data_objects import Ac
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import SemanticActionsGridState
 
+
 # NOTE: All methods have to get as input ActionRecipe (or one of its children) and  BehavioralState (or one of its
 #       children) even if they don't actually use them.
 
@@ -19,12 +20,14 @@ def filter_if_none(recipe: ActionRecipe, behavioral_state: BehavioralState) -> b
 
 
 def always_false(recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
-        return False
+    return False
+
 
 # DynamicActionRecipe Filters
 
 
-def filter_actions_towards_non_occupied_cells(recipe: DynamicActionRecipe, behavioral_state: SemanticActionsGridState) -> bool:
+def filter_actions_towards_non_occupied_cells(recipe: DynamicActionRecipe,
+                                              behavioral_state: SemanticActionsGridState) -> bool:
     recipe_cell = (recipe.relative_lane.value, recipe.relative_lon.value)
     cell_exists = recipe_cell in behavioral_state.road_occupancy_grid
     return len(behavioral_state.road_occupancy_grid[recipe_cell]) > 0 if cell_exists else False
@@ -34,11 +37,25 @@ def filter_actions_toward_back_cells(recipe: DynamicActionRecipe, behavioral_sta
     return recipe.relative_lon != RelativeLongitudinalPosition.REAR
 
 
-def filter_actions_toward_back_and_parallel_cells(recipe: DynamicActionRecipe, behavioral_state: SemanticActionsGridState) -> bool:
+def filter_actions_toward_back_and_parallel_cells(recipe: DynamicActionRecipe,
+                                                  behavioral_state: SemanticActionsGridState) -> bool:
     return recipe.relative_lon == RelativeLongitudinalPosition.FRONT
 
 
 def filter_over_take_actions(recipe: DynamicActionRecipe, behavioral_state: SemanticActionsGridState) -> bool:
     return recipe.action_type != ActionType.TAKE_OVER_VEHICLE
 
+
 # StaticActionRecipe Filters
+
+
+# Filter list definition
+dynamic_filters = [RecipeFilter(name='filter_if_none', filtering_method=filter_if_none),
+                   RecipeFilter(name="filter_actions_towards_non_occupied_cells",
+                                filtering_method=filter_actions_towards_non_occupied_cells),
+                   RecipeFilter(name="filter_actions_toward_back_and_parallel_cells",
+                                filtering_method=filter_actions_toward_back_and_parallel_cells),
+                   RecipeFilter(name="filter_over_take_actions",
+                                filtering_method=filter_over_take_actions)]
+
+static_filters = [RecipeFilter(name='filter_if_none', filtering_method=filter_if_none)]

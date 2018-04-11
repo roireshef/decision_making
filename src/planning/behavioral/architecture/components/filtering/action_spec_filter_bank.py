@@ -1,3 +1,5 @@
+from decision_making.src.planning.behavioral.architecture.components.filtering.action_spec_filtering import \
+    ActionSpecFilter
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 
@@ -21,3 +23,5 @@ def always_false(action_spec: ActionSpec, behavioral_state: BehavioralState) -> 
         return True
 
 
+# Filter list definition
+action_spec_filters = [ActionSpecFilter(name='filter_if_none', filtering_method=filter_if_none)]
