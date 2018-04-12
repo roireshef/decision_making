@@ -5,8 +5,8 @@ from typing import List
 import numpy as np
 
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe
-from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
-    SemanticBehavioralGridState
+from decision_making.src.planning.behavioral.architecture.behavioral_grid_state import \
+    BehavioralGridState
 
 
 class StateActionSpecEvaluator:
@@ -15,7 +15,7 @@ class StateActionSpecEvaluator:
         self.logger = logger
 
     @abstractmethod
-    def evaluate_action_specs(self, behavioral_state: SemanticBehavioralGridState,
+    def evaluate_action_specs(self, behavioral_state: BehavioralGridState,
                               action_recipes: List[ActionRecipe],
                               action_specs: List[ActionSpec],
                               action_specs_mask: List[bool]) -> np.ndarray:
@@ -28,7 +28,7 @@ class StateActionRecipeEvaluator:
         self.logger = logger
 
     @abstractmethod
-    def evaluate_recipes(self, behavioral_state: SemanticBehavioralGridState,
+    def evaluate_recipes(self, behavioral_state: BehavioralGridState,
                          action_recipes: List[ActionRecipe],
                          action_recipes_mask: List[bool]) -> np.ndarray:
         # return [self.evaluate_recipe(behavioral_state, action_recipe) for action_recipe in action_recipes]

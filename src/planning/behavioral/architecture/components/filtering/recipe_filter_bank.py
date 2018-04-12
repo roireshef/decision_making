@@ -1,8 +1,8 @@
 from decision_making.src.planning.behavioral.architecture.components.filtering.recipe_filtering import RecipeFilter
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane
-from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
-    SemanticBehavioralGridState
+from decision_making.src.planning.behavioral.architecture.behavioral_grid_state import \
+    BehavioralGridState
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 
 
@@ -24,7 +24,7 @@ def always_false(recipe: ActionRecipe, behavioral_state: BehavioralState) -> boo
     return False
 
 
-def filter_if_no_lane(recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> bool:
+def filter_if_no_lane(recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
     return (recipe.relative_lane == RelativeLane.SAME_LANE or
             (recipe.relative_lane == RelativeLane.RIGHT_LANE and behavioral_state.right_lane_exists) or
             (recipe.relative_lane == RelativeLane.LEFT_LANE and behavioral_state.left_lane_exists))
@@ -33,21 +33,21 @@ def filter_if_no_lane(recipe: ActionRecipe, behavioral_state: SemanticBehavioral
 
 
 def filter_actions_towards_non_occupied_cells(recipe: DynamicActionRecipe,
-                                              behavioral_state: SemanticBehavioralGridState) -> bool:
+                                              behavioral_state: BehavioralGridState) -> bool:
     recipe_cell = (recipe.relative_lane.value, recipe.relative_lon.value)
     return recipe_cell in behavioral_state.road_occupancy_grid
 
 
-def filter_actions_toward_back_cells(recipe: DynamicActionRecipe, behavioral_state: SemanticBehavioralGridState) -> bool:
+def filter_actions_toward_back_cells(recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
     return recipe.relative_lon != RelativeLongitudinalPosition.REAR
 
 
 def filter_actions_toward_back_and_parallel_cells(recipe: DynamicActionRecipe,
-                                                  behavioral_state: SemanticBehavioralGridState) -> bool:
+                                                  behavioral_state: BehavioralGridState) -> bool:
     return recipe.relative_lon == RelativeLongitudinalPosition.FRONT
 
 
-def filter_over_take_actions(recipe: DynamicActionRecipe, behavioral_state: SemanticBehavioralGridState) -> bool:
+def filter_over_take_actions(recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
     return recipe.action_type != ActionType.TAKE_OVER_VEHICLE
 
 

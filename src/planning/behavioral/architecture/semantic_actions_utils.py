@@ -5,8 +5,8 @@ from decision_making.src.state.state import ObjectSize
 
 class SemanticActionsUtils:
     @staticmethod
-    def compute_distance_by_velocity_diff(current_velocity: float,
-                                          desired_velocity: float = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED,
+    def compute_distance_by_mean_velocity(current_velocity: float,
+                                          desired_velocity: float,
                                           time: float = BEHAVIORAL_PLANNING_HORIZON) -> float:
         """
         Given a time-window and difference in velocities (current and desired), return the distance travelled by the

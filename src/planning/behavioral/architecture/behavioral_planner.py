@@ -20,8 +20,8 @@ from decision_making.src.planning.behavioral.architecture.components.evaluators.
 from decision_making.src.planning.behavioral.architecture.components.filtering.action_spec_filtering import \
     ActionSpecFiltering
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe
-from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
-    SemanticBehavioralGridState
+from decision_making.src.planning.behavioral.architecture.behavioral_grid_state import \
+    BehavioralGridState
 from decision_making.src.planning.behavioral.architecture.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
@@ -74,8 +74,8 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
 
         # create road semantic grid from the raw State object
         # behavioral_state contains road_occupancy_grid and ego_state
-        behavioral_state = SemanticBehavioralGridState.create_from_state(state=state,
-                                                                         logger=self.logger)
+        behavioral_state = BehavioralGridState.create_from_state(state=state,
+                                                                 logger=self.logger)
 
         current_state_value = self.value_approximator.evaluate_state(behavioral_state)
 
@@ -119,7 +119,7 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
         return trajectory_parameters, visualization_message
 
     @staticmethod
-    def _generate_trajectory_specs(behavioral_state: SemanticBehavioralGridState,
+    def _generate_trajectory_specs(behavioral_state: BehavioralGridState,
                                    action_spec: ActionSpec,
                                    navigation_plan: NavigationPlanMsg) -> TrajectoryParams:
         """
@@ -255,8 +255,8 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
 
         return cost_params
 
-    def _maintain_consistency(self, behavioral_state: SemanticBehavioralGridState,
-                              action_recipe: ActionRecipe) -> SemanticBehavioralGridState:
+    def _maintain_consistency(self, behavioral_state: BehavioralGridState,
+                              action_recipe: ActionRecipe) -> BehavioralGridState:
         """
         Updates behavioral_state in order to maintain consistency.
         :param behavioral_state: processed behavioral state

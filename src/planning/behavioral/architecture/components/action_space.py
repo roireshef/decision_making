@@ -15,8 +15,8 @@ from decision_making.src.planning.behavioral.architecture.data_objects import Ac
     DynamicActionRecipe, ActionType, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.architecture.data_objects import RelativeLane, AggressivenessLevel, \
     ActionRecipe
-from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
-    SemanticBehavioralGridState
+from decision_making.src.planning.behavioral.architecture.behavioral_grid_state import \
+    BehavioralGridState
 from decision_making.src.planning.behavioral.architecture.components.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.utils.math import Math
@@ -159,7 +159,7 @@ class StaticActionSpace(ActionSpace):
         self._recipes = [StaticActionRecipe.from_args_list(comb)
                          for comb in cartesian([RelativeLane, self._velocity_grid, AggressivenessLevel])]
 
-    def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: SemanticBehavioralGridState) -> Optional[
+    def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: BehavioralGridState) -> Optional[
         ActionSpec]:
         ego = behavioral_state.ego_state
         ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
@@ -224,7 +224,7 @@ class DynamicActionSpace(ActionSpace):
         self.predictor = predictor
 
     def specify_goal(self, action_recipe: DynamicActionRecipe,
-                     behavioral_state: SemanticBehavioralGridState) -> Optional[ActionSpec]:
+                     behavioral_state: BehavioralGridState) -> Optional[ActionSpec]:
         """
         Given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec.
         Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it.
@@ -328,7 +328,7 @@ class ActionSpaceContainer(ActionSpace):
         return list(itertools.chain.from_iterable([aspace.recipes for aspace in self._action_spaces]))
 
     @raises(NotImplemented)
-    def specify_goal(self, action_recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> ActionSpec:
+    def specify_goal(self, action_recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> ActionSpec:
         try:
             return self._recipe_handler[action_recipe].specify_goal(action_recipe, behavioral_state)
         except Exception:
@@ -336,7 +336,7 @@ class ActionSpaceContainer(ActionSpace):
                                  action_recipe, str(self._action_spaces))
 
     @raises(NotImplemented)
-    def filter_recipe(self, action_recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> bool:
+    def filter_recipe(self, action_recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
         try:
             return self._recipe_handler[action_recipe].filter_recipe(action_recipe, behavioral_state)
         except Exception:
