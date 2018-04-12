@@ -67,10 +67,8 @@ class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
         is_forward_right_fast = right_lane_action_ind is not None and \
                                 desired_vel - action_specs[right_lane_action_ind].v < MIN_OVERTAKE_VEL
         # boolean whether the right cell near ego is occupied
-        is_right_occupied = True
-        if (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid:
-            is_right_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_RIGHT,
-                                                                          SEMANTIC_CELL_LON_SAME)]) > 0
+        is_right_occupied = not behavioral_state.right_lane_exists or \
+                           (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid
 
         # boolean whether the forward cell is fast enough (may be empty grid cell)
         is_forward_fast = current_lane_action_ind is not None and \
@@ -99,11 +97,8 @@ class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
                           safe_right_dist_behind_ego)
 
         # boolean whether the left cell near ego is occupied
-        if (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid:
-            is_left_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_LEFT,
-                                                                         SEMANTIC_CELL_LON_SAME)]) > 0
-        else:
-            is_left_occupied = True
+        is_left_occupied = not behavioral_state.left_lane_exists or \
+                           (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid
 
         costs = np.ones(len(action_recipes))
 

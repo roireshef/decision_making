@@ -1,6 +1,6 @@
 from decision_making.src.planning.behavioral.architecture.components.filtering.recipe_filtering import RecipeFilter
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionRecipe, DynamicActionRecipe, \
-    RelativeLongitudinalPosition, ActionType
+    RelativeLongitudinalPosition, ActionType, RelativeLane
 from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
     SemanticBehavioralGridState
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
@@ -23,6 +23,11 @@ def filter_if_none(recipe: ActionRecipe, behavioral_state: BehavioralState) -> b
 def always_false(recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
     return False
 
+
+def filter_if_no_lane(recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> bool:
+    return (recipe.relative_lane == RelativeLane.SAME_LANE or
+            (recipe.relative_lane == RelativeLane.RIGHT_LANE and behavioral_state.right_lane_exists) or
+            (recipe.relative_lane == RelativeLane.LEFT_LANE and behavioral_state.left_lane_exists))
 
 # DynamicActionRecipe Filters
 
@@ -58,4 +63,5 @@ dynamic_filters = [RecipeFilter(name='filter_if_none', filtering_method=filter_i
                    RecipeFilter(name="filter_over_take_actions",
                                 filtering_method=filter_over_take_actions)]
 
-static_filters = [RecipeFilter(name='filter_if_none', filtering_method=filter_if_none)]
+static_filters = [RecipeFilter(name='filter_if_none', filtering_method=filter_if_none),
+                  RecipeFilter(name='filter_if_no_lane', filtering_method=filter_if_no_lane)]

@@ -207,7 +207,7 @@ class StaticActionSpace(ActionSpace):
         target_s = np.polyval(poly_coefs_s[optimum_time_idx], T_vals[optimum_time_idx])
 
         return ActionSpec(t=T_vals[optimum_time_idx], v=constraints_s[optimum_time_idx, 3],
-                          s=target_s,
+                          s=float(target_s),
                           d=constraints_d[optimum_time_idx, 3],
                           samplable_trajectory=samplable_trajectory)
 
