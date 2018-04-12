@@ -50,7 +50,7 @@ class ActionSpace:
 
     def filter_recipes(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralState):
         """"""
-        return self.recipe_filtering.filter_recipes(action_recipes, behavioral_state)
+        return [self.filter_recipe(action_recipe, behavioral_state) for action_recipe in action_recipes]
 
     @abstractmethod
     def specify_goal(self, action_recipe: ActionRecipe, behavioral_state: BehavioralState) -> Optional[ActionSpec]:
@@ -154,7 +154,7 @@ class ActionSpace:
 
 class StaticActionSpace(ActionSpace):
     def __init__(self, logger):
-        super().__init__(logger, recipe_filtering=recipe_filter_bank.static_filters)
+        super().__init__(logger, recipe_filtering=RecipeFiltering(recipe_filter_bank.static_filters))
         self._velocity_grid = np.arange(MIN_VELOCITY, MAX_VELOCITY + np.finfo(np.float16).eps, VELOCITY_STEP)
         self._recipes = [StaticActionRecipe.from_args_list(comb)
                          for comb in cartesian([RelativeLane, self._velocity_grid, AggressivenessLevel])]
@@ -192,7 +192,7 @@ class StaticActionSpace(ActionSpace):
                                                                                                       action_recipe.aggressiveness)
 
         if not optimum_time_satisfies_constraints:
-            self.logger.warning("Can\'t specify Recipe %s given ego state %s ", str(action_recipe), str(ego))
+            # self.logger.warning("Can\'t specify Recipe %s given ego state %s ", str(action_recipe), str(ego))
             return None
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
@@ -204,10 +204,10 @@ class StaticActionSpace(ActionSpace):
                                                           poly_s_coefs=poly_coefs_s[optimum_time_idx],
                                                           poly_d_coefs=poly_coefs_d[optimum_time_idx])
 
-        target_s = Math.zip_polyval2d(poly_coefs_s, T_vals[optimum_time_idx])
+        target_s = np.polyval(poly_coefs_s[optimum_time_idx], T_vals[optimum_time_idx])
 
         return ActionSpec(t=T_vals[optimum_time_idx], v=constraints_s[optimum_time_idx, 3],
-                          s=target_s[optimum_time_idx, 0],
+                          s=target_s,
                           d=constraints_d[optimum_time_idx, 3],
                           samplable_trajectory=samplable_trajectory)
 
@@ -215,7 +215,7 @@ class StaticActionSpace(ActionSpace):
 class DynamicActionSpace(ActionSpace):
 
     def __init__(self, logger: Logger, predictor: Predictor):
-        super().__init__(logger, recipe_filtering=recipe_filter_bank.dynamic_filters)
+        super().__init__(logger, recipe_filtering=RecipeFiltering(recipe_filter_bank.dynamic_filters))
         self._recipes = [DynamicActionRecipe.from_args_list(comb)
                          for comb in cartesian([RelativeLane,
                                                 RelativeLongitudinalPosition,
@@ -291,7 +291,7 @@ class DynamicActionSpace(ActionSpace):
                                                                                                       action_recipe.aggressiveness)
 
         if not optimum_time_satisfies_constraints:
-            self.logger.warning("Can\'t specify Recipe %s given ego state %s ", str(action_recipe), str(ego))
+            # self.logger.warning("Can\'t specify Recipe %s given ego state %s ", str(action_recipe), str(ego))
             return None
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from

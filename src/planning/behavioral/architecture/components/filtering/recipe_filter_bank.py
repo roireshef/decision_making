@@ -30,8 +30,7 @@ def always_false(recipe: ActionRecipe, behavioral_state: BehavioralState) -> boo
 def filter_actions_towards_non_occupied_cells(recipe: DynamicActionRecipe,
                                               behavioral_state: SemanticBehavioralGridState) -> bool:
     recipe_cell = (recipe.relative_lane.value, recipe.relative_lon.value)
-    cell_exists = recipe_cell in behavioral_state.road_occupancy_grid
-    return len(behavioral_state.road_occupancy_grid[recipe_cell]) > 0 if cell_exists else False
+    return recipe_cell in behavioral_state.road_occupancy_grid
 
 
 def filter_actions_toward_back_cells(recipe: DynamicActionRecipe, behavioral_state: SemanticBehavioralGridState) -> bool:
