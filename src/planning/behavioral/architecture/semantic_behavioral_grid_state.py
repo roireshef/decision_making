@@ -1,17 +1,66 @@
-import numpy as np
+from enum import Enum
 from logging import Logger
+from typing import Dict, List, Tuple
+
+import numpy as np
 
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_LOOKAHEAD_DIST
 from decision_making.src.global_constants import SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LON_REAR, LON_MARGIN_FROM_EGO
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils
-from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticBehavioralState, \
-    RoadSemanticOccupancyGrid, LON_CELL
+from decision_making.src.planning.behavioral.architecture.semantic_actions_utils import SemanticActionsUtils
+from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.types import FP_SX, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.state.state import EgoState, State, DynamicObject
+from decision_making.src.state.state import EgoState
+from decision_making.src.state.state import State, DynamicObject
 from mapping.src.service.map_service import MapService
+
+
+class SemanticActionType(Enum):
+    FOLLOW_VEHICLE = 1
+    FOLLOW_LANE = 2
+
+
+# Define semantic cell
+SemanticGridCell = Tuple[int, int]
+
+# tuple indices
+LAT_CELL, LON_CELL = 0, 1
+
+
+"""
+We assume that the road is partitioned into semantic areas, each area is defined as a cell.
+The keys are:
+- relative_lane: describes the lane number, relative to ego. For example: {-1, 0, 1}
+- relative_lon:  describes the longitudinal partition of the grid.
+  For example, the grid can be partitioned in the following way:
+  {-1: behind ego, 0: aside, 1: infront of ego}.
+
+"""
+
+# Define semantic occupancy grid
+RoadSemanticOccupancyGrid = Dict[SemanticGridCell, List[DynamicObject]]
+"""
+This type holds a semantic occupancy grid, that maps dynamic objects in the scene
+to cells (partitions) of the state space.
+"""
+
+
+class SemanticBehavioralState(BehavioralState):
+
+    def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid):
+        """
+        :param road_occupancy_grid: A dictionary that maps semantic cells to list of dynamic objects.
+        """
+        self.road_occupancy_grid = road_occupancy_grid
+
+    @classmethod
+    def create_from_state(cls, state: State, logger: Logger):
+        """
+        :return: a new and updated BehavioralState
+        """
+        pass
 
 
 class SemanticBehavioralGridState(SemanticBehavioralState):

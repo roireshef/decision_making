@@ -10,7 +10,8 @@ from decision_making.src.planning.behavioral.architecture.components.evaluators.
     StateActionSpecEvaluator
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe, \
     SemanticGridCell, LAT_CELL
-from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import SemanticActionsGridState
+from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
+    SemanticBehavioralGridState
 from decision_making.src.planning.types import FrenetPoint, FP_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from mapping.src.service.map_service import MapService
@@ -21,7 +22,7 @@ class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
     def __init__(self, logger: Logger):
         super().__init__(logger)
 
-    def evaluate_action_specs(self, behavioral_state: SemanticActionsGridState,
+    def evaluate_action_specs(self, behavioral_state: SemanticBehavioralGridState,
                               action_recipes: List[ActionRecipe],
                               action_specs: List[ActionSpec],
                               action_specs_mask: List[bool]) -> np.ndarray:
@@ -120,7 +121,7 @@ class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
         return costs
 
     @staticmethod
-    def _calc_safe_dist_behind_ego(behavioral_state: SemanticActionsGridState, road_frenet: FrenetSerret2DFrame,
+    def _calc_safe_dist_behind_ego(behavioral_state: SemanticBehavioralGridState, road_frenet: FrenetSerret2DFrame,
                                    ego_fpoint: FrenetPoint, semantic_cell_lat: int) -> [float, float]:
         """
         Calculate both actual and safe distances between rear object and ego on the left side or right side.

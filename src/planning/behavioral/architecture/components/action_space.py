@@ -20,7 +20,7 @@ from decision_making.src.planning.behavioral.architecture.semantic_behavioral_gr
 from decision_making.src.planning.behavioral.architecture.components.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.utils.math import Math
-from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils
+from decision_making.src.planning.behavioral.architecture.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D, \
     Poly1D
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory

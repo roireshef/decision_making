@@ -7,7 +7,6 @@ from decision_making.src.messages.navigation_plan_message import NavigationPlanM
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.architecture.behavioral_planner import BehavioralPlanner
-from decision_making.src.planning.behavioral.policy import Policy
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 from logging import Logger
