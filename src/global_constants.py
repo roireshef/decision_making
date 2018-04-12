@@ -110,7 +110,7 @@ LON_MARGIN_FROM_EGO = 1
 AGGRESSIVENESS_TO_LON_ACC = np.array([1, 1.5, 2.25])
 #AGGRESSIVENESS_TO_LAT_ACC = np.array([0.3, 0.5, 0.9])
 LON_ACC_TO_COST_FACTOR = 0.01
-LAT_ACC_TO_COST_FACTOR = 1.
+LAT_VEL_TO_COST_FACTOR = 0.01
 
 # [sec] minimal time period for semantic action
 MIN_ACTION_PERIOD = 4
