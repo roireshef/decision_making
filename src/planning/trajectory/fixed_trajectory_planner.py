@@ -31,6 +31,9 @@ class FixedSamplableTrajectory(SamplableTrajectory):
         """
         indices_of_closest_time_points = np.round((time_points - self.timestamp_in_sec) / WERLING_TIME_RESOLUTION).astype(int)
 
+        #keep just indices that fit within the current stored trajectory
+        indices_of_closest_time_points=indices_of_closest_time_points[indices_of_closest_time_points<len(self._fixed_trajectory)]
+
         return self._fixed_trajectory[indices_of_closest_time_points]
 
 
