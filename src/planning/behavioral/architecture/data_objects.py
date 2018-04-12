@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Tuple
+from typing import Tuple, List
 
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 
@@ -52,6 +52,10 @@ class ActionRecipe:
         self.relative_lane = relative_lane
         self.action_type = action_type
         self.aggressiveness = aggressiveness
+
+    @classmethod
+    def from_args_list(cls, args: List):
+        return cls(*args)
 
 
 class StaticActionRecipe(ActionRecipe):

@@ -155,7 +155,7 @@ class ActionSpace:
 class StaticActionSpace(ActionSpace):
     def __init__(self, logger):
         super().__init__(logger, recipe_filtering=recipe_filter_bank.static_filters)
-        self._velocity_grid = np.append(0, np.arange(MIN_VELOCITY, MAX_VELOCITY + np.finfo(np.float16).eps, VELOCITY_STEP))
+        self._velocity_grid = np.arange(MIN_VELOCITY, MAX_VELOCITY + np.finfo(np.float16).eps, VELOCITY_STEP)
         self._recipes = [StaticActionRecipe.from_args_list(comb)
                          for comb in cartesian([RelativeLane, self._velocity_grid, AggressivenessLevel])]
 
