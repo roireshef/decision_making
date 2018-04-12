@@ -10,7 +10,8 @@ from decision_making.src.planning.behavioral.architecture.components.evaluators.
     StateActionSpecEvaluator
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe, \
     SemanticGridCell, LAT_CELL
-from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import SemanticActionsGridState
+from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
+    SemanticBehavioralGridState
 from decision_making.src.planning.types import FrenetPoint, FP_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from mapping.src.service.map_service import MapService
@@ -21,7 +22,7 @@ class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
     def __init__(self, logger: Logger):
         super().__init__(logger)
 
-    def evaluate_action_specs(self, behavioral_state: SemanticActionsGridState,
+    def evaluate_action_specs(self, behavioral_state: SemanticBehavioralGridState,
                               action_recipes: List[ActionRecipe],
                               action_specs: List[ActionSpec],
                               action_specs_mask: List[bool]) -> np.ndarray:
@@ -66,10 +67,8 @@ class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
         is_forward_right_fast = right_lane_action_ind is not None and \
                                 desired_vel - action_specs[right_lane_action_ind].v < MIN_OVERTAKE_VEL
         # boolean whether the right cell near ego is occupied
-        is_right_occupied = True
-        if (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid:
-            is_right_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_RIGHT,
-                                                                          SEMANTIC_CELL_LON_SAME)]) > 0
+        is_right_occupied = not behavioral_state.right_lane_exists or \
+                           (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid
 
         # boolean whether the forward cell is fast enough (may be empty grid cell)
         is_forward_fast = current_lane_action_ind is not None and \
@@ -98,12 +97,8 @@ class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
                           safe_right_dist_behind_ego)
 
         # boolean whether the left cell near ego is occupied
-        if (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid:
-            is_left_occupied = len(behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_LEFT,
-                                                                         SEMANTIC_CELL_LON_SAME)]) > 0
-        else:
-            is_left_occupied = True
-
+        is_left_occupied = not behavioral_state.left_lane_exists or \
+                           (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid
         costs = np.ones(len(action_recipes))
 
         # move right if both straight and right lanes are fast
@@ -120,7 +115,7 @@ class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
         return costs
 
     @staticmethod
-    def _calc_safe_dist_behind_ego(behavioral_state: SemanticActionsGridState, road_frenet: FrenetSerret2DFrame,
+    def _calc_safe_dist_behind_ego(behavioral_state: SemanticBehavioralGridState, road_frenet: FrenetSerret2DFrame,
                                    ego_fpoint: FrenetPoint, semantic_cell_lat: int) -> [float, float]:
         """
         Calculate both actual and safe distances between rear object and ego on the left side or right side.

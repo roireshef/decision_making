@@ -13,7 +13,6 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParams,
     SigmoidFunctionParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.architecture.components.action_space import ActionSpace
-from decision_making.src.planning.behavioral.architecture.components.action_validator import ActionValidator
 from decision_making.src.planning.behavioral.architecture.components.evaluators.rule_based_state_action_evaluator import \
     RuleBasedStateActionEvaluator
 from decision_making.src.planning.behavioral.architecture.components.evaluators.value_approximator import \
@@ -23,7 +22,7 @@ from decision_making.src.planning.behavioral.architecture.components.filtering.a
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe
 from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
     SemanticBehavioralGridState
-from decision_making.src.planning.behavioral.policies.semantic_actions_utils import SemanticActionsUtils
+from decision_making.src.planning.behavioral.architecture.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
@@ -83,8 +82,6 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
 
-        recipes_cost = self.state_action_evaluator.evaluate_recipes(behavioral_state, action_recipes, recipes_mask)
-
         action_specs = []
         # Action specification
         for i in range(len(action_recipes)):
@@ -100,8 +97,8 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
         action_specs_mask = self.action_validator.filter_action_specs(action_specs, behavioral_state)
 
         # State-Action Evaluation
-        action_costs = self.state_action_evaluator.evaluate(behavioral_state, action_recipes, action_specs,
-                                                            action_specs_mask)
+        action_costs = self.state_action_evaluator.evaluate_action_specs(behavioral_state, action_recipes, action_specs,
+                                                                         action_specs_mask)
 
         selected_action_index = int(np.argmin(action_costs))
         selected_action_spec = action_specs[selected_action_index]
