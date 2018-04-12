@@ -19,7 +19,7 @@ class LogMsg(object):
         :param message:
         :return:
         """
-        return ast.literal_eval(message)
+        return ast.literal_eval(message.replace('<', '\'<').replace('>', '>\''))
 
     @staticmethod
     def deserialize(class_type: Type, message: dict):
