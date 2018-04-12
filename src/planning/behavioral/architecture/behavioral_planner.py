@@ -14,8 +14,12 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParams,
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.architecture.components.action_space import ActionSpace
 from decision_making.src.planning.behavioral.architecture.components.action_validator import ActionValidator
-from decision_making.src.planning.behavioral.architecture.components.evaluators.state_action_evaluator import StateActionEvaluator
-from decision_making.src.planning.behavioral.architecture.components.evaluators.value_approximator import ValueApproximator
+from decision_making.src.planning.behavioral.architecture.components.evaluators.rule_based_state_action_evaluator import \
+    RuleBasedStateActionEvaluator
+from decision_making.src.planning.behavioral.architecture.components.evaluators.value_approximator import \
+    ValueApproximator
+from decision_making.src.planning.behavioral.architecture.components.filtering.action_spec_filtering import \
+    ActionSpecFiltering
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe
 from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
     SemanticBehavioralGridState
@@ -30,8 +34,8 @@ from mapping.src.service.map_service import MapService
 
 
 class BehavioralPlanner:
-    def __init__(self, action_space: ActionSpace, state_action_evaluator: StateActionEvaluator,
-                 action_validator: ActionValidator, value_approximator: ValueApproximator,
+    def __init__(self, action_space: ActionSpace, state_action_evaluator: RuleBasedStateActionEvaluator,
+                 action_validator: ActionSpecFiltering, value_approximator: ValueApproximator,
                  predictor: Predictor, logger: Logger):
         self.action_space = action_space
         self.state_action_evaluator = state_action_evaluator
@@ -60,7 +64,8 @@ class BehavioralPlanner:
 
 
 class CostBasedBehavioralPlanner(BehavioralPlanner):
-    def __init__(self, action_space: ActionSpace, action_evaluator: StateActionEvaluator, action_validator: ActionValidator,
+    def __init__(self, action_space: ActionSpace, action_evaluator: RuleBasedStateActionEvaluator,
+                 action_validator: ActionSpecFiltering,
                  value_approximator: ValueApproximator, predictor: Predictor, logger: Logger):
         super().__init__(action_space, action_evaluator, action_validator, value_approximator, predictor, logger)
 
@@ -71,7 +76,7 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
         # create road semantic grid from the raw State object
         # behavioral_state contains road_occupancy_grid and ego_state
         behavioral_state = SemanticBehavioralGridState.create_from_state(state=state,
-                                                                      logger=self.logger)
+                                                                         logger=self.logger)
 
         current_state_value = self.value_approximator.evaluate_state(behavioral_state)
 
@@ -85,16 +90,18 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
         for i in range(len(action_recipes)):
             spec = None
             if recipes_mask[i]:
-                consistent_behavioral_state = CostBasedBehavioralPlanner._maintain_consistency(self, behavioral_state, action_recipes[i])
+                consistent_behavioral_state = CostBasedBehavioralPlanner._maintain_consistency(self, behavioral_state,
+                                                                                               action_recipes[i])
                 spec = self.action_space.specify_goal(action_recipes[i], consistent_behavioral_state)
 
             action_specs.append(spec)
 
         # ActionSpec filtering
-        action_specs_mask = self.action_validator.validate_actions(action_specs, behavioral_state)
+        action_specs_mask = self.action_validator.filter_action_specs(action_specs, behavioral_state)
 
         # State-Action Evaluation
-        action_costs = self.state_action_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
+        action_costs = self.state_action_evaluator.evaluate(behavioral_state, action_recipes, action_specs,
+                                                            action_specs_mask)
 
         selected_action_index = int(np.argmin(action_costs))
         selected_action_spec = action_specs[selected_action_index]
@@ -267,13 +274,13 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
         if self._last_action is not None and action_recipe == self._last_action \
                 and LocalizationUtils.is_actual_state_close_to_expected_state(
             ego_state, self._last_action_spec.samplable_trajectory, self.logger, self.__class__.__name__):
-
             ego_cstate = self._last_action_spec.samplable_trajectory.sample(np.array([ego_state.timestamp_in_sec]))[0]
 
             new_ego_state = ego_state
-            new_ego_state.x, new_ego_state.y, new_ego_state.yaw, new_ego_state.v_x, new_ego_state.acceleration_lon\
+            new_ego_state.x, new_ego_state.y, new_ego_state.yaw, new_ego_state.v_x, new_ego_state.acceleration_lon \
                 = ego_cstate[0:5]
-            new_ego_state.steering_angle = np.arctan(new_ego_state.size.length * ego_cstate[5])  # steering_angle=atan(ego_len*curvature)
+            new_ego_state.steering_angle = np.arctan(
+                new_ego_state.size.length * ego_cstate[5])  # steering_angle=atan(ego_len*curvature)
             new_ego_state.omega_yaw = new_ego_state.curvature * new_ego_state.v_x
 
             consistent_behavioral_state.ego_state = new_ego_state
