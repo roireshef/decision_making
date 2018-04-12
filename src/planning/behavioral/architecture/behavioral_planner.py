@@ -84,15 +84,18 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
 
         action_specs = []
         # Action specification
+        cnt = 0
         for i in range(len(action_recipes)):
             spec = None
             if recipes_mask[i]:
                 consistent_behavioral_state = CostBasedBehavioralPlanner._maintain_consistency(self, behavioral_state,
                                                                                                action_recipes[i])
                 spec = self.action_space.specify_goal(action_recipes[i], consistent_behavioral_state)
+                cnt += 1
 
             action_specs.append(spec)
 
+        print('Number of actions specified: ', cnt)
         # ActionSpec filtering
         action_specs_mask = self.action_validator.filter_action_specs(action_specs, behavioral_state)
 

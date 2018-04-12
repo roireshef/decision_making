@@ -24,11 +24,6 @@ def always_false(recipe: ActionRecipe, behavioral_state: BehavioralState) -> boo
     return False
 
 
-def filter_if_no_lane(recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> bool:
-    return (recipe.relative_lane == RelativeLane.SAME_LANE or
-            (recipe.relative_lane == RelativeLane.RIGHT_LANE and behavioral_state.right_lane_exists) or
-            (recipe.relative_lane == RelativeLane.LEFT_LANE and behavioral_state.left_lane_exists))
-
 # DynamicActionRecipe Filters
 
 
@@ -53,6 +48,14 @@ def filter_over_take_actions(recipe: DynamicActionRecipe, behavioral_state: Sema
 
 # StaticActionRecipe Filters
 
+def filter_if_no_lane(recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> bool:
+    return (recipe.relative_lane == RelativeLane.SAME_LANE or
+            (recipe.relative_lane == RelativeLane.RIGHT_LANE and behavioral_state.right_lane_exists) or
+            (recipe.relative_lane == RelativeLane.LEFT_LANE and behavioral_state.left_lane_exists))
+
+
+# Note: From efficiency point of view, the filters should be sorted from the strongest (the one filtering the largest
+# number of recipes) to the weakest.
 
 # Filter list definition
 dynamic_filters = [RecipeFilter(name='filter_if_none', filtering_method=filter_if_none),

@@ -32,7 +32,7 @@ from mapping.src.service.map_service import MapService
 
 
 class ActionSpace:
-    def __init__(self, logger: Logger, recipe_filtering: RecipeFiltering=None):
+    def __init__(self, logger: Logger, recipe_filtering: RecipeFiltering = None):
         self.logger = logger
         self.recipe_filtering = recipe_filtering or RecipeFiltering()
         self._recipes: List[ActionRecipe] = None
@@ -159,8 +159,8 @@ class StaticActionSpace(ActionSpace):
         self._recipes = [StaticActionRecipe.from_args_list(comb)
                          for comb in cartesian([RelativeLane, self._velocity_grid, AggressivenessLevel])]
 
-    def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: SemanticBehavioralGridState) -> Optional[
-        ActionSpec]:
+    def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: SemanticBehavioralGridState) -> \
+            Optional[ActionSpec]:
         ego = behavioral_state.ego_state
         ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
         road_id = ego.road_localization.road_id
@@ -192,7 +192,7 @@ class StaticActionSpace(ActionSpace):
                                                                                                       action_recipe.aggressiveness)
 
         if not optimum_time_satisfies_constraints:
-            # self.logger.warning("Can\'t specify Recipe %s given ego state %s ", str(action_recipe), str(ego))
+            # self.logger.debug("Can\'t specify Recipe %s given ego state %s ", str(action_recipe), str(ego))
             return None
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
@@ -291,7 +291,7 @@ class DynamicActionSpace(ActionSpace):
                                                                                                       action_recipe.aggressiveness)
 
         if not optimum_time_satisfies_constraints:
-            # self.logger.warning("Can\'t specify Recipe %s given ego state %s ", str(action_recipe), str(ego))
+            # self.logger.debug("Can\'t specify Recipe %s given ego state %s ", str(action_recipe), str(ego))
             return None
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
