@@ -6,8 +6,8 @@ from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.global_constants import SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT, \
     SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MIN_OVERTAKE_VEL, \
     SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR, SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS
-from decision_making.src.planning.behavioral.architecture.components.evaluators.state_action_evaluator import \
-    StateActionEvaluator
+from decision_making.src.planning.behavioral.architecture.components.evaluators.state_action_evaluators import \
+    StateActionSpecEvaluator
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe, \
     SemanticGridCell, LAT_CELL
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import SemanticActionsGridState
@@ -16,23 +16,15 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from mapping.src.service.map_service import MapService
 
 
-class RuleBasedStateActionEvaluator(StateActionEvaluator):
+class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
 
     def __init__(self, logger: Logger):
         super().__init__(logger)
 
-    def evaluate_recipe(self, behavioral_state: SemanticActionsGridState, action_recipe: ActionRecipe) -> float:
-        pass
-
-    def evaluate_action_spec(self, behavioral_state: SemanticActionsGridState, action_spec: ActionSpec) -> float:
-        pass
-
-    # This method is hre for now just for backward compatibility and will be removed after some content will be
-    # inserted into the other interface methods
-    def evaluate(self, behavioral_state: SemanticActionsGridState,
-                 action_recipes: List[ActionRecipe],
-                 action_specs: List[ActionSpec],
-                 action_specs_mask: List[bool]) -> np.ndarray:
+    def evaluate_action_specs(self, behavioral_state: SemanticActionsGridState,
+                              action_recipes: List[ActionRecipe],
+                              action_specs: List[ActionSpec],
+                              action_specs_mask: List[bool]) -> np.ndarray:
         """
         Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
         Gets a list of actions to evaluate and returns a vector representing their costs.
