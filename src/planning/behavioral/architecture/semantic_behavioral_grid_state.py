@@ -157,7 +157,7 @@ class SemanticBehavioralGridState(SemanticBehavioralState):
                 # dynamic_object is the first one seen in this occupancy cell
                 semantic_occupancy_dict[occupancy_index] = [dynamic_object]
 
-        return cls(semantic_occupancy_dict, ego_state, right_lane_exists=ego_lane > 1, left_lane_exists=ego_lane < lanes_num)
+        return cls(semantic_occupancy_dict, ego_state, right_lane_exists=ego_lane > 0, left_lane_exists=ego_lane < lanes_num-1)
 
     @staticmethod
     def calc_relative_distances(state: State,

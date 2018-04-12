@@ -99,7 +99,6 @@ class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
         # boolean whether the left cell near ego is occupied
         is_left_occupied = not behavioral_state.left_lane_exists or \
                            (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid
-
         costs = np.ones(len(action_recipes))
 
         # move right if both straight and right lanes are fast
