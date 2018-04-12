@@ -8,5 +8,5 @@ class ValueApproximator:
     def __init__(self, logger: Logger):
         self.logger = logger
 
-    def evaluate_state(self, behavioral_state: SemanticActionsGridState) -> float:
+    def evaluate_state(self, behavioral_state: SemanticBehavioralGridState) -> float:
         pass
