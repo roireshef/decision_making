@@ -138,7 +138,9 @@ class WerlingPlanner(TrajectoryPlanner):
         assert T_s >= self.dt
         # Make sure T_s values are multiples of dt (or else the matrix, calculated using T_s, and the latitudinal
         #  time axis, lon_time_samples, won't fit).
-        T_s = Math.round_to_step(T_s, self.dt)
+
+        # TODO: figure out if T_s can be not rounded
+        #T_s = Math.round_to_step(T_s, self.dt)
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)
