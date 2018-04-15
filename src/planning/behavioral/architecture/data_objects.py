@@ -8,9 +8,9 @@ class RelativeLane(Enum):
     """"
     The lane associated with a certain Recipe, relative to ego
     """
-    LEFT_LANE = -1
+    RIGHT_LANE = -1
     SAME_LANE = 0
-    RIGHT_LANE = 1
+    LEFT_LANE = 1
 
 
 class RelativeLongitudinalPosition(Enum):
