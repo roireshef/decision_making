@@ -399,7 +399,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         road = MapService.get_instance().get_road(road_id)
         road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
         road_frenet = FrenetSerret2DFrame(road_points)  # TODO: it's heavy (10 ms), bring road_frenet from outside
-        ego_fpoint = road_frenet.cpoint_to_fpoint(np.array([ego.x, ego.y]))
+        ego_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
+        ego_fstate = road_frenet.cstate_to_fstate(ego_cstate)
+        ego_fpoint = np.array([ego_fstate[FS_SX], ego_fstate[FS_DX]])
         ego_lane = ego.road_localization.lane_num
         lane_width = road.lane_width
 
@@ -420,30 +422,34 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
                 target_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
                 target_acc = 0
                 obj_lon = None
+                cars_size_margin = 0.5 * ego.size.length
 
             aggressiveness_level = 1  # TODO: should be defined in the action
-            vel_profile = VelocityProfile.calc_velocity_profile(
-                ego_fpoint[FP_SX], ego.v_x, obj_lon, target_vel, target_acc, aggressiveness_level, cars_size_margin)
+
+            target_lane = ego_lane + action.cell[LAT_CELL]
+            target_lat = (target_lane + 0.5) * lane_width
+
+            # create velocity profile, whose extent is at least as the lateral time
+            comfort_lat_time = VelocityProfile.calc_lateral_time(ego_fstate[FS_DV], target_lat - ego_fpoint[FP_DX])
+            vel_profile = VelocityProfile.calc_velocity_profile(ego_fpoint[FP_SX], ego.v_x, obj_lon, target_vel,
+                                    target_acc, aggressiveness_level, cars_size_margin, comfort_lat_time)
 
             if vel_profile is None:  # infeasible action
                 action_costs[i] = np.inf
                 print('infeasible action')
                 continue
 
-            target_lane = ego_lane + action.cell[LAT_CELL]
-            target_lat = (target_lane + 0.5) * lane_width
-
-            vel_profile_time = vel_profile.t1 + vel_profile.t2 + vel_profile.t3
+            vel_profile_time = vel_profile.total_time()
 
             # efficiency cost
             efficiency_cost = PlanEfficiencyMetric.calc_cost(ego.v_x, target_vel, vel_profile)
 
             # comfort cost
             largest_safe_time = SemanticActionsGridPolicy._calc_largest_safe_time(
-                behavioral_state, action.cell[LAT_CELL], ego_fpoint, vel_profile, target_lat, road_frenet, cars_size_margin)
-            aggressiveness_level = 1  # TODO: get it from the action
-            lat_dist = abs(target_lat - ego_fpoint[FP_DX])
-            comfort_cost = PlanComfortMetric.calc_cost(vel_profile, aggressiveness_level, lat_dist, largest_safe_time)
+                behavioral_state, action.cell[LAT_CELL], ego_fpoint, vel_profile, target_lat, road_frenet,
+                ego.size.length/2, comfort_lat_time)
+
+            comfort_cost = PlanComfortMetric.calc_cost(vel_profile, comfort_lat_time, largest_safe_time)
 
             right_lane_cost = PlanRightLaneMetric.calc_cost(vel_profile_time, target_lane)
 
@@ -451,9 +457,9 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
             action_costs[i] = efficiency_cost + right_lane_cost + comfort_cost + value_function
 
-            # print('time %f; action %d: obj_vel=%s eff %s comf %s right %s value %f: tot %s' %
-            #       (ego.timestamp_in_sec, action.cell[LAT_CELL], target_vel, efficiency_cost, comfort_cost,
-            #        right_lane_cost, value_function, action_costs[i]))
+            print('time %f; action %d: obj_vel=%s eff %s comf %s right %s value %f: tot %s' %
+                  (ego.timestamp_in_sec, action.cell[LAT_CELL], target_vel, efficiency_cost, comfort_cost,
+                   right_lane_cost, value_function, action_costs[i]))
 
         best_action = np.argmin(action_costs)
         print('best action %d; lane %d\n' % (best_action, ego_lane + semantic_actions[best_action].cell[LAT_CELL]))
@@ -462,7 +468,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
     @staticmethod
     def _calc_largest_safe_time(behavioral_state: SemanticActionsGridState, action_lat_cell: int,
                                 ego_fpoint: np.array, vel_profile: VelocityProfile, target_lat: float,
-                                road_frenet: FrenetSerret2DFrame, cars_size_margin: float) -> float:
+                                road_frenet: FrenetSerret2DFrame, ego_half_size: float,
+                                comfort_lat_time: float) -> float:
         """
         For a lane change action, given ego velocity profile and behavioral_state, get two cars that may
         require faster lateral movement (the front overtaken car and the back interfered car) and calculate the last
@@ -473,7 +480,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         :param vel_profile: the velocity profile of ego
         :param target_lat: target latitude of the action
         :param road_frenet: Frenet frame
-        :param cars_size_margin: sum of half cars sizes
+        :param ego_half_size: half ego length
+        :param comfort_lat_time: time for comfortable lane change
         :return: the latest safe time
         """
         safe_time = np.inf
@@ -481,19 +489,25 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             side_obj = behavioral_state.road_occupancy_grid[(action_lat_cell, SEMANTIC_CELL_LON_SAME)]
             overtaken_obj = behavioral_state.road_occupancy_grid[(SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT)]
             interfer_obj = behavioral_state.road_occupancy_grid[(action_lat_cell, SEMANTIC_CELL_LON_REAR)]
+            followed_obj = behavioral_state.road_occupancy_grid[(action_lat_cell, SEMANTIC_CELL_LON_FRONT)]
             # overtaken_safe_time = interfer_safe_time = np.inf
             if len(side_obj) > 0:
                 safe_time = 0
             else:
                 if len(overtaken_obj) > 0:
                     overtaken_safe_time = ProfileSafety.calc_last_safe_time(
-                        ego_fpoint, cars_size_margin, vel_profile, target_lat, overtaken_obj[0], road_frenet)
+                        ego_fpoint, ego_half_size, vel_profile, target_lat, overtaken_obj[0], road_frenet, comfort_lat_time)
                     safe_time = min(safe_time, overtaken_safe_time)
                 if len(interfer_obj) > 0:
                     interfer_safe_time = ProfileSafety.calc_last_safe_time(
-                        ego_fpoint, cars_size_margin, vel_profile, target_lat, interfer_obj[0], road_frenet)
+                        ego_fpoint, ego_half_size, vel_profile, target_lat, interfer_obj[0], road_frenet, comfort_lat_time)
                     safe_time = min(safe_time, interfer_safe_time)
-            # print('overtaken_safe_time=%f interfer_safe_time=%f safe_time=%f' % (overtaken_safe_time, interfer_safe_time, safe_time))
+                if len(followed_obj) > 0:
+                    followed_safe_time = ProfileSafety.calc_last_safe_time(
+                        ego_fpoint, ego_half_size, vel_profile, target_lat, followed_obj[0], road_frenet, comfort_lat_time)
+                    safe_time = min(safe_time, followed_safe_time)
+            # print('overtaken_time=%f interfer_time=%f followed_time=%f safe_time=%f' % \
+                    # (overtaken_safe_time, interfer_safe_time, followed_safe_time, safe_time))
         return safe_time
 
     @staticmethod

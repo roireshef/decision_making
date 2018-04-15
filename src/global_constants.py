@@ -112,11 +112,8 @@ AGGRESSIVENESS_TO_LON_ACC = np.array([1, 1.5, 2.25])
 LON_ACC_TO_COST_FACTOR = 0.01
 LAT_VEL_TO_COST_FACTOR = 0.01
 
-# [sec] minimal time period for semantic action
-MIN_ACTION_PERIOD = 4
-
-# [m/s] typical lateral velocity for planning
-PLAN_LATERAL_VELOCITY = 0.7
+# [m/s^2] typical lateral acceleration
+PLAN_LATERAL_ACCELERATION = 0.5
 
 
 # Trajectory Planner #
