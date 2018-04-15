@@ -21,10 +21,17 @@ from decision_making.src.planning.types import FS_SV, FS_SX, FS_SA, FS_DX, FS_DV
 
 
 class ActionSpace:
-    def __init__(self, logger: Logger, recipe_filtering: RecipeFiltering=None):
+    def __init__(self, logger: Logger, recipes: List[ActionRecipe], recipe_filtering: RecipeFiltering=None):
+        """
+        Abstract class for Action-Space implementations. Implementations should include actions enumeration, filtering
+         and specification.
+        :param logger: dedicated logger implementation
+        :param recipes: list of recipes that define the scope of an ActionSpace implementation
+        :param recipe_filtering: RecipeFiltering object that holds the logic for filtering recipes
+        """
         self.logger = logger
+        self._recipes = recipes
         self.recipe_filtering = recipe_filtering or RecipeFiltering()
-        self._recipes: List[ActionRecipe] = None
 
     @property
     def action_space_size(self) -> int:
@@ -141,10 +148,10 @@ class ActionSpace:
         return constraints_d
 
 
-class ActionSpaceContainer(ActionSpace):
+class ActionSpaceContainer:
     def __init__(self, logger: Logger, action_spaces: List[ActionSpace]):
-        super().__init__(logger)
         self._action_spaces = action_spaces
+        self.logger = logger
 
         self._recipe_handler = {}
         for aspace in action_spaces:

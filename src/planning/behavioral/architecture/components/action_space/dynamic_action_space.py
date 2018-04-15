@@ -24,12 +24,14 @@ from mapping.src.service.map_service import MapService
 class DynamicActionSpace(ActionSpace):
 
     def __init__(self, logger: Logger, predictor: Predictor):
-        super().__init__(logger, recipe_filtering=recipe_filter_bank.dynamic_filters)
-        self._recipes = [DynamicActionRecipe.from_args_list(comb)
-                         for comb in cartesian([RelativeLane,
-                                                RelativeLongitudinalPosition,
-                                                [ActionType.FOLLOW_VEHICLE, ActionType.TAKE_OVER_VEHICLE],
-                                                AggressivenessLevel])]
+        super().__init__(logger,
+                         recipes=[DynamicActionRecipe.from_args_list(comb)
+                                  for comb in cartesian([RelativeLane,
+                                                         RelativeLongitudinalPosition,
+                                                         [ActionType.FOLLOW_VEHICLE, ActionType.TAKE_OVER_VEHICLE],
+                                                         AggressivenessLevel])],
+                         recipe_filtering=recipe_filter_bank.dynamic_filters)
+
         self.predictor = predictor
 
     def specify_goal(self, action_recipe: DynamicActionRecipe,
@@ -100,7 +102,7 @@ class DynamicActionSpace(ActionSpace):
                                                                                                       action_recipe.aggressiveness)
 
         if not optimum_time_satisfies_constraints:
-            self.logger.warning("Can\'t specify Recipe %s given ego state %s ", str(action_recipe), str(ego))
+            # self.logger.debug("Can\'t specify Recipe %s given ego state %s ", str(action_recipe), str(ego))
             return None
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from

@@ -6,6 +6,7 @@ from sklearn.utils.extmath import cartesian
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_ACTION_T_RES
 from decision_making.src.planning.behavioral.architecture.components.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.architecture.components.filtering import recipe_filter_bank
+from decision_making.src.planning.behavioral.architecture.components.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.behavioral.architecture.constants import VELOCITY_STEP, MAX_VELOCITY, MIN_VELOCITY
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, StaticActionRecipe
 from decision_making.src.planning.behavioral.architecture.data_objects import RelativeLane, AggressivenessLevel
@@ -21,13 +22,15 @@ from mapping.src.service.map_service import MapService
 
 class StaticActionSpace(ActionSpace):
     def __init__(self, logger):
-        super().__init__(logger, recipe_filtering=recipe_filter_bank.static_filters)
-        self._velocity_grid = np.arange(MIN_VELOCITY, MAX_VELOCITY + np.finfo(np.float16).eps, VELOCITY_STEP)
-        self._recipes = [StaticActionRecipe.from_args_list(comb)
-                         for comb in cartesian([RelativeLane, self._velocity_grid, AggressivenessLevel])]
+        super().__init__(logger,
+                         recipes=[StaticActionRecipe.from_args_list(comb)
+                                  for comb in cartesian([RelativeLane, self._velocity_grid, AggressivenessLevel])],
+                         recipe_filtering=RecipeFiltering(recipe_filter_bank.static_filters))
 
-    def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: SemanticBehavioralGridState) -> Optional[
-        ActionSpec]:
+        self._velocity_grid = np.arange(MIN_VELOCITY, MAX_VELOCITY + np.finfo(np.float16).eps, VELOCITY_STEP)
+
+    def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: SemanticBehavioralGridState) -> \
+            Optional[ActionSpec]:
         ego = behavioral_state.ego_state
         ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
         road_id = ego.road_localization.road_id
@@ -59,7 +62,7 @@ class StaticActionSpace(ActionSpace):
                                                                                                       action_recipe.aggressiveness)
 
         if not optimum_time_satisfies_constraints:
-            self.logger.warning("Can\'t specify Recipe %s given ego state %s ", str(action_recipe), str(ego))
+            # self.logger.debug("Can\'t specify Recipe %s given ego state %s ", str(action_recipe), str(ego))
             return None
 
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
@@ -71,10 +74,9 @@ class StaticActionSpace(ActionSpace):
                                                           poly_s_coefs=poly_coefs_s[optimum_time_idx],
                                                           poly_d_coefs=poly_coefs_d[optimum_time_idx])
 
-        target_s = Math.zip_polyval2d(poly_coefs_s, T_vals[optimum_time_idx])
+        target_s = np.polyval(poly_coefs_s[optimum_time_idx], T_vals[optimum_time_idx])
 
         return ActionSpec(t=T_vals[optimum_time_idx], v=constraints_s[optimum_time_idx, 3],
-                          s=target_s[optimum_time_idx, 0],
+                          s=float(target_s),
                           d=constraints_d[optimum_time_idx, 3],
                           samplable_trajectory=samplable_trajectory)
-

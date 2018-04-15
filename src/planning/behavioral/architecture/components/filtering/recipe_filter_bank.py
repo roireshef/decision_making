@@ -14,10 +14,7 @@ from decision_making.src.planning.behavioral.behavioral_state import BehavioralS
 
 
 def filter_if_none(recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
-    if recipe and behavioral_state:
-        return True
-    else:
-        return False
+    return (recipe and behavioral_state) is not None
 
 
 def always_false(recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
