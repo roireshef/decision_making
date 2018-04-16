@@ -20,14 +20,15 @@ from decision_making.src.planning.behavioral.architecture.components.evaluators.
 from decision_making.src.planning.behavioral.architecture.components.filtering.action_spec_filtering import \
     ActionSpecFiltering
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe
+from decision_making.src.planning.behavioral.architecture.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
     SemanticBehavioralGridState
-from decision_making.src.planning.behavioral.architecture.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
+from decision_making.src.planning.types import C_K, C_X
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import State, ObjectSize, EgoState
+from decision_making.src.state.state import State, ObjectSize
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -43,10 +44,8 @@ class BehavioralPlanner:
         self.predictor = predictor
         self.logger = logger
 
-        self._last_ego_state: Optional[EgoState] = None
         self._last_action: Optional[ActionRecipe] = None
         self._last_action_spec: Optional[ActionSpec] = None
-        self._last_poly_coefs_s: Optional[np.ndarray] = None
 
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
         """
@@ -84,18 +83,19 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
 
         action_specs = []
         # Action specification
-        cnt = 0
+        num_of_specified_actions = 0
         for i in range(len(action_recipes)):
             spec = None
             if recipes_mask[i]:
                 consistent_behavioral_state = CostBasedBehavioralPlanner._maintain_consistency(self, behavioral_state,
                                                                                                action_recipes[i])
                 spec = self.action_space.specify_goal(action_recipes[i], consistent_behavioral_state)
-                cnt += 1
+                num_of_specified_actions += 1
 
             action_specs.append(spec)
 
-        print('Number of actions specified: ', cnt)
+        print('Number of actions specified: ', num_of_specified_actions)
+        self.logger.debug('Number of actions specified: %d', num_of_specified_actions)
         # ActionSpec filtering
         action_specs_mask = self.action_validator.filter_action_specs(action_specs, behavioral_state)
 
@@ -104,6 +104,8 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
                                                                          action_specs_mask)
 
         selected_action_index = int(np.argmin(action_costs))
+        print('Selected recipe: ', action_recipes[selected_action_index].__dict__)
+        self.logger.debug('Selected recipe: ', action_recipes[selected_action_index].__dict__)
         selected_action_spec = action_specs[selected_action_index]
 
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(behavioral_state=behavioral_state,
@@ -114,7 +116,6 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
         # keeping selected actions for next iteration use
         self._last_action = action_recipes[selected_action_index]
         self._last_action_spec = selected_action_spec
-        self._last_ego_state = state.ego_state
 
         self.logger.debug("Chosen behavioral semantic action is %s, %s",
                           action_recipes[selected_action_index].__dict__, selected_action_spec.__dict__)
@@ -277,10 +278,11 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
             ego_cstate = self._last_action_spec.samplable_trajectory.sample(np.array([ego_state.timestamp_in_sec]))[0]
 
             new_ego_state = ego_state
-            new_ego_state.x, new_ego_state.y, new_ego_state.yaw, new_ego_state.v_x, new_ego_state.acceleration_lon \
-                = ego_cstate[0:5]
-            new_ego_state.steering_angle = np.arctan(
-                new_ego_state.size.length * ego_cstate[5])  # steering_angle=atan(ego_len*curvature)
+            new_ego_state.x, new_ego_state.y, new_ego_state.yaw, new_ego_state.v_x, new_ego_state.acceleration_lon, \
+                = ego_cstate[C_X:C_K]
+            # steering_angle = atan(ego_len*curvature)
+            new_ego_state.steering_angle = np.arctan(new_ego_state.size.length * ego_cstate[C_K])
+            # omega_yaw = curvature * v_x
             new_ego_state.omega_yaw = new_ego_state.curvature * new_ego_state.v_x
 
             consistent_behavioral_state.ego_state = new_ego_state
