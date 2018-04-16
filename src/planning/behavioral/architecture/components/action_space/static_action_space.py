@@ -22,12 +22,11 @@ from mapping.src.service.map_service import MapService
 
 class StaticActionSpace(ActionSpace):
     def __init__(self, logger):
+        self._velocity_grid = np.arange(MIN_VELOCITY, MAX_VELOCITY + np.finfo(np.float16).eps, VELOCITY_STEP)
         super().__init__(logger,
                          recipes=[StaticActionRecipe.from_args_list(comb)
                                   for comb in cartesian([RelativeLane, self._velocity_grid, AggressivenessLevel])],
                          recipe_filtering=RecipeFiltering(recipe_filter_bank.static_filters))
-
-        self._velocity_grid = np.arange(MIN_VELOCITY, MAX_VELOCITY + np.finfo(np.float16).eps, VELOCITY_STEP)
 
     def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: SemanticBehavioralGridState) -> \
             Optional[ActionSpec]:

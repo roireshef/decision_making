@@ -12,7 +12,7 @@ from decision_making.src.messages.navigation_plan_message import NavigationPlanM
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.architecture.components.action_space import ActionSpace
+from decision_making.src.planning.behavioral.architecture.components.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.architecture.components.evaluators.rule_based_state_action_evaluator import \
     RuleBasedStateActionEvaluator
 from decision_making.src.planning.behavioral.architecture.components.evaluators.value_approximator import \
