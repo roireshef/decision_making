@@ -6,7 +6,7 @@ from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.global_constants import SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT, \
     SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MIN_OVERTAKE_VEL, \
     SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR, SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS
-from decision_making.src.planning.behavioral.architecture.components.evaluators.state_action_evaluators import \
+from decision_making.src.planning.behavioral.architecture.components.evaluators.state_action_evaluator import \
     StateActionSpecEvaluator
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe, \
     SemanticGridCell, LAT_CELL
