@@ -37,7 +37,7 @@ temp_cost = cost.subs(s0, 0).subs(a0, 0).subs(aT, 0)
 # temp_optimum = float(findroot(lambda x: sp.diff(temp_cost.subs(wJ, 200).subs(wT, 1), T).subs(T, x), [1, 15]))
 
 temp_v_t = v_t.subs(s0, 0).subs(a0, 0).subs(aT, 0)
-temp_delta_s_t = sT + vT * T - x_t.subs(s0, 0).subs(a0, 0).subs(aT, 0)
+temp_delta_s_t = sT + vT * t - x_t.subs(s0, 0).subs(a0, 0).subs(aT, 0)
 temp_a_t = sp.diff(temp_v_t, t)
 result = cost.subs(s0, 0).subs(a0, 0).subs(aT, 0)
 
