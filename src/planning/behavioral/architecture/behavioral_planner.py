@@ -24,9 +24,7 @@ from decision_making.src.planning.behavioral.architecture.semantic_actions_utils
 from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
     SemanticBehavioralGridState
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import C_K, C_X
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH

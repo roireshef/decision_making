@@ -1,5 +1,11 @@
+import time
 import traceback
+from logging import Logger
+
 import numpy as np
+
+from common_data.lcm.config import pubsub_topics
+from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME
@@ -13,13 +19,6 @@ from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y,
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, EgoState
-from logging import Logger
-
-from common_data.src.communication.pubsub.pubsub import PubSub
-from common_data.lcm.config import pubsub_topics
-
-
-import time
 
 
 class BehavioralPlanningFacade(DmModule):
