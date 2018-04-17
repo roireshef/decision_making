@@ -25,8 +25,11 @@ class BehavioralPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger, behavioral_planner: BehavioralPlanner,
                  short_time_predictor: Predictor, last_trajectory: SamplableTrajectory = None) -> None:
         """
-        :param policy: decision making component
+        :param pubsub:
+        :param logger:
+        :param behavioral_planner: 
         :param short_time_predictor: predictor used to align all objects in state to ego's timestamp.
+        :param last_trajectory: last trajectory returned from behavioral planner.
         """
         super().__init__(pubsub=pubsub, logger=logger)
         self._planner = behavioral_planner
