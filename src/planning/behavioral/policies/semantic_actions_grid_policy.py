@@ -4,11 +4,10 @@ from typing import List, Optional
 import numpy as np
 
 from decision_making.src.exceptions import BehavioralPlanningException, InvalidAction
-from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
+from decision_making.src.exceptions import raises
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR, \
-    WERLING_TIME_RESOLUTION, EFFICIENCY_COST_WEIGHT, RIGHT_LANE_COST_WEIGHT
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
     DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
@@ -17,7 +16,7 @@ from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
     LAT_ACC_LIMITS, SHOULDER_SIGMOID_OFFSET, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LANE_SIGMOID_K_PARAM, \
     SHOULDER_SIGMOID_K_PARAM, BP_ACTION_T_LIMITS, \
     BP_ACTION_T_RES, SAFE_DIST_TIME_DELAY, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
-    SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, MIN_OVERTAKE_VEL
+    SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
@@ -29,7 +28,8 @@ from decision_making.src.planning.behavioral.policies.semantic_actions_policy im
     SemanticAction, SemanticActionType, \
     LAT_CELL, LON_CELL, SemanticGridCell
 from decision_making.src.planning.performance_metrics.plan_cost_functions import PlanEfficiencyMetric, \
-    PlanComfortMetric, ValueFunction, PlanRightLaneMetric, VelocityProfile, ProfileSafety
+    PlanComfortMetric, ValueFunction, PlanRightLaneMetric, VelocityProfile
+from decision_making.src.planning.performance_metrics.velocity_profile import ProfileSafety
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
