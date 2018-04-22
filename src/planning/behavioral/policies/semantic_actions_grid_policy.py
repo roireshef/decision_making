@@ -60,7 +60,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         # behavioral_state contains road_occupancy_grid and ego_state
         behavioral_state = SemanticActionsGridState.create_from_state(state=state,
                                                                       logger=self.logger)
-
         # # debug: computing distance from other objects, good only for one vehicle in scenario
         # minimal_distance = 1000
         # ego_x = state.ego_state.x
@@ -413,14 +412,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             lat_action_ind = lat_action_idxs[action.cell[LAT_CELL] - SEMANTIC_CELL_LAT_RIGHT]
             target_obj = semantic_actions[lat_action_ind].target_obj
 
-            if target_obj is not None:
-                target_vel = target_obj.v_x
-                target_acc = target_obj.acceleration_lon
+            if target_obj is not None:  # dynamic action
+                (target_vel, target_acc) = (target_obj.v_x, target_obj.acceleration_lon)
                 obj_lon = road_frenet.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))[FP_SX]
                 cars_size_margin = 0.5 * (ego.size.length + target_obj.size.length)
-            else:
-                target_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-                target_acc = 0
+            else:  # static action
+                (target_vel, target_acc) = (BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, 0)
                 obj_lon = None
                 cars_size_margin = 0.5 * ego.size.length
 
@@ -430,6 +427,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             target_lat = (target_lane + 0.5) * lane_width
 
             # create velocity profile, whose extent is at least as the lateral time
+            # print('time=%s\nego_cstate=%s\nego_fstate=%s' % (ego.timestamp, ego_cstate, ego_fstate))
             comfort_lat_time = VelocityProfile.calc_lateral_time(ego_fstate[FS_DV], target_lat - ego_fpoint[FP_DX])
             vel_profile = VelocityProfile.calc_velocity_profile(ego_fpoint[FP_SX], ego.v_x, obj_lon, target_vel,
                                     target_acc, aggressiveness_level, cars_size_margin, comfort_lat_time)
@@ -445,24 +443,27 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
             efficiency_cost = PlanEfficiencyMetric.calc_cost(ego.v_x, target_vel, vel_profile)
 
             # comfort cost
+            # first calculate the largest possible lateral time, when ego is safe w.r.t. other objects
             largest_safe_time = SemanticActionsGridPolicy._calc_largest_safe_time(
                 behavioral_state, action.cell[LAT_CELL], ego_fpoint, vel_profile, target_lat, road_frenet,
                 ego.size.length/2, comfort_lat_time)
-
             comfort_cost = PlanComfortMetric.calc_cost(vel_profile, comfort_lat_time, largest_safe_time)
 
+            # right lane cost
             right_lane_cost = PlanRightLaneMetric.calc_cost(vel_profile_time, target_lane)
 
+            # value function estimation to enable choosing of the best action
             value_function = ValueFunction.calc_cost(time_horizon - vel_profile_time, target_vel, target_lane)
 
+            # total cost
             action_costs[i] = efficiency_cost + right_lane_cost + comfort_cost + value_function
 
-            print('time %f; action %d: obj_vel=%s eff %s comf %s right %s value %f: tot %s' %
-                  (ego.timestamp_in_sec, action.cell[LAT_CELL], target_vel, efficiency_cost, comfort_cost,
-                   right_lane_cost, value_function, action_costs[i]))
+            #print('time %f; action %d: obj_vel=%s eff %s comf %s right %s value %f: tot %s' %
+            #      (ego.timestamp_in_sec, action.cell[LAT_CELL], target_vel, efficiency_cost, comfort_cost,
+            #      right_lane_cost, value_function, action_costs[i]))
 
         best_action = np.argmin(action_costs)
-        print('best action %d; lane %d\n' % (best_action, ego_lane + semantic_actions[best_action].cell[LAT_CELL]))
+        # print('best action %d; lane %d\n' % (best_action, ego_lane + semantic_actions[best_action].cell[LAT_CELL]))
         return action_costs
 
     @staticmethod
