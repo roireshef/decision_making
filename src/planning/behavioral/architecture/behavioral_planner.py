@@ -84,6 +84,11 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
 
         recipes_costs = self.state_action_recipe_evaluator.evaluate_recipes(behavioral_state, action_recipes, recipes_mask)
 
+        #TODO: delete after debugging
+        selected_action_index = int(np.argmin(recipes_costs))
+        recipes_mask = np.full(len(action_recipes), False)
+        recipes_mask[selected_action_index] = True
+
         # Action specification
         action_specs = [self.action_space.specify_goal(recipe, behavioral_state) if recipes_mask[i] else None
                         for i, recipe in enumerate(action_recipes)]
@@ -99,7 +104,7 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
         action_costs = self.state_action_spec_evaluator.evaluate_action_specs(behavioral_state, action_recipes, action_specs,
                                                                               action_specs_mask)
 
-        selected_action_index = int(np.argmin(action_costs))
+        #selected_action_index = int(np.argmin(action_costs))
         print('Selected recipe: ', action_recipes[selected_action_index].__dict__)
         self.logger.debug('Selected recipe: ', action_recipes[selected_action_index].__dict__)
         selected_action_spec = action_specs[selected_action_index]

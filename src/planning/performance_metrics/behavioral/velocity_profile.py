@@ -2,6 +2,7 @@ import numpy as np
 
 from decision_making.src.global_constants import AGGRESSIVENESS_TO_LON_ACC, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
     SAFE_DIST_TIME_DELAY, PLAN_LATERAL_ACCELERATION, LON_ACC_LIMITS
+from decision_making.src.planning.behavioral.architecture.data_objects import ActionType
 from decision_making.src.planning.types import FP_SX, LIMIT_MIN
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.state.state import DynamicObject
@@ -223,14 +224,13 @@ class ProfileSafety:
 
     @staticmethod
     def calc_last_safe_time(ego_fpoint: np.array, ego_half_size: float, vel_profile: VelocityProfile,
-                            target_lat: float, dyn_obj: DynamicObject, road_frenet: FrenetSerret2DFrame,
-                           comfort_lat_time) -> float:
+                            dyn_obj: DynamicObject, road_frenet: FrenetSerret2DFrame,
+                            comfort_lat_time) -> float:
         """
         Given ego velocity profile and dynamic object, calculate the last time, when the safety complies.
         :param ego_fpoint: ego initial Frenet point
         :param ego_half_size: [m] half length of ego
         :param vel_profile: ego velocity profile
-        :param target_lat: target latitude in Frenet
         :param dyn_obj: the dynamic object, for which the safety is tested
         :param road_frenet: road Frenet frame
         :param comfort_lat_time: time for comfortable lane change
@@ -319,10 +319,10 @@ class ProfileSafety:
             return T  # for all t it's safe
 
         # solve quadratic inequality
-        disc = B*B - 4*A*C
-        if disc < 0:
+        discriminant = B*B - 4*A*C
+        if discriminant < 0:
             return T  # for all t it's safe
-        sqrt_disc = np.sqrt(disc)
+        sqrt_disc = np.sqrt(discriminant)
         t1 = (-B - sqrt_disc)/(2*A)
         t2 = (-B + sqrt_disc)/(2*A)
         if t1 >= 0:
