@@ -7,14 +7,16 @@ from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATI
     SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, \
     DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, \
     OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, \
-    DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST, LAT_JERK_COST, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS
+    DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.architecture.components.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.architecture.components.evaluators.rule_based_state_action_evaluator import \
-    RuleBasedStateActionEvaluator
+    RuleBasedStateActionSpecEvaluator
+from decision_making.src.planning.behavioral.architecture.components.evaluators.heuristic_state_action_recipe_evaluator \
+    import HeuristicStateActionRecipeEvaluator
 from decision_making.src.planning.behavioral.architecture.components.evaluators.value_approximator import \
     ValueApproximator
 from decision_making.src.planning.behavioral.architecture.components.filtering.action_spec_filtering import \
@@ -32,11 +34,12 @@ from mapping.src.service.map_service import MapService
 
 
 class BehavioralPlanner:
-    def __init__(self, action_space: ActionSpace, state_action_evaluator: RuleBasedStateActionEvaluator,
-                 action_validator: ActionSpecFiltering, value_approximator: ValueApproximator,
-                 predictor: Predictor, logger: Logger):
+    def __init__(self, action_space: ActionSpace, state_action_spec_evaluator: RuleBasedStateActionSpecEvaluator,
+                 state_action_recipe_evaluator: HeuristicStateActionRecipeEvaluator, action_validator: ActionSpecFiltering,
+                 value_approximator: ValueApproximator, predictor: Predictor, logger: Logger):
         self.action_space = action_space
-        self.state_action_evaluator = state_action_evaluator
+        self.state_action_spec_evaluator = state_action_spec_evaluator
+        self.state_action_recipe_evaluator = state_action_recipe_evaluator
         self.action_validator = action_validator
         self.value_approximator = value_approximator
         self.predictor = predictor
@@ -60,10 +63,11 @@ class BehavioralPlanner:
 
 
 class CostBasedBehavioralPlanner(BehavioralPlanner):
-    def __init__(self, action_space: ActionSpace, action_evaluator: RuleBasedStateActionEvaluator,
-                 action_validator: ActionSpecFiltering,
+    def __init__(self, action_space: ActionSpace, state_action_spec_evaluator: RuleBasedStateActionSpecEvaluator,
+                 state_action_recipe_evaluator: HeuristicStateActionRecipeEvaluator, action_validator: ActionSpecFiltering,
                  value_approximator: ValueApproximator, predictor: Predictor, logger: Logger):
-        super().__init__(action_space, action_evaluator, action_validator, value_approximator, predictor, logger)
+        super().__init__(action_space, state_action_spec_evaluator, state_action_recipe_evaluator, action_validator,
+                         value_approximator, predictor, logger)
 
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
         action_recipes = self.action_space.recipes
@@ -78,6 +82,8 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
 
+        recipes_costs = self.state_action_recipe_evaluator.evaluate_recipes(behavioral_state, action_recipes, recipes_mask)
+
         # Action specification
         action_specs = [self.action_space.specify_goal(recipe, behavioral_state) if recipes_mask[i] else None
                         for i, recipe in enumerate(action_recipes)]
@@ -90,8 +96,8 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
         action_specs_mask = self.action_validator.filter_action_specs(action_specs, behavioral_state)
 
         # State-Action Evaluation
-        action_costs = self.state_action_evaluator.evaluate_action_specs(behavioral_state, action_recipes, action_specs,
-                                                                         action_specs_mask)
+        action_costs = self.state_action_spec_evaluator.evaluate_action_specs(behavioral_state, action_recipes, action_specs,
+                                                                              action_specs_mask)
 
         selected_action_index = int(np.argmin(action_costs))
         print('Selected recipe: ', action_recipes[selected_action_index].__dict__)
@@ -242,8 +248,8 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
                                            right_road_cost=right_road_cost,
                                            dist_from_goal_cost=dist_from_goal_cost,
                                            dist_from_goal_lat_factor=dist_from_goal_lat_factor,
-                                           lon_jerk_cost=LON_JERK_COST,
-                                           lat_jerk_cost=LAT_JERK_COST,
+                                           lon_jerk_cost=LON_JERK_COST_WEIGHT,
+                                           lat_jerk_cost=LAT_JERK_COST_WEIGHT,
                                            velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
                                            lat_acceleration_limits=LAT_ACC_LIMITS)

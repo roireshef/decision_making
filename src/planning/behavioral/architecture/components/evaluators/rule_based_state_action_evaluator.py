@@ -17,7 +17,7 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from mapping.src.service.map_service import MapService
 
 
-class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
+class RuleBasedStateActionSpecEvaluator(StateActionSpecEvaluator):
 
     def __init__(self, logger: Logger):
         super().__init__(logger)
@@ -48,11 +48,11 @@ class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
                 len(action_recipes), len(action_specs))
 
         # get indices of semantic_actions array for 3 actions: goto-right, straight, goto-left
-        current_lane_action_ind = RuleBasedStateActionEvaluator._get_action_ind(
+        current_lane_action_ind = RuleBasedStateActionSpecEvaluator._get_action_ind(
             action_recipes, action_specs_mask, (SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT))
-        left_lane_action_ind = RuleBasedStateActionEvaluator._get_action_ind(
+        left_lane_action_ind = RuleBasedStateActionSpecEvaluator._get_action_ind(
             action_recipes, action_specs_mask, (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_FRONT))
-        right_lane_action_ind = RuleBasedStateActionEvaluator._get_action_ind(
+        right_lane_action_ind = RuleBasedStateActionSpecEvaluator._get_action_ind(
             action_recipes, action_specs_mask, (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT))
 
         # The cost for each action is assigned so that the preferred policy would be:
@@ -86,9 +86,9 @@ class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
         road_frenet = FrenetSerret2DFrame(road_points)
         ego_fpoint = road_frenet.cpoint_to_fpoint(np.array([ego.x, ego.y]))
 
-        dist_to_backleft, safe_left_dist_behind_ego = RuleBasedStateActionEvaluator._calc_safe_dist_behind_ego(
+        dist_to_backleft, safe_left_dist_behind_ego = RuleBasedStateActionSpecEvaluator._calc_safe_dist_behind_ego(
             behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_LEFT)
-        dist_to_backright, safe_right_dist_behind_ego = RuleBasedStateActionEvaluator._calc_safe_dist_behind_ego(
+        dist_to_backright, safe_right_dist_behind_ego = RuleBasedStateActionSpecEvaluator._calc_safe_dist_behind_ego(
             behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_RIGHT)
 
         self.logger.debug("Distance\safe distance to back left car: %s\%s.", dist_to_backleft,

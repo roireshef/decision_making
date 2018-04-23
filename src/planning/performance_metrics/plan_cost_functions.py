@@ -6,6 +6,7 @@ from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DES
     WERLING_TIME_RESOLUTION, AGGRESSIVENESS_TO_LON_ACC, LON_ACC_TO_COST_FACTOR, LAT_VEL_TO_COST_FACTOR, \
     RIGHT_LANE_COST_WEIGHT, EFFICIENCY_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, LON_ACC_LIMITS, \
     PLAN_LATERAL_ACCELERATION
+from decision_making.src.planning.behavioral.architecture.data_objects import ActionType
 from decision_making.src.planning.performance_metrics.cost_functions import EfficiencyMetric
 from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FP_SX, FP_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
@@ -73,10 +74,11 @@ class VelocityProfile:
         return lateral_profile.t1 + lateral_profile.t3
 
     @classmethod
-    def calc_velocity_profile(cls, lon_init: float, v_init: float, lon_target: float, v_target: float, a_target: float,
+    def calc_velocity_profile(cls, action_type: ActionType, lon_init: float, v_init: float, lon_target: float, v_target: float, a_target: float,
                               aggressiveness_level: int, cars_size_margin: float, min_time: float):
         """
         calculate velocities profile for semantic action: either following car or following lane
+        :param action_type: [ActionType] type of action
         :param lon_init: [m] initial longitude of ego
         :param v_init: [m/s] initial velocity of ego
         :param lon_target: [m] initial longitude of followed object (None if follow lane)
@@ -88,11 +90,14 @@ class VelocityProfile:
         :return: VelocityProfile class or None in case of infeasible semantic action
         """
         acc = AGGRESSIVENESS_TO_LON_ACC[aggressiveness_level]  # profile acceleration
-        v_max = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-        if lon_target is not None:  # follow car
+        v_max = max(BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, v_target)
+        if action_type == ActionType.FOLLOW_VEHICLE:
             dist = lon_target - lon_init - SAFE_DIST_TIME_DELAY * v_target - cars_size_margin
             return VelocityProfile._calc_velocity_profile_follow_car(v_init, acc, v_max, dist, v_target, a_target, min_time)
-        else:  # follow lane
+        elif action_type == ActionType.TAKE_OVER_VEHICLE:
+            dist = lon_target - lon_init + SAFE_DIST_TIME_DELAY * v_target + cars_size_margin
+            return VelocityProfile._calc_velocity_profile_follow_car(v_init, acc, v_max, dist, v_target, a_target, min_time)
+        elif action_type == ActionType.FOLLOW_LANE:
             # if too short profile, then choose lower acceleration according to min_time
             t1 = max(min_time, abs(v_target - v_init) / acc)
             vel_profile = cls(v_init=v_init, t1=t1, v_mid=v_target, t2=0, t3=0, v_tar=v_target)
