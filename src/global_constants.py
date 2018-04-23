@@ -16,7 +16,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
-BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 50.0
+BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 60.0
 
 # When retrieving the lookahead path of a given dynamic object, we will multiply the path length
 # by the following ratio in order to avoid extrapolation when resampling the path (due to path sampling
@@ -65,8 +65,12 @@ DEVIATION_FROM_GOAL_COST = 2.5 * 1e2        # cost of longitudinal deviation fro
 GOAL_SIGMOID_K_PARAM = 0.5                  # sigmoid k (slope) param of going out-of-goal
 GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
 
-LON_JERK_COST = 1.0                         # cost of longitudinal jerk
-LAT_JERK_COST = 1.0                         # cost of lateral jerk
+LON_JERK_COST_WEIGHT = 1.0                         # cost of longitudinal jerk
+LAT_JERK_COST_WEIGHT = 1.0                         # cost of lateral jerk
+
+EFFICIENCY_COST_WEIGHT = 0.6                # cost of zero velocity on one trajectory point
+EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO = 3  # ratio UNDER_C'(0) / UNDER_C'(v_desired)
+RIGHT_LANE_COST_WEIGHT = 0.05               # cost of using non-right lane on one trajectory point
 
 # [m/sec] speed to plan towards by default in BP
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
@@ -87,14 +91,14 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
-LON_ACC_LIMITS = np.array([-4.0, 3.0])  # taken from SuperCruise presentation
+LON_ACC_LIMITS = np.array([-8.0, 3.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
-SAFE_DIST_TIME_DELAY = 2.5
+SAFE_DIST_TIME_DELAY = 2.0
 
 # Semantic Grid indices
 SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR = 1, 0, -1
@@ -105,6 +109,15 @@ MIN_OVERTAKE_VEL = 3
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
+
+# [m/s^2] accelerations for different aggressiveness levels
+AGGRESSIVENESS_TO_LON_ACC = np.array([1, 1.5, 2.25])
+#AGGRESSIVENESS_TO_LAT_ACC = np.array([0.3, 0.5, 0.9])
+LON_ACC_TO_COST_FACTOR = 0.01
+LAT_VEL_TO_COST_FACTOR = 0.01
+
+# [m/s^2] typical lateral acceleration
+PLAN_LATERAL_ACCELERATION = 0.5
 
 
 # Trajectory Planner #
