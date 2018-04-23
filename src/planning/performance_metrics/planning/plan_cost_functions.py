@@ -3,7 +3,7 @@ import numpy as np
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, LON_ACC_TO_COST_FACTOR, \
     LAT_ACC_TO_COST_FACTOR, RIGHT_LANE_COST_WEIGHT, EFFICIENCY_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT
 from decision_making.src.planning.performance_metrics.cost_functions import EfficiencyMetric
-from decision_making.src.planning.performance_metrics.velocity_profile import VelocityProfile
+from decision_making.src.planning.performance_metrics.planning.velocity_profile import VelocityProfile
 
 
 class PlanEfficiencyMetric:
