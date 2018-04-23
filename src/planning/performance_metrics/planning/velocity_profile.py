@@ -1,14 +1,8 @@
-from typing import Optional
-
 import numpy as np
 
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, SAFE_DIST_TIME_DELAY, \
-    WERLING_TIME_RESOLUTION, AGGRESSIVENESS_TO_LON_ACC, LON_ACC_TO_COST_FACTOR, LAT_VEL_TO_COST_FACTOR, \
-    RIGHT_LANE_COST_WEIGHT, EFFICIENCY_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, LON_ACC_LIMITS, \
-    PLAN_LATERAL_ACCELERATION
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionType
-from decision_making.src.planning.performance_metrics.cost_functions import EfficiencyMetric
-from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FP_SX, FP_DX
+from decision_making.src.global_constants import AGGRESSIVENESS_TO_LON_ACC, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
+    SAFE_DIST_TIME_DELAY, PLAN_LATERAL_ACCELERATION, LON_ACC_LIMITS
+from decision_making.src.planning.types import FP_SX, LIMIT_MIN
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.state.state import DynamicObject
 
@@ -24,7 +18,7 @@ class VelocityProfile:
 
     def get_details(self, max_time: float=np.inf) -> [np.array, np.array, np.array, np.array, np.array]:
         """
-        Return times, longitudes, velocities, accelerations for the current profile.
+        Return times, longitudes, velocities, accelerations for the current velocity profile.
         :param max_time: if the profile is longer than max_time, then truncate it
         :return: numpy arrays per segment:
             times: time period of each segment
@@ -62,16 +56,6 @@ class VelocityProfile:
 
     def total_time(self):
         return self.t1 + self.t2 + self.t3
-
-    @staticmethod
-    def calc_lateral_time(v_init: float, signed_lat_dist: float):
-        if signed_lat_dist > 0:
-            signed_v_init = v_init
-        else:
-            signed_v_init = -v_init
-        lateral_profile = VelocityProfile._calc_velocity_profile_follow_car(
-            signed_v_init, PLAN_LATERAL_ACCELERATION, np.inf, abs(signed_lat_dist), 0, 0)
-        return lateral_profile.t1 + lateral_profile.t3
 
     @classmethod
     def calc_velocity_profile(cls, action_type: ActionType, lon_init: float, v_init: float, lon_target: float, v_target: float, a_target: float,
@@ -123,16 +107,18 @@ class VelocityProfile:
         :param min_time: minimal time for the profile
         return: VelocityProfile class or None in case of infeasible semantic action
         """
-        print('CALC PROFILE BY ACC: v_init=%f dist=%f' % (v_init, dist))
+        # print('CALC PROFILE: v_init=%f dist=%f' % (v_init, dist))
 
         MAX_VELOCITY_TOLERANCE = 2.
         v_init_rel = v_init - v_tar  # relative velocity; may be negative
-        v_max_rel = max(v_max - v_tar, max(v_init_rel, MAX_VELOCITY_TOLERANCE))  # let max_vel > end_vel to enable reaching the car
+        v_max_rel = max(v_max - v_tar, max(v_init_rel, MAX_VELOCITY_TOLERANCE))  # let max_vel > end_vel to enable reaching the target car
 
         if abs(v_init_rel) < 0.1 and abs(dist) < 0.1:
-            return cls(v_init, min_time, v_tar, 0, 0, v_tar)  # just follow min_time
+            return cls(v_init, min_time, v_tar, 0, 0, v_tar)  # just follow the target car for min_time
 
         if v_init_rel * dist > 0 and v_init_rel * v_init_rel > 2 * (a + a_tar) * dist:  # too big acceleration needed
+            # print('NO PROFILE: too big acceleration needed: v_init_rel=%f dist=%f acc=%f' % (v_init_rel, dist, a + a_tar))
+            # return None
             t1 = max(min_time, abs(v_init_rel) / a)  # increase dist (if it's unsafe, the action will be filtered later)
             return cls(v_init, t1, v_tar, 0, 0, v_tar)  # one segment profile
 
@@ -215,6 +201,23 @@ class VelocityProfile:
             return None  # illegal action
         return cls(v_init, t1, v_max, t2, t3, v_tar)
 
+    @staticmethod
+    def calc_lateral_time(init_lat_vel: float, signed_lat_dist: float):
+        """
+        Given initial lateral velocity and signed lateral distance, estimate a time it takes to perform the movement.
+        The time estimation assumes movement by velocity profile like in the longitudinal case.
+        :param init_lat_vel: [m/s] initial lateral velocity
+        :param signed_lat_dist: [m] signed distance to the target
+        :return: [s] the lateral movement time to the target
+        """
+        if signed_lat_dist > 0:
+            lat_v_init_toward_target = init_lat_vel
+        else:
+            lat_v_init_toward_target = -init_lat_vel
+        lateral_profile = VelocityProfile._calc_velocity_profile_follow_car(
+            lat_v_init_toward_target, PLAN_LATERAL_ACCELERATION, np.inf, abs(signed_lat_dist), 0, 0)
+        return lateral_profile.t1 + lateral_profile.t3
+
 
 class ProfileSafety:
 
@@ -263,9 +266,9 @@ class ProfileSafety:
                 s[seg, front], v[seg, front], a[seg, front], s[seg, back], v[seg, back], a[seg, back], t[seg],
                 ego_half_size + dyn_obj.size.length/2, time_delay)
 
-            print('target_lat=%f: last_safe_time=%f s1=%f, v1=%f, s2=%f, v2=%f, t=%f t_cum[seg+1]=%f max_time=%f cur_lat=%f' %
-                  (target_lat, last_safe_time, s[seg, front], v[seg, front], s[seg, back], v[seg, back], t[seg],
-                   t_cum[seg+1], max_time, ego_fpoint[FP_DX]))
+            # print('target_lat=%f: last_safe_time=%f s1=%f, v1=%f, s2=%f, v2=%f, t=%f t_cum[seg+1]=%f max_time=%f cur_lat=%f' %
+            #       (target_lat, last_safe_time, s[seg, front], v[seg, front], s[seg, back], v[seg, back], t[seg],
+            #        t_cum[seg+1], max_time, ego_fpoint[FP_DX]))
 
             if last_safe_time < t_cum[seg+1]:  # becomes unsafe inside this segment
                 return last_safe_time
@@ -327,74 +330,3 @@ class ProfileSafety:
         if t2 >= 0:
             return min(t2, T)
         return T
-
-
-class PlanEfficiencyMetric:
-
-    @staticmethod
-    def calc_cost(ego_vel: float, target_vel: float, vel_profile: VelocityProfile) -> float:
-        """
-        Calculate efficiency cost for a planned following car or lane.
-        Do it by calculation of average velocity during achieving the followed car and then following it with
-        constant velocity. Total considered time is given by time_horizon.
-        :param ego_vel: [m/s] ego initial velocity
-        :param target_vel: [m/s] target car / lane velocity
-        :param vel_profile: velocity profile
-        :return: the efficiency cost
-        """
-        profile_time = vel_profile.total_time()
-
-        avg_vel = (vel_profile.t1 * 0.5 * (ego_vel + vel_profile.v_mid) +
-                   vel_profile.t2 * vel_profile.v_mid +
-                   vel_profile.t3 * 0.5 * (vel_profile.v_mid + target_vel)) / profile_time
-
-        # print('profile_time=%f avg_vel=%f t1=%f t2=%f t3=%f v_mid=%f obj_vel=%f' %
-        #       (profile_time, avg_vel, vel_profile.t1, vel_profile.t2, vel_profile.t3,
-        #        vel_profile.v_mid, target_vel))
-
-        efficiency_cost = EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel]))[0]
-        return EFFICIENCY_COST_WEIGHT * efficiency_cost * profile_time / WERLING_TIME_RESOLUTION
-
-
-class PlanComfortMetric:
-    @staticmethod
-    def calc_cost(vel_profile: VelocityProfile, comfortable_lat_time, max_lat_time: float):
-        # TODO: if T is known, calculate jerks analytically
-        if max_lat_time <= 0:
-            return np.inf
-
-        if comfortable_lat_time <= max_lat_time:
-            time_factor = 1  # comfortable lane change
-        else:
-            time_factor = comfortable_lat_time / max(np.finfo(np.float16).eps, max_lat_time)
-        lat_time = min(comfortable_lat_time, max_lat_time)
-
-        lat_cost = lat_time * (time_factor ** 6) * LAT_VEL_TO_COST_FACTOR * LAT_JERK_COST_WEIGHT
-
-        acc1 = acc3 = 0
-        if vel_profile.t1 > 0:
-            acc1 = (vel_profile.v_mid - vel_profile.v_init) / vel_profile.t1
-        if vel_profile.t3 > 0:
-            acc3 = (vel_profile.v_tar - vel_profile.v_mid) / vel_profile.t3
-        lon_cost = (vel_profile.t1 * (acc1**3) + vel_profile.t3 * (acc3**3)) * LON_ACC_TO_COST_FACTOR * \
-                   LON_JERK_COST_WEIGHT
-        return lat_cost + lon_cost
-
-
-class PlanRightLaneMetric:
-    @staticmethod
-    def calc_cost(time_period: float, lane_idx: int) -> float:
-        return RIGHT_LANE_COST_WEIGHT * lane_idx * time_period / WERLING_TIME_RESOLUTION
-
-
-class ValueFunction:
-    """
-    value function approximation for debugging purposes
-    """
-    @staticmethod
-    def calc_cost(time_period: float, vel: float, lane: int) -> float:
-        efficiency_cost = EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([vel]))[0] * \
-                          time_period / WERLING_TIME_RESOLUTION
-        right_lane_cost = lane * time_period / WERLING_TIME_RESOLUTION
-        cost = efficiency_cost * EFFICIENCY_COST_WEIGHT + right_lane_cost * RIGHT_LANE_COST_WEIGHT
-        return cost
