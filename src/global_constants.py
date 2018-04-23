@@ -109,8 +109,10 @@ LON_MARGIN_FROM_EGO = 1
 # [m/s^2] accelerations for different aggressiveness levels
 AGGRESSIVENESS_TO_LON_ACC = np.array([1, 1.5, 2.25])
 #AGGRESSIVENESS_TO_LAT_ACC = np.array([0.3, 0.5, 0.9])
+
+# conversion factor from acceleration to comfort cost
 LON_ACC_TO_COST_FACTOR = 0.01
-LAT_VEL_TO_COST_FACTOR = 0.01
+LAT_ACC_TO_COST_FACTOR = 0.01
 
 # [m/s^2] typical lateral acceleration
 PLAN_LATERAL_ACCELERATION = 0.5

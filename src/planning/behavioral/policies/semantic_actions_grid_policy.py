@@ -434,7 +434,7 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
 
             if vel_profile is None:  # infeasible action
                 action_costs[i] = np.inf
-                print('infeasible action')
+                # print('infeasible action')
                 continue
 
             vel_profile_time = vel_profile.total_time()

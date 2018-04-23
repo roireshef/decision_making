@@ -1,7 +1,7 @@
 import numpy as np
 
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, LON_ACC_TO_COST_FACTOR, \
-    LAT_VEL_TO_COST_FACTOR, RIGHT_LANE_COST_WEIGHT, EFFICIENCY_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT
+    LAT_ACC_TO_COST_FACTOR, RIGHT_LANE_COST_WEIGHT, EFFICIENCY_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT
 from decision_making.src.planning.performance_metrics.cost_functions import EfficiencyMetric
 from decision_making.src.planning.performance_metrics.velocity_profile import VelocityProfile
 
@@ -36,18 +36,27 @@ class PlanEfficiencyMetric:
 class PlanComfortMetric:
     @staticmethod
     def calc_cost(vel_profile: VelocityProfile, comfortable_lat_time, max_lat_time: float):
+        """
+        Calculate comfort cost for lateral and longitudinal movement
+        :param vel_profile: longitudinal velocity profile
+        :param comfortable_lat_time: comfortable lateral movement time
+        :param max_lat_time: maximal permitted lateral movement time, bounded according to the safety
+        :return: comfort cost in units of the general performance metrics cost
+        """
         # TODO: if T is known, calculate jerks analytically
         if max_lat_time <= 0:
             return np.inf
 
+        # calculate factor between the comfortable lateral movement time and the required lateral movement time
         if comfortable_lat_time <= max_lat_time:
             time_factor = 1  # comfortable lane change
         else:
             time_factor = comfortable_lat_time / max(np.finfo(np.float16).eps, max_lat_time)
         lat_time = min(comfortable_lat_time, max_lat_time)
 
-        lat_cost = lat_time * (time_factor ** 6) * LAT_VEL_TO_COST_FACTOR * LAT_JERK_COST_WEIGHT
+        lat_cost = lat_time * (time_factor ** 6) * LAT_ACC_TO_COST_FACTOR * LAT_JERK_COST_WEIGHT
 
+        # longitudinal cost
         acc1 = acc3 = 0
         if vel_profile.t1 > 0:
             acc1 = abs(vel_profile.v_mid - vel_profile.v_init) / vel_profile.t1

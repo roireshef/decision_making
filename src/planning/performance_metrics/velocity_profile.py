@@ -107,12 +107,14 @@ class VelocityProfile:
 
         MAX_VELOCITY_TOLERANCE = 2.
         v_init_rel = v_init - v_tar  # relative velocity; may be negative
-        v_max_rel = max(v_max - v_tar, max(v_init_rel, MAX_VELOCITY_TOLERANCE))  # let max_vel > end_vel to enable reaching the car
+        v_max_rel = max(v_max - v_tar, max(v_init_rel, MAX_VELOCITY_TOLERANCE))  # let max_vel > end_vel to enable reaching the target car
 
         if abs(v_init_rel) < 0.1 and abs(dist) < 0.1:
-            return cls(v_init, min_time, v_tar, 0, 0, v_tar)  # just follow min_time
+            return cls(v_init, min_time, v_tar, 0, 0, v_tar)  # just follow the target car for min_time
 
         if v_init_rel * dist > 0 and v_init_rel * v_init_rel > 2 * (a + a_tar) * dist:  # too big acceleration needed
+            # print('NO PROFILE: too big acceleration needed: v_init_rel=%f dist=%f acc=%f' % (v_init_rel, dist, a + a_tar))
+            # return None
             t1 = max(min_time, abs(v_init_rel) / a)  # increase dist (if it's unsafe, the action will be filtered later)
             return cls(v_init, t1, v_tar, 0, 0, v_tar)  # one segment profile
 
