@@ -38,9 +38,11 @@ def testable_map_api_for_acda():
     road_coordinates = list()
     road_coordinates.append(road_coordinates_1)
     road_coordinates.append(road_coordinates_2)
-    test_map_model = TestMapModelUtils.create_road_map_from_coordinates(points_of_roads=road_coordinates, road_id=1,
-                                                                        road_name='def',
-                                                                        lanes_num=NUM_LANES, lane_width=LANE_WIDTH)
+    test_map_model = TestMapModelUtils.create_road_map_from_coordinates(points_of_roads=road_coordinates,
+                                                                        road_id=[1, 2],
+                                                                        road_name=['def1', 'def2'],
+                                                                        lanes_num=[NUM_LANES, NUM_LANES],
+                                                                        lane_width=[LANE_WIDTH, LANE_WIDTH])
 
     return MapAPI(map_model=test_map_model, logger=AV_Logger.get_logger('test_map_acda'))
 
@@ -123,4 +125,3 @@ def test_AcdaFeaturesInComplexScenraio_successful(testable_navigation_plan):
                                       navigation_plan=navigation_plan, lookahead_path=lookahead_path)
 
     assert safe_speed > 0.0
-
