@@ -70,13 +70,13 @@ LAT_JERK_COST_WEIGHT = 1.0                         # cost of lateral jerk
 
 EFFICIENCY_COST_WEIGHT = 0.6                # cost of zero velocity on one trajectory point
 EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO = 3  # ratio UNDER_C'(0) / UNDER_C'(v_desired)
-RIGHT_LANE_COST_WEIGHT = 0.05               # cost of using non-right lane on one trajectory point
+RIGHT_LANE_COST_WEIGHT = 0.01               # cost of using non-right lane on one trajectory point
 
 # [m/sec] speed to plan towards by default in BP
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
 
 # [m/s] min & max velocity limits are additional parameters for TP
-VELOCITY_LIMITS = np.array([0.0, 20.0])
+VELOCITY_LIMITS = np.array([0.0, 20.0])  # TODO - get this value from the map
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
@@ -118,8 +118,13 @@ AGGRESSIVENESS_TO_LON_ACC = np.array([1, 1.5, 2.25])
 LON_ACC_TO_COST_FACTOR = 0.01
 LAT_ACC_TO_COST_FACTOR = 0.01
 
-# [m/s^2] typical lateral acceleration
-PLAN_LATERAL_ACCELERATION = 0.5
+# [m/s^2] typical lateral acceleration in BP metrics
+BP_TYPICAL_LATERAL_ACCELERATION = 0.5
+
+# [sec] performance metrics for BP minimal plan time
+BP_METRICS_TIME_HORIZON = 20
+
+PLAN_LANE_DEVIATION_COST_WEIGHT = 0.05
 
 
 # Trajectory Planner #

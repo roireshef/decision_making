@@ -95,12 +95,8 @@ class DynamicActionSpace(ActionSpace):
         poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
         poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
 
-        optimum_time_idx, optimum_time_satisfies_constraints = ActionSpace.find_optimum_planning_time(T_vals,
-                                                                                                      poly_coefs_s,
-                                                                                                      QuinticPoly1D,
-                                                                                                      poly_coefs_d,
-                                                                                                      QuinticPoly1D,
-                                                                                                      action_recipe.aggressiveness)
+        optimum_time_idx, optimum_time_satisfies_constraints = ActionSpace.find_optimum_planning_time(
+            T_vals, poly_coefs_s, QuinticPoly1D, poly_coefs_d, QuinticPoly1D, action_recipe.aggressiveness)
 
         if not optimum_time_satisfies_constraints:
             # self.logger.debug("Can\'t specify Recipe %s given ego state %s ", str(action_recipe), str(ego))

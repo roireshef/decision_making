@@ -77,7 +77,7 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
         behavioral_state = SemanticBehavioralGridState.create_from_state(state=state,
                                                                          logger=self.logger)
 
-        current_state_value = self.value_approximator.evaluate_state(behavioral_state)
+        #current_state_value = self.value_approximator.evaluate_state(behavioral_state)
 
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
@@ -94,18 +94,18 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
                         for i, recipe in enumerate(action_recipes)]
 
         num_of_specified_actions = sum(x is not None for x in action_specs)
-        print('Number of actions specified: ', )
+        #print('Number of actions specified: ', )
         self.logger.debug('Number of actions specified: %d', num_of_specified_actions)
 
         # ActionSpec filtering
         action_specs_mask = self.action_validator.filter_action_specs(action_specs, behavioral_state)
 
         # State-Action Evaluation
-        action_costs = self.state_action_spec_evaluator.evaluate_action_specs(behavioral_state, action_recipes, action_specs,
-                                                                              action_specs_mask)
+        action_costs = self.state_action_spec_evaluator.evaluate_action_specs(
+            behavioral_state, action_recipes, action_specs, action_specs_mask)
 
         #selected_action_index = int(np.argmin(action_costs))
-        print('Selected recipe: ', action_recipes[selected_action_index].__dict__)
+        #print('Selected recipe: ', action_recipes[selected_action_index].__dict__)
         self.logger.debug('Selected recipe: ', action_recipes[selected_action_index].__dict__)
         selected_action_spec = action_specs[selected_action_index]
 

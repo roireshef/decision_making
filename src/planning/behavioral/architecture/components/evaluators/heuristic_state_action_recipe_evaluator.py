@@ -3,17 +3,18 @@ from typing import List
 
 import numpy as np
 
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, \
-    SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
-    SEMANTIC_CELL_LAT_SAME
+from decision_making.src.global_constants import SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
+    SEMANTIC_CELL_LAT_SAME, BP_METRICS_TIME_HORIZON, SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LAT_LEFT
 from decision_making.src.global_constants import SEMANTIC_CELL_LON_REAR
 from decision_making.src.planning.behavioral.architecture.components.evaluators.state_action_evaluator import \
     StateActionRecipeEvaluator
+from decision_making.src.planning.behavioral.architecture.components.evaluators.value_approximator import \
+    ValueApproximator
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionRecipe, ActionType
 from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
     SemanticBehavioralGridState
 from decision_making.src.planning.performance_metrics.behavioral.cost_functions import PlanEfficiencyMetric, \
-    PlanComfortMetric, ValueFunction, PlanRightLaneMetric, VelocityProfile
+    PlanComfortMetric, PlanRightLaneMetric, VelocityProfile, PlanLaneDeviationMetric
 from decision_making.src.planning.performance_metrics.behavioral.velocity_profile import ProfileSafety
 from decision_making.src.planning.types import FS_SX, FS_DX, FS_DV, FP_SX, FP_DX
 from decision_making.src.planning.types import LIMIT_MAX
@@ -48,72 +49,118 @@ class HeuristicStateActionRecipeEvaluator(StateActionRecipeEvaluator):
         ego_fpoint = np.array([ego_fstate[FS_SX], ego_fstate[FS_DX]])
         ego_lane = ego.road_localization.lane_num
         lane_width = road.lane_width
+        value_approximator = ValueApproximator(self.logger)
+        comfort_lane_change_time = VelocityProfile.calc_comfort_lateral_time(0, lane_width)
 
-        time_horizon = BP_ACTION_T_LIMITS[LIMIT_MAX]
+        import time
+        start = time.time()
+        lat_time_time = vel_prof_time = safe_time_time = metrics_time = init_time = 0
+
+        t = time.time()
 
         action_costs = np.full(len(action_recipes), np.inf)
+
+        # get front dynamic objects from the occupancy grid
+        front_objects_vel = np.array([np.inf, np.inf, np.inf])
+        for lat in [SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT]:
+            if (lat, SEMANTIC_CELL_LON_FRONT) in behavioral_state.road_occupancy_grid:
+                front_objects_vel[lat - SEMANTIC_CELL_LAT_RIGHT] = \
+                    behavioral_state.road_occupancy_grid[(lat, SEMANTIC_CELL_LON_FRONT)][0].v_x
+
+        init_time += time.time() - t
+
+        print('time=%f ego_v=%f ego_lat=%f' % (ego.timestamp_in_sec, ego.v_x, ego_fpoint[FP_DX]))
 
         for i, action_recipe in enumerate(action_recipes):
 
             if not action_recipes_mask[i]:
                 continue
 
+            t = time.time()
+
             target_acc = cars_size_margin = obj_lon = None
-
-            if action_recipe.action_type == ActionType.FOLLOW_VEHICLE or action_recipe.action_type == ActionType.TAKE_OVER_VEHICLE:
-                target_obj = behavioral_state.road_occupancy_grid[(action_recipe.relative_lane.value,
-                                                                   action_recipe.relative_lon.value)][0]
-                target_vel = target_obj.v_x
-                target_acc = target_obj.acceleration_lon
-                obj_lon = road_frenet.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))[FP_SX]
-                cars_size_margin = 0.5 * (ego.size.length + target_obj.size.length)
-            else:
-                target_vel = action_recipe.velocity
-
             target_lane = ego_lane + action_recipe.relative_lane.value
             target_lat = (target_lane + 0.5) * lane_width
 
             # create velocity profile, whose extent is at least as the lateral time
-            comfort_lat_time = VelocityProfile.calc_lateral_time(ego_fstate[FS_DV], target_lat - ego_fpoint[FP_DX])
-            vel_profile = VelocityProfile.calc_velocity_profile(action_recipe.action_type, ego_fpoint[FP_SX], ego.v_x,
-                                                                obj_lon, target_vel, target_acc,
-                                                                action_recipe.aggressiveness.value,
-                                                                cars_size_margin, comfort_lat_time)
+            comfort_lat_time = VelocityProfile.calc_comfort_lateral_time(ego_fstate[FS_DV], target_lat - ego_fpoint[FP_DX])
+
+            if action_recipe.action_type == ActionType.FOLLOW_VEHICLE or action_recipe.action_type == ActionType.TAKE_OVER_VEHICLE:
+                target_obj = behavioral_state.road_occupancy_grid[
+                    (action_recipe.relative_lane.value, action_recipe.relative_lon.value)][0]
+                target_vel = target_obj.v_x
+                target_acc = target_obj.acceleration_lon
+                obj_lon = road_frenet.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))[FP_SX]
+                cars_size_margin = 0.5 * (ego.size.length + target_obj.size.length)
+                min_profile_time = comfort_lat_time
+            else:  # static action (FOLLOW_LANE)
+                target_vel = action_recipe.velocity
+                min_profile_time = BP_METRICS_TIME_HORIZON
+
+                # TODO: the following condition should be implemented as a filter
+                # skip static action if its velocity is greater than velocity of the front object on the same lane,
+                # since a dynamic action should treat this lane (value function after such static action is unclear)
+                if target_vel > front_objects_vel[action_recipe.relative_lane.value - SEMANTIC_CELL_LAT_RIGHT]:
+                    continue
+
+            lat_time_time += time.time() - t
+            t = time.time()
+
+            vel_profile = VelocityProfile.calc_velocity_profile(
+                action_recipe.action_type, ego_fpoint[FP_SX], ego.v_x, obj_lon, target_vel, target_acc,
+                action_recipe.aggressiveness.value, cars_size_margin, min_time=min_profile_time)
+
+            vel_prof_time += time.time() - t
 
             if vel_profile is None:  # infeasible action
                 continue
 
+            t = time.time()
+
             vel_profile_time = vel_profile.total_time()
-
-            # efficiency cost
-            efficiency_cost = PlanEfficiencyMetric.calc_cost(ego.v_x, target_vel, vel_profile)
-
-            # comfort cost
+            # calculate the latest safe time
             largest_safe_time = HeuristicStateActionRecipeEvaluator._calc_largest_safe_time(
                 behavioral_state, action_recipe.relative_lane, ego_fpoint, vel_profile, road_frenet,
-                ego.size.length / 2, comfort_lat_time)
+                ego.size.length / 2, comfort_lat_time, min_profile_time)
+            # if largest_safe_time <= comfort_lat_time/3:
+            #     continue
 
+            safe_time_time += time.time() - t
+            t = time.time()
+
+            efficiency_cost = PlanEfficiencyMetric.calc_cost(vel_profile)
             comfort_cost = PlanComfortMetric.calc_cost(vel_profile, comfort_lat_time, largest_safe_time)
-
             right_lane_cost = PlanRightLaneMetric.calc_cost(vel_profile_time, target_lane)
+            lane_deviation_cost = PlanLaneDeviationMetric.calc_cost(comfort_lat_time)
 
-            value_function = ValueFunction.calc_cost(time_horizon - vel_profile_time, target_vel, target_lane)
+            value_function = value_approximator.evaluate_state(BP_METRICS_TIME_HORIZON - vel_profile_time, target_vel,
+                                                               target_lane, comfort_lane_change_time)
 
-            action_costs[i] = efficiency_cost + right_lane_cost + comfort_cost + value_function
+            action_costs[i] = efficiency_cost + right_lane_cost + comfort_cost + lane_deviation_cost + value_function
 
-            # print('time %f; action %d: obj_vel=%s eff %s comf %s right %s value %f: tot %s' %
-            #       (ego.timestamp_in_sec, action_recipe.relative_lane, target_vel, efficiency_cost, comfort_cost,
-            #        right_lane_cost, value_function, action_costs[i]))
+            metrics_time += time.time() - t
 
-        # best_action = np.argmin(action_costs)[0]
-        # print('Best action %d; lane %d\n' % (best_action, ego_lane + action_recipes[best_action].relative_lane))
+            dist = np.inf
+            if obj_lon is not None:
+                dist = obj_lon - ego_fpoint[FP_SX]
+            print('action %d type %d lane %d: dist=%f target_vel=%.2f eff %.3f comf %.3f right %.2f dev %.2f time=%.2f safe_time=%f value %.2f: tot %.2f' %
+                  (i, action_recipe.action_type.value, action_recipe.relative_lane.value, dist, target_vel,
+                   efficiency_cost, comfort_cost, right_lane_cost, lane_deviation_cost, vel_profile_time,
+                   largest_safe_time, value_function, action_costs[i]))
+
+        #end = time.time()
+        #print('tot_time = %f: init=%f lat_time=%f vel_prof=%f safe_time=%f metrics=%f' %
+        #      (end - start, init_time, lat_time_time, vel_prof_time, safe_time_time, metrics_time))
+
+        best_action = int(np.argmin(action_costs))
+        print('Best action %d; lane %d\n' % (best_action, ego_lane + action_recipes[best_action].relative_lane.value))
         return action_costs
 
     @staticmethod
     def _calc_largest_safe_time(behavioral_state: SemanticBehavioralGridState, action_lat_cell: int,
                                 ego_fpoint: np.array, vel_profile: VelocityProfile,
                                 road_frenet: FrenetSerret2DFrame, ego_half_size: float,
-                                comfort_lat_time: float) -> float:
+                                comfort_lat_time: float, min_forward_safe_time: float) -> float:
         """
         For a lane change action, given ego velocity profile and behavioral_state, get two cars that may
         require faster lateral movement (the front overtaken car and the back interfered car) and calculate the last
@@ -128,14 +175,19 @@ class HeuristicStateActionRecipeEvaluator(StateActionRecipeEvaluator):
         :return: the latest time, when ego is still safe
         """
         # check safety w.r.t. the front object on the target lane (if exists)
-        if (action_lat_cell, SEMANTIC_CELL_LON_FRONT) in behavioral_state.road_occupancy_grid:
-            forward_obj = behavioral_state.road_occupancy_grid[(action_lat_cell, SEMANTIC_CELL_LON_FRONT)]
+        if (action_lat_cell.value, SEMANTIC_CELL_LON_FRONT) in behavioral_state.road_occupancy_grid:
+            forward_obj = behavioral_state.road_occupancy_grid[(action_lat_cell.value, SEMANTIC_CELL_LON_FRONT)]
             forward_safe_time = ProfileSafety.calc_last_safe_time(
                 ego_fpoint, ego_half_size, vel_profile, forward_obj[0], road_frenet, np.inf)
-            if forward_safe_time < vel_profile.total_time():
+            if forward_safe_time < max(min_forward_safe_time, vel_profile.total_time()):
                 return 0
-        if action_lat_cell == SEMANTIC_CELL_LAT_SAME:  # continue on the same lane
+        if action_lat_cell.value == SEMANTIC_CELL_LAT_SAME:  # continue on the same lane
             return np.inf  # don't check safety on other lanes
+
+        #TODO: move it to a filter
+        # check whether there is a car in the neighbor cell (same longitude)
+        if (action_lat_cell.value, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid:
+            return 0
 
         safe_time = np.inf
         # check safety w.r.t. the front object on the original lane (if exists)
@@ -146,8 +198,8 @@ class HeuristicStateActionRecipeEvaluator(StateActionRecipeEvaluator):
             safe_time = min(safe_time, front_safe_time)
 
         # check safety w.r.t. the back object on the original lane (if exists)
-        if (action_lat_cell, SEMANTIC_CELL_LON_REAR) in behavioral_state.road_occupancy_grid:
-            back_obj = behavioral_state.road_occupancy_grid[(action_lat_cell, SEMANTIC_CELL_LON_REAR)]
+        if (action_lat_cell.value, SEMANTIC_CELL_LON_REAR) in behavioral_state.road_occupancy_grid:
+            back_obj = behavioral_state.road_occupancy_grid[(action_lat_cell.value, SEMANTIC_CELL_LON_REAR)]
             back_safe_time = ProfileSafety.calc_last_safe_time(
                 ego_fpoint, ego_half_size, vel_profile, back_obj[0], road_frenet, comfort_lat_time)
             safe_time = min(safe_time, back_safe_time)
