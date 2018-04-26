@@ -70,7 +70,7 @@ LAT_JERK_COST_WEIGHT = 1.0                         # cost of lateral jerk
 
 EFFICIENCY_COST_WEIGHT = 0.6                # cost of zero velocity on one trajectory point
 EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO = 3  # ratio UNDER_C'(0) / UNDER_C'(v_desired)
-RIGHT_LANE_COST_WEIGHT = 0.01               # cost of using non-right lane on one trajectory point
+RIGHT_LANE_COST_WEIGHT = 0.005              # cost of using non-right lane on one trajectory point
 
 # [m/sec] speed to plan towards by default in BP
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
@@ -124,7 +124,7 @@ BP_TYPICAL_LATERAL_ACCELERATION = 0.5
 # [sec] performance metrics for BP minimal plan time
 BP_METRICS_TIME_HORIZON = 20
 
-PLAN_LANE_DEVIATION_COST_WEIGHT = 0.05
+PLAN_LANE_DEVIATION_COST_WEIGHT = 0.035
 
 
 # Trajectory Planner #
