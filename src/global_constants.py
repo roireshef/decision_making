@@ -112,19 +112,17 @@ LON_MARGIN_FROM_EGO = 1
 
 # [m/s^2] accelerations for different aggressiveness levels
 AGGRESSIVENESS_TO_LON_ACC = np.array([1, 1.5, 2.25])
-#AGGRESSIVENESS_TO_LAT_ACC = np.array([0.3, 0.5, 0.9])
+AGGRESSIVENESS_TO_LAT_ACC = np.array([0.3, 0.5, 0.9])
 
 # conversion factor from acceleration to comfort cost
 LON_ACC_TO_COST_FACTOR = 0.01
 LAT_ACC_TO_COST_FACTOR = 0.01
 
-# [m/s^2] typical lateral acceleration in BP metrics
-BP_TYPICAL_LATERAL_ACCELERATION = 0.5
-
 # [sec] performance metrics for BP minimal plan time
 BP_METRICS_TIME_HORIZON = 20
 
-PLAN_LANE_DEVIATION_COST_WEIGHT = 0.035
+# performance metrics for BP: lane deviation cost weight
+BP_METRICS_LANE_DEVIATION_COST_WEIGHT = 0.035
 
 
 # Trajectory Planner #

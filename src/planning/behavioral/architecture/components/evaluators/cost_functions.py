@@ -2,9 +2,9 @@ import numpy as np
 
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, LON_ACC_TO_COST_FACTOR, \
     LAT_ACC_TO_COST_FACTOR, RIGHT_LANE_COST_WEIGHT, EFFICIENCY_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, \
-    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, PLAN_LANE_DEVIATION_COST_WEIGHT
-from decision_making.src.planning.performance_metrics.cost_functions import EfficiencyMetric
-from decision_making.src.planning.performance_metrics.behavioral.velocity_profile import VelocityProfile
+    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, BP_METRICS_LANE_DEVIATION_COST_WEIGHT, \
+    EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO
+from decision_making.src.planning.behavioral.architecture.components.evaluators.velocity_profile import VelocityProfile
 
 
 class PlanEfficiencyMetric:
@@ -31,8 +31,24 @@ class PlanEfficiencyMetric:
         #       (profile_time, avg_vel, vel_profile.t1, vel_profile.t2, vel_profile.t3,
         #        vel_profile.v_mid, target_vel))
 
-        efficiency_cost = EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel]))[0]
+        efficiency_cost = PlanEfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel]))[0]
         return EFFICIENCY_COST_WEIGHT * efficiency_cost * profile_time / WERLING_TIME_RESOLUTION
+
+    @staticmethod
+    def calc_pointwise_cost_for_velocities(vel: np.array) -> np.array:
+        """
+        calculate efficiency (velocity) cost by parabola function
+        C(vel) = P(v) = a*v*v + b*v, where v = abs(1 - vel/vel_des), C(vel_des) = 0, C(0) = 1, C'(0)/C'(vel_des) = r
+        :param vel: input velocities: either 1D or 2D array
+        :return: array of size vel.shape of efficiency costs per point
+        """
+        r = EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO  # C'(0)/C'(vel_des) = P'(1)/P'(0)
+        # the following two lines are the solution of two equations on a and b: P(1) = 1, P'(1)/P'(0) = r
+        a = (r-1)/(r+1)
+        b = 2/(r+1)
+        normalized_vel = np.absolute(1 - vel / BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
+        costs = normalized_vel * (a * normalized_vel + b)
+        return costs
 
     @staticmethod
     def _calc_avg_vel_deviation(v1: float, v2: float, des_vel: float) -> float:
@@ -85,4 +101,4 @@ class PlanRightLaneMetric:
 class PlanLaneDeviationMetric:
     @staticmethod
     def calc_cost(lat_time_period: float) -> float:
-        return PLAN_LANE_DEVIATION_COST_WEIGHT * lat_time_period / WERLING_TIME_RESOLUTION
+        return BP_METRICS_LANE_DEVIATION_COST_WEIGHT * lat_time_period / WERLING_TIME_RESOLUTION

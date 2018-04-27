@@ -11,13 +11,10 @@ from decision_making.src.global_constants import OBSTACLE_SIGMOID_K_PARAM, LATER
     SHOULDER_SIGMOID_OFFSET, SHOULDER_SIGMOID_K_PARAM, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
     DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LANE_SIGMOID_K_PARAM, \
     DEVIATION_FROM_GOAL_LAT_LON_RATIO, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, TD_STEPS, \
-    LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_MARGIN_FROM_EGO, EFFICIENCY_COST_WEIGHT, RIGHT_LANE_COST_WEIGHT
+    LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_MARGIN_FROM_EGO
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
-from decision_making.src.planning.performance_metrics.cost_functions import Jerk, SafetyMetric, \
-    LaneDeviationMetric, ShoulderDeviationMetric, RoadDeviationMetric
-from decision_making.src.planning.performance_metrics.metric import PMState
-from decision_making.src.planning.performance_metrics.reward import Reward
+from decision_making.src.planning.trajectory.cost_function import Costs, Jerk
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import Poly1D
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, CartesianPoint2D, C_Y, \
@@ -347,12 +344,11 @@ def compute_pixel_costs(route_points: np.array, reference_route_latitude: float,
     frenet_pixels = np.repeat(frenet_pixels[:, np.newaxis, :], time_samples.shape[0], axis=1)
 
     # calculate cost components for all image pixels by building a static "trajectory" for every pixel
-    pm_state = PMState(state, cartesian_pixels, frenet_pixels, time_samples, planner.predictor)
-    reward = Reward([SafetyMetric(),
-                     LaneDeviationMetric(), ShoulderDeviationMetric(), RoadDeviationMetric()],
-                    np.array([cost_params.obstacle_cost_x.w,
-                              cost_params.left_lane_cost.w, cost_params.left_shoulder_cost.w, cost_params.left_road_cost.w]))
-    pixel_costs = reward.calc_pointwise_reward(pm_state, cost_params).reshape(height, width, time_samples.shape[0])
+    pointwise_costs = \
+        Costs.compute_pointwise_costs(cartesian_pixels, frenet_pixels, state, cost_params, time_samples,
+                                      planner.predictor, planner.dt)
+
+    pixel_costs = (pointwise_costs[:, :, 0] + pointwise_costs[:, :, 1]).reshape(height, width, time_samples.shape[0])
     return pixels2D, pixel_costs
 
 

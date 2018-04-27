@@ -8,17 +8,14 @@ from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STE
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
     TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
-from decision_making.src.planning.performance_metrics.cost_functions import SafetyMetric, LaneDeviationMetric, \
-    ComfortMetric, RoadDeviationMetric, ShoulderDeviationMetric
-from decision_making.src.planning.performance_metrics.metric import PMState
-from decision_making.src.planning.performance_metrics.reward import Reward
+from decision_making.src.planning.trajectory.cost_function import Costs
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, Poly1D
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianExtendedTrajectory, \
     CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, FrenetState2D, C_A, C_K, FrenetState1D, \
-    FrenetTrajectory1D, D5, Limits, C_Y, FrenetTrajectory2D
+    FrenetTrajectory1D, D5, Limits, C_Y
 from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
@@ -315,16 +312,11 @@ class WerlingPlanner(TrajectoryPlanner):
         dist_from_goal_costs = Math.clipped_sigmoid(trajectory_end_goal_dist - params.dist_from_goal_cost.offset,
                                                     params.dist_from_goal_cost.w, params.dist_from_goal_cost.k)
 
-        ''' calculate the following costs: safety, deviations, comfort '''
-        pm_state = PMState(state, ctrajectories, ftrajectories, global_time_samples, predictor)
-        reward = Reward([SafetyMetric(),
-                         LaneDeviationMetric(),
-                         ShoulderDeviationMetric(),
-                         RoadDeviationMetric(),
-                         ComfortMetric()],
-                        np.array([params.obstacle_cost_x.w, params.left_lane_cost.w, params.left_shoulder_cost.w,
-                                  params.left_road_cost.w, params.lon_jerk_cost + params.lat_jerk_cost]))
-        return reward.calc_reward(pm_state, params) + dist_from_goal_costs
+        ''' point-wise costs: obstacles, deviations, jerk '''
+        pointwise_costs = Costs.compute_pointwise_costs(ctrajectories, ftrajectories, state, params,
+                                                                  global_time_samples, predictor, dt)
+
+        return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs
 
     # TODO: determine tighter lower bound according to physical constraints and ego control limitations
     def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints, fconstraints_tT: FrenetConstraints,

@@ -1,35 +1,37 @@
 from logging import Logger
-from unittest.mock import patch
-import pytest
 
 import numpy as np
 
 from decision_making.src.global_constants import BP_METRICS_TIME_HORIZON, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+from decision_making.src.planning.behavioral.architecture.components.evaluators.cost_functions import \
+    PlanRightLaneMetric, \
+    PlanLaneDeviationMetric, PlanEfficiencyMetric, PlanComfortMetric
 from decision_making.src.planning.behavioral.architecture.components.evaluators.value_approximator import \
     ValueApproximator
+from decision_making.src.planning.behavioral.architecture.components.evaluators.velocity_profile import VelocityProfile, \
+    ProfileSafety
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionType
-from decision_making.src.planning.performance_metrics.behavioral.cost_functions import PlanRightLaneMetric, \
-    PlanLaneDeviationMetric, PlanEfficiencyMetric, PlanComfortMetric
-from decision_making.src.planning.performance_metrics.behavioral.velocity_profile import VelocityProfile, ProfileSafety
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.state.state import DynamicObject, ObjectSize
 
 
 def test_behavioralScenarios_moveToLeftAndReturnToRight():
+    """
+    Test lane change to the left if front car's velocity is des_vel-2.
+    Test different initial velocities of ego, different distances from the slow car, empty/occupied left lane.
+    Desired result: for all initial velocities, don't overtake when dist=4 sec and overtake when dist=3 sec.
+    :return:
+    """
     des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
     slow_obj_vel = des_vel-2
     lane_width = 3.6
     cars_size_margin = 4
     logger = Logger("test_BP_metrics")
     value_approximator = ValueApproximator(logger)
-    comfort_lane_change_time = VelocityProfile.calc_comfort_lateral_time(0, lane_width)
+    comfort_lane_change_time = VelocityProfile.calc_lateral_time(0, lane_width)
 
     road_points = np.array([np.arange(0, 1000), np.full(1000, 0)]).transpose()
     road_frenet = FrenetSerret2DFrame(road_points)
-
-    # Test lane change to the left if front car's velocity is des_vel-2.
-    # Test different initial velocities of ego, different distances from the slow car, empty/occupied left lane.
-    # Desired result: for all initial velocities, don't overtake when dist=4 sec and overtake when dist=3 sec.
 
     for init_vel in [slow_obj_vel, des_vel]:
         for dist_from_slow_car_in_sec in [4, 2.5]:

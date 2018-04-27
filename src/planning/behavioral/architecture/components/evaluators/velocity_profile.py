@@ -1,7 +1,7 @@
 import numpy as np
 
 from decision_making.src.global_constants import AGGRESSIVENESS_TO_LON_ACC, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
-    SAFE_DIST_TIME_DELAY, BP_TYPICAL_LATERAL_ACCELERATION, LON_ACC_LIMITS
+    SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS, AGGRESSIVENESS_TO_LAT_ACC
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionType
 from decision_making.src.planning.types import FP_SX, LIMIT_MIN
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
@@ -236,7 +236,7 @@ class VelocityProfile:
         return cls(v_init, t1, v_max, t2, t3, v_tar)
 
     @staticmethod
-    def calc_comfort_lateral_time(init_lat_vel: float, signed_lat_dist: float):
+    def calc_lateral_time(init_lat_vel: float, signed_lat_dist: float, aggressiveness_level: int):
         """
         Given initial lateral velocity and signed lateral distance, estimate a time it takes to perform the movement.
         The time estimation assumes movement by velocity profile like in the longitudinal case.
@@ -248,8 +248,9 @@ class VelocityProfile:
             lat_v_init_toward_target = init_lat_vel
         else:
             lat_v_init_toward_target = -init_lat_vel
+        lat_acc = AGGRESSIVENESS_TO_LAT_ACC[aggressiveness_level]
         lateral_profile = VelocityProfile._calc_velocity_profile_follow_car(
-            lat_v_init_toward_target, BP_TYPICAL_LATERAL_ACCELERATION, np.inf, abs(signed_lat_dist), 0, 0)
+            lat_v_init_toward_target, lat_acc, np.inf, abs(signed_lat_dist), 0, 0)
         return lateral_profile.t1 + lateral_profile.t3
 
 
@@ -257,15 +258,13 @@ class ProfileSafety:
 
     @staticmethod
     def calc_last_safe_time(ego_fpoint: np.array, ego_half_size: float, vel_profile: VelocityProfile,
-                            dyn_obj: DynamicObject, road_frenet: FrenetSerret2DFrame,
-                            comfort_lat_time) -> float:
+                            dyn_obj: DynamicObject, comfort_lat_time) -> float:
         """
         Given ego velocity profile and dynamic object, calculate the last time, when the safety complies.
         :param ego_fpoint: ego initial Frenet point
         :param ego_half_size: [m] half length of ego
         :param vel_profile: ego velocity profile
         :param dyn_obj: the dynamic object, for which the safety is tested
-        :param road_frenet: road Frenet frame
         :param comfort_lat_time: time for comfortable lane change
         :return: the latest safe time
         """
@@ -275,7 +274,7 @@ class ProfileSafety:
             return np.inf
         # initialization of motion parameters
         (init_s_ego, init_v_obj, a_obj) = (ego_fpoint[FP_SX], dyn_obj.v_x, dyn_obj.acceleration_lon)
-        init_s_obj = road_frenet.cpoint_to_fpoint(np.array([dyn_obj.x, dyn_obj.y]))[FP_SX]
+        init_s_obj = dyn_obj.road_localization.road_lon
 
         t, t_cum, s_ego, v_ego, a_ego = vel_profile.get_details(max_time)
         s_ego += init_s_ego
