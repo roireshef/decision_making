@@ -1,4 +1,4 @@
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from typing import List
 import numpy as np
 from logging import Logger
@@ -6,13 +6,14 @@ from logging import Logger
 from decision_making.src.state.state import State, DynamicObject
 
 
-class SimplePredictor(metaclass=ABCMeta):
+class UnawarePredictor(metaclass=ABCMeta):
     """
     Base class for simple / naive prediction of states
     """
     def __init__(self, logger: Logger):
         self._logger = logger
 
+    @abstractmethod
     def predict_state(self, state: State, prediction_timestamps: np.ndarray) -> List[State]:
         """
         Predictes the future states of the given state, for the specified timestamps
@@ -23,6 +24,7 @@ class SimplePredictor(metaclass=ABCMeta):
         """
         pass
 
+    @abstractmethod
     def predict_object(self, state: State, object_id: int, prediction_timestamps: np.ndarray) -> List[DynamicObject]:
         """
         Predictes the future of the specified object, for the specified timestamps

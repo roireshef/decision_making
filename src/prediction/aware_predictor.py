@@ -1,4 +1,4 @@
-from abc import ABCMeta
+from abc import ABCMeta, abstractmethod
 from logging import Logger
 from typing import List
 import numpy as np
@@ -7,7 +7,7 @@ from decision_making.src.planning.trajectory.trajectory_planner import Samplable
 from decision_making.src.state.state import State
 
 
-class AdvancedPredictor(metaclass=ABCMeta):
+class AwarePredictor(metaclass=ABCMeta):
     """
     Base class for advanced prediction logic, which is able to account for reactions to ego's action
     """
@@ -15,10 +15,11 @@ class AdvancedPredictor(metaclass=ABCMeta):
     def __init__(self, logger: Logger):
         self._logger = logger
 
+    @abstractmethod
     def predict_state(self, state: State, prediction_timestamps: np.ndarray, action_trajectory: SamplableTrajectory)\
             -> (List[State]):
         """
-        Predictes the future states of the given state, for the specified timestamps
+        Predicts the future states of the given state, for the specified timestamps
         :param state: the initial state to begin prediction from
         :param prediction_timestamps: np array of timestamps in [sec] to predict states for. In ascending order.
         Global, not relative
