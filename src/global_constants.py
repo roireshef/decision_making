@@ -16,7 +16,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
-BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 60.0
+BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 50.0
 
 # When retrieving the lookahead path of a given dynamic object, we will multiply the path length
 # by the following ratio in order to avoid extrapolation when resampling the path (due to path sampling
@@ -76,11 +76,15 @@ VELOCITY_LIMITS = np.array([0.0, 20.0])
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
-BP_ACTION_T_LIMITS = np.array([3.0, 20.0])
-BP_ACTION_T_RES = 0.1
+BP_ACTION_T_LIMITS = np.array([2.0, 20.0])
+BP_ACTION_T_RES = 0.05
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
-BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([4, 6, 3])
+BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
+    [12, 0.15, 0.1],
+    [2, 0.15, 0.1],
+    [0.01, 0.15, 0.1]
+])
 
 # Longitudinal Acceleration Limits [m/sec^2]
 LON_ACC_LIMITS = np.array([-4.0, 3.0])  # taken from SuperCruise presentation
@@ -90,14 +94,14 @@ LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
-SAFE_DIST_TIME_DELAY = 2.0
+SAFE_DIST_TIME_DELAY = 2.5
 
 # Semantic Grid indices
 SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR = 1, 0, -1
 SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_RIGHT = 1, 0, -1
 
 # [m/sec] Minimal difference of velocities to justify an overtake
-MIN_OVERTAKE_VEL = 3
+MIN_OVERTAKE_VEL = 3.5
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
@@ -210,7 +214,7 @@ DEFAULT_OBJECT_Z_VALUE = 0.
 FILTER_OFF_ROAD_OBJECTS = True
 
 ### DM Manager configuration ###
-BEHAVIORAL_PLANNING_MODULE_PERIOD = 1.0
+BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.5
 TRAJECTORY_PLANNING_MODULE_PERIOD = 0.2
 
 #### NAMES OF MODULES FOR LOGGING ####
@@ -232,6 +236,8 @@ RVIZ_MODULE_NAME_FOR_LOGGING = "Rviz Module"
 LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS = "Received mission params"
 LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG = "Publishing Trajectory"
 LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT = "BehavioralPlanningFacade output is"
+LOG_MSG_BEHAVIORAL_PLANNER_SEMANTIC_ACTION = "Chosen behavioral semantic action is"
+LOG_MSG_BEHAVIORAL_PLANNER_ACTION_SPEC = "Chosen action specification is"
 LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES = "TP has found %d valid trajectories to choose from"
 LOG_MSG_RECEIVED_STATE = "Received state"
 LOG_MSG_STATE_MODULE_PUBLISH_STATE = "publishing state"

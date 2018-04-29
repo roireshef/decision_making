@@ -250,8 +250,8 @@ def create_route_for_test_werlingPlanner(road_id: int, num_lanes: int, lane_widt
                                                    curvature=curvature)
 
     test_map_model = TestMapModelUtils.create_road_map_from_coordinates(points_of_roads=[ext_route_xy],
-                                                                        road_id=road_id, road_name='y=x^3',
-                                                                        lanes_num=num_lanes, lane_width=lane_width,
+                                                                        road_id=[road_id], road_name=['y=x^3'],
+                                                                        lanes_num=[num_lanes], lane_width=[lane_width],
                                                                         frame_origin=[0, 0])
     map = MapAPI(map_model=test_map_model, logger=logger)
 

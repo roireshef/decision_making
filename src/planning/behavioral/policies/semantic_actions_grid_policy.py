@@ -7,7 +7,8 @@ from decision_making.src.exceptions import BehavioralPlanningException, InvalidA
 from decision_making.src.exceptions import NoValidTrajectoriesFound, raises
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, \
     PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, VELOCITY_LIMITS, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, SEMANTIC_CELL_LON_REAR, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
+    LOG_MSG_BEHAVIORAL_PLANNER_SEMANTIC_ACTION, LOG_MSG_BEHAVIORAL_PLANNER_ACTION_SPEC
 from decision_making.src.global_constants import OBSTACLE_SIGMOID_COST, \
     DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, \
     DEVIATION_FROM_LANE_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_K_PARAM, \
@@ -58,20 +59,6 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         behavioral_state = SemanticActionsGridState.create_from_state(state=state,
                                                                       logger=self.logger)
 
-        # # debug: computing distance from other objects, good only for one vehicle in scenario
-        # minimal_distance = 1000
-        # ego_x = state.ego_state.x
-        # ego_y = state.ego_state.y
-        # closest_dyn_obj = None
-        # for dyn_obj in state.dynamic_objects:
-        #     dist = np.sqrt(np.power(dyn_obj.x - ego_x, 2) + np.power(dyn_obj.y - ego_y, 2))
-        #     if dist < minimal_distance:
-        #         minimal_distance = dist
-        #         closest_dyn_obj = dyn_obj
-        # print("Ego/object velocities: " + str(state.ego_state.total_speed) + "/" + str(
-        #     closest_dyn_obj.total_speed) + " x: " + str(closest_dyn_obj.x) + ", y: " + str(
-        #     closest_dyn_obj.y) + ", min dist from obj is: " + str(minimal_distance))
-
         # iterate over the semantic grid and enumerate all relevant HL actions
         semantic_actions = self._enumerate_actions(behavioral_state=behavioral_state)
 
@@ -100,6 +87,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         selected_action_index = int(np.argmin(action_costs))
         selected_action_spec = actions_spec[selected_action_index]
 
+        selected_semantic_action = semantic_actions[selected_action_index]
+
         trajectory_parameters = SemanticActionsGridPolicy._generate_trajectory_specs(behavioral_state=behavioral_state,
                                                                                      action_spec=selected_action_spec,
                                                                                      navigation_plan=nav_plan)
@@ -107,12 +96,12 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         visualization_message = BehavioralVisualizationMsg(reference_route=trajectory_parameters.reference_route)
 
         # updating selected actions in memory
-        self._last_action = semantic_actions[selected_action_index]
+        self._last_action = selected_semantic_action
         self._last_action_spec = selected_action_spec
         self._last_ego_state = state.ego_state
 
-        self.logger.debug("Chosen behavioral semantic action is %s, %s",
-                          semantic_actions[selected_action_index].__dict__, selected_action_spec.__dict__)
+        self.logger.debug("%s %s", LOG_MSG_BEHAVIORAL_PLANNER_SEMANTIC_ACTION, selected_semantic_action.__dict__)
+        self.logger.debug("%s %s", LOG_MSG_BEHAVIORAL_PLANNER_ACTION_SPEC, selected_action_spec.__dict__)
 
         return trajectory_parameters, visualization_message
 
@@ -243,7 +232,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         jerk_s = QuarticPoly1D.cumulative_jerk(poly_coefs_s, T_vals)
         jerk_d = QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
 
-        cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS])
+        # TODO: the selection of weights should reflect desired action aggressiveness
+        cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS[1]])
         optimum_time_idx = np.argmin(cost)
 
         optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] and \
@@ -302,13 +292,14 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id=obj_on_road.road_id)
         obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
 
-        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
+        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN],
+                           BP_ACTION_T_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
                            BP_ACTION_T_RES)
 
         A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_vals))
 
         # TODO: should be swapped with current implementation of Predictor.predict_object_on_road
-        obj_saT = 0  # obj_init_fstate[FS_SA]
+        obj_saT = 0
         obj_svT = obj_init_fstate[FS_SV] + obj_saT * T_vals
         obj_sxT = obj_init_fstate[FS_SX] + obj_svT * T_vals + obj_saT * T_vals ** 2 / 2
 
@@ -344,7 +335,8 @@ class SemanticActionsGridPolicy(SemanticActionsPolicy):
         jerk_s = QuinticPoly1D.cumulative_jerk(poly_coefs_s, T_vals)
         jerk_d = QuinticPoly1D.cumulative_jerk(poly_coefs_d, T_vals)
 
-        cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS])
+        # TODO: the selection of weights should reflect desired action aggressiveness
+        cost = np.dot(np.c_[jerk_s, jerk_d, T_vals], np.c_[BP_JERK_S_JERK_D_TIME_WEIGHTS[0]])
         optimum_time_idx = np.argmin(cost)
 
         optimum_time_satisfies_constraints = are_lon_acc_in_limits[optimum_time_idx] and \
