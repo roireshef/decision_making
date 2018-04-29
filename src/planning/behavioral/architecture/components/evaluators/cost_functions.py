@@ -1,10 +1,11 @@
 import numpy as np
 
-from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, LON_ACC_TO_COST_FACTOR, \
-    LAT_ACC_TO_COST_FACTOR, RIGHT_LANE_COST_WEIGHT, EFFICIENCY_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, \
+from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, LON_ACC_TO_JERK_FACTOR, \
+    LAT_ACC_TO_JERK_FACTOR, RIGHT_LANE_COST_WEIGHT, EFFICIENCY_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, \
     BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, BP_METRICS_LANE_DEVIATION_COST_WEIGHT, \
-    EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO
+    EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO, AGGRESSIVENESS_TO_LAT_ACC
 from decision_making.src.planning.behavioral.architecture.components.evaluators.velocity_profile import VelocityProfile
+from decision_making.src.planning.behavioral.architecture.data_objects import AggressivenessLevel
 
 
 class PlanEfficiencyMetric:
@@ -60,26 +61,27 @@ class PlanEfficiencyMetric:
 
 class PlanComfortMetric:
     @staticmethod
-    def calc_cost(vel_profile: VelocityProfile, comfortable_lat_time, max_lat_time: float):
+    def calc_cost(vel_profile: VelocityProfile, T_d, T_d_max: float, aggressiveness: AggressivenessLevel):
         """
         Calculate comfort cost for lateral and longitudinal movement
         :param vel_profile: longitudinal velocity profile
-        :param comfortable_lat_time: comfortable lateral movement time
-        :param max_lat_time: maximal permitted lateral movement time, bounded according to the safety
+        :param T_d: comfortable lateral movement time
+        :param T_d_max: maximal permitted lateral movement time, bounded according to the safety
+        :param aggressiveness: aggressiveness level of the action
         :return: comfort cost in units of the general performance metrics cost
         """
         # TODO: if T is known, calculate jerks analytically
-        if max_lat_time <= 0:
+        if T_d_max <= 0:
             return np.inf
 
         # calculate factor between the comfortable lateral movement time and the required lateral movement time
-        if comfortable_lat_time <= max_lat_time:
+        if T_d <= T_d_max:
             time_factor = 1  # comfortable lane change
         else:
-            time_factor = comfortable_lat_time / max(np.finfo(np.float16).eps, max_lat_time)
-        lat_time = min(comfortable_lat_time, max_lat_time)
-
-        lat_cost = lat_time * (time_factor ** 6) * LAT_ACC_TO_COST_FACTOR * LAT_JERK_COST_WEIGHT
+            time_factor = T_d / max(np.finfo(np.float16).eps, T_d_max)
+        acc_factor = AGGRESSIVENESS_TO_LAT_ACC[aggressiveness.value] / AGGRESSIVENESS_TO_LAT_ACC[0]
+        lat_time = min(T_d, T_d_max)
+        lat_cost = lat_time * (time_factor ** 6) * (acc_factor ** 3) * LAT_ACC_TO_JERK_FACTOR * LAT_JERK_COST_WEIGHT
 
         # longitudinal cost
         acc1 = acc3 = 0
@@ -87,7 +89,7 @@ class PlanComfortMetric:
             acc1 = abs(vel_profile.v_mid - vel_profile.v_init) / vel_profile.t1
         if vel_profile.t3 > 0:
             acc3 = abs(vel_profile.v_tar - vel_profile.v_mid) / vel_profile.t3
-        lon_cost = (vel_profile.t1 * (acc1**3) + vel_profile.t3 * (acc3**3)) * LON_ACC_TO_COST_FACTOR * \
+        lon_cost = (vel_profile.t1 * (acc1**3) + vel_profile.t3 * (acc3**3)) * LON_ACC_TO_JERK_FACTOR * \
                    LON_JERK_COST_WEIGHT
         return lat_cost + lon_cost
 

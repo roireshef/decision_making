@@ -2,7 +2,7 @@ import numpy as np
 
 from decision_making.src.global_constants import AGGRESSIVENESS_TO_LON_ACC, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
     SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS, AGGRESSIVENESS_TO_LAT_ACC
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionType
+from decision_making.src.planning.behavioral.architecture.data_objects import ActionType, AggressivenessLevel
 from decision_making.src.planning.types import FP_SX, LIMIT_MIN
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.state.state import DynamicObject
@@ -58,9 +58,13 @@ class VelocityProfile:
     def total_time(self):
         return self.t1 + self.t2 + self.t3
 
+    def total_dist(self):
+        return 0.5 * ((self.v_init + self.v_mid) * self.t1 + (self.v_mid + self.v_tar) * self.t3) + self.v_mid * self.t2
+
     @classmethod
-    def calc_velocity_profile(cls, action_type: ActionType, lon_init: float, v_init: float, lon_target: float, v_target: float, a_target: float,
-                              aggressiveness_level: int, cars_size_margin: float, min_time: float):
+    def calc_velocity_profile(cls, action_type: ActionType, lon_init: float, v_init: float, lon_target: float,
+                              v_target: float, a_target: float, aggressiveness_level: AggressivenessLevel,
+                              cars_size_margin: float, min_time: float):
         """
         calculate velocities profile for semantic action: either following car or following lane
         :param action_type: [ActionType] type of action
@@ -69,12 +73,12 @@ class VelocityProfile:
         :param lon_target: [m] initial longitude of followed object (None if follow lane)
         :param v_target: [m/s] followed object's velocity or target velocity for follow lane
         :param a_target: [m/s^2] followed object's acceleration
-        :param aggressiveness_level: [int] attribute of the semantic action
+        :param aggressiveness_level: attribute of the semantic action
         :param cars_size_margin: [m] sum of half lengths of ego and target
         :param min_time: [sec] minimal time for the profile
         :return: VelocityProfile class or None in case of infeasible semantic action
         """
-        acc = AGGRESSIVENESS_TO_LON_ACC[aggressiveness_level]  # profile acceleration
+        acc = AGGRESSIVENESS_TO_LON_ACC[aggressiveness_level.value]  # profile acceleration
         v_max = max(BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, v_target)
         if action_type == ActionType.FOLLOW_VEHICLE:
             dist = lon_target - lon_init - SAFE_DIST_TIME_DELAY * v_target - cars_size_margin
@@ -84,7 +88,7 @@ class VelocityProfile:
             return VelocityProfile._calc_velocity_profile_follow_car(v_init, acc, v_max, dist, v_target, a_target, min_time)
         elif action_type == ActionType.FOLLOW_LANE:
             t1 = abs(v_target - v_init) / acc
-            if 1 < t1 < min_time:  # two segments
+            if 0 <= t1 < min_time:  # two segments
                 vel_profile = cls(v_init=v_init, t1=t1, v_mid=v_target, t2=min_time - t1, t3=0, v_tar=v_target)
             else:  # single segment (if too short profile, then choose lower acceleration according to min_time)
                 vel_profile = cls(v_init=v_init, t1=max(t1, min_time), v_mid=v_target, t2=0, t3=0, v_tar=v_target)
@@ -204,9 +208,9 @@ class VelocityProfile:
         t1 = abs(v_max - v_init) / a  # acceleration time
         if a_tar == 0:  # a simple case: the followed car has constant velocity
             t3 = v_max_rel / a  # deceleration time
-            dist_mid = dist - (2 * v_max_rel * v_max_rel - v_init_rel * v_init_rel) / (2 * a)
+            dist_mid = dist - (2*v_max_rel*v_max_rel - v_init_rel*v_init_rel) / (2*a)
             t2 = max(0., dist_mid / v_max_rel)  # constant velocity (max_vel) time
-            return cls(v_init, t1, v_max, t2, t3, v_tar)
+            return cls(v_init, t1, v_max_rel + v_tar, t2, t3, v_tar)
 
         # from now the most general case: t2 > 0 and the followed car has non-zero acceleration
 
@@ -236,19 +240,23 @@ class VelocityProfile:
         return cls(v_init, t1, v_max, t2, t3, v_tar)
 
     @staticmethod
-    def calc_lateral_time(init_lat_vel: float, signed_lat_dist: float, aggressiveness_level: int):
+    def calc_lateral_time(init_lat_vel: float, signed_lat_dist: float, lane_width: float,
+                          aggressiveness_level: AggressivenessLevel):
         """
         Given initial lateral velocity and signed lateral distance, estimate a time it takes to perform the movement.
         The time estimation assumes movement by velocity profile like in the longitudinal case.
         :param init_lat_vel: [m/s] initial lateral velocity
         :param signed_lat_dist: [m] signed distance to the target
+        :param lane_width: [m] lane width
+        :param aggressiveness_level: aggressiveness_level
         :return: [s] the lateral movement time to the target
         """
         if signed_lat_dist > 0:
             lat_v_init_toward_target = init_lat_vel
         else:
             lat_v_init_toward_target = -init_lat_vel
-        lat_acc = AGGRESSIVENESS_TO_LAT_ACC[aggressiveness_level]
+        # normalize lat_acc by lane_width, such that T_d will NOT be depend on lane_width
+        lat_acc = AGGRESSIVENESS_TO_LAT_ACC[aggressiveness_level.value] * lane_width / 3.6
         lateral_profile = VelocityProfile._calc_velocity_profile_follow_car(
             lat_v_init_toward_target, lat_acc, np.inf, abs(signed_lat_dist), 0, 0)
         return lateral_profile.t1 + lateral_profile.t3
@@ -257,26 +265,25 @@ class VelocityProfile:
 class ProfileSafety:
 
     @staticmethod
-    def calc_last_safe_time(ego_fpoint: np.array, ego_half_size: float, vel_profile: VelocityProfile,
-                            dyn_obj: DynamicObject, comfort_lat_time) -> float:
+    def calc_last_safe_time(ego_lon: float, ego_half_size: float, vel_profile: VelocityProfile,
+                            dyn_obj: DynamicObject, T_max: float) -> float:
         """
         Given ego velocity profile and dynamic object, calculate the last time, when the safety complies.
-        :param ego_fpoint: ego initial Frenet point
+        :param ego_lon: ego initial longitude
         :param ego_half_size: [m] half length of ego
         :param vel_profile: ego velocity profile
         :param dyn_obj: the dynamic object, for which the safety is tested
-        :param comfort_lat_time: time for comfortable lane change
+        :param T_max: maximal time to check the safety (usually T_d for safety w.r.t. F and LB)
         :return: the latest safe time
         """
         # check safety until completing the lane change
-        max_time = comfort_lat_time
-        if max_time < 1.:  # if ego is close to target_lat, then don't check safety
+        if T_max <= 0:
             return np.inf
         # initialization of motion parameters
-        (init_s_ego, init_v_obj, a_obj) = (ego_fpoint[FP_SX], dyn_obj.v_x, dyn_obj.acceleration_lon)
+        (init_s_ego, init_v_obj, a_obj) = (ego_lon, dyn_obj.v_x, dyn_obj.acceleration_lon)
         init_s_obj = dyn_obj.road_localization.road_lon
 
-        t, t_cum, s_ego, v_ego, a_ego = vel_profile.get_details(max_time)
+        t, t_cum, s_ego, v_ego, a_ego = vel_profile.get_details(T_max)
         s_ego += init_s_ego
         s_obj = init_s_obj + init_v_obj * t_cum[:-1] + 0.5 * a_obj * t_cum[:-1] * t_cum[:-1]
         v_obj = init_v_obj + a_obj * t_cum[:-1]

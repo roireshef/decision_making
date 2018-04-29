@@ -16,7 +16,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
-BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 60.0
+BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 100.0
 
 # When retrieving the lookahead path of a given dynamic object, we will multiply the path length
 # by the following ratio in order to avoid extrapolation when resampling the path (due to path sampling
@@ -112,11 +112,11 @@ LON_MARGIN_FROM_EGO = 1
 
 # [m/s^2] accelerations for different aggressiveness levels
 AGGRESSIVENESS_TO_LON_ACC = np.array([1, 1.5, 2.25])
-AGGRESSIVENESS_TO_LAT_ACC = np.array([0.3, 0.5, 0.9])
+AGGRESSIVENESS_TO_LAT_ACC = np.array([0.5, 0.7, 1])
 
 # conversion factor from acceleration to comfort cost
-LON_ACC_TO_COST_FACTOR = 0.01
-LAT_ACC_TO_COST_FACTOR = 0.01
+LON_ACC_TO_JERK_FACTOR = 0.2
+LAT_ACC_TO_JERK_FACTOR = 0.2
 
 # [sec] performance metrics for BP minimal plan time
 BP_METRICS_TIME_HORIZON = 20
