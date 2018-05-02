@@ -1,10 +1,10 @@
 from abc import abstractmethod
 from logging import Logger
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe
+from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe, NavigationGoal
 from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
     SemanticBehavioralGridState
 
@@ -30,6 +30,6 @@ class StateActionRecipeEvaluator:
     @abstractmethod
     def evaluate_recipes(self, behavioral_state: SemanticBehavioralGridState,
                          action_recipes: List[ActionRecipe],
-                         action_recipes_mask: List[bool]) -> np.ndarray:
+                         action_recipes_mask: List[bool], goal: Optional[NavigationGoal]) -> np.ndarray:
         # return [self.evaluate_recipe(behavioral_state, action_recipe) for action_recipe in action_recipes]
         pass

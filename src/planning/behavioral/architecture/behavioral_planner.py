@@ -82,7 +82,8 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
 
-        recipes_costs = self.state_action_recipe_evaluator.evaluate_recipes(behavioral_state, action_recipes, recipes_mask)
+        recipes_costs = self.state_action_recipe_evaluator.evaluate_recipes(
+            behavioral_state, action_recipes, recipes_mask, None)
 
         #TODO: delete after debugging
         selected_action_index = int(np.argmin(recipes_costs))

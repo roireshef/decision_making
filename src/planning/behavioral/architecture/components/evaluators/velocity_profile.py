@@ -3,8 +3,7 @@ import numpy as np
 from decision_making.src.global_constants import AGGRESSIVENESS_TO_LON_ACC, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
     SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS, AGGRESSIVENESS_TO_LAT_ACC
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionType, AggressivenessLevel
-from decision_making.src.planning.types import FP_SX, LIMIT_MIN
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.types import FP_SX, LIMIT_MIN, FS_SV, FS_SA
 from decision_making.src.state.state import DynamicObject
 
 
@@ -118,7 +117,7 @@ class VelocityProfile:
 
         MAX_VELOCITY_TOLERANCE = 2.
         v_init_rel = v_init - v_tar  # relative velocity; may be negative
-        v_max_rel = max(v_max - v_tar, max(v_init_rel, MAX_VELOCITY_TOLERANCE))  # let max_vel > end_vel to enable reaching the target car
+        v_max_rel = max(v_max - v_tar, MAX_VELOCITY_TOLERANCE)  # v_max > v_tar to enable reaching the target car
 
         if abs(v_init_rel) < 0.1 and abs(dist) < 0.1:
             return cls(v_init, min_time, v_tar, 0, 0, v_tar)  # just follow the target car for min_time
@@ -205,10 +204,10 @@ class VelocityProfile:
 
         # from now: ego reaches max_vel, such that t2 > 0
 
-        t1 = abs(v_max - v_init) / a  # acceleration time
+        t1 = abs(v_max_rel - v_init_rel) / a  # acceleration time (maybe deceleration)
         if a_tar == 0:  # a simple case: the followed car has constant velocity
             t3 = v_max_rel / a  # deceleration time
-            dist_mid = dist - (2*v_max_rel*v_max_rel - v_init_rel*v_init_rel) / (2*a)
+            dist_mid = dist - (abs(v_max_rel*v_max_rel - v_init_rel*v_init_rel) + v_max_rel*v_max_rel) / (2*a)
             t2 = max(0., dist_mid / v_max_rel)  # constant velocity (max_vel) time
             return cls(v_init, t1, v_max_rel + v_tar, t2, t3, v_tar)
 
@@ -241,7 +240,7 @@ class VelocityProfile:
 
     @staticmethod
     def calc_lateral_time(init_lat_vel: float, signed_lat_dist: float, lane_width: float,
-                          aggressiveness_level: AggressivenessLevel):
+                          aggressiveness_level: AggressivenessLevel) -> [float, float]:
         """
         Given initial lateral velocity and signed lateral distance, estimate a time it takes to perform the movement.
         The time estimation assumes movement by velocity profile like in the longitudinal case.
@@ -249,17 +248,26 @@ class VelocityProfile:
         :param signed_lat_dist: [m] signed distance to the target
         :param lane_width: [m] lane width
         :param aggressiveness_level: aggressiveness_level
-        :return: [s] the lateral movement time to the target
+        :return: [s] the lateral movement time to the target, [m] maximal lateral deviation from lane center
         """
         if signed_lat_dist > 0:
             lat_v_init_toward_target = init_lat_vel
         else:
             lat_v_init_toward_target = -init_lat_vel
-        # normalize lat_acc by lane_width, such that T_d will NOT be depend on lane_width
+        # normalize lat_acc by lane_width, such that T_d will NOT depend on lane_width
         lat_acc = AGGRESSIVENESS_TO_LAT_ACC[aggressiveness_level.value] * lane_width / 3.6
         lateral_profile = VelocityProfile._calc_velocity_profile_follow_car(
             lat_v_init_toward_target, lat_acc, np.inf, abs(signed_lat_dist), 0, 0)
-        return lateral_profile.t1 + lateral_profile.t3
+
+        # calculate total deviation from lane center
+        acc = AGGRESSIVENESS_TO_LAT_ACC[aggressiveness_level.value]
+        rel_lat = abs(signed_lat_dist)/lane_width
+        rel_vel = init_lat_vel/lane_width
+        if signed_lat_dist * init_lat_vel < 0:  # changes lateral direction
+            rel_lat += rel_vel*rel_vel/(2*acc)
+        max_dev = min(2*rel_lat, 1)  # for half-lane deviation, max_dev = 1
+
+        return lateral_profile.t1 + lateral_profile.t3, max_dev
 
 
 class ProfileSafety:
@@ -294,7 +302,7 @@ class ProfileSafety:
         front = int(init_s_ego < init_s_obj)  # 0 if the object is behind ego; 1 otherwise
         back = 1 - front
         if init_s_ego < init_s_obj:
-            time_delay = 0.8  # AV has faster reaction; it's necessary for overtaking of a close car
+            time_delay = 0.8  # AV has faster reaction; TODO: this temp hack is necessary for overtaking of a close car
         else:
             time_delay = SAFE_DIST_TIME_DELAY
 
@@ -305,15 +313,10 @@ class ProfileSafety:
                 continue
             last_safe_time += ProfileSafety._calc_largest_time_for_segment(
                 s[seg, front], v[seg, front], a[seg, front], s[seg, back], v[seg, back], a[seg, back], t[seg],
-                ego_half_size + dyn_obj.size.length/2, time_delay)
-
-            # print('target_lat=%f: last_safe_time=%f s1=%f, v1=%f, s2=%f, v2=%f, t=%f t_cum[seg+1]=%f max_time=%f cur_lat=%f' %
-            #       (target_lat, last_safe_time, s[seg, front], v[seg, front], s[seg, back], v[seg, back], t[seg],
-            #        t_cum[seg+1], max_time, ego_fpoint[FP_DX]))
-
-            if last_safe_time < t_cum[seg+1]:  # becomes unsafe inside this segment
+                ego_half_size + dyn_obj.size.length / 2, time_delay)
+            if last_safe_time < t_cum[seg + 1]:  # becomes unsafe inside this segment
                 return last_safe_time
-        return t_cum[-1]  # always safe
+        return np.inf  # always safe
 
     @staticmethod
     def _calc_largest_time_for_segment(s1: float, v1: float, a1: float, s2: float, v2: float, a2: float,
@@ -344,6 +347,11 @@ class ProfileSafety:
         a_max = -LON_ACC_LIMITS[LIMIT_MIN]
 
         C = s1 - s2 + (v1*v1 - v2*v2)/(2*a_max) - (0.5*a2*time_delay + v2) * time_delay*(1 + a2/a_max) - margin
+
+        #print('safety: s1=%.2f v1=%.2f a1=%.2f  s2=%.2f v2=%.2f a2=%.2f  T=%.2f margin=%.2 C=%.2f A=%.2f B=%.2f' % \
+        #      (s1, v1, a1, s2, v2, a2, T, margin, C, (a1-a2) * (a_max+a1+a2) / (2*a_max), (a1*v1 - a2*v2)/a_max + v1 - v2 - a2*time_delay*(1 + a2/a_max)))
+
+
         if C < 0:
             return -1  # the current state (for t=0) is not safe
         if T == 0:

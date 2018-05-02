@@ -84,13 +84,16 @@ class PlanComfortMetric:
         lat_cost = lat_time * (time_factor ** 6) * (acc_factor ** 3) * LAT_ACC_TO_JERK_FACTOR * LAT_JERK_COST_WEIGHT
 
         # longitudinal cost
-        acc1 = acc3 = 0
-        if vel_profile.t1 > 0:
-            acc1 = abs(vel_profile.v_mid - vel_profile.v_init) / vel_profile.t1
-        if vel_profile.t3 > 0:
-            acc3 = abs(vel_profile.v_tar - vel_profile.v_mid) / vel_profile.t3
-        lon_cost = (vel_profile.t1 * (acc1**3) + vel_profile.t3 * (acc3**3)) * LON_ACC_TO_JERK_FACTOR * \
-                   LON_JERK_COST_WEIGHT
+        lon_cost = 0
+        if vel_profile.t1 + vel_profile.t3 > 0:
+            acc1 = acc3 = 0
+            if vel_profile.t1 > 0:
+                acc1 = abs(vel_profile.v_mid - vel_profile.v_init) / vel_profile.t1
+            if vel_profile.t3 > 0:
+                acc3 = abs(vel_profile.v_tar - vel_profile.v_mid) / vel_profile.t3
+            lon_cost = (vel_profile.t1 * (acc1**3) + vel_profile.t3 * (acc3**3)) * LON_ACC_TO_JERK_FACTOR * \
+                       LON_JERK_COST_WEIGHT
+
         return lat_cost + lon_cost
 
 
@@ -102,5 +105,5 @@ class PlanRightLaneMetric:
 
 class PlanLaneDeviationMetric:
     @staticmethod
-    def calc_cost(lat_time_period: float) -> float:
-        return BP_METRICS_LANE_DEVIATION_COST_WEIGHT * lat_time_period / WERLING_TIME_RESOLUTION
+    def calc_cost(lat_dev: float) -> float:
+        return BP_METRICS_LANE_DEVIATION_COST_WEIGHT * lat_dev*lat_dev / WERLING_TIME_RESOLUTION

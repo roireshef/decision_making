@@ -1,7 +1,12 @@
 from enum import Enum
 from typing import Tuple, List
-
+import numpy as np
+import copy
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
+from decision_making.src.planning.types import FS_DX, FS_SX, FS_DV, FS_SV, FS_SA, C_X, C_Y, C_YAW, C_V, C_K
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.state.state import DynamicObject, State, ObjectSize, EgoState
+from mapping.src.model.localization import RoadLocalization
 
 
 class RelativeLane(Enum):
@@ -98,3 +103,55 @@ class ActionSpec:
 
     def __str__(self):
         return str({k: str(v) for (k, v) in self.__dict__.items()})
+
+
+class NavigationGoal:
+    def __init__(self, road_id: int, lon: float, from_lane: int, to_lane: int):
+        self.road_id = road_id
+        self.lon = lon
+        self.from_lane = from_lane
+        self.to_lane = to_lane
+
+
+class FrenetObject:
+    # def __init__(self, dynamic_object: DynamicObject):
+    #     self.timestamp = dynamic_object.timestamp
+    #     self.road_localization = dynamic_object.road_localization
+    #     self.size = dynamic_object.size
+    #     road_yaw = dynamic_object.road_localization.intra_road_yaw
+    #     self.fstate = np.array([dynamic_object.road_localization.road_lon,
+    #                             dynamic_object.road_longitudinal_speed,
+    #                             dynamic_object.acceleration_lon * np.cos(road_yaw),
+    #                             dynamic_object.road_localization.intra_road_lat,
+    #                             dynamic_object.road_lateral_speed,
+    #                             dynamic_object.acceleration_lon * np.sin(road_yaw)])
+
+    def __init__(self, timestamp: int, fstate: np.array, size: ObjectSize, road_id: int, lane_width: float):
+        self.timestamp = timestamp
+        (lon, lat) = (fstate[FS_SX], fstate[FS_DX])
+        self.road_localization = RoadLocalization(road_id, int(lat/lane_width), lat, lat % lane_width, lon,
+                                                  np.arctan2(fstate[FS_DV], fstate[FS_SV]))
+        self.size = copy.deepcopy(size)
+        self.fstate = copy.deepcopy(fstate)
+
+    def create_dynamic_object(self, obj_id, frenet_frame: FrenetSerret2DFrame) -> DynamicObject:
+        cstate = frenet_frame.fstate_to_cstate(self.fstate)
+        return DynamicObject(obj_id, self.timestamp, cstate[C_X], cstate[C_Y], 0, cstate[C_YAW],
+                             self.size, 0, cstate[C_V], 0, self.fstate[FS_SA], cstate[C_K]*cstate[C_V])
+
+    def create_ego_state(self, frenet_frame: FrenetSerret2DFrame) -> EgoState:
+        obj = self.create_dynamic_object(0, frenet_frame)
+        return EgoState(obj.obj_id, obj.timestamp, obj.x, obj.y, obj.z, obj.yaw, obj.size, obj.confidence,
+                        obj.v_x, obj.v_y, obj.acceleration_lon, obj.omega_yaw, 0)
+
+
+class FrenetState:
+    def __init__(self, ego_state: FrenetObject, dynamic_objects: List[FrenetObject]):
+        self.ego_state = ego_state
+        self.dynamic_objects = dynamic_objects
+
+    def create_state(self, frenet_frame: FrenetSerret2DFrame) -> State:
+        dynamic_objects = []
+        for i, obj in enumerate(self.dynamic_objects):
+            dynamic_objects.append(obj.create_dynamic_object(i+1, frenet_frame))
+        return State(None, dynamic_objects, self.ego_state.create_ego_state(frenet_frame))

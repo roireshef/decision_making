@@ -10,7 +10,7 @@ from decision_making.src.global_constants import SEMANTIC_CELL_LON_FRONT, SEMANT
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.architecture.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.types import FP_SX, FS_SX
+from decision_making.src.planning.types import FP_SX, FS_SX, FS_SV, FS_DX, FS_SA
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.state.state import EgoState
 from decision_making.src.state.state import State, DynamicObject
