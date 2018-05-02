@@ -8,7 +8,9 @@ from decision_making.src.state.state import State, DynamicObject
 
 class RoadCoordinatesPredictor(UnawarePredictor):
     """
-    Performs simple / naive prediction in road coordinates and returns objects with calculated road coordinates
+    Performs simple / naive prediction in road coordinates (road following prediction, constant velocity)
+    and returns objects with calculated and cached road coordinates. This is in order to save coordinate conversion time
+    for the predictor's clients.
     """
 
     def __init__(self, logger: Logger):
