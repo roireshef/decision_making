@@ -50,6 +50,7 @@ SemanticGridCell = Tuple[RelativeLane, RelativeLongitudinalPosition]
 # Define semantic occupancy grid
 RoadSemanticOccupancyGrid = Dict[SemanticGridCell, List[DynamicObject]]
 
+
 class BehavioralGridState(BehavioralState):
     def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState,
                  right_lane_exists: bool, left_lane_exists: bool):
