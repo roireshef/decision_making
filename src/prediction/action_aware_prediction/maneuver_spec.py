@@ -7,7 +7,7 @@ class ManeuverSpec:
         :param T_d: time horizon to complete the action in the d (lateral) axis. In [sec]
         :param T_s: time horizon to complete the action in the s (longitudinal) axis. In [sec]
         :param init_state: initial Frenet state of object
-        :param final_state: initial Frenet state of object
+        :param final_state: final Frenet state of object
         """
         self.T_d = T_d
         self.T_s = T_s
