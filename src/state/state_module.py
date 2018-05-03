@@ -185,14 +185,12 @@ class StateModule(DmModule):
             v_x = self_localization.velocity.v_x
             v_y = self_localization.velocity.v_y
             a_x = self_localization.acceleration.a_x
+            curvature = self_localization.curvature
             size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
             # Update state information under lock
             with self._ego_state_lock:
-                # TODO: replace two last fields with curvature
-                self._ego_state = EgoState(EGO_ID, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, a_x,
-                                           UNKNOWN_DEFAULT_VAL, UNKNOWN_DEFAULT_VAL)
-
+                self._ego_state = EgoState(EGO_ID, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, a_x, curvature)
                 self._ego_state = Transformations.transform_ego_from_origin_to_center(self._ego_state)
 
             self._publish_state_if_full()
