@@ -96,3 +96,13 @@ class Math:
         rounded_val = np.round(value * (1 / step)) / (1 / step)
 
         return rounded_val
+
+    @staticmethod
+    def ind_on_uniform_axis(value, axis):
+        """
+        Returns index of closest value on equally-spaced axis
+        :param value: the value to be looked for on axis
+        :param axis: the axis step
+        :return: index of the closest value on the equally-spaced axis
+        """
+        return np.round(value/(axis[1]-axis[0]))
