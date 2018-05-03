@@ -5,7 +5,8 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_LOOKAHEAD_DIST
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_LOOKAHEAD_DIST, \
+    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO
 from decision_making.src.planning.behavioral.architecture.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
@@ -72,12 +73,12 @@ class BehavioralGridState(BehavioralState):
          ego front).
         :return: road semantic occupancy grid
         """
+        road_id = state.ego_state.road_localization.road_id
+
         # TODO: the relative localization calculated here assumes that all objects are located on the same road.
         # TODO: Fix after demo and calculate longitudinal difference properly in the general case
-        navigation_plan = MapService.get_instance().get_road_based_navigation_plan(
-            current_road_id=state.ego_state.road_localization.road_id)
+        navigation_plan = MapService.get_instance().get_road_based_navigation_plan(current_road_id=road_id)
 
-        road_id = state.ego_state.road_localization.road_id
         road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
         road_frenet = FrenetSerret2DFrame(road_points)
         lanes_num = MapService.get_instance().get_road(road_id).lanes_num
@@ -87,7 +88,7 @@ class BehavioralGridState(BehavioralState):
                                                                         road_frenet)
 
         # for each grid cell - sort the dynamic objects by proximity to ego
-        # Dict[SemanticGridCell, DynamicObject]
+        # Dict[SemanticGridCell, List[DynamicObject]]
         grid_sorted_by_distances = {cell: sorted(obj_dist_list, key=lambda rel_obj: abs(rel_obj.distance))
                                     for cell, obj_dist_list in multi_object_grid}
 
@@ -120,8 +121,11 @@ class BehavioralGridState(BehavioralState):
 
         # We treat the object only if its distance is smaller than the distance we
         # would have travelled for the planning horizon in the average speed between current and target vel.
-        maximal_considered_distance = min(BEHAVIORAL_PLANNING_LOOKAHEAD_DIST, SemanticActionsUtils.
-                                          compute_distance_by_mean_velocity(ego_state.v_x))
+        distance_by_mean_velocity = SemanticActionsUtils.compute_distance_by_mean_velocity(
+            current_velocity=ego_state.v_x,
+            desired_velocity=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED  # TODO: change for road-dependant velocity
+        )
+        maximal_considered_distance = min(BEHAVIORAL_PLANNING_LOOKAHEAD_DIST, distance_by_mean_velocity)
 
         ego_lane = ego_state.road_localization.lane_num
 
