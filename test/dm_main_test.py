@@ -57,6 +57,7 @@ class DmMockInitialization:
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
         trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
+                                                              short_time_predictor=predictor,
                                                               strategy_handlers=strategy_handlers)
         return trajectory_planning_module
 
