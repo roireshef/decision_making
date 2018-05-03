@@ -9,13 +9,13 @@ from decision_making.src.state.state import DynamicObject
 class TrajectoryGenerator(metaclass=ABCMeta):
 
     @abstractmethod
-    def generate_trajectory(self, object_state: DynamicObject,
-                            predicted_maneuver_spec: ManeuverSpec) -> \
-            (FrenetSerret2DFrame, FrenetTrajectory2D):
+    def generate_trajectory(self, object_state: DynamicObject, frenet_frame: FrenetSerret2DFrame,
+                            predicted_maneuver_spec: ManeuverSpec) -> FrenetTrajectory2D:
         """
         Generate a trajectory in Frenet coordiantes, according to object's Frenet frame
+        :param frenet_frame: Frenet reference frame of object
         :param object_state: used for object localization and creation of the Frenet reference frame
         :param predicted_maneuver_spec: specification of the trajectory in Frenet frame.
-        :return: Frenet reference frame, Trajectory in Frenet frame.
+        :return: Trajectory in Frenet frame.
         """
         pass
