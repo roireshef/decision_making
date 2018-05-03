@@ -12,11 +12,10 @@ from decision_making.src.planning.behavioral.architecture.data_objects import Ac
 from decision_making.src.planning.behavioral.architecture.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
     SemanticBehavioralGridState
-from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D
-from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
+from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.planning.utils.math import Math
 from mapping.src.service.map_service import MapService
 
 

@@ -17,7 +17,7 @@ predicate_path = 'fine_predicate_wT_0.10_wJ_2.00.bin'
 wT_str, wJ_str = predicate_path.split('.bin')[0].split('_')[3], predicate_path.split('.bin')[0].split('_')[5]
 
 predicate_shape = (int(v_0_grid.shape[0]), int(a_0_grid.shape[0]), int(s_T_grid.shape[0]), int(v_T_grid.shape[0]))
-predicate = BinaryReadWrite.load(pth=predicate_path, shape=predicate_shape)
+predicate = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
 
 m = [0]
 n = np.arange(st_limits[0], st_limits[1]+EPS, 1)

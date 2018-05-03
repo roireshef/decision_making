@@ -1,11 +1,11 @@
 import sympy as sp
 import numpy as np
-from numpy import frombuffer
 from sympy import symbols
 from sympy.matrices import *
 import time
 from decision_making.src.global_constants import LON_ACC_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS, \
     BP_ACTION_T_LIMITS
+from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 
 
 def create_action_time_cost_func_deriv(w_T, w_J, a_0, v_0, v_T, s_T):
@@ -36,18 +36,6 @@ def create_motion_funcs(a_0, v_0, v_T, s_T, T):
                 10*t**3*(-T**2*a_0 - 6*T*(v_0 + v_T) + 12*s_T + 12*v_T*(T - 2)))/T**5
 
     return delta_s_t_func, v_t_func, a_t_func
-
-
-class BinaryReadWrite:
-    @staticmethod
-    def save(arr, pth):
-        with open(pth, 'wb+') as fh:
-            fh.write(bytearray(arr))
-
-    @staticmethod
-    def load(pth, shape):
-        with open(pth, 'rb') as fh:
-            return frombuffer(fh.read(), dtype='float64').reshape(shape)
 
 
 acc_limits = LON_ACC_LIMITS  # = np.array([-4.0, 3.0])
@@ -149,4 +137,4 @@ if __name__ == "__main__":
 
                         predicate[k, m, i, j] = (is_T_in_range and is_vel_in_range and is_acc_in_range and is_dist_safe)
 
-        BinaryReadWrite.save(arr=predicate, pth='fine_predicate_wT_%.2f_wJ_%.2f.bin' % (w_T, w_J))
+        BinaryReadWrite.save(array=predicate, file_path='fine_predicate_wT_%.2f_wJ_%.2f.bin' % (w_T, w_J))

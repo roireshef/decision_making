@@ -15,7 +15,7 @@ from decision_making.src.planning.behavioral.architecture.data_objects import Ag
 from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
     SemanticBehavioralGridState
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import Poly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import Poly1D
 from decision_making.src.planning.types import FS_SV, FS_SX, FS_SA, FS_DX, FS_DV, FS_DA, \
     FrenetState2D
 

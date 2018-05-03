@@ -105,4 +105,4 @@ class Math:
         :param axis: the axis step
         :return: index of the closest value on the equally-spaced axis
         """
-        return np.round(value/(axis[1]-axis[0]))
+        return np.round((value-axis[0])/(axis[1]-axis[0]))
