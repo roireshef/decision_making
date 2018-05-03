@@ -10,10 +10,7 @@ from decision_making.src.planning.behavioral.behavioral_state import BehavioralS
 
 
 def filter_if_none(action_spec: ActionSpec, behavioral_state: BehavioralState) -> bool:
-    if action_spec and behavioral_state:
-        return True
-    else:
-        return False
+    return (action_spec and behavioral_state) is not None
 
 
 def always_false(action_spec: ActionSpec, behavioral_state: BehavioralState) -> bool:

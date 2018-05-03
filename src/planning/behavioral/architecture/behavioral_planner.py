@@ -12,7 +12,7 @@ from decision_making.src.messages.navigation_plan_message import NavigationPlanM
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.architecture.components.action_space import ActionSpace
+from decision_making.src.planning.behavioral.architecture.components.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.architecture.components.evaluators.rule_based_state_action_evaluator import \
     RuleBasedStateActionEvaluator
 from decision_making.src.planning.behavioral.architecture.components.evaluators.value_approximator import \
@@ -25,9 +25,8 @@ from decision_making.src.planning.behavioral.architecture.behavioral_grid_state 
 from decision_making.src.planning.behavioral.architecture.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import State, ObjectSize, EgoState
+from decision_making.src.state.state import State, ObjectSize
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -43,10 +42,8 @@ class BehavioralPlanner:
         self.predictor = predictor
         self.logger = logger
 
-        self._last_ego_state: Optional[EgoState] = None
         self._last_action: Optional[ActionRecipe] = None
         self._last_action_spec: Optional[ActionSpec] = None
-        self._last_poly_coefs_s: Optional[np.ndarray] = None
 
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
         """
@@ -69,7 +66,6 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
         super().__init__(action_space, action_evaluator, action_validator, value_approximator, predictor, logger)
 
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
-
         action_recipes = self.action_space.recipes
 
         # create road semantic grid from the raw State object
@@ -82,16 +78,13 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
 
-        action_specs = []
         # Action specification
-        for i in range(len(action_recipes)):
-            spec = None
-            if recipes_mask[i]:
-                consistent_behavioral_state = CostBasedBehavioralPlanner._maintain_consistency(self, behavioral_state,
-                                                                                               action_recipes[i])
-                spec = self.action_space.specify_goal(action_recipes[i], consistent_behavioral_state)
+        action_specs = [self.action_space.specify_goal(recipe, behavioral_state) if recipes_mask[i] else None
+                        for i, recipe in enumerate(action_recipes)]
 
-            action_specs.append(spec)
+        num_of_specified_actions = sum(x is not None for x in action_specs)
+        print('Number of actions specified: ', )
+        self.logger.debug('Number of actions specified: %d', num_of_specified_actions)
 
         # ActionSpec filtering
         action_specs_mask = self.action_validator.filter_action_specs(action_specs, behavioral_state)
@@ -101,6 +94,8 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
                                                                          action_specs_mask)
 
         selected_action_index = int(np.argmin(action_costs))
+        print('Selected recipe: ', action_recipes[selected_action_index].__dict__)
+        self.logger.debug('Selected recipe: ', action_recipes[selected_action_index].__dict__)
         selected_action_spec = action_specs[selected_action_index]
 
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(behavioral_state=behavioral_state,
@@ -111,12 +106,12 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
         # keeping selected actions for next iteration use
         self._last_action = action_recipes[selected_action_index]
         self._last_action_spec = selected_action_spec
-        self._last_ego_state = state.ego_state
+        baseline_trajectory = self._last_action_spec.samplable_trajectory
 
         self.logger.debug("Chosen behavioral semantic action is %s, %s",
                           action_recipes[selected_action_index].__dict__, selected_action_spec.__dict__)
 
-        return trajectory_parameters, visualization_message
+        return trajectory_parameters, baseline_trajectory, visualization_message
 
     @staticmethod
     def _generate_trajectory_specs(behavioral_state: BehavioralGridState,
@@ -254,32 +249,3 @@ class CostBasedBehavioralPlanner(BehavioralPlanner):
                                            lat_acceleration_limits=LAT_ACC_LIMITS)
 
         return cost_params
-
-    def _maintain_consistency(self, behavioral_state: BehavioralGridState,
-                              action_recipe: ActionRecipe) -> BehavioralGridState:
-        """
-        Updates behavioral_state in order to maintain consistency.
-        :param behavioral_state: processed behavioral state
-        :param action_recipe:
-        :return: updated behavioral_state [SemanticBehavioralGridState]
-        """
-        ego_state = behavioral_state.ego_state
-
-        consistent_behavioral_state = behavioral_state
-
-        # BP IF - if ego is close to last planned trajectory (in BP), then assume ego is exactly on this trajectory
-        if self._last_action is not None and action_recipe == self._last_action \
-                and LocalizationUtils.is_actual_state_close_to_expected_state(
-            ego_state, self._last_action_spec.samplable_trajectory, self.logger, self.__class__.__name__):
-            ego_cstate = self._last_action_spec.samplable_trajectory.sample(np.array([ego_state.timestamp_in_sec]))[0]
-
-            new_ego_state = ego_state
-            new_ego_state.x, new_ego_state.y, new_ego_state.yaw, new_ego_state.v_x, new_ego_state.acceleration_lon \
-                = ego_cstate[0:5]
-            new_ego_state.steering_angle = np.arctan(
-                new_ego_state.size.length * ego_cstate[5])  # steering_angle=atan(ego_len*curvature)
-            new_ego_state.omega_yaw = new_ego_state.curvature * new_ego_state.v_x
-
-            consistent_behavioral_state.ego_state = new_ego_state
-
-        return consistent_behavioral_state

@@ -1,6 +1,6 @@
 from decision_making.src.planning.behavioral.architecture.components.filtering.recipe_filtering import RecipeFilter
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionRecipe, DynamicActionRecipe, \
-    RelativeLongitudinalPosition, ActionType, RelativeLane
+    RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.architecture.behavioral_grid_state import \
     BehavioralGridState
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
@@ -14,20 +14,15 @@ from decision_making.src.planning.behavioral.behavioral_state import BehavioralS
 
 
 def filter_if_none(recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
-    if recipe and behavioral_state:
-        return True
-    else:
-        return False
+    return (recipe and behavioral_state) is not None
 
 
 def always_false(recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
     return False
 
 
-def filter_if_no_lane(recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
-    return (recipe.relative_lane == RelativeLane.SAME_LANE or
-            (recipe.relative_lane == RelativeLane.RIGHT_LANE and behavioral_state.right_lane_exists) or
-            (recipe.relative_lane == RelativeLane.LEFT_LANE and behavioral_state.left_lane_exists))
+def filter_non_calm_actions(recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> bool:
+    return recipe.aggressiveness == AggressivenessLevel.CALM
 
 # DynamicActionRecipe Filters
 
@@ -50,9 +45,17 @@ def filter_actions_toward_back_and_parallel_cells(recipe: DynamicActionRecipe,
 def filter_over_take_actions(recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
     return recipe.action_type != ActionType.TAKE_OVER_VEHICLE
 
-
 # StaticActionRecipe Filters
 
+
+def filter_if_no_lane(recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
+    return (recipe.relative_lane == RelativeLane.SAME_LANE or
+            (recipe.relative_lane == RelativeLane.RIGHT_LANE and behavioral_state.right_lane_exists) or
+            (recipe.relative_lane == RelativeLane.LEFT_LANE and behavioral_state.left_lane_exists))
+
+
+# Note: From efficiency point of view, the filters should be sorted from the strongest (the one filtering the largest
+# number of recipes) to the weakest.
 
 # Filter list definition
 dynamic_filters = [RecipeFilter(name='filter_if_none', filtering_method=filter_if_none),
@@ -61,7 +64,9 @@ dynamic_filters = [RecipeFilter(name='filter_if_none', filtering_method=filter_i
                    RecipeFilter(name="filter_actions_toward_back_and_parallel_cells",
                                 filtering_method=filter_actions_toward_back_and_parallel_cells),
                    RecipeFilter(name="filter_over_take_actions",
-                                filtering_method=filter_over_take_actions)]
+                                filtering_method=filter_over_take_actions),
+                   RecipeFilter(name='filter_non_calm_actions', filtering_method=filter_non_calm_actions)]
 
 static_filters = [RecipeFilter(name='filter_if_none', filtering_method=filter_if_none),
-                  RecipeFilter(name='filter_if_no_lane', filtering_method=filter_if_no_lane)]
+                  RecipeFilter(name='filter_if_no_lane', filtering_method=filter_if_no_lane),
+                  RecipeFilter(name='filter_non_calm_actions', filtering_method=filter_non_calm_actions)]

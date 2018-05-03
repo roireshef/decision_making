@@ -1,10 +1,10 @@
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionRecipe
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from typing import List
+from typing import List, Any, Callable
 
 
 class RecipeFilter(object):
-    def __init__(self, name, filtering_method):
+    def __init__(self, name: str, filtering_method: Callable[[ActionRecipe, BehavioralState], bool]):
         self.name = name
         self.filtering_method = filtering_method
 
