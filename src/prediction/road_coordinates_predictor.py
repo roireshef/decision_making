@@ -1,12 +1,12 @@
-from typing import List
+from typing import List, Dict
 import numpy as np
 from logging import Logger
 
-from decision_making.src.prediction.unaware_predictor import UnawarePredictor
+from decision_making.src.prediction.action_unaware_predictor import ActionUnawarePredictor
 from decision_making.src.state.state import State, DynamicObject
 
 
-class RoadCoordinatesPredictor(UnawarePredictor):
+class RoadCoordinatesPredictor(ActionUnawarePredictor):
     """
     Performs simple / naive prediction in road coordinates (road following prediction, constant velocity)
     and returns objects with calculated and cached road coordinates. This is in order to save coordinate conversion time
@@ -26,15 +26,16 @@ class RoadCoordinatesPredictor(UnawarePredictor):
         """
         pass
 
-    def predict_object(self, state: State, object_id: int, prediction_timestamps: np.ndarray) -> List[DynamicObject]:
+    def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray) \
+            -> Dict[int, List[DynamicObject]]:
         """
-        Predictes the future of the specified object, for the specified timestamps
+        Predicte the future of the specified objects, for the specified timestamps
         :param state: the initial state to begin prediction from. Though predicting a single object, the full state
         provided to enable flexibility in prediction given state knowledge
-        :param object_id: the specific object to predict
+        :param object_ids: a list of ids of the specific objects to predict
         :param prediction_timestamps: np array of timestamps in [sec] to predict the object for. In ascending order.
         Global, not relative
-        :return: a list of future dynamic objects of the specified object
+        :return: a mapping between object id to the list of future dynamic objects of the matching object
         """
         pass
 

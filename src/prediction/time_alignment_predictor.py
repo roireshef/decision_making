@@ -1,12 +1,12 @@
-from typing import List
+from typing import List, Dict
 import numpy as np
 from logging import Logger
 
-from decision_making.src.prediction.unaware_predictor import UnawarePredictor
+from decision_making.src.prediction.action_unaware_predictor import ActionUnawarePredictor
 from decision_making.src.state.state import State, DynamicObject
 
 
-class TimeAlignmentPredictor(UnawarePredictor):
+class TimeAlignmentPredictor(ActionUnawarePredictor):
     """
     Performs physical prediction for the purpose of short time alignment between ego and dynamic objects.
     Logic should be re-considered if the time horizon gets too large.
@@ -24,15 +24,16 @@ class TimeAlignmentPredictor(UnawarePredictor):
         """
         pass
 
-    def predict_object(self, state: State, object_id: int, prediction_timestamps: np.ndarray) -> List[DynamicObject]:
+    def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray) \
+            -> Dict[int, List[DynamicObject]]:
         """
-        Predictes the future of the specified object, for the specified timestamps
+        Predicte the future of the specified objects, for the specified timestamps
         :param state: the initial state to begin prediction from. Though predicting a single object, the full state
         provided to enable flexibility in prediction given state knowledge
-        :param object_id: the specific object to predict
+        :param object_ids: a list of ids of the specific objects to predict
         :param prediction_timestamps: np array of timestamps in [sec] to predict the object for. In ascending order.
         Global, not relative
-        :return: a list of future dynamic objects of the specified object
+        :return: a mapping between object id to the list of future dynamic objects of the matching object
         """
         pass
 
