@@ -3,6 +3,7 @@ from typing import Union
 
 import numpy as np
 
+from decision_making.src.global_constants import WERLING_TIME_RESOLUTION
 from decision_making.src.planning.types import Limits
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
@@ -286,11 +287,16 @@ class QuinticPoly1D(Poly1D):
         """
         # For quintic polynomials 3rd degree np.roots calculation is in for loop and inefficient.
         # Then in this case check limits by velocities calculation in all sampled points.
-        (min_T, max_T, dt) = (np.min(T_vals), np.max(T_vals), T_vals[1] - T_vals[0])
+        if len(T_vals) > 1:
+            (min_T, max_T, dt) = (np.min(T_vals), np.max(T_vals), T_vals[1] - T_vals[0])
+        else:
+            dt = WERLING_TIME_RESOLUTION
+            min_T = max_T = T_vals[0]
         vel_poly_s = Math.polyder2d(poly_coefs, m=1)
         traj_times = np.arange(dt, max_T - np.finfo(np.float16).eps, dt)  # from dt to max_T-dt
         times = np.array([traj_times, ] * len(T_vals))  # repeat full traj_times for all T_vals
         velocities = Math.zip_polyval2d(vel_poly_s, times)  # get velocities for all T_vals and all t[i,j] < T_vals[i]
         # zero irrelevant velocities to get lower triangular matrix: 0 <= t[i,j] < T_val[i]
-        velocities = np.tril(velocities, int(round(min_T/dt))-2)
+        if len(T_vals) > 1:
+            velocities = np.tril(velocities, int(round(min_T/dt))-2)
         return np.all(NumpyUtils.is_in_limits(velocities, vel_limits), axis=1)

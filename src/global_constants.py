@@ -81,9 +81,9 @@ BP_ACTION_T_RES = 0.05
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
-    [12, 0.05, 0.1],
-    [2, 0.05, 0.1],
-    [0.01, 0.05, 0.1]
+    [12, 0.15, 0.1],
+    [2, 0.15, 0.1],
+    [0.01, 0.15, 0.1]
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
@@ -101,7 +101,7 @@ SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR = 1, 0, 
 SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_RIGHT = 1, 0, -1
 
 # [m/sec] Minimal difference of velocities to justify an overtake
-MIN_OVERTAKE_VEL = 3
+MIN_OVERTAKE_VEL = 3.5
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1

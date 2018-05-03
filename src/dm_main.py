@@ -102,6 +102,11 @@ class DmInitialization:
 
 
 def main():
+    # register termination signal handler
+    logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
+    logger.debug('%d: (DM main) registered signal handler', getpid())
+    catch_interrupt_signals()
+
     modules_list = \
         [
             DmProcess(DmInitialization.create_navigation_planner,
@@ -120,15 +125,13 @@ def main():
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD})
         ]
-    logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
-    logger.debug('%d: (main) registered signal handler', getpid())
-    catch_interrupt_signals()
+
     manager = DmManager(logger, modules_list)
     manager.start_modules()
     try:
         manager.wait_for_submodules()
     except KeyboardInterrupt:
-        logger.info('%d: (main) Interrupted by signal!', getpid())
+        logger.info('%d: (DM main) interrupted by signal', getpid())
         pass
     finally:
         manager.stop_modules()
