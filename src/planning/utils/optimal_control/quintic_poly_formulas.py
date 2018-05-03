@@ -4,10 +4,6 @@ from numpy import frombuffer
 from sympy import symbols
 from sympy.matrices import *
 import time
-from sklearn.utils.extmath import cartesian
-import matplotlib.pyplot as plt
-plt.switch_backend('Qt5Agg')
-
 from decision_making.src.global_constants import LON_ACC_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS, \
     BP_ACTION_T_LIMITS
 
@@ -49,14 +45,9 @@ class BinaryReadWrite:
             fh.write(bytearray(arr))
 
     @staticmethod
-    def load(pth):
+    def load(pth, shape):
         with open(pth, 'rb') as fh:
-            return frombuffer(fh.read(), dtype='float64').reshape((int(s_T_grid.shape[0]), int(v_T_grid.shape[0])))
-
-
-def extents(f):
-    delta = f[1] - f[0]
-    return [f[0] - delta / 2, f[-1] + delta / 2]
+            return frombuffer(fh.read(), dtype='float64').reshape(shape)
 
 
 acc_limits = LON_ACC_LIMITS  # = np.array([-4.0, 3.0])
@@ -69,14 +60,15 @@ vel_limits = VELOCITY_LIMITS  # = np.array([0.0, 20.0])
 
 bp_action_t_limits = BP_ACTION_T_LIMITS  # = np.array([2.0, 20.0])
 
+st_limits = [0, 100]
 
-w_T, w_J = 0.1, 2  # w_T stays the same, w_J is now from [12,2,0.01]
-a_0 = 0
-v_0_grid = np.arange(0, vel_limits[1]+np.finfo(np.float32).eps, 2)
-s_T_grid = np.arange(0, 100+np.finfo(np.float32).eps, 0.5)
-v_T_grid = np.arange(0, vel_limits[1]+np.finfo(np.float32).eps, 0.5)
-predicate = np.zeros(shape=[s_T_grid.shape[0], v_T_grid.shape[0]])
-test_result = np.zeros(shape=[s_T_grid.shape[0], v_T_grid.shape[0]])
+EPS = np.finfo(np.float32).eps
+
+a_0_grid = np.arange(-2, 2+EPS, 0.5)
+v_0_grid = np.arange(vel_limits[0], vel_limits[1]+EPS, 1)
+s_T_grid = np.arange(st_limits[0], st_limits[1]+EPS, 0.5)
+v_T_grid = np.arange(vel_limits[0], vel_limits[1]+EPS, 0.5)
+predicate = np.zeros(shape=[v_0_grid.shape[0], a_0_grid.shape[0], s_T_grid.shape[0], v_T_grid.shape[0]])
 
 
 if __name__ == "__main__":
@@ -125,69 +117,36 @@ if __name__ == "__main__":
 
     optimum_horizon_search_margin = 0.2
 
-    for k, v_0 in enumerate(v_0_grid):
-        print('v_0 is: %f' % v_0)
-        for i, s_T in enumerate(s_T_grid):
-            for j, v_T in enumerate(v_T_grid):
-                # start_time = time.time()
-                lambda_func = create_action_time_cost_func_deriv(w_T, w_J, a_0, v_0, v_T, s_T)
-                t = np.arange(bp_action_t_limits[0]-optimum_horizon_search_margin,
-                              bp_action_t_limits[1]+optimum_horizon_search_margin, 0.001)
-                der = lambda_func(t)
-                ind = np.argwhere(np.abs(der) < 0.01)
-                if len(ind) == 0:
-                    predicate[i, j] = False
-                    continue
-                T = t[ind[0]]
-                # T = float(findroot(lambda_func, [1.8], tol=0.001))
+    for weight in weights:
+        w_J, w_T = weight[0], weight[2]  # w_T stays the same (0.1), w_J is now to be one of [12,2,0.01]
+        print('weights are: %.2f,%.2f' % (w_J, w_T))
+        for k, v_0 in enumerate(v_0_grid):
+            print('v_0 is: %.2f' % v_0)
+            for m, a_0 in enumerate(a_0_grid):
+                for i, s_T in enumerate(s_T_grid):
+                    for j, v_T in enumerate(v_T_grid):
+                        # start_time = time.time()
+                        lambda_func = create_action_time_cost_func_deriv(w_T, w_J, a_0, v_0, v_T, s_T)
+                        t = np.arange(bp_action_t_limits[0]-optimum_horizon_search_margin,
+                                      bp_action_t_limits[1]+optimum_horizon_search_margin, 0.001)
+                        der = lambda_func(t)
+                        ind = np.argwhere(np.abs(der) < 0.01)
+                        if len(ind) == 0:
+                            predicate[k, m, i, j] = False
+                            continue
+                        T = t[ind[0]]
 
-                # print("%s %s", 'exec time:', time.time() - start_time)
-                # print('opt is:', T)
+                        delta_s_t_func, v_t_func, a_t_func = create_motion_funcs(a_0, v_0, v_T, s_T, T)
+                        t = np.arange(0, T, 0.01)
+                        min_delta_s = min(delta_s_t_func(t))
+                        min_v, max_v = min(v_t_func(t)), max(v_t_func(t))
+                        min_a, max_a = min(a_t_func(t)), max(a_t_func(t))
 
-                delta_s_t_func, v_t_func, a_t_func = create_motion_funcs(a_0, v_0, v_T, s_T, T)
-                t = np.arange(0, T, 0.01)
-                min_delta_s = min(delta_s_t_func(t))
-                min_v, max_v = min(v_t_func(t)), max(v_t_func(t))
-                min_a, max_a = min(a_t_func(t)), max(a_t_func(t))
+                        is_T_in_range = (T > bp_action_t_limits[0]) and (T < bp_action_t_limits[1])
+                        is_vel_in_range = (min_v >= vel_limits[0]) and (max_v <= vel_limits[1])
+                        is_acc_in_range = (min_a >= acc_limits[0]) and (max_a <= acc_limits[1])
+                        is_dist_safe = min_delta_s >= 2*v_T
 
-                is_T_in_range = (T > bp_action_t_limits[0]) and (T < bp_action_t_limits[1])
-                is_vel_in_range = (min_v >= vel_limits[0]) and (max_v <= vel_limits[1])
-                is_acc_in_range = (min_a >= acc_limits[0]) and (max_a <= acc_limits[1])
-                is_dist_safe = min_delta_s >= 2*v_T
+                        predicate[k, m, i, j] = (is_T_in_range and is_vel_in_range and is_acc_in_range and is_dist_safe)
 
-                predicate[i, j] = (is_T_in_range and is_vel_in_range and is_acc_in_range and is_dist_safe)
-
-        # BinaryReadWrite.save(arr=predicate, pth='predicate.bin')
-        #
-        # predicate = BinaryReadWrite.load(pth='predicate.bin')
-
-        # for j, v_T in enumerate(v_T_grid):
-        #     for i, s_T in enumerate(s_T_grid):
-        #         if predicate[i, j]:
-        #             print('v_T = %f, s_T = %f' % (v_T, s_T))
-
-        plt.figure(k)
-        plt.imshow(predicate, aspect='auto', interpolation='none', extent=extents(v_T_grid) + extents(s_T_grid),
-                   origin='lower')
-        plt.xlabel(r'$v_T$')
-        plt.ylabel(r'$S_T$')
-        plt.title(r'$v_0=%f, a_0=%f$' % (v_0, a_0))
-        m1 = np.arange(-4, 1.5, 0.5)
-        n1 = np.arange(0, 75, 1)
-        m2 = np.arange(-12.5, -6, 0.5)
-        n2 = np.arange(30, 300, 1)
-        kak = cartesian(m1, n1, m2, n2)
-        for k in kak:
-            k
-        for i, s_T in enumerate(s_T_grid):
-            for j, v_T in enumerate(v_T_grid):
-                test_result[i, j] = ()
-
-    plt.show()
-    print('')
-    # start_time = time.time()
-    # t = np.arange(1.8, 30.0, 0.01)
-    # der = lambda_func(t)
-    # ind = np.argwhere(np.abs(der)<0.005)[0]
-    # print("%s %s", 'exec time:', time.time() - start_time)
-    # print('optimum is %s' % t[ind])
+        BinaryReadWrite.save(arr=predicate, pth='fine_predicate_wT_%.2f_wJ_%.2f.bin' % (w_T, w_J))
