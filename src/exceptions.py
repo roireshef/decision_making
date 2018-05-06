@@ -1,6 +1,11 @@
 import six
 from abc import ABCMeta
 
+
+class NoUniqueObjectStateForEvaluation(Exception):
+    pass
+
+
 class TimeAlignmentPredictionHorizonTooLong(Exception):
     pass
 
