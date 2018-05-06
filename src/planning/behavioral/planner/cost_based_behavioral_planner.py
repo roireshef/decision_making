@@ -1,12 +1,9 @@
+from abc import abstractmethod, ABCMeta
 from logging import Logger
 from typing import Optional
 
 import numpy as np
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.evaluators.state_action_evaluator import StateActionSpecEvaluator
-from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
-from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe
+import six
 
 from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, TRAJECTORY_ARCLEN_RESOLUTION, \
     SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, \
@@ -17,6 +14,12 @@ from decision_making.src.messages.navigation_plan_message import NavigationPlanM
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe
+from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator, \
+    ActionRecipeEvaluator
+from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
+from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
@@ -26,12 +29,14 @@ from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
 
+@six.add_metaclass(ABCMeta)
 class CostBasedBehavioralPlanner:
-    def __init__(self, action_space: ActionSpace, state_action_spec_evaluator: StateActionSpecEvaluator,
-                 action_validator: ActionSpecFiltering, value_approximator: ValueApproximator,
-                 predictor: Predictor, logger: Logger):
+    def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
+                 action_spec_evaluator: Optional[ActionSpecEvaluator], action_validator: ActionSpecFiltering,
+                 value_approximator: ValueApproximator, predictor: Predictor, logger: Logger):
         self.action_space = action_space
-        self.state_action_evaluator = state_action_spec_evaluator
+        self.recipe_evaluator = recipe_evaluator
+        self.state_action_evaluator = action_spec_evaluator
         self.action_validator = action_validator
         self.value_approximator = value_approximator
         self.predictor = predictor
@@ -40,6 +45,7 @@ class CostBasedBehavioralPlanner:
         self._last_action: Optional[ActionRecipe] = None
         self._last_action_spec: Optional[ActionSpec] = None
 
+    @abstractmethod
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
         """
         Given current state and navigation plan, plans the next semantic action to be carried away. This method makes

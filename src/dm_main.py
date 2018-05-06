@@ -76,7 +76,7 @@ class DmInitialization:
         # Init map
         MapService.initialize()
         predictor = RoadFollowingPredictor(logger)
-        behavioral_planner = CostBasedBehavioralPlanner(action_space=None, state_action_spec_evaluator=None,
+        behavioral_planner = CostBasedBehavioralPlanner(action_space=None, action_spec_evaluator=None,
                                                         action_validator=None, value_approximator=None,
                                                         predictor=predictor, logger=logger)
 

@@ -1,18 +1,17 @@
 from logging import Logger
+from typing import Optional
 
 import numpy as np
-from decision_making.src.planning.behavioral.architecture.components.action_space.action_space import ActionSpace
-from decision_making.src.planning.behavioral.architecture.components.evaluators.rule_based_state_action_evaluator import \
-    RuleBasedStateActionEvaluator
-from decision_making.src.planning.behavioral.architecture.components.evaluators.value_approximator import \
-    ValueApproximator
-from decision_making.src.planning.behavioral.architecture.components.filtering.action_spec_filtering import \
-    ActionSpecFiltering
 
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
+from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import \
     BehavioralGridState
+from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionRecipeEvaluator, \
+    ActionSpecEvaluator
+from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
+from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
     CostBasedBehavioralPlanner
 from decision_making.src.prediction.predictor import Predictor
@@ -29,10 +28,12 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
      5.Action Specs are evaluated.
      6.Lowest-Cost ActionSpec is chosen and its parameters are sent to TrajectoryPlanner.
     """
-    def __init__(self, action_space: ActionSpace, action_evaluator: RuleBasedStateActionEvaluator,
-                 action_validator: ActionSpecFiltering,
+
+    def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
+                 action_spec_evaluator: Optional[ActionSpecEvaluator], action_validator: ActionSpecFiltering,
                  value_approximator: ValueApproximator, predictor: Predictor, logger: Logger):
-        super().__init__(action_space, action_evaluator, action_validator, value_approximator, predictor, logger)
+        super().__init__(action_space, recipe_evaluator, action_spec_evaluator, action_validator, value_approximator,
+                         predictor, logger)
 
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
         action_recipes = self.action_space.recipes
@@ -41,7 +42,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # behavioral_state contains road_occupancy_grid and ego_state
         behavioral_state = BehavioralGridState.create_from_state(state=state, logger=self.logger)
 
-        current_state_value = self.value_approximator.evaluate_state(behavioral_state)
+        # TODO: this should evaluate the terminal states!
+        #current_state_value = self.value_approximator.evaluate_state(behavioral_state)
 
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
@@ -57,8 +59,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         action_specs_mask = self.action_validator.filter_action_specs(action_specs, behavioral_state)
 
         # State-Action Evaluation
-        action_costs = self.state_action_evaluator.evaluate_action_specs(behavioral_state, action_recipes, action_specs,
-                                                                         action_specs_mask)
+        action_costs = self.state_action_evaluator.evaluate(behavioral_state, action_recipes, action_specs,
+                                                            action_specs_mask)
 
         selected_action_index = int(np.argmin(action_costs))
         self.logger.debug('Selected recipe: ', action_recipes[selected_action_index].__dict__)
