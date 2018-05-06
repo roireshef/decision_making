@@ -1,6 +1,9 @@
 import six
 from abc import ABCMeta
 
+class TimeAlignmentPredictionHorizonTooLong(Exception):
+    pass
+
 
 class PredictedObjectHasNegativeVelocity(Exception):
     pass
