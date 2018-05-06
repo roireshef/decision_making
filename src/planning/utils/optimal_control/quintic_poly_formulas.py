@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
     cost = (wJ * J + wT * T).simplify()
 
-    cost = cost.subs(s0, 0).subs(aT, 0).subs(Tm, 2)
+    cost = cost.subs(s0, 0).subs(aT, 0)
     cost_diff = sp.diff(cost, T)
 
     print("%s %s", 'init time:', time.time() - start_time)
