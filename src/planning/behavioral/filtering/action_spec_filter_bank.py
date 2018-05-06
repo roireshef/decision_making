@@ -1,7 +1,8 @@
-from decision_making.src.planning.behavioral.architecture.components.filtering.action_spec_filtering import \
-    ActionSpecFilter
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
+from decision_making.src.planning.behavioral.data_objects import ActionSpec
+from decision_making.src.planning.behavioral.filtering import \
+    ActionSpecFilter
+
 
 # NOTE: All methods have to get as input ActionSpec (or one of its children) and  BehavioralState (or one of its
 #       children) even if they don't actually use them.
