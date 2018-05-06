@@ -13,7 +13,7 @@ from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.architecture.behavioral_planner import BehavioralPlanner
+from decision_making.src.planning.behavioral.architecture.behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, C_V, C_A, C_K
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
@@ -22,7 +22,7 @@ from decision_making.src.state.state import State, EgoState
 
 
 class BehavioralPlanningFacade(DmModule):
-    def __init__(self, pubsub: PubSub, logger: Logger, behavioral_planner: BehavioralPlanner,
+    def __init__(self, pubsub: PubSub, logger: Logger, behavioral_planner: CostBasedBehavioralPlanner,
                  short_time_predictor: Predictor, last_trajectory: SamplableTrajectory = None) -> None:
         """
         :param pubsub:
