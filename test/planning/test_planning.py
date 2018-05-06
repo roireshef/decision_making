@@ -17,6 +17,9 @@ from decision_making.src.prediction.road_following_predictor import RoadFollowin
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from mapping.test.model.testable_map_fixtures import map_api_mock
 
+from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, state_module, \
+    navigation_facade, state, trajectory_params, behavioral_visualization_msg, navigation_plan
+
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
