@@ -1,27 +1,26 @@
 import os
 
+from decision_making.paths import Paths
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS
-from decision_making.src.planning.behavioral.architecture.components.filtering.recipe_filtering import RecipeFilter
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionRecipe, DynamicActionRecipe, \
+from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
+from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel
-from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
-    SemanticBehavioralGridState
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
-from decision_making.src.planning.utils.optimal_control.quintic_poly_formulas import v_0_grid, a_0_grid, s_T_grid, \
+from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import v_0_grid, a_0_grid, s_T_grid, \
     v_T_grid
 from mapping.src.service.map_service import MapService
-import os.path
 
 
 # TODO: This code should be moved to some global system_init area and the predicate files to an absolute path:
 predicates = {}
-my_path = os.path.abspath(os.path.dirname(__file__))
-directory = os.path.join(my_path, "../../../../utils/optimal_control/predicates")
+directory = Paths.get_resource_absolute_path_filename('predicates/')
 for filename in os.listdir(directory):
     if filename.endswith(".bin"):
-        predicate_path = str(os.path.join(directory, filename))
+        predicate_path = Paths.get_resource_absolute_path_filename('predicates/%s' % filename)
         wT, wJ = [float(filename.split('.bin')[0].split('_')[3]),
                   float(filename.split('.bin')[0].split('_')[5])]
         predicate_shape = (
@@ -47,7 +46,7 @@ def always_false(recipe: ActionRecipe, behavioral_state: BehavioralState) -> boo
     return False
 
 
-def filter_non_calm_actions(recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> bool:
+def filter_non_calm_actions(recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
     return recipe.aggressiveness == AggressivenessLevel.CALM
 
 
@@ -55,13 +54,13 @@ def filter_non_calm_actions(recipe: ActionRecipe, behavioral_state: SemanticBeha
 
 
 def filter_actions_towards_non_occupied_cells(recipe: DynamicActionRecipe,
-                                              behavioral_state: SemanticBehavioralGridState) -> bool:
+                                              behavioral_state: BehavioralGridState) -> bool:
     recipe_cell = (recipe.relative_lane.value, recipe.relative_lon.value)
     return recipe_cell in behavioral_state.road_occupancy_grid
 
 
 def filter_bad_expected_trajectory(recipe: DynamicActionRecipe,
-                                   behavioral_state: SemanticBehavioralGridState) -> bool:
+                                   behavioral_state: BehavioralGridState) -> bool:
     if recipe.action_type == ActionType.FOLLOW_VEHICLE:
         ego_state = behavioral_state.ego_state
         recipe_cell = (recipe.relative_lane.value, recipe.relative_lon.value)
@@ -70,13 +69,11 @@ def filter_bad_expected_trajectory(recipe: DynamicActionRecipe,
             a_0 = ego_state.acceleration_lon
             dynamic_object = behavioral_state.road_occupancy_grid[recipe_cell][0]
             v_T = dynamic_object.v_x
-            default_navigation_plan = MapService.get_instance().get_road_based_navigation_plan(
-                current_road_id=ego_state.road_localization.road_id)
+            road_id = ego_state.road_localization.road_id
+            road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
+            road_frenet = FrenetSerret2DFrame(road_points)
             # TODO: the following is not accurate because it returns "same-lon" cars distance as 0
-            sT_front, sT_rear = \
-                SemanticBehavioralGridState.calc_relative_distances(behavioral_state.ego_state,
-                                                                    default_navigation_plan, dynamic_object)
-            s_T = sT_front if recipe_cell[1] == RelativeLongitudinalPosition.FRONT else sT_rear
+            s_T = BehavioralGridState.nonoverlapping_longitudinal_distance(ego_state, road_frenet, dynamic_object)
 
             wJ,_,wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.value]
             predicate = predicates[(wT, wJ)]
@@ -91,23 +88,23 @@ def filter_bad_expected_trajectory(recipe: DynamicActionRecipe,
 
 
 def filter_actions_toward_back_cells(recipe: DynamicActionRecipe,
-                                     behavioral_state: SemanticBehavioralGridState) -> bool:
+                                     behavioral_state: BehavioralGridState) -> bool:
     return recipe.relative_lon != RelativeLongitudinalPosition.REAR
 
 
 def filter_actions_toward_back_and_parallel_cells(recipe: DynamicActionRecipe,
-                                                  behavioral_state: SemanticBehavioralGridState) -> bool:
+                                                  behavioral_state: BehavioralGridState) -> bool:
     return recipe.relative_lon == RelativeLongitudinalPosition.FRONT
 
 
-def filter_over_take_actions(recipe: DynamicActionRecipe, behavioral_state: SemanticBehavioralGridState) -> bool:
+def filter_over_take_actions(recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
     return recipe.action_type != ActionType.TAKE_OVER_VEHICLE
 
 
 # StaticActionRecipe Filters
 
 
-def filter_if_no_lane(recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> bool:
+def filter_if_no_lane(recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
     return (recipe.relative_lane == RelativeLane.SAME_LANE or
             (recipe.relative_lane == RelativeLane.RIGHT_LANE and behavioral_state.right_lane_exists) or
             (recipe.relative_lane == RelativeLane.LEFT_LANE and behavioral_state.left_lane_exists))

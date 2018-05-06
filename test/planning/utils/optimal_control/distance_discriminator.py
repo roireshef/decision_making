@@ -1,4 +1,5 @@
-from decision_making.src.planning.utils.optimal_control.quintic_poly_formulas import BinaryReadWrite, s_T_grid, \
+from decision_making.paths import Paths
+from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import BinaryReadWrite, s_T_grid, \
     v_T_grid, v_0_grid, a_0_grid, st_limits, EPS
 from sklearn.utils.extmath import cartesian
 import numpy as np
@@ -13,14 +14,14 @@ def extents(f):
 
 is_plot = False
 
-predicate_path = 'fine_predicate_wT_0.10_wJ_2.00.bin'
+predicate_path = Paths.get_resource_absolute_path_filename('predicates/fine_predicate_wT_0.10_wJ_2.00.bin')
 wT_str, wJ_str = predicate_path.split('.bin')[0].split('_')[3], predicate_path.split('.bin')[0].split('_')[5]
 
 predicate_shape = (int(v_0_grid.shape[0]), int(a_0_grid.shape[0]), int(s_T_grid.shape[0]), int(v_T_grid.shape[0]))
 predicate = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
 
-m = np.arange(-15, -5+EPS, 0.5)
-n = np.arange(15, 250+EPS, 1)
+m = [0]
+n = np.arange(st_limits[0], st_limits[1]+EPS, 1)
 
 discriminators = cartesian([m, n])
 
@@ -40,7 +41,7 @@ for k, v_0 in enumerate(v_0_grid):
         for c, comb in enumerate(discriminators):
             for i, s_T in enumerate(s_T_grid):
                 for j, v_T in enumerate(v_T_grid):
-                    test[i, j] = (s_T <= (comb[0]*v_T+comb[1]))
+                    test[i, j] = (s_T >= comb[1])  # For s_T lower bound
             test_result = np.multiply(test, predicate[k][m])
             if (test_result == predicate[k][m]).all():
                 filter_value[c] = (test == 0).sum()
@@ -50,4 +51,6 @@ for k, v_0 in enumerate(v_0_grid):
             plt.title('comb for v_0=%.2f, a_0=%.2f is: %s' % (v_0, a_0, chosen_discriminator[k][m]))
             plt.show()
 
-BinaryReadWrite.save(chosen_discriminator, 'dynamics_discriminator_wT_%s_wJ_%s_%dX%dX%d.bin' % (wT_str, wJ_str, v_0_grid.shape[0], a_0_grid.shape[0], 2))
+discriminator_file_name = 'distance_discriminator_wT_%s_wJ_%s_%dX%dX%d.bin' % (wT_str, wJ_str, v_0_grid.shape[0], a_0_grid.shape[0], 2)
+discriminator_file_path = Paths.get_resource_absolute_path_filename('discriminators/%s' % discriminator_file_name)
+BinaryReadWrite.save(chosen_discriminator, discriminator_file_path)

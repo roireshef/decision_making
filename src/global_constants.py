@@ -5,7 +5,7 @@ from decision_making.src.messages.str_serializable import StrSerializable
 # General constants
 
 UNKNOWN_DEFAULT_VAL = 0.0
-
+EPS = np.finfo(np.float32).eps
 
 # Communication Layer
 

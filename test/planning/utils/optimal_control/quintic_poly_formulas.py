@@ -3,8 +3,10 @@ import numpy as np
 from sympy import symbols
 from sympy.matrices import *
 import time
+
+from decision_making.paths import Paths
 from decision_making.src.global_constants import LON_ACC_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS, \
-    BP_ACTION_T_LIMITS
+    BP_ACTION_T_LIMITS, EPS
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 
 
@@ -37,24 +39,12 @@ def create_motion_funcs(a_0, v_0, v_T, s_T, T):
     return delta_s_t_func, v_t_func, a_t_func
 
 
-acc_limits = LON_ACC_LIMITS  # = np.array([-4.0, 3.0])
-weights = BP_JERK_S_JERK_D_TIME_WEIGHTS  # = np.array([
-#     [12, 0.05, 0.1],
-#     [2, 0.05, 0.1],
-#     [0.01, 0.05, 0.1]
-# ])
-vel_limits = VELOCITY_LIMITS  # = np.array([0.0, 20.0])
-
-bp_action_t_limits = BP_ACTION_T_LIMITS  # = np.array([2.0, 20.0])
-
 st_limits = [0, 100]
 
-EPS = np.finfo(np.float32).eps
-
-a_0_grid = np.arange(-2, 2+EPS, 0.5)
-v_0_grid = np.arange(vel_limits[0], vel_limits[1]+EPS, 1)
+a_0_grid = np.arange(LON_ACC_LIMITS[0], LON_ACC_LIMITS[1]+EPS, 0.5)
+v_0_grid = np.arange(VELOCITY_LIMITS[0], VELOCITY_LIMITS[1]+EPS, 0.5)
 s_T_grid = np.arange(st_limits[0], st_limits[1]+EPS, 0.5)
-v_T_grid = np.arange(vel_limits[0], vel_limits[1]+EPS, 0.5)
+v_T_grid = np.arange(VELOCITY_LIMITS[0], VELOCITY_LIMITS[1]+EPS, 0.5)
 predicate = np.zeros(shape=[v_0_grid.shape[0], a_0_grid.shape[0], s_T_grid.shape[0], v_T_grid.shape[0]])
 
 
@@ -104,7 +94,7 @@ if __name__ == "__main__":
 
     optimum_horizon_search_margin = 0.2
 
-    for weight in weights:
+    for weight in BP_JERK_S_JERK_D_TIME_WEIGHTS:
         w_J, w_T = weight[0], weight[2]  # w_T stays the same (0.1), w_J is now to be one of [12,2,0.01]
         print('weights are: %.2f,%.2f' % (w_J, w_T))
         for k, v_0 in enumerate(v_0_grid):
@@ -114,8 +104,8 @@ if __name__ == "__main__":
                     for j, v_T in enumerate(v_T_grid):
                         # start_time = time.time()
                         lambda_func = create_action_time_cost_func_deriv(w_T, w_J, a_0, v_0, v_T, s_T, T_m=2)
-                        t = np.arange(bp_action_t_limits[0]-optimum_horizon_search_margin,
-                                      bp_action_t_limits[1]+optimum_horizon_search_margin, 0.001)
+                        t = np.arange(BP_ACTION_T_LIMITS[0]-optimum_horizon_search_margin,
+                                      BP_ACTION_T_LIMITS[1]+optimum_horizon_search_margin, 0.001)
                         der = lambda_func(t)
                         ind = np.argwhere(np.abs(der) < 0.01)
                         if len(ind) == 0:
@@ -136,4 +126,6 @@ if __name__ == "__main__":
 
                         predicate[k, m, i, j] = (is_T_in_range and is_vel_in_range and is_acc_in_range and is_dist_safe)
 
-        BinaryReadWrite.save(array=predicate, file_path='fine_predicate_wT_%.2f_wJ_%.2f.bin' % (w_T, w_J))
+        output_predicate_file_name = 'fine_predicate_wT_%.2f_wJ_%.2f.bin' % (w_T, w_J)
+        output_predicate_file_path = Paths.get_resource_absolute_path_filename('predicates/%s' % output_predicate_file_name)
+        BinaryReadWrite.save(array=predicate, file_path=output_predicate_file_path)
