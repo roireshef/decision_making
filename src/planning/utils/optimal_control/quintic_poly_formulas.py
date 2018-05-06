@@ -8,12 +8,11 @@ from decision_making.src.global_constants import LON_ACC_LIMITS, BP_JERK_S_JERK_
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 
 
-def create_action_time_cost_func_deriv(w_T, w_J, a_0, v_0, v_T, s_T):
+def create_action_time_cost_func_deriv(w_T, w_J, a_0, v_0, v_T, s_T, T_m):
     def action_time_cost_func_deriv(T):
-        return ((T**6*w_T - 9*T**4*a_0**2*w_J - 144*T**3*a_0*v_0*w_J + 144*T**3*a_0*v_T*w_J + 360*T**2*a_0*s_T*w_J
-                - 720*T**2*a_0*v_T*w_J - 576*T**2*v_0**2*w_J + 1152*T**2*v_0*v_T*w_J - 576*T**2*v_T**2*w_J +
-                2880*T*s_T*v_0*w_J - 2880*T*s_T*v_T*w_J - 5760*T*v_0*v_T*w_J + 5760*T*v_T**2*w_J -
-                3600*s_T**2*w_J + 14400*s_T*v_T*w_J - 14400*v_T**2*w_J)/T**6)
+        return (T**6*w_T + 3*w_J*(3*T**4*a_0**2 + 24*T**3*a_0*v_0 - 24*T**3*a_0*v_T + 40*T**2*T_m*a_0*v_T -
+                40*T**2*a_0*s_T + 64*T**2*v_0**2 - 128*T**2*v_0*v_T + 64*T**2*v_T**2 + 240*T*T_m*v_0*v_T -
+                240*T*T_m*v_T**2 - 240*T*s_T*v_0 + 240*T*s_T*v_T + 240*T_m**2*v_T**2 - 480*T_m*s_T*v_T + 240*s_T**2))/T**5
 
     return action_time_cost_func_deriv
 
@@ -114,7 +113,7 @@ if __name__ == "__main__":
                 for i, s_T in enumerate(s_T_grid):
                     for j, v_T in enumerate(v_T_grid):
                         # start_time = time.time()
-                        lambda_func = create_action_time_cost_func_deriv(w_T, w_J, a_0, v_0, v_T, s_T)
+                        lambda_func = create_action_time_cost_func_deriv(w_T, w_J, a_0, v_0, v_T, s_T, T_m=2)
                         t = np.arange(bp_action_t_limits[0]-optimum_horizon_search_margin,
                                       bp_action_t_limits[1]+optimum_horizon_search_margin, 0.001)
                         der = lambda_func(t)
