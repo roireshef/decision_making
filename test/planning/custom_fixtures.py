@@ -22,7 +22,6 @@ from decision_making.test.state.mock_state_module import StateModuleMock
 from gm_lcm import LcmPerceivedDynamicObjectList, LcmDynamicObject, LcmPerceivedDynamicObject, LcmObjectLocation, \
     LcmObjectBbox, LcmObjectVelocity, LcmObjectTrackingStatus
 
-from decision_making_sim.src.global_constants import TIME_ALIGNMENT_PREDICTOR_MAX_HORIZON
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 
