@@ -9,6 +9,8 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedNumpyArray
 from common_data.lcm.generatedFiles.gm_lcm import LcmObjectSize
 from common_data.lcm.generatedFiles.gm_lcm import LcmOccupancyState
 from common_data.lcm.generatedFiles.gm_lcm import LcmState
+
+from decision_making.src.exceptions import NoUniqueObjectStateForEvaluation
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW
 from mapping.src.model.localization import RoadLocalization
@@ -354,4 +356,24 @@ class State(PUBSUB_MSG_IMPL):
         return cls(OccupancyState.deserialize(lcmMsg.occupancy_state)
                  , dynamic_objects
                  , EgoState.deserialize(lcmMsg.ego_state))
+
+    # TODO: remove when access to dynamic objects according to dictionary will be available.
+    @classmethod
+    def get_object_from_state(cls, state, target_obj_id):
+        # type: (State, int) -> DynamicObject
+        """
+        Return the object with specific obj_id from world state
+        :param state: the state to query
+        :param target_obj_id: the id of the requested object
+        :return: the dynamic_object matching the requested id
+        """
+
+        selected_objects = [obj for obj in state.dynamic_objects if obj.obj_id == target_obj_id]
+
+        # Verify that object exists in state exactly once
+        if len(selected_objects) != 1:
+            raise NoUniqueObjectStateForEvaluation(
+                'Found %d matching objects for object ID %d' % (len(selected_objects), target_obj_id))
+
+        return selected_objects[0]
 
