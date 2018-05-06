@@ -3,7 +3,7 @@ from unittest.mock import patch
 import numpy as np
 
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, SEMANTIC_CELL_LAT_RIGHT, \
-    SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_FRONT
+    SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_FRONT, MIN_OVERTAKE_VEL
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.behavioral.policies.semantic_actions_grid_state import \
     SemanticActionsGridState
@@ -25,9 +25,9 @@ def test_evalSemanticActions(predictor):
     pos2 = np.array([41, 0])
     pos3 = np.array([39, 3])
 
-    vel1_list = [v+3, v+0, v-3, v+3, v-3, v+0, v-3, v-3, v+0, v-3]
-    vel2_list = [v+0, v+3, v+0, v-3, v+3, v-3, v-3, v+0, v-3, v-3]
-    vel3_list = [v-3, v-3, v+3, v+0, v+0, v+3, v+0, v-3, v-3, v-3]
+    vel1_list = [v+MIN_OVERTAKE_VEL, v+0, v-MIN_OVERTAKE_VEL, v+MIN_OVERTAKE_VEL, v-MIN_OVERTAKE_VEL, v+0, v-MIN_OVERTAKE_VEL, v-MIN_OVERTAKE_VEL, v+0, v-MIN_OVERTAKE_VEL]
+    vel2_list = [v+0, v+MIN_OVERTAKE_VEL, v+0, v-MIN_OVERTAKE_VEL, v+MIN_OVERTAKE_VEL, v-MIN_OVERTAKE_VEL, v-MIN_OVERTAKE_VEL, v+0, v-MIN_OVERTAKE_VEL, v-MIN_OVERTAKE_VEL]
+    vel3_list = [v-MIN_OVERTAKE_VEL, v-MIN_OVERTAKE_VEL, v+MIN_OVERTAKE_VEL, v+0, v+0, v+MIN_OVERTAKE_VEL, v+0, v-MIN_OVERTAKE_VEL, v-MIN_OVERTAKE_VEL, v-MIN_OVERTAKE_VEL]
     result =    [  0,   0,   1,   0,   1,   0,   2,   1,   0,   1]
 
     for test in range(len(vel1_list)):
