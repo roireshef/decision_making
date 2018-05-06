@@ -19,8 +19,15 @@ from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
+from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
+from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
+from decision_making.src.planning.behavioral.evaluators.rule_based_action_spec_evaluator import \
+    RuleBasedActionSpecEvaluator
+from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
+from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
@@ -76,9 +83,13 @@ class DmInitialization:
         # Init map
         MapService.initialize()
         predictor = RoadFollowingPredictor(logger)
-        behavioral_planner = CostBasedBehavioralPlanner(action_space=None, action_spec_evaluator=None,
-                                                        action_validator=None, value_approximator=None,
-                                                        predictor=predictor, logger=logger)
+        action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger), DynamicActionSpace(logger, predictor)])
+        behavioral_planner = SingleStepBehavioralPlanner(action_space=action_space,
+                                                         recipe_evaluator=None,
+                                                         action_spec_evaluator=RuleBasedActionSpecEvaluator(logger),
+                                                         action_spec_validator=None,
+                                                         value_approximator=ZeroValueApproximator(logger),
+                                                         predictor=predictor, logger=logger)
 
         behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger,
                                                      behavioral_planner=behavioral_planner,

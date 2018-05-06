@@ -30,9 +30,9 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
     """
 
     def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
-                 action_spec_evaluator: Optional[ActionSpecEvaluator], action_validator: ActionSpecFiltering,
+                 action_spec_evaluator: Optional[ActionSpecEvaluator], action_spec_validator: Optional[ActionSpecFiltering],
                  value_approximator: ValueApproximator, predictor: Predictor, logger: Logger):
-        super().__init__(action_space, recipe_evaluator, action_spec_evaluator, action_validator, value_approximator,
+        super().__init__(action_space, recipe_evaluator, action_spec_evaluator, action_spec_validator, value_approximator,
                          predictor, logger)
 
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
@@ -56,7 +56,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self.logger.debug('Number of actions specified: %d', num_of_specified_actions)
 
         # ActionSpec filtering
-        action_specs_mask = self.action_validator.filter_action_specs(action_specs, behavioral_state)
+        action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
 
         # State-Action Evaluation
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs,

@@ -32,12 +32,12 @@ from mapping.src.service.map_service import MapService
 @six.add_metaclass(ABCMeta)
 class CostBasedBehavioralPlanner:
     def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
-                 action_spec_evaluator: Optional[ActionSpecEvaluator], action_validator: ActionSpecFiltering,
+                 action_spec_evaluator: Optional[ActionSpecEvaluator], action_spec_validator: Optional[ActionSpecFiltering],
                  value_approximator: ValueApproximator, predictor: Predictor, logger: Logger):
         self.action_space = action_space
         self.recipe_evaluator = recipe_evaluator
         self.action_spec_evaluator = action_spec_evaluator
-        self.action_validator = action_validator
+        self.action_spec_validator = action_spec_validator or ActionSpecFiltering()
         self.value_approximator = value_approximator
         self.predictor = predictor
         self.logger = logger
