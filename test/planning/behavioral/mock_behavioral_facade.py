@@ -7,12 +7,12 @@ import numpy as np
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
+from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
 from decision_making.src.planning.types import CartesianPoint2D
 from decision_making.test.constants import BP_NEGLIGIBLE_DISPOSITION_LON, BP_NEGLIGIBLE_DISPOSITION_LAT
 
 
-class BehavioralFacadeMock(BehavioralFacade):
+class BehavioralFacadeMock(BehavioralPlanningFacade):
     """
     Operate according to to policy with an empty dummy behavioral state
     """
@@ -25,7 +25,8 @@ class BehavioralFacadeMock(BehavioralFacade):
         :param trajectory_params: the trajectory params message to publish periodically
         :param visualization_msg: the visualization message to publish periodically
         """
-        super().__init__(pubsub=pubsub, logger=logger, policy=None, short_time_predictor=None)
+        super().__init__(pubsub=pubsub, logger=logger, behavioral_planner=None,
+                         short_time_predictor=None, last_trajectory=None)
         self._trajectory_params = trajectory_params
         self._visualization_msg = visualization_msg
 

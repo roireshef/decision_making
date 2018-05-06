@@ -3,8 +3,14 @@ from unittest.mock import MagicMock, patch
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
-from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
-from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
+from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
+from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
+from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
+from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
+from decision_making.src.planning.behavioral.evaluators.state_action_evaluator import StateActionSpecEvaluator
+from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
+from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
+from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -65,11 +71,17 @@ def test_behavioralPlanningFacade_semanticPolicy_anyResult(pubsub: PubSub, state
 
     behavioral_publish_mock = MagicMock()
     predictor = RoadFollowingPredictor(predictor_logger)
-    policy = SemanticActionsGridPolicy(bp_logger, predictor)
+    action_space = ActionSpaceContainer(bp_logger, [StaticActionSpace(bp_logger), DynamicActionSpace(bp_logger, predictor)])
+    state_action_spec_evaluator = StateActionSpecEvaluator(bp_logger)
+    action_validator = ActionSpecFiltering()
+    value_approximator = ValueApproximator(bp_logger)
+    planner = CostBasedBehavioralPlanner(action_space=action_space, state_action_spec_evaluator=state_action_spec_evaluator,
+                                         action_validator=action_validator, value_approximator=value_approximator,
+                                         predictor=predictor, logger=bp_logger)
 
     state_module.periodic_action()
     navigation_facade.periodic_action()
-    behavioral_planner_module = BehavioralFacade(pubsub=pubsub, logger=bp_logger, policy=policy,
+    behavioral_planner_module = BehavioralPlanningFacade(pubsub=pubsub, logger=bp_logger, behavioral_planner=planner,
                                                  short_time_predictor=predictor)
 
     pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, behavioral_publish_mock)

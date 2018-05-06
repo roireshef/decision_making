@@ -19,8 +19,8 @@ from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
-from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
+from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
+from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
@@ -55,7 +55,7 @@ class DmInitialization:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
         MapService.initialize()
-        #TODO: figure out if we want to use OccupancyState at all
+        # TODO: figure out if we want to use OccupancyState at all
         default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
                                                  np.array([0.1], dtype=np.float))
         state_module = StateModule(pubsub, logger, default_occupancy_state, None, None)
@@ -70,16 +70,19 @@ class DmInitialization:
         return navigation_module
 
     @staticmethod
-    def create_behavioral_planner() -> BehavioralFacade:
+    def create_behavioral_planner() -> BehavioralPlanningFacade:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
         # Init map
         MapService.initialize()
         predictor = RoadFollowingPredictor(logger)
-        policy = SemanticActionsGridPolicy(logger=logger, predictor=predictor)
+        behavioral_planner = CostBasedBehavioralPlanner(action_space=None, state_action_spec_evaluator=None,
+                                                        action_validator=None, value_approximator=None,
+                                                        predictor=predictor, logger=logger)
 
-        behavioral_module = BehavioralFacade(pubsub=pubsub, logger=logger, policy=policy,
-                                             short_time_predictor=predictor)
+        behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger,
+                                                     behavioral_planner=behavioral_planner,
+                                                     short_time_predictor=predictor, last_trajectory=None)
         return behavioral_module
 
     @staticmethod
@@ -137,6 +140,6 @@ def main():
     finally:
         manager.stop_modules()
 
+
 if __name__ == '__main__':
     main()
-

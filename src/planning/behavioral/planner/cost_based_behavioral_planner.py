@@ -2,15 +2,11 @@ from logging import Logger
 from typing import Optional
 
 import numpy as np
-from decision_making.src.planning.behavioral.architecture.behavioral_grid_state import \
-    BehavioralGridState
-from decision_making.src.planning.behavioral.architecture.components.evaluators.state_action_evaluator import \
-    StateActionSpecEvaluator
-from decision_making.src.planning.behavioral.architecture.components.evaluators.value_approximator import \
-    ValueApproximator
-from decision_making.src.planning.behavioral.architecture.components.filtering.action_spec_filtering import \
-    ActionSpecFiltering
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.evaluators.state_action_evaluator import StateActionSpecEvaluator
+from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
+from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe
 
 from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, TRAJECTORY_ARCLEN_RESOLUTION, \
     SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, \

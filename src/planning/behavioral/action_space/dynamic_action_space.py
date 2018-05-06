@@ -2,13 +2,12 @@ from logging import Logger
 from typing import Optional
 
 import numpy as np
-from decision_making.src.planning.behavioral.architecture.components.filtering import recipe_filter_bank
-from decision_making.src.planning.behavioral.architecture.components.filtering.recipe_filtering import RecipeFiltering
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, DynamicActionRecipe, \
+from decision_making.src.planning.behavioral.filtering import recipe_filter_bank
+from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     ActionType, RelativeLongitudinalPosition
-from decision_making.src.planning.behavioral.architecture.data_objects import RelativeLane, AggressivenessLevel
-from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
-    SemanticBehavioralGridState
+from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from sklearn.utils.extmath import cartesian
 
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_ACTION_T_RES, SAFE_DIST_TIME_DELAY
@@ -36,7 +35,7 @@ class DynamicActionSpace(ActionSpace):
         self.predictor = predictor
 
     def specify_goal(self, action_recipe: DynamicActionRecipe,
-                     behavioral_state: SemanticBehavioralGridState) -> Optional[ActionSpec]:
+                     behavioral_state: BehavioralGridState) -> Optional[ActionSpec]:
         """
         Given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec.
         Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it.
