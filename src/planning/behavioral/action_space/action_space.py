@@ -4,8 +4,7 @@ from logging import Logger
 from typing import List, Optional
 
 import numpy as np
-from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
-    SemanticBehavioralGridState
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 
 from decision_making.src.exceptions import raises
 from decision_making.src.global_constants import LON_ACC_LIMITS, LAT_ACC_LIMITS, VELOCITY_LIMITS, \
@@ -15,7 +14,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, \
     ActionRecipe
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
-from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import Poly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import Poly1D
 from decision_making.src.planning.types import FS_SV, FS_SX, FS_SA, FS_DX, FS_DV, FS_DA, \
     FrenetState2D
 
@@ -167,7 +166,7 @@ class ActionSpaceContainer:
         return list(itertools.chain.from_iterable(aspace.recipes for aspace in self._action_spaces))
 
     @raises(NotImplemented)
-    def specify_goal(self, action_recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> ActionSpec:
+    def specify_goal(self, action_recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> ActionSpec:
         try:
             return self._recipe_handler[action_recipe].specify_goal(action_recipe, behavioral_state)
         except Exception:
@@ -175,7 +174,7 @@ class ActionSpaceContainer:
                                  action_recipe, str(self._action_spaces))
 
     @raises(NotImplemented)
-    def filter_recipe(self, action_recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> bool:
+    def filter_recipe(self, action_recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
         try:
             return self._recipe_handler[action_recipe].filter_recipe(action_recipe, behavioral_state)
         except Exception:

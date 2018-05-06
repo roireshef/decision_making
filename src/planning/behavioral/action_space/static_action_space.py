@@ -1,19 +1,18 @@
 from typing import Optional
 
 import numpy as np
-from decision_making.src.planning.behavioral.architecture.components.filtering import recipe_filter_bank
-from decision_making.src.planning.behavioral.architecture.components.filtering.recipe_filtering import RecipeFiltering
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, StaticActionRecipe
-from decision_making.src.planning.behavioral.architecture.data_objects import RelativeLane, AggressivenessLevel
-from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
-    SemanticBehavioralGridState
+from decision_making.src.planning.behavioral.filtering import recipe_filter_bank
+from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, StaticActionRecipe
+from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from sklearn.utils.extmath import cartesian
 
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_ACTION_T_RES
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.constants import VELOCITY_STEP, MAX_VELOCITY, MIN_VELOCITY
-from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D, QuarticPoly1D
-from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
+from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from mapping.src.service.map_service import MapService
@@ -27,7 +26,7 @@ class StaticActionSpace(ActionSpace):
                                   for comb in cartesian([RelativeLane, self._velocity_grid, AggressivenessLevel])],
                          recipe_filtering=RecipeFiltering(recipe_filter_bank.static_filters))
 
-    def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: SemanticBehavioralGridState) -> \
+    def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: BehavioralGridState) -> \
             Optional[ActionSpec]:
         ego = behavioral_state.ego_state
         ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
