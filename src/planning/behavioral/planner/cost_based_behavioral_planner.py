@@ -2,6 +2,15 @@ from logging import Logger
 from typing import Optional
 
 import numpy as np
+from decision_making.src.planning.behavioral.architecture.behavioral_grid_state import \
+    BehavioralGridState
+from decision_making.src.planning.behavioral.architecture.components.evaluators.state_action_evaluator import \
+    StateActionSpecEvaluator
+from decision_making.src.planning.behavioral.architecture.components.evaluators.value_approximator import \
+    ValueApproximator
+from decision_making.src.planning.behavioral.architecture.components.filtering.action_spec_filtering import \
+    ActionSpecFiltering
+from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe
 
 from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, TRAJECTORY_ARCLEN_RESOLUTION, \
     SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, \
@@ -11,20 +20,8 @@ from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATI
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
-from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
-from decision_making.src.planning.behavioral.architecture.components.action_space.action_space import ActionSpace
-from decision_making.src.planning.behavioral.architecture.components.evaluators.rule_based_state_action_evaluator import \
-    RuleBasedStateActionEvaluator
-from decision_making.src.planning.behavioral.architecture.components.evaluators.state_action_evaluator import \
-    StateActionSpecEvaluator
-from decision_making.src.planning.behavioral.architecture.components.evaluators.value_approximator import \
-    ValueApproximator
-from decision_making.src.planning.behavioral.architecture.components.filtering.action_spec_filtering import \
-    ActionSpecFiltering
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe
-from decision_making.src.planning.behavioral.architecture.behavioral_grid_state import \
-    BehavioralGridState
-from decision_making.src.planning.behavioral.architecture.semantic_actions_utils import SemanticActionsUtils
+from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
+from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.predictor import Predictor
@@ -198,63 +195,3 @@ class CostBasedBehavioralPlanner:
         return cost_params
 
 
-class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
-    """
-    For each received current-state:
-     1.A behavioral, semantic state is created and its value is approximated.
-     2.The full action-space is enumerated (recipes are generated).
-     3.Recipes are filtered according to some pre-defined rules.
-     4.Recipes are specified so ActionSpecs are created.
-     5.Action Specs are evaluated.
-     6.Lowest-Cost ActionSpec is chosen and its parameters are sent to TrajectoryPlanner.
-    """
-    def __init__(self, action_space: ActionSpace, action_evaluator: RuleBasedStateActionEvaluator,
-                 action_validator: ActionSpecFiltering,
-                 value_approximator: ValueApproximator, predictor: Predictor, logger: Logger):
-        super().__init__(action_space, action_evaluator, action_validator, value_approximator, predictor, logger)
-
-    def plan(self, state: State, nav_plan: NavigationPlanMsg):
-        action_recipes = self.action_space.recipes
-
-        # create road semantic grid from the raw State object
-        # behavioral_state contains road_occupancy_grid and ego_state
-        behavioral_state = SemanticBehavioralGridState.create_from_state(state=state,
-                                                                         logger=self.logger)
-
-        current_state_value = self.value_approximator.evaluate_state(behavioral_state)
-
-        # Recipe filtering
-        recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
-
-        # Action specification
-        action_specs = [self.action_space.specify_goal(recipe, behavioral_state) if recipes_mask[i] else None
-                        for i, recipe in enumerate(action_recipes)]
-
-        num_of_specified_actions = sum(x is not None for x in action_specs)
-        self.logger.debug('Number of actions specified: %d', num_of_specified_actions)
-
-        # ActionSpec filtering
-        action_specs_mask = self.action_validator.filter_action_specs(action_specs, behavioral_state)
-
-        # State-Action Evaluation
-        action_costs = self.state_action_evaluator.evaluate_action_specs(behavioral_state, action_recipes, action_specs,
-                                                                         action_specs_mask)
-
-        selected_action_index = int(np.argmin(action_costs))
-        self.logger.debug('Selected recipe: ', action_recipes[selected_action_index].__dict__)
-        selected_action_spec = action_specs[selected_action_index]
-
-        trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(behavioral_state=behavioral_state,
-                                                                                      action_spec=selected_action_spec,
-                                                                                      navigation_plan=nav_plan)
-        visualization_message = BehavioralVisualizationMsg(reference_route=trajectory_parameters.reference_route)
-
-        # keeping selected actions for next iteration use
-        self._last_action = action_recipes[selected_action_index]
-        self._last_action_spec = selected_action_spec
-        baseline_trajectory = self._last_action_spec.samplable_trajectory
-
-        self.logger.debug("Chosen behavioral semantic action is %s, %s",
-                          action_recipes[selected_action_index].__dict__, selected_action_spec.__dict__)
-
-        return trajectory_parameters, baseline_trajectory, visualization_message

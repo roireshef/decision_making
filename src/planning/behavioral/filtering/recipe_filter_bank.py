@@ -1,9 +1,10 @@
-from decision_making.src.planning.behavioral.architecture.components.filtering.recipe_filtering import RecipeFilter
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel
-from decision_making.src.planning.behavioral.architecture.behavioral_grid_state import \
+
+from decision_making.src.planning.behavioral.behavioral_grid_state import \
     BehavioralGridState
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
+from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
 
 
 # NOTE: All methods have to get as input ActionRecipe (or one of its children) and  BehavioralState (or one of its

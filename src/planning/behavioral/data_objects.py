@@ -1,7 +1,7 @@
 from enum import Enum
-from typing import Tuple, List
+from typing import List
 
-from decision_making.src.planning.behavioral.architecture.behavioral_grid_state import RelativeLane, \
+from decision_making.src.planning.behavioral.behavioral_grid_state import RelativeLane, \
     RelativeLongitudinalPosition
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 

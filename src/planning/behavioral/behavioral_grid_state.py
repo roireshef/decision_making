@@ -8,8 +8,8 @@ import numpy as np
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_LOOKAHEAD_DIST, \
     BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO
-from decision_making.src.planning.behavioral.architecture.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
+from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.types import FP_SX, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.state.state import EgoState

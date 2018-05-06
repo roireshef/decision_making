@@ -3,9 +3,9 @@ from logging import Logger
 from typing import List
 
 import numpy as np
-
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe
-from decision_making.src.planning.behavioral.architecture.behavioral_grid_state import \
+
+from decision_making.src.planning.behavioral.behavioral_grid_state import \
     BehavioralGridState
 
 
