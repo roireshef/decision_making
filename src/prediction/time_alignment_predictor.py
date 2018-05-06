@@ -3,9 +3,9 @@ import numpy as np
 from logging import Logger
 
 from decision_making.src.exceptions import TimeAlignmentPredictionHorizonTooLong
+from decision_making.src.global_constants import TIME_ALIGNMENT_PREDICTOR_MAX_HORIZON
 from decision_making.src.prediction.action_unaware_predictor import ActionUnawarePredictor
 from decision_making.src.state.state import State, DynamicObject
-from decision_making_sim.src.global_constants import TIME_ALIGNMENT_PREDICTOR_MAX_HORIZON
 from prediction_research.src.utils.state_utils import get_object_from_state
 
 

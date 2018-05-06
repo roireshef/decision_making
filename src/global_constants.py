@@ -246,3 +246,6 @@ LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME = "BehavioralFacade._periodic_action_impl t
 
 # Resolution of car timestamps in sec
 TIMESTAMP_RESOLUTION_IN_SEC = 1e-9
+
+# Maximal prediction horizon in [sec] for short-time alignment predictor
+TIME_ALIGNMENT_PREDICTOR_MAX_HORIZON = 0.4
