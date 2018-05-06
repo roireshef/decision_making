@@ -243,3 +243,6 @@ LOG_MSG_RECEIVED_STATE = "Received state"
 LOG_MSG_STATE_MODULE_PUBLISH_STATE = "publishing state"
 LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME = "TrajectoryPlanningFacade._periodic_action_impl time"
 LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME = "BehavioralFacade._periodic_action_impl time"
+
+# Resolution of car timestamps in sec
+TIMESTAMP_RESOLUTION_IN_SEC = 1e-9

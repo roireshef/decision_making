@@ -3,7 +3,7 @@ import numpy as np
 
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
-    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST, LAT_JERK_COST
+    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST, LAT_JERK_COST, TIMESTAMP_RESOLUTION_IN_SEC
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
@@ -21,8 +21,13 @@ from decision_making.test.planning.trajectory.mock_trajectory_planning_facade im
 from decision_making.test.state.mock_state_module import StateModuleMock
 from gm_lcm import LcmPerceivedDynamicObjectList, LcmDynamicObject, LcmPerceivedDynamicObject, LcmObjectLocation, \
     LcmObjectBbox, LcmObjectVelocity, LcmObjectTrackingStatus
+
+from decision_making_sim.src.global_constants import TIME_ALIGNMENT_PREDICTOR_MAX_HORIZON
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
+
+UPDATED_TIMESTAMP_PARAM = 'updated_timestamp'
+OLD_TIMESTAMP_PARAM = 'old_timestamp'
 
 ### MESSAGES ###
 
@@ -156,6 +161,23 @@ def state():
     ego_state = EgoState(0, 0, 1, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
     yield State(occupancy_state, dynamic_objects, ego_state)
 
+
+@pytest.fixture(scope='function')
+def state_with_old_object(request) -> State:
+    """
+    :return: a state object with an old object
+    """
+    updated_timestamp = request.param[UPDATED_TIMESTAMP_PARAM]
+    old_timestamp = request.param[OLD_TIMESTAMP_PARAM]
+
+    occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+    dyn1 = DynamicObject(1, updated_timestamp, 0.1, 0.1, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
+    dyn2 = DynamicObject(2, old_timestamp, 10.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
+    dynamic_objects = [dyn1, dyn2]
+    size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
+    ego_state = EgoState(1, old_timestamp, 1, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
+
+    yield State(occupancy_state, dynamic_objects, ego_state)
 
 @pytest.fixture(scope='function')
 def ego_state_fix():
