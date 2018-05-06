@@ -16,7 +16,7 @@ class ActionUnawarePredictor(metaclass=ABCMeta):
     @abstractmethod
     def predict_state(self, state: State, prediction_timestamps: np.ndarray) -> List[State]:
         """
-        Predictes the future states of the given state, for the specified timestamps
+        Predicts the future states of the given state, for the specified timestamps
         :param state: the initial state to begin prediction from
         :param prediction_timestamps: np array of timestamps in [sec] to predict states for. In ascending order.
         Global, not relative
@@ -28,7 +28,7 @@ class ActionUnawarePredictor(metaclass=ABCMeta):
     def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray) \
             -> Dict[int, List[DynamicObject]]:
         """
-        Predicte the future of the specified objects, for the specified timestamps
+        Predicts the future of the specified objects, for the specified timestamps
         :param state: the initial state to begin prediction from. Though predicting a single object, the full state
         provided to enable flexibility in prediction given state knowledge
         :param object_ids: a list of ids of the specific objects to predict
