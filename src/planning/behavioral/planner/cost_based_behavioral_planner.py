@@ -36,7 +36,7 @@ class CostBasedBehavioralPlanner:
                  value_approximator: ValueApproximator, predictor: Predictor, logger: Logger):
         self.action_space = action_space
         self.recipe_evaluator = recipe_evaluator
-        self.state_action_evaluator = action_spec_evaluator
+        self.action_spec_evaluator = action_spec_evaluator
         self.action_validator = action_validator
         self.value_approximator = value_approximator
         self.predictor = predictor

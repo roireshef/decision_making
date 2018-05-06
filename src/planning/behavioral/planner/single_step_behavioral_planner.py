@@ -59,8 +59,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         action_specs_mask = self.action_validator.filter_action_specs(action_specs, behavioral_state)
 
         # State-Action Evaluation
-        action_costs = self.state_action_evaluator.evaluate(behavioral_state, action_recipes, action_specs,
-                                                            action_specs_mask)
+        action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs,
+                                                           action_specs_mask)
 
         selected_action_index = int(np.argmin(action_costs))
         self.logger.debug('Selected recipe: ', action_recipes[selected_action_index].__dict__)
