@@ -10,13 +10,15 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane, A
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from sklearn.utils.extmath import cartesian
 
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_ACTION_T_RES, SAFE_DIST_TIME_DELAY
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_ACTION_T_RES, SAFE_DIST_TIME_DELAY, \
+    BP_JERK_S_JERK_D_TIME_WEIGHTS
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.types import FP_SX, LIMIT_MAX, FS_SV, FS_SX, LIMIT_MIN
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.utils.optimal_control.quintic_poly_formulas import create_action_time_cost_func_deriv
 from decision_making.src.prediction.predictor import Predictor
 from mapping.src.service.map_service import MapService
 
@@ -50,8 +52,8 @@ class DynamicActionSpace(ActionSpace):
         road_frenet = FrenetSerret2DFrame(road_points)
         ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cstate)
 
-        target_obj = behavioral_state.road_occupancy_grid[(action_recipe.relative_lane.value,
-                                                           action_recipe.relative_lon.value)][0]
+        recipe_cell = (action_recipe.relative_lane.value, action_recipe.relative_lon.value)
+        target_obj = behavioral_state.road_occupancy_grid[recipe_cell][0]
         target_obj_fpoint = road_frenet.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))
         _, _, _, road_curvature_at_obj_location, _ = road_frenet._taylor_interp(target_obj_fpoint[FP_SX])
         obj_init_fstate = road_frenet.cstate_to_fstate(np.array([
@@ -67,34 +69,31 @@ class DynamicActionSpace(ActionSpace):
         road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id=obj_on_road.road_id)
         obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
 
-        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
-                           BP_ACTION_T_RES)
+        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN] - optimum_horizon_search_margin,
+                           BP_ACTION_T_LIMITS[LIMIT_MAX] + optimum_horizon_search_margin + np.finfo(np.float16).eps,
+                           0.001)
 
-        # TODO: should be swapped with current implementation of Predictor.predict_object_on_road
-        obj_saT = 0  # obj_init_fstate[FS_SA]
-        obj_svT = obj_init_fstate[FS_SV] + obj_saT * T_vals
-        obj_sxT = obj_init_fstate[FS_SX] + obj_svT * T_vals + obj_saT * T_vals ** 2 / 2
+        w_T, _, w_J = BP_JERK_S_JERK_D_TIME_WEIGHTS[action_recipe.aggressiveness.value]
+        v_0, a_0 = ego_init_fstate[FS_SV], ego_init_fstate[FS_SA]
+        v_T = obj_init_fstate[FS_SV]
 
-        safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
+        obj_dist = BehavioralGridState.nonoverlapping_longitudinal_distance(ego, road_frenet, target_obj)
         lon_margin = SemanticActionsUtils.get_ego_lon_margin(ego.size) + target_obj.size.length / 2
 
+        # Note: create_action_time_cost_func_deriv assumes constant-velocity moving objects
         if action_recipe.action_type == ActionType.FOLLOW_VEHICLE:
-            desired_lon = obj_sxT - safe_lon_dist - lon_margin
+            lambda_func = create_action_time_cost_func_deriv(w_T, w_J, a_0, v_0, v_T, obj_dist + lon_margin, T_m=2)
         elif action_recipe.action_type == ActionType.TAKE_OVER_VEHICLE:
-            desired_lon = obj_sxT + safe_lon_dist + lon_margin
+            lambda_func = create_action_time_cost_func_deriv(w_T, w_J, a_0, v_0, v_T, obj_dist - lon_margin, T_m=-2)
         else:
             raise NotImplemented("Action Type %s is not handled in DynamicActionSpace specification",
                                  action_recipe.action_type)
 
-        constraints_s = ActionSpace.define_lon_constraints(len(T_vals), ego_init_fstate, obj_saT, obj_svT, desired_lon)
-        constraints_d = ActionSpace.define_lat_constraints(len(T_vals), ego_init_fstate, obj_center_lane_latitude)
-        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_vals))
+        der = lambda_func(T_vals)
+        ind = np.argwhere(np.abs(der) < 0.01)
+        T = T_vals[ind[0]]
 
-        # solve for s(t) and d(t)
-        poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
-        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
-
-        optimum_time_idx, optimum_time_satisfies_constraints = ActionSpace.find_optimum_planning_time(T_vals,
+        optimum_time_idx, optimum_time_satisfies_constraints = ActionSpace.find_optimum_planning_time(T,
                                                                                                       poly_coefs_s,
                                                                                                       QuinticPoly1D,
                                                                                                       poly_coefs_d,
