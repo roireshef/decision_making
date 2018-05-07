@@ -4,7 +4,7 @@ import numpy as np
 
 from decision_making.src.exceptions import TimeAlignmentPredictionHorizonTooLong
 from decision_making.src.global_constants import TIMESTAMP_RESOLUTION_IN_SEC, TIME_ALIGNMENT_PREDICTOR_MAX_HORIZON
-from decision_making.src.prediction.time_alignment_predictor import TimeAlignmentPredictor
+from decision_making.src.prediction.action_unaware_prediction.time_alignment_predictor import TimeAlignmentPredictor
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.planning.custom_fixtures import state_with_old_object, UPDATED_TIMESTAMP_PARAM, \
     OLD_TIMESTAMP_PARAM

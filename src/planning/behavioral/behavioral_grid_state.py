@@ -90,11 +90,11 @@ class BehavioralGridState(BehavioralState):
         # for each grid cell - sort the dynamic objects by proximity to ego
         # Dict[SemanticGridCell, List[DynamicObject]]
         grid_sorted_by_distances = {cell: sorted(obj_dist_list, key=lambda rel_obj: abs(rel_obj.distance))
-                                    for cell, obj_dist_list in multi_object_grid}
+                                    for cell, obj_dist_list in multi_object_grid.items()}
 
         # for each grid cell - returns the closest object to ego vehicle
         closest_object_grid = {cell: sorted_obj_dist_list[0].dynamic_object
-                               for cell, sorted_obj_dist_list in grid_sorted_by_distances}
+                               for cell, sorted_obj_dist_list in grid_sorted_by_distances.items()}
 
         ego_lane = state.ego_state.road_localization.lane_num
 
@@ -130,7 +130,7 @@ class BehavioralGridState(BehavioralState):
         ego_lane = ego_state.road_localization.lane_num
 
         # We consider only object on the adjacent lanes
-        adjecent_lanes = map(int, RelativeLane)
+        adjecent_lanes = [x.value for x in RelativeLane]
         objects_in_adjecent_lanes = [obj for obj in objects if obj.road_localization.lane_num-ego_lane in adjecent_lanes]
 
         for obj in objects_in_adjecent_lanes:

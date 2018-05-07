@@ -18,8 +18,15 @@ from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
-from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
+from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
+from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
+from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
+from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
+from decision_making.src.planning.behavioral.evaluators.rule_based_action_spec_evaluator import \
+    RuleBasedActionSpecEvaluator
+from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
+from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
+from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -54,7 +61,7 @@ class DmInitialization:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
         MapService.initialize()
-        #TODO: figure out if we want to use OccupancyState at all
+        # TODO: figure out if we want to use OccupancyState at all
         default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
                                                  np.array([0.1], dtype=np.float))
         state_module = StateModule(pubsub, logger, default_occupancy_state, None, None)
@@ -69,16 +76,23 @@ class DmInitialization:
         return navigation_module
 
     @staticmethod
-    def create_behavioral_planner() -> BehavioralFacade:
+    def create_behavioral_planner() -> BehavioralPlanningFacade:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
         # Init map
         MapService.initialize()
         predictor = RoadFollowingPredictor(logger)
-        policy = SemanticActionsGridPolicy(logger=logger, predictor=predictor)
+        action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger), DynamicActionSpace(logger, predictor)])
+        behavioral_planner = SingleStepBehavioralPlanner(action_space=action_space,
+                                                         recipe_evaluator=None,
+                                                         action_spec_evaluator=RuleBasedActionSpecEvaluator(logger),
+                                                         action_spec_validator=None,
+                                                         value_approximator=ZeroValueApproximator(logger),
+                                                         predictor=predictor, logger=logger)
 
-        behavioral_module = BehavioralFacade(pubsub=pubsub, logger=logger, policy=policy,
-                                             short_time_predictor=predictor)
+        behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger,
+                                                     behavioral_planner=behavioral_planner,
+                                                     short_time_predictor=predictor, last_trajectory=None)
         return behavioral_module
 
     @staticmethod
@@ -136,6 +150,6 @@ def main():
     finally:
         manager.stop_modules()
 
+
 if __name__ == '__main__':
     main()
-
