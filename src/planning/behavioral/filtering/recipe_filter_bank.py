@@ -65,9 +65,10 @@ def filter_bad_expected_trajectory(recipe: DynamicActionRecipe,
         if recipe_cell in behavioral_state.road_occupancy_grid:
             v_0 = ego_state.v_x
             a_0 = ego_state.acceleration_lon
-            dynamic_object = behavioral_state.road_occupancy_grid[recipe_cell][0].dynamic_object
+            relative_dynamic_object = behavioral_state.road_occupancy_grid[recipe_cell][0]
+            dynamic_object = relative_dynamic_object.dynamic_object
             # TODO: the following is not accurate because it returns "same-lon" cars distance as 0
-            s_T = behavioral_state.road_occupancy_grid[recipe_cell][0].distance
+            s_T = relative_dynamic_object.distance
             v_T = dynamic_object.v_x
             wJ,_,wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.value]
             predicate = predicates[(wT, wJ)]

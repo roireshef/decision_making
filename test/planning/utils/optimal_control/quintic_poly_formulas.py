@@ -41,10 +41,15 @@ def create_motion_funcs(a_0, v_0, v_T, s_T, T):
 
 st_limits = [0, 100]
 
-a_0_grid = np.arange(LON_ACC_LIMITS[0], LON_ACC_LIMITS[1]+EPS, 0.5)
-v_0_grid = np.arange(VELOCITY_LIMITS[0], VELOCITY_LIMITS[1]+EPS, 0.5)
-s_T_grid = np.arange(st_limits[0], st_limits[1]+EPS, 1)
-v_T_grid = np.arange(VELOCITY_LIMITS[0], VELOCITY_LIMITS[1]+EPS, 0.5)
+v_0_grid = np.arange(VELOCITY_LIMITS[0], VELOCITY_LIMITS[1] + EPS, 1)
+a_0_grid = np.arange(-2, 2 + EPS, 0.5)
+s_T_grid = np.arange(st_limits[0], st_limits[1] + EPS, 0.5)
+v_T_grid = np.arange(VELOCITY_LIMITS[0], VELOCITY_LIMITS[1] + EPS, 0.5)
+
+# a_0_grid = np.arange(LON_ACC_LIMITS[0], LON_ACC_LIMITS[1]+EPS, 0.5)
+# v_0_grid = np.arange(VELOCITY_LIMITS[0], VELOCITY_LIMITS[1]+EPS, 0.5)
+# s_T_grid = np.arange(st_limits[0], st_limits[1]+EPS, 1)
+# v_T_grid = np.arange(VELOCITY_LIMITS[0], VELOCITY_LIMITS[1]+EPS, 0.5)
 predicate = np.full(shape=[v_0_grid.shape[0], a_0_grid.shape[0], s_T_grid.shape[0], v_T_grid.shape[0]], fill_value=False)
 
 if __name__ == "__main__":
