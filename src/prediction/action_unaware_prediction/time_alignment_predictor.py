@@ -4,9 +4,8 @@ from logging import Logger
 
 from decision_making.src.exceptions import TimeAlignmentPredictionHorizonTooLong
 from decision_making.src.global_constants import TIME_ALIGNMENT_PREDICTOR_MAX_HORIZON
-from decision_making.src.prediction.action_unaware_predictor import ActionUnawarePredictor
+from decision_making.src.prediction.action_unaware_prediction.action_unaware_predictor import ActionUnawarePredictor
 from decision_making.src.state.state import State, DynamicObject
-from prediction_research.src.utils.state_utils import get_object_from_state
 
 
 class TimeAlignmentPredictor(ActionUnawarePredictor):
@@ -65,7 +64,7 @@ class TimeAlignmentPredictor(ActionUnawarePredictor):
         """
 
         # Find object with oldest timestamp
-        predicted_objects_timestamps = [get_object_from_state(state=state, target_obj_id=obj_id).timestamp_in_sec for
+        predicted_objects_timestamps = [State.get_object_from_state(state=state, target_obj_id=obj_id).timestamp_in_sec for
                                         obj_id in object_ids]
         predicted_objects_timestamps = np.r_[predicted_objects_timestamps, state.ego_state.timestamp_in_sec]
         oldest_timestamp = np.min(predicted_objects_timestamps)

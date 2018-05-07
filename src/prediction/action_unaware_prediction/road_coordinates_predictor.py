@@ -2,7 +2,7 @@ from typing import List, Dict
 import numpy as np
 from logging import Logger
 
-from decision_making.src.prediction.action_unaware_predictor import ActionUnawarePredictor
+from decision_making.src.prediction.action_unaware_prediction.action_unaware_predictor import ActionUnawarePredictor
 from decision_making.src.state.state import State, DynamicObject
 
 

@@ -29,6 +29,7 @@ class ActionAwarePredictor(metaclass=ABCMeta):
         """
         pass
 
+    @abstractmethod
     def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray,
                         action_trajectory: SamplableTrajectory) -> Dict[int, List[DynamicObject]]:
         """

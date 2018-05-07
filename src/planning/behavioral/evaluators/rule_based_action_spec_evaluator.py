@@ -2,31 +2,29 @@ from logging import Logger
 from typing import List
 
 import numpy as np
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec, ActionRecipe, \
-    SemanticGridCell, LAT_CELL
 
 from decision_making.src.exceptions import BehavioralPlanningException
-from decision_making.src.global_constants import SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT, \
-    SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_RIGHT, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MIN_OVERTAKE_VEL, \
-    SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR, SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MIN_OVERTAKE_VEL, \
+    SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import \
-    BehavioralGridState
-from decision_making.src.planning.behavioral.evaluators.state_action_evaluator import \
-    StateActionSpecEvaluator
-from decision_making.src.planning.types import FrenetPoint, FP_SX
+    BehavioralGridState, SemanticGridCell, RelativeLane, RelativeLongitudinalPosition
+from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec
+from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
+    ActionSpecEvaluator
+from decision_making.src.planning.types import FrenetPoint, FP_SX, LAT_CELL
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from mapping.src.service.map_service import MapService
 
 
-class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
+class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
 
     def __init__(self, logger: Logger):
         super().__init__(logger)
 
-    def evaluate_action_specs(self, behavioral_state: BehavioralGridState,
-                              action_recipes: List[ActionRecipe],
-                              action_specs: List[ActionSpec],
-                              action_specs_mask: List[bool]) -> np.ndarray:
+    def evaluate(self, behavioral_state: BehavioralGridState,
+                 action_recipes: List[ActionRecipe],
+                 action_specs: List[ActionSpec],
+                 action_specs_mask: List[bool]) -> np.ndarray:
         """
         Evaluate the generated actions using the actions' spec and SemanticBehavioralState containing semantic grid.
         Gets a list of actions to evaluate and returns a vector representing their costs.
@@ -49,12 +47,12 @@ class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
                 len(action_recipes), len(action_specs))
 
         # get indices of semantic_actions array for 3 actions: goto-right, straight, goto-left
-        current_lane_action_ind = RuleBasedStateActionEvaluator._get_action_ind(
-            action_recipes, action_specs_mask, (SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT))
-        left_lane_action_ind = RuleBasedStateActionEvaluator._get_action_ind(
-            action_recipes, action_specs_mask, (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_FRONT))
-        right_lane_action_ind = RuleBasedStateActionEvaluator._get_action_ind(
-            action_recipes, action_specs_mask, (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_FRONT))
+        current_lane_action_ind = RuleBasedActionSpecEvaluator._get_action_ind(
+            action_recipes, action_specs_mask, (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT))
+        left_lane_action_ind = RuleBasedActionSpecEvaluator._get_action_ind(
+            action_recipes, action_specs_mask, (RelativeLane.LEFT_LANE, RelativeLongitudinalPosition.FRONT))
+        right_lane_action_ind = RuleBasedActionSpecEvaluator._get_action_ind(
+            action_recipes, action_specs_mask, (RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT))
 
         # The cost for each action is assigned so that the preferred policy would be:
         # Go to right if right and current lanes are fast enough.
@@ -69,7 +67,8 @@ class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
                                 desired_vel - action_specs[right_lane_action_ind].v < MIN_OVERTAKE_VEL
         # boolean whether the right cell near ego is occupied
         is_right_occupied = not behavioral_state.right_lane_exists or \
-                           (SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid
+                            (RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.PARALLEL) in \
+                            behavioral_state.road_occupancy_grid
 
         # boolean whether the forward cell is fast enough (may be empty grid cell)
         is_forward_fast = current_lane_action_ind is not None and \
@@ -87,10 +86,10 @@ class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
         road_frenet = FrenetSerret2DFrame(road_points)
         ego_fpoint = road_frenet.cpoint_to_fpoint(np.array([ego.x, ego.y]))
 
-        dist_to_backleft, safe_left_dist_behind_ego = RuleBasedStateActionEvaluator._calc_safe_dist_behind_ego(
-            behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_LEFT)
-        dist_to_backright, safe_right_dist_behind_ego = RuleBasedStateActionEvaluator._calc_safe_dist_behind_ego(
-            behavioral_state, road_frenet, ego_fpoint, SEMANTIC_CELL_LAT_RIGHT)
+        dist_to_backleft, safe_left_dist_behind_ego = RuleBasedActionSpecEvaluator._calc_safe_dist_behind_ego(
+            behavioral_state, road_frenet, ego_fpoint, RelativeLane.LEFT_LANE)
+        dist_to_backright, safe_right_dist_behind_ego = RuleBasedActionSpecEvaluator._calc_safe_dist_behind_ego(
+            behavioral_state, road_frenet, ego_fpoint, RelativeLane.RIGHT_LANE)
 
         self.logger.debug("Distance\safe distance to back left car: %s\%s.", dist_to_backleft,
                           safe_left_dist_behind_ego)
@@ -99,7 +98,8 @@ class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
 
         # boolean whether the left cell near ego is occupied
         is_left_occupied = not behavioral_state.left_lane_exists or \
-                           (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_SAME) in behavioral_state.road_occupancy_grid
+                           (RelativeLane.LEFT_LANE, RelativeLongitudinalPosition.PARALLEL) in \
+                           behavioral_state.road_occupancy_grid
         costs = np.ones(len(action_recipes))
 
         # move right if both straight and right lanes are fast
@@ -117,21 +117,21 @@ class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
 
     @staticmethod
     def _calc_safe_dist_behind_ego(behavioral_state: BehavioralGridState, road_frenet: FrenetSerret2DFrame,
-                                   ego_fpoint: FrenetPoint, semantic_cell_lat: int) -> [float, float]:
+                                   ego_fpoint: FrenetPoint, relative_lane: RelativeLane) -> [float, float]:
         """
         Calculate both actual and safe distances between rear object and ego on the left side or right side.
         If there is no object, return actual dist = inf and safe dist = 0.
         :param behavioral_state: semantic behavioral state, containing the semantic grid
         :param road_frenet: road Frenet frame for ego's road_id
         :param ego_fpoint: frenet point of ego location
-        :param semantic_cell_lat: either SEMANTIC_CELL_LAT_LEFT or SEMANTIC_CELL_LAT_RIGHT
+        :param relative_lane: RelativeLane enum value (either LEFT_LANE or RIGHT_LANE)
         :return: longitudinal distance between ego and rear object, safe distance between ego and the rear object
         """
         dist_to_back_obj = np.inf
         safe_dist_behind_ego = 0
         back_objects = []
-        if (semantic_cell_lat, SEMANTIC_CELL_LON_REAR) in behavioral_state.road_occupancy_grid:
-            back_objects = behavioral_state.road_occupancy_grid[(semantic_cell_lat, SEMANTIC_CELL_LON_REAR)]
+        if (relative_lane, RelativeLongitudinalPosition.REAR) in behavioral_state.road_occupancy_grid:
+            back_objects = behavioral_state.road_occupancy_grid[(relative_lane, RelativeLongitudinalPosition.REAR)]
         if len(back_objects) > 0:
             back_fpoint = road_frenet.cpoint_to_fpoint(np.array([back_objects[0].x, back_objects[0].y]))
             dist_to_back_obj = ego_fpoint[FP_SX] - back_fpoint[FP_SX]
@@ -152,5 +152,5 @@ class RuleBasedStateActionEvaluator(StateActionSpecEvaluator):
         :return: the action index or None if the action does not exist
         """
         action_ind = [i for i, recipe in enumerate(action_recipes) if
-                      recipe.relative_lane.value == cell[LAT_CELL] and recipes_mask[i]]
+                      recipe.relative_lane == cell[LAT_CELL] and recipes_mask[i]]
         return action_ind[0] if len(action_ind) > 0 else None
