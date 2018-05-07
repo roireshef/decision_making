@@ -74,7 +74,9 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # keeping selected actions for next iteration use
         self._last_action = action_recipes[selected_action_index]
         self._last_action_spec = selected_action_spec
-        baseline_trajectory = self._last_action_spec.samplable_trajectory
+
+        # TODO: Fill that!
+        baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory()
 
         self.logger.debug("Chosen behavioral semantic action is %s, %s",
                           action_recipes[selected_action_index].__dict__, selected_action_spec.__dict__)

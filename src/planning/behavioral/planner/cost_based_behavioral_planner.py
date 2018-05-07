@@ -125,6 +125,10 @@ class CostBasedBehavioralPlanner:
         return trajectory_parameters
 
     @staticmethod
+    def generate_baseline_trajectory():
+        pass
+
+    @staticmethod
     def _generate_cost_params(road_id: int, ego_size: ObjectSize, reference_route_latitude: float) -> \
             TrajectoryCostParams:
         """
