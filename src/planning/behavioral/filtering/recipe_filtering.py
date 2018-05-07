@@ -43,6 +43,7 @@ class RecipeFiltering:
         return [self.filter_recipe(recipe, behavioral_state) for recipe in recipes]
 
 
+# TODO: Move to BehavioralPlanner instantiation
 dynamic_filters = [FilterIfNone(), FilterActionsTowardsNonOccupiedCells(),
                    FilterActionsTowardBackAndParallelCells(),
                    FilterOvertakeActions(), FilterNonCalmActions(),
