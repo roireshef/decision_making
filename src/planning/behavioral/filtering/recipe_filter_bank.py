@@ -1,48 +1,18 @@
 import os
 
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel
-
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.quintic_poly_formulas import v_0_grid, a_0_grid, s_T_grid, \
     v_T_grid
 from mapping.src.service.map_service import MapService
-import os.path
-
-
-# NOTE: All methods have to get as input ActionRecipe (or one of its children) and  BehavioralState (or one of its
-#       children) even if they don't actually use them.
-
-# These methods are used as filters and are used to initialize ActionRecipeFilter objects.
-# ActionRecipe filtering methods (common to both dynamic and static recipes)
-
-# Note: From efficiency point of view, the filters should be sorted from the strongest (the one filtering the largest
-# number of recipes) to the weakest.
-
-
-# TODO: This code should be moved to some global system_init area and the predicate files to an absolute path:
-predicates = {}
-my_path = os.path.abspath(os.path.dirname(__file__))
-directory = os.path.join(my_path, "../../../../utils/optimal_control/predicates")
-for filename in os.listdir(directory):
-    if filename.endswith(".bin"):
-        predicate_path = str(os.path.join(directory, filename))
-        wT, wJ = [float(filename.split('.bin')[0].split('_')[3]),
-                  float(filename.split('.bin')[0].split('_')[5])]
-        predicate_shape = (
-            int(v_0_grid.shape[0]), int(a_0_grid.shape[0]), int(s_T_grid.shape[0]), int(v_T_grid.shape[0]))
-        predicate = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
-        predicates[(wT, wJ)] = predicate
-    else:
-        continue
-
 
 # DynamicActionRecipe Filters
+
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
     def filter(self, recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
@@ -51,6 +21,19 @@ class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
 
 
 class FilterBadExpectedTrajectory(RecipeFilter):
+    def __init__(self, predicates_dir: str):
+        for filename in os.listdir(predicates_dir):
+            if not filename.endswith(".bin"):
+                continue
+
+            predicate_path = str(os.path.join(predicates_dir, filename))
+            wT, wJ = [float(filename.split('.bin')[0].split('_')[3]),
+                      float(filename.split('.bin')[0].split('_')[5])]
+            predicate_shape = (
+                int(v_0_grid.shape[0]), int(a_0_grid.shape[0]), int(s_T_grid.shape[0]), int(v_T_grid.shape[0]))
+
+            self.predicates[(wT, wJ)] = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
+
     def filter(self, recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
         if recipe.action_type == ActionType.FOLLOW_VEHICLE:
             ego_state = behavioral_state.ego_state
@@ -69,7 +52,7 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                 s_T = sT_front if recipe_cell[1] == RelativeLongitudinalPosition.FRONT else sT_rear
 
                 wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.value]
-                predicate = predicates[(wT, wJ)]
+                predicate = self.predicates[(wT, wJ)]
                 return predicate[Math.ind_on_uniform_axis(v_0, v_0_grid),
                                  Math.ind_on_uniform_axis(a_0, a_0_grid),
                                  Math.ind_on_uniform_axis(s_T, s_T_grid),
@@ -79,19 +62,19 @@ class FilterBadExpectedTrajectory(RecipeFilter):
         else:
             return True
 
-class #
-    def filter_actions_toward_back_cells(recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
+
+class FilterActionsTowardBackCells(RecipeFilter):
+    def filter(self, recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState):
         return recipe.relative_lon != RelativeLongitudinalPosition.REAR
 
 
-    @staticmethod
-    def filter_actions_toward_back_and_parallel_cells(recipe: DynamicActionRecipe,
-                                                      behavioral_state: BehavioralGridState) -> bool:
+class FilterActionsTowardBackAndParallelCells(RecipeFilter):
+    def filter(self, recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
         return recipe.relative_lon == RelativeLongitudinalPosition.FRONT
 
 
-    @staticmethod
-    def filter_over_take_actions(recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
+class FilterOvertakeActions(RecipeFilter):
+    def filter(self, recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
         return recipe.action_type != ActionType.TAKE_OVER_VEHICLE
 
 
@@ -114,17 +97,3 @@ class FilterIfNoLane(RecipeFilter):
                 (recipe.relative_lane == RelativeLane.LEFT_LANE and behavioral_state.left_lane_exists))
 
 
-
-
-# Filter list definition
-dynamic_filters = [RecipeFilter(name='filter_if_none', filtering_method=filter_if_none),
-                   RecipeFilter(name="filter_actions_towards_non_occupied_cells",
-                                filtering_method=filter_actions_towards_non_occupied_cells),
-                   RecipeFilter(name="filter_actions_toward_back_and_parallel_cells",
-                                filtering_method=filter_actions_toward_back_and_parallel_cells),
-                   RecipeFilter(name="filter_over_take_actions",
-                                filtering_method=filter_over_take_actions),
-                   RecipeFilter(name='filter_non_calm_actions', filtering_method=filter_non_calm_actions)]
-
-
-static_filters = [FilterIfNone(), FilterIfNoLane(), FilterNonCalmActions()]

@@ -2,7 +2,7 @@ from typing import Optional
 
 import numpy as np
 from decision_making.src.planning.behavioral.filtering import recipe_filter_bank
-from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeValidator
+from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, StaticActionRecipe
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -24,7 +24,7 @@ class StaticActionSpace(ActionSpace):
         super().__init__(logger,
                          recipes=[StaticActionRecipe.from_args_list(comb)
                                   for comb in cartesian([RelativeLane, self._velocity_grid, AggressivenessLevel])],
-                         recipe_filtering=RecipeValidator(recipe_filter_bank.static_filters))
+                         recipe_filtering=RecipeFiltering(recipe_filter_bank.static_filters))
 
     def specify_goal(self, action_recipe: StaticActionRecipe, behavioral_state: BehavioralGridState) -> \
             Optional[ActionSpec]:

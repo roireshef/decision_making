@@ -3,7 +3,7 @@ from typing import Optional
 
 import numpy as np
 from decision_making.src.planning.behavioral.filtering import recipe_filter_bank
-from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeValidator
+from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     ActionType, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
@@ -32,7 +32,7 @@ class DynamicActionSpace(ActionSpace):
                                                          RelativeLongitudinalPosition,
                                                          [ActionType.FOLLOW_VEHICLE, ActionType.TAKE_OVER_VEHICLE],
                                                          AggressivenessLevel])],
-                         recipe_filtering=RecipeValidator(recipe_filter_bank.dynamic_filters))
+                         recipe_filtering=RecipeFiltering(recipe_filter_bank.dynamic_filters))
 
         self.predictor = predictor
 

@@ -13,14 +13,14 @@ from decision_making.src.planning.behavioral.behavioral_state import BehavioralS
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, \
     ActionRecipe
-from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeValidator
+from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.utils.optimal_control.poly1d import Poly1D
 from decision_making.src.planning.types import FS_SV, FS_SX, FS_SA, FS_DX, FS_DV, FS_DA, \
     FrenetState2D
 
 
 class ActionSpace:
-    def __init__(self, logger: Logger, recipes: List[ActionRecipe], recipe_filtering: Optional[RecipeValidator] = None):
+    def __init__(self, logger: Logger, recipes: List[ActionRecipe], recipe_filtering: Optional[RecipeFiltering] = None):
         """
         Abstract class for Action-Space implementations. Implementations should include actions enumeration, filtering
          and specification.
@@ -30,7 +30,7 @@ class ActionSpace:
         """
         self.logger = logger
         self._recipes = recipes
-        self._recipe_filtering = recipe_filtering or RecipeValidator()
+        self._recipe_filtering = recipe_filtering or RecipeFiltering()
 
     @property
     def action_space_size(self) -> int:
