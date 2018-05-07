@@ -43,13 +43,12 @@ class RecipeFiltering:
         return [self.filter_recipe(recipe, behavioral_state) for recipe in recipes]
 
 
-class DefaultRecipeFilters:
-    dynamic_filters = [FilterIfNone(), FilterActionsTowardsNonOccupiedCells(),
-                       FilterActionsTowardBackAndParallelCells(),
-                       FilterOvertakeActions(), FilterNonCalmActions(),
-                       FilterBadExpectedTrajectory(Paths.get_resource_path() + '/filters/bad_trajectory/predicates')]
+dynamic_filters = [FilterIfNone(), FilterActionsTowardsNonOccupiedCells(),
+                   FilterActionsTowardBackAndParallelCells(),
+                   FilterOvertakeActions(), FilterNonCalmActions(),
+                   FilterBadExpectedTrajectory(Paths.get_resource_path() + '/filters/bad_trajectory/predicates')]
 
-    static_filters = [FilterIfNone(), FilterIfNoLane(), FilterNonCalmActions()]
+static_filters = [FilterIfNone(), FilterIfNoLane(), FilterNonCalmActions()]
 
 
 

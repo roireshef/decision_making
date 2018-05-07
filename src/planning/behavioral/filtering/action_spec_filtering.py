@@ -42,5 +42,4 @@ class ActionSpecFiltering:
         return [self.filter_action_spec(action_spec, behavioral_state) for action_spec in action_specs]
 
 
-class DefaultRecipeFilters:
-    action_spec_filters = [FilterIfNone()]
+action_spec_filters = [FilterIfNone()]
