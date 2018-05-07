@@ -43,10 +43,9 @@ st_limits = [0, 100]
 
 a_0_grid = np.arange(LON_ACC_LIMITS[0], LON_ACC_LIMITS[1]+EPS, 0.5)
 v_0_grid = np.arange(VELOCITY_LIMITS[0], VELOCITY_LIMITS[1]+EPS, 0.5)
-s_T_grid = np.arange(st_limits[0], st_limits[1]+EPS, 0.5)
+s_T_grid = np.arange(st_limits[0], st_limits[1]+EPS, 1)
 v_T_grid = np.arange(VELOCITY_LIMITS[0], VELOCITY_LIMITS[1]+EPS, 0.5)
-predicate = np.zeros(shape=[v_0_grid.shape[0], a_0_grid.shape[0], s_T_grid.shape[0], v_T_grid.shape[0]])
-
+predicate = np.full(shape=[v_0_grid.shape[0], a_0_grid.shape[0], s_T_grid.shape[0], v_T_grid.shape[0]], fill_value=False)
 
 if __name__ == "__main__":
 
@@ -111,7 +110,7 @@ if __name__ == "__main__":
                         if len(ind) == 0:
                             predicate[k, m, i, j] = False
                             continue
-                        T = t[ind[0]]
+                        T = t[ind[0]]  # First extrema is our local (and sometimes global) minimum
 
                         delta_s_t_func, v_t_func, a_t_func = create_motion_funcs(a_0, v_0, v_T, s_T, T)
                         t = np.arange(0, T, 0.01)
@@ -119,9 +118,9 @@ if __name__ == "__main__":
                         min_v, max_v = min(v_t_func(t)), max(v_t_func(t))
                         min_a, max_a = min(a_t_func(t)), max(a_t_func(t))
 
-                        is_T_in_range = (T > bp_action_t_limits[0]) and (T < bp_action_t_limits[1])
-                        is_vel_in_range = (min_v >= vel_limits[0]) and (max_v <= vel_limits[1])
-                        is_acc_in_range = (min_a >= acc_limits[0]) and (max_a <= acc_limits[1])
+                        is_T_in_range = (T > BP_ACTION_T_LIMITS[0]) and (T < BP_ACTION_T_LIMITS[1])
+                        is_vel_in_range = (min_v >= VELOCITY_LIMITS[0]) and (max_v <= VELOCITY_LIMITS[1])
+                        is_acc_in_range = (min_a >= LON_ACC_LIMITS[0]) and (max_a <= LON_ACC_LIMITS[1])
                         is_dist_safe = min_delta_s >= 2*v_T
 
                         predicate[k, m, i, j] = (is_T_in_range and is_vel_in_range and is_acc_in_range and is_dist_safe)

@@ -15,7 +15,7 @@ from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas i
 from mapping.src.service.map_service import MapService
 
 
-# TODO: This code should be moved to some global system_init area and the predicate files to an absolute path:
+# TODO: This code should be moved to some global system_init area
 predicates = {}
 directory = Paths.get_resource_absolute_path_filename('predicates/')
 for filename in os.listdir(directory):
@@ -27,8 +27,6 @@ for filename in os.listdir(directory):
             int(v_0_grid.shape[0]), int(a_0_grid.shape[0]), int(s_T_grid.shape[0]), int(v_T_grid.shape[0]))
         predicate = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
         predicates[(wT, wJ)] = predicate
-    else:
-        continue
 
 
 # NOTE: All methods have to get as input ActionRecipe (or one of its children) and  BehavioralState (or one of its
@@ -121,7 +119,8 @@ dynamic_filters = [RecipeFilter(name='filter_if_none', filtering_method=filter_i
                                 filtering_method=filter_actions_toward_back_and_parallel_cells),
                    RecipeFilter(name="filter_over_take_actions",
                                 filtering_method=filter_over_take_actions),
-                   RecipeFilter(name='filter_non_calm_actions', filtering_method=filter_non_calm_actions)]
+                   RecipeFilter(name='filter_non_calm_actions', filtering_method=filter_non_calm_actions),
+                   RecipeFilter(name='filter_bad_expected_trajectory', filtering_method=filter_bad_expected_trajectory)]
 
 static_filters = [RecipeFilter(name='filter_if_none', filtering_method=filter_if_none),
                   RecipeFilter(name='filter_if_no_lane', filtering_method=filter_if_no_lane),
