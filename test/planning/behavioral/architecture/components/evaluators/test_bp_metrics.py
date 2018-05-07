@@ -6,7 +6,8 @@ import time
 import numpy as np
 
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
-    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LAT_LEFT
+    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LAT_LEFT, \
+    BP_MAX_VELOCITY_TOLERANCE
 from decision_making.src.planning.behavioral.architecture.components.action_space.action_space import \
     ActionSpaceContainer
 from decision_making.src.planning.behavioral.architecture.components.action_space.dynamic_action_space import \
@@ -47,10 +48,10 @@ def test_behavioralScenarios_moveToLeft_differentDistFrom_F_and_initVel():
         for F_vel in [des_vel - des_vel/7., des_vel, des_vel + des_vel/3.]:
             for dist_from_F_in_sec in [8., 6., 4., 2.5]:
                 for left_action_type in [ActionType.FOLLOW_LANE, ActionType.FOLLOW_VEHICLE]:
-                    #for LB_vel in np.arange(des_vel - 2, des_vel + 6.1, 2):
-                    for LB_vel in [des_vel]:
-                        #for dist_from_LB_in_sec in [8., 6., 4., 3., 1.5, 0.5]:
-                        for dist_from_LB_in_sec in [8.]:
+                    for LB_vel in np.arange(des_vel - 2, des_vel + 6.1, 2):
+                    #for LB_vel in [des_vel]:
+                        for dist_from_LB_in_sec in [8., 6., 4., 3., 1.5, 0.5]:
+                        #for dist_from_LB_in_sec in [8.]:
 
                             ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(
                                 road_id, ego_lon, road_mid_lat - lane_width)
@@ -80,18 +81,24 @@ def test_behavioralScenarios_moveToLeft_differentDistFrom_F_and_initVel():
 
                             actions = []
                             # create actions based on the occupancy grid
-                            if (SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT) in behavioral_state.road_occupancy_grid:
+                            # add dynamic and static actions going to the same lane
+                            F_exists = (SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT) in behavioral_state.road_occupancy_grid
+                            if F_exists:
                                 right_action = DynamicActionRecipe(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT,
                                                                    ActionType.FOLLOW_VEHICLE, AggressivenessLevel.CALM)
                                 actions.append(right_action)
-                            right_action1 = StaticActionRecipe(RelativeLane.SAME_LANE, des_vel, AggressivenessLevel.CALM)
+                            # Skip static action if its velocity > F_vel, since it's cost always will be better than
+                            # goto_left_lane, regardless F_vel.
+                            # This condition will be removed, when a real value function will be used.
+                            if not F_exists or des_vel <= F_vel + BP_MAX_VELOCITY_TOLERANCE:
+                                actions.append(StaticActionRecipe(RelativeLane.SAME_LANE, des_vel, AggressivenessLevel.CALM))
+
+                            # add dynamic and static actions to the left lane
                             if (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_FRONT) in behavioral_state.road_occupancy_grid:
                                 left_action = DynamicActionRecipe(RelativeLane.LEFT_LANE, RelativeLongitudinalPosition.FRONT,
                                                                   ActionType.FOLLOW_VEHICLE, AggressivenessLevel.CALM)
                                 actions.append(left_action)
-                            left_action1 = StaticActionRecipe(RelativeLane.LEFT_LANE, des_vel, AggressivenessLevel.CALM)
-                            actions.append(right_action1)
-                            actions.append(left_action1)
+                            actions.append(StaticActionRecipe(RelativeLane.LEFT_LANE, des_vel, AggressivenessLevel.CALM))
 
                             costs = evaluator.evaluate_recipes(behavioral_state, actions, [True] * len(actions), None)
 
@@ -283,6 +290,7 @@ def test_speedProfiling():
 
 
 import matplotlib.pyplot as plt
+@pytest.mark.skip(reason="not test, just building a table of parameteres")
 def test_behavioralScenarios_moveToLeft_findThresholds():
     """
     Test lane change to the left if the velocity of the car F is des_vel-2.

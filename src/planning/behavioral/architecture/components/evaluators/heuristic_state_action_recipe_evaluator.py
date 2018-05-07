@@ -140,18 +140,13 @@ class HeuristicStateActionRecipeEvaluator(StateActionRecipeEvaluator):
         else:  # static action (FOLLOW_LANE)
             target_vel = action_recipe.velocity
 
-            # TODO: the following filter will be removed after implementation of the value function
             # skip static action if its velocity is greater than velocity of the front object on the same lane,
-            # since a dynamic action should treat this lane (value function after such static action is unclear)
-            front_obj = front_objects[action_recipe.relative_lane.value - SEMANTIC_CELL_LAT_RIGHT]
-            if front_obj is not None:
-                # acc = AGGRESSIVENESS_TO_LON_ACC[action_recipe.aggressiveness.value]
-                # des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-                # brake_dist = (des_vel**2 - front_obj.v_x**2) / acc
-                # dist_to_tar = front_obj.road_localization.road_lon - ego_fpoint[FP_SX]
-                # and dist_to_tar < brake_dist:  # 0.5 * (ego.v_x + des_vel) * 2
-                if target_vel > front_obj.v_x + BP_MAX_VELOCITY_TOLERANCE:
-                    return None
+            # since it's cost always will be better than goto_left_lane, regardless F_vel.
+            # This condition will be removed when a real value function will be used.
+            # front_obj = front_objects[action_recipe.relative_lane.value - SEMANTIC_CELL_LAT_RIGHT]
+            # if front_obj is not None:
+            #     if target_vel > front_obj.v_x + BP_MAX_VELOCITY_TOLERANCE:
+            #         return None
 
         vel_profile = VelocityProfile.calc_velocity_profile(
             action_recipe.action_type, ego_fpoint[FP_SX], ego.v_x, obj_lon, target_vel, target_acc,
