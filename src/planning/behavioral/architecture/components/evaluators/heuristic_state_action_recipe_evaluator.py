@@ -5,7 +5,9 @@ import numpy as np
 import sys
 
 from decision_making.src.global_constants import SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
-    SEMANTIC_CELL_LAT_SAME, BP_METRICS_TIME_HORIZON, SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LAT_LEFT
+    SEMANTIC_CELL_LAT_SAME, BP_METRICS_TIME_HORIZON, SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LAT_LEFT, \
+    BP_MAX_VELOCITY_TOLERANCE, AGGRESSIVENESS_TO_LON_ACC, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
+    SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS
 from decision_making.src.global_constants import SEMANTIC_CELL_LON_REAR
 from decision_making.src.planning.behavioral.architecture.components.evaluators.cost_functions import \
     PlanEfficiencyMetric, \
@@ -51,7 +53,7 @@ class HeuristicStateActionRecipeEvaluator(StateActionRecipeEvaluator):
         T_d_full, _ = VelocityProfile.calc_lateral_time(0, lane_width, lane_width, AggressivenessLevel.CALM)
 
         # get front dynamic objects' velocities from the occupancy grid
-        front_objects_vel = self._get_front_objects_velocities(behavioral_state)
+        front_objects = self._get_front_objects(behavioral_state)
 
         print('time=%.1f ego_v=%.2f ego_lat=%.2f ego_dv=%.2f' % (ego.timestamp_in_sec, ego.v_x,
                                                                  ego.road_localization.intra_road_lat, ego_lat_vel))
@@ -68,7 +70,7 @@ class HeuristicStateActionRecipeEvaluator(StateActionRecipeEvaluator):
             T_d, lat_dev = VelocityProfile.calc_lateral_time(ego_lat_vel, lat_dist, lane_width, action_recipe.aggressiveness)
 
             # create velocity profile, whose length is at least as the lateral time
-            vel_profile = self._calc_velocity_profile(behavioral_state, action_recipe, T_d, front_objects_vel)
+            vel_profile = self._calc_velocity_profile(behavioral_state, action_recipe, T_d, front_objects)
             #print('version is: %s' % sys.version)
             if vel_profile is None:  # infeasible action
                 continue
@@ -99,28 +101,28 @@ class HeuristicStateActionRecipeEvaluator(StateActionRecipeEvaluator):
 
         return action_costs
 
-    def _get_front_objects_velocities(self, behavioral_state: SemanticBehavioralGridState) -> np.array:
+    def _get_front_objects(self, behavioral_state: SemanticBehavioralGridState) -> np.array:
         """
-        given occupancy grid, retrieve velocities of at most 3 front objects (from 3 relevant lanes)
+        given occupancy grid, retrieve at most 3 front objects (from 3 relevant lanes)
         :param behavioral_state: behavioral state containing the occupancy grid
-        :return: array of the front objects' velocities. If some object is missing, its velocity is np.inf
+        :return: array of the front objects. None for missing object
         """
         # get front dynamic objects from the occupancy grid
-        front_objects_vel = np.array([np.inf, np.inf, np.inf])
+        front_objects = np.array([None, None, None])
         for lat in [SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_LEFT]:
             if (lat, SEMANTIC_CELL_LON_FRONT) in behavioral_state.road_occupancy_grid:
-                front_objects_vel[lat - SEMANTIC_CELL_LAT_RIGHT] = \
-                    behavioral_state.road_occupancy_grid[(lat, SEMANTIC_CELL_LON_FRONT)][0].v_x
-        return front_objects_vel
+                front_objects[lat - SEMANTIC_CELL_LAT_RIGHT] = \
+                    behavioral_state.road_occupancy_grid[(lat, SEMANTIC_CELL_LON_FRONT)][0]
+        return front_objects
 
     def _calc_velocity_profile(self, behavioral_state: SemanticBehavioralGridState, action_recipe: ActionRecipe,
-                               T_d: float, front_objects_vel: np.array) -> Optional[VelocityProfile]:
+                               T_d: float, front_objects: np.array) -> Optional[VelocityProfile]:
         """
         Given action recipe and behavioral state, calculate the longitudinal velocity profile for that action.
         :param behavioral_state:
         :param action_recipe: the input action
         :param T_d: the action's lateral time (as a lower bound for the vel_profile total time)
-        :param front_objects_vel: array of the front objects' velocities from the occupancy grid
+        :param front_objects: array of the front objects from the occupancy grid
         :return: longitudinal velocity profile or None if the action is infeasible by given aggressiveness level
         """
         ego = behavioral_state.ego_state
@@ -137,15 +139,25 @@ class HeuristicStateActionRecipeEvaluator(StateActionRecipeEvaluator):
         else:  # static action (FOLLOW_LANE)
             target_vel = action_recipe.velocity
 
-            # TODO: the following condition should be implemented as a filter
+            # TODO: the following filter will be removed after implementation of the value function
             # skip static action if its velocity is greater than velocity of the front object on the same lane,
             # since a dynamic action should treat this lane (value function after such static action is unclear)
-            if target_vel > front_objects_vel[action_recipe.relative_lane.value - SEMANTIC_CELL_LAT_RIGHT]:
-                return None
+            front_obj = front_objects[action_recipe.relative_lane.value - SEMANTIC_CELL_LAT_RIGHT]
+            if front_obj is not None:
+                # acc = AGGRESSIVENESS_TO_LON_ACC[action_recipe.aggressiveness.value]
+                # des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+                # brake_dist = (des_vel**2 - front_obj.v_x**2) / acc
+                # dist_to_tar = front_obj.road_localization.road_lon - ego_fpoint[FP_SX]
+                # and dist_to_tar < brake_dist:  # 0.5 * (ego.v_x + des_vel) * 2
+                if target_vel > front_obj.v_x + BP_MAX_VELOCITY_TOLERANCE:
+                    return None
 
-        return VelocityProfile.calc_velocity_profile(
+        vel_profile = VelocityProfile.calc_velocity_profile(
             action_recipe.action_type, ego_fpoint[FP_SX], ego.v_x, obj_lon, target_vel, target_acc,
             action_recipe.aggressiveness, cars_size_margin, min_time=T_d)
+
+        vel_profile = vel_profile.cut_by_time(BP_METRICS_TIME_HORIZON)
+        return vel_profile
 
     def _calc_largest_safe_time(self, behavioral_state: SemanticBehavioralGridState, action_lat_cell: RelativeLane,
                                 vel_profile: VelocityProfile, ego_half_size: float, T_d: float) -> float:

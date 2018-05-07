@@ -1,7 +1,7 @@
 import numpy as np
 
 from decision_making.src.global_constants import AGGRESSIVENESS_TO_LON_ACC, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
-    SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS, AGGRESSIVENESS_TO_LAT_ACC
+    SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS, AGGRESSIVENESS_TO_LAT_ACC, BP_MAX_VELOCITY_TOLERANCE
 from decision_making.src.planning.behavioral.architecture.data_objects import ActionType, AggressivenessLevel
 from decision_making.src.planning.types import FP_SX, LIMIT_MIN, FS_SV, FS_SA
 from decision_making.src.state.state import DynamicObject
@@ -54,11 +54,42 @@ class VelocityProfile:
 
         return t, t_cum, s_cum, v, a
 
-    def total_time(self):
+    def total_time(self) -> float:
         return self.t1 + self.t2 + self.t3
 
-    def total_dist(self):
+    def total_dist(self) -> float:
         return 0.5 * ((self.v_init + self.v_mid) * self.t1 + (self.v_mid + self.v_tar) * self.t3) + self.v_mid * self.t2
+
+    def sample_at(self, t: float) -> [float, float]:
+        if t < self.t1:
+            a1 = (self.v_mid - self.v_init) / self.t1
+            return t * (self.v_init + 0.5 * a1 * t), self.v_init + a1 * t
+        d1 = 0.5 * (self.v_init + self.v_mid) * self.t1
+        if t < self.t1 + self.t2:
+            return d1 + self.v_mid * (t - self.t1), self.v_mid
+        d2 = self.v_mid * self.t2
+        if t < self.total_time():
+            a3 = (self.v_tar - self.v_mid) / self.t3
+            t3 = t - self.t1 - self.t2
+            return d1 + d2 + t3 * (self.v_mid + 0.5 * a3 * t3), self.v_mid + a3 * t3
+        return d1 + d2 + 0.5 * (self.v_mid + self.v_tar) * self.t3, self.v_tar
+
+    def cut_by_time(self, max_time: float):
+        tot_time = self.total_time()
+        if tot_time <= max_time:
+            return self
+        if self.t1 + self.t2 <= max_time:
+            a = (self.v_tar - self.v_mid) / self.t3
+            t3 = max_time - self.t1 - self.t2
+            v_tar = self.v_mid + a * t3
+            return VelocityProfile(self.v_init, self.t1, self.v_mid, self.t2, t3, v_tar)
+        if self.t1 <= max_time:
+            t2 = max_time - self.t1
+            return VelocityProfile(self.v_init, self.t1, self.v_mid, t2, 0, self.v_mid)
+        a = (self.v_mid - self.v_init) / self.t1
+        t1 = max_time
+        v_tar = self.v_init + a * t1
+        return VelocityProfile(self.v_init, t1, v_tar, 0, 0, v_tar)
 
     @classmethod
     def calc_velocity_profile(cls, action_type: ActionType, lon_init: float, v_init: float, lon_target: float,
@@ -115,9 +146,8 @@ class VelocityProfile:
         """
         # print('CALC PROFILE: v_init=%f dist=%f' % (v_init, dist))
 
-        MAX_VELOCITY_TOLERANCE = 2.
         v_init_rel = v_init - v_tar  # relative velocity; may be negative
-        v_max_rel = max(v_max - v_tar, MAX_VELOCITY_TOLERANCE)  # v_max > v_tar to enable reaching the target car
+        v_max_rel = max(v_max - v_tar, BP_MAX_VELOCITY_TOLERANCE)  # v_max > v_tar to enable reaching the target car
 
         if abs(v_init_rel) < 0.1 and abs(dist) < 0.1:
             return cls(v_init, min_time, v_tar, 0, 0, v_tar)  # just follow the target car for min_time

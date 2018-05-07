@@ -21,12 +21,7 @@ from decision_making.src.planning.behavioral.architecture.semantic_behavioral_gr
     SemanticBehavioralGridState
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import DynamicObject, ObjectSize, EgoState, State
-from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from mapping.src.service.map_service import MapService
-from mapping.test.model.testable_map_fixtures import map_api_mock
-
-
-#@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 from rte.python.logger.AV_logger import AV_Logger
 
 
@@ -107,7 +102,6 @@ def test_behavioralScenarios_moveToLeft_differentDistFrom_F_and_initVel():
                                 assert actions[best_idx].relative_lane == RelativeLane.LEFT_LANE  # change lane
 
 
-#@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_behavioralScenarios_moveToLeft_aggressivenessBySafety():
     """
     Test lane change to the left if the velocity of the car F is des_vel-2.
@@ -131,7 +125,7 @@ def test_behavioralScenarios_moveToLeft_aggressivenessBySafety():
     ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon, road_mid_lat-lane_width)
     ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, init_vel, 0, 0, 0, 0)
 
-    for dist_from_F_in_sec in [4, 3]:
+    for dist_from_F_in_sec in [4, 2.5]:
         for dist_from_LB_in_sec in [4.0, 3.5]:
 
             LB_lon = ego_lon - des_vel * dist_from_LB_in_sec
@@ -170,13 +164,16 @@ def test_behavioralScenarios_moveToLeft_aggressivenessBySafety():
                     assert actions[best_idx].relative_lane == RelativeLane.SAME_LANE  # don't change lane
 
 
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_behavioralScenarios_moveToToRight_differentDistFromRF():
     """
     test return to the right lane
     """
+    logger = Logger("test_behavioralScenarios")
     des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-    ego_lon = 50
+    ego_lon = 150
+    road_id = 20
+    lane_width = MapService.get_instance().get_road(road_id).lane_width
+    road_mid_lat = MapService.get_instance().get_road(road_id).lanes_num * lane_width / 2
     RF_vel = des_vel-2
     logger = Logger("test_BP_metrics")
     size = ObjectSize(4, 2, 1)
@@ -185,24 +182,32 @@ def test_behavioralScenarios_moveToToRight_differentDistFromRF():
     right_action = StaticActionRecipe(RelativeLane.RIGHT_LANE, des_vel, AggressivenessLevel.CALM)
     actions = [right_action, left_action]
     evaluator = HeuristicStateActionRecipeEvaluator(logger)
-    ego = EgoState(0, 0, ego_lon, 0, 0, 0, size, 0, des_vel, 0, 0, 0, 0)
+
+    ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon, road_mid_lat)
+    ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, des_vel, 0, 0, 0, 0)
+
     lane_width = MapService.get_instance().get_road(ego.road_localization.road_id).lane_width
     state = State(None, [], ego)
     behavioral_state = SemanticBehavioralGridState.create_from_state(state, logger)
     costs = evaluator.evaluate_recipes(behavioral_state, actions, [True]*len(actions), None)
     assert costs[0] < costs[1]  # right is better
 
-    for dist_from_F_in_sec in [7, 4]:
-        RF_lon = ego_lon + dist_from_F_in_sec * des_vel
+    for dist_from_RF_in_sec in [7, 4]:
+        RF_lon = ego_lon + dist_from_RF_in_sec * des_vel
         right_action = DynamicActionRecipe(RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT,
                                            ActionType.FOLLOW_VEHICLE, AggressivenessLevel.CALM)
         actions = [right_action, left_action]
-        RF = DynamicObject(1, 0, RF_lon, -lane_width, 0, 0, size, 0, RF_vel, 0, 0, 0)
+
+        RF_cpoint, RF_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, RF_lon, road_mid_lat-lane_width)
+        RF = DynamicObject(1, 0, RF_cpoint[0], RF_cpoint[1], RF_cpoint[2], RF_yaw, size, 0, RF_vel, 0, 0, 0)
+
         state = State(None, [RF], ego)
         behavioral_state = SemanticBehavioralGridState.create_from_state(state, logger)
+
         costs = evaluator.evaluate_recipes(behavioral_state, actions, [True]*len(actions), None)
+
         best_idx = np.argmin(costs)
-        if dist_from_F_in_sec > 6:
+        if dist_from_RF_in_sec > 6:
             assert actions[best_idx].relative_lane == RelativeLane.RIGHT_LANE  # change lane to right
         else:
             assert actions[best_idx].relative_lane == RelativeLane.SAME_LANE  # stay in the left lane
@@ -296,9 +301,9 @@ def test_behavioralScenarios_moveToLeft_findThresholds():
     evaluator = HeuristicStateActionRecipeEvaluator(logger)
 
     dv = 1.
-    ego_vel_range = np.arange(des_vel - des_vel/3., des_vel + des_vel/3. + 0.1, dv)
-    F_vel_range = [des_vel - des_vel/3 + 4.]  # np.arange(des_vel - des_vel/3., des_vel + des_vel/3. + 0.1, dv)
-    dist_range = np.arange(7.0, 1.0, -0.2)
+    ego_vel_range = np.arange(des_vel - des_vel/2., des_vel + des_vel/2. + 0.1, dv)
+    F_vel_range = np.arange(des_vel - des_vel/2., des_vel + des_vel/2. + 0.1, dv)
+    dist_range = np.arange(7.0, 0.9, -0.2)
 
     F_lon_tab = np.zeros((len(ego_vel_range), len(F_vel_range)))
 
@@ -310,7 +315,7 @@ def test_behavioralScenarios_moveToLeft_findThresholds():
                     road_id, ego_lon, road_mid_lat - lane_width)
                 ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, ego_vel, 0, 0, 0, 0)
 
-                F_lon = ego_lon + dist_from_F_in_sec * (ego_vel + des_vel)/2
+                F_lon = ego_lon + dist_from_F_in_sec * (ego_vel + des_vel)/2 + (des_vel**2 - F_vel**2)/16  # 3*(des_vel - F_vel)**2
                 F_cpoint, F_yaw = MapService.get_instance().convert_road_to_global_coordinates(
                     road_id, F_lon, road_mid_lat - lane_width)
                 F = DynamicObject(1, 0, F_cpoint[0], F_cpoint[1], F_cpoint[2], F_yaw, size, 0, F_vel, 0, 0, 0)
@@ -321,9 +326,10 @@ def test_behavioralScenarios_moveToLeft_findThresholds():
 
                 actions = []
                 # create actions based on the occupancy grid
-                right_action = DynamicActionRecipe(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT,
-                                                       ActionType.FOLLOW_VEHICLE, AggressivenessLevel.CALM)
-                actions.append(right_action)
+                if (SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT) in behavioral_state.road_occupancy_grid:
+                    right_action = DynamicActionRecipe(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT,
+                                                           ActionType.FOLLOW_VEHICLE, AggressivenessLevel.CALM)
+                    actions.append(right_action)
                 right_action_stat = StaticActionRecipe(RelativeLane.SAME_LANE, des_vel, AggressivenessLevel.CALM)
                 actions.append(right_action_stat)
                 left_action = StaticActionRecipe(RelativeLane.LEFT_LANE, des_vel, AggressivenessLevel.CALM)

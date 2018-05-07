@@ -127,6 +127,8 @@ BP_METRICS_LANE_DEVIATION_COST_WEIGHT = 0.15
 # performance metrics for BP: missing goal cost
 BP_MISSING_GOAL_COST = 100
 
+BP_MAX_VELOCITY_TOLERANCE = 1
+
 # Trajectory Planner #
 
 # [m] length of reference trajectory provided by behavioral planner
