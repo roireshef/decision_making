@@ -1,5 +1,7 @@
 import os
 
+import time
+
 from decision_making.paths import Paths
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
@@ -59,6 +61,9 @@ def filter_actions_towards_non_occupied_cells(recipe: DynamicActionRecipe,
 
 def filter_bad_expected_trajectory(recipe: DynamicActionRecipe,
                                    behavioral_state: BehavioralGridState) -> bool:
+    print('filter_bad_expected_trajectory')
+    result = False
+    start_time = time.time()
     if recipe.action_type == ActionType.FOLLOW_VEHICLE:
         ego_state = behavioral_state.ego_state
         recipe_cell = (recipe.relative_lane.value, recipe.relative_lon.value)
@@ -72,14 +77,16 @@ def filter_bad_expected_trajectory(recipe: DynamicActionRecipe,
             v_T = dynamic_object.v_x
             wJ,_,wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.value]
             predicate = predicates[(wT, wJ)]
-            return predicate[Math.ind_on_uniform_axis(v_0, v_0_grid),
+            result = predicate[Math.ind_on_uniform_axis(v_0, v_0_grid),
                              Math.ind_on_uniform_axis(a_0, a_0_grid),
                              Math.ind_on_uniform_axis(s_T, s_T_grid),
                              Math.ind_on_uniform_axis(v_T, v_T_grid)]
         else:
-            return False
+            result = False
     else:
-        return True
+        result = True
+    print("%s" % (time.time() - start_time))
+    return result
 
 
 def filter_actions_toward_back_cells(recipe: DynamicActionRecipe,
@@ -116,9 +123,7 @@ dynamic_filters = [RecipeFilter(name='filter_if_none', filtering_method=filter_i
                                 filtering_method=filter_actions_toward_back_and_parallel_cells),
                    RecipeFilter(name="filter_over_take_actions",
                                 filtering_method=filter_over_take_actions),
-                   RecipeFilter(name='filter_non_calm_actions', filtering_method=filter_non_calm_actions),
                    RecipeFilter(name='filter_bad_expected_trajectory', filtering_method=filter_bad_expected_trajectory)]
 
 static_filters = [RecipeFilter(name='filter_if_none', filtering_method=filter_if_none),
-                  RecipeFilter(name='filter_if_no_lane', filtering_method=filter_if_no_lane),
-                  RecipeFilter(name='filter_non_calm_actions', filtering_method=filter_non_calm_actions)]
+                  RecipeFilter(name='filter_if_no_lane', filtering_method=filter_if_no_lane)]
