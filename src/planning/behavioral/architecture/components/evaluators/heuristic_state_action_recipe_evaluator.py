@@ -6,8 +6,7 @@ import sys
 
 from decision_making.src.global_constants import SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, \
     SEMANTIC_CELL_LAT_SAME, BP_METRICS_TIME_HORIZON, SEMANTIC_CELL_LAT_RIGHT, SEMANTIC_CELL_LAT_LEFT, \
-    BP_MAX_VELOCITY_TOLERANCE, AGGRESSIVENESS_TO_LON_ACC, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
-    SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS, EFFICIENCY_COST_WEIGHT, WERLING_TIME_RESOLUTION, RIGHT_LANE_COST_WEIGHT, \
+    EFFICIENCY_COST_WEIGHT, WERLING_TIME_RESOLUTION, RIGHT_LANE_COST_WEIGHT, \
     BP_METRICS_LANE_DEVIATION_COST_WEIGHT, BP_MISSING_GOAL_COST
 from decision_making.src.global_constants import SEMANTIC_CELL_LON_REAR
 from decision_making.src.planning.behavioral.architecture.components.evaluators.cost_functions import \
@@ -148,7 +147,7 @@ class HeuristicStateActionRecipeEvaluator(StateActionRecipeEvaluator):
             #     if target_vel > front_obj.v_x + BP_MAX_VELOCITY_TOLERANCE:
             #         return None
 
-        vel_profile = VelocityProfile.calc_velocity_profile(
+        vel_profile = VelocityProfile.calc_velocity_profile_given_acc(
             action_recipe.action_type, ego_fpoint[FP_SX], ego.v_x, obj_lon, target_vel, target_acc,
             action_recipe.aggressiveness, cars_size_margin, min_time=T_d)
 

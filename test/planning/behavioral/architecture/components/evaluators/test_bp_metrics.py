@@ -50,7 +50,7 @@ def test_behavioralScenarios_moveToLeft_differentDistFrom_F_and_initVel():
                 for left_action_type in [ActionType.FOLLOW_LANE, ActionType.FOLLOW_VEHICLE]:
                     for LB_vel in np.arange(des_vel - 2, des_vel + 6.1, 2):
                     #for LB_vel in [des_vel]:
-                        for dist_from_LB_in_sec in [8., 6., 4., 3., 1.5, 0.5]:
+                        for dist_from_LB_in_sec in [8., 6., 4.5, 3.5, 1.5, 0.5]:
                         #for dist_from_LB_in_sec in [8.]:
 
                             ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(
@@ -62,7 +62,7 @@ def test_behavioralScenarios_moveToLeft_differentDistFrom_F_and_initVel():
                                 road_id, F_lon, road_mid_lat - lane_width)
                             F = DynamicObject(1, 0, F_cpoint[0], F_cpoint[1], F_cpoint[2], F_yaw, size, 0, F_vel, 0, 0, 0)
 
-                            LB_lon = ego_lon - (LB_vel - ego_vel) * 6 - LB_vel * dist_from_LB_in_sec
+                            LB_lon = ego_lon - (LB_vel - ego_vel) * 4 - LB_vel * dist_from_LB_in_sec
                             LB_cpoint, LB_yaw = MapService.get_instance().convert_road_to_global_coordinates(
                                 road_id, LB_lon, road_mid_lat)
                             LB = DynamicObject(2, 0, LB_cpoint[0], LB_cpoint[1], LB_cpoint[2], LB_yaw, size, 0, LB_vel, 0, 0, 0)

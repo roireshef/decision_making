@@ -92,9 +92,9 @@ class VelocityProfile:
         return VelocityProfile(self.v_init, t1, v_tar, 0, 0, v_tar)
 
     @classmethod
-    def calc_velocity_profile(cls, action_type: ActionType, lon_init: float, v_init: float, lon_target: float,
-                              v_target: float, a_target: float, aggressiveness_level: AggressivenessLevel,
-                              cars_size_margin: float, min_time: float):
+    def calc_velocity_profile_given_acc(cls, action_type: ActionType, lon_init: float, v_init: float, lon_target: float,
+                                        v_target: float, a_target: float, aggressiveness_level: AggressivenessLevel,
+                                        cars_size_margin: float, min_time: float):
         """
         calculate velocities profile for semantic action: either following car or following lane
         :param action_type: [ActionType] type of action
@@ -112,10 +112,10 @@ class VelocityProfile:
         v_max = max(BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, v_target)
         if action_type == ActionType.FOLLOW_VEHICLE:
             dist = lon_target - lon_init - SAFE_DIST_TIME_DELAY * v_target - cars_size_margin
-            return VelocityProfile._calc_velocity_profile_follow_car(v_init, acc, v_max, dist, v_target, a_target, min_time)
+            return VelocityProfile._calc_profile_given_acc(v_init, acc, v_max, dist, v_target, a_target, min_time)
         elif action_type == ActionType.TAKE_OVER_VEHICLE:
             dist = lon_target - lon_init + SAFE_DIST_TIME_DELAY * v_target + cars_size_margin
-            return VelocityProfile._calc_velocity_profile_follow_car(v_init, acc, v_max, dist, v_target, a_target, min_time)
+            return VelocityProfile._calc_profile_given_acc(v_init, acc, v_max, dist, v_target, a_target, min_time)
         elif action_type == ActionType.FOLLOW_LANE:
             t1 = abs(v_target - v_init) / acc
             if 0 <= t1 < min_time:  # two segments
@@ -125,8 +125,8 @@ class VelocityProfile:
             return vel_profile
 
     @classmethod
-    def _calc_velocity_profile_follow_car(cls, v_init: float, a: float, v_max: float, dist: float,
-                                          v_tar: float, a_tar: float, min_time: float=0):
+    def _calc_profile_given_acc(cls, v_init: float, a: float, v_max: float, dist: float,
+                                v_tar: float, a_tar: float, min_time: float=0):
         """
         Given start & end velocities, distance to the followed car and acceleration, calculate velocity profile:
             1. acceleration to a velocity v_mid <= v_max for t1 time,
@@ -268,6 +268,96 @@ class VelocityProfile:
             return None  # illegal action
         return cls(v_init, t1, v_max, t2, t3, v_tar)
 
+    @classmethod
+    def calc_velocity_profile_given_T(cls, action_type: ActionType, lon_init: float, v_init: float, lon_target: float,
+                                      v_target: float, T: float, cars_size_margin: float):
+        """
+        calculate velocities profile for semantic action: either following car or following lane
+        :param action_type: [ActionType] type of action
+        :param lon_init: [m] initial longitude of ego
+        :param v_init: [m/s] initial velocity of ego
+        :param lon_target: [m] initial longitude of followed object (None if follow lane)
+        :param v_target: [m/s] followed object's velocity or target velocity for follow lane
+        :param T: [sec] total profile time
+        :param cars_size_margin: [m] sum of half lengths of ego and target
+        :return: VelocityProfile class or None in case of infeasible semantic action
+        """
+        v_max = max(BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, v_target)
+        if action_type == ActionType.FOLLOW_VEHICLE:
+            dist = lon_target - lon_init - SAFE_DIST_TIME_DELAY * v_target - cars_size_margin
+            return VelocityProfile._calc_profile_given_T(v_init, T, v_max, dist, v_target)
+        elif action_type == ActionType.TAKE_OVER_VEHICLE:
+            dist = lon_target - lon_init + SAFE_DIST_TIME_DELAY * v_target + cars_size_margin
+            return VelocityProfile._calc_profile_given_T(v_init, T, v_max, dist, v_target)
+        else:  # action_type == ActionType.FOLLOW_LANE:
+            return cls(v_init=v_init, t1=T, v_mid=v_target, t2=0, t3=0, v_tar=v_target)
+
+    @classmethod
+    def _calc_profile_given_T(cls, v_init: float, T: float, v_max: float, dist: float, v_tar: float):
+        """
+        Given start & end velocities, distance to the followed car and acceleration, calculate velocity profile:
+            1. acceleration to a velocity v_mid <= v_max for t1 time,
+            2. moving by v_max for t2 time (t2 = 0 if v_mid < v_max),
+            3. deceleration to end_vel for t3 time.
+        If this profile is infeasible, then try an opposite order of accelerations: 1. deceleration, 3. acceleration.
+        In the case of opposite order, the constant velocity segment is missing.
+        In each velocity segment the acceleration is constant.
+        :param v_init: start ego velocity
+        :param T: total time for the profile
+        :param v_max: maximal desired velocity of ego
+        :param dist: initial distance to the safe location from the target
+        :param v_tar: target object velocity
+        return: VelocityProfile class or None in case of infeasible semantic action
+        """
+        if T <= 0:
+            print('NO PROFILE: T=%.2f' % T)
+            return None
+
+        v_init_rel = v_init - v_tar  # relative velocity; may be negative
+        v_max_rel = max(v_max - v_tar, BP_MAX_VELOCITY_TOLERANCE)  # v_max > v_tar to enable reaching the target car
+        if v_init_rel <= v_max_rel:
+            # let v = v_init_rel, v1 = v_mid_rel, t = t1, d = dist, solve for a (acceleration)
+            # for the simple case (acceleration, deceleration) solve the following equations:
+            # v1^2 - v^2 = 2ad, v1 = v + at, v1 = a(T-t)
+            # it is simplified to quadratic equation for a: T^2*a^2 - 2(2d-Tv)a - v^2 = 0
+            # solution: a = ( (2d-Tv) +- sqrt((2d-Tv)^2 + (Tv)^2) ) / T^2
+            discriminant = (2 * dist - T * v_init_rel) ** 2 + (T * v_init_rel) ** 2
+            a = ((2 * dist - T * v_init_rel) + np.sqrt(discriminant)) / T ** 2  # always positive
+            t1 = 0.5 * (T - v_init_rel / a)
+            if t1 < 0. or t1 > T:  # invalid t1, try second solution of the quadratic equation
+                a = ((2 * dist - T * v_init_rel) - np.sqrt(discriminant)) / T ** 2  # always negative
+                t1 = 0.5 * (T - v_init_rel / a)
+                if t1 < 0. or t1 > T:
+                    print('NO PROFILE v_init_rel <= v_max_rel: t1=%.2f v_init=%.2f v_tar=%.2f T=%.2f' % (t1, v_init, v_tar, T))
+                    return None
+            v_mid_rel = v_init_rel + a * t1
+            if v_mid_rel <= v_max_rel:  # two segments
+                return cls(v_init, t1, v_mid_rel + v_tar, 0, T - t1, v_tar)
+            else:  # v_mid_rel > v_max_rel; 3 segments
+                # let vm = v_max_rel
+                # solve equation for a: (vm^2 - v^2)/2a + vm*t2 + vm^2/2a = d, where t2 = T - t1 - t3 = T - (2vm-v)/a
+                a = (v_max_rel ** 2 - v_init_rel * v_max_rel + 0.5 * v_init_rel ** 2) / (v_max_rel * T - dist)
+                if a <= 0:
+                    print('NO PROFILE 3 segments: a=%.2f v_init=%.2f v_tar=%.2f T=%.2f' % (a, v_init, v_tar, T))
+                    return None
+                t1 = (v_max_rel - v_init_rel) / a
+                t3 = v_max_rel / a
+                t2 = T - t1 - t3
+                if t2 < 0.:
+                    print('NO PROFILE 3 segments: t2=%.2f v_init=%.2f v_tar=%.2f T=%.2f a=%.2f' % (t2, v_init, v_tar, T, a))
+                    return None
+                return cls(v_init, t1, v_max, t2, t3, v_tar)
+        else:  # v_init_rel > v_max_rel
+            # solve equation for a: (v^2 - vm^2)/2a + t2*vm + vm^2/2a = d, where t2 = T - t1 - t3 = T - v/a
+            a = (v_init_rel * v_max_rel - 0.5 * v_init_rel**2) / (v_max_rel * T - dist)
+            t1 = (v_init_rel - v_max_rel) / a
+            t3 = v_max_rel / a
+            t2 = T - v_init_rel / a
+            if t2 < 0.:
+                print('NO PROFILE v_init_rel > v_max_rel: t2=%.2f v_init=%.2f v_tar=%.2f T=%.2f' % (t2, v_init, v_tar, T))
+                return None
+            return cls(v_init, t1, v_max, t2, t3, v_tar)
+
     @staticmethod
     def calc_lateral_time(init_lat_vel: float, signed_lat_dist: float, lane_width: float,
                           aggressiveness_level: AggressivenessLevel) -> [float, float]:
@@ -286,7 +376,7 @@ class VelocityProfile:
             lat_v_init_toward_target = -init_lat_vel
         # normalize lat_acc by lane_width, such that T_d will NOT depend on lane_width
         lat_acc = AGGRESSIVENESS_TO_LAT_ACC[aggressiveness_level.value] * lane_width / 3.6
-        lateral_profile = VelocityProfile._calc_velocity_profile_follow_car(
+        lateral_profile = VelocityProfile._calc_profile_given_acc(
             lat_v_init_toward_target, lat_acc, np.inf, abs(signed_lat_dist), 0, 0)
 
         # calculate total deviation from lane center
