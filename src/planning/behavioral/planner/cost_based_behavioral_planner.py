@@ -24,8 +24,9 @@ from decision_making.src.planning.behavioral.semantic_actions_utils import Seman
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.utils.map_utils import MapUtils
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import State, ObjectSize
+from decision_making.src.state.state import State, ObjectSize, EgoState
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -126,12 +127,13 @@ class CostBasedBehavioralPlanner:
         return trajectory_parameters
 
     @staticmethod
-    def generate_baseline_trajectory():
+    def generate_baseline_trajectory(ego: EgoState, planning_time: float,):
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
+        road_frenet = MapUtils.get_road_frenet(ego)
         return SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
-                                                          T_s=T_vals[optimum_time_idx],
-                                                          T_d=T_vals[optimum_time_idx],
+                                                          T_s=planning_time,
+                                                          T_d=planning_time,
                                                           frenet_frame=road_frenet,
                                                           poly_s_coefs=poly_coefs_s[optimum_time_idx],
                                                           poly_d_coefs=poly_coefs_d[optimum_time_idx])
