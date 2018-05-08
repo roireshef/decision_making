@@ -22,7 +22,7 @@ class Poly1D:
 
     @staticmethod
     @abstractmethod
-    def cumulative_jerk(poly_coefs: np.ndarray, x: Union[float, np.ndarray]):
+    def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
         pass
 
     @classmethod
@@ -114,7 +114,7 @@ class Poly1D:
         # Therefore, we check if the imaginary part is close to 0.
         is_real = np.isclose(np.imag(acc_suspected_points), 0.0).astype(int)
         # If a root is found as real, then take it's real part. Otherwise take it as is.
-        acc_suspected_points = np.real(acc_suspected_points) * is_real + acc_suspected_points * (1-is_real)
+        acc_suspected_points = np.real(acc_suspected_points) * is_real + acc_suspected_points * (1 - is_real)
         acc_suspected_values = Math.zip_polyval2d(acc_poly, acc_suspected_points)
 
         # are extrema points out of [0, T] range and are they non-complex
@@ -180,7 +180,7 @@ class Poly1D:
         if poly_coefs.shape[1] == 3:
             poly_coefs[poly_coefs[:, 0] == 0, 0] = np.finfo(np.float32).eps  # prevent zero first coefficient
             poly = poly_coefs.astype(np.complex)
-            det = np.sqrt(poly[:, 1]**2 - 4*poly[:, 0]*poly[:, 2])
+            det = np.sqrt(poly[:, 1] ** 2 - 4 * poly[:, 0] * poly[:, 2])
             roots1 = (-poly[:, 1] + det) / (2 * poly[:, 0])
             roots2 = (-poly[:, 1] - det) / (2 * poly[:, 0])
             return np.c_[roots1, roots2]
@@ -197,12 +197,12 @@ class QuarticPoly1D(Poly1D):
         return 5
 
     @staticmethod
-    def cumulative_jerk(poly_coefs: np.ndarray, x: Union[float, np.ndarray]):
+    def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
         a4, a3, a2, a1, a0 = np.split(poly_coefs, 5, axis=-1)
         a4, a3, a2, a1, a0 = a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
-        return 36 * (a3 ** 2) * x + \
-               144 * a3 * a4 * x ** 2 + \
-               192 * a4 ** 2 * x ** 3
+        return 36 * (a3 ** 2) * T + \
+               144 * a3 * a4 * T ** 2 + \
+               192 * a4 ** 2 * T ** 3
 
     @staticmethod
     def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
@@ -242,16 +242,6 @@ class QuinticPoly1D(Poly1D):
     polynomial elements at time 0 (first 3 rows) and T (last 3 rows) - the 3 rows in each block correspond to
     p, p_dot, p_dotdot.
     """
-
-    @staticmethod
-    def cumulative_jerk(poly_coefs: np.ndarray, x: Union[float, np.ndarray]):
-        a5, a4, a3, a2, a1, a0 = np.split(poly_coefs, 6, axis=-1)
-        a5, a4, a3, a2, a1, a0 = a5.flatten(), a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
-        return 36 * a3 ** 2 * x + \
-               144 * a3 * a4 * x ** 2 + \
-               (240 * a3 * a5 + 192 * a4 ** 2) * x ** 3 + \
-               720 * a4 * a5 * x ** 4 + \
-               720 * a5 ** 2 * x ** 5
 
     @staticmethod
     def num_coefs():
@@ -298,5 +288,49 @@ class QuinticPoly1D(Poly1D):
         velocities = Math.zip_polyval2d(vel_poly_s, times)  # get velocities for all T_vals and all t[i,j] < T_vals[i]
         # zero irrelevant velocities to get lower triangular matrix: 0 <= t[i,j] < T_val[i]
         if len(T_vals) > 1:
-            velocities = np.tril(velocities, int(round(min_T/dt))-2)
+            velocities = np.tril(velocities, int(round(min_T / dt)) - 2)
         return np.all(NumpyUtils.is_in_limits(velocities, vel_limits), axis=1)
+
+    @staticmethod
+    def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+        a5, a4, a3, a2, a1, a0 = np.split(poly_coefs, 6, axis=-1)
+        a5, a4, a3, a2, a1, a0 = a5.flatten(), a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
+        return 36 * a3 ** 2 * T + \
+               144 * a3 * a4 * T ** 2 + \
+               (240 * a3 * a5 + 192 * a4 ** 2) * T ** 3 + \
+               720 * a4 * a5 * T ** 4 + \
+               720 * a5 ** 2 * T ** 5
+
+    # TODO: document
+    @staticmethod
+    def time_cost_function_derivative(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds_0: float,
+                                      T_m: float):
+        return lambda T: (T ** 6 * w_T + 3 * w_J * (
+            3 * T ** 4 * a_0 ** 2 + 24 * T ** 3 * a_0 * v_0 - 24 * T ** 3 * a_0 * v_T + 40 * T ** 2 * T_m * a_0 * v_T -
+            40 * T ** 2 * a_0 * ds_0 + 64 * T ** 2 * v_0 ** 2 - 128 * T ** 2 * v_0 * v_T + 64 * T ** 2 * v_T ** 2 + 240 * T * T_m * v_0 * v_T -
+            240 * T * T_m * v_T ** 2 - 240 * T * ds_0 * v_0 + 240 * T * ds_0 * v_T + 240 * T_m ** 2 * v_T ** 2 - 480 * T_m * ds_0 * v_T + 240 * ds_0 ** 2)) / T ** 5
+
+    @staticmethod
+    def distance_profile_function(a_0: float, v_0: float, v_T: float, ds_0: float, T: float):
+        return lambda t: (-T ** 5 * t * (a_0 * t + 2 * v_0) + 2 * T ** 5 * (ds_0 + t * v_T) + T ** 2 * t ** 3 * (
+            3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) -
+            20 * ds_0 - 20 * v_T * (T - 2)) - T * t ** 4 * (
+                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds_0 - 30 * v_T * (T - 2)) +
+                          t ** 5 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * ds_0 - 12 * v_T * (T - 2))) / (2 * T ** 5)
+
+    @staticmethod
+    def velocity_profile_function(a_0: float, v_0: float, v_T: float, ds_0: float, T: float):
+        return lambda t: (2 * T ** 5 * (a_0 * t + v_0) + 3 * T ** 2 * t ** 2 * (
+            -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * ds_0 + 20 * v_T * (T - 2)) +
+                          4 * T * t ** 3 * (
+                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds_0 - 30 * v_T * (T - 2)) +
+                          5 * t ** 4 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * ds_0 + 12 * v_T * (T - 2))) / (
+                             2 * T ** 5)
+
+    @staticmethod
+    def acceleration_profile_function(a_0: float, v_0: float, v_T: float, ds_0: float, T: float):
+        return lambda t: (T ** 5 * a_0 - 3 * T ** 2 * t * (
+            3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * ds_0 - 20 * v_T * (T - 2)) +
+                          6 * T * t ** 2 * (
+                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds_0 - 30 * v_T * (T - 2)) +
+                          10 * t ** 3 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * ds_0 + 12 * v_T * (T - 2))) / T ** 5
