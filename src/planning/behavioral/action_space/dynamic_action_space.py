@@ -4,7 +4,7 @@ from sklearn.utils.extmath import cartesian
 from typing import Optional, Callable
 
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SAFE_DIST_TIME_DELAY, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, EPS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
@@ -25,17 +25,11 @@ class DynamicActionSpace(ActionSpace):
                          recipes=[DynamicActionRecipe.from_args_list(comb)
                                   for comb in cartesian([RelativeLane,
                                                          RelativeLongitudinalPosition,
-                                                         [ActionType.FOLLOW_VEHICLE, ActionType.TAKE_OVER_VEHICLE],
+                                                         [ActionType.FOLLOW_VEHICLE, ActionType.OVER_TAKE_VEHICLE],
                                                          AggressivenessLevel])],
                          recipe_filtering=RecipeFiltering(recipe_filter_bank.dynamic_filters))
 
         self.predictor = predictor
-
-    @staticmethod
-    def find_roots(func: Callable[float, float], grid_values: np.ndarray):
-        func_values = func(grid_values)
-        opt_ind = np.argwhere(np.abs(func_values) < 0.01)
-        return grid_values[opt_ind]
 
     def specify_goal(self, action_recipe: DynamicActionRecipe,
                      behavioral_state: BehavioralGridState) -> Optional[ActionSpec]:
@@ -61,9 +55,8 @@ class DynamicActionSpace(ActionSpace):
         road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id=obj_on_road.road_id)
         obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
 
-        # TODO: take out 000.1 into a constant
-        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
-                           0.001)
+        # TODO: take out 0.001 into a constant
+        T_s_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS, 0.001)
 
         w_Js, w_Jd, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[action_recipe.aggressiveness.value]
         v_0, a_0 = ego_init_fstate[FS_SV], ego_init_fstate[FS_SA]
@@ -75,17 +68,20 @@ class DynamicActionSpace(ActionSpace):
         # Note: time_cost_function_derivative assumes constant-velocity moving objects
         if action_recipe.action_type == ActionType.FOLLOW_VEHICLE:
             lon_time_cost_func_der = QuinticPoly1D.time_cost_function_derivative(w_T, w_Js, a_0, v_0, v_T,
-                                                                                 longitudinal_difference,
+                                                                                 longitudinal_difference - LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT,
                                                                                  T_m=SAFE_DIST_TIME_DELAY)
-        elif action_recipe.action_type == ActionType.TAKE_OVER_VEHICLE:
+        elif action_recipe.action_type == ActionType.OVER_TAKE_VEHICLE:
             lon_time_cost_func_der = QuinticPoly1D.time_cost_function_derivative(w_T, w_Js, a_0, v_0, v_T,
-                                                                                 longitudinal_difference,
+                                                                                 longitudinal_difference + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT,
                                                                                  T_m=-SAFE_DIST_TIME_DELAY)
         else:
             raise NotImplemented("Action Type %s is not handled in DynamicActionSpace specification",
                                  action_recipe.action_type)
 
-        T_s = DynamicActionSpace.find_roots(lon_time_cost_func_der, T_vals)
+        T_s = ActionSpace.find_roots(lon_time_cost_func_der, T_s_vals)
+        # If roots were found out of the desired region, this action won't be specified
+        if len(T_s) == 0:
+            return None
 
         # TODO: Do the same as above for lateral movement
         # TODO: check if lateral trajectory is feasible(?)
@@ -96,8 +92,16 @@ class DynamicActionSpace(ActionSpace):
                                                                              ego_init_fstate[FS_DV], 0,
                                                                              latitudinal_difference,
                                                                              T_m=0)
-        T_d = DynamicActionSpace.find_roots(lat_time_cost_func_der, T_vals)
+        # TODO: put in constants
+        T_d_vals = np.arange(0.1, BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS, 0.001)
+        T_d = ActionSpace.find_roots(lat_time_cost_func_der, T_d_vals)
+        # If roots were found out of the desired region, this action won't be specified
+        if len(T_d) == 0:
+            return None
 
-        return ActionSpec(t=max(T_s, T_d), v=v_T,
+        # This stems from the assumption we've made about independency between d and s
+        planning_time = max(T_s[0], T_d[0])
+
+        return ActionSpec(t=planning_time, v=v_T,
                           s=target_obj_init_fstate[FS_SX],
                           d=obj_center_lane_latitude)

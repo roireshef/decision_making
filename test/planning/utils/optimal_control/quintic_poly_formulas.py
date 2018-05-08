@@ -54,7 +54,6 @@ predicate = np.full(shape=[v_0_grid.shape[0], a_0_grid.shape[0], s_T_grid.shape[
 
 if __name__ == "__main__":
 
-    start_time = time.time()
     T = symbols('T')
     t = symbols('t')
     Tm = symbols('T_m')  # safety margin in seconds
@@ -85,16 +84,18 @@ if __name__ == "__main__":
 
     cost = (wJ * J + wT * T).simplify()
 
-    cost = cost.subs(s0, 0).subs(aT, 0)
-    cost_diff = sp.diff(cost, T)
+    cost = cost.subs(s0, 0).subs(aT, 0).simplify()
+    cost_diff = sp.diff(cost, T).simplify()
 
-    print("%s %s", 'init time:', time.time() - start_time)
+    temp_v_t = v_t.subs(s0, 0).subs(aT, 0).subs(Tm, 2).simplify()
+    temp_delta_s_t = (sT + vT * t - x_t.subs(s0, 0).subs(aT, 0).subs(Tm, 2)).simplify()
+    temp_a_t = sp.diff(temp_v_t, t).simplify()
 
-    # temp_v_t = v_t.subs(s0, 0).subs(aT, 0).subs(Tm, 2).simplify()
-    # temp_delta_s_t = (sT + vT * t - x_t.subs(s0, 0).subs(aT, 0).subs(Tm, 2)).simplify()
-    # temp_a_t = sp.diff(temp_v_t, t).simplify()
-
-    # scenario_cost_deriv = cost_diff.subs(wJ, 1).subs(wT, 0.1).subs(a0, 0).subs(v0, 14).subs(vT, 9).subs(sT, 23)
+    cost_desmos = cost.subs(a0, 0).simplify()
+    cost_diff_desmos = cost_diff.subs(a0, 0).simplify()
+    delta_s_t_desmos = temp_delta_s_t.subs(a0, 0).simplify()
+    v_t_desmos = temp_v_t.subs(a0, 0).simplify()
+    a_t_desmos = temp_a_t.subs(a0, 0).simplify()
 
     optimum_horizon_search_margin = 0.2
 

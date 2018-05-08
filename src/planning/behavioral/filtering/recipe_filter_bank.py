@@ -100,7 +100,7 @@ def filter_actions_toward_back_and_parallel_cells(recipe: DynamicActionRecipe,
 
 
 def filter_over_take_actions(recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
-    return recipe.action_type != ActionType.TAKE_OVER_VEHICLE
+    return recipe.action_type != ActionType.OVER_TAKE_VEHICLE
 
 
 # StaticActionRecipe Filters

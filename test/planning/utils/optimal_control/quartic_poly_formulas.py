@@ -32,10 +32,15 @@ wJ, wT = symbols('w_J w_T')
 
 cost = (wJ * J + wT * T).simplify()
 
-temp_cost = cost.subs(s0, 0).subs(a0, 0).subs(aT, 0)
-# temp_optimum = float(findroot(lambda x: sp.diff(temp_cost.subs(wJ, 200).subs(wT, 1), T).subs(T, x), [1, 15]))
+cost = cost.subs(s0, 0).subs(aT, 0).simplify()
+cost_diff = sp.diff(cost, T).simplify()
 
-temp_v_t = v_t.subs(s0, 0).subs(a0, 0).subs(aT, 0)
-temp_a_t = sp.diff(temp_v_t, t)
-result = cost.subs(s0, 0).subs(a0, 0).subs(aT, 0)
+temp_x_t = x_t.subs(s0, 0).subs(aT, 0).simplify()
+temp_v_t = v_t.subs(s0, 0).subs(aT, 0).simplify()
+temp_a_t = sp.diff(temp_v_t, t).simplify()
 
+cost_desmos = cost.subs(a0, 0).simplify()
+cost_diff_desmos = cost_diff.subs(a0, 0).simplify()
+x_t_desmos = temp_x_t.subs(a0, 0).simplify()
+v_t_desmos = temp_v_t.subs(a0, 0).simplify()
+a_t_desmos = temp_a_t.subs(a0, 0).simplify()

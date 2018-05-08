@@ -22,6 +22,7 @@ from decision_making.src.planning.behavioral.evaluators.value_approximator impor
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
+from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize
@@ -126,7 +127,14 @@ class CostBasedBehavioralPlanner:
 
     @staticmethod
     def generate_baseline_trajectory():
-        pass
+        # Note: We create the samplable trajectory as a reference trajectory of the current action.from
+        # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
+        return SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
+                                                          T_s=T_vals[optimum_time_idx],
+                                                          T_d=T_vals[optimum_time_idx],
+                                                          frenet_frame=road_frenet,
+                                                          poly_s_coefs=poly_coefs_s[optimum_time_idx],
+                                                          poly_d_coefs=poly_coefs_d[optimum_time_idx])
 
     @staticmethod
     def _generate_cost_params(road_id: int, ego_size: ObjectSize, reference_route_latitude: float) -> \

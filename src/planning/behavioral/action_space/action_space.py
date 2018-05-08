@@ -1,7 +1,7 @@
 import itertools
 from abc import abstractmethod
 from logging import Logger
-from typing import List, Optional
+from typing import List, Optional, Callable
 
 import numpy as np
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -145,6 +145,13 @@ class ActionSpace:
         ]], repeats=repeat_factor, axis=0)
 
         return constraints_d
+
+    @staticmethod
+    # TODO: write type-hint
+    def find_roots(func, grid_values: np.ndarray):
+        func_values = func(grid_values)
+        opt_ind = np.argwhere(np.abs(func_values) < 0.01)
+        return grid_values[opt_ind]
 
 
 class ActionSpaceContainer(ActionSpace):

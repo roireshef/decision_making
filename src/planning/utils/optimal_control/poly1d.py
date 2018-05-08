@@ -233,6 +233,29 @@ class QuarticPoly1D(Poly1D):
         """
         return cls.are_derivatives_in_limits(degree=1, poly_coefs=poly_coefs, T_vals=T_vals, limits=vel_limits)
 
+    # TODO: document
+    @staticmethod
+    def time_cost_function(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float):
+        return lambda T: (T**4*w_T + 4*w_J*(T**2*a_0**2 + 3*T*a_0*v_0 - 3*T*a_0*v_T + 3*v_0**2 - 6*v_0*v_T + 3*v_T**2))/T**3
+
+    @staticmethod
+    def time_cost_function_derivative(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float):
+        return lambda T: (T**4*w_T - 4*T**2*a_0**2*w_J - 24*T*a_0*v_0*w_J + 24*T*a_0*v_T*w_J - 36*v_0**2*w_J +
+                          72*v_0*v_T*w_J - 36*v_T**2*w_J)/T**4
+
+    @staticmethod
+    def distance_profile_function(a_0: float, v_0: float, v_T: float, T: float):
+        return lambda t: t*(6*T**3*(a_0*t + 2*v_0) - 4*T*t**2*(2*T*a_0 + 3*v_0 - 3*v_T) +
+                            3*t**3*(T*a_0 + 2*v_0 - 2*v_T))/(12*T**3)
+
+    @staticmethod
+    def velocity_profile_function(a_0: float, v_0: float, v_T: float, T: float):
+        return lambda t: (T**3*(a_0*t + v_0) - T*t**2*(2*T*a_0 + 3*v_0 - 3*v_T) + t**3*(T*a_0 + 2*v_0 - 2*v_T))/T**3
+
+    @staticmethod
+    def acceleration_profile_function(a_0: float, v_0: float, v_T: float, T: float):
+        return lambda t: (T**3*a_0 - 2*T*t*(2*T*a_0 + 3*v_0 - 3*v_T) + 3*t**2*(T*a_0 + 2*v_0 - 2*v_T))/T**3
+
 
 class QuinticPoly1D(Poly1D):
     """
@@ -303,12 +326,20 @@ class QuinticPoly1D(Poly1D):
 
     # TODO: document
     @staticmethod
+    def time_cost_function(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds_0: float, T_m: float):
+        return lambda T: (T**6*w_T + 3*w_J*(3*T**4*a_0**2 + 24*T**3*a_0*v_0 - 24*T**3*a_0*v_T + 40*T**2*T_m*a_0*v_T -
+                            40*T**2*a_0*ds_0 + 64*T**2*v_0**2 - 128*T**2*v_0*v_T + 64*T**2*v_T**2 + 240*T*T_m*v_0*v_T -
+                            240*T*T_m*v_T**2 - 240*T*ds_0*v_0 + 240*T*ds_0*v_T + 240*T_m**2*v_T**2 - 480*T_m*ds_0*v_T +
+                                            240*ds_0**2))/T**5
+
+
+    @staticmethod
     def time_cost_function_derivative(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds_0: float,
                                       T_m: float):
-        return lambda T: (T ** 6 * w_T + 3 * w_J * (
-            3 * T ** 4 * a_0 ** 2 + 24 * T ** 3 * a_0 * v_0 - 24 * T ** 3 * a_0 * v_T + 40 * T ** 2 * T_m * a_0 * v_T -
-            40 * T ** 2 * a_0 * ds_0 + 64 * T ** 2 * v_0 ** 2 - 128 * T ** 2 * v_0 * v_T + 64 * T ** 2 * v_T ** 2 + 240 * T * T_m * v_0 * v_T -
-            240 * T * T_m * v_T ** 2 - 240 * T * ds_0 * v_0 + 240 * T * ds_0 * v_T + 240 * T_m ** 2 * v_T ** 2 - 480 * T_m * ds_0 * v_T + 240 * ds_0 ** 2)) / T ** 5
+        return lambda T: (T**6*w_T - 9*T**4*a_0**2*w_J - 144*T**3*a_0*v_0*w_J + 144*T**3*a_0*v_T*w_J -
+                          360*T**2*T_m*a_0*v_T*w_J + 360*T**2*a_0*ds_0*w_J - 576*T**2*v_0**2*w_J + 1152*T**2*v_0*v_T*w_J -
+                          576*T**2*v_T**2*w_J - 2880*T*T_m*v_0*v_T*w_J + 2880*T*T_m*v_T**2*w_J + 2880*T*ds_0*v_0*w_J -
+                          2880*T*ds_0*v_T*w_J - 3600*T_m**2*v_T**2*w_J + 7200*T_m*ds_0*v_T*w_J - 3600*ds_0**2*w_J)/T**6
 
     @staticmethod
     def distance_profile_function(a_0: float, v_0: float, v_T: float, ds_0: float, T: float):
