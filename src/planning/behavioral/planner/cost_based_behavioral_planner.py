@@ -133,7 +133,7 @@ class CostBasedBehavioralPlanner:
     def generate_baseline_trajectory(ego: EgoState, action_spec: ActionSpec):
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
-        road_frenet = MapUtils.get_road_frenet(ego)
+        road_frenet = MapUtils.get_road_rhs_frenet(ego)
 
         # project ego vehicle onto the road
         ego_init_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)

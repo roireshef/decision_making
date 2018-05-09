@@ -1,4 +1,5 @@
 from logging import Logger
+import time
 from typing import Optional
 
 import numpy as np
@@ -44,15 +45,25 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # TODO: this should evaluate the terminal states!
         #current_state_value = self.value_approximator.evaluate_state(behavioral_state)
 
+        # TODO: FOR DEBUG PURPOSES!
+        time_before_filters = time.time()
+
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
+
+        self.logger.debug('Number of actions originally: %d, valid: %d, filter processing time: %f',
+                          self.action_space.action_space_size, np.sum(recipes_mask), time.time()-time_before_filters)
+
+        # TODO: FOR DEBUG PURPOSES!
+        time_before_specify = time.time()
 
         # Action specification
         action_specs = [self.action_space.specify_goal(recipe, behavioral_state) if recipes_mask[i] else None
                         for i, recipe in enumerate(action_recipes)]
 
         num_of_specified_actions = sum(x is not None for x in action_specs)
-        self.logger.debug('Number of actions specified: %d', num_of_specified_actions)
+        self.logger.debug('Number of actions specified: %d, specify processing time: %f',
+                          num_of_specified_actions, time.time()-time_before_specify)
 
         # ActionSpec filtering
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
