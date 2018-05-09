@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Union
+from typing import Union, Callable
 
 import numpy as np
 
@@ -365,3 +365,19 @@ class QuinticPoly1D(Poly1D):
                           6 * T * t ** 2 * (
                               3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds_0 - 30 * v_T * (T - 2)) +
                           10 * t ** 3 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * ds_0 + 12 * v_T * (T - 2))) / T ** 5
+
+
+class DynamicsCallables:
+    """
+
+    """
+    def __init__(self, distance_function, velocity_function, acceleration_function):
+        self._distance_function = distance_function
+        self._velocity_function = velocity_function
+        self._acceleration_function = acceleration_function
+
+    def dynamics_for_time(self, time_points: np.ndarray):
+        self._distance_function(time_points)
+        self._velocity_function(time_points)
+        self._acceleration_function(time_points)
+        return np.hstack((self._distance_function(time_points), self._velocity_function(time_points), self._acceleration_function(time_points)))

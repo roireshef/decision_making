@@ -62,7 +62,6 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
                                                            action_specs_mask)
 
         selected_action_index = int(np.argmin(action_costs))
-        self.logger.debug('Selected recipe: ', action_recipes[selected_action_index].__dict__)
         selected_action_spec = action_specs[selected_action_index]
 
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(behavioral_state=behavioral_state,
@@ -75,7 +74,10 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self._last_action_spec = selected_action_spec
 
         # TODO: Fill that!
-        baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory()
+        baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(state.ego_state,
+                                                                                      selected_action_spec.t,
+                                                                                      action_recipes[selected_action_index],
+                                                                                      selected_action_spec)
 
         self.logger.debug("Chosen behavioral semantic action is %s, %s",
                           action_recipes[selected_action_index].__dict__, selected_action_spec.__dict__)

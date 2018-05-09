@@ -20,9 +20,9 @@ class RecipeFiltering:
 
     def filter_recipe(self, recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
         for recipe_filter in self._filters:
-            # if recipe.action_type == ActionType.FOLLOW_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.FRONT:
-            #     print(recipe_filter.name)
             if not recipe_filter.filtering_method(recipe, behavioral_state):
+                if recipe.action_type == ActionType.FOLLOW_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.FRONT:
+                    print("frontal following filtered by {0}".format(recipe_filter.name))
                 return False
         return True
 

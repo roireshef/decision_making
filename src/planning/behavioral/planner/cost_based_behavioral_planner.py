@@ -15,16 +15,19 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParams,
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, ActionType
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator, \
     ActionRecipeEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
+from decision_making.src.planning.trajectory.lambda_werling_planner import SamplableBehavioralWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
+from decision_making.src.planning.types import FS_DA, FS_DV, FS_SA, FS_SV, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.map_utils import MapUtils
+from decision_making.src.planning.utils.optimal_control.poly1d import DynamicsCallables, QuarticPoly1D, QuinticPoly1D
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize, EgoState
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
@@ -34,7 +37,8 @@ from mapping.src.service.map_service import MapService
 @six.add_metaclass(ABCMeta)
 class CostBasedBehavioralPlanner:
     def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
-                 action_spec_evaluator: Optional[ActionSpecEvaluator], action_spec_validator: Optional[ActionSpecFiltering],
+                 action_spec_evaluator: Optional[ActionSpecEvaluator],
+                 action_spec_validator: Optional[ActionSpecFiltering],
                  value_approximator: ValueApproximator, predictor: Predictor, logger: Logger):
         self.action_space = action_space
         self.recipe_evaluator = recipe_evaluator
@@ -127,16 +131,35 @@ class CostBasedBehavioralPlanner:
         return trajectory_parameters
 
     @staticmethod
-    def generate_baseline_trajectory(ego: EgoState, planning_time: float,):
+    def generate_baseline_trajectory(ego: EgoState, planning_time: float, action_recipe: ActionRecipe, action_spec: ActionSpec ):
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
+
         road_frenet = MapUtils.get_road_frenet(ego)
-        return SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
-                                                          T_s=planning_time,
-                                                          T_d=planning_time,
-                                                          frenet_frame=road_frenet,
-                                                          poly_s_coefs=poly_coefs_s[optimum_time_idx],
-                                                          poly_d_coefs=poly_coefs_d[optimum_time_idx])
+
+        fstate = road_frenet.cstate_to_fstate(np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature]))
+        d_x = QuinticPoly1D.distance_profile_function(fstate[FS_DA], fstate[FS_DV], 0, action_spec.d, planning_time)
+        d_v = QuinticPoly1D.velocity_profile_function(fstate[FS_DA], fstate[FS_DV], 0, action_spec.d, planning_time)
+        d_a = QuinticPoly1D.acceleration_profile_function(fstate[FS_DA], fstate[FS_DV], 0, action_spec.d, planning_time)
+        d_dynamics_functions = DynamicsCallables(d_x, d_v, d_a)
+
+        if action_recipe.action_type == ActionType.FOLLOW_LANE:
+            s_x = QuarticPoly1D.distance_profile_function(fstate[FS_SA], fstate[FS_SV], action_spec.v, planning_time)
+            s_v = QuarticPoly1D.velocity_profile_function(fstate[FS_SA], fstate[FS_SV], action_spec.v, planning_time)
+            s_a = QuarticPoly1D.acceleration_profile_function(fstate[FS_SA], fstate[FS_SV], action_spec.v, planning_time)
+        else:
+            s_x = QuinticPoly1D.distance_profile_function(fstate[FS_SA], fstate[FS_SV], action_spec.v, action_spec.s, planning_time)
+            s_v = QuinticPoly1D.velocity_profile_function(fstate[FS_SA], fstate[FS_SV], action_spec.v, action_spec.s, planning_time)
+            s_a = QuinticPoly1D.acceleration_profile_function(fstate[FS_SA], fstate[FS_SV], action_spec.v, action_spec.s, planning_time)
+
+        s_dynamics_functions = DynamicsCallables(s_x, s_v, s_a)
+
+        return SamplableBehavioralWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
+                                                    T_s=planning_time,
+                                                    T_d=planning_time,
+                                                    frenet_frame=road_frenet,
+                                                    s_dynamic_functions=s_dynamics_functions,
+                                                    d_dynamic_functions=d_dynamics_functions)
 
     @staticmethod
     def _generate_cost_params(road_id: int, ego_size: ObjectSize, reference_route_latitude: float) -> \
@@ -209,5 +232,3 @@ class CostBasedBehavioralPlanner:
                                            lat_acceleration_limits=LAT_ACC_LIMITS)
 
         return cost_params
-
-

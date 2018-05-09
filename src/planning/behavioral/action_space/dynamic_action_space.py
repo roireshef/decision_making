@@ -100,7 +100,7 @@ class DynamicActionSpace(ActionSpace):
             return None
 
         # This stems from the assumption we've made about independency between d and s
-        planning_time = max(T_s[0], T_d[0])
+        planning_time = float(max(T_s[0], T_d[0]))
 
         return ActionSpec(t=planning_time, v=v_T,
                           s=target_obj_init_fstate[FS_SX],
