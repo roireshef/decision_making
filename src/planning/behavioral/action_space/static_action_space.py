@@ -29,7 +29,7 @@ class StaticActionSpace(ActionSpace):
             Optional[ActionSpec]:
 
         ego = behavioral_state.ego_state
-        road_frenet = MapUtils.get_road_frenet(ego)
+        road_frenet = MapUtils.get_road_rhs_frenet(ego)
 
         # project ego vehicle onto the road
         ego_init_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
@@ -71,11 +71,6 @@ class StaticActionSpace(ActionSpace):
 
         # This stems from the assumption we've made about independency between d and s
         planning_time = float(max(T_s[0], T_d[0]))
-        # TODO: remove later, debug only
-        if planning_time == T_d[0]:
-            print('lat time chosen: %f instead of lon time: %f' % (T_d[0], T_s[0]))
-        else:
-            print('lon time chosen: %f instead of lat time: %f' % (T_s[0], T_d[0]))
 
         distance_func = QuarticPoly1D.distance_profile_function(a_0, v_0, v_T, planning_time)
         target_s = distance_func(planning_time) + ego_init_fstate[FS_SX]

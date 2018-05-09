@@ -10,11 +10,9 @@ from decision_making.src.planning.behavioral.data_objects import ActionRecipe, D
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
 from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import v_0_grid, a_0_grid, s_T_grid, \
     v_T_grid
-from mapping.src.service.map_service import MapService
 
 # TODO: This code should be moved to some global system_init area
 predicates = {}

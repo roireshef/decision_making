@@ -41,7 +41,7 @@ class DynamicActionSpace(ActionSpace):
         :return: semantic action specification
         """
         ego = behavioral_state.ego_state
-        road_frenet = MapUtils.get_road_frenet(ego)
+        road_frenet = MapUtils.get_road_rhs_frenet(ego)
 
         # project ego vehicle onto the road
         ego_init_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)

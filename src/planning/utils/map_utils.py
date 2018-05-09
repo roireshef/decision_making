@@ -8,9 +8,8 @@ from mapping.src.service.map_service import MapService
 class MapUtils:
     # TODO: replace with navigation plan aware function from map API
     @staticmethod
-    def get_road_frenet(obj: DynamicObject):
-        road_points = MapService.get_instance()._shift_road_points_to_latitude(obj.road_localization.road_id, 0.0)
-        return FrenetSerret2DFrame(road_points)
+    def get_road_rhs_frenet(obj: DynamicObject):
+        return MapService.get_instance()._rhs_roads_frenet[obj.road_localization.road_id]
 
     # TODO: replace this call with the road localization once it is updated to be hold a frenet state
     @staticmethod
