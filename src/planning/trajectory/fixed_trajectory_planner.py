@@ -6,7 +6,7 @@ import time
 
 from decision_making.src.exceptions import raises
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, \
-    TRAJECTORY_NUM_POINTS
+    TRAJECTORY_NUM_POINTS, WERLING_TIME_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
@@ -18,19 +18,20 @@ from decision_making.test.exceptions import NotTriggeredException
 
 class FixedSamplableTrajectory(SamplableTrajectory):
 
-    def __init__(self, fixed_trajectory: CartesianExtendedTrajectory):
-        super().__init__(timestamp_in_sec=0, T=np.inf)
+    def __init__(self, fixed_trajectory: CartesianExtendedTrajectory, timestamp_in_sec: float = 0):
+        super().__init__(timestamp_in_sec, T=np.inf)
         self._fixed_trajectory = fixed_trajectory
 
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
         """
         This function takes an array of time stamps and returns aCartesianExtendedTrajectory.
-        Note: this function ignores the time_points parameter and returns the
-        fixed trajectory which is already sampled.
+        Note: Since the trajectory is not actualy sampleable - the closest time points on the trajectory are returned.
         :param time_points: 1D numpy array of time stamps *in seconds* (global self.timestamp)
         :return: CartesianExtendedTrajectory
         """
-        return self._fixed_trajectory
+        indices_of_closest_time_points = np.round((time_points - self.timestamp_in_sec) / WERLING_TIME_RESOLUTION).astype(int)
+
+        return self._fixed_trajectory[indices_of_closest_time_points]
 
 
 class FixedTrajectoryPlanner(TrajectoryPlanner):
@@ -81,15 +82,16 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
             self._triggered = True
 
         if self._triggered:
+            #a trajectory snippet in the size required for the visualization message is outputted.
             current_trajectory = self._fixed_trajectory[
-                                 self._trajectory_advancing:(self._trajectory_advancing + TRAJECTORY_NUM_POINTS)]
+                                 self._trajectory_advancing:(self._trajectory_advancing + MAX_NUM_POINTS_FOR_VIZ)]
 
             self._trajectory_advancing += self._step_size
 
             # Currently no one does anything with the cost, the array here is dummy
             zero_trajectory_cost = np.array([0])
 
-            return FixedSamplableTrajectory(current_trajectory), \
+            return FixedSamplableTrajectory(current_trajectory, state.ego_state.timestamp_in_sec), \
                    np.array([current_trajectory[:, :(C_V + 1)]]), zero_trajectory_cost
         else:
             raise NotTriggeredException("Didn't reach trigger point yet [%s]. Current localization is [%s]" %

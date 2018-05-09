@@ -13,7 +13,7 @@ from decision_making.src.global_constants import OBSTACLE_SIGMOID_K_PARAM, LATER
     DEVIATION_FROM_GOAL_LAT_LON_RATIO, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, TD_STEPS, \
     LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_MARGIN_FROM_EGO
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
-from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
+from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.planning.trajectory.cost_function import Costs, Jerk
 from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import Poly1D
@@ -202,7 +202,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             state, goal = create_state_for_test_werlingPlanner(frenet, obs_poses, reference_route_latitude, ext, lng,
                                                                v0, vT, start_ego_lat, goal_latitude)
 
-            cost_params = SemanticActionsGridPolicy._generate_cost_params(road_id=ROAD_ID, ego_size=state.ego_state.size,
+            cost_params = CostBasedBehavioralPlanner._generate_cost_params(road_id=ROAD_ID, ego_size=state.ego_state.size,
                                                                           reference_route_latitude=reference_route_latitude)
 
             # run Werling planner
@@ -250,8 +250,8 @@ def create_route_for_test_werlingPlanner(road_id: int, num_lanes: int, lane_widt
                                                    curvature=curvature)
 
     test_map_model = TestMapModelUtils.create_road_map_from_coordinates(points_of_roads=[ext_route_xy],
-                                                                        road_id=road_id, road_name='y=x^3',
-                                                                        lanes_num=num_lanes, lane_width=lane_width,
+                                                                        road_id=[road_id], road_name=['y=x^3'],
+                                                                        lanes_num=[num_lanes], lane_width=[lane_width],
                                                                         frame_origin=[0, 0])
     map = MapAPI(map_model=test_map_model, logger=logger)
 

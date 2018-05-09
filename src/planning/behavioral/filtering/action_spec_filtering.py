@@ -1,6 +1,7 @@
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionSpec
-from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from typing import List, Callable
+
+from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
+from decision_making.src.planning.behavioral.data_objects import ActionSpec
 
 
 class ActionSpecFilter(object):

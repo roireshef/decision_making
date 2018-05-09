@@ -85,9 +85,9 @@ BP_ACTION_T_RES = 0.05
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
-    [12, 0.05, 0.1],
-    [2, 0.05, 0.1],
-    [0.01, 0.05, 0.1]
+    [12, 0.15, 0.1],
+    [2, 0.15, 0.1],
+    [0.01, 0.15, 0.1]
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
@@ -100,12 +100,8 @@ LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 # Used to compute safe distance from other agents on road
 SAFE_DIST_TIME_DELAY = 2.0
 
-# Semantic Grid indices
-SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LON_SAME, SEMANTIC_CELL_LON_REAR = 1, 0, -1
-SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LAT_RIGHT = 1, 0, -1
-
 # [m/sec] Minimal difference of velocities to justify an overtake
-MIN_OVERTAKE_VEL = 3
+MIN_OVERTAKE_VEL = 3.5
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
@@ -267,3 +263,9 @@ LOG_MSG_RECEIVED_STATE = "Received state"
 LOG_MSG_STATE_MODULE_PUBLISH_STATE = "publishing state"
 LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME = "TrajectoryPlanningFacade._periodic_action_impl time"
 LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME = "BehavioralFacade._periodic_action_impl time"
+
+# Resolution of car timestamps in sec
+TIMESTAMP_RESOLUTION_IN_SEC = 1e-9
+
+# Maximal prediction horizon in [sec] for short-time alignment predictor
+TIME_ALIGNMENT_PREDICTOR_MAX_HORIZON = 0.4
