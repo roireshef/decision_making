@@ -75,7 +75,7 @@ def filter_bad_expected_trajectory(recipe: DynamicActionRecipe,
             # TODO: the following is not accurate because it returns "same-lon" cars distance as 0
             s_T = relative_dynamic_object.distance
             v_T = dynamic_object.v_x
-            wJ,_,wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.value]
+            wJ,_,wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
             predicate = predicates[(wT, wJ)]
             result = predicate[Math.ind_on_uniform_axis(v_0, v_0_grid),
                              Math.ind_on_uniform_axis(a_0, a_0_grid),
