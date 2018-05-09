@@ -242,8 +242,16 @@ class QuarticPoly1D(Poly1D):
     @staticmethod
     def time_cost_function_derivative(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float):
         return lambda T: (
-                         T ** 4 * w_T - 4 * T ** 2 * a_0 ** 2 * w_J - 24 * T * a_0 * v_0 * w_J + 24 * T * a_0 * v_T * w_J - 36 * v_0 ** 2 * w_J +
-                         72 * v_0 * v_T * w_J - 36 * v_T ** 2 * w_J) / T ** 4
+                         T ** 4 * w_T
+                         - 4 * T ** 2 * a_0 ** 2 * w_J
+                         + 24 * T * (a_0 * v_T * w_J - a_0 * v_0 * w_J)
+                         - 36 * v_0 ** 2 * w_J + 72 * v_0 * v_T * w_J - 36 * v_T ** 2 * w_J) / T ** 4
+
+    @staticmethod
+    def time_cost_function_derivative_roots(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray, v_T: np.ndarray):
+        zeros = np.zeros(w_T.shape[0])
+        coefs = np.c_[w_T, zeros, - 4 * a_0 ** 2 * w_J, + 24 * (a_0 * v_T * w_J - a_0 * v_0 * w_J), - 36 * v_0 ** 2 * w_J + 72 * v_0 * v_T * w_J - 36 * v_T ** 2 * w_J]
+        return np.apply_along_axis(np.roots, axis=-1, arr=coefs)
 
     @staticmethod
     def distance_profile_function(a_0: float, v_0: float, v_T: float, T: float):
@@ -345,6 +353,19 @@ class QuinticPoly1D(Poly1D):
                          360 * T ** 2 * T_m * a_0 * v_T * w_J + 360 * T ** 2 * a_0 * ds_0 * w_J - 576 * T ** 2 * v_0 ** 2 * w_J + 1152 * T ** 2 * v_0 * v_T * w_J -
                          576 * T ** 2 * v_T ** 2 * w_J - 2880 * T * T_m * v_0 * v_T * w_J + 2880 * T * T_m * v_T ** 2 * w_J + 2880 * T * ds_0 * v_0 * w_J -
                          2880 * T * ds_0 * v_T * w_J - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * ds_0 * v_T * w_J - 3600 * ds_0 ** 2 * w_J) / T ** 6
+
+    @staticmethod
+    def time_cost_function_derivative_roots(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
+                                            v_T: np.ndarray, ds_0: np.ndarray, T_m: np.ndarray):
+        zeros = np.zeros(w_T.shape[0])
+        coefs = np.c_[w_T,
+                      zeros,
+                      -9*a_0**2*w_J,
+                      -144*a_0*v_0*w_J + 144*a_0*v_T*w_J,
+                      -360*T_m*a_0*v_T*w_J + 360*a_0*ds_0*w_J - 576*v_0**2*w_J + 1152*v_0*v_T*w_J - 576*v_T**2*w_J,
+                      -2880*T_m*v_0*v_T*w_J + 2880*T_m*v_T**2*w_J + 2880*ds_0*v_0*w_J - 2880*ds_0*v_T*w_J,
+                      - 3600*T_m**2*v_T**2*w_J + 7200*T_m*ds_0*v_T*w_J - 3600*ds_0**2*w_J]
+        return np.apply_along_axis(np.roots, axis=-1, arr=coefs)
 
     @staticmethod
     def distance_profile_function(a_0: float, v_0: float, v_T: float, ds_0: float, T: float):

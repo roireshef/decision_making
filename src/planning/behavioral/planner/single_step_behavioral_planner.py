@@ -58,8 +58,15 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         time_before_specify = time.time()
 
         # Action specification
-        action_specs = [self.action_space.specify_goal(recipe, behavioral_state) if recipes_mask[i] else None
-                        for i, recipe in enumerate(action_recipes)]
+
+        # TODO: figure out how to efficiently direct the sets of ActionRecipes to their handler combined.
+        # action_specs = [self.action_space.specify_goal(recipe, behavioral_state) if recipes_mask[i] else None
+        #                 for i, recipe in enumerate(action_recipes)]
+        action_specs = np.full(action_recipes.__len__(), None)
+        valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
+        action_specs[recipes_mask] = self.action_space._action_spaces[0].specify_goals(valid_action_recipes, behavioral_state)
+
+
 
         num_of_specified_actions = sum(x is not None for x in action_specs)
         self.logger.debug('Number of actions specified: %d, specify processing time: %f',
@@ -69,7 +76,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
 
         # State-Action Evaluation
-        action_costs = self.recipe_evaluator.evaluate(behavioral_state, action_recipes, action_specs_mask)
+        action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
 
         valid_idxs = np.where(action_specs_mask)[0]
         selected_action_index = valid_idxs[action_costs[valid_idxs].argmin()]
