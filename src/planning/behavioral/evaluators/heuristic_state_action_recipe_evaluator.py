@@ -200,7 +200,7 @@ class HeuristicStateActionRecipeEvaluator(ActionRecipeEvaluator):
         # TODO: move it to a filter
         # check whether there is a car in the neighbor cell (same longitude)
         if (action_lat_cell, RelativeLongitudinalPosition.PARALLEL) in behavioral_state.road_occupancy_grid:
-            print('side unsafe')
+            print('side unsafe rel_lat=%d' % (action_lat_cell.value))
             return 0
 
         safe_time = np.inf
