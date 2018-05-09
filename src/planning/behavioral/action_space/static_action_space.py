@@ -11,7 +11,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Sta
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering import recipe_filter_bank
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
-from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FS_SV, FS_SA, FS_DX, FS_DA, FS_DV
+from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FS_SV, FS_SA, FS_DX, FS_DA, FS_DV, FS_SX
 from decision_making.src.planning.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from mapping.src.service.map_service import MapService
@@ -76,7 +76,7 @@ class StaticActionSpace(ActionSpace):
             print('lat time chosen: %f instead of lon time: %f' % (T_d[0], T_s[0]))
 
         distance_func = QuarticPoly1D.distance_profile_function(a_0, v_0, v_T, planning_time)
-        target_s = distance_func(planning_time)[0]
+        target_s = distance_func(planning_time)[0] + ego_init_fstate[FS_SX]
 
         return ActionSpec(t=float(max(T_s[0], T_d[0])), v=v_T,
                           s=target_s,
