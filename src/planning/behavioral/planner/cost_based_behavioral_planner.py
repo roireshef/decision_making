@@ -134,7 +134,7 @@ class CostBasedBehavioralPlanner:
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
 
-        road_frenet = MapUtils.get_road_frenet(ego)
+        road_frenet = MapUtils.get_road_rhs_frenet(ego)
 
         fstate = road_frenet.cstate_to_fstate(np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature]))
         d_x = QuinticPoly1D.distance_profile_function(fstate[FS_DA], fstate[FS_DV], 0, action_spec.d, planning_time)

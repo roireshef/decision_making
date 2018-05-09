@@ -176,11 +176,7 @@ class ActionSpaceContainer(ActionSpace):
 
     @raises(NotImplemented)
     def specify_goal(self, action_recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> ActionSpec:
-        try:
-            return self._recipe_handler[action_recipe].specify_goal(action_recipe, behavioral_state)
-        except Exception:
-            raise NotImplemented('action_recipe %s could not be handled by current action spaces %s',
-                                 action_recipe, str(self._action_spaces))
+        return self._recipe_handler[action_recipe].specify_goal(action_recipe, behavioral_state)
 
     @raises(NotImplemented)
     def filter_recipe(self, action_recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:

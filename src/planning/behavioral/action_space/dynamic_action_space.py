@@ -47,7 +47,7 @@ class DynamicActionSpace(ActionSpace):
         ego_init_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
 
         # pull the closest dynamic object in the grid cell, and project it onto the road
-        target_obj = behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
+        target_obj = behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0].dynamic_object
         target_obj_init_fstate = MapUtils.get_object_road_localization(target_obj, road_frenet)
 
         # Extract relevant details from state on Reference-Object
