@@ -130,13 +130,14 @@ class BehavioralGridState(BehavioralState):
         adjecent_lanes = [x.value for x in RelativeLane]
         objects_in_adjecent_lanes = [obj for obj in objects if obj.road_localization.lane_num-ego_lane in adjecent_lanes]
 
+        ego_init_fstate = MapUtils.get_ego_road_localization(ego_state, road_frenet)
+
         for obj in objects_in_adjecent_lanes:
             # Compute relative lane to ego
             object_relative_lane = RelativeLane(obj.road_localization.lane_num - ego_lane)
 
             # Compute relative longitudinal position to ego (on road)
             obj_init_fstate = MapUtils.get_object_road_localization(obj, road_frenet)
-            ego_init_fstate = MapUtils.get_ego_road_localization(ego_state, road_frenet)
 
             # compute the relative longitudinal distance between object and ego (positive means object is in front)
             longitudinal_difference = obj_init_fstate[FS_SX] - ego_init_fstate[FS_SX]
