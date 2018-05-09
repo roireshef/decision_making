@@ -25,4 +25,3 @@ class ActionSpecFiltering:
 
     def filter_action_specs(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState) -> List[bool]:
         return [self.filter_action_spec(action_spec, behavioral_state) for action_spec in action_specs]
-

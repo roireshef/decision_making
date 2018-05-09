@@ -1,4 +1,5 @@
 from logging import Logger
+import time
 from typing import Optional
 
 import numpy as np
@@ -37,7 +38,6 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
         action_recipes = self.action_space.recipes
-
         # create road semantic grid from the raw State object
         # behavioral_state contains road_occupancy_grid and ego_state
         behavioral_state = BehavioralGridState.create_from_state(state=state, logger=self.logger)
@@ -45,21 +45,31 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # TODO: this should evaluate the terminal states!
         #current_state_value = self.value_approximator.evaluate_state(behavioral_state)
 
+        # TODO: FOR DEBUG PURPOSES!
+        time_before_filters = time.time()
+
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
+
+        self.logger.debug('Number of actions originally: %d, valid: %d, filter processing time: %f',
+                          self.action_space.action_space_size, np.sum(recipes_mask), time.time()-time_before_filters)
+
+        # TODO: FOR DEBUG PURPOSES!
+        time_before_specify = time.time()
 
         # Action specification
         action_specs = [self.action_space.specify_goal(recipe, behavioral_state) if recipes_mask[i] else None
                         for i, recipe in enumerate(action_recipes)]
 
         num_of_specified_actions = sum(x is not None for x in action_specs)
-        self.logger.debug('Number of actions specified: %d', num_of_specified_actions)
+        self.logger.debug('Number of actions specified: %d, specify processing time: %f',
+                          num_of_specified_actions, time.time()-time_before_specify)
 
         # ActionSpec filtering
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
 
         # State-Action Evaluation
-        action_costs = self.recipe_evaluator.evaluate(behavioral_state, action_recipes, action_specs_mask)
+        action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
 
         valid_idx = np.where(action_specs_mask)[0]
         selected_action_index = valid_idx[action_costs[valid_idx].argmin()]
@@ -74,7 +84,9 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # keeping selected actions for next iteration use
         self._last_action = action_recipes[selected_action_index]
         self._last_action_spec = selected_action_spec
-        baseline_trajectory = self._last_action_spec.samplable_trajectory
+
+        baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(
+            behavioral_state.ego_state, selected_action_spec)
 
         self.logger.debug("Chosen behavioral semantic action is %s, %s",
                           action_recipes[selected_action_index].__dict__, selected_action_spec.__dict__)

@@ -12,7 +12,7 @@ class ActionType(Enum):
     """
     FOLLOW_LANE = 1
     FOLLOW_VEHICLE = 2
-    TAKE_OVER_VEHICLE = 3
+    OVER_TAKE_VEHICLE = 3
 
 
 class AggressivenessLevel(Enum):
@@ -57,21 +57,18 @@ class ActionSpec:
     """
     Holds the actual translation of the semantic action in terms of trajectory specifications.
     """
-
-    def __init__(self, t: float, v: float, s: float, d: float, samplable_trajectory: SamplableTrajectory = None):
+    def __init__(self, t: float, v: float, s: float, d: float):
         """
         The trajectory specifications are defined by the target ego state
         :param t: time [sec]
         :param v: velocity [m/s]
         :param s: relative longitudinal distance to ego in Frenet frame [m]
         :param d: relative lateral distance to ego in Frenet frame [m]
-        :param samplable_trajectory: samplable reference trajectory.
         """
         self.t = t
         self.v = v
         self.s = s
         self.d = d
-        self.samplable_trajectory = samplable_trajectory
 
     def __str__(self):
         return str({k: str(v) for (k, v) in self.__dict__.items()})

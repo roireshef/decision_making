@@ -2,6 +2,8 @@ from unittest.mock import MagicMock, patch
 
 from common_data.lcm.config import pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
+from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
+from decision_making.src.planning.behavioral.policies.semantic_actions_grid_policy import SemanticActionsGridPolicy
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
@@ -13,6 +15,7 @@ from decision_making.src.planning.behavioral.planner.single_step_behavioral_plan
 from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
+from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from mapping.test.model.testable_map_fixtures import map_api_mock

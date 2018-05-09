@@ -1,7 +1,7 @@
 import itertools
 from abc import abstractmethod
 from logging import Logger
-from typing import List, Optional
+from typing import List, Optional, Callable
 
 import numpy as np
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -14,7 +14,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, \
     ActionRecipe
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
-from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import Poly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import Poly1D
 from decision_making.src.planning.types import FS_SV, FS_SX, FS_SA, FS_DX, FS_DV, FS_DA, \
     FrenetState2D
 
@@ -145,6 +145,15 @@ class ActionSpace:
         ]], repeats=repeat_factor, axis=0)
 
         return constraints_d
+
+    @staticmethod
+    # TODO: write type-hint
+    # TODO: 0.01 should be constant in global constants.
+    # TODO: debug where this doesn't find a solution
+    def find_roots(func, grid_values: np.ndarray):
+        func_values = func(grid_values)
+        opt_ind = np.argwhere(np.abs(func_values) < 0.01)
+        return grid_values[opt_ind]
 
 
 class ActionSpaceContainer(ActionSpace):
