@@ -174,28 +174,13 @@ class ActionSpaceContainer(ActionSpace):
     def recipes(self) -> List[ActionRecipe]:
         return list(itertools.chain.from_iterable(aspace.recipes for aspace in self._action_spaces))
 
-    @raises(NotImplemented)
     def specify_goal(self, action_recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> ActionSpec:
-        try:
-            return self._recipe_handler[action_recipe].specify_goal(action_recipe, behavioral_state)
-        except Exception:
-            raise NotImplemented('action_recipe %s could not be handled by current action spaces %s',
-                                 action_recipe, str(self._action_spaces))
+        return self._recipe_handler[action_recipe].specify_goal(action_recipe, behavioral_state)
 
-    @raises(NotImplemented)
     def filter_recipe(self, action_recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
-        try:
-            return self._recipe_handler[action_recipe].filter_recipe(action_recipe, behavioral_state)
-        except Exception:
-            raise NotImplemented('action_recipe %s could not be handled by current action spaces %s',
-                                 action_recipe, str(self._action_spaces))
+        return self._recipe_handler[action_recipe].filter_recipe(action_recipe, behavioral_state)
 
     # TODO: figure out how to remove the for loop for better efficiency and stay consistent with ordering
-    @raises(NotImplemented)
     def filter_recipes(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralState):
-        try:
-            return [self._recipe_handler[action_recipe].filter_recipe(action_recipe, behavioral_state) for action_recipe
-                    in action_recipes]
-        except Exception:
-            raise NotImplemented('an action_recipe could not be handled by current action spaces %s',
-                                 str(self._action_spaces))
+        return [self._recipe_handler[action_recipe].filter_recipe(action_recipe, behavioral_state) for action_recipe
+                in action_recipes]

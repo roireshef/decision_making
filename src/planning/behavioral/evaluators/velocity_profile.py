@@ -113,7 +113,7 @@ class VelocityProfile:
         if action_type == ActionType.FOLLOW_VEHICLE:
             dist = lon_target - lon_init - SAFE_DIST_TIME_DELAY * v_target - cars_size_margin
             return VelocityProfile._calc_profile_given_acc(v_init, acc, v_max, dist, v_target, a_target, min_time)
-        elif action_type == ActionType.TAKE_OVER_VEHICLE:
+        elif action_type == ActionType.OVER_TAKE_VEHICLE:
             dist = lon_target - lon_init + SAFE_DIST_TIME_DELAY * v_target + cars_size_margin
             return VelocityProfile._calc_profile_given_acc(v_init, acc, v_max, dist, v_target, a_target, min_time)
         elif action_type == ActionType.FOLLOW_LANE:
@@ -286,7 +286,7 @@ class VelocityProfile:
         if action_type == ActionType.FOLLOW_VEHICLE:
             dist = lon_target - lon_init - SAFE_DIST_TIME_DELAY * v_target - cars_size_margin
             return VelocityProfile._calc_profile_given_T(v_init, T, v_max, dist, v_target)
-        elif action_type == ActionType.TAKE_OVER_VEHICLE:
+        elif action_type == ActionType.OVER_TAKE_VEHICLE:
             dist = lon_target - lon_init + SAFE_DIST_TIME_DELAY * v_target + cars_size_margin
             return VelocityProfile._calc_profile_given_T(v_init, T, v_max, dist, v_target)
         else:  # action_type == ActionType.FOLLOW_LANE:

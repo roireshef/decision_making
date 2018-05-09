@@ -126,7 +126,7 @@ class HeuristicStateActionRecipeEvaluator(ActionRecipeEvaluator):
         ego_fpoint = np.array([ego.road_localization.road_lon, ego.road_localization.intra_road_lat])
         target_acc = cars_size_margin = obj_lon = None
 
-        if action_recipe.action_type == ActionType.FOLLOW_VEHICLE or action_recipe.action_type == ActionType.TAKE_OVER_VEHICLE:
+        if action_recipe.action_type == ActionType.FOLLOW_VEHICLE or action_recipe.action_type == ActionType.OVER_TAKE_VEHICLE:
             target_obj = \
             behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0].dynamic_object
             target_vel = target_obj.v_x

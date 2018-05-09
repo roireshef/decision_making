@@ -69,7 +69,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
 
         # State-Action Evaluation
-        action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
+        action_costs = self.recipe_evaluator.evaluate(behavioral_state, action_recipes, action_specs_mask)
 
         valid_idx = np.where(action_specs_mask)[0]
         selected_action_index = valid_idx[action_costs[valid_idx].argmin()]
