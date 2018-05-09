@@ -1,11 +1,11 @@
 import numpy as np
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, LON_ACC_TO_JERK_FACTOR, \
     LAT_ACC_TO_JERK_FACTOR, RIGHT_LANE_COST_WEIGHT, EFFICIENCY_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, \
     BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, BP_METRICS_LANE_DEVIATION_COST_WEIGHT, \
     EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO, AGGRESSIVENESS_TO_LAT_ACC
-from decision_making.src.planning.behavioral.architecture.components.evaluators.velocity_profile import VelocityProfile
-from decision_making.src.planning.behavioral.architecture.data_objects import AggressivenessLevel
+from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
 
 
 class PlanEfficiencyMetric:

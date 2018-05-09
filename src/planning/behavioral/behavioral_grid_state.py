@@ -92,13 +92,13 @@ class BehavioralGridState(BehavioralState):
         grid_sorted_by_distances = {cell: sorted(obj_dist_list, key=lambda rel_obj: abs(rel_obj.distance))
                                     for cell, obj_dist_list in multi_object_grid.items()}
 
-        # for each grid cell - returns the closest object to ego vehicle
-        closest_object_grid = {cell: sorted_obj_dist_list[0].dynamic_object
-                               for cell, sorted_obj_dist_list in grid_sorted_by_distances.items()}
+        # # for each grid cell - returns the closest object to ego vehicle
+        # closest_object_grid = {cell: sorted_obj_dist_list[0].dynamic_object
+        #                        for cell, sorted_obj_dist_list in grid_sorted_by_distances.items()}
 
         ego_lane = state.ego_state.road_localization.lane_num
 
-        return cls(closest_object_grid, state.ego_state,
+        return cls(grid_sorted_by_distances, state.ego_state,
                    right_lane_exists=ego_lane > 0, left_lane_exists=ego_lane < lanes_num-1)
 
 

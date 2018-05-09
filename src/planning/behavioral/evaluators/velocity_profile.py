@@ -2,7 +2,7 @@ import numpy as np
 
 from decision_making.src.global_constants import AGGRESSIVENESS_TO_LON_ACC, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
     SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS, AGGRESSIVENESS_TO_LAT_ACC, BP_MAX_VELOCITY_TOLERANCE
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionType, AggressivenessLevel
+from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel
 from decision_making.src.planning.types import FP_SX, LIMIT_MIN, FS_SV, FS_SA
 from decision_making.src.state.state import DynamicObject
 
