@@ -26,6 +26,26 @@ from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
 
+def calc_collision_time(v_init: float, v_max: float, acc: float, v_tar: float, dist: float) -> float:
+
+    v_init_rel = v_init - v_tar
+    v_max_rel = v_max - v_tar
+    if v_max_rel <= 0 and v_init_rel <= 0:
+        return np.inf
+    if v_init_rel < v_max_rel:
+        acceleration_dist = (v_max_rel**2 - v_init_rel**2) / (2*acc)
+        if acceleration_dist < dist:
+            acceleration_time = (v_max_rel - v_init_rel) / acc
+            const_vel_time = (dist - acceleration_dist) / v_max_rel
+            return acceleration_time + const_vel_time
+        else:  # acceleration_dist >= dist; solve for t: v*t + at^2/2 = dist
+            acceleration_time = (np.sqrt(v_init_rel**2 + 2*acc*dist) - v_init_rel) / acc
+            return acceleration_time
+    else:  # v_init_rel > v_max_rel
+        return dist / v_init_rel
+
+
+
 def test_behavioralScenarios_moveToLeft_differentDistFrom_F_and_initVel():
     """
     Test lane change to the left if the velocity of the car F is des_vel-2.
@@ -103,7 +123,9 @@ def test_behavioralScenarios_moveToLeft_differentDistFrom_F_and_initVel():
                             costs = evaluator.evaluate_recipes(behavioral_state, actions, [True] * len(actions), None)
 
                             best_idx = np.argmin(costs)
-                            if dist_from_F_in_sec > 3.5 or dist_from_LB_in_sec < 2.5 or F_vel >= des_vel*0.9:  # if F is far or too close
+                            # if F is far or too close
+                            if dist_from_F_in_sec > 3.5 or F_vel >= des_vel or \
+                                    dist_from_LB_in_sec < 2.5:  # or (dist_from_LB_in_sec < 3.5 and LB_vel > ego_vel):
                                 assert actions[best_idx].relative_lane == RelativeLane.SAME_LANE  # don't change lane
                             else:  # F is close
                                 assert actions[best_idx].relative_lane == RelativeLane.LEFT_LANE  # change lane

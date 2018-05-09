@@ -394,7 +394,7 @@ class ProfileSafety:
 
     @staticmethod
     def calc_last_safe_time(ego_lon: float, ego_half_size: float, vel_profile: VelocityProfile,
-                            dyn_obj: DynamicObject, T_max: float) -> float:
+                            dyn_obj: DynamicObject, T_max: float, time_delay: float) -> float:
         """
         Given ego velocity profile and dynamic object, calculate the last time, when the safety complies.
         :param ego_lon: ego initial longitude
@@ -402,6 +402,7 @@ class ProfileSafety:
         :param vel_profile: ego velocity profile
         :param dyn_obj: the dynamic object, for which the safety is tested
         :param T_max: maximal time to check the safety (usually T_d for safety w.r.t. F and LB)
+        :param time_delay: reaction time of the back car
         :return: the latest safe time
         """
         # check safety until completing the lane change
@@ -421,10 +422,6 @@ class ProfileSafety:
 
         front = int(init_s_ego < init_s_obj)  # 0 if the object is behind ego; 1 otherwise
         back = 1 - front
-        if init_s_ego < init_s_obj:
-            time_delay = 0.8  # AV has faster reaction; TODO: this temp hack is necessary for overtaking of a close car
-        else:
-            time_delay = SAFE_DIST_TIME_DELAY
 
         # calculate last_safe_time
         last_safe_time = 0
