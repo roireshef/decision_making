@@ -174,7 +174,7 @@ def state_with_old_object(request) -> State:
     dyn2 = DynamicObject(2, old_timestamp, 10.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
     dynamic_objects = [dyn1, dyn2]
     size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
-    ego_state = EgoState(1, old_timestamp, 1, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
+    ego_state = EgoState(1, old_timestamp, 1, 0, 0, 0, size, 0, 1.0, 0, 0, 0)
 
     yield State(occupancy_state, dynamic_objects, ego_state)
 
