@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 from sklearn.utils.extmath import cartesian
 
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, EPS, BP_JERK_S_JERK_D_TIME_WEIGHTS
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, EPS, BP_JERK_S_JERK_D_TIME_WEIGHTS, BP_ACTION_T_RES
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.constants import VELOCITY_STEP, MAX_VELOCITY, MIN_VELOCITY
@@ -39,8 +39,7 @@ class StaticActionSpace(ActionSpace):
         desired_lane = ego.road_localization.lane_num + action_recipe.relative_lane.value
         desired_center_lane_latitude = road_lane_latitudes[desired_lane]
 
-        # TODO: take out 0.001 into a constant
-        T_s_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS, 0.001)
+        T_s_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS, BP_ACTION_T_RES)
 
         w_Js, w_Jd, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[action_recipe.aggressiveness.value]
         v_0, a_0 = ego_init_fstate[FS_SV], ego_init_fstate[FS_SA]
@@ -63,7 +62,7 @@ class StaticActionSpace(ActionSpace):
                                                                              latitudinal_difference,
                                                                              T_m=0)
 
-        T_d_vals = np.arange(0.1, BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS, 0.001)
+        T_d_vals = np.arange(0.1, BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS, BP_ACTION_T_RES)
         T_d = ActionSpace.find_roots(lat_time_cost_func_der, T_d_vals)
         # If roots were found out of the desired region, this action won't be specified
         if len(T_d) == 0:

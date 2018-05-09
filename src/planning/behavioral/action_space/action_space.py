@@ -48,7 +48,7 @@ class ActionSpace:
         return self._recipe_filtering.filter_recipes(action_recipes, behavioral_state)
 
     @abstractmethod
-    def specify_goal(self, action_recipe: ActionRecipe, behavioral_state: BehavioralState) -> Optional[ActionSpec]:
+    def specify_goal(self, action_recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> Optional[ActionSpec]:
         """
         This method's purpose is to specify the enumerated actions that the agent can take.
         Each semantic action (action_recipe) is translated to a trajectory of the agent.
@@ -59,6 +59,10 @@ class ActionSpace:
         :param behavioral_state: Frenet state of ego at initial point
         :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
+        pass
+
+    @abstractmethod
+    def specify_goals(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[Optional[ActionSpec]]:
         pass
 
     @staticmethod
