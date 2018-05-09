@@ -148,6 +148,8 @@ class ActionSpace:
 
     @staticmethod
     # TODO: write type-hint
+    # TODO: 0.01 should be constant in global constants.
+    # TODO: debug where this doesn't find a solution
     def find_roots(func, grid_values: np.ndarray):
         func_values = func(grid_values)
         opt_ind = np.argwhere(np.abs(func_values) < 0.01)
