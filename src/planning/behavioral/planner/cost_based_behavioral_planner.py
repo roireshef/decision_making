@@ -140,13 +140,13 @@ class CostBasedBehavioralPlanner:
 
         target_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
 
-        A_inv = QuinticPoly1D.time_constraints_matrix(action_spec.t)
+        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_matrix(action_spec.t))
 
-        constraints_s = np.concatenate(ego_init_fstate[FS_SX:(FS_SA + 1)], target_fstate[FS_SX:(FS_SA + 1)])
-        constraints_d = np.concatenate(ego_init_fstate[FS_DX:(FS_DA + 1)], target_fstate[FS_DX:(FS_DA + 1)])
+        constraints_s = np.concatenate((ego_init_fstate[FS_SX:(FS_SA + 1)], target_fstate[FS_SX:(FS_SA + 1)]))
+        constraints_d = np.concatenate((ego_init_fstate[FS_DX:(FS_DA + 1)], target_fstate[FS_DX:(FS_DA + 1)]))
 
-        poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s)
-        poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d)
+        poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
+        poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
 
         return SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
                                           T_s=action_spec.t,

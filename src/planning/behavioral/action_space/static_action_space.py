@@ -78,6 +78,6 @@ class StaticActionSpace(ActionSpace):
         distance_func = QuarticPoly1D.distance_profile_function(a_0, v_0, v_T, planning_time)
         target_s = distance_func(planning_time)[0]
 
-        return ActionSpec(t=max(T_s[0], T_d[0]), v=v_T,
+        return ActionSpec(t=float(max(T_s[0], T_d[0])), v=v_T,
                           s=target_s,
                           d=desired_center_lane_latitude)
