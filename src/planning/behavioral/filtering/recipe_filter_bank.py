@@ -55,7 +55,7 @@ def filter_non_calm_actions(recipe: ActionRecipe, behavioral_state: BehavioralGr
 
 def filter_actions_towards_non_occupied_cells(recipe: DynamicActionRecipe,
                                               behavioral_state: BehavioralGridState) -> bool:
-    recipe_cell = (recipe.relative_lane.value, recipe.relative_lon.value)
+    recipe_cell = (recipe.relative_lane, recipe.relative_lon)
     return recipe_cell in behavioral_state.road_occupancy_grid
 
 
@@ -66,7 +66,7 @@ def filter_bad_expected_trajectory(recipe: DynamicActionRecipe,
     start_time = time.time()
     if recipe.action_type == ActionType.FOLLOW_VEHICLE:
         ego_state = behavioral_state.ego_state
-        recipe_cell = (recipe.relative_lane.value, recipe.relative_lon.value)
+        recipe_cell = (recipe.relative_lane, recipe.relative_lon)
         if recipe_cell in behavioral_state.road_occupancy_grid:
             v_0 = ego_state.v_x
             a_0 = ego_state.acceleration_lon
