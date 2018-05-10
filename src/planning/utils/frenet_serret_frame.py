@@ -14,8 +14,15 @@ from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
 
 class FrenetSerret2DFrame:
-    def __init__(self, points: CartesianPath2D, ds: float = TRAJECTORY_ARCLEN_RESOLUTION,
-                 spline_order=TRAJECTORY_CURVE_SPLINE_FIT_ORDER):
+    def __init__(self, points: CartesianPath2D, s_max: float, ds: float, T: np.ndarray, N: np.ndarray,
+                 k: np.ndarray, k_tag: np.ndarray):
+        self.O = points
+        self.s_max, self.ds = s_max, ds
+        self.T, self.N, self.k, self.k_tag = T, N, k, k_tag
+
+    @classmethod
+    def fit(cls, points: CartesianPath2D, ds: float = TRAJECTORY_ARCLEN_RESOLUTION,
+            spline_order=TRAJECTORY_CURVE_SPLINE_FIT_ORDER):
         """
         This is an object used for paramterizing a curve given discrete set of points in some "global" cartesian frame,
         and then for transforming from the "global" frame to the curve's frenet frame and back.
@@ -23,14 +30,31 @@ class FrenetSerret2DFrame:
         :param ds: a resolution parameter - the desired distance between each two consecutive points after re-sampling
         :param spline_order: spline order for fitting and re-sampling the original points
         """
-        splines, self.O, effective_ds = CartesianFrame.resample_curve(curve=points, step_size=ds,
+        splines, O, effective_ds = CartesianFrame.resample_curve(curve=points, step_size=ds,
                                                                       preserve_step_size=False,
                                                                       spline_order=spline_order)
+        s_max = effective_ds * len(O)
+        ds = effective_ds
+        T, N, k, k_tag = FrenetSerret2DFrame._fit_frenet_from_splines(0.0, s_max, effective_ds, splines)
 
-        self.s_max = effective_ds * len(self.O)
-        self.ds = effective_ds
-        self.T, self.N, self.k, self.k_tag = FrenetSerret2DFrame._fit_frenet_from_splines(0.0, self.s_max, self.ds,
-                                                                                          splines)
+        return cls(O, s_max, ds, T, N, k, k_tag)
+
+    # TODO: needs to be tested
+    def __add__(self, other):
+        """assumes self.O[-1] coincides with other.O[0] exactly! and that other.ds==self.ds"""
+        assert self.ds == other.ds, \
+            'cannot naively concatenate two FrenetSerret2DFrames with different dicretezation parameter'
+        assert np.all(np.equal(self.O[-1], other.O[0])), \
+            'cannot naively concatenate two FrenetSerret2DFrames that do not coincide in position'
+        return FrenetSerret2DFrame(
+            points=np.concatenate((self.O[:-1], other.O), axis=0),
+            s_max=self.s_max + other.s_max,
+            ds=self.ds,
+            T=np.concatenate((self.T, other.T), axis=0),
+            N=np.concatenate((self.N, other.N), axis=0),
+            k=np.concatenate((self.k, other.k), axis=0),
+            k_tag=np.concatenate((self.k_tag, other.k_tag), axis=0)
+        )
 
     @property
     def s_limits(self):

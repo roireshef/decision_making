@@ -32,7 +32,7 @@ class StaticActionSpace(ActionSpace):
         ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
         road_id = ego.road_localization.road_id
         road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)  # TODO: use nav_plan
-        road_frenet = FrenetSerret2DFrame(road_points)
+        road_frenet = FrenetSerret2DFrame.fit(road_points)
         ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cstate)
 
         road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id)

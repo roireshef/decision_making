@@ -96,7 +96,7 @@ class WerlingPlanner(TrajectoryPlanner):
         T_s = time_horizon
 
         # create road coordinate-frame
-        frenet = FrenetSerret2DFrame(reference_route)
+        frenet = FrenetSerret2DFrame.fit(reference_route)
 
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
         # The vehicle doesn't need to lay parallel to the road.

@@ -22,7 +22,7 @@ class OfflineTrajectoryGenerator:
         MapService.initialize(MapServiceArgs(map_source=map_file_name))
         self.map: MapAPI = MapService.get_instance()
         self.road = self.map.get_road(road_id)
-        self.frenet = FrenetSerret2DFrame(self.road._points)
+        self.frenet = FrenetSerret2DFrame.fit(self.road._points)
 
     def plan(self, geo_coordinates: np.array, init_velocity: float, interm_goals: list) -> CartesianExtendedTrajectory:
         """

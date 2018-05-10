@@ -102,7 +102,7 @@ class CostBasedBehavioralPlanner:
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
             steps_num=int(np.ceil(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
             navigation_plan=navigation_plan)
-        rhs_frenet = FrenetSerret2DFrame(rhs_reference_route)
+        rhs_frenet = FrenetSerret2DFrame.fit(rhs_reference_route)
 
         # Get road details
         road_id = ego.road_localization.road_id

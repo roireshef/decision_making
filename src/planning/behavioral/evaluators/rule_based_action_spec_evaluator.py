@@ -83,7 +83,7 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         ego = behavioral_state.ego_state
         road_id = ego.road_localization.road_id
         road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
-        road_frenet = FrenetSerret2DFrame(road_points)
+        road_frenet = FrenetSerret2DFrame.fit(road_points)
         ego_fpoint = road_frenet.cpoint_to_fpoint(np.array([ego.x, ego.y]))
 
         dist_to_backleft, safe_left_dist_behind_ego = RuleBasedActionSpecEvaluator._calc_safe_dist_behind_ego(

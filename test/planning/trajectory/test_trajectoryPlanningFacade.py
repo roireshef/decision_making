@@ -15,7 +15,7 @@ from rte.python.logger.AV_logger import AV_Logger
 def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTrue():
     route_points = RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5)
 
-    frenet = FrenetSerret2DFrame(route_points)
+    frenet = FrenetSerret2DFrame.fit(route_points)
     poly_s_coefs = np.array([4.58963156e-01, -2.31312529e+00, 3.49717428e+00,
                              -9.50993030e-08, 5.99999999e+00, 9.50994838e-10])
 
@@ -39,7 +39,7 @@ def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTr
 def test_isActualStateCloseToExpectedState_nonCloseTranslatedOnlyEgoState_returnsFalse():
     route_points = RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5)
 
-    frenet = FrenetSerret2DFrame(route_points)
+    frenet = FrenetSerret2DFrame.fit(route_points)
     poly_s_coefs = np.array([4.58963156e-01, -2.31312529e+00, 3.49717428e+00,
                              -9.50993030e-08, 5.99999999e+00, 9.50994838e-10])
 
@@ -63,7 +63,7 @@ def test_isActualStateCloseToExpectedState_nonCloseTranslatedOnlyEgoState_return
 def test_getStateWithExpectedEgo_getsState_modifiesEgoStateInIt(state):
     route_points = RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5)
 
-    frenet = FrenetSerret2DFrame(route_points)
+    frenet = FrenetSerret2DFrame.fit(route_points)
     poly_s_coefs = np.array([4.58963156e-01, -2.31312529e+00, 3.49717428e+00,
                              -9.50993030e-08, 5.99999999e+00, 9.50994838e-10])
 
