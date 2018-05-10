@@ -3,6 +3,7 @@ import numpy as np
 from decision_making.src.messages.str_serializable import StrSerializable
 
 # General constants
+from decision_making.src.planning.types import LIMIT_MAX
 
 UNKNOWN_DEFAULT_VAL = 0.0
 EPS = np.finfo(np.float32).eps
@@ -69,7 +70,7 @@ LON_JERK_COST_WEIGHT = 1.0                         # cost of longitudinal jerk
 LAT_JERK_COST_WEIGHT = 1.0                         # cost of lateral jerk
 
 EFFICIENCY_COST_WEIGHT = 0.6                # cost of zero velocity on one trajectory point
-EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO = 3  # ratio UNDER_C'(0) / UNDER_C'(v_desired)
+EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO = 2  # ratio UNDER_C'(0) / UNDER_C'(v_desired)
 RIGHT_LANE_COST_WEIGHT = 0.005              # cost of using non-right lane on one trajectory point
 
 # [m/sec] speed to plan towards by default in BP
@@ -101,7 +102,7 @@ LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 SAFE_DIST_TIME_DELAY = 2.0
 
 # [m/sec] Minimal difference of velocities to justify an overtake
-MIN_OVERTAKE_VEL = 3.5
+MIN_OVERTAKE_VEL = 3
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
@@ -115,17 +116,24 @@ LON_ACC_TO_JERK_FACTOR = 0.2
 LAT_ACC_TO_JERK_FACTOR = 0.2
 
 # [sec] performance metrics for BP minimal plan time
-BP_METRICS_TIME_HORIZON = 20
+BP_METRICS_TIME_HORIZON = BP_ACTION_T_LIMITS[LIMIT_MAX]
+
+BP_EFFICIENCY_COST_WEIGHT = 6.
 
 # performance metrics for BP: lane deviation cost weight
-BP_METRICS_LANE_DEVIATION_COST_WEIGHT = 0.15
+BP_METRICS_LANE_DEVIATION_COST_WEIGHT = 1.0
+
+# performance metrics for BP: non-right lane cost weight
+BP_RIGHT_LANE_COST_WEIGHT = 0.15              # cost of using non-right lane on one trajectory point
 
 # performance metrics for BP: missing goal cost
-BP_MISSING_GOAL_COST = 100
+BP_MISSING_GOAL_COST = 100.
 
 # [m/sec] when target velocity of vel_profile is greater than the desired velocity,
 # ego moves a bit faster (by this delta) than the target in order to reach it.
 BP_MAX_VELOCITY_TOLERANCE = 1.
+
+
 
 # Trajectory Planner #
 

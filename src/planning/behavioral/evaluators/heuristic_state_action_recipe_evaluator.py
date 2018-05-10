@@ -2,9 +2,10 @@ from logging import Logger
 from typing import List, Optional
 
 import numpy as np
+import sys
 
 from decision_making.src.global_constants import BP_METRICS_TIME_HORIZON, \
-    EFFICIENCY_COST_WEIGHT, WERLING_TIME_RESOLUTION, RIGHT_LANE_COST_WEIGHT, \
+    BP_EFFICIENCY_COST_WEIGHT, WERLING_TIME_RESOLUTION, BP_RIGHT_LANE_COST_WEIGHT, \
     BP_METRICS_LANE_DEVIATION_COST_WEIGHT, BP_MISSING_GOAL_COST, BP_MAX_VELOCITY_TOLERANCE, SAFE_DIST_TIME_DELAY, \
     BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, \
@@ -50,8 +51,8 @@ class HeuristicStateActionRecipeEvaluator(ActionRecipeEvaluator):
         # get front dynamic objects' velocities from the occupancy grid
         front_objects = self._get_front_objects(behavioral_state)
 
-        print('time=%.1f ego_v=%.2f ego_lat=%.2f ego_dv=%.2f' % (ego.timestamp_in_sec, ego.v_x,
-                                                                 ego.road_localization.intra_road_lat, ego_lat_vel))
+        print('time=%.1f ego_v=%.2f ego_lat=%.2f ego_dv=%.2f grid_size=%d' % (ego.timestamp_in_sec, ego.v_x,
+                ego.road_localization.intra_road_lat, ego_lat_vel, len(behavioral_state.road_occupancy_grid)))
 
         action_costs = np.full(len(action_recipes), np.inf)
 
@@ -67,7 +68,7 @@ class HeuristicStateActionRecipeEvaluator(ActionRecipeEvaluator):
 
             # create velocity profile, whose length is at least as the lateral time
             vel_profile = self._calc_velocity_profile(behavioral_state, action_recipe, T_d, front_objects)
-            # print('version is: %s' % sys.version)
+            #print('version is: %s' % sys.version)
             if vel_profile is None:  # infeasible action
                 continue
 
@@ -127,8 +128,7 @@ class HeuristicStateActionRecipeEvaluator(ActionRecipeEvaluator):
         target_acc = cars_size_margin = obj_lon = None
 
         if action_recipe.action_type == ActionType.FOLLOW_VEHICLE or action_recipe.action_type == ActionType.OVER_TAKE_VEHICLE:
-            target_obj = \
-            behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0].dynamic_object
+            target_obj = behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0].dynamic_object
             target_vel = target_obj.v_x
             target_acc = target_obj.acceleration_lon
             obj_lon = target_obj.road_localization.road_lon
@@ -152,8 +152,9 @@ class HeuristicStateActionRecipeEvaluator(ActionRecipeEvaluator):
             action_recipe.action_type, ego_fpoint[FP_SX], ego.v_x, obj_lon, target_vel, target_acc,
             action_recipe.aggressiveness, cars_size_margin, min_time=T_d)
 
-        if vel_profile is not None:
-            vel_profile = vel_profile.cut_by_time(BP_METRICS_TIME_HORIZON)
+        #if vel_profile is not None and vel_profile.total_time() > BP_METRICS_TIME_HORIZON:
+        #    return None
+        #vel_profile = vel_profile.cut_by_time(BP_METRICS_TIME_HORIZON)
         return vel_profile
 
     def _calc_largest_safe_time(self, behavioral_state: BehavioralGridState, action: ActionRecipe,
@@ -277,12 +278,12 @@ class HeuristicStateActionRecipeEvaluator(ActionRecipeEvaluator):
         efficiency_cost = right_lane_cost = future_lane_deviation_cost = future_comfort_cost = goal_cost = 0
         if time_period > 0:
             efficiency_cost = PlanEfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([v_tar]))[0] * \
-                              EFFICIENCY_COST_WEIGHT * time_period / WERLING_TIME_RESOLUTION
-            right_lane_cost = ego_lane * time_period * RIGHT_LANE_COST_WEIGHT / WERLING_TIME_RESOLUTION
+                              BP_EFFICIENCY_COST_WEIGHT * time_period
+            right_lane_cost = ego_lane * time_period * BP_RIGHT_LANE_COST_WEIGHT
 
         if goal is None or ego_road_id != goal.road_id:  # no relevant goal
             if ego_lane > 0:  # distance in lanes from the rightest lane
-                future_lane_deviation_cost = ego_lane * BP_METRICS_LANE_DEVIATION_COST_WEIGHT / WERLING_TIME_RESOLUTION
+                future_lane_deviation_cost = ego_lane * BP_METRICS_LANE_DEVIATION_COST_WEIGHT
                 future_comfort_cost = ego_lane * PlanComfortMetric.calc_cost(empty_vel_profile, T_d_full, T_d_full,
                                                                              AggressivenessLevel.CALM)
         elif ego_lane > goal.to_lane or ego_lane < goal.from_lane:  # outside of the lanes range of the goal

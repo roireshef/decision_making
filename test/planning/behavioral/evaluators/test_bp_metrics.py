@@ -4,20 +4,15 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
-from decision_making.src.planning.behavioral.architecture.components.action_space.action_space import \
-    ActionSpaceContainer
-from decision_making.src.planning.behavioral.architecture.components.action_space.dynamic_action_space import \
-    DynamicActionSpace
-from decision_making.src.planning.behavioral.architecture.components.action_space.static_action_space import \
-    StaticActionSpace
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionType, AggressivenessLevel, \
+from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
+from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
+from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
+from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel, \
     ActionRecipe, RelativeLane, DynamicActionRecipe, RelativeLongitudinalPosition, StaticActionRecipe
-from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
-    SemanticBehavioralGridState
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
-    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT, SEMANTIC_CELL_LAT_LEFT, \
-    BP_MAX_VELOCITY_TOLERANCE
+    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, BP_MAX_VELOCITY_TOLERANCE
 from decision_making.src.planning.behavioral.evaluators.heuristic_state_action_recipe_evaluator import \
     HeuristicStateActionRecipeEvaluator
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
@@ -43,7 +38,6 @@ def calc_collision_time(v_init: float, v_max: float, acc: float, v_tar: float, d
             return acceleration_time
     else:  # v_init_rel > v_max_rel
         return dist / v_init_rel
-
 
 
 def test_behavioralScenarios_moveToLeft_differentDistFrom_F_and_initVel():
@@ -97,12 +91,12 @@ def test_behavioralScenarios_moveToLeft_differentDistFrom_F_and_initVel():
                                   (F_vel, dist_from_F_in_sec, LB_vel, dist_from_LB_in_sec, ego_lon-LB_lon))
 
                             state = State(None, objects, ego)
-                            behavioral_state = SemanticBehavioralGridState.create_from_state(state, logger)
+                            behavioral_state = BehavioralGridState.create_from_state(state, logger)
 
                             actions = []
                             # create actions based on the occupancy grid
                             # add dynamic and static actions going to the same lane
-                            F_exists = (SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT) in behavioral_state.road_occupancy_grid
+                            F_exists = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT) in behavioral_state.road_occupancy_grid
                             if F_exists:
                                 right_action = DynamicActionRecipe(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT,
                                                                    ActionType.FOLLOW_VEHICLE, AggressivenessLevel.CALM)
@@ -114,13 +108,13 @@ def test_behavioralScenarios_moveToLeft_differentDistFrom_F_and_initVel():
                                 actions.append(StaticActionRecipe(RelativeLane.SAME_LANE, des_vel, AggressivenessLevel.CALM))
 
                             # add dynamic and static actions to the left lane
-                            if (SEMANTIC_CELL_LAT_LEFT, SEMANTIC_CELL_LON_FRONT) in behavioral_state.road_occupancy_grid:
+                            if (RelativeLane.LEFT_LANE, RelativeLongitudinalPosition.FRONT) in behavioral_state.road_occupancy_grid:
                                 left_action = DynamicActionRecipe(RelativeLane.LEFT_LANE, RelativeLongitudinalPosition.FRONT,
                                                                   ActionType.FOLLOW_VEHICLE, AggressivenessLevel.CALM)
                                 actions.append(left_action)
                             actions.append(StaticActionRecipe(RelativeLane.LEFT_LANE, des_vel, AggressivenessLevel.CALM))
 
-                            costs = evaluator.evaluate_recipes(behavioral_state, actions, [True] * len(actions), None)
+                            costs = evaluator.evaluate(behavioral_state, actions, [True] * len(actions))
 
                             best_idx = np.argmin(costs)
                             # if F is far or too close
@@ -175,8 +169,8 @@ def test_behavioralScenarios_moveToLeft_aggressivenessBySafety():
             actions = [right_action, left_action1, left_action2, left_action3]
 
             state = State(None, objects, ego)
-            behavioral_state = SemanticBehavioralGridState.create_from_state(state, logger)
-            costs = evaluator.evaluate_recipes(behavioral_state, actions, [True]*len(actions), None)
+            behavioral_state = BehavioralGridState.create_from_state(state, logger)
+            costs = evaluator.evaluate(behavioral_state, actions, [True]*len(actions))
             best_idx = np.argmin(costs)
 
             if dist_from_F_in_sec > 3:  # F is far
@@ -217,8 +211,8 @@ def test_behavioralScenarios_moveToToRight_differentDistFromRF():
 
     lane_width = MapService.get_instance().get_road(ego.road_localization.road_id).lane_width
     state = State(None, [], ego)
-    behavioral_state = SemanticBehavioralGridState.create_from_state(state, logger)
-    costs = evaluator.evaluate_recipes(behavioral_state, actions, [True]*len(actions), None)
+    behavioral_state = BehavioralGridState.create_from_state(state, logger)
+    costs = evaluator.evaluate(behavioral_state, actions, [True]*len(actions))
     assert costs[0] < costs[1]  # right is better
 
     for dist_from_RF_in_sec in [7, 4]:
@@ -231,9 +225,9 @@ def test_behavioralScenarios_moveToToRight_differentDistFromRF():
         RF = DynamicObject(1, 0, RF_cpoint[0], RF_cpoint[1], RF_cpoint[2], RF_yaw, size, 0, RF_vel, 0, 0, 0)
 
         state = State(None, [RF], ego)
-        behavioral_state = SemanticBehavioralGridState.create_from_state(state, logger)
+        behavioral_state = BehavioralGridState.create_from_state(state, logger)
 
-        costs = evaluator.evaluate_recipes(behavioral_state, actions, [True]*len(actions), None)
+        costs = evaluator.evaluate(behavioral_state, actions, [True]*len(actions))
 
         best_idx = np.argmin(costs)
         if dist_from_RF_in_sec > 6:
@@ -293,7 +287,7 @@ def test_speedProfiling():
     objects = [F, LF, L, LB, RF, R, RB, B]
 
     state = State(None, objects, ego)
-    behavioral_state = SemanticBehavioralGridState.create_from_state(state, logger)
+    behavioral_state = BehavioralGridState.create_from_state(state, logger)
 
     logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
     predictor = RoadFollowingPredictor(logger)
@@ -304,7 +298,7 @@ def test_speedProfiling():
 
     start = time.time()
 
-    costs = evaluator.evaluate_recipes(behavioral_state, action_recipes, recipes_mask, None)
+    costs = evaluator.evaluate(behavioral_state, action_recipes, recipes_mask)
 
     end = time.time()
 
@@ -352,20 +346,20 @@ def test_behavioralScenarios_moveToLeft_findThresholds():
 
                 objects = [F]
                 state = State(None, objects, ego)
-                behavioral_state = SemanticBehavioralGridState.create_from_state(state, logger)
+                behavioral_state = BehavioralGridState.create_from_state(state, logger)
 
                 actions = []
                 # create actions based on the occupancy grid
-                if (SEMANTIC_CELL_LAT_SAME, SEMANTIC_CELL_LON_FRONT) in behavioral_state.road_occupancy_grid:
+                if (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT) in behavioral_state.road_occupancy_grid:
                     right_action = DynamicActionRecipe(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT,
-                                                           ActionType.FOLLOW_VEHICLE, AggressivenessLevel.CALM)
+                                                       ActionType.FOLLOW_VEHICLE, AggressivenessLevel.CALM)
                     actions.append(right_action)
                 right_action_stat = StaticActionRecipe(RelativeLane.SAME_LANE, des_vel, AggressivenessLevel.CALM)
                 actions.append(right_action_stat)
                 left_action = StaticActionRecipe(RelativeLane.LEFT_LANE, des_vel, AggressivenessLevel.CALM)
                 actions.append(left_action)
 
-                costs = evaluator.evaluate_recipes(behavioral_state, actions, [True] * len(actions), None)
+                costs = evaluator.evaluate(behavioral_state, actions, [True] * len(actions))
 
                 best_idx = np.argmin(costs)
 

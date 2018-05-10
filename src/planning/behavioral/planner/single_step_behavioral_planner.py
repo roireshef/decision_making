@@ -54,6 +54,9 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self.logger.debug('Number of actions originally: %d, valid: %d, filter processing time: %f',
                           self.action_space.action_space_size, np.sum(recipes_mask), time.time()-time_before_filters)
 
+        # State-Action Evaluation
+        action_costs = self.recipe_evaluator.evaluate(behavioral_state, action_recipes, recipes_mask)
+
         # TODO: FOR DEBUG PURPOSES!
         time_before_specify = time.time()
 
@@ -69,7 +72,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
 
         # State-Action Evaluation
-        action_costs = self.recipe_evaluator.evaluate(behavioral_state, action_recipes, action_specs_mask)
+        #action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs_mask)
 
         valid_idx = np.where(action_specs_mask)[0]
         selected_action_index = valid_idx[action_costs[valid_idx].argmin()]

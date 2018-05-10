@@ -2,7 +2,8 @@ import numpy as np
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, LON_ACC_TO_JERK_FACTOR, \
-    LAT_ACC_TO_JERK_FACTOR, RIGHT_LANE_COST_WEIGHT, EFFICIENCY_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, \
+    LAT_ACC_TO_JERK_FACTOR, BP_RIGHT_LANE_COST_WEIGHT, BP_EFFICIENCY_COST_WEIGHT, \
+    LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, \
     BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, BP_METRICS_LANE_DEVIATION_COST_WEIGHT, \
     EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO, AGGRESSIVENESS_TO_LAT_ACC
 from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
@@ -33,7 +34,7 @@ class PlanEfficiencyMetric:
         #        vel_profile.v_mid, target_vel))
 
         efficiency_cost = PlanEfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel]))[0]
-        return EFFICIENCY_COST_WEIGHT * efficiency_cost * profile_time / WERLING_TIME_RESOLUTION
+        return BP_EFFICIENCY_COST_WEIGHT * efficiency_cost * profile_time
 
     @staticmethod
     def calc_pointwise_cost_for_velocities(vel: np.array) -> np.array:
@@ -100,10 +101,10 @@ class PlanComfortMetric:
 class PlanRightLaneMetric:
     @staticmethod
     def calc_cost(time_period: float, lane_idx: int) -> float:
-        return RIGHT_LANE_COST_WEIGHT * lane_idx * time_period / WERLING_TIME_RESOLUTION
+        return BP_RIGHT_LANE_COST_WEIGHT * lane_idx * time_period
 
 
 class PlanLaneDeviationMetric:
     @staticmethod
     def calc_cost(lat_dev: float) -> float:
-        return BP_METRICS_LANE_DEVIATION_COST_WEIGHT * lat_dev*lat_dev / WERLING_TIME_RESOLUTION
+        return BP_METRICS_LANE_DEVIATION_COST_WEIGHT * lat_dev * lat_dev
