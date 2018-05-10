@@ -3,7 +3,8 @@ import numpy as np
 import pytest
 
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.state.state import ObjectSize, EgoState, State
 from mapping.src.service.map_service import MapService
 
@@ -19,7 +20,8 @@ def test_specifyStaticAction_veryCloseToTargetVelocity_shouldNotFail():
 
     action_space = StaticActionSpace(logger)
 
-    ego_vel = action_space.recipes[0].velocity + 0.1
+    target_vel = action_space.recipes[0].velocity
+    ego_vel = target_vel + 0.1
     ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon, road_mid_lat - lane_width)
     ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, ego_vel, 0, 0, 0, 0)
 
@@ -28,5 +30,9 @@ def test_specifyStaticAction_veryCloseToTargetVelocity_shouldNotFail():
 
     action_specs = [action_space.specify_goal(recipe, behavioral_state) for i, recipe in enumerate(action_space.recipes)]
 
+    specs = [action_specs[i] for i, recipe in enumerate(action_space.recipes)
+                if recipe.relative_lane == RelativeLane.SAME_LANE and recipe.aggressiveness == AggressivenessLevel.CALM
+                        and recipe.velocity == target_vel]
+
     # check specification of CALM SAME_LANE static action
-    assert action_specs[15] is not None
+    assert len(specs) > 0 and specs[0] is not None
