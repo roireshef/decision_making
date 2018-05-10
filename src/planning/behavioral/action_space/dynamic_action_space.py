@@ -1,10 +1,10 @@
 import numpy as np
 from logging import Logger
 from sklearn.utils.extmath import cartesian
-from typing import Optional, Callable
+from typing import Optional, Callable, List
 
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SAFE_DIST_TIME_DELAY, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS, EPS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, EPS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, BP_ACTION_T_RES
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
@@ -47,16 +47,12 @@ class DynamicActionSpace(ActionSpace):
         ego_init_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
 
         # pull the closest dynamic object in the grid cell, and project it onto the road
-        target_obj = behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0].dynamic_object
-        target_obj_init_fstate = MapUtils.get_object_road_localization(target_obj, road_frenet)
+        target = behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
+        target_obj_init_fstate = target.fstate
 
-        # Extract relevant details from state on Reference-Object
-        obj_on_road = target_obj.road_localization
-        road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id=obj_on_road.road_id)
-        obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
 
         # TODO: take out 0.001 into a constant
-        T_s_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS, 0.001)
+        T_s_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS, BP_ACTION_T_RES)
 
         w_Js, w_Jd, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[action_recipe.aggressiveness.value]
         v_0, a_0 = ego_init_fstate[FS_SV], ego_init_fstate[FS_SA]
@@ -86,14 +82,14 @@ class DynamicActionSpace(ActionSpace):
         # TODO: Do the same as above for lateral movement
         # TODO: check if lateral trajectory is feasible(?)
 
-        latitudinal_difference = obj_center_lane_latitude - ego_init_fstate[FS_DX]
+        latitudinal_difference = target.center_lane_latitude - ego_init_fstate[FS_DX]
         lat_time_cost_func_der = QuinticPoly1D.time_cost_function_derivative(w_T, w_Jd,
                                                                              ego_init_fstate[FS_DA],
                                                                              ego_init_fstate[FS_DV], 0,
                                                                              latitudinal_difference,
                                                                              T_m=0)
         # TODO: put in constants
-        T_d_vals = np.arange(0.1, BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS, 0.001)
+        T_d_vals = np.arange(0.1, BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS, BP_ACTION_T_RES)
         T_d = ActionSpace.find_roots(lat_time_cost_func_der, T_d_vals)
         # If roots were found out of the desired region, this action won't be specified
         if len(T_d) == 0:
@@ -104,4 +100,4 @@ class DynamicActionSpace(ActionSpace):
 
         return ActionSpec(t=planning_time, v=v_T,
                           s=target_obj_init_fstate[FS_SX],
-                          d=obj_center_lane_latitude)
+                          d=target.center_lane_latitude)
