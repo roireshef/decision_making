@@ -45,18 +45,16 @@ class StaticActionSpace(ActionSpace):
         v_T = np.array([action_recipe.velocity for action_recipe in action_recipes])
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
-        roots_s = QuarticPoly1D.time_cost_function_derivative_roots(
+        cost_coeffs_s = QuarticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV], v_T=v_T)
-        roots_s_reals = np.real(roots_s)
-        is_real_s = np.isreal(roots_s) * (roots_s_reals >= BP_ACTION_T_LIMITS[LIMIT_MIN]) * (roots_s_reals <= BP_ACTION_T_LIMITS[LIMIT_MAX])
-        roots_s_reals[~is_real_s] = -np.inf
-        T_s = np.max(roots_s_reals, axis=1)
+
+        T_s = np.nanmax(roots_s_reals, axis=1)
         T_s[np.isneginf(T_s)] = np.nan
 
         latitudinal_difference = desired_center_lane_latitude - ego_init_fstate[FS_DX]
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
-        roots_d = QuinticPoly1D.time_cost_function_derivative_roots(
+        roots_d = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 1], a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV], v_T=0,
             ds_0=latitudinal_difference, T_m=0)
         roots_d_reals = np.real(roots_d)

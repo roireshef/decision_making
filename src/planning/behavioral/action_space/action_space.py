@@ -16,7 +16,7 @@ from decision_making.src.planning.behavioral.data_objects import AggressivenessL
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.utils.optimal_control.poly1d import Poly1D
 from decision_making.src.planning.types import FS_SV, FS_SX, FS_SA, FS_DX, FS_DV, FS_DA, \
-    FrenetState2D
+    FrenetState2D, Limits, LIMIT_MIN, LIMIT_MAX
 
 
 class ActionSpace:
@@ -151,13 +151,18 @@ class ActionSpace:
         return constraints_d
 
     @staticmethod
-    # TODO: write type-hint
-    # TODO: 0.01 should be constant in global constants.
-    # TODO: debug where this doesn't find a solution
-    def find_roots(func, grid_values: np.ndarray):
-        func_values = func(grid_values)
-        opt_ind = np.argwhere(np.abs(func_values) < 0.01)
-        return grid_values[opt_ind]
+    def find_roots(coef_matrix: np.ndarray, value_limits: Limits):
+        """
+        Given a matrix of polynomials coefficients, returns their Real roots within boundaries.
+        :param coef_matrix: 2D numpy array [NxK] full with coefficients of N polynomials of degree (K-1)
+        :param value_limits: Boundaries for desired roots to look for.
+        :return: 2D numpy array [Nx(K-1)]
+        """
+        roots = np.apply_along_axis(np.roots, axis=-1, arr=coef_matrix)
+        roots_s_reals = np.real(roots)
+        is_real_s = np.isreal(roots) * (roots_s_reals >= value_limits[LIMIT_MIN]) * (roots_s_reals <= value_limits[LIMIT_MAX])
+        roots_s_reals[~is_real_s] = np.nan
+        return roots_s_reals
 
 
 class ActionSpaceContainer(ActionSpace):
