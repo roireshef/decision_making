@@ -1,15 +1,15 @@
-import numpy as np
 from logging import Logger
+from typing import Optional, List, Type
+
+import numpy as np
 from sklearn.utils.extmath import cartesian
-from typing import Optional, Callable, List
 
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SAFE_DIST_TIME_DELAY, \
-    BP_JERK_S_JERK_D_TIME_WEIGHTS, EPS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, BP_ACTION_T_RES, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, EPS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, BP_ACTION_T_RES
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
-    ActionType, RelativeLongitudinalPosition, ActionRecipe
+    ActionType, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering import recipe_filter_bank
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
@@ -31,6 +31,10 @@ class DynamicActionSpace(ActionSpace):
                          recipe_filtering=RecipeFiltering(recipe_filter_bank.dynamic_filters))
 
         self.predictor = predictor
+
+    @property
+    def recipe_classes(self) -> List[Type]:
+        return [DynamicActionRecipe]
 
     def specify_goals(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> \
             List[Optional[ActionSpec]]:
@@ -65,7 +69,7 @@ class DynamicActionSpace(ActionSpace):
             w_T=weights[:, 2], w_J=weights[:, 0],
             a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV], v_T=v_T,
             ds_0=longitudinal_difference - LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, T_m=SAFE_DIST_TIME_DELAY)
-        roots_s = ActionSpace.find_roots(cost_coeffs_s, LON_ACC_LIMITS)
+        roots_s = ActionSpace.find_roots(cost_coeffs_s, [0, 20.0])
         T_s = np.fmin.reduce(roots_s, axis=-1)
 
         # latitudinal difference to target
@@ -76,7 +80,7 @@ class DynamicActionSpace(ActionSpace):
             w_T=weights[:, 2], w_J=weights[:, 1],
             a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV], v_T=0,
             ds_0=latitudinal_difference, T_m=0)
-        roots_d = ActionSpace.find_roots(cost_coeffs_d, LAT_ACC_LIMITS)
+        roots_d = ActionSpace.find_roots(cost_coeffs_d, [0, 20.0])
         T_d = np.fmin.reduce(roots_d, axis=-1)
 
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.

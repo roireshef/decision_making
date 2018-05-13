@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Type
 
 import numpy as np
 from sklearn.utils.extmath import cartesian
@@ -26,6 +26,10 @@ class StaticActionSpace(ActionSpace):
                                   for comb in cartesian([RelativeLane, self._velocity_grid, AggressivenessLevel])],
                          recipe_filtering=RecipeFiltering(recipe_filter_bank.static_filters))
 
+    @property
+    def recipe_classes(self) -> List[Type]:
+        return [StaticActionRecipe]
+
     def specify_goals(self, action_recipes: List[StaticActionRecipe], behavioral_state: BehavioralGridState) -> \
             List[Optional[ActionSpec]]:
         ego = behavioral_state.ego_state
@@ -51,7 +55,7 @@ class StaticActionSpace(ActionSpace):
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuarticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV], v_T=v_T)
-        roots_s = ActionSpace.find_roots(cost_coeffs_s, LON_ACC_LIMITS)
+        roots_s = ActionSpace.find_roots(cost_coeffs_s, [0, 20.0])
         T_s = np.fmin.reduce(roots_s, axis=-1)
 
         # latitudinal difference to target
@@ -61,7 +65,7 @@ class StaticActionSpace(ActionSpace):
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 1], a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV], v_T=0,
             ds_0=latitudinal_difference, T_m=0)
-        roots_d = ActionSpace.find_roots(cost_coeffs_d, LAT_ACC_LIMITS)
+        roots_d = ActionSpace.find_roots(cost_coeffs_d, [0, 20.0])
         T_d = np.fmin.reduce(roots_d, axis=-1)
 
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
