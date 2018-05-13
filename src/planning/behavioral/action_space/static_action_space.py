@@ -47,29 +47,26 @@ class StaticActionSpace(ActionSpace):
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuarticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV], v_T=v_T)
-
-        T_s = np.nanmax(roots_s_reals, axis=1)
-        T_s[np.isneginf(T_s)] = np.nan
+        roots_s = ActionSpace.find_roots(cost_coeffs_s)
+        T_s = np.fmin.reduce(roots_s, axis=1)
 
         latitudinal_difference = desired_center_lane_latitude - ego_init_fstate[FS_DX]
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
-        roots_d = QuinticPoly1D.time_cost_function_derivative_coefs(
+        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 1], a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV], v_T=0,
             ds_0=latitudinal_difference, T_m=0)
-        roots_d_reals = np.real(roots_d)
-        is_real_d = np.isreal(roots_d) * (roots_d_reals >= 0) * (roots_d_reals <= BP_ACTION_T_LIMITS[LIMIT_MAX])
-        roots_d_reals[~is_real_d] = -np.inf
-        T_d = np.max(roots_d_reals, axis=1)
-        T_d[np.isneginf(T_d)] = np.nan
+        roots_d = ActionSpace.find_roots(cost_coeffs_d)
+        T_d = np.fmin.reduce(roots_d, axis=1)
 
+        # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
         T = np.maximum(T_d, T_s)
 
         distance_s = QuarticPoly1D.distance_profile_function(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV], v_T=v_T, T=T)(T)
         target_s = distance_s + ego_init_fstate[FS_SX]
 
         action_specs = [ActionSpec(T[i], v_T[i], s, desired_center_lane_latitude[i])
-                        if ~np.isnan(target_s[i]) else None
+                        if ~np.isnan(T[i]) else None
                         for i, s in enumerate(target_s)]
 
         return action_specs
