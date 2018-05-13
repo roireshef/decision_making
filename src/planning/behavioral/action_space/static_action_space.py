@@ -3,7 +3,8 @@ from typing import Optional, List
 import numpy as np
 from sklearn.utils.extmath import cartesian
 
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, EPS, BP_JERK_S_JERK_D_TIME_WEIGHTS, BP_ACTION_T_RES
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, EPS, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
+    BP_ACTION_T_RES, LON_ACC_LIMITS, LAT_ACC_LIMITS
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.constants import VELOCITY_STEP, MAX_VELOCITY, MIN_VELOCITY
@@ -47,8 +48,8 @@ class StaticActionSpace(ActionSpace):
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuarticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV], v_T=v_T)
-        roots_s = ActionSpace.find_roots(cost_coeffs_s)
-        T_s = np.fmin.reduce(roots_s, axis=1)
+        roots_s = ActionSpace.find_roots(cost_coeffs_s, LON_ACC_LIMITS)
+        T_s = np.fmin.reduce(roots_s, axis=-1)
 
         latitudinal_difference = desired_center_lane_latitude - ego_init_fstate[FS_DX]
 
@@ -56,18 +57,19 @@ class StaticActionSpace(ActionSpace):
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 1], a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV], v_T=0,
             ds_0=latitudinal_difference, T_m=0)
-        roots_d = ActionSpace.find_roots(cost_coeffs_d)
-        T_d = np.fmin.reduce(roots_d, axis=1)
+        roots_d = ActionSpace.find_roots(cost_coeffs_d, LAT_ACC_LIMITS)
+        T_d = np.fmin.reduce(roots_d, axis=-1)
 
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
         T = np.maximum(T_d, T_s)
 
+        # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution
         distance_s = QuarticPoly1D.distance_profile_function(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV], v_T=v_T, T=T)(T)
         target_s = distance_s + ego_init_fstate[FS_SX]
 
-        action_specs = [ActionSpec(T[i], v_T[i], s, desired_center_lane_latitude[i])
-                        if ~np.isnan(T[i]) else None
-                        for i, s in enumerate(target_s)]
+        action_specs = [ActionSpec(t, v_T[i], target_s[i], desired_center_lane_latitude[i])
+                        if ~np.isnan(t) else None
+                        for i, t in enumerate(T)]
 
         return action_specs
 

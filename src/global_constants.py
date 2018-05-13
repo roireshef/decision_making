@@ -77,7 +77,8 @@ VELOCITY_LIMITS = np.array([0.0, 20.0])
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
 BP_ACTION_T_LIMITS = np.array([2.0, 20.0])
-BP_ACTION_T_RES = 0.001
+BP_ACTION_T_RES = 0.00
+1
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
