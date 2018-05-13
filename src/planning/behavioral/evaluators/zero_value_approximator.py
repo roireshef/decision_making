@@ -1,16 +1,12 @@
-from abc import ABCMeta, abstractmethod
 from logging import Logger
 
-import six
-
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 
 
-@six.add_metaclass(ABCMeta)
-class ValueApproximator:
+class ZeroValueApproximator(ValueApproximator):
     def __init__(self, logger: Logger):
-        self.logger = logger
+        super().__init__(logger)
 
-    @abstractmethod
     def approximate(self, behavioral_state: BehavioralGridState) -> float:
-        pass
+        return 0

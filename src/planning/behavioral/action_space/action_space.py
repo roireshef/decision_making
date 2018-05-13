@@ -4,8 +4,7 @@ from logging import Logger
 from typing import List, Optional
 
 import numpy as np
-from decision_making.src.planning.behavioral.architecture.semantic_behavioral_grid_state import \
-    SemanticBehavioralGridState
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 
 from decision_making.src.exceptions import raises
 from decision_making.src.global_constants import LON_ACC_LIMITS, LAT_ACC_LIMITS, VELOCITY_LIMITS, \
@@ -21,7 +20,7 @@ from decision_making.src.planning.types import FS_SV, FS_SX, FS_SA, FS_DX, FS_DV
 
 
 class ActionSpace:
-    def __init__(self, logger: Logger, recipes: List[ActionRecipe], recipe_filtering: RecipeFiltering = None):
+    def __init__(self, logger: Logger, recipes: List[ActionRecipe], recipe_filtering: Optional[RecipeFiltering] = None):
         """
         Abstract class for Action-Space implementations. Implementations should include actions enumeration, filtering
          and specification.
@@ -31,7 +30,7 @@ class ActionSpace:
         """
         self.logger = logger
         self._recipes = recipes
-        self.recipe_filtering = recipe_filtering or RecipeFiltering()
+        self._recipe_filtering = recipe_filtering or RecipeFiltering()
 
     @property
     def action_space_size(self) -> int:
@@ -42,11 +41,11 @@ class ActionSpace:
         return self._recipes
 
     def filter_recipe(self, recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
-        return self.recipe_filtering.filter_recipe(recipe, behavioral_state)
+        return self._recipe_filtering.filter_recipe(recipe, behavioral_state)
 
     def filter_recipes(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralState):
         """"""
-        return self.recipe_filtering.filter_recipes(action_recipes, behavioral_state)
+        return self._recipe_filtering.filter_recipes(action_recipes, behavioral_state)
 
     @abstractmethod
     def specify_goal(self, action_recipe: ActionRecipe, behavioral_state: BehavioralState) -> Optional[ActionSpec]:
@@ -148,10 +147,10 @@ class ActionSpace:
         return constraints_d
 
 
-class ActionSpaceContainer:
+class ActionSpaceContainer(ActionSpace):
     def __init__(self, logger: Logger, action_spaces: List[ActionSpace]):
+        super().__init__(logger, [])
         self._action_spaces = action_spaces
-        self.logger = logger
 
         self._recipe_handler = {}
         for aspace in action_spaces:
@@ -167,7 +166,7 @@ class ActionSpaceContainer:
         return list(itertools.chain.from_iterable(aspace.recipes for aspace in self._action_spaces))
 
     @raises(NotImplemented)
-    def specify_goal(self, action_recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> ActionSpec:
+    def specify_goal(self, action_recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> ActionSpec:
         try:
             return self._recipe_handler[action_recipe].specify_goal(action_recipe, behavioral_state)
         except Exception:
@@ -175,15 +174,16 @@ class ActionSpaceContainer:
                                  action_recipe, str(self._action_spaces))
 
     @raises(NotImplemented)
-    def filter_recipe(self, action_recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> bool:
+    def filter_recipe(self, action_recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
         try:
             return self._recipe_handler[action_recipe].filter_recipe(action_recipe, behavioral_state)
         except Exception:
             raise NotImplemented('action_recipe %s could not be handled by current action spaces %s',
                                  action_recipe, str(self._action_spaces))
 
+    # TODO: figure out how to remove the for loop for better efficiency and stay consistent with ordering
+    @raises(NotImplemented)
     def filter_recipes(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralState):
-        """"""
         try:
             return [self._recipe_handler[action_recipe].filter_recipe(action_recipe, behavioral_state) for action_recipe
                     in action_recipes]

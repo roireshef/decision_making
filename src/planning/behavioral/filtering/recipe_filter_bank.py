@@ -1,8 +1,7 @@
-from decision_making.src.planning.behavioral.architecture.data_objects import ActionRecipe, DynamicActionRecipe, \
+from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel
 
-from decision_making.src.planning.behavioral.behavioral_grid_state import \
-    BehavioralGridState
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
 
@@ -22,7 +21,7 @@ def always_false(recipe: ActionRecipe, behavioral_state: BehavioralState) -> boo
     return False
 
 
-def filter_non_calm_actions(recipe: ActionRecipe, behavioral_state: SemanticBehavioralGridState) -> bool:
+def filter_non_calm_actions(recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
     return recipe.aggressiveness == AggressivenessLevel.CALM
 
 # DynamicActionRecipe Filters
