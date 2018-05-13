@@ -40,7 +40,7 @@ class StaticActionSpace(ActionSpace):
         desired_center_lane_latitude = road_lane_latitudes[desired_lane]
 
         # TODO: take out 0.001 into a constant
-        T_s_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS, 0.001)
+        T_s_vals = np.arange(0., BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS, 0.001)
 
         w_Js, w_Jd, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[action_recipe.aggressiveness.value]
         v_0, a_0 = ego_init_fstate[FS_SV], ego_init_fstate[FS_SA]
@@ -63,7 +63,7 @@ class StaticActionSpace(ActionSpace):
                                                                              latitudinal_difference,
                                                                              T_m=0)
 
-        T_d_vals = np.arange(0.1, BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS, 0.001)
+        T_d_vals = np.arange(0., BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS, 0.001)
         T_d = ActionSpace.find_roots(lat_time_cost_func_der, T_d_vals)
         # If roots were found out of the desired region, this action won't be specified
         if len(T_d) == 0:
@@ -71,10 +71,9 @@ class StaticActionSpace(ActionSpace):
 
         # This stems from the assumption we've made about independency between d and s
         planning_time = max(T_s[0], T_d[0])
+        planning_time = max(np.array([BP_ACTION_T_LIMITS[LIMIT_MIN]]), planning_time)
 
         distance_func = QuarticPoly1D.distance_profile_function(a_0, v_0, v_T, planning_time)
         target_s = distance_func(planning_time)[0] + ego_init_fstate[FS_SX]
 
-        return ActionSpec(t=float(max(T_s[0], T_d[0])), v=v_T,
-                          s=target_s,
-                          d=desired_center_lane_latitude)
+        return ActionSpec(t=planning_time[0], v=v_T, s=target_s, d=desired_center_lane_latitude)

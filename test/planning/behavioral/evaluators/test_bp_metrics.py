@@ -13,8 +13,8 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
 
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, BP_MAX_VELOCITY_TOLERANCE
-from decision_making.src.planning.behavioral.evaluators.heuristic_state_action_recipe_evaluator import \
-    HeuristicStateActionRecipeEvaluator
+from decision_making.src.planning.behavioral.evaluators.heuristic_action_recipe_evaluator import \
+    HeuristicActionRecipeEvaluator
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import DynamicObject, ObjectSize, EgoState, State
 from mapping.src.service.map_service import MapService
@@ -55,7 +55,7 @@ def test_behavioralScenarios_moveToLeft_differentDistFrom_F_and_initVel():
     road_mid_lat = MapService.get_instance().get_road(road_id).lanes_num * lane_width / 2
     size = ObjectSize(4, 2, 1)
 
-    evaluator = HeuristicStateActionRecipeEvaluator(logger)
+    evaluator = HeuristicActionRecipeEvaluator(logger)
 
     for ego_vel in np.arange(des_vel - des_vel/4., des_vel + des_vel/4.+0.1, des_vel/7.):
         #for F_vel in [des_vel - des_vel/5., des_vel - des_vel/7., des_vel - des_vel/14., des_vel, des_vel + des_vel/7.]:
@@ -143,7 +143,7 @@ def test_behavioralScenarios_moveToLeft_aggressivenessBySafety():
     F_vel = init_vel
     LB_vel = des_vel + 2
 
-    evaluator = HeuristicStateActionRecipeEvaluator(logger)
+    evaluator = HeuristicActionRecipeEvaluator(logger)
 
     ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon, road_mid_lat-lane_width)
     ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, init_vel, 0, 0, 0, 0)
@@ -204,7 +204,7 @@ def test_behavioralScenarios_moveToToRight_differentDistFromRF():
     left_action = StaticActionRecipe(RelativeLane.SAME_LANE, des_vel, AggressivenessLevel.CALM)
     right_action = StaticActionRecipe(RelativeLane.RIGHT_LANE, des_vel, AggressivenessLevel.CALM)
     actions = [right_action, left_action]
-    evaluator = HeuristicStateActionRecipeEvaluator(logger)
+    evaluator = HeuristicActionRecipeEvaluator(logger)
 
     ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon, road_mid_lat)
     ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, des_vel, 0, 0, 0, 0)
@@ -248,7 +248,7 @@ def test_speedProfiling():
     F_vel = init_vel
     LB_vel = des_vel + 2
 
-    evaluator = HeuristicStateActionRecipeEvaluator(logger)
+    evaluator = HeuristicActionRecipeEvaluator(logger)
 
     ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon, road_mid_lat)
     ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, init_vel, 0, 0, 0, 0)
@@ -322,7 +322,7 @@ def test_behavioralScenarios_moveToLeft_findThresholds():
     road_mid_lat = MapService.get_instance().get_road(road_id).lanes_num * lane_width / 2
     size = ObjectSize(4, 2, 1)
 
-    evaluator = HeuristicStateActionRecipeEvaluator(logger)
+    evaluator = HeuristicActionRecipeEvaluator(logger)
 
     dv = 1.
     ego_vel_range = np.arange(des_vel - des_vel/2., des_vel + des_vel/2. + 0.1, dv)

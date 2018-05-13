@@ -5,7 +5,7 @@ from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, LON_AC
     LAT_ACC_TO_JERK_FACTOR, BP_RIGHT_LANE_COST_WEIGHT, BP_EFFICIENCY_COST_WEIGHT, \
     LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, \
     BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, BP_METRICS_LANE_DEVIATION_COST_WEIGHT, \
-    EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO, AGGRESSIVENESS_TO_LAT_ACC
+    EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO, AGGRESSIVENESS_TO_LAT_ACC, CHANGE_LAT_VEL_WEIGHT
 from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
 
 
@@ -62,13 +62,15 @@ class PlanEfficiencyMetric:
 
 class PlanComfortMetric:
     @staticmethod
-    def calc_cost(vel_profile: VelocityProfile, T_d, T_d_max: float, aggressiveness: AggressivenessLevel):
+    def calc_cost(vel_profile: VelocityProfile, T_d, T_d_max: float, aggressiveness: AggressivenessLevel,
+                  lat_vel_to_tar: float):
         """
         Calculate comfort cost for lateral and longitudinal movement
         :param vel_profile: longitudinal velocity profile
         :param T_d: comfortable lateral movement time
         :param T_d_max: maximal permitted lateral movement time, bounded according to the safety
         :param aggressiveness: aggressiveness level of the action
+        :param lat_vel_to_tar: initial lateral velocity to the target direction
         :return: comfort cost in units of the general performance metrics cost
         """
         # TODO: if T is known, calculate jerks analytically
@@ -82,7 +84,9 @@ class PlanComfortMetric:
             time_factor = T_d / max(np.finfo(np.float16).eps, T_d_max)
         acc_factor = AGGRESSIVENESS_TO_LAT_ACC[aggressiveness.value] / AGGRESSIVENESS_TO_LAT_ACC[0]
         lat_time = min(T_d, T_d_max)
-        lat_cost = lat_time * (time_factor ** 6) * (acc_factor ** 3) * LAT_ACC_TO_JERK_FACTOR * LAT_JERK_COST_WEIGHT
+        opposite_lat_vel = max(0., -lat_vel_to_tar)  # only negative lateral velocity increases the cost
+        lat_cost = (lat_time + CHANGE_LAT_VEL_WEIGHT * opposite_lat_vel**2) * (time_factor ** 6) * (acc_factor ** 3) * \
+                   LAT_ACC_TO_JERK_FACTOR * LAT_JERK_COST_WEIGHT
 
         # longitudinal cost
         lon_cost = 0

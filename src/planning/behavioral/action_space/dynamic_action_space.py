@@ -61,6 +61,7 @@ class DynamicActionSpace(ActionSpace):
         w_Js, w_Jd, w_T = BP_JERK_S_JERK_D_TIME_WEIGHTS[action_recipe.aggressiveness.value]
         v_0, a_0 = ego_init_fstate[FS_SV], ego_init_fstate[FS_SA]
         v_T = target_obj_init_fstate[FS_SV]
+        cars_size_margin = 0.5 * (ego.size.length + target_obj.size.length)  # + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
 
         # longitudinal difference between object and ego (positive if obj in front of ego)
         longitudinal_difference = target_obj_init_fstate[FS_SX] - ego_init_fstate[FS_SX]
@@ -68,11 +69,11 @@ class DynamicActionSpace(ActionSpace):
         # Note: time_cost_function_derivative assumes constant-velocity moving objects
         if action_recipe.action_type == ActionType.FOLLOW_VEHICLE:
             lon_time_cost_func_der = QuinticPoly1D.time_cost_function_derivative(w_T, w_Js, a_0, v_0, v_T,
-                                                                                 longitudinal_difference - LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT,
+                                                                                 longitudinal_difference - cars_size_margin,
                                                                                  T_m=SAFE_DIST_TIME_DELAY)
         elif action_recipe.action_type == ActionType.OVER_TAKE_VEHICLE:
             lon_time_cost_func_der = QuinticPoly1D.time_cost_function_derivative(w_T, w_Js, a_0, v_0, v_T,
-                                                                                 longitudinal_difference + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT,
+                                                                                 longitudinal_difference + cars_size_margin,
                                                                                  T_m=-SAFE_DIST_TIME_DELAY)
         else:
             raise NotImplemented("Action Type %s is not handled in DynamicActionSpace specification",
@@ -86,22 +87,26 @@ class DynamicActionSpace(ActionSpace):
         # TODO: Do the same as above for lateral movement
         # TODO: check if lateral trajectory is feasible(?)
 
-        latitudinal_difference = obj_center_lane_latitude - ego_init_fstate[FS_DX]
-        lat_time_cost_func_der = QuinticPoly1D.time_cost_function_derivative(w_T, w_Jd,
-                                                                             ego_init_fstate[FS_DA],
-                                                                             ego_init_fstate[FS_DV], 0,
-                                                                             latitudinal_difference,
-                                                                             T_m=0)
-        # TODO: put in constants
-        T_d_vals = np.arange(0.1, BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS, 0.001)
-        T_d = ActionSpace.find_roots(lat_time_cost_func_der, T_d_vals)
-        # If roots were found out of the desired region, this action won't be specified
-        if len(T_d) == 0:
-            return None
+        lateral_difference = obj_center_lane_latitude - ego_init_fstate[FS_DX]
+        if abs(lateral_difference) > 0.01:
+            lat_time_cost_func_der = QuinticPoly1D.time_cost_function_derivative(w_T, w_Jd,
+                                                                                 ego_init_fstate[FS_DA],
+                                                                                 ego_init_fstate[FS_DV], 0,
+                                                                                 lateral_difference,
+                                                                                 T_m=0)
+            # TODO: put in constants
+            T_d_vals = np.arange(0., BP_ACTION_T_LIMITS[LIMIT_MAX] + EPS, 0.001)
+            T_d = ActionSpace.find_roots(lat_time_cost_func_der, T_d_vals)
+            # If roots were found out of the desired region, this action won't be specified
+            if len(T_d) == 0:
+                return None
+        else:
+            T_d = np.array([0])
 
         # This stems from the assumption we've made about independency between d and s
         planning_time = float(max(T_s[0], T_d[0]))
 
+        target_s = target_obj_init_fstate[FS_SX] + v_T * (planning_time - SAFE_DIST_TIME_DELAY) - cars_size_margin
         return ActionSpec(t=planning_time, v=v_T,
-                          s=target_obj_init_fstate[FS_SX],
+                          s=target_s,
                           d=obj_center_lane_latitude)

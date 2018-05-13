@@ -114,6 +114,7 @@ AGGRESSIVENESS_TO_LAT_ACC = np.array([0.5, 0.7, 1])
 # conversion factor from acceleration to comfort cost
 LON_ACC_TO_JERK_FACTOR = 0.2
 LAT_ACC_TO_JERK_FACTOR = 0.2
+CHANGE_LAT_VEL_WEIGHT = 50.
 
 # [sec] performance metrics for BP minimal plan time
 BP_METRICS_TIME_HORIZON = BP_ACTION_T_LIMITS[LIMIT_MAX]
