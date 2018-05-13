@@ -41,7 +41,7 @@ class TimeAlignmentPredictor(ActionUnawarePredictor):
                                                                            predictions=predicted_ego_ctrajectory,
                                                                            prediction_timestamps=prediction_timestamps)
 
-        # A list of predited dynamic objects in future times. init with empty lists
+        # A list of predcited dynamic objects in future times. init with empty lists
         objects_in_predicted_states: List[List[DynamicObject]] = [list() for x in range(len(prediction_timestamps))]
 
         for dynamic_object in state.dynamic_objects:
