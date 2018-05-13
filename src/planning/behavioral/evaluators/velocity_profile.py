@@ -376,71 +376,12 @@ class VelocityProfile:
 
         return lateral_profile.t1 + lateral_profile.t3, max_dev, lat_v_init_toward_target
 
-
-class ProfileSafety:
-
-    @staticmethod
-    def is_safe(v_front: float, v_back: float, dist: float, time_delay: float, margin: float):
-        max_brake = -LON_ACC_LIMITS[0]
-        return max(0., v_back**2 - v_front**2) / (2*max_brake) + v_back*time_delay + margin < dist
-
-    @staticmethod
-    def check_safety(ego_lon: float, ego_half_size: float, vel_profile: VelocityProfile,
-                            dyn_obj: DynamicObject, T_max: float, time_delay: float) -> bool:
-        """
-        Given ego velocity profile and dynamic object, calculate the last time, when the safety complies.
-        Here we assume the object has a constant velocity.
-        :param ego_lon: ego initial longitude
-        :param ego_half_size: [m] half length of ego
-        :param vel_profile: ego velocity profile
-        :param dyn_obj: the dynamic object, for which the safety is tested
-        :param T_max: maximal time to check the safety (usually T_d for safety w.r.t. F and LB)
-        :param time_delay: reaction time of the back car
-        :return: the latest safe time
-        """
-        if T_max <= 0:
-            return True
-        (init_s_ego, init_s_obj, v_obj) = (ego_lon, dyn_obj.road_localization.road_lon, dyn_obj.v_x)
-        margin = ego_half_size + dyn_obj.size.length / 2
-        cut_profile = vel_profile.cut_by_time(T_max)
-
-        if init_s_ego < init_s_obj:  # the object is in front of ego
-            t = cut_profile.when_decel_velocity_is_equal_to(v_obj)
-            if t is None:  # cut_profile does not contain velocity v_obj
-                if cut_profile.v_init < v_obj:  # ego is always slower
-                    return ProfileSafety.is_safe(v_obj, cut_profile.v_init, init_s_obj - init_s_ego, time_delay, margin)
-                else:  # ego is always faster, check only at the end
-                    tot_time = cut_profile.total_time()
-                    tot_dist = cut_profile.total_dist()
-                    return ProfileSafety.is_safe(v_obj, cut_profile.v_tar,
-                                                 (init_s_obj + v_obj*tot_time) - (init_s_ego + tot_dist),
-                                                 time_delay, margin)
-            else:  # t was found
-                s, _ = cut_profile.sample_at(t)  # v_ego(t2) = v_obj
-                return init_s_obj + v_obj*t - (init_s_ego + s) > v_obj * time_delay + margin
-        else:  # the object is behind ego
-            t = cut_profile.when_accel_velocity_is_equal_to(v_obj)
-            if t is None:  # cut_profile does not contain velocity v_obj
-                if cut_profile.v_init > v_obj:  # ego is always faster
-                    return ProfileSafety.is_safe(cut_profile.v_init, v_obj, init_s_ego - init_s_obj, time_delay, margin)
-                else:  # ego is always slower, check only at the end
-                    tot_time = cut_profile.total_time()
-                    tot_dist = cut_profile.total_dist()
-                    return ProfileSafety.is_safe(cut_profile.v_tar, v_obj,
-                                                 (init_s_ego + tot_dist) - (init_s_obj + v_obj*tot_time),
-                                                 time_delay, margin)
-            else:  # t was found
-                s, _ = cut_profile.sample_at(t)  # v_ego(t2) = v_obj
-                return (init_s_ego + s) - (init_s_obj + v_obj*t) > v_obj * time_delay + margin
-
-    @staticmethod
-    def calc_last_safe_time(ego_lon: float, ego_half_size: float, vel_profile: VelocityProfile,
-                            dyn_obj: DynamicObject, T_max: float, time_delay: float) -> float:
+    def calc_last_safe_time(self, ego_lon: float, ego_half_size: float, dyn_obj: DynamicObject, T_max: float,
+                            time_delay: float) -> float:
         """
         Given ego velocity profile and dynamic object, calculate the last time, when the safety complies.
         :param ego_lon: ego initial longitude
         :param ego_half_size: [m] half length of ego
-        :param vel_profile: ego velocity profile
         :param dyn_obj: the dynamic object, for which the safety is tested
         :param T_max: maximal time to check the safety (usually T_d for safety w.r.t. F and LB)
         :param time_delay: reaction time of the back car
@@ -458,16 +399,16 @@ class ProfileSafety:
             dist = abs(init_s_obj - init_s_ego)
             if init_s_ego < init_s_obj:
                 v_front = init_v_obj
-                v_back = vel_profile.v_init
+                v_back = self.v_init
             else:
                 v_back = init_v_obj
-                v_front = vel_profile.v_init
-            if not ProfileSafety.is_safe(v_front, v_back, dist, time_delay, margin):
+                v_front = self.v_init
+            if not VelocityProfile.is_safe(v_front, v_back, dist, time_delay, margin):
                 return -1
-            if ProfileSafety.check_safety(ego_lon, ego_half_size, vel_profile, dyn_obj, T_max, time_delay):
+            if self._check_safety(ego_lon, ego_half_size, dyn_obj, T_max, time_delay):
                 return np.inf
 
-        t, t_cum, s_ego, v_ego, a_ego = vel_profile.get_details(T_max)
+        t, t_cum, s_ego, v_ego, a_ego = self.get_details(T_max)
         s_ego += init_s_ego
         s_obj = init_s_obj + init_v_obj * t_cum[:-1] + 0.5 * a_obj * t_cum[:-1] * t_cum[:-1]
         v_obj = init_v_obj + a_obj * t_cum[:-1]
@@ -485,7 +426,7 @@ class ProfileSafety:
         for seg in range(t.shape[0]):
             if t[seg] == 0:
                 continue
-            safe_time = ProfileSafety._calc_largest_time_for_segment(
+            safe_time = VelocityProfile._calc_largest_time_for_segment(
                 s[seg, front], v[seg, front], a[seg, front], s[seg, back], v[seg, back], a[seg, back], t[seg],
                 margin, time_delay)
             if safe_time < 0:
@@ -499,13 +440,13 @@ class ProfileSafety:
                     # ego moves according to vel_profile during T (then fully brakes)
                     braking_time = min(time_delay, init_v_obj / a_max)
                     if init_s_ego < init_s_obj:
-                        s_back, v_back = vel_profile.sample_at(T)
+                        s_back, v_back = self.sample_at(T)
                         s_back += init_s_ego
                         s_front = init_s_obj + init_v_obj * T + 0.5 * a_obj * last_safe_time * last_safe_time - \
                                   0.5 * a_max * braking_time * braking_time
                         v_front = max(0., init_v_obj + a_obj * last_safe_time - a_max * time_delay)
                     else:
-                        s_front, v_front = vel_profile.sample_at(T)
+                        s_front, v_front = self.sample_at(T)
                         s_front += init_s_ego
                         s_back = init_s_obj + init_v_obj * T + 0.5 * a_obj * last_safe_time * last_safe_time - \
                                  0.5 * a_max * braking_time * braking_time
@@ -515,6 +456,58 @@ class ProfileSafety:
                         continue  # this segment is safe
                 return last_safe_time
         return np.inf  # always safe
+
+    @staticmethod
+    def is_safe(v_front: float, v_back: float, dist: float, time_delay: float, margin: float):
+        max_brake = -LON_ACC_LIMITS[0]
+        return max(0., v_back**2 - v_front**2) / (2*max_brake) + v_back*time_delay + margin < dist
+
+    def _check_safety(self, ego_lon: float, ego_half_size: float, dyn_obj: DynamicObject, T_max: float,
+                      time_delay: float) -> bool:
+        """
+        Given ego velocity profile and dynamic object, calculate the last time, when the safety complies.
+        Here we assume the object has a constant velocity.
+        :param ego_lon: ego initial longitude
+        :param ego_half_size: [m] half length of ego
+        :param dyn_obj: the dynamic object, for which the safety is tested
+        :param T_max: maximal time to check the safety (usually T_d for safety w.r.t. F and LB)
+        :param time_delay: reaction time of the back car
+        :return: the latest safe time
+        """
+        if T_max <= 0:
+            return True
+        (init_s_ego, init_s_obj, v_obj) = (ego_lon, dyn_obj.road_localization.road_lon, dyn_obj.v_x)
+        margin = ego_half_size + dyn_obj.size.length / 2
+        cut_profile = self.cut_by_time(T_max)
+
+        if init_s_ego < init_s_obj:  # the object is in front of ego
+            t = cut_profile.when_decel_velocity_is_equal_to(v_obj)
+            if t is None:  # cut_profile does not contain velocity v_obj
+                if cut_profile.v_init < v_obj:  # ego is always slower
+                    return VelocityProfile.is_safe(v_obj, cut_profile.v_init, init_s_obj - init_s_ego, time_delay, margin)
+                else:  # ego is always faster, check only at the end
+                    tot_time = cut_profile.total_time()
+                    tot_dist = cut_profile.total_dist()
+                    return VelocityProfile.is_safe(v_obj, cut_profile.v_tar,
+                                                   (init_s_obj + v_obj*tot_time) - (init_s_ego + tot_dist),
+                                                   time_delay, margin)
+            else:  # t was found
+                s, _ = cut_profile.sample_at(t)  # v_ego(t2) = v_obj
+                return init_s_obj + v_obj*t - (init_s_ego + s) > v_obj * time_delay + margin
+        else:  # the object is behind ego
+            t = cut_profile.when_accel_velocity_is_equal_to(v_obj)
+            if t is None:  # cut_profile does not contain velocity v_obj
+                if cut_profile.v_init > v_obj:  # ego is always faster
+                    return VelocityProfile.is_safe(cut_profile.v_init, v_obj, init_s_ego - init_s_obj, time_delay, margin)
+                else:  # ego is always slower, check only at the end
+                    tot_time = cut_profile.total_time()
+                    tot_dist = cut_profile.total_dist()
+                    return VelocityProfile.is_safe(cut_profile.v_tar, v_obj,
+                                                   (init_s_ego + tot_dist) - (init_s_obj + v_obj*tot_time),
+                                                   time_delay, margin)
+            else:  # t was found
+                s, _ = cut_profile.sample_at(t)  # v_ego(t2) = v_obj
+                return (init_s_ego + s) - (init_s_obj + v_obj*t) > v_obj * time_delay + margin
 
     @staticmethod
     def _calc_largest_time_for_segment(s1: float, v1: float, a1: float, s2: float, v2: float, a2: float,
@@ -545,10 +538,6 @@ class ProfileSafety:
         a_max = -LON_ACC_LIMITS[LIMIT_MIN]
 
         C = s1 - s2 + (v1*v1 - v2*v2)/(2*a_max) - (0.5*a2*time_delay + v2) * time_delay*(1 + a2/a_max) - margin
-
-        #print('safety: s1=%.2f v1=%.2f a1=%.2f  s2=%.2f v2=%.2f a2=%.2f  T=%.2f margin=%.2 C=%.2f A=%.2f B=%.2f' % \
-        #      (s1, v1, a1, s2, v2, a2, T, margin, C, (a1-a2) * (a_max+a1+a2) / (2*a_max), (a1*v1 - a2*v2)/a_max + v1 - v2 - a2*time_delay*(1 + a2/a_max)))
-
 
         if C < 0:
             return -1  # the current state (for t=0) is not safe

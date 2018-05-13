@@ -16,7 +16,6 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
 from decision_making.src.planning.behavioral.evaluators.cost_functions import \
     PlanEfficiencyMetric, \
     PlanComfortMetric, PlanRightLaneMetric, VelocityProfile, PlanLaneDeviationMetric
-from decision_making.src.planning.behavioral.evaluators.velocity_profile import ProfileSafety
 from decision_making.src.planning.types import FP_SX
 from decision_making.src.state.state import EgoState
 from mapping.src.model.localization import RoadLocalization
@@ -158,7 +157,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                 front_obj = front_objects[action_recipe.relative_lane]
                 acc = AGGRESSIVENESS_TO_LON_ACC[action_recipe.aggressiveness.value]
                 dist = front_obj.road_localization.road_lon - ego.road_localization.road_lon
-                if ProfileSafety.calc_collision_time(ego.v_x, target_vel, acc, front_obj.v_x, dist) < 20:
+                if VelocityProfile.calc_collision_time(ego.v_x, target_vel, acc, front_obj.v_x, dist) < 20:
                 # if target_vel > front_obj.v_x + BP_MAX_VELOCITY_TOLERANCE:
                     if target_vel <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED:
                         print('filter fast stat_act: rel_lat=%d, v_tar=%.2f, front.v_x=%.2f' %
@@ -198,8 +197,8 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                 time_delay = ego_time_delay1
             else:
                 time_delay = ego_time_delay2
-            forward_safe_time = ProfileSafety.calc_last_safe_time(ego_lon, ego_half_size, vel_profile, forward_obj,
-                                                                  np.inf, time_delay + zigzag_addition)
+            forward_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_half_size, forward_obj, np.inf,
+                                                                time_delay + zigzag_addition)
             if forward_safe_time < vel_profile.total_time():
                 obj_lon = forward_obj.road_localization.road_lon
                 act_time = vel_profile.total_time()
@@ -228,8 +227,8 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                     (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)][0].dynamic_object
                 # check safety until half lateral time, since after that ego can escape laterally
                 time_delay = ego_time_delay1 + zigzag_addition + lat_addition
-                front_safe_time = ProfileSafety.calc_last_safe_time(ego_lon, ego_half_size, vel_profile, front_obj,
-                                                    T_d - T_d_full/3, time_delay)
+                front_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_half_size, front_obj, T_d - T_d_full/3,
+                                                                  time_delay)
                 if front_safe_time < np.inf:
                     print('front_safe_time=%.2f front_dist=%.2f front_vel=%.2f td=%.2f: action %d' %
                           (front_safe_time, front_obj.road_localization.road_lon - ego_lon, front_obj.v_x, time_delay, i))
@@ -241,8 +240,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             if (action_lat_cell, RelativeLongitudinalPosition.REAR) in behavioral_state.road_occupancy_grid:
                 back_obj = behavioral_state.road_occupancy_grid[(action_lat_cell, RelativeLongitudinalPosition.REAR)][0].dynamic_object
                 time_delay = SAFE_DIST_TIME_DELAY + zigzag_addition + lat_addition
-                back_safe_time = ProfileSafety.calc_last_safe_time(ego_lon, ego_half_size, vel_profile, back_obj, T_d,
-                                                                   time_delay)
+                back_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_half_size, back_obj, T_d, time_delay)
                 if back_safe_time < np.inf:
                     print('back_safe_time=%.2f back_dist=%.2f back_vel=%.2f rel_lat=%.2f td=%.2f: action %d' %
                           (back_safe_time, ego_lon - back_obj.road_localization.road_lon, back_obj.v_x,
@@ -264,8 +262,8 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                     rear_cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.REAR)
                     if rear_cell in behavioral_state.road_occupancy_grid:
                         rear_obj = behavioral_state.road_occupancy_grid[rear_cell][0].dynamic_object
-                        back_safe_time = ProfileSafety.calc_last_safe_time(ego_lon, ego_half_size, vel_profile, rear_obj,
-                                                        T_d, SAFE_DIST_TIME_DELAY + zigzag_addition + lat_addition)
+                        back_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_half_size, rear_obj, T_d,
+                                                            SAFE_DIST_TIME_DELAY + zigzag_addition + lat_addition)
                         safe_time = min(safe_time, back_safe_time)
             else:  # after timeout, delete the danger flag
                 self.back_danger_lane = None
