@@ -60,7 +60,6 @@ class TimeAlignmentPredictor(ActionUnawarePredictor):
             predicted_states.append(new_state)
 
         return predicted_states
-    
 
     def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray) \
             -> Dict[int, List[DynamicObject]]:
@@ -90,7 +89,6 @@ class TimeAlignmentPredictor(ActionUnawarePredictor):
             predicted_dynamic_objects[dynamic_object.obj_id] = predicted_dynamic_object_states
 
         return predicted_dynamic_objects
-
 
     def align_objects_to_most_recent_timestamp(self, state: State) -> State:
         """
