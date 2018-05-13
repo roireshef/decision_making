@@ -34,15 +34,18 @@ class StaticActionSpace(ActionSpace):
         # project ego vehicle onto the road
         ego_init_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
 
+        # get the relevant desired center lane latitude (from road's RHS)
         road_id = ego.road_localization.road_id
         road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id)
         relative_lane = np.array([action_recipe.relative_lane.value for action_recipe in action_recipes])
         desired_lane = ego.road_localization.lane_num + relative_lane
         desired_center_lane_latitude = road_lane_latitudes[desired_lane]
 
+        # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
         weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness]
 
+        # get desired terminal velocity
         v_T = np.array([action_recipe.velocity for action_recipe in action_recipes])
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
@@ -51,6 +54,7 @@ class StaticActionSpace(ActionSpace):
         roots_s = ActionSpace.find_roots(cost_coeffs_s, LON_ACC_LIMITS)
         T_s = np.fmin.reduce(roots_s, axis=-1)
 
+        # latitudinal difference to target
         latitudinal_difference = desired_center_lane_latitude - ego_init_fstate[FS_DX]
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
