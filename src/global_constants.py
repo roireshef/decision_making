@@ -119,7 +119,7 @@ CHANGE_LAT_VEL_WEIGHT = 50.
 # [sec] performance metrics for BP minimal plan time
 BP_METRICS_TIME_HORIZON = BP_ACTION_T_LIMITS[LIMIT_MAX]
 
-BP_EFFICIENCY_COST_WEIGHT = 6.
+BP_EFFICIENCY_COST_WEIGHT = 5.
 
 # performance metrics for BP: lane deviation cost weight
 BP_METRICS_LANE_DEVIATION_COST_WEIGHT = 1.0
