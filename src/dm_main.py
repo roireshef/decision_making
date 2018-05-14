@@ -1,6 +1,3 @@
-from rte.python.cli import arg_parse
-arguments = arg_parse.get_args()
-
 from logging import Logger
 from os import getpid
 
