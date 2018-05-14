@@ -1,17 +1,5 @@
-import argparse
-
-# get config runtime
-# *** The call to AV_Configurator.set_vehicle_config() must precede importing
-#     other (sub-)modules, since deep inside the import/call/execution sequence
-#     there may hide something (e.g. mapper) initializing CTM, which must know
-#     the path of the vehicle configuration to be used ***
-parser = argparse.ArgumentParser(description='object detection test')
-parser.add_argument('--vehicle_configuration', action='store', dest='vehicle_config', default=None,
-                    help='path to the aggregated vehicle configuration files (alignments, sensor settings, etc.)')
-arguments = parser.parse_args()
-
-import rte.AV_config.src.Configurator as AV_Configurator
-AV_Configurator.set_vehicle_config_path(arguments.vehicle_config)
+from rte.python.cli import arg_parse
+arguments = arg_parse.get_args()
 
 from logging import Logger
 from os import getpid
