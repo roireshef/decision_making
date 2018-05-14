@@ -25,7 +25,7 @@ class TimeAlignmentPredictor(ActionUnawarePredictor):
         """
         Predicts the future states of the given state, for the specified timestamps
         :param state: the initial state to begin prediction from
-        :param prediction_timestamps: np array of size 1 of timestamp in [sec] to predict states for. In ascending order.
+        :param prediction_timestamps: np array of size 1 of timestamp in [sec] to predict states for. In ascending order
         Global, not relative
         :return: a list of predicted states for the requested prediction_timestamps
         """
@@ -36,22 +36,20 @@ class TimeAlignmentPredictor(ActionUnawarePredictor):
         # list of predicted states in future times
         predicted_states: List[State] = list()
 
-        predicted_ego_ctrajectory = self._predict_object_ctrajectory(state.ego_state, prediction_timestamps)
-        predicted_ego_states = self._convert_predictions_to_dynamic_objects(dynamic_object=state.ego_state,
-                                                                           predictions=predicted_ego_ctrajectory,
-                                                                           prediction_timestamps=prediction_timestamps)
+        dynamic_objects_ids = [dynamic_object.obj_id for dynamic_object in state.dynamic_objects]
+
+        predicted_objects = self.predict_objects(state=state, object_ids=dynamic_objects_ids,
+                                                 prediction_timestamps=prediction_timestamps)
 
         # A list of predcited dynamic objects in future times. init with empty lists
         objects_in_predicted_states: List[List[DynamicObject]] = [list() for x in range(len(prediction_timestamps))]
 
-        for dynamic_object in state.dynamic_objects:
-            predicted_ctrajectory = self._predict_object_ctrajectory(dynamic_object=dynamic_object,
-                                                                     prediction_timestamps=prediction_timestamps)
-            predicted_dynamic_object_states = self._convert_predictions_to_dynamic_objects(dynamic_object=dynamic_object,
-                                                                                    predictions=predicted_ctrajectory,
-                                                                                    prediction_timestamps=prediction_timestamps)
+        for predicted_object_states in predicted_objects.values():
             for timestamp_ind in range(len(prediction_timestamps)):
-                objects_in_predicted_states[timestamp_ind].append(predicted_dynamic_object_states[timestamp_ind])
+                objects_in_predicted_states[timestamp_ind].append(predicted_object_states[timestamp_ind])
+
+        predicted_ego_states = self._predict_object(dynamic_object=state.ego_state,
+                                                    prediction_timestamps=prediction_timestamps)
 
         for timestamp_ind in range(len(prediction_timestamps)):
             new_state = State(occupancy_state=copy.deepcopy(state.occupancy_state),
@@ -68,8 +66,8 @@ class TimeAlignmentPredictor(ActionUnawarePredictor):
         :param state: the initial state to begin prediction from. Though predicting a single object, the full state
         provided to enable flexibility in prediction given state knowledge
         :param object_ids: a list of ids of the specific objects to predict
-        :param prediction_timestamps: np array of size 1 of timestamp in [sec] to predict the object for. In ascending order.
-        Global, not relative
+        :param prediction_timestamps: np array of size 1 of timestamp in [sec] to predict the object for. In ascending
+        order. Global, not relative
         :return: a mapping between object id to the list of future dynamic objects of the matching object
         """
 
@@ -81,11 +79,8 @@ class TimeAlignmentPredictor(ActionUnawarePredictor):
         predicted_dynamic_objects: Dict[int, List[DynamicObject]] = dict()
 
         for dynamic_object in dynamic_objects:
-            predicted_ctrajectory = self._predict_object_ctrajectory(dynamic_object=dynamic_object,
-                                                                     prediction_timestamps=prediction_timestamps)
-            predicted_dynamic_object_states = self._convert_predictions_to_dynamic_objects(dynamic_object=dynamic_object,
-                                                                                    predictions=predicted_ctrajectory,
-                                                                                    prediction_timestamps=prediction_timestamps)
+            predicted_dynamic_object_states = self._predict_object(dynamic_object=dynamic_object,
+                                                                   prediction_timestamps=prediction_timestamps)
             predicted_dynamic_objects[dynamic_object.obj_id] = predicted_dynamic_object_states
 
         return predicted_dynamic_objects
@@ -95,7 +90,6 @@ class TimeAlignmentPredictor(ActionUnawarePredictor):
         Returns state with all objects aligned to the most recent timestamp.
         Most recent timestamp is taken as the max between the current_timestamp, and the most recent
         timestamp of all objects in the scene.
-        :param current_timestamp: current timestamp in global time in [sec]
         :param state: state containing objects with different timestamps
         :return: new state with all objects aligned
         """
@@ -113,7 +107,7 @@ class TimeAlignmentPredictor(ActionUnawarePredictor):
         return self.predict_state(state=state, prediction_timestamps=np.array([most_recent_timestamp]))[0]
 
     @staticmethod
-    def _convert_predictions_to_dynamic_objects(dynamic_object: DynamicObject, predictions: CartesianTrajectory,
+    def _convert_ctrajectory_to_dynamic_objects(dynamic_object: DynamicObject, predictions: CartesianTrajectory,
                                                 prediction_timestamps: np.ndarray) -> List[DynamicObject]:
         """
         Given original dynamic object, its predictions, and their respective time stamps, creates a list of dynamic
@@ -140,8 +134,8 @@ class TimeAlignmentPredictor(ActionUnawarePredictor):
         Method to compute future locations, yaw, and velocities for dynamic objects. Returns the np.array used by the
         trajectory planner.
         :param dynamic_object: in map coordinates
-        :param prediction_timestamps: np array of timestamps in [sec] to predict_object_trajectories for. In ascending order.
-        Global, not relative
+        :param prediction_timestamps: np array of timestamps in [sec] to predict_object_trajectories for. In ascending
+        order. Global, not relative
         :return: predicted object's cartesian trajectory in global map coordinates
         """
 
@@ -192,3 +186,18 @@ class TimeAlignmentPredictor(ActionUnawarePredictor):
         route_x_y_theta_v = np.concatenate((route_xy, yaw_vector, velocity_column), axis=1)
 
         return route_x_y_theta_v
+
+    def _predict_object(self, dynamic_object: DynamicObject, prediction_timestamps: np.ndarray) -> List[DynamicObject]:
+        """
+        Predicts the future of the specified object, for the specified timestamps - independently the object
+        :param dynamic_object: the specific objects to predict
+        :param prediction_timestamps: np array of of timestamps in [sec] to predict the object for. In ascending order.
+        Global, not relative
+        :return: a list of future dynamic objects of the matching object
+        """
+        predicted_ctrajectory = self._predict_object_ctrajectory(dynamic_object=dynamic_object,
+                                                                 prediction_timestamps=prediction_timestamps)
+        predicted_dynamic_object_states = self._convert_ctrajectory_to_dynamic_objects(dynamic_object=dynamic_object,
+                                                                                       predictions=predicted_ctrajectory,
+                                                                                       prediction_timestamps=prediction_timestamps)
+        return predicted_dynamic_object_states
