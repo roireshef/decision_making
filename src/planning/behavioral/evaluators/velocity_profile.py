@@ -305,11 +305,8 @@ class VelocityProfile:
     def calc_profile_given_T(cls, v_init: float, T: float, dist: float, v_tar: float):
         """
         Given start & end velocities, distance to the followed car and acceleration, calculate velocity profile:
-            1. acceleration to a velocity v_mid <= v_max for t1 time,
-            2. moving by v_max for t2 time (t2 = 0 if v_mid < v_max),
-            3. deceleration to end_vel for t3 time.
-        If this profile is infeasible, then try an opposite order of accelerations: 1. deceleration, 3. acceleration.
-        In the case of opposite order, the constant velocity segment is missing.
+            1. acceleration to a velocity v_mid for t1 time,
+            2. deceleration to v_tar for t3 time or moving with constant velocity for t2.
         In each velocity segment the acceleration is constant.
         :param v_init: start ego velocity
         :param T: total time for the profile

@@ -7,7 +7,7 @@ import sys
 from decision_making.src.global_constants import BP_METRICS_TIME_HORIZON, \
     BP_EFFICIENCY_COST_WEIGHT, WERLING_TIME_RESOLUTION, BP_RIGHT_LANE_COST_WEIGHT, \
     BP_METRICS_LANE_DEVIATION_COST_WEIGHT, BP_MISSING_GOAL_COST, BP_MAX_VELOCITY_TOLERANCE, SAFE_DIST_TIME_DELAY, \
-    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, AGGRESSIVENESS_TO_LON_ACC
+    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, AGGRESSIVENESS_TO_LON_ACC, AV_TIME_DELAY
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, \
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionType, \
@@ -194,28 +194,31 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         lat_dist_to_target = abs(action_lat_cell.value - (ego_road.intra_lane_lat / lane_width - 0.5))  # in [0, 1.5]
 
         change_tar_lane_td = 0.2 * abs(action_lane - self.last_action_lane)  # addition to time delay
-        min_follow_td = 0.2  # follow front car, when ego is in lane center
-        max_follow_td = 1.6  # follow lane or follow car from another lane
+        big_follow_td = AV_TIME_DELAY + 0.8  # follow lane TODO: remove it after value function implementation
         min_front_td = 0.0  # dist to F after completing lane change. TODO: increase it when the planning will be deep
 
         # check safety w.r.t. the front object on the target lane (if exists)
         if (action_lat_cell, RelativeLongitudinalPosition.FRONT) in behavioral_state.road_occupancy_grid:
-            forward_obj = behavioral_state.road_occupancy_grid[(action_lat_cell, RelativeLongitudinalPosition.FRONT)][0].dynamic_object
+            followed_obj = behavioral_state.road_occupancy_grid[(action_lat_cell, RelativeLongitudinalPosition.FRONT)][0].dynamic_object
+
             # TODO: temp hack: smaller delay in following front car, to enable calm distance increasing if dist < 2 sec
+            # TODO: the hack should be removed after value function implementation. Then td = AV_TIME_DELAY
             # without the hack this action is unsafe and filtered, and ego must move to another lane
-            if action.action_type == ActionType.FOLLOW_VEHICLE and action_lat_cell == RelativeLane.SAME_LANE:
-                td = min_follow_td + lat_dist_to_target * (max_follow_td - min_follow_td) + change_tar_lane_td
+            if action.action_type == ActionType.FOLLOW_VEHICLE:
+                td = AV_TIME_DELAY
             else:
-                td = max_follow_td + change_tar_lane_td
-            forward_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_half_size, forward_obj, np.inf, td, td)
+                td = big_follow_td
+            td += 2 * change_tar_lane_td
+
+            forward_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_half_size, followed_obj, np.inf, td, td)
             if forward_safe_time < vel_profile.total_time():
-                obj_lon = forward_obj.road_localization.road_lon
+                obj_lon = followed_obj.road_localization.road_lon
                 act_time = vel_profile.total_time()
                 print('forward unsafe: act_type %d, rel_lat %d, dist=%.2f, act_time=%.2f final_dist=%.2f v_obj=%.2f '
                       'prof=(t=[%.2f %.2f %.2f] v=[%.2f %.2f %.2f], safe_time=%.2f td=%.2f: action %d)' %
                       (action.action_type.value, action_lat_cell.value, obj_lon - ego_lon,
-                       act_time, obj_lon + act_time * forward_obj.v_x - (ego_lon + vel_profile.total_dist()),
-                       forward_obj.v_x, vel_profile.t1, vel_profile.t2, vel_profile.t3, vel_profile.v_init,
+                       act_time, obj_lon + act_time * followed_obj.v_x - (ego_lon + vel_profile.total_dist()),
+                       followed_obj.v_x, vel_profile.t1, vel_profile.t2, vel_profile.t3, vel_profile.v_init,
                        vel_profile.v_mid, vel_profile.v_tar, forward_safe_time, td, i))
                 return 0
 
@@ -234,7 +237,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                 # time delay decreases as function of lateral distance to the target: td_0 = td_T + 1
                 # td_0 > td_T, since as latitude advances ego can escape laterally easier
                 td_T = min_front_td + change_tar_lane_td
-                td_0 = td_T + lat_dist_to_target
+                td_0 = AV_TIME_DELAY * lat_dist_to_target + change_tar_lane_td
                 front_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_half_size, front_obj, T_d, td_0, td_T)
                 if front_safe_time < np.inf:
                     print('front_safe_time=%.2f front_dist=%.2f front_vel=%.2f lat_d=%.2f td_0=%.2f td_T=%.2f: action %d' %
