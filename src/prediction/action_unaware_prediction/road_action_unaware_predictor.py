@@ -8,7 +8,7 @@ from decision_making.src.state.state import State, DynamicObject
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
-class RoadCoordinatesPredictor(ActionUnawarePredictor):
+class RoadActionUnawarePredictor(ActionUnawarePredictor):
     """
     Performs simple / naive prediction in road coordinates (road following prediction, constant velocity)
     and returns objects with calculated and cached road coordinates. This is in order to save coordinate conversion time

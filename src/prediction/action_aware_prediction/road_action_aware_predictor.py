@@ -1,59 +1,37 @@
-import copy
 from logging import Logger
-from typing import List
+from typing import List, Dict
 
 import numpy as np
+import copy
 
-from decision_making.src.planning.types import GlobalTimeStampInSec, MinGlobalTimeStampInSec
-from decision_making.src.prediction.time_alignment_prediction.time_alignment_predictor import TimeAlignmentPredictor
+from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
+from decision_making.src.prediction.action_aware_prediction.action_aware_predictor import ActionAwarePredictor
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State, DynamicObject
+from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
-class PhysicalTimeAlignmentPredictor(TimeAlignmentPredictor):
+class RoadActionAwarePredictor(ActionAwarePredictor):
     """
-    Performs physical prediction for the purpose of short time alignment between ego and dynamic objects.
-    Logic should be re-considered if the time horizon gets too large.
+    Performs simple / naive prediction in road coordinates (road following prediction, constant velocity)
+    and returns objects with calculated and cached road coordinates. This is in order to save coordinate conversion time
+    for the predictor's clients.
     """
 
     def __init__(self, logger: Logger):
-        super().__init__(logger)
+        super().__init__(logger=logger)
 
-    def align_objects_to_most_recent_timestamp(self, state: State,
-                                               current_timestamp: GlobalTimeStampInSec=MinGlobalTimeStampInSec) -> State:
-        """
-        Returns state with all objects aligned to the most recent timestamp.
-        Most recent timestamp is taken as the max between the current_timestamp, and the most recent
-        timestamp of all objects in the scene.
-        :param state: state containing objects with different timestamps
-        :param current_timestamp: current timestamp in global time in [sec]
-        :return: new state with all objects aligned
-        """
-
-        ego_timestamp_in_sec = state.ego_state.timestamp_in_sec
-
-        objects_timestamp_in_sec = [state.dynamic_objects[x].timestamp_in_sec for x in
-                                    range(len(state.dynamic_objects))]
-        objects_timestamp_in_sec.append(ego_timestamp_in_sec)
-
-        most_recent_timestamp = np.max(objects_timestamp_in_sec)
-        most_recent_timestamp = np.maximum(most_recent_timestamp, current_timestamp)
-
-        self._logger.debug("Prediction of ego by: %s sec", most_recent_timestamp - ego_timestamp_in_sec)
-
-        return self._predict_state(state=state, prediction_timestamps=np.array([most_recent_timestamp]))[0]
-
-    def _predict_state(self, state: State, prediction_timestamps: np.ndarray) -> List[State]:
+    def predict_state(self, state: State, prediction_timestamps: np.ndarray, action_trajectory: SamplableTrajectory)\
+            -> (List[State]):
         """
         Predicts the future states of the given state, for the specified timestamps
         :param state: the initial state to begin prediction from
-        :param prediction_timestamps: np array of size 1 of timestamp in [sec] to predict states for. In ascending order
+        :param prediction_timestamps: np array of timestamps in [sec] to predict states for. In ascending order.
         Global, not relative
-        :return: a list of predicted states for the requested prediction_timestamps
+        :param action_trajectory: the ego's planned action trajectory
+        :return: a list of non markov predicted states for the requested prediction_timestamp, and a full state for the
+        terminal predicted state
         """
-
-        # Predict to a single horizon
-        assert len(prediction_timestamps) == 1
 
         # list of predicted states in future times
         predicted_states: List[State] = list()
@@ -80,6 +58,30 @@ class PhysicalTimeAlignmentPredictor(TimeAlignmentPredictor):
 
         return predicted_states
 
+    def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray,
+                        action_trajectory: SamplableTrajectory) -> Dict[int, List[DynamicObject]]:
+        """
+        Predicte the future of the specified objects, for the specified timestamps
+        :param state: the initial state to begin prediction from. Though predicting a single object, the full state
+        provided to enable flexibility in prediction given state knowledge
+        :param object_ids: a list of ids of the specific objects to predict
+        :param prediction_timestamps: np array of timestamps in [sec] to predict the object for. In ascending order.
+        Global, not relative
+        :param action_trajectory: the ego's planned action trajectory
+        :return: a mapping between object id to the list of future dynamic objects of the matching object
+        """
+
+        dynamic_objects = [State.get_object_from_state(state=state, target_obj_id=obj_id) for obj_id in object_ids]
+
+        predicted_dynamic_objects: Dict[int, List[DynamicObject]] = dict()
+
+        for dynamic_object in dynamic_objects:
+            predicted_dynamic_object_states = self._predict_object(dynamic_object=dynamic_object,
+                                                                   prediction_timestamps=prediction_timestamps)
+            predicted_dynamic_objects[dynamic_object.obj_id] = predicted_dynamic_object_states
+
+        return predicted_dynamic_objects
+
     def _predict_object(self, dynamic_object: DynamicObject, prediction_timestamps: np.ndarray) \
             -> List[DynamicObject]:
 
@@ -97,14 +99,21 @@ class PhysicalTimeAlignmentPredictor(TimeAlignmentPredictor):
         # add yaw and velocity
         route_len = route_xy.shape[0]
 
-        initial_yaw = dynamic_object.yaw
-        yaw_vector = np.ones(shape=[route_len, 1]) * initial_yaw
         # Using v_x to preserve the v_x field of dynamic object
         velocity_column = np.ones(shape=[route_len, 1]) * dynamic_object.v_x
 
-        route_x_y_theta_v = np.concatenate((route_xy, yaw_vector, velocity_column), axis=1)
+        # Adjust yaw to the path's yaw
+
+        # TODO: check if this condition is still relevant
+        # If there isn't enough points to determine yaw, leave the initial yaw
+        if route_len == 1:
+            yaw_vector = np.ones(shape=[route_xy.shape[0], 1]) * dynamic_object.yaw
+            route_x_y_theta_v = np.concatenate((route_xy, yaw_vector, velocity_column), axis=1)
+        else:
+            route_x_y_theta_v = np.c_[CartesianFrame.add_yaw(route_xy), velocity_column]
 
         predicted_object_states = PredictionUtils.convert_ctrajectory_to_dynamic_objects(dynamic_object=dynamic_object,
                                                                                          predictions=route_x_y_theta_v,
                                                                                          prediction_timestamps=prediction_timestamps)
         return predicted_object_states
+
