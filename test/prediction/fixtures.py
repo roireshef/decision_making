@@ -135,7 +135,7 @@ def predicted_static_ego_states(static_cartesian_state,prediction_timestamps):
                            yaw=static_cartesian_state[C_YAW], size=car_size, confidence=0,
                            v_x=static_cartesian_state[C_V],
                            v_y=0,
-                           acceleration_lon=0, omega_yaw=0, steering_angle=0)
+                           acceleration_lon=0, omega_yaw=0, steering_angle=0),
                   EgoState(obj_id=0, timestamp=int(prediction_timestamps[2] * 1e9), x=static_cartesian_state[C_X],
                            y=static_cartesian_state[C_Y],
                            z=DEFAULT_OBJECT_Z_VALUE,
