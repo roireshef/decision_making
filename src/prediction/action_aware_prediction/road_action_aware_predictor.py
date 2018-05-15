@@ -40,12 +40,11 @@ class RoadActionAwarePredictor(ActionAwarePredictor):
         objects_in_predicted_states: List[List[DynamicObject]] = [list() for x in range(len(prediction_timestamps))]
 
         for dynamic_object in state.dynamic_objects:
-            predicted_objects = self._predict_object(dynamic_object=dynamic_object,
+            predicted_object_states = self._predict_object(dynamic_object=dynamic_object,
                                                      prediction_timestamps=prediction_timestamps)
 
-            for predicted_object_states in predicted_objects:
-                for timestamp_ind in range(len(prediction_timestamps)):
-                    objects_in_predicted_states[timestamp_ind].append(predicted_object_states[timestamp_ind])
+            for timestamp_ind in range(len(prediction_timestamps)):
+                objects_in_predicted_states[timestamp_ind].append(predicted_object_states[timestamp_ind])
 
         predicted_ego_states = self._predict_object(dynamic_object=state.ego_state,
                                                     prediction_timestamps=prediction_timestamps)

@@ -8,14 +8,15 @@ import yaml
 from decision_making.src.prediction.action_unaware_prediction.action_unaware_predictor import ActionUnawarePredictor
 from decision_making.src.state.state import DynamicObject, State
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from decision_making.test.prediction.fixtures import DYNAMIC_OBJECT_ID
+from decision_making.test.prediction.conftest import DYNAMIC_OBJECT_ID
+from decision_making.test.prediction.utils import Utils
 from mapping.test.model.testable_map_fixtures import map_api_mock
-from decision_making.test.prediction.fixtures import road_action_unaware_predictor, init_state, prediction_timestamps, \
+from decision_making.test.prediction.conftest import road_action_aware_predictor, init_state, prediction_timestamps, \
     predicted_dyn_object_states_road_yaw
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-def test_AlignObjects_CurvedRoad_AccuratePrediction(road_action_unaware_predictor: ActionUnawarePredictor,
+def test_PredictObjects_CurvedRoad_AccuratePrediction(road_action_unaware_predictor: ActionUnawarePredictor,
                                                     init_state: State, prediction_timestamps: np.ndarray,
                                                     predicted_dyn_object_states_road_yaw: List[DynamicObject]):
     predicted_objects = road_action_unaware_predictor.predict_objects(state=init_state, object_ids=[DYNAMIC_OBJECT_ID],
@@ -29,7 +30,8 @@ def test_AlignObjects_CurvedRoad_AccuratePrediction(road_action_unaware_predicto
     # Verify predictions are made for the same timestamps and same order
     timestamp_ind = 0
     for actual_predicted_object in predicted_objects[DYNAMIC_OBJECT_ID]:
-        assert np.isclose(actual_predicted_object.timestamp, prediction_timestamps[timestamp_ind])
-        timestamp_ind += 1
+        assert np.isclose(actual_predicted_object.timestamp_in_sec, prediction_timestamps[timestamp_ind])
+        Utils.assert_objects_numerical_fields_are_equal(actual_predicted_object,
+                                                        predicted_dyn_object_states_road_yaw[timestamp_ind])
 
-        assert yaml.dump(actual_predicted_object) == yaml.dump(predicted_dyn_object_states_road_yaw[timestamp_ind])
+        timestamp_ind += 1

@@ -64,8 +64,10 @@ class PredictionUtils:
         if lookahead_route.shape[0] > 1:
             _, route_xy, _ = CartesianFrame.resample_curve(curve=lookahead_route,
                                                            arbitrary_curve_sampling_points=predicted_distances_from_start)
+        elif lookahead_route.shape[0] == 1:
+            route_xy = np.reshape(np.tile(lookahead_route[0], predicted_distances_from_start.shape[0]), (-1, 2))
         else:
-            raise Exception('Predict object (id=%d) has empty or 1 lookahead_route. Object info: %s' % (
+            raise Exception('Predict object (id=%d) has empty  lookahead_route. Object info: %s' % (
                 dynamic_object.obj_id, str(dynamic_object)))
 
         return route_xy

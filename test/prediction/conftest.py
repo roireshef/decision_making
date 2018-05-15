@@ -4,6 +4,7 @@ import pytest
 
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE
 from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_YAW, C_V
+from decision_making.src.prediction.action_aware_prediction.road_action_aware_predictor import RoadActionAwarePredictor
 from decision_making.src.prediction.action_unaware_prediction.road_action_unaware_predictor import \
     RoadActionUnawarePredictor
 from decision_making.src.prediction.time_alignment_prediction.time_alignment_predictor import TimeAlignmentPredictor
@@ -26,6 +27,10 @@ def road_action_unaware_predictor() -> RoadActionUnawarePredictor:
     logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
     yield RoadActionUnawarePredictor(logger)
 
+@pytest.fixture(scope='function')
+def road_action_aware_predictor() -> RoadActionAwarePredictor:
+    logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
+    yield RoadActionAwarePredictor(logger)
 
 @pytest.fixture(scope='function')
 def car_size() ->ObjectSize:
@@ -43,8 +48,12 @@ def predicted_cartesian_state_0() -> CartesianState:
 
 
 @pytest.fixture(scope='function')
-def predicted_cartesian_state_1() -> CartesianState:
-    yield np.array([600.0, 0.0, 0.0, 10.0])
+def predicted_cartesian_state_1_constant_yaw() -> CartesianState:
+    yield np.array([590.0, 0.0, 0.0, 10.0])
+
+@pytest.fixture(scope='function')
+def predicted_cartesian_state_1_road_yaw() -> CartesianState:
+    yield np.array([590.0, 0.0,  1.4711276743, 10.0])
 
 
 @pytest.fixture(scope='function')
@@ -54,7 +63,7 @@ def predicted_cartesian_state_2_constant_yaw() -> CartesianState:
 
 @pytest.fixture(scope='function')
 def predicted_cartesian_state_2_road_yaw() -> CartesianState:
-    yield np.array([600.0, 100.0, np.pi / 2, 10.0])
+    yield np.array([600.0, 100.0, 1.4711276743, 10.0])
 
 
 @pytest.fixture(scope='function')
@@ -64,7 +73,7 @@ def static_cartesian_state() -> CartesianState:
 
 @pytest.fixture(scope='function')
 def prediction_timestamps() -> np.array:
-    yield np.array([1.0, 10.0, 20.0])
+    yield np.array([1.0, 9.0, 20.0])
 
 
 @pytest.fixture(scope='function')
@@ -91,7 +100,7 @@ def init_state(init_ego_state, init_dyn_obj) -> State:
 
 @pytest.fixture(scope='function')
 def predicted_dyn_object_states_constant_yaw(predicted_cartesian_state_0: CartesianState,
-                                             predicted_cartesian_state_1: CartesianState,
+                                             predicted_cartesian_state_1_constant_yaw: CartesianState,
                                              predicted_cartesian_state_2_constant_yaw: CartesianState,
                                              prediction_timestamps: np.ndarray) -> List[DynamicObject]:
     object_states = [
@@ -102,11 +111,11 @@ def predicted_dyn_object_states_constant_yaw(predicted_cartesian_state_0: Cartes
                       v_x=predicted_cartesian_state_0[C_V],
                       v_y=0,
                       acceleration_lon=0, omega_yaw=0),
-        DynamicObject(obj_id=DYNAMIC_OBJECT_ID, timestamp=int(prediction_timestamps[1] * 1e9), x=predicted_cartesian_state_1[C_X],
-                      y=predicted_cartesian_state_1[C_Y],
+        DynamicObject(obj_id=DYNAMIC_OBJECT_ID, timestamp=int(prediction_timestamps[1] * 1e9), x=predicted_cartesian_state_1_constant_yaw[C_X],
+                      y=predicted_cartesian_state_1_constant_yaw[C_Y],
                       z=DEFAULT_OBJECT_Z_VALUE,
-                      yaw=predicted_cartesian_state_1[C_YAW], size=car_size, confidence=0,
-                      v_x=predicted_cartesian_state_1[C_V],
+                      yaw=predicted_cartesian_state_1_constant_yaw[C_YAW], size=car_size, confidence=0,
+                      v_x=predicted_cartesian_state_1_constant_yaw[C_V],
                       v_y=0,
                       acceleration_lon=0, omega_yaw=0),
         DynamicObject(obj_id=DYNAMIC_OBJECT_ID, timestamp=int(prediction_timestamps[2] * 1e9),
@@ -121,7 +130,7 @@ def predicted_dyn_object_states_constant_yaw(predicted_cartesian_state_0: Cartes
 
 @pytest.fixture(scope='function')
 def predicted_dyn_object_states_road_yaw(predicted_cartesian_state_0: CartesianState,
-                                         predicted_cartesian_state_1: CartesianState,
+                                         predicted_cartesian_state_1_road_yaw: CartesianState,
                                          predicted_cartesian_state_2_road_yaw: CartesianState,
                                          prediction_timestamps: np.ndarray)-> List[DynamicObject]:
     object_states = [
@@ -132,11 +141,11 @@ def predicted_dyn_object_states_road_yaw(predicted_cartesian_state_0: CartesianS
                       v_x=predicted_cartesian_state_0[C_V],
                       v_y=0,
                       acceleration_lon=0, omega_yaw=0),
-        DynamicObject(obj_id=DYNAMIC_OBJECT_ID, timestamp=int(prediction_timestamps[1] * 1e9), x=predicted_cartesian_state_1[C_X],
-                      y=predicted_cartesian_state_1[C_Y],
+        DynamicObject(obj_id=DYNAMIC_OBJECT_ID, timestamp=int(prediction_timestamps[1] * 1e9), x=predicted_cartesian_state_1_road_yaw[C_X],
+                      y=predicted_cartesian_state_1_road_yaw[C_Y],
                       z=DEFAULT_OBJECT_Z_VALUE,
-                      yaw=predicted_cartesian_state_1[C_YAW], size=car_size, confidence=0,
-                      v_x=predicted_cartesian_state_1[C_V],
+                      yaw=predicted_cartesian_state_1_road_yaw[C_YAW], size=car_size, confidence=0,
+                      v_x=predicted_cartesian_state_1_road_yaw[C_V],
                       v_y=0,
                       acceleration_lon=0, omega_yaw=0),
         DynamicObject(obj_id=DYNAMIC_OBJECT_ID, timestamp=int(prediction_timestamps[2] * 1e9),
