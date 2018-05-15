@@ -342,12 +342,13 @@ class QuinticPoly1D(Poly1D):
     # TODO: document
     @staticmethod
     def time_cost_function(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds: float):
-        return lambda T: (T**6*w_T + 3*w_J*(3*T**4*a_0**2 + 24*T**3*a_0*v_0 - 24*T**3*a_0*v_T - 40*T**2*a_0*ds + 64*T**2*v_0**2 - 128*T**2*v_0*v_T + 64*T**2*v_T**2 - 240*T*ds*v_0 + 240*T*ds*v_T + 240*ds**2))/T**5
-
+        return lambda T: (T ** 6 * w_T + 3 * w_J * (
+            3 * T ** 4 * a_0 ** 2 + 24 * T ** 3 * a_0 * v_0 - 24 * T ** 3 * a_0 * v_T - 40 * T ** 2 * a_0 * ds + 64 * T ** 2 * v_0 ** 2 - 128 * T ** 2 * v_0 * v_T + 64 * T ** 2 * v_T ** 2 - 240 * T * ds * v_0 + 240 * T * ds * v_T + 240 * ds ** 2)) / T ** 5
 
     @staticmethod
     def time_cost_function_derivative(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds: float):
-        return lambda T: (T**6*w_T - 9*T**4*a_0**2*w_J - 144*T**3*a_0*v_0*w_J + 144*T**3*a_0*v_T*w_J + 360*T**2*a_0*ds*w_J - 576*T**2*v_0**2*w_J + 1152*T**2*v_0*v_T*w_J - 576*T**2*v_T**2*w_J + 2880*T*ds*v_0*w_J - 2880*T*ds*v_T*w_J - 3600*ds**2*w_J)/T**6
+        return lambda T: (
+                             T ** 6 * w_T - 9 * T ** 4 * a_0 ** 2 * w_J - 144 * T ** 3 * a_0 * v_0 * w_J + 144 * T ** 3 * a_0 * v_T * w_J + 360 * T ** 2 * a_0 * ds * w_J - 576 * T ** 2 * v_0 ** 2 * w_J + 1152 * T ** 2 * v_0 * v_T * w_J - 576 * T ** 2 * v_T ** 2 * w_J + 2880 * T * ds * v_0 * w_J - 2880 * T * ds * v_T * w_J - 3600 * ds ** 2 * w_J) / T ** 6
 
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
@@ -373,7 +374,10 @@ class QuinticPoly1D(Poly1D):
         :return: labmda function that takes relative time in seconds and returns the relative distance
         travelled since time 0
         """
-        return lambda t: t*(T**5*(a_0*t + 2*v_0) + T**2*t**2*(-3*T**2*a_0 + 20*T*v_T - 4*T*(3*v_0 + 2*v_T) + 20*dx) + T*t**3*(3*T**2*a_0 - 30*T*v_T + 2*T*(8*v_0 + 7*v_T) - 30*dx) + t**4*(-T**2*a_0 + 12*T*v_T - 6*T*(v_0 + v_T) + 12*dx))/(2*T**5)
+        return lambda t: t * (T ** 5 * (a_0 * t + 2 * v_0) + T ** 2 * t ** 2 * (
+            -3 * T ** 2 * a_0 + 20 * T * v_T - 4 * T * (3 * v_0 + 2 * v_T) + 20 * dx) + T * t ** 3 * (
+                                  3 * T ** 2 * a_0 - 30 * T * v_T + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx) + t ** 4 * (
+                                  -T ** 2 * a_0 + 12 * T * v_T - 6 * T * (v_0 + v_T) + 12 * dx)) / (2 * T ** 5)
 
     @staticmethod
     def velocity_profile_function(a_0: float, v_0: float, v_T: float, dx: float, T: float):
@@ -386,7 +390,10 @@ class QuinticPoly1D(Poly1D):
         :param T: [sec] horizon
         :return: labmda function that takes relative time in seconds and returns the velocity
         """
-        return lambda t: (2*T**5*(a_0*t + v_0) + 3*T**2*t**2*(-3*T**2*a_0 + 20*T*v_T - 4*T*(3*v_0 + 2*v_T) + 20*dx) + 4*T*t**3*(3*T**2*a_0 - 30*T*v_T + 2*T*(8*v_0 + 7*v_T) - 30*dx) + 5*t**4*(-T**2*a_0 + 12*T*v_T - 6*T*(v_0 + v_T) + 12*dx))/(2*T**5)
+        return lambda t: (2 * T ** 5 * (a_0 * t + v_0) + 3 * T ** 2 * t ** 2 * (
+            -3 * T ** 2 * a_0 + 20 * T * v_T - 4 * T * (3 * v_0 + 2 * v_T) + 20 * dx) + 4 * T * t ** 3 * (
+                              3 * T ** 2 * a_0 - 30 * T * v_T + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx) + 5 * t ** 4 * (
+                              -T ** 2 * a_0 + 12 * T * v_T - 6 * T * (v_0 + v_T) + 12 * dx)) / (2 * T ** 5)
 
     @staticmethod
     def acceleration_profile_function(a_0: float, v_0: float, v_T: float, dx: float, T: float):
@@ -399,7 +406,10 @@ class QuinticPoly1D(Poly1D):
         :param T: [sec] horizon
         :return: labmda function that takes relative time in seconds and returns the velocity
         """
-        return lambda t: (T**5*a_0 - 3*T**2*t*(3*T**2*a_0 - 20*T*v_T + 4*T*(3*v_0 + 2*v_T) - 20*dx) + 6*T*t**2*(3*T**2*a_0 - 30*T*v_T + 2*T*(8*v_0 + 7*v_T) - 30*dx) + 10*t**3*(-T**2*a_0 + 12*T*v_T - 6*T*(v_0 + v_T) + 12*dx))/T**5
+        return lambda t: (T ** 5 * a_0 - 3 * T ** 2 * t * (
+            3 * T ** 2 * a_0 - 20 * T * v_T + 4 * T * (3 * v_0 + 2 * v_T) - 20 * dx) + 6 * T * t ** 2 * (
+                              3 * T ** 2 * a_0 - 30 * T * v_T + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx) + 10 * t ** 3 * (
+                              -T ** 2 * a_0 + 12 * T * v_T - 6 * T * (v_0 + v_T) + 12 * dx)) / T ** 5
 
 
 class DynamicsCallables:
