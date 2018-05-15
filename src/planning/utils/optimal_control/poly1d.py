@@ -341,55 +341,65 @@ class QuinticPoly1D(Poly1D):
 
     # TODO: document
     @staticmethod
-    def time_cost_function(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds_0: float, T_m: float):
-        return lambda T: (T ** 6 * w_T + 3 * w_J * (
-            3 * T ** 4 * a_0 ** 2 + 24 * T ** 3 * a_0 * v_0 - 24 * T ** 3 * a_0 * v_T + 40 * T ** 2 * T_m * a_0 * v_T -
-            40 * T ** 2 * a_0 * ds_0 + 64 * T ** 2 * v_0 ** 2 - 128 * T ** 2 * v_0 * v_T + 64 * T ** 2 * v_T ** 2 + 240 * T * T_m * v_0 * v_T -
-            240 * T * T_m * v_T ** 2 - 240 * T * ds_0 * v_0 + 240 * T * ds_0 * v_T + 240 * T_m ** 2 * v_T ** 2 - 480 * T_m * ds_0 * v_T +
-            240 * ds_0 ** 2)) / T ** 5
+    def time_cost_function(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds: float):
+        return lambda T: (T**6*w_T + 3*w_J*(3*T**4*a_0**2 + 24*T**3*a_0*v_0 - 24*T**3*a_0*v_T - 40*T**2*a_0*ds + 64*T**2*v_0**2 - 128*T**2*v_0*v_T + 64*T**2*v_T**2 - 240*T*ds*v_0 + 240*T*ds*v_T + 240*ds**2))/T**5
+
 
     @staticmethod
-    def time_cost_function_derivative(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds_0: float,
-                                      T_m: float):
-        return lambda T: (
-                             T ** 6 * w_T - 9 * T ** 4 * a_0 ** 2 * w_J - 144 * T ** 3 * a_0 * v_0 * w_J + 144 * T ** 3 * a_0 * v_T * w_J -
-                             360 * T ** 2 * T_m * a_0 * v_T * w_J + 360 * T ** 2 * a_0 * ds_0 * w_J - 576 * T ** 2 * v_0 ** 2 * w_J + 1152 * T ** 2 * v_0 * v_T * w_J -
-                             576 * T ** 2 * v_T ** 2 * w_J - 2880 * T * T_m * v_0 * v_T * w_J + 2880 * T * T_m * v_T ** 2 * w_J + 2880 * T * ds_0 * v_0 * w_J -
-                             2880 * T * ds_0 * v_T * w_J - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * ds_0 * v_T * w_J - 3600 * ds_0 ** 2 * w_J) / T ** 6
+    def time_cost_function_derivative(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds: float):
+        return lambda T: (T**6*w_T - 9*T**4*a_0**2*w_J - 144*T**3*a_0*v_0*w_J + 144*T**3*a_0*v_T*w_J + 360*T**2*a_0*ds*w_J - 576*T**2*v_0**2*w_J + 1152*T**2*v_0*v_T*w_J - 576*T**2*v_T**2*w_J + 2880*T*ds*v_0*w_J - 2880*T*ds*v_T*w_J - 3600*ds**2*w_J)/T**6
 
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
-                                            v_T: np.ndarray, ds_0: np.ndarray, T_m: np.ndarray):
+                                            v_T: np.ndarray, ds: np.ndarray):
         zeros = np.zeros(w_T.shape[0])
         return np.c_[w_T,
                      zeros,
                      -9 * a_0 ** 2 * w_J,
                      -144 * a_0 * v_0 * w_J + 144 * a_0 * v_T * w_J,
-                     -360 * T_m * a_0 * v_T * w_J + 360 * a_0 * ds_0 * w_J - 576 * v_0 ** 2 * w_J + 1152 * v_0 * v_T * w_J - 576 * v_T ** 2 * w_J,
-                     -2880 * T_m * v_0 * v_T * w_J + 2880 * T_m * v_T ** 2 * w_J + 2880 * ds_0 * v_0 * w_J - 2880 * ds_0 * v_T * w_J,
-                     - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * ds_0 * v_T * w_J - 3600 * ds_0 ** 2 * w_J]
+                     360 * a_0 * ds * w_J - 576 * v_0 ** 2 * w_J + 1152 * v_0 * v_T * w_J - 576 * v_T ** 2 * w_J,
+                     2880 * ds * v_0 * w_J - 2880 * ds * v_T * w_J,
+                     -3600 * ds ** 2 * w_J]
 
     @staticmethod
-    def distance_to_target_profile_function(a_0: float, v_0: float, v_T: float, dx_0: float, T: float, T_m: float, margin: float):
-        """distance between target's center refernce to ego's center reference at time t,
-        given a solution to the conditions in the parameters"""
-        return lambda t: (-T**5 * t * (a_0*t + 2*v_0) + 2 * T ** 5 * (dx_0 + t * v_T) + T ** 2 * t ** 3 * (3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * dx_0 + 20 * margin - 20 * v_T * (T - T_m)) - T * t ** 4 * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx_0 + 30 * margin - 30 * v_T * (T - T_m)) + t ** 5 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * dx_0 + 12 * margin - 12 * v_T * (T - T_m))) / (2 * T ** 5)
+    def distance_profile_function(a_0: float, v_0: float, v_T: float, dx: float, T: float):
+        """
+        relative distance travelled by ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param dx: [m] distance to travel between time 0 and time T
+        :param T: [sec] horizon
+        :return: labmda function that takes relative time in seconds and returns the relative distance
+        travelled since time 0
+        """
+        return lambda t: t*(T**5*(a_0*t + 2*v_0) + T**2*t**2*(-3*T**2*a_0 + 20*T*v_T - 4*T*(3*v_0 + 2*v_T) + 20*dx) + T*t**3*(3*T**2*a_0 - 30*T*v_T + 2*T*(8*v_0 + 7*v_T) - 30*dx) + t**4*(-T**2*a_0 + 12*T*v_T - 6*T*(v_0 + v_T) + 12*dx))/(2*T**5)
 
     @staticmethod
-    def distance_profile_function(a_0: float, v_0: float, v_T: float, dx_0: float, T: float, T_m: float, margin: float):
-        """relative distance travelled by ego at time t, given a solution to the conditions in the parameters"""
-        return lambda t: (T ** 5 * (a_0*t**2 + 2*t*v_0) + T ** 2 * t ** 3 * (-3 * T ** 2 * a_0 - 4 * T * (3*v_0 + 2*v_T) + 20 * dx_0 - 20 * margin + 20 * v_T * (T - T_m)) + T * t ** 4 * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx_0 + 30 * margin - 30 * v_T * (T - T_m)) + t ** 5 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx_0 - 12 * margin + 12 * v_T * (T - T_m))) / (2 * T ** 5)
+    def velocity_profile_function(a_0: float, v_0: float, v_T: float, dx: float, T: float):
+        """
+        velocity of ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param dx: [m] distance to travel between time 0 and time T
+        :param T: [sec] horizon
+        :return: labmda function that takes relative time in seconds and returns the velocity
+        """
+        return lambda t: (2*T**5*(a_0*t + v_0) + 3*T**2*t**2*(-3*T**2*a_0 + 20*T*v_T - 4*T*(3*v_0 + 2*v_T) + 20*dx) + 4*T*t**3*(3*T**2*a_0 - 30*T*v_T + 2*T*(8*v_0 + 7*v_T) - 30*dx) + 5*t**4*(-T**2*a_0 + 12*T*v_T - 6*T*(v_0 + v_T) + 12*dx))/(2*T**5)
 
     @staticmethod
-    def velocity_profile_function(a_0: float, v_0: float, v_T: float, dx_0: float, T: float, T_m: float, margin: float):
-        """velocity of ego at time t, given a solution to the conditions in the parameters"""
-        return lambda t: (2 * T ** 5 * (a_0*t + v_0) + 3 * T ** 2 * t ** 2 * (-3 * T ** 2 * a_0 - 4 * T * (3*v_0 + 2*v_T) + 20 * dx_0 - 20 * margin + 20 * v_T * (T - T_m)) + 4 * T * t ** 3 * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx_0 + 30 * margin - 30 * v_T * (T - T_m)) + 5 * t ** 4 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx_0 - 12 * margin + 12 * v_T * (T - T_m))) / (2 * T ** 5)
-
-    @staticmethod
-    def acceleration_profile_function(a_0: float, v_0: float, v_T: float, dx_0: float, T: float, T_m: float, margin: float):
-        """acceleration of ego at time t, given a solution to the conditions in the parameters"""
-        return lambda t: (T ** 5 * a_0 - 3 * T ** 2 * t * (3 * T ** 2 * a_0 + 4 * T * (3*v_0 + 2*v_T) - 20 * dx_0 + 20 * margin - 20 * v_T * (T - T_m)) + 6 * T * t ** 2 * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx_0 + 30 * margin - 30 * v_T * (T - T_m)) + 10 * t ** 3 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx_0 - 12 * margin + 12 * v_T * (T - T_m))) / T ** 5
-
+    def acceleration_profile_function(a_0: float, v_0: float, v_T: float, dx: float, T: float):
+        """
+        acceleration of ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param dx: [m] distance to travel between time 0 and time T
+        :param T: [sec] horizon
+        :return: labmda function that takes relative time in seconds and returns the velocity
+        """
+        return lambda t: (T**5*a_0 - 3*T**2*t*(3*T**2*a_0 - 20*T*v_T + 4*T*(3*v_0 + 2*v_T) - 20*dx) + 6*T*t**2*(3*T**2*a_0 - 30*T*v_T + 2*T*(8*v_0 + 7*v_T) - 30*dx) + 10*t**3*(-T**2*a_0 + 12*T*v_T - 6*T*(v_0 + v_T) + 12*dx))/T**5
 
 
 class DynamicsCallables:
