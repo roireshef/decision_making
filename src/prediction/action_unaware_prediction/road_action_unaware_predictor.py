@@ -30,9 +30,6 @@ class RoadActionUnawarePredictor(ActionUnawarePredictor):
         :return: a mapping between object id to the list of future dynamic objects of the matching object
         """
 
-        # Predict to a single horizon
-        assert len(prediction_timestamps) == 1
-
         dynamic_objects = [State.get_object_from_state(state=state, target_obj_id=obj_id) for obj_id in object_ids]
 
         predicted_dynamic_objects: Dict[int, List[DynamicObject]] = dict()
