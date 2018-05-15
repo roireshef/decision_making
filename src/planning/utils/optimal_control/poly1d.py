@@ -370,29 +370,26 @@ class QuinticPoly1D(Poly1D):
                      - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * ds_0 * v_T * w_J - 3600 * ds_0 ** 2 * w_J]
 
     @staticmethod
-    def distance_profile_function(a_0: float, v_0: float, v_T: float, ds_0: float, T: float):
-        return lambda t: (-T ** 5 * t * (a_0 * t + 2 * v_0) + 2 * T ** 5 * (ds_0 + t * v_T) + T ** 2 * t ** 3 * (
-            3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) -
-            20 * ds_0 - 20 * v_T * (T - 2)) - T * t ** 4 * (
-                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds_0 - 30 * v_T * (T - 2)) +
-                          t ** 5 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * ds_0 - 12 * v_T * (T - 2))) / (2 * T ** 5)
+    def distance_to_target_profile_function(a_0: float, v_0: float, v_T: float, dx_0: float, T: float, T_m: float, margin: float):
+        """distance between target's center refernce to ego's center reference at time t,
+        given a solution to the conditions in the parameters"""
+        return lambda t: (-T**5 * t * (a_0*t + 2*v_0) + 2 * T ** 5 * (dx_0 + t * v_T) + T ** 2 * t ** 3 * (3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * dx_0 + 20 * margin - 20 * v_T * (T - T_m)) - T * t ** 4 * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx_0 + 30 * margin - 30 * v_T * (T - T_m)) + t ** 5 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * dx_0 + 12 * margin - 12 * v_T * (T - T_m))) / (2 * T ** 5)
 
     @staticmethod
-    def velocity_profile_function(a_0: float, v_0: float, v_T: float, ds_0: float, T: float):
-        return lambda t: (2 * T ** 5 * (a_0 * t + v_0) + 3 * T ** 2 * t ** 2 * (
-            -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * ds_0 + 20 * v_T * (T - 2)) +
-                          4 * T * t ** 3 * (
-                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds_0 - 30 * v_T * (T - 2)) +
-                          5 * t ** 4 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * ds_0 + 12 * v_T * (T - 2))) / (
-                             2 * T ** 5)
+    def distance_profile_function(a_0: float, v_0: float, v_T: float, dx_0: float, T: float, T_m: float, margin: float):
+        """relative distance travelled by ego at time t, given a solution to the conditions in the parameters"""
+        return lambda t: (T ** 5 * (a_0*t**2 + 2*t*v_0) + T ** 2 * t ** 3 * (-3 * T ** 2 * a_0 - 4 * T * (3*v_0 + 2*v_T) + 20 * dx_0 - 20 * margin + 20 * v_T * (T - T_m)) + T * t ** 4 * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx_0 + 30 * margin - 30 * v_T * (T - T_m)) + t ** 5 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx_0 - 12 * margin + 12 * v_T * (T - T_m))) / (2 * T ** 5)
 
     @staticmethod
-    def acceleration_profile_function(a_0: float, v_0: float, v_T: float, ds_0: float, T: float):
-        return lambda t: (T ** 5 * a_0 - 3 * T ** 2 * t * (
-            3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * ds_0 - 20 * v_T * (T - 2)) +
-                          6 * T * t ** 2 * (
-                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds_0 - 30 * v_T * (T - 2)) +
-                          10 * t ** 3 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * ds_0 + 12 * v_T * (T - 2))) / T ** 5
+    def velocity_profile_function(a_0: float, v_0: float, v_T: float, dx_0: float, T: float, T_m: float, margin: float):
+        """velocity of ego at time t, given a solution to the conditions in the parameters"""
+        return lambda t: (2 * T ** 5 * (a_0*t + v_0) + 3 * T ** 2 * t ** 2 * (-3 * T ** 2 * a_0 - 4 * T * (3*v_0 + 2*v_T) + 20 * dx_0 - 20 * margin + 20 * v_T * (T - T_m)) + 4 * T * t ** 3 * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx_0 + 30 * margin - 30 * v_T * (T - T_m)) + 5 * t ** 4 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx_0 - 12 * margin + 12 * v_T * (T - T_m))) / (2 * T ** 5)
+
+    @staticmethod
+    def acceleration_profile_function(a_0: float, v_0: float, v_T: float, dx_0: float, T: float, T_m: float, margin: float):
+        """acceleration of ego at time t, given a solution to the conditions in the parameters"""
+        return lambda t: (T ** 5 * a_0 - 3 * T ** 2 * t * (3 * T ** 2 * a_0 + 4 * T * (3*v_0 + 2*v_T) - 20 * dx_0 + 20 * margin - 20 * v_T * (T - T_m)) + 6 * T * t ** 2 * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx_0 + 30 * margin - 30 * v_T * (T - T_m)) + 10 * t ** 3 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx_0 - 12 * margin + 12 * v_T * (T - T_m))) / T ** 5
+
 
 
 class DynamicsCallables:

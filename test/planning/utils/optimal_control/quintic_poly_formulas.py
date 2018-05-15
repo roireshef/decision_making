@@ -58,7 +58,8 @@ if __name__ == "__main__":
     t = symbols('t')
     Tm = symbols('T_m')  # safety margin in seconds
 
-    s0, v0, a0, sT, vT, aT = symbols('s_0 v_0 a_0 s_T v_T a_T')
+    s0, v0, a0, ds_0, vT, aT = symbols('s_0 v_0 a_0 ds_0 v_T a_T')
+    margin = symbols('margin')
 
     A = Matrix([
         [0, 0, 0, 0, 0, 1],
@@ -71,7 +72,7 @@ if __name__ == "__main__":
 
     # solve to get solution
     # this assumes a0=aT==0 (constant velocity)
-    [c5, c4, c3, c2, c1, c0] = A.inv() * Matrix([s0, v0, a0, sT + vT * (T - Tm), vT, aT])
+    [c5, c4, c3, c2, c1, c0] = A.inv() * Matrix([s0, v0, a0, ds_0 + vT * (T - Tm) - margin, vT, aT])
 
     x_t = (c5 * t ** 5 + c4 * t ** 4 + c3 * t ** 3 + c2 * t ** 2 + c1 * t + c0).simplify()
     v_t = sp.diff(x_t, t).simplify()
@@ -88,7 +89,7 @@ if __name__ == "__main__":
     cost_diff = sp.diff(cost, T).simplify()
 
     temp_v_t = v_t.subs(s0, 0).subs(aT, 0).subs(Tm, 2).simplify()
-    temp_delta_s_t = (sT + vT * t - x_t.subs(s0, 0).subs(aT, 0).subs(Tm, 2)).simplify()
+    temp_delta_s_t = (ds_0 + vT * t - x_t.subs(s0, 0).subs(aT, 0)).simplify()
     temp_a_t = sp.diff(temp_v_t, t).simplify()
 
     cost_desmos = cost.subs(a0, 0).simplify()
