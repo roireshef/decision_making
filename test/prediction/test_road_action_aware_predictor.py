@@ -1,19 +1,16 @@
-import copy
 from typing import List
 from unittest.mock import patch
 
 import numpy as np
-import yaml
 
 from decision_making.src.prediction.action_aware_prediction.action_aware_predictor import ActionAwarePredictor
-from decision_making.src.prediction.action_unaware_prediction.action_unaware_predictor import ActionUnawarePredictor
 from decision_making.src.state.state import DynamicObject, State, EgoState
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.prediction.conftest import DYNAMIC_OBJECT_ID
 from decision_making.test.prediction.utils import Utils
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from decision_making.test.prediction.conftest import road_action_aware_predictor, init_state, prediction_timestamps, \
-    predicted_dyn_object_states_road_yaw
+    predicted_dyn_object_states_road_yaw, predicted_static_ego_states
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)

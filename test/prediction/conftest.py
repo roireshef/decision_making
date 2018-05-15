@@ -7,6 +7,8 @@ from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_YAW, 
 from decision_making.src.prediction.action_aware_prediction.road_action_aware_predictor import RoadActionAwarePredictor
 from decision_making.src.prediction.action_unaware_prediction.road_action_unaware_predictor import \
     RoadActionUnawarePredictor
+from decision_making.src.prediction.time_alignment_prediction.physical_time_alignment_predictor import \
+    PhysicalTimeAlignmentPredictor
 from decision_making.src.prediction.time_alignment_prediction.time_alignment_predictor import TimeAlignmentPredictor
 from decision_making.src.state.state import DynamicObject, ObjectSize, EgoState, State, OccupancyState
 import numpy as np
@@ -16,10 +18,11 @@ from rte.python.logger.AV_logger import AV_Logger
 DYNAMIC_OBJECT_ID = 1
 EGO_OBJECT_ID = 0
 
+
 @pytest.fixture(scope='function')
 def physical_time_alignment_predictor() -> TimeAlignmentPredictor:
     logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
-    yield TimeAlignmentPredictor(logger)
+    yield PhysicalTimeAlignmentPredictor(logger)
 
 
 @pytest.fixture(scope='function')
@@ -27,10 +30,12 @@ def road_action_unaware_predictor() -> RoadActionUnawarePredictor:
     logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
     yield RoadActionUnawarePredictor(logger)
 
+
 @pytest.fixture(scope='function')
 def road_action_aware_predictor() -> RoadActionAwarePredictor:
     logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
     yield RoadActionAwarePredictor(logger)
+
 
 @pytest.fixture(scope='function')
 def car_size() ->ObjectSize:
@@ -50,6 +55,7 @@ def predicted_cartesian_state_0() -> CartesianState:
 @pytest.fixture(scope='function')
 def predicted_cartesian_state_1_constant_yaw() -> CartesianState:
     yield np.array([590.0, 0.0, 0.0, 10.0])
+
 
 @pytest.fixture(scope='function')
 def predicted_cartesian_state_1_road_yaw() -> CartesianState:
@@ -93,9 +99,35 @@ def init_ego_state(static_cartesian_state) -> EgoState:
                    v_y=0,
                    acceleration_lon=0, omega_yaw=0, steering_angle=0)
 
+
 @pytest.fixture(scope='function')
 def init_state(init_ego_state, init_dyn_obj) -> State:
     yield State(ego_state=init_ego_state, dynamic_objects=[init_dyn_obj], occupancy_state=OccupancyState(0, np.array([]), np.array([])))
+
+
+@pytest.fixture(scope='function')
+def unaligned_dynamic_object(predicted_cartesian_state_1_constant_yaw, prediction_timestamps):
+    yield DynamicObject(obj_id=DYNAMIC_OBJECT_ID, timestamp=int(prediction_timestamps[1] * 1e9),
+                                   x=predicted_cartesian_state_1_constant_yaw[C_X],
+                                   y=predicted_cartesian_state_1_constant_yaw[C_Y],
+                                   z=DEFAULT_OBJECT_Z_VALUE,
+                                   yaw=predicted_cartesian_state_1_constant_yaw[C_YAW], size=car_size, confidence=0,
+                                   v_x=predicted_cartesian_state_1_constant_yaw[C_V],
+                                   v_y=0,
+                                   acceleration_lon=0, omega_yaw=0)
+
+
+@pytest.fixture(scope='function')
+def aligned_ego_state(init_ego_state, unaligned_dynamic_object):
+    # Changing only timestamp since ego's speed is 0
+    init_ego_state.timestamp = unaligned_dynamic_object.timestamp
+    yield init_ego_state
+
+
+@pytest.fixture(scope='function')
+def unaligned_state(init_ego_state, unaligned_dynamic_object) -> State:
+    yield State(ego_state=init_ego_state, dynamic_objects=[unaligned_dynamic_object],
+                occupancy_state=OccupancyState(0, np.array([]), np.array([])))
 
 
 @pytest.fixture(scope='function')
