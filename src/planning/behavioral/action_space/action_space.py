@@ -157,7 +157,7 @@ class ActionSpace:
         return constraints_d
 
     @staticmethod
-    def find_roots(coef_matrix: np.ndarray, value_limits: Limits):
+    def find_real_roots(coef_matrix: np.ndarray, value_limits: Limits):
         """
         Given a matrix of polynomials coefficients, returns their Real roots within boundaries.
         :param coef_matrix: 2D numpy array [NxK] full with coefficients of N polynomials of degree (K-1)
@@ -165,10 +165,11 @@ class ActionSpace:
         :return: 2D numpy array [Nx(K-1)]
         """
         roots = np.apply_along_axis(np.roots, axis=-1, arr=coef_matrix)
-        roots_s_reals = np.real(roots)
-        is_real_s = np.isreal(roots) * (roots_s_reals >= value_limits[LIMIT_MIN]) * (roots_s_reals <= value_limits[LIMIT_MAX])
-        roots_s_reals[~is_real_s] = np.nan
-        return roots_s_reals
+        real_roots = np.real(roots)
+        is_real = np.isclose(np.imag(roots), 0.0)
+        is_in_limits = np.logical_and(real_roots >= value_limits[LIMIT_MIN], real_roots <= value_limits[LIMIT_MAX])
+        real_roots[~np.logical_and(is_real,  is_in_limits)] = np.nan
+        return real_roots
 
 
 class ActionSpaceContainer(ActionSpace):
