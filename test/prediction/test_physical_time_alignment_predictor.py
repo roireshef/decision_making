@@ -18,7 +18,7 @@ from decision_making.test.prediction.conftest import physical_time_alignment_pre
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_AlignObjects_ExternalTimestamp_AccuratePrediction(physical_time_alignment_predictor: TimeAlignmentPredictor,
                                                            init_state: State, prediction_timestamps: np.ndarray,
-                                                           predicted_dyn_object_states_road_yaw: List[DynamicObject],
+                                                           predicted_dyn_object_states_constant_yaw: List[DynamicObject],
                                                            predicted_static_ego_states: List[EgoState]):
     predicted_state = physical_time_alignment_predictor.align_objects_to_most_recent_timestamp(state=init_state,
                                                                                                current_timestamp=
@@ -28,11 +28,30 @@ def test_AlignObjects_ExternalTimestamp_AccuratePrediction(physical_time_alignme
     actual_predicted_object = predicted_state.get_object_from_state(predicted_state, DYNAMIC_OBJECT_ID)
     assert np.isclose(actual_predicted_object.timestamp_in_sec, prediction_timestamps[0])
     Utils.assert_objects_numerical_fields_are_equal(actual_predicted_object,
-                                                    predicted_dyn_object_states_road_yaw[0])
+                                                    predicted_dyn_object_states_constant_yaw[0])
     actual_predicted_ego = predicted_state.ego_state
     assert np.isclose(actual_predicted_ego.timestamp_in_sec, prediction_timestamps[0])
     Utils.assert_objects_numerical_fields_are_equal(actual_predicted_ego,
                                                     predicted_static_ego_states[0])
+
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+def test_AlignObjects_ExternalTimestamp_ConstantYawAccuratePrediction(physical_time_alignment_predictor: TimeAlignmentPredictor,
+                                                           init_state: State, prediction_timestamps: np.ndarray,
+                                                           predicted_dyn_object_states_constant_yaw: List[DynamicObject],
+                                                           predicted_static_ego_states: List[EgoState]):
+    predicted_state = physical_time_alignment_predictor.align_objects_to_most_recent_timestamp(state=init_state,
+                                                                                               current_timestamp=
+                                                                                               prediction_timestamps[1])
+
+    # Verify predictions are made for the same timestamps and same order
+    actual_predicted_object = predicted_state.get_object_from_state(predicted_state, DYNAMIC_OBJECT_ID)
+    assert np.isclose(actual_predicted_object.timestamp_in_sec, prediction_timestamps[1])
+    Utils.assert_objects_numerical_fields_are_equal(actual_predicted_object,
+                                                    predicted_dyn_object_states_constant_yaw[1])
+    actual_predicted_ego = predicted_state.ego_state
+    assert np.isclose(actual_predicted_ego.timestamp_in_sec, prediction_timestamps[1])
+    Utils.assert_objects_numerical_fields_are_equal(actual_predicted_ego,
+                                                    predicted_static_ego_states[1])
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
