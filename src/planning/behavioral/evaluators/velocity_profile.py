@@ -457,8 +457,8 @@ class VelocityProfile:
         return np.inf  # always safe
 
     @staticmethod
-    def is_safe_state(v_front: float, v_back: float, dist: float, time_delay: float, margin: float):
-        max_brake = -LON_ACC_LIMITS[0]
+    def is_safe_state(v_front: float, v_back: float, dist: float, time_delay: float, margin: float,
+                      max_brake: float=-LON_ACC_LIMITS[0]):
         return max(0., v_back**2 - v_front**2) / (2*max_brake) + v_back*time_delay + margin < dist
 
     def _is_safe_profile(self, ego_lon: float, ego_half_size: float, dyn_obj: DynamicObject, T: float,

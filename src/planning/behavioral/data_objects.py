@@ -74,8 +74,7 @@ class ActionSpec:
         return str({k: str(v) for (k, v) in self.__dict__.items()})
 
 class NavigationGoal:
-    def __init__(self, road_id: int, lon: float, from_lane: int, to_lane: int):
+    def __init__(self, road_id: int, lon: float, lanes: List[int]):
         self.road_id = road_id
         self.lon = lon
-        self.from_lane = from_lane
-        self.to_lane = to_lane
+        self.lanes_list = lanes

@@ -13,8 +13,11 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
 
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, BP_MAX_VELOCITY_TOLERANCE
-from decision_making.src.planning.behavioral.evaluators.heuristic_action_recipe_evaluator import \
-    HeuristicActionRecipeEvaluator
+from decision_making.src.planning.behavioral.evaluators.heuristic_action_spec_evaluator import \
+    HeuristicActionSpecEvaluator
+from decision_making.src.planning.behavioral.filtering import action_spec_filter_bank
+from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering, \
+    ActionSpecFilter
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import DynamicObject, ObjectSize, EgoState, State
 from mapping.src.service.map_service import MapService
@@ -248,7 +251,7 @@ def test_speedProfiling():
     F_vel = init_vel
     LB_vel = des_vel + 2
 
-    evaluator = HeuristicActionRecipeEvaluator(logger)
+    evaluator = HeuristicActionSpecEvaluator(logger)
 
     ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon, road_mid_lat)
     ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, init_vel, 0, 0, 0, 0)
@@ -296,9 +299,16 @@ def test_speedProfiling():
 
     recipes_mask = action_space.filter_recipes(action_recipes, behavioral_state)
 
+    action_specs = [action_space.specify_goal(recipe, behavioral_state) if recipes_mask[i] else None
+                    for i, recipe in enumerate(action_recipes)]
+
+    # ActionSpec filtering
+    action_spec_validator = ActionSpecFiltering(action_spec_filter_bank.action_spec_filters)
+    action_specs_mask = action_spec_validator.filter_action_specs(action_specs, behavioral_state)
+
     start = time.time()
 
-    costs = evaluator.evaluate(behavioral_state, action_recipes, recipes_mask)
+    costs = evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
 
     end = time.time()
 

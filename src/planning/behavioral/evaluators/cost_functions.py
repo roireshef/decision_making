@@ -9,7 +9,7 @@ from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, LON_AC
 from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
 
 
-class PlanEfficiencyMetric:
+class BP_EfficiencyMetric:
     @staticmethod
     def calc_cost(vel_profile: VelocityProfile) -> float:
         """
@@ -21,9 +21,9 @@ class PlanEfficiencyMetric:
         """
         profile_time = vel_profile.total_time()
         des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-        deviation1 = PlanEfficiencyMetric._calc_avg_vel_deviation(vel_profile.v_init, vel_profile.v_mid, des_vel)
+        deviation1 = BP_EfficiencyMetric._calc_avg_vel_deviation(vel_profile.v_init, vel_profile.v_mid, des_vel)
         deviation2 = abs(vel_profile.v_mid - des_vel)
-        deviation3 = PlanEfficiencyMetric._calc_avg_vel_deviation(vel_profile.v_mid, vel_profile.v_tar, des_vel)
+        deviation3 = BP_EfficiencyMetric._calc_avg_vel_deviation(vel_profile.v_mid, vel_profile.v_tar, des_vel)
 
         avg_deviation = (vel_profile.t1 * deviation1 + vel_profile.t2 * deviation2 + vel_profile.t3 * deviation3) / \
                         profile_time
@@ -33,7 +33,7 @@ class PlanEfficiencyMetric:
         #       (profile_time, avg_vel, vel_profile.t1, vel_profile.t2, vel_profile.t3,
         #        vel_profile.v_mid, target_vel))
 
-        efficiency_cost = PlanEfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel]))[0]
+        efficiency_cost = BP_EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel]))[0]
         return BP_EFFICIENCY_COST_WEIGHT * efficiency_cost * profile_time
 
     @staticmethod
@@ -60,7 +60,7 @@ class PlanEfficiencyMetric:
             return 0.5 * ((v1 - des_vel) ** 2 + (v2 - des_vel) ** 2) / abs(v2 - v1)
 
 
-class PlanComfortMetric:
+class BP_ComfortMetric:
     @staticmethod
     def calc_cost(vel_profile: VelocityProfile, T_d, T_d_max: float, aggressiveness: AggressivenessLevel,
                   lat_vel_to_tar: float):
@@ -102,13 +102,13 @@ class PlanComfortMetric:
         return lat_cost + lon_cost
 
 
-class PlanRightLaneMetric:
+class BP_RightLaneMetric:
     @staticmethod
     def calc_cost(time_period: float, lane_idx: int) -> float:
         return BP_RIGHT_LANE_COST_WEIGHT * lane_idx * time_period
 
 
-class PlanLaneDeviationMetric:
+class BP_LaneDeviationMetric:
     @staticmethod
     def calc_cost(lat_dev: float) -> float:
         return BP_METRICS_LANE_DEVIATION_COST_WEIGHT * lat_dev * lat_dev
