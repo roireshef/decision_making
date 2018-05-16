@@ -19,7 +19,7 @@ from decision_making.src.planning.utils.math import Math
 
 
 # test Specify from very close to target velocity
-def test_staticActionSpace_specifyGoal_closeToTargetVelocityShouldNotFail():
+def test_staticActionSpace_specifyGoal_closeToTargetVelocity():
 
     logger = Logger("test_specifyStaticAction")
     road_id = 20
@@ -125,9 +125,10 @@ def test_staticActionSpace_specifyGoal_accelerationsCoverage():
             acc_values = Math.polyval2d(acc_poly, T_vals)[0]
             max_acc.append(np.max(acc_values))
 
-    # very_calm_acceleration = 0.5   # 0-100 km/h in 56 sec
-    # standard_acceleration = 1.0    # 0-100 km/h in 28 sec
-    # aggressive_acceleration = 2.0  # 0-100 km/h in 14 sec
+    # calm acceleration       = [0.4 - 0.8]
+    # standard acceleration   = [0.8 - 1.5]
+    # aggressive acceleration = [1.5 - 3.0]
+    assert len(max_acc) >= 3
     assert max_acc[2] / max_acc[1] < 3
     assert max_acc[1] / max_acc[0] < 3
 
