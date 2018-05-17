@@ -17,7 +17,8 @@ from decision_making.src.planning.behavioral.evaluators.cost_functions import \
     BP_EfficiencyMetric, \
     BP_ComfortMetric, BP_RightLaneMetric, VelocityProfile, BP_LaneDeviationMetric
 from decision_making.src.planning.types import FP_SX
-from decision_making.src.state.state import EgoState
+from decision_making.src.prediction.predictor import Predictor
+from decision_making.src.state.state import EgoState, State
 from mapping.src.model.localization import RoadLocalization
 from mapping.src.service.map_service import MapService
 
@@ -90,7 +91,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
 
             action_costs[i], sub_costs = self._calc_action_cost(
                 ego, vel_profile, target_lane, T_d, T_d_max, T_d_full, lat_dev, lat_vel_to_tar, lane_width,
-                action_recipe.aggressiveness, calm_lat_comfort_cost, None)
+                action_recipe.aggressiveness, calm_lat_comfort_cost)
 
             # FOR DEBUGGING
             dist = np.inf
@@ -287,8 +288,8 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
 
     def _calc_action_cost(self, ego: EgoState, vel_profile: VelocityProfile, target_lane: int,
                           T_d: float, T_d_max: float, T_d_full: float, lat_dev: float, lat_vel_to_tar: float,
-                          lane_width: float, aggressiveness: AggressivenessLevel, calm_lat_comfort_cost: float,
-                          goal: Optional[NavigationGoal]) -> [float, np.array]:
+                          lane_width: float, aggressiveness: AggressivenessLevel, calm_lat_comfort_cost: float) -> \
+            [float, np.array]:
         """
         Calculate the cost of the action
         :param vel_profile: longitudinal velocity profile
@@ -315,7 +316,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
 
         value_function = HeuristicActionSpecEvaluator.value_function_approximation(
             new_ego_localization, vel_profile.v_tar, BP_METRICS_TIME_HORIZON - vel_profile_time, T_d_full,
-            calm_lat_comfort_cost, goal)
+            calm_lat_comfort_cost, None)
 
         return efficiency_cost + comfort_cost + right_lane_cost + lane_deviation_cost + value_function, \
                np.array([efficiency_cost, comfort_cost, right_lane_cost, lane_deviation_cost, value_function])
