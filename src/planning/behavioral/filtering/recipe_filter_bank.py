@@ -20,8 +20,8 @@ directory = Paths.get_resource_absolute_path_filename('predicates/')
 for filename in os.listdir(directory):
     if filename.endswith(".bin"):
         predicate_path = Paths.get_resource_absolute_path_filename('predicates/%s' % filename)
-        wT, wJ = [float(filename.split('.bin')[0].split('_')[3]),
-                  float(filename.split('.bin')[0].split('_')[5])]
+        wT, wJ = [float(filename.split('.bin')[0].split('_')[2]),
+                  float(filename.split('.bin')[0].split('_')[4])]
         predicate_shape = (
             int(v_0_grid.shape[0]), int(a_0_grid.shape[0]), int(s_T_grid.shape[0]), int(v_T_grid.shape[0]))
         predicate = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
