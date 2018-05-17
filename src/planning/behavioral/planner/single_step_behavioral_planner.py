@@ -1,7 +1,8 @@
 import time
+from collections import defaultdict
 from copy import deepcopy
 from logging import Logger
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 
@@ -10,7 +11,7 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import \
     BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe
+from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, ActionSpec
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionRecipeEvaluator, \
     ActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
@@ -40,10 +41,11 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
         action_recipes = self.action_space.recipes
-        # create road semantic grid from the raw State object
-        # behavioral_state contains road_occupancy_grid and ego_state
+        # TODO: FOR DEBUG PURPOSES!
         st = time.time()
 
+        # create road semantic grid from the raw State object
+        # behavioral_state contains road_occupancy_grid and ego_state
         behavioral_state = BehavioralGridState.create_from_state(state=state, logger=self.logger)
 
         # TODO: FOR DEBUG PURPOSES!
@@ -60,9 +62,11 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
                           post_recipe_filters_time-post_grid_creation_time)
 
         # Action specification
+        # TODO: replace numpy array with fast sparse-list implementation
         action_specs = np.full(action_recipes.__len__(), None)
         valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
         action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, behavioral_state)
+        action_specs = list(action_specs)
 
         # TODO: FOR DEBUG PURPOSES!
         num_of_considered_static_actions = sum(isinstance(x, StaticActionRecipe) for x in valid_action_recipes)
@@ -78,20 +82,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # State-Action Evaluation
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
 
-        # TODO: validate time units (all in seconds? global?)
-        # generate the simulated terminal states for all actions using predictor
-        action_horizons = np.array([action_spec.t if action_specs_mask[i] else np.nan for i, action_spec in enumerate(action_specs)])
-        terminal_states = np.full(shape=action_horizons.shape, fill_value=None)
-
-        # TODO: fix bug in predictor
-        terminal_states[action_specs_mask] = deepcopy(state)  # self.predictor.predict_state(
-            #state, action_horizons[action_specs_mask] + state.ego_state.timestamp_in_sec)
-
-        # transform terminal states into behavioral states
-        terminal_behavioral_states = [BehavioralGridState.create_from_state(state=terminal_state, logger=self.logger) if action_specs_mask[i] else None
-                                     for i, terminal_state in enumerate(terminal_states)]
-
         # approximate cost-to-go per terminal state
+        terminal_behavioral_states = self._generate_terminal_states(state, action_specs, action_specs_mask)
         terminal_states_values = np.array([self.value_approximator.approximate(state) if action_specs_mask[i] else np.nan
                                            for i, state in enumerate(terminal_behavioral_states)])
 
@@ -118,3 +110,23 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
                           action_recipes[selected_action_index].__dict__, selected_action_spec.__dict__)
 
         return trajectory_parameters, baseline_trajectory, visualization_message
+
+    def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray):
+        # TODO: validate time units (all in seconds? global?)
+        # generate the simulated terminal states for all actions using predictor
+        action_horizons = np.array([action_spec.t
+                                    if mask[i] else np.nan
+                                    for i, action_spec in enumerate(action_specs)])
+
+        # TODO: replace numpy array with fast sparse-list implementation
+        terminal_states = np.full(shape=action_horizons.shape, fill_value=None)
+        terminal_states[mask] = deepcopy(state)          # TODO: fix bug in predictor
+        # self.predictor.predict_state(state, action_horizons[mask] + state.ego_state.timestamp_in_sec)
+        terminal_states = list(terminal_states)
+
+        # transform terminal states into behavioral states
+        terminal_behavioral_states = [BehavioralGridState.create_from_state(state=terminal_state, logger=self.logger)
+                                      if mask[i] else None
+                                      for i, terminal_state in enumerate(terminal_states)]
+
+        return terminal_behavioral_states
