@@ -371,7 +371,7 @@ class QuinticPoly1D(Poly1D):
         :param v_T: [m/sec] terminal velocity (at time T)
         :param dx: [m] distance to travel between time 0 and time T
         :param T: [sec] horizon
-        :return: labmda function that takes relative time in seconds and returns the relative distance
+        :return: lambda function(s) that takes relative time in seconds and returns the relative distance
         travelled since time 0
         """
         return lambda t: t * (T ** 5 * (a_0 * t + 2 * v_0) + T ** 2 * t ** 2 * (
@@ -388,7 +388,7 @@ class QuinticPoly1D(Poly1D):
         :param v_T: [m/sec] terminal velocity (at time T)
         :param dx: [m] distance to travel between time 0 and time T
         :param T: [sec] horizon
-        :return: labmda function that takes relative time in seconds and returns the velocity
+        :return: lambda function(s) that takes relative time in seconds and returns the velocity
         """
         return lambda t: (2 * T ** 5 * (a_0 * t + v_0) + 3 * T ** 2 * t ** 2 * (
             -3 * T ** 2 * a_0 + 20 * T * v_T - 4 * T * (3 * v_0 + 2 * v_T) + 20 * dx) + 4 * T * t ** 3 * (
@@ -404,7 +404,7 @@ class QuinticPoly1D(Poly1D):
         :param v_T: [m/sec] terminal velocity (at time T)
         :param dx: [m] distance to travel between time 0 and time T
         :param T: [sec] horizon
-        :return: labmda function that takes relative time in seconds and returns the velocity
+        :return: lambda function(s) that takes relative time in seconds and returns the velocity
         """
         return lambda t: (T ** 5 * a_0 - 3 * T ** 2 * t * (
             3 * T ** 2 * a_0 - 20 * T * v_T + 4 * T * (3 * v_0 + 2 * v_T) - 20 * dx) + 6 * T * t ** 2 * (
@@ -413,10 +413,6 @@ class QuinticPoly1D(Poly1D):
 
 
 class DynamicsCallables:
-    """
-
-    """
-
     def __init__(self, distance_function, velocity_function, acceleration_function):
         self._distance_function = distance_function
         self._velocity_function = velocity_function
