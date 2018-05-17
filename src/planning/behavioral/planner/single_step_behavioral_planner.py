@@ -32,7 +32,6 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
      5.Action Specs are evaluated.
      6.Lowest-Cost ActionSpec is chosen and its parameters are sent to TrajectoryPlanner.
     """
-
     def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
                  action_spec_evaluator: Optional[ActionSpecEvaluator], action_spec_validator: Optional[ActionSpecFiltering],
                  value_approximator: ValueApproximator, predictor: Predictor, logger: Logger):
@@ -111,7 +110,15 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         return trajectory_parameters, baseline_trajectory, visualization_message
 
-    def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray):
+    def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray) -> List[State]:
+        """
+        Given current state and action specifications, generate a corresponding list of future states using the
+        predictor. Uses mask over list of action specifications to avoid unnecessary computation
+        :param state: the current world state
+        :param action_specs: list of action specifications
+        :param mask: 1D mask vector (boolean) for filtering valid action specifications
+        :return: a list of terminal states
+        """
         # TODO: validate time units (all in seconds? global?)
         # generate the simulated terminal states for all actions using predictor
         action_horizons = np.array([action_spec.t
