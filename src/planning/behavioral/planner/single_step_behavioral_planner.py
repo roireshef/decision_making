@@ -84,8 +84,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         terminal_states = np.full(shape=action_horizons.shape, fill_value=None)
 
         # TODO: fix bug in predictor
-        terminal_states[action_specs_mask] = self.predictor.predict_state(
-            state, action_horizons[action_specs_mask] + state.ego_state.timestamp_in_sec)
+        terminal_states[action_specs_mask] = deepcopy(state)  # self.predictor.predict_state(
+            #state, action_horizons[action_specs_mask] + state.ego_state.timestamp_in_sec)
 
         # transform terminal states into behavioral states
         terminal_behavioral_states = [BehavioralGridState.create_from_state(state=terminal_state, logger=self.logger) if action_specs_mask[i] else None
