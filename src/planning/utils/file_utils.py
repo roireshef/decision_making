@@ -25,4 +25,4 @@ class BinaryReadWrite:
         :return:
         """
         with open(file_path, 'rb') as fh:
-            return frombuffer(fh.read(), dtype='float64').reshape(shape)
+            return frombuffer(fh.read(), dtype='uint8').reshape(shape)

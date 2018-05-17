@@ -58,9 +58,6 @@ def filter_actions_towards_non_occupied_cells(recipe: DynamicActionRecipe,
 
 def filter_bad_expected_trajectory(recipe: DynamicActionRecipe,
                                    behavioral_state: BehavioralGridState) -> bool:
-    print('filter_bad_expected_trajectory')
-    result = False
-    start_time = time.time()
     if recipe.action_type == ActionType.FOLLOW_VEHICLE:
         ego_state = behavioral_state.ego_state
         recipe_cell = (recipe.relative_lane, recipe.relative_lon)
@@ -74,16 +71,14 @@ def filter_bad_expected_trajectory(recipe: DynamicActionRecipe,
             v_T = dynamic_object.v_x
             wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
             predicate = predicates[(wT, wJ)]
-            result = predicate[Math.ind_on_uniform_axis(v_0, v_0_grid),
+            return predicate[Math.ind_on_uniform_axis(v_0, v_0_grid),
                                Math.ind_on_uniform_axis(a_0, a_0_grid),
                                Math.ind_on_uniform_axis(s_T, s_T_grid),
                                Math.ind_on_uniform_axis(v_T, v_T_grid)] > 0
         else:
-            result = False
+            return False
     else:
-        result = True
-    print("bad trajectories filter time is %s" % (time.time() - start_time))
-    return result
+        return True
 
 
 def filter_actions_toward_back_cells(recipe: DynamicActionRecipe,

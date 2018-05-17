@@ -105,5 +105,23 @@ class Math:
         :param axis: the axis step
         :return: index of the closest value on the equally-spaced axis
         """
-        index = int(np.round((value-axis[0])/(axis[1]-axis[0])))
-        return min(index, axis[-1])
+        index = np.round((value-axis[0])/(axis[1]-axis[0]))
+        return int(max(min(index, len(axis)), 0))
+
+    @staticmethod
+    def roots(p):
+        """
+        Return the roots of a polynomials with coefficients given in the rows of p.
+        The values in each row of the matrix `p` are coefficients of a polynomial.
+        If the length of a row in `p` is n+1 then the polynomial is described by:
+            p[0] * x**n + p[1] * x**(n-1) + ... + p[n-1]*x + p[n]
+        :param p: A matrix of size (num_of_poly X (poly_degree+1)) which contains polynomial coefficients.
+        :return: A matrix containing the roots of the polynomials (a set of roots in each row corresponding
+                to the polynomial in the input matrix) [ndarray]
+
+        """
+        n = p.shape[-1]
+        A = np.zeros(p.shape[:1]+(n-1, n-1), float)
+        A[..., 1:, :-1] = np.eye(n-2)
+        A[..., 0, :] = -p[..., 1:]/p[..., None, 0]
+        return np.linalg.eigvals(A)

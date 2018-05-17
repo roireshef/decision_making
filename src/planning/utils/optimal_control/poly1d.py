@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Union, Callable
+from typing import Union
 
 import numpy as np
 
@@ -251,7 +251,7 @@ class QuarticPoly1D(Poly1D):
     def time_cost_function_derivative_roots(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray, v_T: np.ndarray):
         zeros = np.zeros(w_T.shape[0])
         coefs = np.c_[w_T, zeros, - 4 * a_0 ** 2 * w_J, + 24 * (a_0 * v_T * w_J - a_0 * v_0 * w_J), - 36 * v_0 ** 2 * w_J + 72 * v_0 * v_T * w_J - 36 * v_T ** 2 * w_J]
-        return np.apply_along_axis(np.roots, axis=-1, arr=coefs)
+        return Math.roots(coefs)
 
     @staticmethod
     def distance_profile_function(a_0: float, v_0: float, v_T: float, T: float):
@@ -365,32 +365,34 @@ class QuinticPoly1D(Poly1D):
                       -360*T_m*a_0*v_T*w_J + 360*a_0*ds_0*w_J - 576*v_0**2*w_J + 1152*v_0*v_T*w_J - 576*v_T**2*w_J,
                       -2880*T_m*v_0*v_T*w_J + 2880*T_m*v_T**2*w_J + 2880*ds_0*v_0*w_J - 2880*ds_0*v_T*w_J,
                       - 3600*T_m**2*v_T**2*w_J + 7200*T_m*ds_0*v_T*w_J - 3600*ds_0**2*w_J]
-        return np.apply_along_axis(np.roots, axis=-1, arr=coefs)
+        return Math.roots(coefs)
 
     @staticmethod
-    def distance_profile_function(a_0: float, v_0: float, v_T: float, ds_0: float, T: float):
-        return lambda t: (-T ** 5 * t * (a_0 * t + 2 * v_0) + 2 * T ** 5 * (ds_0 + t * v_T) + T ** 2 * t ** 3 * (
-            3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) -
-            20 * ds_0 - 20 * v_T * (T - 2)) - T * t ** 4 * (
-                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds_0 - 30 * v_T * (T - 2)) +
-                          t ** 5 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * ds_0 - 12 * v_T * (T - 2))) / (2 * T ** 5)
+    def distance_profile_function(a_0: float, v_0: float, v_T: float, ds_0: float, T: float, T_m: float):
+        return lambda t: (-T**5*t*(a_0*t + 2*v_0) + 2*T**5*(ds_0 + t*v_T) + T**2*t**3*(3*T**2*a_0 + 4*T*(3*v_0 + 2*v_T)
+                            - 20*ds_0 - 20*v_T*(T - T_m)) - T*t**4*(3*T**2*a_0 + 2*T*(8*v_0 + 7*v_T) - 30*ds_0
+                            - 30*v_T*(T - T_m)) + t**5*(T**2*a_0 + 6*T*(v_0 + v_T) - 12*ds_0 - 12*v_T*(T - T_m)))/(2*T**5)
 
     @staticmethod
-    def velocity_profile_function(a_0: float, v_0: float, v_T: float, ds_0: float, T: float):
-        return lambda t: (2 * T ** 5 * (a_0 * t + v_0) + 3 * T ** 2 * t ** 2 * (
-            -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * ds_0 + 20 * v_T * (T - 2)) +
-                          4 * T * t ** 3 * (
-                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds_0 - 30 * v_T * (T - 2)) +
-                          5 * t ** 4 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * ds_0 + 12 * v_T * (T - 2))) / (
-                             2 * T ** 5)
+    def distance_from_target_derivative_roots(a_0: float, v_0: float, v_T: float, ds_0: float, T: float, T_m: float):
+        coefs = np.array([5*(T**2*a_0 + 6*T*(v_0 + v_T) - 12*ds_0 - 12*v_T*(T - T_m)),
+                 -4*T*(3*T**2*a_0 + 2*T*(8*v_0 + 7*v_T)-30*ds_0-30*v_T*(T - T_m)),
+                 +3*T**2*(3*T**2*a_0+4*T*(3 * v_0 + 2 * v_T)-20*ds_0-20*v_T*(T - T_m)),
+                 -2*T**5*a_0,
+                 2*T**5*(v_T-v_0)])
+        return np.roots(np.transpose(coefs)[0])
 
     @staticmethod
-    def acceleration_profile_function(a_0: float, v_0: float, v_T: float, ds_0: float, T: float):
-        return lambda t: (T ** 5 * a_0 - 3 * T ** 2 * t * (
-            3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * ds_0 - 20 * v_T * (T - 2)) +
-                          6 * T * t ** 2 * (
-                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds_0 - 30 * v_T * (T - 2)) +
-                          10 * t ** 3 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * ds_0 + 12 * v_T * (T - 2))) / T ** 5
+    def velocity_profile_function(a_0: float, v_0: float, v_T: float, ds_0: float, T: float, T_m: float):
+        return lambda t: (2*T**5*(a_0*t + v_0) + 3*T**2*t**2*(-3*T**2*a_0 - 4*T*(3*v_0 + 2*v_T) + 20*ds_0 +
+                        20*v_T*(T - T_m)) + 4*T*t**3*(3*T**2*a_0 + 2*T*(8*v_0 + 7*v_T) - 30*ds_0 - 30*v_T*(T - T_m))
+                          + 5*t**4*(-T**2*a_0 - 6*T*(v_0 + v_T) + 12*ds_0 + 12*v_T*(T - T_m)))/(2*T**5)
+
+    @staticmethod
+    def acceleration_profile_function(a_0: float, v_0: float, v_T: float, ds_0: float, T: float, T_m: float):
+        return lambda t: (T**5*a_0 - 3*T**2*t*(3*T**2*a_0 + 4*T*(3*v_0 + 2*v_T) - 20*ds_0 - 20*v_T*(T - T_m))
+                    + 6*T*t**2*(3*T**2*a_0 + 2*T*(8*v_0 + 7*v_T) - 30*ds_0 - 30*v_T*(T - T_m))
+                          + 10*t**3*(-T**2*a_0 - 6*T*(v_0 + v_T) + 12*ds_0 + 12*v_T*(T - T_m)))/T**5
 
 
 class DynamicsCallables:
