@@ -77,12 +77,14 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # State-Action Evaluation
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
 
+        value_costs = np.array([self._approximate_value_function(state, action_recipes[i], spec)
+                                if action_specs_mask[i] else np.inf for i, spec in enumerate(action_specs)])
+
         # Q-values evaluation (action_cost + value_function(next_state))
-        #Q_values = [self._approximate_value_function(state, action_recipes[i], spec) + action_costs[i]
-        #            if action_specs_mask[i] else np.inf for i, spec in enumerate(action_specs)]
+        Q_values = np.array([value_costs[i] + action_costs[i] for i, spec in enumerate(action_specs)])
 
         valid_idx = np.where(action_specs_mask)[0]
-        selected_action_index = valid_idx[action_costs[valid_idx].argmin()]
+        selected_action_index = valid_idx[Q_values[valid_idx].argmin()]
         self.logger.debug('Selected recipe: ', action_recipes[selected_action_index].__dict__)
         selected_action_spec = action_specs[selected_action_index]
 
@@ -120,9 +122,9 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         new_ego = EgoState(ego.obj_id, ego.timestamp + int(spec.t * 1e9), cpoint[0], cpoint[1], cpoint[2], yaw,
                            ego.size, 0, spec.v, 0, 0, 0, 0)
         predicted_objects = []
-        for obj in state.dynamic_objects:
-            predicted_obj = self.predictor.predict_object_on_road(obj, np.array([ego.timestamp_in_sec + spec.t]))[0]
-            predicted_objects.append(predicted_obj)
+        # for obj in state.dynamic_objects:
+        #     predicted_obj = self.predictor.predict_object_on_road(obj, np.array([ego.timestamp_in_sec + spec.t]))[0]
+        #     predicted_objects.append(predicted_obj)
 
         new_state = State(None, predicted_objects, new_ego)
         new_behavioral_state = BehavioralGridState.create_from_state(new_state, self.logger)
