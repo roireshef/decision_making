@@ -117,13 +117,7 @@ class BehavioralGridState(BehavioralState):
         """
         grid = defaultdict(list)
 
-        # We treat the object only if its distance is smaller than the distance we
-        # would have travelled for the planning horizon in the average speed between current and target vel.
-        distance_by_mean_velocity = SemanticActionsUtils.compute_distance_by_mean_velocity(
-            current_velocity=ego_state.v_x,
-            desired_velocity=BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED  # TODO: change for road-dependant velocity
-        )
-        maximal_considered_distance = min(BEHAVIORAL_PLANNING_LOOKAHEAD_DIST, distance_by_mean_velocity)
+        maximal_considered_distance = BEHAVIORAL_PLANNING_LOOKAHEAD_DIST
 
         ego_lane = ego_state.road_localization.lane_num
 

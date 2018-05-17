@@ -72,7 +72,7 @@ LAT_JERK_COST = 1.0                         # cost of lateral jerk
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
 
 # [m/s] min & max velocity limits are additional parameters for TP
-VELOCITY_LIMITS = np.array([0.0, 20.0])
+VELOCITY_LIMITS = np.array([0.0, 34.0])
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
