@@ -3,6 +3,7 @@ from typing import Union, TypeVar
 import numpy as np
 
 from decision_making.src.global_constants import EXP_CLIP_TH
+from decision_making.src.planning.types import Limits, LIMIT_MIN, LIMIT_MAX
 
 
 class Math:
@@ -105,4 +106,38 @@ class Math:
         :param axis: the axis step
         :return: index of the closest value on the equally-spaced axis
         """
-        return int(np.round((value-axis[0])/(axis[1]-axis[0])))
+        index = np.round((value-axis[0])/(axis[1]-axis[0]))
+        return int(max(min(index, len(axis)), 0))
+
+    @staticmethod
+    def roots(p):
+        """
+        Return the roots of a polynomials with coefficients given in the rows of p.
+        The values in each row of the matrix `p` are coefficients of a polynomial.
+        If the length of a row in `p` is n+1 then the polynomial is described by:
+            p[0] * x**n + p[1] * x**(n-1) + ... + p[n-1]*x + p[n]
+        :param p: A matrix of size (num_of_poly X (poly_degree+1)) which contains polynomial coefficients.
+        :return: A matrix containing the roots of the polynomials (a set of roots in each row corresponding
+                to the polynomial in the input matrix) [ndarray]
+
+        """
+        n = p.shape[-1]
+        A = np.zeros(p.shape[:1]+(n-1, n-1), float)
+        A[..., 1:, :-1] = np.eye(n-2)
+        A[..., 0, :] = -p[..., 1:]/p[..., None, 0]
+        return np.linalg.eigvals(A)
+
+    @staticmethod
+    def find_real_roots_in_limits(coef_matrix: np.ndarray, value_limits: Limits):
+        """
+        Given a matrix of polynomials coefficients, returns their Real roots within boundaries.
+        :param coef_matrix: 2D numpy array [NxK] full with coefficients of N polynomials of degree (K-1)
+        :param value_limits: Boundaries for desired roots to look for.
+        :return: 2D numpy array [Nx(K-1)]
+        """
+        roots = Math.roots(coef_matrix)
+        real_roots = np.real(roots)
+        is_real = np.isclose(np.imag(roots), 0.0)
+        is_in_limits = np.logical_and(real_roots >= value_limits[LIMIT_MIN], real_roots <= value_limits[LIMIT_MAX])
+        real_roots[~np.logical_and(is_real,  is_in_limits)] = np.nan
+        return real_roots

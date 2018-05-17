@@ -62,8 +62,8 @@ class ActionSpec:
         The trajectory specifications are defined by the target ego state
         :param t: time [sec]
         :param v: velocity [m/s]
-        :param s: relative longitudinal distance to ego in Frenet frame [m]
-        :param d: relative lateral distance to ego in Frenet frame [m]
+        :param s: global longitudinal position in Frenet frame [m]
+        :param d: global lateral position in Frenet frame [m]
         """
         self.t = t
         self.v = v

@@ -77,12 +77,12 @@ RIGHT_LANE_COST_WEIGHT = 0.005              # cost of using non-right lane on on
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
 
 # [m/s] min & max velocity limits are additional parameters for TP
-VELOCITY_LIMITS = np.array([0.0, 20.0])  # TODO - get this value from the map
+VELOCITY_LIMITS = np.array([0.0, 34.0])  # TODO - get this value from the map
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
 BP_ACTION_T_LIMITS = np.array([2.0, 20.0])
-BP_ACTION_T_RES = 0.05
+BP_ACTION_T_RES = 0.0001
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([

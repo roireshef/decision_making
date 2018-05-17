@@ -1,5 +1,5 @@
-from logging import Logger
 import time
+from logging import Logger
 from typing import Optional
 
 import numpy as np
@@ -7,8 +7,9 @@ import numpy as np
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, NavigationGoal
+from decision_making.src.planning.behavioral.behavioral_grid_state import \
+    BehavioralGridState
+from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, NavigationGoal
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionRecipeEvaluator, \
     ActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
@@ -55,24 +56,23 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self.logger.debug('Number of actions originally: %d, valid: %d, filter processing time: %f',
                           self.action_space.action_space_size, np.sum(recipes_mask), time.time()-time_before_filters)
 
-        # State-Action Evaluation
-        # action_costs = self.recipe_evaluator.evaluate(behavioral_state, action_recipes, recipes_mask)
-
         # TODO: FOR DEBUG PURPOSES!
         time_before_specify = time.time()
 
         # Action specification
-        action_specs = [self.action_space.specify_goal(recipe, behavioral_state) if recipes_mask[i] else None
-                        for i, recipe in enumerate(action_recipes)]
+        action_specs = np.full(action_recipes.__len__(), None)
+        valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
+        action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, behavioral_state)
 
+        num_of_considered_static_actions = sum(isinstance(x, StaticActionRecipe) for x in valid_action_recipes)
+        num_of_considered_dynamic_actions = sum(isinstance(x, DynamicActionRecipe) for x in valid_action_recipes)
         num_of_specified_actions = sum(x is not None for x in action_specs)
-        self.logger.debug('Number of actions specified: %d, specify processing time: %f',
-                          num_of_specified_actions, time.time()-time_before_specify)
+        self.logger.debug('Number of actions specified: %d (#%dS,#%dD), specify processing time: %f',
+                          num_of_specified_actions, num_of_considered_static_actions, num_of_considered_dynamic_actions,
+                          time.time()-time_before_specify)
 
         # ActionSpec filtering
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
-
-        # print('action_specs_mask[76]=%d' % (action_specs_mask[76]))
 
         # State-Action Evaluation
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
@@ -97,12 +97,9 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self._last_action = action_recipes[selected_action_index]
         self._last_action_spec = selected_action_spec
 
-        baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(
-            behavioral_state.ego_state, selected_action_spec)
-
-        print('Chosen action: %s\nSpec: %s, dist=%.2f' % (action_recipes[selected_action_index].__dict__,
-            selected_action_spec.__dict__,
-            selected_action_spec.s - behavioral_state.ego_state.road_localization.road_lon))
+        # TODO: Fill that!
+        baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(state.ego_state,
+                                                                                      selected_action_spec)
 
         self.logger.debug("Chosen behavioral semantic action is %s, %s",
                           action_recipes[selected_action_index].__dict__, selected_action_spec.__dict__)
