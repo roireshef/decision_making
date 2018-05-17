@@ -8,6 +8,7 @@ from decision_making.src.planning.behavioral.action_space.dynamic_action_space i
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, AggressivenessLevel
+from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import ObjectSize, EgoState, State
@@ -16,6 +17,8 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import b
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
+from decision_making.src.planning.behavioral.constants import DEFAULT_DYNAMIC_RECIPE_FILTERING
+
 import numpy as np
 
 def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCellsWell(behavioral_grid_state: BehavioralGridState,
@@ -23,7 +26,7 @@ def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCel
     logger = AV_Logger.get_logger()
     predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
 
-    dynamic_action_space = DynamicActionSpace(logger, predictor)
+    dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=DEFAULT_DYNAMIC_RECIPE_FILTERING)
     actions = dynamic_action_space.specify_goals(follow_recipes_towards_front_cells, behavioral_grid_state)
 
     targets = [behavioral_grid_state.road_occupancy_grid[(recipe.relative_lane, recipe.relative_lon)][0]
@@ -56,7 +59,7 @@ def test_specifyGoal_slightlyUnsafeState_shouldSucceed():
     size = ObjectSize(4, 2, 1)
 
     predictor = RoadFollowingPredictor(logger)
-    action_space = DynamicActionSpace(logger, predictor)
+    action_space = DynamicActionSpace(logger, predictor, filtering=DEFAULT_DYNAMIC_RECIPE_FILTERING)
 
     # verify the peak acceleration does not exceed the limit by calculating the average acceleration from 0 to 50 km/h
     ego_vel = 10

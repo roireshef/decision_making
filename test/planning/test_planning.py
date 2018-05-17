@@ -9,6 +9,8 @@ from decision_making.src.planning.behavioral.behavioral_planning_facade import B
 from decision_making.src.planning.behavioral.evaluators.rule_based_action_spec_evaluator import \
     RuleBasedActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
+from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
+from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -16,6 +18,8 @@ from decision_making.src.planning.trajectory.werling_planner import WerlingPlann
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from mapping.test.model.testable_map_fixtures import map_api_mock
+
+from decision_making.src.planning.behavioral.constants import DEFAULT_DYNAMIC_RECIPE_FILTERING, DEFAULT_STATIC_RECIPE_FILTERING
 
 from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, state_module, \
     navigation_facade, state, trajectory_params, behavioral_visualization_msg, navigation_plan
@@ -68,11 +72,12 @@ def test_behavioralPlanningFacade_semanticPolicy_anyResult(pubsub: PubSub, state
     behavioral_publish_mock = MagicMock()
     predictor = RoadFollowingPredictor(predictor_logger)
     action_space = ActionSpaceContainer(bp_logger,
-                                        [StaticActionSpace(bp_logger), DynamicActionSpace(bp_logger, predictor)])
+                                        [StaticActionSpace(bp_logger, filtering=DEFAULT_STATIC_RECIPE_FILTERING),
+                                         DynamicActionSpace(bp_logger, predictor, filtering=DEFAULT_DYNAMIC_RECIPE_FILTERING)])
     planner = SingleStepBehavioralPlanner(action_space=action_space,
                                           recipe_evaluator=None,
                                           action_spec_evaluator=RuleBasedActionSpecEvaluator(bp_logger),
-                                          action_spec_validator=None,
+                                          action_spec_validator=ActionSpecFiltering(filters=[FilterIfNone()]),
                                           value_approximator=ZeroValueApproximator(bp_logger),
                                           predictor=predictor, logger=bp_logger)
 

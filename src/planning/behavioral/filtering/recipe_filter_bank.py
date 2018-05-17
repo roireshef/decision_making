@@ -1,5 +1,6 @@
 import os
 
+from decision_making.paths import Paths
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
@@ -7,12 +8,11 @@ from decision_making.src.planning.behavioral.data_objects import ActionRecipe, D
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 from decision_making.src.planning.utils.math import Math
+from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import v_0_grid, a_0_grid, s_T_grid, \
+    v_T_grid
 
-from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import v_0_grid, a_0_grid, s_T_grid, v_T_grid
-from mapping.src.service.map_service import MapService
 
 # DynamicActionRecipe Filters
-
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
     def filter(self, recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
@@ -22,23 +22,21 @@ class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
 
 class FilterBadExpectedTrajectory(RecipeFilter):
     def __init__(self, predicates_dir: str):
-        for filename in os.listdir(predicates_dir):
-            if not filename.endswith(".bin"):
-                continue
-
-            predicate_path = str(os.path.join(predicates_dir, filename))
-            wT, wJ = [float(filename.split('.bin')[0].split('_')[3]),
-                      float(filename.split('.bin')[0].split('_')[5])]
-            predicate_shape = (
-                int(v_0_grid.shape[0]), int(a_0_grid.shape[0]), int(s_T_grid.shape[0]), int(v_T_grid.shape[0]))
-
-            self.predicates[(wT, wJ)] = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
+        self.predicates = {}
+        for filename in os.listdir(Paths.get_resource_absolute_path_filename(predicates_dir)):
+            if filename.endswith(".bin"):
+                predicate_path = Paths.get_resource_absolute_path_filename('%s/%s' % (predicates_dir, filename))
+                wT, wJ = [float(filename.split('.bin')[0].split('_')[2]),
+                          float(filename.split('.bin')[0].split('_')[4])]
+                predicate_shape = (
+                    int(v_0_grid.shape[0]), int(a_0_grid.shape[0]), int(s_T_grid.shape[0]), int(v_T_grid.shape[0]))
+                self.predicates[(wT, wJ)] = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
 
     def filter(self, recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
-        if (
-                recipe.action_type == ActionType.FOLLOW_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.FRONT) \
-                or (
-                        recipe.action_type == ActionType.OVER_TAKE_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.REAR):
+        if (recipe.action_type == ActionType.FOLLOW_VEHICLE
+            and recipe.relative_lon == RelativeLongitudinalPosition.FRONT) \
+                or (recipe.action_type == ActionType.OVER_TAKE_VEHICLE
+                    and recipe.relative_lon == RelativeLongitudinalPosition.REAR):
             ego_state = behavioral_state.ego_state
             recipe_cell = (recipe.relative_lane, recipe.relative_lon)
             if recipe_cell in behavioral_state.road_occupancy_grid:

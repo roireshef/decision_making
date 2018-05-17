@@ -22,10 +22,13 @@ from decision_making.src.planning.behavioral.action_space.action_space import Ac
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
+from decision_making.src.planning.behavioral.constants import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
+    DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.evaluators.rule_based_action_spec_evaluator import \
     RuleBasedActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
-from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
+from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
+from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
@@ -34,7 +37,9 @@ from decision_making.src.planning.trajectory.werling_planner import WerlingPlann
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import OccupancyState
 from decision_making.src.state.state_module import StateModule
+from decision_making_sim.src.global_constants import MAP_FILE_NAME
 from mapping.src.service.map_service import MapService
+from mapping.src.service.map_service import MapServiceArgs, MapSourceType
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 
@@ -80,18 +85,24 @@ class DmInitialization:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
         # Init map
-        MapService.initialize()
+        MapService.initialize(MapServiceArgs(map_source_type=MapSourceType.File, map_source=MAP_FILE_NAME))
+
         predictor = RoadFollowingPredictor(logger)
-        action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger), DynamicActionSpace(logger, predictor)])
-        behavioral_planner = SingleStepBehavioralPlanner(action_space=action_space,
-                                                         recipe_evaluator=None,
-                                                         action_spec_evaluator=RuleBasedActionSpecEvaluator(logger),
-                                                         action_spec_validator=None,
-                                                         value_approximator=ZeroValueApproximator(logger),
-                                                         predictor=predictor, logger=logger)
+
+        action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
+                                                     DynamicActionSpace(logger, predictor,
+                                                                        DEFAULT_DYNAMIC_RECIPE_FILTERING)])
+
+        recipe_evaluator = None
+        action_spec_evaluator = RuleBasedActionSpecEvaluator(logger)
+        value_approximator = ZeroValueApproximator(logger)
+
+        action_spec_filtering = ActionSpecFiltering(filters=[FilterIfNone()])
+        planner = SingleStepBehavioralPlanner(action_space, recipe_evaluator, action_spec_evaluator,
+                                              action_spec_filtering, value_approximator, predictor, logger)
 
         behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger,
-                                                     behavioral_planner=behavioral_planner,
+                                                     behavioral_planner=planner,
                                                      short_time_predictor=predictor, last_trajectory=None)
         return behavioral_module
 

@@ -1,12 +1,10 @@
-from typing import List, Callable
 from abc import ABCMeta, abstractmethod
-
-from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe
+from typing import List
 
 import six
 
-from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
+from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
+from decision_making.src.planning.behavioral.data_objects import ActionSpec
 
 
 @six.add_metaclass(ABCMeta)
@@ -41,6 +39,3 @@ class ActionSpecFiltering:
     def filter_action_specs(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState) -> List[bool]:
         return [self.filter_action_spec(action_spec, behavioral_state) for action_spec in action_specs]
 
-
-# TODO: Move to BehavioralPlanner instantiation
-action_spec_filters = [FilterIfNone()]
