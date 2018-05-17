@@ -1,17 +1,14 @@
-from logging import Logger
 from typing import List, Dict
-
 import numpy as np
-import copy
+from logging import Logger
 
-from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
-from decision_making.src.prediction.action_aware_prediction.action_aware_predictor import ActionAwarePredictor
+from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State, DynamicObject
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
-class RoadActionAwarePredictor(ActionAwarePredictor):
+class RoadEgoUnawarePredictor(EgoUnawarePredictor):
     """
     Performs simple / naive prediction in road coordinates (road following prediction, constant velocity)
     and returns objects with calculated and cached road coordinates. This is in order to save coordinate conversion time
@@ -21,52 +18,15 @@ class RoadActionAwarePredictor(ActionAwarePredictor):
     def __init__(self, logger: Logger):
         super().__init__(logger=logger)
 
-    def predict_state(self, state: State, prediction_timestamps: np.ndarray, action_trajectory: SamplableTrajectory)\
-            -> (List[State]):
+    def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray) \
+            -> Dict[int, List[DynamicObject]]:
         """
-        Predicts the future states of the given state, for the specified timestamps
-        :param state: the initial state to begin prediction from
-        :param prediction_timestamps: np array of timestamps in [sec] to predict states for. In ascending order.
-        Global, not relative
-        :param action_trajectory: the ego's planned action trajectory
-        :return: a list of non markov predicted states for the requested prediction_timestamp, and a full state for the
-        terminal predicted state
-        """
-
-        # list of predicted states in future times
-        predicted_states: List[State] = list()
-
-        # A list of predicted dynamic objects in future times. init with empty lists
-        objects_in_predicted_states: List[List[DynamicObject]] = [list() for x in range(len(prediction_timestamps))]
-
-        for dynamic_object in state.dynamic_objects:
-            predicted_object_states = self._predict_object(dynamic_object=dynamic_object,
-                                                     prediction_timestamps=prediction_timestamps)
-
-            for timestamp_ind in range(len(prediction_timestamps)):
-                objects_in_predicted_states[timestamp_ind].append(predicted_object_states[timestamp_ind])
-
-        predicted_ego_states = self._predict_object(dynamic_object=state.ego_state,
-                                                    prediction_timestamps=prediction_timestamps)
-
-        for timestamp_ind in range(len(prediction_timestamps)):
-            new_state = State(occupancy_state=copy.deepcopy(state.occupancy_state),
-                              dynamic_objects=objects_in_predicted_states[timestamp_ind],
-                              ego_state=predicted_ego_states[timestamp_ind])
-            predicted_states.append(new_state)
-
-        return predicted_states
-
-    def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray,
-                        action_trajectory: SamplableTrajectory) -> Dict[int, List[DynamicObject]]:
-        """
-        Predicte the future of the specified objects, for the specified timestamps
+        Predicts the future of the specified objects, for the specified timestamps
         :param state: the initial state to begin prediction from. Though predicting a single object, the full state
         provided to enable flexibility in prediction given state knowledge
         :param object_ids: a list of ids of the specific objects to predict
-        :param prediction_timestamps: np array of timestamps in [sec] to predict the object for. In ascending order.
-        Global, not relative
-        :param action_trajectory: the ego's planned action trajectory
+        :param prediction_timestamps: np array of size 1 of timestamp in [sec] to predict the object for. In ascending
+        order. Global, not relative
         :return: a mapping between object id to the list of future dynamic objects of the matching object
         """
 

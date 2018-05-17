@@ -4,9 +4,9 @@ import pytest
 
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE
 from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_YAW, C_V
-from decision_making.src.prediction.action_aware_prediction.road_action_aware_predictor import RoadActionAwarePredictor
-from decision_making.src.prediction.action_unaware_prediction.road_action_unaware_predictor import \
-    RoadActionUnawarePredictor
+from decision_making.src.prediction.ego_aware_prediction.road_ego_aware_predictor import RoadEgoAwarePredictor
+from decision_making.src.prediction.action_unaware_prediction.road_ego_unaware_predictor import \
+    RoadEgoUnawarePredictor
 from decision_making.src.prediction.time_alignment_prediction.physical_time_alignment_predictor import \
     PhysicalTimeAlignmentPredictor
 from decision_making.src.prediction.time_alignment_prediction.time_alignment_predictor import TimeAlignmentPredictor
@@ -26,15 +26,15 @@ def physical_time_alignment_predictor() -> TimeAlignmentPredictor:
 
 
 @pytest.fixture(scope='function')
-def road_action_unaware_predictor() -> RoadActionUnawarePredictor:
+def road_action_unaware_predictor() -> RoadEgoUnawarePredictor:
     logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
-    yield RoadActionUnawarePredictor(logger)
+    yield RoadEgoUnawarePredictor(logger)
 
 
 @pytest.fixture(scope='function')
-def road_action_aware_predictor() -> RoadActionAwarePredictor:
+def road_action_aware_predictor() -> RoadEgoAwarePredictor:
     logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
-    yield RoadActionAwarePredictor(logger)
+    yield RoadEgoAwarePredictor(logger)
 
 
 @pytest.fixture(scope='function')

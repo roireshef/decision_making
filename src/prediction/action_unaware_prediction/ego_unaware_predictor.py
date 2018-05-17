@@ -6,7 +6,7 @@ from logging import Logger
 from decision_making.src.state.state import State, DynamicObject
 
 
-class ActionUnawarePredictor(metaclass=ABCMeta):
+class EgoUnawarePredictor(metaclass=ABCMeta):
     """
     Base class for simple / naive prediction of states
     """
