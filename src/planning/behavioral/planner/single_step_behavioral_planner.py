@@ -1,4 +1,5 @@
 import time
+from copy import deepcopy
 from logging import Logger
 from typing import Optional
 
@@ -41,34 +42,35 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         action_recipes = self.action_space.recipes
         # create road semantic grid from the raw State object
         # behavioral_state contains road_occupancy_grid and ego_state
+        st = time.time()
+
         behavioral_state = BehavioralGridState.create_from_state(state=state, logger=self.logger)
 
-        # TODO: this should evaluate the terminal states!
-        #current_state_value = self.value_approximator.evaluate_state(behavioral_state)
-
         # TODO: FOR DEBUG PURPOSES!
-        time_before_filters = time.time()
+        post_grid_creation_time = time.time()
+        self.logger.debug('creation of behavioral state took %f seconds', post_grid_creation_time - st)
 
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
 
-        self.logger.debug('Number of actions originally: %d, valid: %d, filter processing time: %f',
-                          self.action_space.action_space_size, np.sum(recipes_mask), time.time()-time_before_filters)
-
         # TODO: FOR DEBUG PURPOSES!
-        time_before_specify = time.time()
+        post_recipe_filters_time = time.time()
+        self.logger.debug('Number of actions originally: %d, valid: %d, filter processing time: %f',
+                          self.action_space.action_space_size, np.sum(recipes_mask),
+                          post_recipe_filters_time-post_grid_creation_time)
 
         # Action specification
         action_specs = np.full(action_recipes.__len__(), None)
         valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
         action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, behavioral_state)
 
+        # TODO: FOR DEBUG PURPOSES!
         num_of_considered_static_actions = sum(isinstance(x, StaticActionRecipe) for x in valid_action_recipes)
         num_of_considered_dynamic_actions = sum(isinstance(x, DynamicActionRecipe) for x in valid_action_recipes)
         num_of_specified_actions = sum(x is not None for x in action_specs)
         self.logger.debug('Number of actions specified: %d (#%dS,#%dD), specify processing time: %f',
                           num_of_specified_actions, num_of_considered_static_actions, num_of_considered_dynamic_actions,
-                          time.time()-time_before_specify)
+                          time.time()-post_recipe_filters_time)
 
         # ActionSpec filtering
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
@@ -76,8 +78,28 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # State-Action Evaluation
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
 
+        # TODO: validate time units (all in seconds? global?)
+        # generate the simulated terminal states for all actions using predictor
+        action_horizons = np.array([action_spec.t if action_specs_mask[i] else np.nan for i, action_spec in enumerate(action_specs)])
+        terminal_states = np.full(shape=action_horizons.shape, fill_value=None)
+
+        # TODO: fix bug in predictor
+        terminal_states[action_specs_mask] = self.predictor.predict_state(
+            state, action_horizons[action_specs_mask] + state.ego_state.timestamp_in_sec)
+
+        # transform terminal states into behavioral states
+        terminal_behavioral_states = [BehavioralGridState.create_from_state(state=terminal_state, logger=self.logger) if action_specs_mask[i] else None
+                                     for i, terminal_state in enumerate(terminal_states)]
+
+        # approximate cost-to-go per terminal state
+        terminal_states_values = np.array([self.value_approximator.approximate(state) if action_specs_mask[i] else np.nan
+                                           for i, state in enumerate(terminal_behavioral_states)])
+
+        # compute "approximated Q-value" (action cost +  cost-to-go) for all actions
+        action_q_cost = action_costs + terminal_states_values
+
         valid_idxs = np.where(action_specs_mask)[0]
-        selected_action_index = valid_idxs[action_costs[valid_idxs].argmin()]
+        selected_action_index = valid_idxs[action_q_cost[valid_idxs].argmin()]
         selected_action_spec = action_specs[selected_action_index]
 
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(behavioral_state=behavioral_state,
@@ -89,7 +111,6 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self._last_action = action_recipes[selected_action_index]
         self._last_action_spec = selected_action_spec
 
-        # TODO: Fill that!
         baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(state.ego_state,
                                                                                       selected_action_spec)
 
