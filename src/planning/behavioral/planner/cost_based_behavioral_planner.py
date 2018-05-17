@@ -9,7 +9,8 @@ from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATI
     SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, \
     DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, \
     OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, \
-    DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST, LAT_JERK_COST, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS
+    DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST, LAT_JERK_COST, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
+    SAFE_DIST_TIME_DELAY
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
@@ -23,7 +24,8 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
 from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.trajectory.lambda_werling_planner import SamplableBehavioralWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import FS_DA, FS_DV, FS_SA, FS_SV, FS_SX
+from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
+from decision_making.src.planning.types import FS_DA, FS_DV, FS_SA, FS_SV, FS_SX, FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import DynamicsCallables, QuarticPoly1D, QuinticPoly1D
@@ -130,35 +132,30 @@ class CostBasedBehavioralPlanner:
         return trajectory_parameters
 
     @staticmethod
-    def generate_baseline_trajectory(ego: EgoState, planning_time: float, action_recipe: ActionRecipe, action_spec: ActionSpec ):
+    def generate_baseline_trajectory(ego: EgoState, action_spec: ActionSpec):
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
-
         road_frenet = MapUtils.get_road_rhs_frenet(ego)
 
-        fstate = road_frenet.cstate_to_fstate(np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature]))
-        d_x = QuinticPoly1D.distance_profile_function(fstate[FS_DA], fstate[FS_DV], 0, action_spec.d, planning_time)
-        d_v = QuinticPoly1D.velocity_profile_function(fstate[FS_DA], fstate[FS_DV], 0, action_spec.d, planning_time)
-        d_a = QuinticPoly1D.acceleration_profile_function(fstate[FS_DA], fstate[FS_DV], 0, action_spec.d, planning_time)
-        d_dynamics_functions = DynamicsCallables(d_x, d_v, d_a)
+        # project ego vehicle onto the road
+        ego_init_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
 
-        if action_recipe.action_type == ActionType.FOLLOW_LANE:
-            s_x = QuarticPoly1D.distance_profile_function(fstate[FS_SA], fstate[FS_SV], action_spec.v, planning_time)
-            s_v = QuarticPoly1D.velocity_profile_function(fstate[FS_SA], fstate[FS_SV], action_spec.v, planning_time)
-            s_a = QuarticPoly1D.acceleration_profile_function(fstate[FS_SA], fstate[FS_SV], action_spec.v, planning_time)
-        else:
-            s_x = QuinticPoly1D.distance_profile_function(fstate[FS_SA], fstate[FS_SV], action_spec.v, action_spec.s, planning_time)
-            s_v = QuinticPoly1D.velocity_profile_function(fstate[FS_SA], fstate[FS_SV], action_spec.v, action_spec.s, planning_time)
-            s_a = QuinticPoly1D.acceleration_profile_function(fstate[FS_SA], fstate[FS_SV], action_spec.v, action_spec.s, planning_time)
+        target_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
 
-        s_dynamics_functions = DynamicsCallables(s_x, s_v, s_a)
+        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_matrix(action_spec.t))
 
-        return SamplableBehavioralWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
-                                                    T_s=planning_time,
-                                                    T_d=planning_time,
-                                                    frenet_frame=road_frenet,
-                                                    s_dynamic_functions=s_dynamics_functions,
-                                                    d_dynamic_functions=d_dynamics_functions)
+        constraints_s = np.concatenate((ego_init_fstate[FS_SX:(FS_SA + 1)], target_fstate[FS_SX:(FS_SA + 1)]))
+        constraints_d = np.concatenate((ego_init_fstate[FS_DX:(FS_DA + 1)], target_fstate[FS_DX:(FS_DA + 1)]))
+
+        poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
+        poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
+
+        return SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
+                                          T_s=action_spec.t,
+                                          T_d=action_spec.t,
+                                          frenet_frame=road_frenet,
+                                          poly_s_coefs=poly_coefs_s,
+                                          poly_d_coefs=poly_coefs_d)
 
     @staticmethod
     def _generate_cost_params(road_id: int, ego_size: ObjectSize, reference_route_latitude: float) -> \

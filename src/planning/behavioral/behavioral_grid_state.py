@@ -82,8 +82,7 @@ class BehavioralGridState(BehavioralState):
         # TODO: Fix after demo and calculate longitudinal difference properly in the general case
         navigation_plan = MapService.get_instance().get_road_based_navigation_plan(current_road_id=road_id)
 
-        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
-        road_frenet = FrenetSerret2DFrame(road_points)
+        road_frenet = MapService.get_instance()._rhs_roads_frenet[road_id]
         lanes_num = MapService.get_instance().get_road(road_id).lanes_num
 
         # Dict[SemanticGridCell, List[ObjectRelativeToEgo]]
