@@ -3,6 +3,7 @@ from typing import Union, TypeVar
 import numpy as np
 
 from decision_making.src.global_constants import EXP_CLIP_TH
+from decision_making.src.planning.types import Limits, LIMIT_MIN, LIMIT_MAX
 
 
 class Math:
@@ -125,3 +126,18 @@ class Math:
         A[..., 1:, :-1] = np.eye(n-2)
         A[..., 0, :] = -p[..., 1:]/p[..., None, 0]
         return np.linalg.eigvals(A)
+
+    @staticmethod
+    def find_real_roots_in_limits(coef_matrix: np.ndarray, value_limits: Limits):
+        """
+        Given a matrix of polynomials coefficients, returns their Real roots within boundaries.
+        :param coef_matrix: 2D numpy array [NxK] full with coefficients of N polynomials of degree (K-1)
+        :param value_limits: Boundaries for desired roots to look for.
+        :return: 2D numpy array [Nx(K-1)]
+        """
+        roots = Math.roots(coef_matrix)
+        real_roots = np.real(roots)
+        is_real = np.isclose(np.imag(roots), 0.0)
+        is_in_limits = np.logical_and(real_roots >= value_limits[LIMIT_MIN], real_roots <= value_limits[LIMIT_MAX])
+        real_roots[~np.logical_and(is_real,  is_in_limits)] = np.nan
+        return real_roots

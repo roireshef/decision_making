@@ -9,13 +9,14 @@ from decision_making.src.global_constants import LON_ACC_LIMITS, BP_JERK_S_JERK_
     BP_ACTION_T_LIMITS, EPS
 from decision_making.src.planning.behavioral.data_objects import ActionType
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
+from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
 
 def create_quintic_motion_funcs(a_0, v_0, v_T, s_T, T, T_m):
 
     return QuinticPoly1D.distance_profile_function(a_0, v_0, v_T, s_T, T, T_m), \
-           QuinticPoly1D.distance_from_target_derivative_roots(a_0, v_0, v_T, s_T, T, T_m), \
+           QuinticPoly1D.distance_from_target_derivative_coefs(a_0, v_0, v_T, s_T, T, T_m), \
            QuinticPoly1D.velocity_profile_function(a_0, v_0, v_T, s_T, T, T_m),\
            QuinticPoly1D.acceleration_profile_function(a_0, v_0, v_T, s_T, T, T_m)
 
@@ -94,23 +95,19 @@ if __name__ == "__main__":
                 for m, a_0 in enumerate(a_0_grid):
                     for i, s_T in enumerate(s_T_grid):
                         for j, v_T in enumerate(v_T_grid):
-                            extremum_cost = QuinticPoly1D.time_cost_function_derivative_roots(np.array([w_T]), np.array([w_J]),
+                            time_cost_poly_coefs = QuinticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
                                         np.array([a_0]), np.array([v_0]), np.array([v_T]), np.array([s_T]), np.array([T_m]))[0]
-                            cost_roots_reals = np.array(np.real(extremum_cost))
-                            is_real_root = np.isreal(extremum_cost) * (cost_roots_reals >= BP_ACTION_T_LIMITS[0]) * (cost_roots_reals <= BP_ACTION_T_LIMITS[1])
-                            cost_roots_reals[~is_real_root] = -np.inf
-                            cost_roots_reals[np.isneginf(cost_roots_reals)] = np.nan
+                            cost_roots_reals = Math.find_real_roots_in_limits(time_cost_poly_coefs, np.array([BP_ACTION_T_LIMITS[0], BP_ACTION_T_LIMITS[1]]))
                             extremum_T = cost_roots_reals[np.isfinite(cost_roots_reals)]
                             if len(extremum_T) == 0:
                                 predicate[k, m, i, j] = False
                                 continue
                             T = extremum_T.min()  # First extrema is our local (and sometimes global) minimum
 
-                            delta_s_t_func, extremum_s, v_t_func, a_t_func = create_quintic_motion_funcs(a_0, v_0, v_T, s_T, T, T_m=T_m)
-                            roots_s_reals = np.array(np.real(extremum_s))
-                            is_real_s = np.isreal(extremum_s) * (roots_s_reals >= BP_ACTION_T_LIMITS[0]) * (roots_s_reals <= BP_ACTION_T_LIMITS[1])
-                            roots_s_reals[~is_real_s] = -np.inf
-                            roots_s_reals[np.isneginf(roots_s_reals)] = np.nan
+                            delta_s_t_func, coefs_s_der, v_t_func, a_t_func = create_quintic_motion_funcs(a_0, v_0, v_T, s_T, T, T_m=T_m)
+
+                            roots_s_reals = Math.find_real_roots_in_limits(coefs_s_der, np.array([BP_ACTION_T_LIMITS[0], BP_ACTION_T_LIMITS[1]]))
+
                             t = np.arange(0, T, 0.01)
                             extremum_delta_s_val = delta_s_t_func(roots_s_reals[np.isfinite(roots_s_reals)])
                             min_v, max_v = min(v_t_func(t)), max(v_t_func(t))

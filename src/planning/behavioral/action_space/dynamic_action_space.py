@@ -15,6 +15,7 @@ from decision_making.src.planning.behavioral.filtering import recipe_filter_bank
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import LIMIT_MAX, FS_SV, FS_SX, LIMIT_MIN, FS_SA, FS_DA, FS_DV, FS_DX
 from decision_making.src.planning.utils.map_utils import MapUtils
+from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.predictor import Predictor
 from mapping.src.service.map_service import MapService
@@ -68,25 +69,23 @@ class DynamicActionSpace(ActionSpace):
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
-            w_T=weights[:, 2], w_J=weights[:, 1],ds=init_latitudinal_difference,
-            a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV], v_T=0)
-        roots_d = ActionSpace.find_real_roots(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
+            w_T=weights[:, 2], w_J=weights[:, 1], ds=init_latitudinal_difference,
+            a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV], v_T=0, T_m=SAFE_DIST_TIME_DELAY)
+        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         T_d = np.fmin.reduce(roots_d, axis=-1)
 
         # longitudinal difference between object and ego at t=0 (positive if obj in front of ego)
         init_longitudinal_difference = target_fstate[:, FS_SX] - ego_init_fstate[FS_SX]
         # margin_sign is -1 for FOLLOW_VEHICLE (behind target) and +1 for OVER_TAKE_VEHICLE (in front of target)
-        margin_sign = np.array([action_recipe.action_type.value*2-5
-                                for action_recipe in action_recipes])
+        margin_sign = np.array([action_recipe.action_type.value*2-5 for action_recipe in action_recipes])
 
-        ds = init_longitudinal_difference + margin_sign * (v_T * SAFE_DIST_TIME_DELAY +
-            LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + ego.size.length/2 + target_length/2)
+        ds = init_longitudinal_difference + margin_sign*(LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + ego.size.length/2 + target_length/2)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], ds=ds,
-            a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV], v_T=v_T)
-        roots_s = ActionSpace.find_real_roots(cost_coeffs_s, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
+            a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV], v_T=v_T, T_m=SAFE_DIST_TIME_DELAY)
+        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         T_s = np.fmin.reduce(roots_s, axis=-1)
 
         # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
@@ -99,7 +98,7 @@ class DynamicActionSpace(ActionSpace):
 
         # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution
         distance_s = QuinticPoly1D.distance_profile_function(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
-                                                             v_T=v_T, T=T, dx=ds)(T)
+                                                             v_T=v_T, T=T, ds=ds, T_m=SAFE_DIST_TIME_DELAY)(T)
         target_s = distance_s + ego_init_fstate[FS_SX]
 
         action_specs = [ActionSpec(t, v_T[i], target_s[i], desired_center_lane_latitude[i])

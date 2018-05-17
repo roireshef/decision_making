@@ -58,7 +58,8 @@ def filter_actions_towards_non_occupied_cells(recipe: DynamicActionRecipe,
 
 def filter_bad_expected_trajectory(recipe: DynamicActionRecipe,
                                    behavioral_state: BehavioralGridState) -> bool:
-    if recipe.action_type == ActionType.FOLLOW_VEHICLE:
+    if (recipe.action_type == ActionType.FOLLOW_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.FRONT) \
+            or (recipe.action_type == ActionType.OVER_TAKE_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.REAR):
         ego_state = behavioral_state.ego_state
         recipe_cell = (recipe.relative_lane, recipe.relative_lon)
         if recipe_cell in behavioral_state.road_occupancy_grid:
@@ -70,15 +71,22 @@ def filter_bad_expected_trajectory(recipe: DynamicActionRecipe,
             s_T = relative_dynamic_object.distance
             v_T = dynamic_object.v_x
             wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
-            predicate = predicates[(wT, wJ)]
-            return predicate[Math.ind_on_uniform_axis(v_0, v_0_grid),
-                               Math.ind_on_uniform_axis(a_0, a_0_grid),
-                               Math.ind_on_uniform_axis(s_T, s_T_grid),
-                               Math.ind_on_uniform_axis(v_T, v_T_grid)] > 0
+            if recipe.action_type == ActionType.FOLLOW_VEHICLE:
+                predicate = predicates[(wT, wJ)]
+                return predicate[Math.ind_on_uniform_axis(v_0, v_0_grid),
+                                 Math.ind_on_uniform_axis(a_0, a_0_grid),
+                                 Math.ind_on_uniform_axis(s_T, s_T_grid),
+                                 Math.ind_on_uniform_axis(v_T, v_T_grid)] > 0
+            else:  # OVER_TAKE_VEHICLE
+                predicate = predicates[(wT, wJ)]
+                return predicate[Math.ind_on_uniform_axis(v_0, v_0_grid),
+                                 Math.ind_on_uniform_axis(a_0, a_0_grid),
+                                 Math.ind_on_uniform_axis(s_T, s_T_grid),
+                                 Math.ind_on_uniform_axis(v_T, v_T_grid)] > 0
         else:
             return False
     else:
-        return True
+        return False
 
 
 def filter_actions_toward_back_cells(recipe: DynamicActionRecipe,
