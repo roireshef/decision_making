@@ -15,9 +15,11 @@ from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DES
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, BP_MAX_VELOCITY_TOLERANCE
 from decision_making.src.planning.behavioral.evaluators.heuristic_action_spec_evaluator import \
     HeuristicActionSpecEvaluator
+from decision_making.src.planning.behavioral.evaluators.naive_value_approximator import NaiveValueApproximator
 from decision_making.src.planning.behavioral.filtering import action_spec_filter_bank
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering, \
     ActionSpecFilter
+from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import approximate_value_function
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import DynamicObject, ObjectSize, EgoState, State
 from mapping.src.service.map_service import MapService
@@ -43,6 +45,73 @@ def calc_collision_time(v_init: float, v_max: float, acc: float, v_tar: float, d
         return dist / v_init_rel
 
 
+def test_evaluate():
+    logger = Logger("test_BP_costs")
+    road_id = 20
+    des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    ego_lon = 400.
+    lane_width = MapService.get_instance().get_road(road_id).lane_width
+    road_mid_lat = MapService.get_instance().get_road(road_id).lanes_num * lane_width / 2
+    size = ObjectSize(4, 2, 1)
+
+    predictor = RoadFollowingPredictor(logger)
+    action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger), DynamicActionSpace(logger, predictor)])
+    spec_evaluator = HeuristicActionSpecEvaluator(logger)
+    action_spec_validator = ActionSpecFiltering(action_spec_filter_bank.action_spec_filters)
+    value_approximator = NaiveValueApproximator(logger)
+
+    ego_vel = 10
+    dist_from_F_in_sec = 3
+    F_vel = 10
+    dist_from_LB_in_sec = 3
+    LB_vel = 10
+
+    ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(
+        road_id, ego_lon, road_mid_lat - lane_width)
+    ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, ego_vel, 0, 0, 0, 0)
+
+    F_lon = ego_lon + dist_from_F_in_sec * (ego_vel + des_vel) / 2
+    F_cpoint, F_yaw = MapService.get_instance().convert_road_to_global_coordinates(
+        road_id, F_lon, road_mid_lat - lane_width)
+    F = DynamicObject(1, 0, F_cpoint[0], F_cpoint[1], F_cpoint[2], F_yaw, size, 0, F_vel, 0, 0, 0)
+
+    LB_lon = ego_lon - (LB_vel - ego_vel) * 4 - LB_vel * dist_from_LB_in_sec
+    LB_cpoint, LB_yaw = MapService.get_instance().convert_road_to_global_coordinates(
+        road_id, LB_lon, road_mid_lat)
+    LB = DynamicObject(2, 0, LB_cpoint[0], LB_cpoint[1], LB_cpoint[2], LB_yaw, size, 0, LB_vel, 0, 0, 0)
+
+    LF_cpoint, LF_yaw = MapService.get_instance().convert_road_to_global_coordinates(
+        road_id, F_lon, road_mid_lat)
+    LF = DynamicObject(2, 0, LF_cpoint[0], LF_cpoint[1], LF_cpoint[2], LF_yaw, size, 0, des_vel, 0, 0, 0)
+    objects = [F, LF, LB]
+    state = State(None, objects, ego)
+    behavioral_state = BehavioralGridState.create_from_state(state, logger)
+
+    action_recipes = action_space.recipes
+    recipes_mask = action_space.filter_recipes(action_recipes, behavioral_state)
+
+    # Action specification
+    action_specs = np.full(action_recipes.__len__(), None)
+    valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
+    action_specs[recipes_mask] = action_space.specify_goals(valid_action_recipes, behavioral_state)
+
+    action_specs_mask = action_spec_validator.filter_action_specs(action_specs, behavioral_state)
+
+    # State-Action Evaluation
+    action_costs = spec_evaluator.evaluate(behavioral_state, action_recipes, list(action_specs), action_specs_mask)
+
+    next_state_values = np.array([approximate_value_function(state, action_recipes[i], spec, value_approximator)
+                                  if action_specs_mask[i] else np.inf for i, spec in enumerate(action_specs)])
+
+    # Q-values evaluation (action_cost + value_function(next_state))
+    Q_values = np.array([action_costs[i] + next_state_values[i] for i, spec in enumerate(action_specs)])
+
+    valid_idx = np.where(action_specs_mask)[0]
+    selected_action_index = valid_idx[Q_values[valid_idx].argmin()]
+    logger.debug('Selected recipe: ', action_recipes[selected_action_index].__dict__)
+    selected_action_spec = action_specs[selected_action_index]
+
+
 def test_behavioralScenarios_moveToLeft_differentDistFrom_F_and_initVel():
     """
     Test lane change to the left if the velocity of the car F is des_vel-2.
@@ -58,7 +127,11 @@ def test_behavioralScenarios_moveToLeft_differentDistFrom_F_and_initVel():
     road_mid_lat = MapService.get_instance().get_road(road_id).lanes_num * lane_width / 2
     size = ObjectSize(4, 2, 1)
 
-    evaluator = HeuristicActionRecipeEvaluator(logger)
+    evaluator = HeuristicActionSpecEvaluator(logger)
+    predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
+
+    static_action_space = StaticActionSpace(logger)
+    dynamic_action_space = DynamicActionSpace(logger, predictor)
 
     for ego_vel in np.arange(des_vel - des_vel/4., des_vel + des_vel/4.+0.1, des_vel/7.):
         #for F_vel in [des_vel - des_vel/5., des_vel - des_vel/7., des_vel - des_vel/14., des_vel, des_vel + des_vel/7.]:
@@ -92,6 +165,16 @@ def test_behavioralScenarios_moveToLeft_differentDistFrom_F_and_initVel():
                                 objects.append(LF)
                             print('F_vel=%.2f dist_from_F=%.2f  LB_vel=%.2f dist_from_LB=%.2fs %.2fm' %
                                   (F_vel, dist_from_F_in_sec, LB_vel, dist_from_LB_in_sec, ego_lon-LB_lon))
+
+                            state = State(None, [], ego)
+                            behavioral_state = BehavioralGridState.create_from_state(state, logger)
+
+                            action_specs = [action_space.specify_goal(recipe, behavioral_state) for i, recipe in
+                                            enumerate(action_space.recipes)]
+
+                            specs = [action_specs[i] for i, recipe in enumerate(action_space.recipes)
+                                     if recipe.relative_lane == RelativeLane.SAME_LANE and recipe.aggressiveness == AggressivenessLevel.CALM
+                                     and recipe.velocity == target_vel]
 
                             state = State(None, objects, ego)
                             behavioral_state = BehavioralGridState.create_from_state(state, logger)

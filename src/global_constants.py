@@ -3,7 +3,6 @@ import numpy as np
 from decision_making.src.messages.str_serializable import StrSerializable
 
 # General constants
-from decision_making.src.planning.types import LIMIT_MAX
 
 UNKNOWN_DEFAULT_VAL = 0.0
 EPS = np.finfo(np.float32).eps
@@ -92,7 +91,7 @@ BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
-LON_ACC_LIMITS = np.array([-8.0, 3.0])  # taken from SuperCruise presentation
+LON_ACC_LIMITS = np.array([-4.0, 3.0])  # taken from SuperCruise presentation
 
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-4.0, 4.0])
@@ -118,7 +117,7 @@ LAT_ACC_TO_JERK_FACTOR = 0.2
 CHANGE_LAT_VEL_WEIGHT = 50.
 
 # [sec] performance metrics for BP minimal plan time
-BP_METRICS_TIME_HORIZON = BP_ACTION_T_LIMITS[LIMIT_MAX]
+BP_METRICS_TIME_HORIZON = BP_ACTION_T_LIMITS[1]
 
 BP_EFFICIENCY_COST_WEIGHT = 5.
 
