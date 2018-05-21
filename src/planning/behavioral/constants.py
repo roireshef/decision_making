@@ -8,7 +8,8 @@ MIN_VELOCITY = 20 / 3.6
 MAX_VELOCITY = 100 / 3.6
 VELOCITY_STEP = 10 / 3.6
 
-DEFAULT_STATIC_RECIPE_FILTERING = RecipeFiltering(filters=[FilterIfNone(), FilterIfNoLane()])
+DEFAULT_STATIC_RECIPE_FILTERING = RecipeFiltering(filters=[FilterIfNone(), FilterIfNoLane(),
+                                                           FilterBadExpectedTrajectory('predicates')])
 DEFAULT_DYNAMIC_RECIPE_FILTERING = RecipeFiltering(filters=[FilterIfNone(), FilterActionsTowardsNonOccupiedCells(),
                                                             FilterActionsTowardBackAndParallelCells(),
                                                             FilterOvertakeActions(), FilterNonCalmActions(),
