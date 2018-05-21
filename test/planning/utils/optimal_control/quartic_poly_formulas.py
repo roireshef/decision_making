@@ -4,6 +4,7 @@ import numpy as np
 from decision_making.paths import Paths
 from decision_making.src.global_constants import LON_ACC_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS, \
     BP_ACTION_T_LIMITS, EPS
+from decision_making.src.planning.behavioral.constants import v_0_grid, a_0_grid, v_T_grid
 from decision_making.src.planning.behavioral.data_objects import ActionType
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 from decision_making.src.planning.utils.math import Math
@@ -18,9 +19,6 @@ def create_quartic_motion_funcs(a_0, v_0, v_T, T):
 
 action_type = ActionType.FOLLOW_LANE
 
-a_0_grid = np.arange(LON_ACC_LIMITS[0], LON_ACC_LIMITS[1]+EPS, 0.5)
-v_0_grid = np.arange(VELOCITY_LIMITS[0], VELOCITY_LIMITS[1]+EPS, 0.5)
-v_T_grid = np.arange(VELOCITY_LIMITS[0], VELOCITY_LIMITS[1]+EPS, 0.5)
 predicate = np.full(shape=[v_0_grid.shape[0], a_0_grid.shape[0], v_T_grid.shape[0]], fill_value=False)
 
 if __name__ == "__main__":
