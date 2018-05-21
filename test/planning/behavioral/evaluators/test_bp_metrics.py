@@ -7,6 +7,8 @@ import pytest
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
+from decision_making.src.planning.behavioral.constants import DEFAULT_STATIC_RECIPE_FILTERING, \
+    DEFAULT_DYNAMIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel, \
     ActionRecipe, RelativeLane, DynamicActionRecipe, RelativeLongitudinalPosition, StaticActionRecipe
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -18,13 +20,12 @@ from decision_making.src.planning.behavioral.evaluators.heuristic_action_spec_ev
 from decision_making.src.planning.behavioral.evaluators.naive_value_approximator import NaiveValueApproximator
 from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
 from decision_making.src.planning.behavioral.filtering import action_spec_filter_bank
+from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering, \
     ActionSpecFilter
-from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import approximate_value_function
+from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, C_A, C_K
 from decision_making.src.planning.utils.map_utils import MapUtils
-from decision_making.src.planning.utils.math import Math
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import DynamicObject, ObjectSize, EgoState, State
 from mapping.src.service.map_service import MapService
@@ -145,16 +146,21 @@ def test_evaluate_rangesForEgoAndF():
     size = ObjectSize(4, 2, 1)
 
     predictor = RoadFollowingPredictor(logger)
-    action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger), DynamicActionSpace(logger, predictor)])
+    action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
+                                                 DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
     # action_space = DynamicActionSpace(logger, predictor)
     spec_evaluator = HeuristicActionSpecEvaluator(logger)
-    action_spec_validator = ActionSpecFiltering(action_spec_filter_bank.action_spec_filters)
+    action_spec_validator = ActionSpecFiltering(filters=[FilterIfNone()])
     value_approximator = NaiveValueApproximator(logger)
     road_frenet = MapUtils.get_road_rhs_frenet_by_road_id(road_id)
 
     ego_vel_range = np.arange(des_vel-9, des_vel+9.1, 3)
     F_vel_range = np.arange(des_vel-9, des_vel+6.1, 3)
     sec_to_F_range = np.array([2, 2.5, 3, 4, 6])
+
+    ego_vel_range = np.array([17])
+    F_vel_range = np.array([20])
+    sec_to_F_range = np.array([6])
 
     for ego_vel in ego_vel_range:
         for F_vel in F_vel_range:
@@ -187,16 +193,32 @@ def test_evaluate_rangesForEgoAndF():
                 costs = spec_evaluator.evaluate(behavioral_state, recipes, list(specs), specs_mask)
                 # costs = np.array([costs[i] / spec.t if specs_mask[i] else np.inf for i, spec in enumerate(specs)])
 
-                next_state_values = np.array([approximate_value_function(state, recipes[i], spec, value_approximator)
-                     if specs_mask[i] and not np.isinf(costs[i]) else np.inf for i, spec in enumerate(specs)])
-                Q_values = np.array([costs[i] + next_state_values[i] for i, spec in enumerate(specs)])
+                # next_state_values = np.array([approximate_value_function(state, recipes[i], spec, value_approximator)
+                #      if specs_mask[i] and not np.isinf(costs[i]) else np.inf for i, spec in enumerate(specs)])
+                # Q_values = np.array([costs[i] + next_state_values[i] for i, spec in enumerate(specs)])
+
+                # approximate cost-to-go per terminal state
+                terminal_behavioral_states = SingleStepBehavioralPlanner.generate_terminal_states(
+                    state, list(specs), recipes, specs_mask, logger)
+
+                # generate goals for all terminal_behavioral_states, containing all lanes at the same distance of
+                # 20 * desired_velocity from the current ego location
+                navigation_goals = SingleStepBehavioralPlanner.generate_goals(
+                    ego.road_localization.road_id, ego.road_localization.road_lon, terminal_behavioral_states)
+
+                terminal_states_values = np.array([value_approximator.evaluate_state(state, navigation_goals[i])
+                                                   if specs_mask[i] else np.nan
+                                                   for i, state in enumerate(terminal_behavioral_states)])
+
+                # compute "approximated Q-value" (action cost +  cost-to-go) for all actions
+                action_q_cost = costs + terminal_states_values
 
                 valid_idx = np.where(specs_mask)[0]
-                best_idx = valid_idx[Q_values[valid_idx].argmin()]
+                best_idx = valid_idx[action_q_cost[valid_idx].argmin()]
                 selected_lane = recipes[best_idx].relative_lane.value
 
                 print('ego_vel=%.2f F_vel=%.2f sec=%.2f dist=%.2f t_c=%.2f: cost=%.2f val=%.2f; i=%d lane=%d\n' %
-                      (ego_vel, F_vel, sec_to_F, F_lon-ego_lon, t_c, costs[best_idx], next_state_values[best_idx],
+                      (ego_vel, F_vel, sec_to_F, F_lon-ego_lon, t_c, costs[best_idx], terminal_states_values[best_idx],
                        best_idx, selected_lane))
 
                 if t_c > 12 or F_vel >= des_vel-1:

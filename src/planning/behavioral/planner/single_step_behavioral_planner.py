@@ -85,8 +85,17 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
 
         # approximate cost-to-go per terminal state
-        terminal_behavioral_states = self._generate_terminal_states(state, action_specs, action_specs_mask)
-        terminal_states_values = np.array([self.value_approximator.approximate(state) if action_specs_mask[i] else np.nan
+        terminal_behavioral_states = SingleStepBehavioralPlanner.generate_terminal_states(
+            state, action_specs, action_recipes, action_specs_mask, self.logger)
+
+        # generate goals for all terminal_behavioral_states, containing all lanes at the same distance of
+        # 20 * desired_velocity from the current ego location
+        navigation_goals = SingleStepBehavioralPlanner.generate_goals(
+            behavioral_state.ego_state.road_localization.road_id, behavioral_state.ego_state.road_localization.road_lon,
+            terminal_behavioral_states)
+
+        terminal_states_values = np.array([self.value_approximator.evaluate_state(state, navigation_goals[i])
+                                           if action_specs_mask[i] else np.nan
                                            for i, state in enumerate(terminal_behavioral_states)])
 
         # compute "approximated Q-value" (action cost +  cost-to-go) for all actions
@@ -115,7 +124,9 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         return trajectory_parameters, baseline_trajectory, visualization_message
 
-    def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray) -> List[State]:
+    @staticmethod
+    def generate_terminal_states(state: State, action_specs: List[ActionSpec], action_recipes: List[ActionRecipe],
+                                  mask: np.ndarray, logger: Logger) -> List[BehavioralGridState]:
         """
         Given current state and action specifications, generate a corresponding list of future states using the
         predictor. Uses mask over list of action specifications to avoid unnecessary computation
@@ -124,42 +135,34 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         :param mask: 1D mask vector (boolean) for filtering valid action specifications
         :return: a list of terminal states
         """
-        logger = Logger("")
         # create a new behavioral state at the action end
         ego = state.ego_state
         cur_ego_loc = ego.road_localization
         road_id = cur_ego_loc.road_id
         lane_width = MapService.get_instance().get_road(road_id).lane_width
-        num_lanes = MapService.get_instance().get_road(road_id).lanes_num
-        target_lane = cur_ego_loc.lane_num + recipe.relative_lane.value
-        cpoint, yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, spec.s,
-                                                                                   target_lane * lane_width)
-        new_ego = EgoState(ego.obj_id, ego.timestamp + int(spec.t * 1e9), cpoint[0], cpoint[1], cpoint[2], yaw,
-                           ego.size, 0, spec.v, 0, 0, 0, 0)
 
-        predicted_objects = []
-        new_state = State(None, predicted_objects, new_ego)
-        new_behavioral_state = BehavioralGridState.create_from_state(new_state, logger)
-
-        des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-        goal = NavigationGoal(road_id, ego.road_localization.road_lon + 20 * des_vel, list(range(0, num_lanes)))
-        value = value_approximator.evaluate_state(new_behavioral_state, goal)
-
-        # TODO: validate time units (all in seconds? global?)
-        # generate the simulated terminal states for all actions using predictor
-        action_horizons = np.array([action_spec.t
-                                    if mask[i] else np.nan
-                                    for i, action_spec in enumerate(action_specs)])
-
-        # TODO: replace numpy array with fast sparse-list implementation
-        terminal_states = np.full(shape=action_horizons.shape, fill_value=None)
-        terminal_states[mask] = deepcopy(state)          # TODO: fix bug in predictor
-        # self.predictor.predict_state(state, action_horizons[mask] + state.ego_state.timestamp_in_sec)
-        terminal_states = list(terminal_states)
-
-        # transform terminal states into behavioral states
-        terminal_behavioral_states = [BehavioralGridState.create_from_state(state=terminal_state, logger=self.logger)
-                                      if mask[i] else None
-                                      for i, terminal_state in enumerate(terminal_states)]
+        terminal_behavioral_states = []
+        for i, spec in enumerate(action_specs):
+            if not mask[i]:
+                terminal_behavioral_states.append(None)
+                continue
+            recipe = action_recipes[i]
+            target_lane = cur_ego_loc.lane_num + recipe.relative_lane.value
+            cpoint, yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, spec.s, target_lane * lane_width)
+            terminal_ego = EgoState(ego.obj_id, ego.timestamp + int(spec.t * 1e9), cpoint[0], cpoint[1], cpoint[2], yaw,
+                                    ego.size, 0, spec.v, 0, 0, 0, 0)
+            predicted_objects = []  # TODO: use predictor
+            terminal_state = State(None, predicted_objects, terminal_ego)
+            new_behavioral_state = BehavioralGridState.create_from_state(terminal_state, logger)
+            terminal_behavioral_states.append(new_behavioral_state)
 
         return terminal_behavioral_states
+
+    @staticmethod
+    def generate_goals(road_id: int, current_longitude: float, terminal_behavioral_states: List[BehavioralGridState]) \
+            -> List[NavigationGoal]:
+        num_lanes = MapService.get_instance().get_road(road_id).lanes_num
+        des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+        return [NavigationGoal(road_id, current_longitude + 20 * des_vel, list(range(0, num_lanes)))
+                if behavioral_states is not None else None
+                for i, behavioral_states in enumerate(terminal_behavioral_states)]
