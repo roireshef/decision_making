@@ -150,7 +150,7 @@ def test_evaluate_rangesForEgoAndF():
                                                  DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
     # action_space = DynamicActionSpace(logger, predictor)
     spec_evaluator = HeuristicActionSpecEvaluator(logger)
-    action_spec_validator = ActionSpecFiltering(filters=[FilterIfNone()])
+    action_spec_validator = ActionSpecFiltering([FilterIfNone()], logger)
     value_approximator = NaiveValueApproximator(logger)
     road_frenet = MapUtils.get_road_rhs_frenet_by_road_id(road_id)
 
