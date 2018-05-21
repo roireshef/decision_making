@@ -54,7 +54,7 @@ class UniformGrid:
         self.start = limits[LIMIT_MIN]
         self.end = limits[LIMIT_MAX]
         self.resolution = resolution
-        self.length = int((self.end-self.start + np.finfo(np.float32).eps) // resolution)
+        self.length = int((self.end-self.start + np.finfo(np.float32).eps) // resolution) + 1
 
     def __str__(self):
         return 'UniformGrid(%s to %s, resolution: %s, length: %s)' % \

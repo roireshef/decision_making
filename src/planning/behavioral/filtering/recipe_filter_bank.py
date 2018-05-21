@@ -67,7 +67,7 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                 predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
 
                 return predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
-                                 FILTER_S_T_GRID.get_index(s_T * margin_sign), FILTER_V_T_GRID.get_index(v_T)] > 0
+                                 FILTER_S_T_GRID.get_index(s_T), FILTER_V_T_GRID.get_index(v_T)] > 0
             else:
                 return False
         elif action_type == ActionType.FOLLOW_LANE:
