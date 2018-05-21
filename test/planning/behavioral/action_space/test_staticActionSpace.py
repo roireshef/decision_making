@@ -13,7 +13,8 @@ from decision_making.src.state.state import ObjectSize, EgoState, State
 from mapping.src.service.map_service import MapService
 
 
-# test Specify from very close to target velocity
+
+# test Specify, when ego starts with velocity very close to the target velocity
 def test_specifyGoal_closeToTargetVelocity_specifyNotFail():
 
     logger = Logger("test_specifyStaticAction")
