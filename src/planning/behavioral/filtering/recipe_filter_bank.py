@@ -1,14 +1,13 @@
 import os
 
 from decision_making.paths import Paths
-from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
+    FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_V_T_GRID, FILTER_S_T_GRID
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.constants import v_0_grid, a_0_grid, v_T_grid, s_T_grid
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
-from decision_making.src.planning.utils.math import Math
 
 
 # DynamicActionRecipe Filters
@@ -22,8 +21,12 @@ class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
 
 class FilterBadExpectedTrajectory(RecipeFilter):
     def __init__(self, predicates_dir: str):
-        self.predicates = {}
+        self.predicates = self.read_predicates(predicates_dir)
+
+    @staticmethod
+    def read_predicates(predicates_dir):
         directory = Paths.get_resource_absolute_path_filename(predicates_dir)
+        predicates = {}
         for filename in os.listdir(directory):
             if filename.endswith(".bin"):
                 predicate_path = Paths.get_resource_absolute_path_filename('%s/%s' % (predicates_dir, filename))
@@ -31,13 +34,13 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                 wT, wJ = [float(filename.split('.bin')[0].split('_')[4]),
                           float(filename.split('.bin')[0].split('_')[6])]
                 if action_type == 'follow_lane':
-                    predicate_shape = (
-                        int(v_0_grid.shape[0]), int(a_0_grid.shape[0]), int(v_T_grid.shape[0]))
+                    predicate_shape = (len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_V_T_GRID))
                 else:
-                    predicate_shape = (
-                        int(v_0_grid.shape[0]), int(a_0_grid.shape[0]), int(s_T_grid.shape[0]), int(v_T_grid.shape[0]))
+                    predicate_shape = (len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_S_T_GRID), len(FILTER_V_T_GRID))
                 predicate = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
-                self.predicates[(action_type, wT, wJ)] = predicate
+                predicates[(action_type, wT, wJ)] = predicate
+
+        return predicates
 
     def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
         action_type = recipe.action_type
@@ -45,6 +48,8 @@ class FilterBadExpectedTrajectory(RecipeFilter):
         v_0 = ego_state.v_x
         a_0 = ego_state.acceleration_lon
         wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
+
+        # Distance, velocity and acceleration grids for brute-force filtering purposes
         if (action_type == ActionType.FOLLOW_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.FRONT) \
                 or (
                 action_type == ActionType.OVER_TAKE_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.REAR):
@@ -61,18 +66,15 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                 wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
                 predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
 
-                return predicate[Math.ind_on_uniform_axis(v_0, v_0_grid),
-                                 Math.ind_on_uniform_axis(a_0, a_0_grid),
-                                 Math.ind_on_uniform_axis(s_T, margin_sign * s_T_grid),
-                                 Math.ind_on_uniform_axis(v_T, v_T_grid)] > 0
+                return predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
+                                 FILTER_S_T_GRID.get_index(s_T * margin_sign), FILTER_V_T_GRID.get_index(v_T)] > 0
             else:
                 return False
         elif action_type == ActionType.FOLLOW_LANE:
             v_T = recipe.velocity
             predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
-            return predicate[Math.ind_on_uniform_axis(v_0, v_0_grid),
-                             Math.ind_on_uniform_axis(a_0, a_0_grid),
-                             Math.ind_on_uniform_axis(v_T, v_T_grid)] > 0
+            return predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
+                             FILTER_V_T_GRID.get_index(v_T)] > 0
         else:
             return False
 

@@ -99,17 +99,6 @@ class Math:
         return rounded_val
 
     @staticmethod
-    def ind_on_uniform_axis(value, axis):
-        """
-        Returns index of closest value on equally-spaced axis
-        :param value: the value to be looked for on axis
-        :param axis: the axis step
-        :return: index of the closest value on the equally-spaced axis
-        """
-        index = np.round((value-axis[0])/(axis[1]-axis[0]))
-        return int(max(min(index, len(axis)), 0))
-
-    @staticmethod
     def roots(p):
         """
         Return the roots of polynomials with coefficients given in the rows of p.

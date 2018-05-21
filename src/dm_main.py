@@ -22,7 +22,7 @@ from decision_making.src.planning.behavioral.action_space.action_space import Ac
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
-from decision_making.src.planning.behavioral.constants import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
+from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.evaluators.rule_based_action_spec_evaluator import \
     RuleBasedActionSpecEvaluator

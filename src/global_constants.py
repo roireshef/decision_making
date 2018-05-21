@@ -1,9 +1,9 @@
 import numpy as np
 
 from decision_making.src.messages.str_serializable import StrSerializable
+from decision_making.src.planning.utils.numpy_utils import UniformGrid
 
 # General constants
-
 UNKNOWN_DEFAULT_VAL = 0.0
 EPS = np.finfo(np.float32).eps
 
@@ -71,8 +71,9 @@ LAT_JERK_COST = 1.0                         # cost of lateral jerk
 # [m/sec] speed to plan towards by default in BP
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
 
-# [m/s] min & max velocity limits are additional parameters for TP
-VELOCITY_LIMITS = np.array([0.0, 34.0])
+# [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
+VELOCITY_LIMITS = np.array([0.0/3.6, 100/3.6])
+VELOCITY_STEP = 10 / 3.6
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
@@ -102,6 +103,11 @@ MIN_OVERTAKE_VEL = 3.5
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
 
+# Uniform grids for BP Filters
+FILTER_A_0_GRID = UniformGrid(LON_ACC_LIMITS, 0.5)
+FILTER_V_0_GRID = UniformGrid(VELOCITY_LIMITS, 0.5)
+FILTER_V_T_GRID = UniformGrid(VELOCITY_LIMITS, 0.5)
+FILTER_S_T_GRID = UniformGrid(np.array([0, BEHAVIORAL_PLANNING_LOOKAHEAD_DIST + EPS]), 1)
 
 # Trajectory Planner #
 

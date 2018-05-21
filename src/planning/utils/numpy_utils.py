@@ -46,3 +46,32 @@ class NumpyUtils:
         :return: tensor of boolean values of the shape of <arr>
         """
         return np.logical_and(arr >= limits[LIMIT_MIN], arr <= limits[LIMIT_MAX])
+
+
+class UniformGrid:
+    """Lean version of a uniform grid (inclusive)"""
+    def __init__(self, limits: Limits, resolution: float):
+        self.start = limits[LIMIT_MIN]
+        self.end = limits[LIMIT_MAX]
+        self.resolution = resolution
+        self.length = int((self.end-self.start + np.finfo(np.float32).eps) // resolution)
+
+    def __str__(self):
+        return 'UniformGrid(%s to %s, resolution: %s, length: %s)' % \
+               (self.start, self.end, self.resolution, self.length)
+
+    def __len__(self):
+        return self.length
+
+    def __iter__(self):
+        return np.arange(self.start, self.end + np.finfo(np.float32).eps, self.resolution).__iter__()
+
+    def get_index(self, value):
+        """
+        Returns index of closest value on equally-spaced axis
+        :param value: the value to be looked for on axis
+        :return: index of the closest value on the equally-spaced axis
+        """
+        assert self.start <= value <= self.end, "value %s is outside the grid %s" % (value, str(self))
+        index = np.round((value - self.start) / self.resolution)
+        return int(max(min(index, self.length), 0))

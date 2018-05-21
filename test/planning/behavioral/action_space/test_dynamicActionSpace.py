@@ -17,7 +17,7 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import b
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
-from decision_making.src.planning.behavioral.constants import DEFAULT_DYNAMIC_RECIPE_FILTERING
+from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING
 
 import numpy as np
 

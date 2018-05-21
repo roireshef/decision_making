@@ -1,23 +1,17 @@
 from logging import Logger
-import numpy as np
-import pytest
 
-from decision_making.src.global_constants import LON_ACC_LIMITS, BP_ACTION_T_LIMITS
-from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
+import numpy as np
+
+from decision_making.src.global_constants import LON_ACC_LIMITS
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
-    RelativeLongitudinalPosition
-from decision_making.src.planning.behavioral.constants import MIN_VELOCITY
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane
+from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, StaticActionRecipe
-from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
-from decision_making.src.planning.utils.numpy_utils import NumpyUtils
-from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D, Poly1D
-from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.planning.utils.math import Math
+from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D
 from decision_making.src.state.state import ObjectSize, EgoState, State
 from mapping.src.service.map_service import MapService
-from decision_making.src.planning.utils.math import Math
 
-from decision_making.src.planning.behavioral.constants import DEFAULT_STATIC_RECIPE_FILTERING
 
 # test Specify from very close to target velocity
 def test_specifyGoal_closeToTargetVelocity_specifyNotFail():

@@ -3,11 +3,11 @@ import numpy as np
 
 from decision_making.paths import Paths
 from decision_making.src.global_constants import LON_ACC_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS, \
-    BP_ACTION_T_LIMITS, EPS
-from decision_making.src.planning.behavioral.constants import v_0_grid, a_0_grid, v_T_grid
+    BP_ACTION_T_LIMITS, EPS, BEHAVIORAL_PLANNING_LOOKAHEAD_DIST, FILTER_V_T_GRID,FILTER_A_0_GRID, FILTER_V_0_GRID
 from decision_making.src.planning.behavioral.data_objects import ActionType
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 from decision_making.src.planning.utils.math import Math
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D
 
 
@@ -19,7 +19,7 @@ def create_quartic_motion_funcs(a_0, v_0, v_T, T):
 
 action_type = ActionType.FOLLOW_LANE
 
-predicate = np.full(shape=[v_0_grid.shape[0], a_0_grid.shape[0], v_T_grid.shape[0]], fill_value=False)
+predicate = np.full(shape=[len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_V_T_GRID)], fill_value=False)
 
 if __name__ == "__main__":
 
@@ -69,10 +69,10 @@ if __name__ == "__main__":
     for weight in BP_JERK_S_JERK_D_TIME_WEIGHTS:
         w_J, w_T = weight[0], weight[2]  # w_T stays the same (0.1), w_J is now to be one of [12,2,0.01]
         print('weights are: %.2f,%.2f' % (w_J, w_T))
-        for k, v_0 in enumerate(v_0_grid):
+        for k, v_0 in enumerate(FILTER_V_0_GRID):
             print('v_0 is: %.2f' % v_0)
-            for m, a_0 in enumerate(a_0_grid):
-                for j, v_T in enumerate(v_T_grid):
+            for m, a_0 in enumerate(FILTER_A_0_GRID):
+                for j, v_T in enumerate(FILTER_V_T_GRID):
                     # start_time = time.time()
                     time_cost_poly_coefs = \
                     QuarticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),

@@ -19,7 +19,7 @@ from decision_making.src.prediction.road_following_predictor import RoadFollowin
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from mapping.test.model.testable_map_fixtures import map_api_mock
 
-from decision_making.src.planning.behavioral.constants import DEFAULT_DYNAMIC_RECIPE_FILTERING, DEFAULT_STATIC_RECIPE_FILTERING
+from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, DEFAULT_STATIC_RECIPE_FILTERING
 
 from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, state_module, \
     navigation_facade, state, trajectory_params, behavioral_visualization_msg, navigation_plan
