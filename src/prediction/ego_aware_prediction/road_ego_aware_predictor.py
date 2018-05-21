@@ -5,9 +5,10 @@ import numpy as np
 import copy
 
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
+from decision_making.src.planning.types import CartesianExtendedTrajectory, C_V
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
-from decision_making.src.state.state import State, DynamicObject
+from decision_making.src.state.state import State, DynamicObject, EgoState
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
@@ -21,7 +22,7 @@ class RoadEgoAwarePredictor(EgoAwarePredictor):
     def __init__(self, logger: Logger):
         super().__init__(logger=logger)
 
-    def predict_state(self, state: State, prediction_timestamps: np.ndarray, action_trajectory: SamplableTrajectory)\
+    def predict_state(self, state: State, prediction_timestamps: np.ndarray, action_trajectory: SamplableTrajectory) \
             -> (List[State]):
         """
         Predicts the future states of the given state, for the specified timestamps
@@ -41,13 +42,14 @@ class RoadEgoAwarePredictor(EgoAwarePredictor):
 
         for dynamic_object in state.dynamic_objects:
             predicted_object_states = self._predict_object(dynamic_object=dynamic_object,
-                                                     prediction_timestamps=prediction_timestamps)
+                                                           prediction_timestamps=prediction_timestamps)
 
             for timestamp_ind in range(len(prediction_timestamps)):
                 objects_in_predicted_states[timestamp_ind].append(predicted_object_states[timestamp_ind])
 
-        predicted_ego_states = self._predict_object(dynamic_object=state.ego_state,
-                                                    prediction_timestamps=prediction_timestamps)
+        predicted_ego_states = self._predict_ego(ego_state=state.ego_state,
+                                                 prediction_timestamps=prediction_timestamps,
+                                                 action_trajectory=action_trajectory)
 
         for timestamp_ind in range(len(prediction_timestamps)):
             new_state = State(occupancy_state=copy.deepcopy(state.occupancy_state),
@@ -116,3 +118,22 @@ class RoadEgoAwarePredictor(EgoAwarePredictor):
                                                                                          prediction_timestamps=prediction_timestamps)
         return predicted_object_states
 
+    def _predict_ego(self, ego_state: EgoState, prediction_timestamps: np.ndarray,
+                     action_trajectory: SamplableTrajectory) -> List[EgoState]:
+        """
+        Method to compute future locations, yaw, and velocities for ego. Ego is predicted according to the provided
+        samplabale trajectory
+        :param ego_state: in map coordinates
+        :param prediction_timestamps: np array of timestamps in [sec] to predict_object_trajectories for. In ascending
+        order. Global, not relative
+        :param action_trajectory: the ego's planned action trajectory
+        :return: a list of predicted objects of the received ego object
+        """
+
+        ego_trajectory = action_trajectory.sample(prediction_timestamps)  # type: CartesianExtendedTrajectory
+        predicted_object_states = PredictionUtils.convert_ctrajectory_to_dynamic_objects(dynamic_object=ego_state,
+                                                                                         predictions=
+                                                                                         ego_trajectory[:, :(C_V + 1)],
+                                                                                         prediction_timestamps=
+                                                                                         prediction_timestamps)
+        return predicted_object_states

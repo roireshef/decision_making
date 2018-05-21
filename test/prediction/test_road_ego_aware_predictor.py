@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import numpy as np
 
+from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import DynamicObject, State, EgoState
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
@@ -16,10 +17,11 @@ from decision_making.test.prediction.conftest import road_action_aware_predictor
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_PredictObjects_CurvedRoad_AccuratePrediction(road_action_aware_predictor: EgoAwarePredictor,
                                                       init_state: State, prediction_timestamps: np.ndarray,
-                                                      predicted_dyn_object_states_road_yaw: List[DynamicObject]):
+                                                      predicted_dyn_object_states_road_yaw: List[DynamicObject],
+                                                      ego_samplable_trajectory: SamplableTrajectory):
     predicted_objects = road_action_aware_predictor.predict_objects(state=init_state, object_ids=[DYNAMIC_OBJECT_ID],
                                                                     prediction_timestamps=prediction_timestamps,
-                                                                    action_trajectory=None)
+                                                                    action_trajectory=ego_samplable_trajectory)
 
     actual_num_predictions = len(predicted_objects[DYNAMIC_OBJECT_ID])
     expected_num_predictions = len(prediction_timestamps)
@@ -39,10 +41,11 @@ def test_PredictObjects_CurvedRoad_AccuratePrediction(road_action_aware_predicto
 def test_PredictState_CurvedRoad_AccuratePrediction(road_action_aware_predictor: EgoAwarePredictor,
                                                     init_state: State, prediction_timestamps: np.ndarray,
                                                     predicted_dyn_object_states_road_yaw: List[DynamicObject],
-                                                    predicted_static_ego_states: List[EgoState]):
+                                                    predicted_static_ego_states: List[EgoState],
+                                                    ego_samplable_trajectory: SamplableTrajectory):
     predicted_states = road_action_aware_predictor.predict_state(state=init_state,
                                                                  prediction_timestamps=prediction_timestamps,
-                                                                 action_trajectory=None)
+                                                                 action_trajectory=ego_samplable_trajectory)
 
     actual_num_predictions = len(predicted_states)
     expected_num_predictions = len(prediction_timestamps)

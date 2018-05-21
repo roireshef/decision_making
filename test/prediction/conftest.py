@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE
+from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_YAW, C_V
 from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
     PhysicalTimeAlignmentPredictor
@@ -11,6 +12,7 @@ from decision_making.src.prediction.action_unaware_prediction.road_ego_unaware_p
     RoadEgoUnawarePredictor
 from decision_making.src.prediction.ego_aware_prediction.road_ego_aware_predictor import RoadEgoAwarePredictor
 from decision_making.src.state.state import DynamicObject, ObjectSize, EgoState, State, OccupancyState
+from decision_making.test.planning.trajectory.mock_samplable_trajectory import MockSamplableTrajectory
 from rte.python.logger.AV_logger import AV_Logger
 
 DYNAMIC_OBJECT_ID = 1
@@ -212,3 +214,12 @@ def predicted_static_ego_states(static_cartesian_state: CartesianState, predicti
                            v_y=0,
                            acceleration_lon=0, omega_yaw=0, steering_angle=0)]
     yield ego_states
+
+@pytest.fixture(scope='function')
+def ego_samplable_trajectory(static_cartesian_state) -> SamplableTrajectory:
+    a_k_zero_array = np.array([0,0])
+    cartesian_extended_trajectory = np.array(
+                                    [np.append(static_cartesian_state, a_k_zero_array),
+                                     np.append(static_cartesian_state, a_k_zero_array),
+                                     np.append(static_cartesian_state, a_k_zero_array)])
+    yield MockSamplableTrajectory(cartesian_extended_trajectory)
