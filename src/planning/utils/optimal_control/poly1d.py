@@ -383,7 +383,7 @@ class QuinticPoly1D(Poly1D):
         :param a_0: [m/sec^2] acceleration at time 0
         :param v_0: [m/sec] velocity at time 0
         :param v_T: [m/sec] terminal velocity (at time T)
-        :param dx: [m] distance to travel between time 0 and time T
+        :param ds: [m] distance to travel between time 0 and time T
         :param T: [sec] horizon
         :return: lambda function(s) that takes relative time in seconds and returns the relative distance
         travelled since time 0

@@ -17,6 +17,12 @@ class RecipeFilter:
 
     @abstractmethod
     def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
+        """
+        Filters an ActionRecipe based on the state of ego and nearby vehicles (BehavioralState).
+        :param recipe: an object representing the semantic action to be considered
+        :param behavioral_state: semantic behavioral state, containing the semantic grid
+        :return: A boolean result, True if recipe is valid and false if filtered
+        """
         pass
 
     def __str__(self):
@@ -39,4 +45,10 @@ class RecipeFiltering:
         return True
 
     def filter_recipes(self, recipes: List[ActionRecipe], behavioral_state: BehavioralState) -> List[bool]:
+        """
+        Filters a list of 'ActionRecipe's based on the state of ego and nearby vehicles (BehavioralState).
+        :param recipes: A list of objects representing the semantic actions to be considered
+        :param behavioral_state: semantic behavioral state, containing the semantic grid
+        :return: A boolean List , True where the respective recipe is valid and false where it is filtered
+        """
         return [self.filter_recipe(recipe, behavioral_state) for recipe in recipes]

@@ -112,11 +112,12 @@ class Math:
     @staticmethod
     def roots(p):
         """
-        Return the roots of a polynomials with coefficients given in the rows of p.
+        Return the roots of polynomials with coefficients given in the rows of p.
         The values in each row of the matrix `p` are coefficients of a polynomial.
         If the length of a row in `p` is n+1 then the polynomial is described by:
             p[0] * x**n + p[1] * x**(n-1) + ... + p[n-1]*x + p[n]
         :param p: A matrix of size (num_of_poly X (poly_degree+1)) which contains polynomial coefficients.
+                  num_of_poly has to be greater than 1.
         :return: A matrix containing the roots of the polynomials (a set of roots in each row corresponding
                 to the polynomial in the input matrix) [ndarray]
 
@@ -135,7 +136,7 @@ class Math:
         :param value_limits: Boundaries for desired roots to look for.
         :return: 2D numpy array [Nx(K-1)]
         """
-        roots = Math.roots(coef_matrix)
+        roots = np.roots(coef_matrix) if coef_matrix.ndim == 1 else Math.roots(coef_matrix)
         real_roots = np.real(roots)
         is_real = np.isclose(np.imag(roots), 0.0)
         is_in_limits = np.logical_and(real_roots >= value_limits[LIMIT_MIN], real_roots <= value_limits[LIMIT_MAX])
