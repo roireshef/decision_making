@@ -1,5 +1,7 @@
 from abc import ABCMeta, abstractmethod
-from typing import List
+import traceback
+from logging import Logger
+from typing import List, Optional
 
 import six
 
@@ -35,12 +37,17 @@ class RecipeFiltering:
     should be sorted from the strongest (the one filtering the largest number of recipes) to the weakest.
     """
 
-    def __init__(self, filters: List[RecipeFilter] = None):
+    def __init__(self, filters: Optional[List[RecipeFilter]], logger: Logger):
         self._filters: List[RecipeFilter] = filters or []
+        self.logger = logger
 
     def filter_recipe(self, recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
         for recipe_filter in self._filters:
-            if not recipe_filter.filter(recipe, behavioral_state):
+            try:
+                if not recipe_filter.filter(recipe, behavioral_state):
+                    return False
+            except Exception:
+                self.logger.warning('Exception during filtering at %s: %s', self.__class__.__name__, traceback.format_exc())
                 return False
         return True
 

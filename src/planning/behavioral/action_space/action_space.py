@@ -32,7 +32,7 @@ class ActionSpace:
         """
         self.logger = logger
         self._recipes = recipes
-        self._recipe_filtering = recipe_filtering or RecipeFiltering()
+        self._recipe_filtering = recipe_filtering or RecipeFiltering(None, logger)
 
     @property
     def action_space_size(self) -> int:
@@ -93,7 +93,6 @@ class ActionSpaceContainer(ActionSpace):
         """
         super().__init__(logger, [])
         self._action_spaces = action_spaces
-
         self._recipe_handler = {recipe_class: aspace
                                 for aspace in action_spaces
                                 for recipe_class in aspace.recipe_classes}

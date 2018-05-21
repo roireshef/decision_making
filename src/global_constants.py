@@ -76,7 +76,7 @@ RIGHT_LANE_COST_WEIGHT = 0.005              # cost of using non-right lane on on
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
-VELOCITY_LIMITS = np.array([0.0, 34])
+VELOCITY_LIMITS = np.array([0.0, 20])
 VELOCITY_STEP = 10/3.6
 
 # Planning horizon for the TP query sent by BP [sec]
@@ -110,8 +110,8 @@ LON_MARGIN_FROM_EGO = 1
 
 # Uniform grids for BP Filters
 FILTER_A_0_GRID = UniformGrid(LON_ACC_LIMITS, 0.5)
-FILTER_V_0_GRID = UniformGrid(VELOCITY_LIMITS, 0.5)
-FILTER_V_T_GRID = UniformGrid(VELOCITY_LIMITS, 0.5)
+FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
+FILTER_V_T_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
 FILTER_S_T_GRID = UniformGrid(np.array([0, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
 
 # [m/s^2] accelerations for different aggressiveness levels

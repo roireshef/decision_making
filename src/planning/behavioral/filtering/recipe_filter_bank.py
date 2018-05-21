@@ -66,6 +66,7 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                 wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
                 predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
 
+                # TODO: bug when s_T < 0 (on follow of near car)
                 return predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
                                  FILTER_S_T_GRID.get_index(s_T), FILTER_V_T_GRID.get_index(v_T)] > 0
             else:
