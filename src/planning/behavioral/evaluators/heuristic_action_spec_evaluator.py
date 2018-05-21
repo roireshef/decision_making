@@ -20,6 +20,10 @@ from mapping.src.service.map_service import MapService
 
 
 class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
+    """
+    Link to the algorithm documentation in confluence:
+    https://confluence.gm.com/display/SHAREGPDIT/BP+costs+and+heuristic+assumptions
+    """
     def __init__(self, logger: Logger):
         super().__init__(logger)
         self.back_danger_lane = None
@@ -38,7 +42,6 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         :param action_recipes: array of actions recipes
         :param action_specs: array of action specs
         :param action_specs_mask: array of boolean values indicating whether the spec was filtered or not
-        :param goal: navigation goal
         :return: array of costs (one cost per action)
         """
         ego = behavioral_state.ego_state
@@ -62,9 +65,10 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                 continue
 
             action_recipe = action_recipes[i]
-            # lat_dist = (target_lane + 0.5) * lane_width - ego_road.intra_road_lat
+            target_lane = ego_lane + action_recipe.relative_lane.value
+            lat_dist = (target_lane + 0.5) * lane_width - ego_road.intra_road_lat
             # calculate lateral time according to the CALM aggressiveness level
-            # T_d_calm = VelocityProfile.calc_lateral_time(ego_fstate[FS_DV], lat_dist, lane_width, AggressivenessLevel.CALM)
+            T_d_calm = VelocityProfile.calc_lateral_time(ego_fstate[FS_DV], lat_dist, lane_width, AggressivenessLevel.CALM)
 
             # create velocity profile, whose length is at least as the lateral time
             vel_profile = self._calc_velocity_profile(behavioral_state, action_recipe, action_spec, front_objects)
@@ -74,10 +78,10 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
 
             # calculate the latest safe time
             T_d_max = self._calc_largest_safe_time(behavioral_state, action_recipe, i, vel_profile, ego.size.length/2,
-                                                   action_spec.td, lane_width)
-            T_d_max = min(T_d_max, action_spec.td)
-            if T_d_max <= 0:
+                                                   T_d_calm, lane_width)
+            if T_d_max < 0:
                 continue
+            T_d_max = min(T_d_max, T_d_calm)
 
             action_costs[i], sub_costs = self._calc_action_cost(ego_fstate, vel_profile, action_spec, lane_width, T_d_max)
 
@@ -89,7 +93,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             print(
                 'action %d(%d %d) lane %d: dist=%.1f [td=%.2f t=%.2f s=%.2f v=%.2f] [v_mid=%.2f a=%.2f] [eff %.3f comf %.2f,%.2f right %.2f dev %.2f]: tot %.2f' %
                 (i, action_recipe.action_type.value, action_recipe.aggressiveness.value, ego_lane + action_recipe.relative_lane.value, dist,
-                 action_spec.td, action_spec.t, action_spec.s - ego_fstate[0], action_spec.v, vel_profile.v_mid,
+                 T_d_calm, action_spec.t, action_spec.s - ego_fstate[0], action_spec.v, vel_profile.v_mid,
                  (vel_profile.v_mid-vel_profile.v_init)/vel_profile.t1,
                  sub_costs[0], sub_costs[1], sub_costs[2], sub_costs[3], sub_costs[4], action_costs[i]))
             # print('vel_prof {t1=%.2f t2=%.2f t3=%.2f v_init=%.2f v_mid=%.2f v_tar=%.2f}' % (vel_profile.t1, vel_profile.t2, vel_profile.t3, vel_profile.v_init, vel_profile.v_mid, vel_profile.v_tar))
@@ -150,7 +154,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         :param ego_half_size: half ego length
         :param T_d: time for comfortable lane change
         :param lane_width: lane width of the road
-        :return: the latest time, when ego is still safe
+        :return: the latest time, when ego is still safe; return -1 if the current state is unsafe for this action
         """
         action_lat_cell = action.relative_lane
         ego_road = behavioral_state.ego_state.road_localization
@@ -194,7 +198,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                        act_time, obj_lon + act_time * followed_obj.v_x - (ego_lon + vel_profile.total_dist()),
                        followed_obj.v_x, vel_profile.t1, vel_profile.t2, vel_profile.t3, vel_profile.v_init,
                        vel_profile.v_mid, vel_profile.v_tar, forward_safe_time, td))
-                return 0
+                return -1
 
         safe_time = np.inf
         if action_lat_cell != RelativeLane.SAME_LANE:
@@ -202,7 +206,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             # check whether there is a car in the neighbor cell (same longitude)
             if (action_lat_cell, RelativeLongitudinalPosition.PARALLEL) in behavioral_state.road_occupancy_grid:
                 print('side unsafe rel_lat=%d: action %d' % (action_lat_cell.value, i))
-                return 0
+                return -1
 
             # check safety w.r.t. the front object on the original lane (if exists)
             if front_cell in behavioral_state.road_occupancy_grid:
@@ -217,7 +221,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                           (front_safe_time, front_obj.road_localization.road_lon - ego_lon, front_obj.v_x,
                            lat_dist_to_target, td_0, td_T, i))
                 if front_safe_time <= 0:
-                    return front_safe_time
+                    return -1
                 safe_time = min(safe_time, front_safe_time)
 
             # check safety w.r.t. the back object on the original lane (if exists)
@@ -229,13 +233,15 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                     print('back_safe_time=%.2f back_dist=%.2f back_vel=%.2f rel_lat=%.2f td=%.2f: action %d' %
                           (back_safe_time, ego_lon - back_obj.road_localization.road_lon, back_obj.v_x,
                            action_lat_cell.value, td, i))
-                safe_time = min(safe_time, back_safe_time)
                 # if ego is unsafe w.r.t. back_obj, then save a flag for the case ego will enter to its lane,
                 # such that ego will check safety w.r.t to the rear object
                 if back_safe_time <= 0 and is_moving_laterally_to_target:
                     self.back_danger_lane = ego_road.lane_num + action_lat_cell.value
                     self.back_danger_side = action_lat_cell.value  # -1 or 1
                     self.back_danger_time = cur_time
+                if back_safe_time <= 0:
+                    return -1
+                safe_time = min(safe_time, back_safe_time)
 
         # check safety w.r.t. the rear object R for the case we are after back danger and arrived to the dangerous lane
         if self.back_danger_lane is not None:
@@ -247,6 +253,8 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                         td = SAFE_DIST_TIME_DELAY
                         rear_obj = behavioral_state.road_occupancy_grid[rear_cell][0].dynamic_object
                         back_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_half_size, rear_obj, T_d, td, td)
+                        if back_safe_time <= 0:
+                            return -1
                         safe_time = min(safe_time, back_safe_time)
             else:  # after timeout, delete the danger flag
                 self.back_danger_lane = None
@@ -256,7 +264,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         return safe_time
 
     def _calc_action_cost(self, ego_fstate: np.array, vel_profile: VelocityProfile, action_spec: ActionSpec,
-                          lane_width: float, T_d_max: float) -> [float, np.array]:
+                          lane_width: float, T_d: float) -> [float, np.array]:
         """
         Calculate the cost of the action
         :param vel_profile: longitudinal velocity profile
@@ -269,7 +277,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         target_lane = int(action_spec.d / lane_width)
         if action_spec.t > 0:
             efficiency_cost = BP_EfficiencyMetric.calc_cost(vel_profile)
-            lon_comf_cost, lat_comf_cost = BP_ComfortMetric.calc_cost(ego_fstate, action_spec, T_d_max)
+            lon_comf_cost, lat_comf_cost = BP_ComfortMetric.calc_cost(ego_fstate, action_spec, T_d)
             right_lane_cost = BP_RightLaneMetric.calc_cost(action_spec.t, target_lane)
 
         # calculate maximal deviation from lane center

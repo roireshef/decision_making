@@ -27,8 +27,9 @@ class NaiveValueApproximator(ValueApproximator):
         lane_width = MapService.get_instance().get_road(ego_loc.road_id).lane_width
 
         if self.calm_lat_comfort_cost is None:
-            spec = ActionSpec(0, BP_CALM_LANE_CHANGE_TIME, 0, 0, lane_width)
-            _, self.calm_lat_comfort_cost = BP_ComfortMetric.calc_cost(ego_fstate, spec, spec.td)
+            spec = ActionSpec(0, 0, 0, lane_width)
+            _, self.calm_lat_comfort_cost = BP_ComfortMetric.calc_cost(
+                ego_fstate, spec, BP_CALM_LANE_CHANGE_TIME)
 
         map_based_nav_plan = MapService.get_instance().get_road_based_navigation_plan(road_id)
         # goal.lon - ego_loc.road_lon
@@ -54,8 +55,8 @@ class NaiveValueApproximator(ValueApproximator):
                 T_d_max_per_lane = BP_CALM_LANE_CHANGE_TIME
                 if ego.v_x * lanes_from_goal > 0:
                     T_d_max_per_lane = (goal.lon - ego_lon) / (ego.v_x * lanes_from_goal)  # required time for one lane change
-                spec = ActionSpec(0, T_d_max_per_lane, 0, 0, lane_width)
-                _, goal_comfort_cost = lanes_from_goal * BP_ComfortMetric.calc_cost(ego_fstate, spec, spec.td)
+                spec = ActionSpec(0, 0, 0, lane_width)
+                _, goal_comfort_cost = lanes_from_goal * BP_ComfortMetric.calc_cost(ego_fstate, spec, T_d_max_per_lane)
                 goal_cost = min(BP_MISSING_GOAL_COST, goal_comfort_cost)
 
         cost = efficiency_cost + future_comfort_cost + right_lane_cost + future_lane_deviation_cost + goal_cost

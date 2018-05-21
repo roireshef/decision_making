@@ -67,13 +67,9 @@ class BP_ComfortMetric:
         Calculate comfort cost for lateral and longitudinal movement
         :param ego_fstate: initial ego Frenet state
         :param spec: action spec
-        :param T_d_max: maximal permitted lateral movement time, bounded according to the safety
-        :param target_lat: target latitude
+        :param T_d: maximal permitted lateral movement time, bounded according to the safety
         :return: comfort cost in units of the general performance metrics cost
         """
-        if T_d <= 0 < spec.td:  # infeasible lateral movement
-            return 0, np.inf
-
         # # calculate factor between the comfortable lateral movement time and the required lateral movement time
         # if T_d <= T_d_max:
         #     time_factor = 1  # comfortable lane change
@@ -88,7 +84,7 @@ class BP_ComfortMetric:
 
         lat_cost = lon_cost = 0
         # lateral jerk
-        if spec.td > 0:
+        if 0. < T_d < np.inf:
             lat_jerk = QuinticPoly1D.cumulative_jerk_from_constraints(
                 ego_fstate[FS_DA], ego_fstate[FS_DV], 0, spec.d - ego_fstate[FS_DX], T_d)
             lat_cost = lat_jerk * LAT_JERK_COST_WEIGHT

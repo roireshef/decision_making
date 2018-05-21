@@ -34,8 +34,9 @@ class ValueApproximator:
 
         lane_width = MapService.get_instance().get_road(road_id).lane_width
         if self.calm_lat_comfort_cost is None:
-            spec = ActionSpec(0, BP_CALM_LANE_CHANGE_TIME, 0, 0, lane_width)
-            _, self.calm_lat_comfort_cost = BP_ComfortMetric.calc_cost(ego_fstate, spec, spec.td)
+            spec = ActionSpec(0, 0, 0, lane_width)
+            _, self.calm_lat_comfort_cost = BP_ComfortMetric.calc_cost(
+                ego_fstate, spec, BP_CALM_LANE_CHANGE_TIME)
 
         F = LF = RF = LB = RB = L = R = None
         if (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT) in behavioral_state.road_occupancy_grid:
@@ -133,7 +134,7 @@ class ValueApproximator:
                     else:  # target affects, FOLLOW_CAR
                         vel_profile = VelocityProfile.calc_profile_given_T(v_init, time_tar_to_goal, dist_to_tar, v_tar)
                 eff_cost = BP_EfficiencyMetric.calc_cost(vel_profile)
-                spec = ActionSpec(vel_profile.total_time(), 0, vel_profile.v_tar,
+                spec = ActionSpec(vel_profile.total_time(), vel_profile.v_tar,
                                   ego_fstate[FS_SX] + vel_profile.total_dist(), ego_fstate[FS_DX])
                 comf_cost, _ = BP_ComfortMetric.calc_cost(ego_fstate, spec, 0)
                 # comf_cost = BP_ComfortMetric.calc_cost(vel_profile, 0, np.inf, 0)

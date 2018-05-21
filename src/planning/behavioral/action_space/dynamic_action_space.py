@@ -101,7 +101,7 @@ class DynamicActionSpace(ActionSpace):
                                                              v_T=v_T, T=T, ds=ds, T_m=SAFE_DIST_TIME_DELAY)(T)
         target_s = distance_s + ego_init_fstate[FS_SX]
 
-        action_specs = [ActionSpec(t, T_d[i], v_T[i], target_s[i], desired_center_lane_latitude[i])
+        action_specs = [ActionSpec(t, v_T[i], target_s[i], desired_center_lane_latitude[i])
                         if ~np.isnan(t) else None
                         for i, t in enumerate(T)]
 
