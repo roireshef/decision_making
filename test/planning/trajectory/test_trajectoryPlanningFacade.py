@@ -8,6 +8,9 @@ from decision_making.src.planning.utils.localization_utils import LocalizationUt
 from decision_making.src.state.state import EgoState, ObjectSize
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.planning.trajectory.utils import RouteFixture
+from decision_making.test.planning.custom_fixtures import state
+import numpy as np
+
 from rte.python.logger.AV_logger import AV_Logger
 
 

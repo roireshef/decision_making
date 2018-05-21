@@ -17,6 +17,7 @@ from decision_making.src.state.state import ObjectSize, EgoState, State
 from mapping.src.service.map_service import MapService
 from decision_making.src.planning.utils.math import Math
 
+from decision_making.src.planning.behavioral.constants import DEFAULT_STATIC_RECIPE_FILTERING
 
 # test Specify from very close to target velocity
 def test_specifyGoal_closeToTargetVelocity_specifyNotFail():
@@ -28,7 +29,7 @@ def test_specifyGoal_closeToTargetVelocity_specifyNotFail():
     road_mid_lat = MapService.get_instance().get_road(road_id).lanes_num * lane_width / 2
     size = ObjectSize(4, 2, 1)
 
-    action_space = StaticActionSpace(logger)
+    action_space = StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING)
 
     target_vel = action_space.recipes[0].velocity
     ego_vel = target_vel + 0.01
@@ -60,7 +61,7 @@ def test_specifyGoal_accelerationFrom0_atLeastOneActionInLimits():
     size = ObjectSize(4, 2, 1)
     target_vel = 57/3.6
 
-    action_space = StaticActionSpace(logger)
+    action_space = StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING)
     action_space._recipes = np.array([StaticActionRecipe(RelativeLane.SAME_LANE, target_vel, AggressivenessLevel.CALM),
                                       StaticActionRecipe(RelativeLane.SAME_LANE, target_vel, AggressivenessLevel.STANDARD),
                                       StaticActionRecipe(RelativeLane.SAME_LANE, target_vel, AggressivenessLevel.AGGRESSIVE)])
@@ -98,7 +99,7 @@ def test_specifyGoal_acceleration_accelerationsCoverage():
     size = ObjectSize(4, 2, 1)
     target_vel = 14
 
-    action_space = StaticActionSpace(logger)
+    action_space = StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING)
     action_space._recipes = np.array([StaticActionRecipe(RelativeLane.SAME_LANE, target_vel, AggressivenessLevel.CALM),
                                       StaticActionRecipe(RelativeLane.SAME_LANE, target_vel, AggressivenessLevel.STANDARD),
                                       StaticActionRecipe(RelativeLane.SAME_LANE, target_vel, AggressivenessLevel.AGGRESSIVE)])
