@@ -85,6 +85,12 @@ class ActionSpace:
 
 class ActionSpaceContainer(ActionSpace):
     def __init__(self, logger: Logger, action_spaces: List[ActionSpace]):
+        """
+        This class acts as a container for action_spaces and is responsible for filtering and specifying each recipe with
+        the respective class (e.g. StaticActionSpace or DynamicActionSpace)
+        :param logger: dedicated logger implementation
+        :param action_spaces: a list of various implementations of the interface ActionSpace, containing recipes (List[ActionSpace])
+        """
         super().__init__(logger, [])
         self._action_spaces = action_spaces
 
