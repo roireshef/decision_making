@@ -8,7 +8,7 @@ from decision_making.src.state.state import State, DynamicObject
 
 class EgoUnawarePredictor(metaclass=ABCMeta):
     """
-    Base class for simple / naive prediction of states
+    Base class for prediction which is unaware to ego's actions. 
     """
     def __init__(self, logger: Logger):
         self._logger = logger
@@ -26,3 +26,13 @@ class EgoUnawarePredictor(metaclass=ABCMeta):
         :return: a mapping between object id to the list of future dynamic objects of the matching object
         """
         pass
+
+    @abstractmethod
+    def predict_state(self, state: State, prediction_timestamps: np.ndarray) -> List[State]:
+        """
+        Predicts the future states of the given state, for the specified timestamps
+        :param state: the initial state to begin prediction from
+        :param prediction_timestamps: np array of timestamps in [sec] to predict the object for. In ascending order.
+        Global, not relative
+        :return: a list of predicted states for the requested prediction_timestamps
+        """

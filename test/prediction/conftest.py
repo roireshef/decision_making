@@ -1,18 +1,16 @@
 from typing import List
 
+import numpy as np
 import pytest
 
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE
 from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_YAW, C_V
-from decision_making.src.prediction.ego_aware_prediction.road_ego_aware_predictor import RoadEgoAwarePredictor
+from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
+    PhysicalTimeAlignmentPredictor
 from decision_making.src.prediction.action_unaware_prediction.road_ego_unaware_predictor import \
     RoadEgoUnawarePredictor
-from decision_making.src.prediction.time_alignment_prediction.physical_time_alignment_predictor import \
-    PhysicalTimeAlignmentPredictor
-from decision_making.src.prediction.time_alignment_prediction.time_alignment_predictor import TimeAlignmentPredictor
+from decision_making.src.prediction.ego_aware_prediction.road_ego_aware_predictor import RoadEgoAwarePredictor
 from decision_making.src.state.state import DynamicObject, ObjectSize, EgoState, State, OccupancyState
-import numpy as np
-
 from rte.python.logger.AV_logger import AV_Logger
 
 DYNAMIC_OBJECT_ID = 1
@@ -20,7 +18,7 @@ EGO_OBJECT_ID = 0
 
 
 @pytest.fixture(scope='function')
-def physical_time_alignment_predictor() -> TimeAlignmentPredictor:
+def physical_time_alignment_predictor() -> PhysicalTimeAlignmentPredictor:
     logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
     yield PhysicalTimeAlignmentPredictor(logger)
 
