@@ -1,10 +1,9 @@
 import numpy as np
 import copy
 
-from decision_making.src.global_constants import AGGRESSIVENESS_TO_LON_ACC, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
-    SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS, AGGRESSIVENESS_TO_LAT_ACC, BP_MAX_VELOCITY_TOLERANCE
+from decision_making.src.global_constants import AGGRESSIVENESS_TO_LON_ACC, LON_ACC_LIMITS
 from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel
-from decision_making.src.planning.types import FP_SX, LIMIT_MIN, FS_SV, FS_SA
+from decision_making.src.planning.types import LIMIT_MIN
 from decision_making.src.state.state import DynamicObject
 
 
@@ -124,182 +123,174 @@ class VelocityProfile:
         v_tar = self.v_init + a * t1
         return VelocityProfile(self.v_init, t1, v_tar, 0, 0, v_tar)
 
-    @classmethod
-    def calc_velocity_profile_given_acc(cls, action_type: ActionType, lon_init: float, v_init: float, lon_target: float,
-                                        v_target: float, a_target: float, aggressiveness_level: AggressivenessLevel,
-                                        cars_size_margin: float, min_time: float):
-        """
-        calculate velocities profile for semantic action: either following car or following lane
-        :param action_type: [ActionType] type of action
-        :param lon_init: [m] initial longitude of ego
-        :param v_init: [m/s] initial velocity of ego
-        :param lon_target: [m] initial longitude of followed object (None if follow lane)
-        :param v_target: [m/s] followed object's velocity or target velocity for follow lane
-        :param a_target: [m/s^2] followed object's acceleration
-        :param aggressiveness_level: attribute of the semantic action
-        :param cars_size_margin: [m] sum of half lengths of ego and target
-        :param min_time: [sec] minimal time for the profile
-        :return: VelocityProfile class or None in case of infeasible semantic action
-        """
-        acc = AGGRESSIVENESS_TO_LON_ACC[aggressiveness_level.value]  # profile acceleration
-        v_max = max(BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, v_target)
-        if action_type == ActionType.FOLLOW_VEHICLE:
-            dist = lon_target - lon_init - SAFE_DIST_TIME_DELAY * v_target - cars_size_margin
-            return VelocityProfile._calc_profile_given_acc(v_init, acc, v_max, dist, v_target, a_target, min_time)
-        elif action_type == ActionType.OVER_TAKE_VEHICLE:
-            dist = lon_target - lon_init + SAFE_DIST_TIME_DELAY * v_target + cars_size_margin
-            return VelocityProfile._calc_profile_given_acc(v_init, acc, v_max, dist, v_target, a_target, min_time)
-        elif action_type == ActionType.FOLLOW_LANE:
-            t1 = abs(v_target - v_init) / acc
-            if 0 <= t1 < min_time:  # two segments
-                vel_profile = cls(v_init=v_init, t1=t1, v_mid=v_target, t2=min_time - t1, t3=0, v_tar=v_target)
-            else:  # single segment (if too short profile, then choose lower acceleration according to min_time)
-                vel_profile = cls(v_init=v_init, t1=max(t1, min_time), v_mid=v_target, t2=0, t3=0, v_tar=v_target)
-            return vel_profile
+    # @classmethod
+    # def _calc_profile_given_acc(cls, v_init: float, a: float, v_max: float, dist: float,
+    #                             v_tar: float, a_tar: float, min_time: float=0):
+    #     """
+    #     Given start & end velocities, distance to the followed car and acceleration, calculate velocity profile:
+    #         1. acceleration to a velocity v_mid <= v_max for t1 time,
+    #         2. moving by v_max for t2 time (t2 = 0 if v_mid < v_max),
+    #         3. deceleration to end_vel for t3 time.
+    #     If this profile is infeasible, then try an opposite order of accelerations: 1. deceleration, 3. acceleration.
+    #     In the case of opposite order, the constant velocity segment is missing.
+    #     In each velocity segment the acceleration is constant.
+    #     :param v_init: start ego velocity
+    #     :param a: absolute ego acceleration in the first and the last profile segments
+    #     :param v_max: maximal desired velocity of ego
+    #     :param dist: initial distance to the safe location from the target
+    #     :param v_tar: target object velocity
+    #     :param a_tar: target object acceleration
+    #     :param min_time: minimal time for the profile
+    #     return: VelocityProfile class or None in case of infeasible semantic action
+    #     """
+    #     # print('CALC PROFILE: v_init=%f dist=%f' % (v_init, dist))
+    #
+    #     v_init_rel = v_init - v_tar  # relative velocity; may be negative
+    #     v_max_rel = max(v_max - v_tar, BP_MAX_VELOCITY_TOLERANCE)  # v_max > v_tar to enable reaching the target car
+    #
+    #     if abs(v_init_rel) < 0.1 and abs(dist) < 0.1:
+    #         return cls(v_init, min_time, v_tar, 0, 0, v_tar)  # just follow the target car for min_time
+    #
+    #     if v_init_rel * dist > 0 and v_init_rel * v_init_rel > 2 * (a + a_tar) * abs(dist):  # too big acceleration needed
+    #         # print('NO PROFILE: too big acceleration needed: v_init_rel=%f dist=%f acc=%f' % (v_init_rel, dist, a + a_tar))
+    #         # return None
+    #         t1 = max(min_time, abs(v_init_rel) / a)  # increase dist (if it's unsafe, the action will be filtered later)
+    #         return cls(v_init, t1, v_tar, 0, 0, v_tar)  # one segment profile
+    #
+    #     if a > 0 and (np.math.isclose(a, a_tar, rel_tol=0.05) or np.math.isclose(a, -a_tar, rel_tol=0.05)):
+    #         a -= 0.1  # slightly change the acceleration to prevent division by zero
+    #
+    #     # first try profile with two segments
+    #     # first acceleration, then deceleration
+    #     # here we use formula (vm^2 - v^2)/2(a-a_tar) + vm^2/2(a+a_tar) = dist
+    #     v_mid_rel_sqr = (v_init_rel * v_init_rel / 2 + dist * (a - a_tar)) * (a + a_tar) / a
+    #     two_segments_failed = False
+    #     regular_order = True
+    #     t1 = t3 = 0
+    #     v_mid_rel = v_init_rel
+    #     if v_mid_rel_sqr >= 0:
+    #         v_mid_rel = np.sqrt(v_mid_rel_sqr)  # should be positive
+    #         t1 = (v_mid_rel - v_init_rel) / (a - a_tar)  # acceleration time
+    #         t3 = v_mid_rel / (a + a_tar)                 # deceleration time
+    #         if t1 < 0 or t3 < 0:  # negative time, try single segment with another acceleration
+    #             two_segments_failed = True
+    #     else:  # the target is unreachable, try single segment with another acceleration
+    #         two_segments_failed = True
+    #
+    #     if two_segments_failed:  # try opposite order: first deceleration, then acceleration
+    #         # here the formula (v^2 - vm^2)/2(a+a_tar) - vm^2/2(a-a_tar) = dist
+    #         v_mid_rel_sqr = (v_init_rel * v_init_rel / 2 - dist * (a + a_tar)) * (a - a_tar) / a
+    #         two_segments_failed = False
+    #         regular_order = False
+    #         t1 = t3 = 0
+    #         v_mid_rel = v_init_rel
+    #         if v_mid_rel_sqr >= 0:
+    #             v_mid_rel = -np.sqrt(v_mid_rel_sqr)  # should be negative
+    #             t1 = (v_init_rel - v_mid_rel) / (a + a_tar)  # deceleration time
+    #             t3 = -v_mid_rel / (a - a_tar)  # acceleration time
+    #             if t1 < 0 or t3 < 0:  # negative time, try single segment with another acceleration
+    #                 two_segments_failed = True
+    #         else:  # the target is unreachable, try single segment with another acceleration
+    #             two_segments_failed = True
+    #
+    #     # if two segments failed, try a single segment with lower acceleration
+    #     if two_segments_failed:
+    #         if v_init_rel * dist <= 0:
+    #             print('NO PROFILE: v_mid_rel_sqr=%f or time t1=%f t3=%f; v_init_rel=%f v_mid_rel=%f a=%f dist=%f' %
+    #                   (v_mid_rel_sqr, t1, t3, v_init_rel, v_mid_rel, a, dist))
+    #             return None  # illegal action
+    #         else:  # then take single segment with another acceleration
+    #             t1 = 2*dist/v_init_rel
+    #             return cls(v_init, t1, v_tar, 0, 0, v_tar)
+    #
+    #     # if the profile is shorter than min_time, then decrease the deceleration (the acceleration does not change):
+    #     # decrease t1 and v_mid_rel and increase t3 by decreasing deceleration.
+    #     if t1 + t3 < min_time:
+    #         if regular_order:  # acceleration, deceleration
+    #             # solve the equation for t1: (v0+vm)*t1/2 + vm*(min_time-t1)/2 = dist; where vm = v0 + a*t1
+    #             t1 = (2 * dist - v_init_rel * min_time) / (v_init_rel + (a - a_tar) * min_time)
+    #             if t1 > 0:  # two segments
+    #                 t3 = min_time - t1
+    #                 v_mid_rel = v_init_rel + (a - a_tar) * t1
+    #                 return cls(v_init, t1, v_mid_rel + v_tar + a_tar*t1, 0, t3, v_tar)
+    #             else:  # single decelerating segment
+    #                 t1 = 2*dist / v_init_rel
+    #                 return cls(v_init, t1, v_tar, 0, 0, v_tar)
+    #         else:  # opposite order: deceleration, acceleration
+    #             # solve the same equation for t1: (v0+vm)*t1/2 + vm*(min_time-t1)/2 = dist; but here vm = v0 - a*t1
+    #             t1 = (v_init_rel * min_time - 2 * dist) / ((a + a_tar) * min_time - v_init_rel)
+    #             if 0. <= t1 <= min_time:
+    #                 t3 = min_time - t1
+    #                 v_mid_rel = v_init_rel - (a + a_tar) * t1  # negative
+    #                 return cls(v_init, t1, v_mid_rel + v_tar + a_tar*t1, 0, t3, v_tar)
+    #             else:  # no profile
+    #                 print('NO PROFILE (time < min_time): t1=%f min_time=%f; v_init_rel=%f v_mid_rel=%f a=%f dist=%f' %
+    #                     (t1, min_time, v_init_rel, v_mid_rel, a, dist))
+    #                 return None  # illegal action
+    #
+    #     if v_mid_rel <= v_max_rel or dist < 0:  # ego does not reach max_vel, then t2 = 0
+    #         return cls(v_init, t1, v_mid_rel + v_tar + a_tar*t1, 0, t3, v_tar)
+    #
+    #     # from now: ego reaches max_vel, such that t2 > 0
+    #
+    #     t1 = abs(v_max_rel - v_init_rel) / a  # acceleration time (maybe deceleration)
+    #     if a_tar == 0:  # a simple case: the followed car has constant velocity
+    #         t3 = v_max_rel / a  # deceleration time
+    #         dist_mid = dist - (abs(v_max_rel*v_max_rel - v_init_rel*v_init_rel) + v_max_rel*v_max_rel) / (2*a)
+    #         t2 = max(0., dist_mid / v_max_rel)  # constant velocity (max_vel) time
+    #         return cls(v_init, t1, v_max_rel + v_tar, t2, t3, v_tar)
+    #
+    #     # from now the most general case: t2 > 0 and the followed car has non-zero acceleration
+    #
+    #     # Notations:
+    #     #   v is initial relative velocity
+    #     #   a > 0 is ego acceleration, a_tar target object acceleration
+    #     #   vm1 is relative velocity of ego immediately after acceleration
+    #     #   vm2 is relative velocity of ego immediately before the deceleration, i.e. vm2 = vm1 - a_tar*t2
+    #     # Quadratic equation: tot_dist is the sum of 3 distances:
+    #     #   acceleration distance     max_vel distance     deceleration distance
+    #     #   (vm1^2 - v^2)/2(a-a_tar)  +  (vm1+vm2)/2 * t2  +  vm2^2/2(a+a_tar)   =   dist
+    #     v = v_init_rel
+    #     vm1 = v + (a - a_tar) * t1
+    #     # after substitution of vm2 = vm1 - a1*t and simplification, solve quadratic equation on t2:
+    #     # a*a_tar * t^2 - 2*vm1*a * t2 - (vm1^2 + 2(a+a_tar) * ((vm1^2 - v^2)/2(a-a_tar) - dist)) = 0
+    #     c = vm1*vm1 + 2*(a + a_tar) * ((vm1 * vm1 - v * v) / (2 * (a - a_tar)) - dist)  # free coefficient
+    #     discriminant = vm1*vm1 * a*a + a*a_tar * c  # discriminant of the quadratic equation
+    #     if discriminant < 0:
+    #         print('NO PROFILE: general case: discriminant < 0')
+    #         return None  # illegal action
+    #     t2 = (vm1 * a + np.sqrt(discriminant)) / (a * a_tar)
+    #     vm2 = vm1 - a_tar*t2
+    #     t3 = vm2 / (a + a_tar)
+    #     if t3 < 0:
+    #         print('NO PROFILE: general case: t3 < 0')
+    #         return None  # illegal action
+    #     return cls(v_init, t1, v_max, t2, t3, v_tar)
 
-    @classmethod
-    def _calc_profile_given_acc(cls, v_init: float, a: float, v_max: float, dist: float,
-                                v_tar: float, a_tar: float, min_time: float=0):
-        """
-        Given start & end velocities, distance to the followed car and acceleration, calculate velocity profile:
-            1. acceleration to a velocity v_mid <= v_max for t1 time,
-            2. moving by v_max for t2 time (t2 = 0 if v_mid < v_max),
-            3. deceleration to end_vel for t3 time.
-        If this profile is infeasible, then try an opposite order of accelerations: 1. deceleration, 3. acceleration.
-        In the case of opposite order, the constant velocity segment is missing.
-        In each velocity segment the acceleration is constant.
-        :param v_init: start ego velocity
-        :param a: absolute ego acceleration in the first and the last profile segments
-        :param v_max: maximal desired velocity of ego
-        :param dist: initial distance to the safe location from the target
-        :param v_tar: target object velocity
-        :param a_tar: target object acceleration
-        :param min_time: minimal time for the profile
-        return: VelocityProfile class or None in case of infeasible semantic action
-        """
-        # print('CALC PROFILE: v_init=%f dist=%f' % (v_init, dist))
-
-        v_init_rel = v_init - v_tar  # relative velocity; may be negative
-        v_max_rel = max(v_max - v_tar, BP_MAX_VELOCITY_TOLERANCE)  # v_max > v_tar to enable reaching the target car
-
-        if abs(v_init_rel) < 0.1 and abs(dist) < 0.1:
-            return cls(v_init, min_time, v_tar, 0, 0, v_tar)  # just follow the target car for min_time
-
-        if v_init_rel * dist > 0 and v_init_rel * v_init_rel > 2 * (a + a_tar) * abs(dist):  # too big acceleration needed
-            # print('NO PROFILE: too big acceleration needed: v_init_rel=%f dist=%f acc=%f' % (v_init_rel, dist, a + a_tar))
-            # return None
-            t1 = max(min_time, abs(v_init_rel) / a)  # increase dist (if it's unsafe, the action will be filtered later)
-            return cls(v_init, t1, v_tar, 0, 0, v_tar)  # one segment profile
-
-        if a > 0 and (np.math.isclose(a, a_tar, rel_tol=0.05) or np.math.isclose(a, -a_tar, rel_tol=0.05)):
-            a -= 0.1  # slightly change the acceleration to prevent division by zero
-
-        # first try profile with two segments
-        # first acceleration, then deceleration
-        # here we use formula (vm^2 - v^2)/2(a-a_tar) + vm^2/2(a+a_tar) = dist
-        v_mid_rel_sqr = (v_init_rel * v_init_rel / 2 + dist * (a - a_tar)) * (a + a_tar) / a
-        two_segments_failed = False
-        regular_order = True
-        t1 = t3 = 0
-        v_mid_rel = v_init_rel
-        if v_mid_rel_sqr >= 0:
-            v_mid_rel = np.sqrt(v_mid_rel_sqr)  # should be positive
-            t1 = (v_mid_rel - v_init_rel) / (a - a_tar)  # acceleration time
-            t3 = v_mid_rel / (a + a_tar)                 # deceleration time
-            if t1 < 0 or t3 < 0:  # negative time, try single segment with another acceleration
-                two_segments_failed = True
-        else:  # the target is unreachable, try single segment with another acceleration
-            two_segments_failed = True
-
-        if two_segments_failed:  # try opposite order: first deceleration, then acceleration
-            # here the formula (v^2 - vm^2)/2(a+a_tar) - vm^2/2(a-a_tar) = dist
-            v_mid_rel_sqr = (v_init_rel * v_init_rel / 2 - dist * (a + a_tar)) * (a - a_tar) / a
-            two_segments_failed = False
-            regular_order = False
-            t1 = t3 = 0
-            v_mid_rel = v_init_rel
-            if v_mid_rel_sqr >= 0:
-                v_mid_rel = -np.sqrt(v_mid_rel_sqr)  # should be negative
-                t1 = (v_init_rel - v_mid_rel) / (a + a_tar)  # deceleration time
-                t3 = -v_mid_rel / (a - a_tar)  # acceleration time
-                if t1 < 0 or t3 < 0:  # negative time, try single segment with another acceleration
-                    two_segments_failed = True
-            else:  # the target is unreachable, try single segment with another acceleration
-                two_segments_failed = True
-
-        # if two segments failed, try a single segment with lower acceleration
-        if two_segments_failed:
-            if v_init_rel * dist <= 0:
-                print('NO PROFILE: v_mid_rel_sqr=%f or time t1=%f t3=%f; v_init_rel=%f v_mid_rel=%f a=%f dist=%f' %
-                      (v_mid_rel_sqr, t1, t3, v_init_rel, v_mid_rel, a, dist))
-                return None  # illegal action
-            else:  # then take single segment with another acceleration
-                t1 = 2*dist/v_init_rel
-                return cls(v_init, t1, v_tar, 0, 0, v_tar)
-
-        # if the profile is shorter than min_time, then decrease the deceleration (the acceleration does not change):
-        # decrease t1 and v_mid_rel and increase t3 by decreasing deceleration.
-        if t1 + t3 < min_time:
-            if regular_order:  # acceleration, deceleration
-                # solve the equation for t1: (v0+vm)*t1/2 + vm*(min_time-t1)/2 = dist; where vm = v0 + a*t1
-                t1 = (2 * dist - v_init_rel * min_time) / (v_init_rel + (a - a_tar) * min_time)
-                if t1 > 0:  # two segments
-                    t3 = min_time - t1
-                    v_mid_rel = v_init_rel + (a - a_tar) * t1
-                    return cls(v_init, t1, v_mid_rel + v_tar + a_tar*t1, 0, t3, v_tar)
-                else:  # single decelerating segment
-                    t1 = 2*dist / v_init_rel
-                    return cls(v_init, t1, v_tar, 0, 0, v_tar)
-            else:  # opposite order: deceleration, acceleration
-                # solve the same equation for t1: (v0+vm)*t1/2 + vm*(min_time-t1)/2 = dist; but here vm = v0 - a*t1
-                t1 = (v_init_rel * min_time - 2 * dist) / ((a + a_tar) * min_time - v_init_rel)
-                if 0. <= t1 <= min_time:
-                    t3 = min_time - t1
-                    v_mid_rel = v_init_rel - (a + a_tar) * t1  # negative
-                    return cls(v_init, t1, v_mid_rel + v_tar + a_tar*t1, 0, t3, v_tar)
-                else:  # no profile
-                    print('NO PROFILE (time < min_time): t1=%f min_time=%f; v_init_rel=%f v_mid_rel=%f a=%f dist=%f' %
-                        (t1, min_time, v_init_rel, v_mid_rel, a, dist))
-                    return None  # illegal action
-
-        if v_mid_rel <= v_max_rel or dist < 0:  # ego does not reach max_vel, then t2 = 0
-            return cls(v_init, t1, v_mid_rel + v_tar + a_tar*t1, 0, t3, v_tar)
-
-        # from now: ego reaches max_vel, such that t2 > 0
-
-        t1 = abs(v_max_rel - v_init_rel) / a  # acceleration time (maybe deceleration)
-        if a_tar == 0:  # a simple case: the followed car has constant velocity
-            t3 = v_max_rel / a  # deceleration time
-            dist_mid = dist - (abs(v_max_rel*v_max_rel - v_init_rel*v_init_rel) + v_max_rel*v_max_rel) / (2*a)
-            t2 = max(0., dist_mid / v_max_rel)  # constant velocity (max_vel) time
-            return cls(v_init, t1, v_max_rel + v_tar, t2, t3, v_tar)
-
-        # from now the most general case: t2 > 0 and the followed car has non-zero acceleration
-
-        # Notations:
-        #   v is initial relative velocity
-        #   a > 0 is ego acceleration, a_tar target object acceleration
-        #   vm1 is relative velocity of ego immediately after acceleration
-        #   vm2 is relative velocity of ego immediately before the deceleration, i.e. vm2 = vm1 - a_tar*t2
-        # Quadratic equation: tot_dist is the sum of 3 distances:
-        #   acceleration distance     max_vel distance     deceleration distance
-        #   (vm1^2 - v^2)/2(a-a_tar)  +  (vm1+vm2)/2 * t2  +  vm2^2/2(a+a_tar)   =   dist
-        v = v_init_rel
-        vm1 = v + (a - a_tar) * t1
-        # after substitution of vm2 = vm1 - a1*t and simplification, solve quadratic equation on t2:
-        # a*a_tar * t^2 - 2*vm1*a * t2 - (vm1^2 + 2(a+a_tar) * ((vm1^2 - v^2)/2(a-a_tar) - dist)) = 0
-        c = vm1*vm1 + 2*(a + a_tar) * ((vm1 * vm1 - v * v) / (2 * (a - a_tar)) - dist)  # free coefficient
-        discriminant = vm1*vm1 * a*a + a*a_tar * c  # discriminant of the quadratic equation
-        if discriminant < 0:
-            print('NO PROFILE: general case: discriminant < 0')
-            return None  # illegal action
-        t2 = (vm1 * a + np.sqrt(discriminant)) / (a * a_tar)
-        vm2 = vm1 - a_tar*t2
-        t3 = vm2 / (a + a_tar)
-        if t3 < 0:
-            print('NO PROFILE: general case: t3 < 0')
-            return None  # illegal action
-        return cls(v_init, t1, v_max, t2, t3, v_tar)
+    # @staticmethod
+    # def calc_lateral_time(init_lat_vel: float, signed_lat_dist: float, lane_width: float,
+    #                       aggressiveness_level: AggressivenessLevel) -> [float, float, float]:
+    #     """
+    #     Given initial lateral velocity and signed lateral distance, estimate a time it takes to perform the movement.
+    #     The time estimation assumes movement by velocity profile like in the longitudinal case.
+    #     :param init_lat_vel: [m/s] initial lateral velocity
+    #     :param signed_lat_dist: [m] signed distance to the target
+    #     :param lane_width: [m] lane width
+    #     :param aggressiveness_level: aggressiveness_level
+    #     :return: [s] the lateral movement time to the target, [m] maximal lateral deviation from lane center,
+    #     [m/s] initial lateral velocity toward target (negative if opposite to the target direction)
+    #     """
+    #     if signed_lat_dist > 0:
+    #         lat_v_init_toward_target = init_lat_vel
+    #     else:
+    #         lat_v_init_toward_target = -init_lat_vel
+    #     # normalize lat_acc by lane_width, such that T_d will NOT depend on lane_width
+    #     acc = AGGRESSIVENESS_TO_LAT_ACC[aggressiveness_level.value]
+    #     lat_acc = acc * lane_width / 3.6
+    #     lateral_profile = VelocityProfile._calc_profile_given_acc(
+    #         lat_v_init_toward_target, lat_acc, np.inf, abs(signed_lat_dist), 0, 0)
+    #
+    #     return lateral_profile.t1 + lateral_profile.t3
 
     @classmethod
     def calc_profile_given_T(cls, v_init: float, T: float, dist: float, v_tar: float):
@@ -317,61 +308,34 @@ class VelocityProfile:
         if T <= 0:
             print('NO PROFILE: T=%.2f' % T)
             return None
+        # first try acceleration + constant vel
         v_init_rel = v_init - v_tar  # relative velocity; may be negative
+        if v_init_rel * dist > 0:
+            t1 = 2 * dist / v_init_rel
+            a = v_init_rel / t1
+            if t1 <= T and abs(a) <= AGGRESSIVENESS_TO_LON_ACC[AggressivenessLevel.CALM.value]:
+                return cls(v_init, t1, v_tar, T - t1, 0, v_tar)  # acceleration/deceleration + constant vel
         # let v = v_init_rel, v1 = v_mid_rel, t = t1, d = dist, solve for a (acceleration)
         # for the simple case (acceleration, deceleration) solve the following equations:
         # v1^2 - v^2 = 2ad, v1 = v + at, v1 = a(T-t)
         # it is simplified to quadratic equation for a: T^2*a^2 - 2(2d-Tv)a - v^2 = 0
         # solution: a = ( (2d-Tv) +- sqrt((2d-Tv)^2 + (Tv)^2) ) / T^2
-        Tv_2d = 2 * dist - T * v_init_rel
-        discriminant = Tv_2d ** 2 + (T * v_init_rel) ** 2  # always positive
-        if dist > 0:
-            a = (Tv_2d + np.sqrt(discriminant)) / T ** 2  # always positive
-        else:  # dist < 0
-            a = (Tv_2d - np.sqrt(discriminant)) / T ** 2  # always negative
+        Tv_2d = (2 * dist - T * v_init_rel) / (T ** 2)
+        sqrt_disc = np.sqrt(Tv_2d ** 2 + (T * v_init_rel) ** 2) / (T ** 2)
+        # try acceleration + deceleration
+        a = Tv_2d + sqrt_disc  # always positive
         t1 = 0.5 * (T - v_init_rel / a)
-        if 0. <= t1 <= T:
+        if 0. <= t1 <= T:  # valid t1
             v_mid_rel = v_init_rel + a * t1
             return cls(v_init, t1, v_mid_rel + v_tar, 0, T - t1, v_tar)  # acceleration, deceleration
-        else:  # invalid t1, try acceleration/deceleration + constant vel
-            t1 = 2 * dist / v_init_rel
-            if 0. <= t1 <= T:
-                return cls(v_init, t1, v_tar, T - t1, 0, v_tar)  # deceleration + constant vel
-            else:
-                print('NO PROFILE v_init_rel <= v_max_rel: t1=%.2f v_init=%.2f v_tar=%.2f T=%.2f' % (t1, v_init, v_tar, T))
-                return None
-
-    @staticmethod
-    def calc_lateral_time(init_lat_vel: float, signed_lat_dist: float, lane_width: float,
-                          aggressiveness_level: AggressivenessLevel) -> [float, float, float]:
-        """
-        Given initial lateral velocity and signed lateral distance, estimate a time it takes to perform the movement.
-        The time estimation assumes movement by velocity profile like in the longitudinal case.
-        :param init_lat_vel: [m/s] initial lateral velocity
-        :param signed_lat_dist: [m] signed distance to the target
-        :param lane_width: [m] lane width
-        :param aggressiveness_level: aggressiveness_level
-        :return: [s] the lateral movement time to the target, [m] maximal lateral deviation from lane center,
-        [m/s] initial lateral velocity toward target (negative if opposite to the target direction)
-        """
-        if signed_lat_dist > 0:
-            lat_v_init_toward_target = init_lat_vel
-        else:
-            lat_v_init_toward_target = -init_lat_vel
-        # normalize lat_acc by lane_width, such that T_d will NOT depend on lane_width
-        lat_acc = AGGRESSIVENESS_TO_LAT_ACC[aggressiveness_level.value] * lane_width / 3.6
-        lateral_profile = VelocityProfile._calc_profile_given_acc(
-            lat_v_init_toward_target, lat_acc, np.inf, abs(signed_lat_dist), 0, 0)
-
-        # calculate total deviation from lane center
-        acc = AGGRESSIVENESS_TO_LAT_ACC[aggressiveness_level.value]
-        rel_lat = abs(signed_lat_dist)/lane_width
-        rel_vel = init_lat_vel/lane_width
-        if signed_lat_dist * init_lat_vel < 0:  # changes lateral direction
-            rel_lat += rel_vel*rel_vel/(2*acc)
-        max_dev = min(2*rel_lat, 1)  # for half-lane deviation, max_dev = 1
-
-        return lateral_profile.t1 + lateral_profile.t3, max_dev, lat_v_init_toward_target
+        # try deceleration + acceleration
+        a = Tv_2d - sqrt_disc  # always negative
+        t1 = 0.5 * (T - v_init_rel / a)
+        if 0. <= t1 <= T:  # valid t1
+            v_mid_rel = v_init_rel + a * t1
+            return cls(v_init, t1, v_mid_rel + v_tar, 0, T - t1, v_tar)  # acceleration, deceleration
+        print('NO PROFILE v_init_rel <= v_max_rel: t1=%.2f a=%.2f v_init=%.2f v_tar=%.2f T=%.2f' % (t1, a, v_init, v_tar, T))
+        return None
 
     def calc_last_safe_time(self, ego_lon: float, ego_half_size: float, dyn_obj: DynamicObject, T: float,
                             td_0: float, td_T: float) -> float:
@@ -393,7 +357,7 @@ class VelocityProfile:
         (init_s_ego, init_v_obj, a_obj) = (ego_lon, dyn_obj.v_x, dyn_obj.acceleration_lon)
         init_s_obj = dyn_obj.road_localization.road_lon
 
-        if a_obj == 0:  # the object has constant velocity, then use fast safety test
+        if abs(a_obj) < 0.01:  # the object has constant velocity, then use fast safety test
             dist = abs(init_s_obj - init_s_ego)
             if init_s_ego < init_s_obj:
                 v_front = init_v_obj
@@ -483,7 +447,8 @@ class VelocityProfile:
         if init_s_ego < init_s_obj:  # the object is in front of ego
             t = cut_profile.when_decel_velocity_is_equal_to(v_obj)
             if t is None:  # cut_profile does not contain velocity v_obj
-                if cut_profile.v_init < v_obj:  # ego is always slower
+                v_max = max(max(cut_profile.v_init, cut_profile.v_mid), cut_profile.v_tar)
+                if v_max < v_obj:  # ego is always slower
                     return VelocityProfile.is_safe_state(v_obj, cut_profile.v_init, init_s_obj - init_s_ego, td_0, margin)
                 else:  # ego is always faster, check only at the end
                     tot_time = cut_profile.total_time()
@@ -498,7 +463,8 @@ class VelocityProfile:
         else:  # the object is behind ego
             t = cut_profile.when_accel_velocity_is_equal_to(v_obj)
             if t is None:  # cut_profile does not contain velocity v_obj
-                if cut_profile.v_init > v_obj:  # ego is always faster
+                v_min = min(min(cut_profile.v_init, cut_profile.v_mid), cut_profile.v_tar)
+                if v_min > v_obj:  # ego is always faster
                     return VelocityProfile.is_safe_state(cut_profile.v_init, v_obj, init_s_ego - init_s_obj, td_0, margin)
                 else:  # ego is always slower, check only at the end
                     tot_time = cut_profile.total_time()

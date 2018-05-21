@@ -1,12 +1,12 @@
 import numpy as np
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec
 
-from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, LON_ACC_TO_JERK_FACTOR, \
-    LAT_ACC_TO_JERK_FACTOR, BP_RIGHT_LANE_COST_WEIGHT, BP_EFFICIENCY_COST_WEIGHT, \
-    LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, \
-    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, BP_METRICS_LANE_DEVIATION_COST_WEIGHT, \
-    EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO, AGGRESSIVENESS_TO_LAT_ACC, CHANGE_LAT_VEL_WEIGHT
+from decision_making.src.global_constants import BP_RIGHT_LANE_COST_WEIGHT, BP_EFFICIENCY_COST_WEIGHT, \
+    LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
+    BP_METRICS_LANE_DEVIATION_COST_WEIGHT, EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO
 from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
+from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DA, FS_DV, FS_DX
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
 
 class BP_EfficiencyMetric:
@@ -62,44 +62,54 @@ class BP_EfficiencyMetric:
 
 class BP_ComfortMetric:
     @staticmethod
-    def calc_cost(vel_profile: VelocityProfile, T_d, T_d_max: float, aggressiveness: AggressivenessLevel,
-                  lat_vel_to_tar: float):
+    def calc_cost(ego_fstate: np.array, spec: ActionSpec, T_d: float) -> [float, float]:
         """
         Calculate comfort cost for lateral and longitudinal movement
-        :param vel_profile: longitudinal velocity profile
-        :param T_d: comfortable lateral movement time
+        :param ego_fstate: initial ego Frenet state
+        :param spec: action spec
         :param T_d_max: maximal permitted lateral movement time, bounded according to the safety
-        :param aggressiveness: aggressiveness level of the action
-        :param lat_vel_to_tar: initial lateral velocity to the target direction
+        :param target_lat: target latitude
         :return: comfort cost in units of the general performance metrics cost
         """
-        # TODO: if T is known, calculate jerks analytically
-        if T_d_max <= 0:
-            return np.inf
+        if T_d <= 0 < spec.td:  # infeasible lateral movement
+            return 0, np.inf
 
-        # calculate factor between the comfortable lateral movement time and the required lateral movement time
-        if T_d <= T_d_max:
-            time_factor = 1  # comfortable lane change
-        else:
-            time_factor = T_d / max(np.finfo(np.float16).eps, T_d_max)
-        acc_factor = AGGRESSIVENESS_TO_LAT_ACC[aggressiveness.value] / AGGRESSIVENESS_TO_LAT_ACC[0]
-        lat_time = min(T_d, T_d_max)
-        opposite_lat_vel = max(0., -lat_vel_to_tar)  # only negative lateral velocity increases the cost
-        lat_cost = (lat_time + CHANGE_LAT_VEL_WEIGHT * opposite_lat_vel**2) * (time_factor ** 6) * (acc_factor ** 3) * \
-                   LAT_ACC_TO_JERK_FACTOR * LAT_JERK_COST_WEIGHT
+        # # calculate factor between the comfortable lateral movement time and the required lateral movement time
+        # if T_d <= T_d_max:
+        #     time_factor = 1  # comfortable lane change
+        # else:
+        #     time_factor = T_d / max(np.finfo(np.float16).eps, T_d_max)
+        # # acc_factor = np.sqrt((AGGRESSIVENESS_TO_LAT_ACC[aggressiveness.value] / AGGRESSIVENESS_TO_LAT_ACC[0]) ** 5)
+        # lat_time = min(T_d, T_d_max)
+        # change_lat_dir_time = 0
+        # if lat_vel_to_tar < 0:  # only negative lateral velocity increases the cost
+        #     change_lat_dir_time = CHANGE_LAT_VEL_WEIGHT * lat_vel_to_tar**2
+        # lat_cost = (lat_time + change_lat_dir_time) * (time_factor ** 5) * LAT_ACC_TO_JERK_FACTOR * LAT_JERK_COST_WEIGHT
 
-        # longitudinal cost
-        lon_cost = 0
-        if vel_profile.t1 + vel_profile.t3 > 0:
-            acc1 = acc3 = 0
-            if vel_profile.t1 > 0:
-                acc1 = abs(vel_profile.v_mid - vel_profile.v_init) / vel_profile.t1
-            if vel_profile.t3 > 0:
-                acc3 = abs(vel_profile.v_tar - vel_profile.v_mid) / vel_profile.t3
-            lon_cost = (vel_profile.t1 * (acc1**3) + vel_profile.t3 * (acc3**3)) * LON_ACC_TO_JERK_FACTOR * \
-                       LON_JERK_COST_WEIGHT
+        lat_cost = lon_cost = 0
+        # lateral jerk
+        if spec.td > 0:
+            lat_jerk = QuinticPoly1D.cumulative_jerk_from_constraints(
+                ego_fstate[FS_DA], ego_fstate[FS_DV], 0, spec.d - ego_fstate[FS_DX], T_d)
+            lat_cost = lat_jerk * LAT_JERK_COST_WEIGHT
 
-        return lat_cost + lon_cost
+        # longitudinal jerk
+        if spec.t > 0:
+            lon_jerk = QuinticPoly1D.cumulative_jerk_from_constraints(
+                ego_fstate[FS_SA], ego_fstate[FS_SV], spec.v, spec.s - ego_fstate[FS_SX], spec.t)
+            lon_cost = lon_jerk * LON_JERK_COST_WEIGHT
+            # print('lon: a0=%.2f v0=%.2f vT=%.2f s=%.2f t=%.2f' %
+            # (ego_fstate[FS_SA], ego_fstate[FS_SV], spec.v, spec.s - ego_fstate[FS_SX], spec.t))
+
+        # if vel_profile.t1 + vel_profile.t3 > 0:
+        #     jerk1 = jerk2 = 0
+        #     if vel_profile.t1 > 0:
+        #         jerk1 = LON_ACC_TO_JERK_FACTOR * ((vel_profile.v_mid - vel_profile.v_init) ** 2) / (vel_profile.t1 ** 3)
+        #     if vel_profile.t3 > 0:
+        #         jerk2 = LON_ACC_TO_JERK_FACTOR * ((vel_profile.v_tar - vel_profile.v_mid) ** 2) / (vel_profile.t3 ** 3)
+        #     lon_cost = (jerk1 + jerk2) * LON_JERK_COST_WEIGHT
+
+        return lon_cost, lat_cost
 
 
 class BP_RightLaneMetric:

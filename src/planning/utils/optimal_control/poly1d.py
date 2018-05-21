@@ -339,6 +339,13 @@ class QuinticPoly1D(Poly1D):
                720 * a4 * a5 * T ** 4 + \
                720 * a5 ** 2 * T ** 5
 
+    @staticmethod
+    def cumulative_jerk_from_constraints(a_0: float, v_0: float, v_T: float, ds: float, T: float):
+        return (9.0 * T ** 4 * a_0 ** 2 + 72.0 * T ** 3 * a_0 * v_0 + 48.0 * T ** 3 * a_0 * v_T -
+                120.0 * T ** 2 * a_0 * ds + 192.0 * T ** 2 * v_0 ** 2 + 336.0 * T ** 2 * v_0 * v_T +
+                192.0 * T ** 2 * v_T ** 2 - 720.0 * T * ds * v_0 - 720.0 * T * ds * v_T + 720.0 * ds ** 2) / T ** 5
+
+
     # TODO: document
     @staticmethod
     def time_cost_function(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds: float, T_m: float):
@@ -381,13 +388,20 @@ class QuinticPoly1D(Poly1D):
         :return: labmda function that takes relative time in seconds and returns the relative distance
         travelled since time 0
         """
-        return lambda t: (-T ** 5 * t * (a_0 * t + 2 * v_0) + 2 * T ** 5 * (ds + t * v_T) + T ** 2 * t ** 3 * (
-                    3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T)
-                    - 20 * ds - 20 * v_T * (T - T_m)) - T * t ** 4 * (
-                                      3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds
-                                      - 30 * v_T * (T - T_m)) + t ** 5 * (
-                                      T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * ds - 12 * v_T * (T - T_m))) / (
-                                     2 * T ** 5)
+        return lambda t: t * (T ** 5 * (0.5 * a_0 * t + 1.0 * v_0) + T ** 2 * t ** 2 *
+                              (-1.5 * T ** 2 * a_0 - T * (6.0 * v_0 + 4.0 * v_T) + 10.0 * ds + 10.0 * v_T * (T - T_m)) +
+                              T * t ** 3 * (1.5 * T ** 2 * a_0 + T * (8.0 * v_0 + 7.0 * v_T) - 15.0 * ds -
+                                            15.0 * v_T * (T - T_m)) + t ** 4 * (-0.5 * T ** 2 * a_0 - 3.0 * T *
+                                                                                (v_0 + v_T) + 6.0 * ds + 6.0 * v_T *
+                                                                                (T - T_m))) / T ** 5
+
+        # return lambda t: (-T ** 5 * t * (a_0 * t + 2 * v_0) + 2 * T ** 5 * (ds + t * v_T) + T ** 2 * t ** 3 * (
+        #             3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T)
+        #             - 20 * ds - 20 * v_T * (T - T_m)) - T * t ** 4 * (
+        #                               3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds
+        #                               - 30 * v_T * (T - T_m)) + t ** 5 * (
+        #                               T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * ds - 12 * v_T * (T - T_m))) / (
+        #                              2 * T ** 5)
 
     @staticmethod
     def distance_from_target_derivative_coefs(a_0: float, v_0: float, v_T: float, ds: float, T: float, T_m: float):

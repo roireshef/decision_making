@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 
 from decision_making.src.exceptions import BehavioralPlanningException
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MIN_OVERTAKE_VEL, \
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
     SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import \
     BehavioralGridState, SemanticGridCell, RelativeLane, RelativeLongitudinalPosition

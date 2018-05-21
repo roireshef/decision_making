@@ -4,6 +4,7 @@ from typing import Optional
 
 import numpy as np
 
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
@@ -79,7 +80,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
 
         next_state_values = np.array([approximate_value_function(state, action_recipes[i], spec, self.value_approximator)
-                                      if action_specs_mask[i] else np.inf for i, spec in enumerate(action_specs)])
+                                      if action_specs_mask[i] and not np.isinf(action_costs[i])
+                                      else np.inf for i, spec in enumerate(action_specs)])
 
         # Q-values evaluation (action_cost + value_function(next_state))
         Q_values = np.array([action_costs[i] + next_state_values[i] for i, spec in enumerate(action_specs)])
@@ -88,6 +90,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         selected_action_index = valid_idx[Q_values[valid_idx].argmin()]
         self.logger.debug('Selected recipe: ', action_recipes[selected_action_index].__dict__)
         selected_action_spec = action_specs[selected_action_index]
+
+        print('Selected action: %d; rel_lat=%d\n' % (selected_action_index, action_recipes[selected_action_index].relative_lane.value))
 
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(behavioral_state=behavioral_state,
                                                                                       action_spec=selected_action_spec,
@@ -129,7 +133,8 @@ def approximate_value_function(state: State, recipe: ActionRecipe, spec: ActionS
     new_state = State(None, predicted_objects, new_ego)
     new_behavioral_state = BehavioralGridState.create_from_state(new_state, logger)
 
-    goal = NavigationGoal(road_id, spec.s + 200, list(range(0, num_lanes)))
+    des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    goal = NavigationGoal(road_id, ego.road_localization.road_lon + 20*des_vel, list(range(0, num_lanes)))
     value = value_approximator.evaluate_state(new_behavioral_state, goal)
 
     return value

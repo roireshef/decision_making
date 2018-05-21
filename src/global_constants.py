@@ -102,20 +102,23 @@ SAFE_DIST_TIME_DELAY = 2.0
 AV_TIME_DELAY = 0.8  # TODO: may be increased when TP will work with RSS
 
 # [m/sec] Minimal difference of velocities to justify an overtake
-MIN_OVERTAKE_VEL = 3
+# MIN_OVERTAKE_VEL = 3
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
 
 # [m/s^2] accelerations for different aggressiveness levels
 AGGRESSIVENESS_TO_LON_ACC = np.array([1, 1.5, 2.25])
-AGGRESSIVENESS_TO_LAT_ACC = np.array([0.5, 0.7, 1])
+AGGRESSIVENESS_TO_LAT_ACC = np.array([0.4, 0.6, 0.9])
 
-# conversion factor from acceleration to comfort cost
-LON_ACC_TO_JERK_FACTOR = 0.2
-LAT_ACC_TO_JERK_FACTOR = 0.2
-CHANGE_LAT_VEL_WEIGHT = 50.
+# [sec] T_d according to specify_goal
+BP_CALM_LANE_CHANGE_TIME = 6.42
 
+# # conversion factor from acceleration to comfort cost
+# LON_ACC_TO_JERK_FACTOR = 12.05  # exact constant for quartic jerk, don't change it
+# LAT_ACC_TO_JERK_FACTOR = 0.2    # exact constant for lane change jerk, don't change it
+# CHANGE_LAT_VEL_WEIGHT = 50.     # penalty factor for changing lateral movement direction
+#
 # [sec] performance metrics for BP minimal plan time
 BP_METRICS_TIME_HORIZON = BP_ACTION_T_LIMITS[1]
 
@@ -130,9 +133,8 @@ BP_RIGHT_LANE_COST_WEIGHT = 0.15              # cost of using non-right lane on 
 # performance metrics for BP: missing goal cost
 BP_MISSING_GOAL_COST = 100.
 
-# [m/sec] when target velocity of vel_profile is greater than the desired velocity,
-# ego moves a bit faster (by this delta) than the target in order to reach it.
-BP_MAX_VELOCITY_TOLERANCE = 1.
+# TODO: will be removed after implementation of value function
+MINIMAL_STATIC_ACTION_TIME = 8
 
 
 

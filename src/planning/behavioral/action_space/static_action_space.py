@@ -63,15 +63,17 @@ class StaticActionSpace(ActionSpace):
         # when setting T
         T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
 
-        # latitudinal difference to target
-        latitudinal_difference = desired_center_lane_latitude - ego_init_fstate[FS_DX]
+        # lateral difference to target
+        lateral_difference = desired_center_lane_latitude - ego_init_fstate[FS_DX]
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 1], a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV], v_T=0,
-            ds=latitudinal_difference, T_m=SAFE_DIST_TIME_DELAY)
+            ds=lateral_difference, T_m=SAFE_DIST_TIME_DELAY)
         roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         T_d = np.fmin.reduce(roots_d, axis=-1)
+
+        # print('ego_init_fstate = %s, roots_d=%s' % (ego_init_fstate, roots_d))
 
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
         T = np.maximum(np.maximum(T_d, T_s), BP_ACTION_T_LIMITS[LIMIT_MIN])
@@ -81,7 +83,7 @@ class StaticActionSpace(ActionSpace):
                                                              v_T=v_T, T=T)(T)
         target_s = distance_s + ego_init_fstate[FS_SX]
 
-        action_specs = [ActionSpec(t, v_T[i], target_s[i], desired_center_lane_latitude[i])
+        action_specs = [ActionSpec(t, T_d[i], v_T[i], target_s[i], desired_center_lane_latitude[i])
                         if ~np.isnan(t) else None
                         for i, t in enumerate(T)]
 

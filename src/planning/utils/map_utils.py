@@ -1,7 +1,7 @@
 import numpy as np
-from decision_making.src.planning.types import FP_SX, FrenetState2D, FS_SX
+from decision_making.src.planning.types import FP_SX, FrenetState2D, FS_SX, C_X, C_Y, C_YAW, C_V, C_A, C_K
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.state.state import DynamicObject, EgoState
+from decision_making.src.state.state import DynamicObject, EgoState, ObjectSize
 from mapping.src.service.map_service import MapService
 
 
@@ -10,6 +10,10 @@ class MapUtils:
     @staticmethod
     def get_road_rhs_frenet(obj: DynamicObject):
         return MapService.get_instance()._rhs_roads_frenet[obj.road_localization.road_id]
+
+    @staticmethod
+    def get_road_rhs_frenet_by_road_id(road_id: int):
+        return MapService.get_instance()._rhs_roads_frenet[road_id]
 
     # TODO: replace this call with the road localization once it is updated to be hold a frenet state
     @staticmethod
@@ -52,3 +56,25 @@ class MapUtils:
             return object_relative_lon + (obj_length / 2 + ego_length / 2)
         else:
             return 0
+
+    @staticmethod
+    def create_canonic_ego(timestamp: int, lon: float, lat: float, vel: float, size: ObjectSize,
+                           road_frenet: FrenetSerret2DFrame) -> EgoState:
+        """
+        Create ego with zero lateral velocity and zero accelerations
+        """
+        fstate = np.array([lon, vel, 0, lat, 0, 0])
+        cstate = road_frenet.fstate_to_cstate(fstate)
+        return EgoState(0, timestamp, cstate[C_X], cstate[C_Y], 0, cstate[C_YAW], size, 0, cstate[C_V], 0,
+                        cstate[C_A], cstate[C_K] * cstate[C_V], 0)
+
+    @staticmethod
+    def create_canonic_object(obj_id: int, timestamp: int, lon: float, lat: float, vel: float, size: ObjectSize,
+                              road_frenet: FrenetSerret2DFrame) -> DynamicObject:
+        """
+        Create object with zero lateral velocity and zero accelerations
+        """
+        fstate = np.array([lon, vel, 0, lat, 0, 0])
+        cstate = road_frenet.fstate_to_cstate(fstate)
+        return DynamicObject(obj_id, timestamp, cstate[C_X], cstate[C_Y], 0, cstate[C_YAW], size, 0, cstate[C_V], 0,
+                             cstate[C_A], cstate[C_K] * cstate[C_V])
