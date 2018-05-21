@@ -2,17 +2,12 @@ import numpy as np
 from logging import Logger
 
 from decision_making.src.global_constants import BP_METRICS_LANE_DEVIATION_COST_WEIGHT, BP_MISSING_GOAL_COST, \
-    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, SAFE_DIST_TIME_DELAY, AGGRESSIVENESS_TO_LON_ACC, LON_ACC_LIMITS, \
-    AV_TIME_DELAY, BP_RIGHT_LANE_COST_WEIGHT, BP_EFFICIENCY_COST_WEIGHT, BP_CALM_LANE_CHANGE_TIME
+    BP_RIGHT_LANE_COST_WEIGHT, BP_EFFICIENCY_COST_WEIGHT, BP_CALM_LANE_CHANGE_TIME
 from decision_making.src.planning.behavioral.evaluators.cost_functions import BP_EfficiencyMetric, BP_ComfortMetric
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
-from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, NavigationGoal, RelativeLane, \
-    ActionSpec
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, \
-    RelativeLongitudinalPosition
+from decision_making.src.planning.behavioral.data_objects import NavigationGoal, ActionSpec
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.utils.map_utils import MapUtils
-from mapping.src.model.localization import RoadLocalization
 from mapping.src.service.map_service import MapService
 
 
@@ -22,7 +17,7 @@ class NaiveValueApproximator(ValueApproximator):
         self.logger = logger
         self.calm_lat_comfort_cost = None
 
-    def evaluate_state(self, behavioral_state: BehavioralGridState, goal: NavigationGoal) -> float:
+    def approximate(self, behavioral_state: BehavioralGridState, goal: NavigationGoal) -> float:
 
         ego = behavioral_state.ego_state
         ego_loc = ego.road_localization

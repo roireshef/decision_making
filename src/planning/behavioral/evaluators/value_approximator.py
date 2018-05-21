@@ -24,7 +24,7 @@ class ValueApproximator:
         self.logger = logger
         self.calm_lat_comfort_cost = None
 
-    def evaluate_state(self, behavioral_state: BehavioralGridState, goal: NavigationGoal) -> float:
+    def approximate(self, behavioral_state: BehavioralGridState, goal: NavigationGoal) -> float:
 
         ego = behavioral_state.ego_state
         ego_loc = ego.road_localization

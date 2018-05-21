@@ -202,7 +202,7 @@ def test_evaluate_rangesForEgoAndF():
                 navigation_goals = SingleStepBehavioralPlanner.generate_goals(
                     ego.road_localization.road_id, ego.road_localization.road_lon, terminal_behavioral_states)
 
-                terminal_states_values = np.array([value_approximator.evaluate_state(state, navigation_goals[i])
+                terminal_states_values = np.array([value_approximator.approximate(state, navigation_goals[i])
                                                    if specs_mask[i] else np.nan
                                                    for i, state in enumerate(terminal_behavioral_states)])
 
