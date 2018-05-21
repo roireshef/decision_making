@@ -23,8 +23,12 @@ for filename in os.listdir(directory):
         action_type = filename.split('.bin')[0].split('_predicate')[0]
         wT, wJ = [float(filename.split('.bin')[0].split('_')[4]),
                   float(filename.split('.bin')[0].split('_')[6])]
-        predicate_shape = (
-            int(v_0_grid.shape[0]), int(a_0_grid.shape[0]), int(s_T_grid.shape[0]), int(v_T_grid.shape[0]))
+        if action_type == 'follow_lane':
+            predicate_shape = (
+                int(v_0_grid.shape[0]), int(a_0_grid.shape[0]), int(v_T_grid.shape[0]))
+        else:
+            predicate_shape = (
+                int(v_0_grid.shape[0]), int(a_0_grid.shape[0]), int(s_T_grid.shape[0]), int(v_T_grid.shape[0]))
         predicate = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
         predicates[(action_type, wT, wJ)] = predicate
 
