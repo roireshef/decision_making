@@ -158,10 +158,6 @@ def test_evaluate_rangesForEgoAndF():
     F_vel_range = np.arange(des_vel-9, des_vel+6.1, 3)
     sec_to_F_range = np.array([2, 2.5, 3, 4, 6])
 
-    ego_vel_range = np.array([17])
-    F_vel_range = np.array([20])
-    sec_to_F_range = np.array([6])
-
     for ego_vel in ego_vel_range:
         for F_vel in F_vel_range:
             for sec_to_F in sec_to_F_range:
