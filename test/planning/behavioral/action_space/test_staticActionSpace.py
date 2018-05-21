@@ -19,7 +19,8 @@ from decision_making.src.planning.utils.math import Math
 
 from decision_making.src.planning.behavioral.constants import DEFAULT_STATIC_RECIPE_FILTERING
 
-# test Specify from very close to target velocity
+
+# test Specify, when ego starts with velocity very close to the target velocity
 def test_specifyGoal_closeToTargetVelocity_specifyNotFail():
 
     logger = Logger("test_specifyStaticAction")

@@ -49,7 +49,8 @@ def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCel
     np.testing.assert_array_almost_equal(longitudes, expected_longitudes)
 
 
-# test specify for dynamic action from a slightly unsafe position
+# test specify for dynamic action from a slightly unsafe position:
+# when the distance from the target is just 2 seconds * target velocity, without adding the cars' sizes
 def test_specifyGoal_slightlyUnsafeState_shouldSucceed():
     logger = Logger("test_specifyDynamicAction")
     road_id = 20
@@ -77,27 +78,10 @@ def test_specifyGoal_slightlyUnsafeState_shouldSucceed():
     action_recipes = action_space.recipes
     recipes_mask = action_space.filter_recipes(action_recipes, behavioral_state)
 
-    action_specs = [action_space.specify_goal(recipe, behavioral_state) if recipes_mask[i] else None
-                    for i, recipe in enumerate(action_recipes)]
+    front_recipies = [recipe for i, recipe in enumerate(action_space.recipes)
+                      if recipe.relative_lane == RelativeLane.SAME_LANE and
+                      recipe.relative_lon == RelativeLongitudinalPosition.FRONT and
+                      recipes_mask[i]]
 
-    spec_calm = [action_specs[i] for i, recipe in enumerate(action_space.recipes)
-                 if recipe.relative_lane == RelativeLane.SAME_LANE and
-                 recipe.relative_lon == RelativeLongitudinalPosition.FRONT and
-                 recipe.aggressiveness == AggressivenessLevel.CALM]
-    spec_strd = [action_specs[i] for i, recipe in enumerate(action_space.recipes)
-                 if recipe.relative_lane == RelativeLane.SAME_LANE and
-                 recipe.relative_lon == RelativeLongitudinalPosition.FRONT and
-                 recipe.aggressiveness == AggressivenessLevel.STANDARD]
-    spec_aggr = [action_specs[i] for i, recipe in enumerate(action_space.recipes)
-                 if recipe.relative_lane == RelativeLane.SAME_LANE and
-                 recipe.relative_lon == RelativeLongitudinalPosition.FRONT and
-                 recipe.aggressiveness == AggressivenessLevel.AGGRESSIVE]
-    T = []
-    if len(spec_calm) > 0 and spec_calm[0] is not None:
-        T.append(spec_calm[0].t)
-    if len(spec_strd) > 0 and spec_strd[0] is not None:
-        T.append(spec_strd[0].t)
-    if len(spec_aggr) > 0 and spec_aggr[0] is not None:
-        T.append(spec_aggr[0].t)
-
-    assert len(T) > 0
+    # verify that there is at least one valid recipe for dynamic actions
+    assert len(front_recipies) > 0
