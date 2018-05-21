@@ -30,10 +30,18 @@ class StaticActionSpace(ActionSpace):
 
     @property
     def recipe_classes(self) -> List[Type]:
+        """a list of Recipe classes this action space can handle with"""
         return [StaticActionRecipe]
 
     def specify_goals(self, action_recipes: List[StaticActionRecipe], behavioral_state: BehavioralGridState) -> \
             List[Optional[ActionSpec]]:
+        """
+        This method's purpose is to specify the enumerated actions (recipes) that the agent can take.
+        Each semantic action (ActionRecipe) is translated into a terminal state specification (ActionSpec).
+        :param action_recipes: an enumerated semantic action [ActionRecipe].
+        :param behavioral_state: a Frenet state of ego at initial point
+        :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
+        """
         ego = behavioral_state.ego_state
         road_frenet = MapUtils.get_road_rhs_frenet(ego)
 

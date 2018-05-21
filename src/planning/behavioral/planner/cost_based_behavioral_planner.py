@@ -21,6 +21,7 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
+from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
@@ -130,7 +131,13 @@ class CostBasedBehavioralPlanner:
         return trajectory_parameters
 
     @staticmethod
-    def generate_baseline_trajectory(ego: EgoState, action_spec: ActionSpec):
+    def generate_baseline_trajectory(ego: EgoState, action_spec: ActionSpec) -> SamplableTrajectory:
+        """
+        Creates a SamplableTrajectory as a reference trajectory for a given ActionSpec, assuming T_d=T_s
+        :param ego: ego object
+        :param action_spec: action specification that contains all relevant info about the action's terminal state
+        :return: a SamplableWerlingTrajectory object
+        """
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
         road_frenet = MapUtils.get_road_rhs_frenet(ego)
