@@ -237,15 +237,15 @@ class QuarticPoly1D(Poly1D):
     @staticmethod
     def time_cost_function(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float):
         return lambda T: (T ** 4 * w_T + 4 * w_J * (
-        T ** 2 * a_0 ** 2 + 3 * T * a_0 * v_0 - 3 * T * a_0 * v_T + 3 * v_0 ** 2 - 6 * v_0 * v_T + 3 * v_T ** 2)) / T ** 3
+            T ** 2 * a_0 ** 2 + 3 * T * a_0 * v_0 - 3 * T * a_0 * v_T + 3 * v_0 ** 2 - 6 * v_0 * v_T + 3 * v_T ** 2)) / T ** 3
 
     @staticmethod
     def time_cost_function_derivative(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float):
         return lambda T: (
-                         T ** 4 * w_T
-                         - 4 * T ** 2 * a_0 ** 2 * w_J
-                         + 24 * T * (a_0 * v_T * w_J - a_0 * v_0 * w_J)
-                         - 36 * v_0 ** 2 * w_J + 72 * v_0 * v_T * w_J - 36 * v_T ** 2 * w_J) / T ** 4
+                             T ** 4 * w_T
+                             - 4 * T ** 2 * a_0 ** 2 * w_J
+                             + 24 * T * (a_0 * v_T * w_J - a_0 * v_0 * w_J)
+                             - 36 * v_0 ** 2 * w_J + 72 * v_0 * v_T * w_J - 36 * v_T ** 2 * w_J) / T ** 4
 
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
@@ -264,12 +264,12 @@ class QuarticPoly1D(Poly1D):
     @staticmethod
     def velocity_profile_function(a_0: float, v_0: float, v_T: float, T: float):
         return lambda t: (T ** 3 * (a_0 * t + v_0) - T * t ** 2 * (2 * T * a_0 + 3 * v_0 - 3 * v_T) + t ** 3 * (
-        T * a_0 + 2 * v_0 - 2 * v_T)) / T ** 3
+            T * a_0 + 2 * v_0 - 2 * v_T)) / T ** 3
 
     @staticmethod
     def acceleration_profile_function(a_0: float, v_0: float, v_T: float, T: float):
         return lambda t: (T ** 3 * a_0 - 2 * T * t * (2 * T * a_0 + 3 * v_0 - 3 * v_T) + 3 * t ** 2 * (
-        T * a_0 + 2 * v_0 - 2 * v_T)) / T ** 3
+            T * a_0 + 2 * v_0 - 2 * v_T)) / T ** 3
 
 
 class QuinticPoly1D(Poly1D):
@@ -350,31 +350,31 @@ class QuinticPoly1D(Poly1D):
     @staticmethod
     def time_cost_function(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds: float, T_m: float):
         return lambda T: (T ** 6 * w_T + 3 * w_J * (
-        3 * T ** 4 * a_0 ** 2 + 24 * T ** 3 * a_0 * v_0 - 24 * T ** 3 * a_0 * v_T + 40 * T ** 2 * T_m * a_0 * v_T -
-        40 * T ** 2 * a_0 * ds + 64 * T ** 2 * v_0 ** 2 - 128 * T ** 2 * v_0 * v_T + 64 * T ** 2 * v_T ** 2 + 240 * T * T_m * v_0 * v_T -
-        240 * T * T_m * v_T ** 2 - 240 * T * ds * v_0 + 240 * T * ds * v_T + 240 * T_m ** 2 * v_T ** 2 - 480 * T_m * ds * v_T +
-        240 * ds ** 2)) / T ** 5
+            3 * T ** 4 * a_0 ** 2 + 24 * T ** 3 * a_0 * v_0 - 24 * T ** 3 * a_0 * v_T + 40 * T ** 2 * T_m * a_0 * v_T -
+            40 * T ** 2 * a_0 * ds + 64 * T ** 2 * v_0 ** 2 - 128 * T ** 2 * v_0 * v_T + 64 * T ** 2 * v_T ** 2 + 240 * T * T_m * v_0 * v_T -
+            240 * T * T_m * v_T ** 2 - 240 * T * ds * v_0 + 240 * T * ds * v_T + 240 * T_m ** 2 * v_T ** 2 - 480 * T_m * ds * v_T +
+            240 * ds ** 2)) / T ** 5
 
     @staticmethod
     def time_cost_function_derivative(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds: float,
                                       T_m: float):
         return lambda T: (
-                         T ** 6 * w_T - 9 * T ** 4 * a_0 ** 2 * w_J - 144 * T ** 3 * a_0 * v_0 * w_J + 144 * T ** 3 * a_0 * v_T * w_J -
-                         360 * T ** 2 * T_m * a_0 * v_T * w_J + 360 * T ** 2 * a_0 * ds * w_J - 576 * T ** 2 * v_0 ** 2 * w_J + 1152 * T ** 2 * v_0 * v_T * w_J -
-                         576 * T ** 2 * v_T ** 2 * w_J - 2880 * T * T_m * v_0 * v_T * w_J + 2880 * T * T_m * v_T ** 2 * w_J + 2880 * T * ds * v_0 * w_J -
-                         2880 * T * ds * v_T * w_J - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * ds * v_T * w_J - 3600 * ds ** 2 * w_J) / T ** 6
+                             T ** 6 * w_T - 9 * T ** 4 * a_0 ** 2 * w_J - 144 * T ** 3 * a_0 * v_0 * w_J + 144 * T ** 3 * a_0 * v_T * w_J -
+                             360 * T ** 2 * T_m * a_0 * v_T * w_J + 360 * T ** 2 * a_0 * ds * w_J - 576 * T ** 2 * v_0 ** 2 * w_J + 1152 * T ** 2 * v_0 * v_T * w_J -
+                             576 * T ** 2 * v_T ** 2 * w_J - 2880 * T * T_m * v_0 * v_T * w_J + 2880 * T * T_m * v_T ** 2 * w_J + 2880 * T * ds * v_0 * w_J -
+                             2880 * T * ds * v_T * w_J - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * ds * v_T * w_J - 3600 * ds ** 2 * w_J) / T ** 6
 
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
                                             v_T: np.ndarray, ds: np.ndarray, T_m: np.ndarray):
         zeros = np.zeros(w_T.shape[0])
         return np.c_[w_T,
-                      zeros,
-                      -9*a_0**2*w_J,
-                      -144*a_0*v_0*w_J + 144*a_0*v_T*w_J,
-                      -360*T_m*a_0*v_T*w_J + 360*a_0*ds*w_J - 576*v_0**2*w_J + 1152*v_0*v_T*w_J - 576*v_T**2*w_J,
-                      -2880*T_m*v_0*v_T*w_J + 2880*T_m*v_T**2*w_J + 2880*ds*v_0*w_J - 2880*ds*v_T*w_J,
-                      - 3600*T_m**2*v_T**2*w_J + 7200*T_m*ds*v_T*w_J - 3600*ds**2*w_J]
+                     zeros,
+                     -9 * a_0 ** 2 * w_J,
+                     -144 * a_0 * v_0 * w_J + 144 * a_0 * v_T * w_J,
+                     -360 * T_m * a_0 * v_T * w_J + 360 * a_0 * ds * w_J - 576 * v_0 ** 2 * w_J + 1152 * v_0 * v_T * w_J - 576 * v_T ** 2 * w_J,
+                     -2880 * T_m * v_0 * v_T * w_J + 2880 * T_m * v_T ** 2 * w_J + 2880 * ds * v_0 * w_J - 2880 * ds * v_T * w_J,
+                     - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * ds * v_T * w_J - 3600 * ds ** 2 * w_J]
 
     @staticmethod
     def distance_profile_function(a_0: float, v_0: float, v_T: float, ds: float, T: float, T_m: float):
@@ -385,31 +385,23 @@ class QuinticPoly1D(Poly1D):
         :param v_T: [m/sec] terminal velocity (at time T)
         :param dx: [m] distance to travel between time 0 and time T
         :param T: [sec] horizon
-        :return: labmda function that takes relative time in seconds and returns the relative distance
+        :return: lambda function(s) that takes relative time in seconds and returns the relative distance
         travelled since time 0
         """
-        return lambda t: t * (T ** 5 * (0.5 * a_0 * t + 1.0 * v_0) + T ** 2 * t ** 2 *
-                              (-1.5 * T ** 2 * a_0 - T * (6.0 * v_0 + 4.0 * v_T) + 10.0 * ds + 10.0 * v_T * (T - T_m)) +
-                              T * t ** 3 * (1.5 * T ** 2 * a_0 + T * (8.0 * v_0 + 7.0 * v_T) - 15.0 * ds -
-                                            15.0 * v_T * (T - T_m)) + t ** 4 * (-0.5 * T ** 2 * a_0 - 3.0 * T *
-                                                                                (v_0 + v_T) + 6.0 * ds + 6.0 * v_T *
-                                                                                (T - T_m))) / T ** 5
-
-        # return lambda t: (-T ** 5 * t * (a_0 * t + 2 * v_0) + 2 * T ** 5 * (ds + t * v_T) + T ** 2 * t ** 3 * (
-        #             3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T)
-        #             - 20 * ds - 20 * v_T * (T - T_m)) - T * t ** 4 * (
-        #                               3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds
-        #                               - 30 * v_T * (T - T_m)) + t ** 5 * (
-        #                               T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * ds - 12 * v_T * (T - T_m))) / (
-        #                              2 * T ** 5)
+        return lambda t: t * (T ** 5 * (a_0 * t + 2 * v_0) + T ** 2 * t ** 2 * (
+            -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * ds + 20 * v_T * (T - T_m)) + T * t ** 3 * (
+                                  3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds - 30 * v_T * (
+                                      T - T_m)) + t ** 4 * (
+                                  -T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * ds + 12 * v_T * (T - T_m))) / (2 * T ** 5)
 
     @staticmethod
     def distance_from_target_derivative_coefs(a_0: float, v_0: float, v_T: float, ds: float, T: float, T_m: float):
-        coefs = np.array([5*(T**2*a_0 + 6*T*(v_0 + v_T) - 12*ds - 12*v_T*(T - T_m)),
-                 -4*T*(3*T**2*a_0 + 2*T*(8*v_0 + 7*v_T)-30*ds-30*v_T*(T - T_m)),
-                 +3*T**2*(3*T**2*a_0+4*T*(3 * v_0 + 2 * v_T)-20*ds-20*v_T*(T - T_m)),
-                 -2*T**5*a_0,
-                 2*T**5*(v_T-v_0)])
+        coefs = np.array([5 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * ds - 12 * v_T * (T - T_m)),
+                          -4 * T * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds - 30 * v_T * (T - T_m)),
+                          +3 * T ** 2 * (
+                              3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * ds - 20 * v_T * (T - T_m)),
+                          -2 * T ** 5 * a_0,
+                          2 * T ** 5 * (v_T - v_0)])
         return coefs
 
     @staticmethod
@@ -421,11 +413,14 @@ class QuinticPoly1D(Poly1D):
         :param v_T: [m/sec] terminal velocity (at time T)
         :param dx: [m] distance to travel between time 0 and time T
         :param T: [sec] horizon
-        :return: labmda function that takes relative time in seconds and returns the velocity
+        :return: lambda function(s) that takes relative time in seconds and returns the velocity
         """
-        return lambda t: (2*T**5*(a_0*t + v_0) + 3*T**2*t**2*(-3*T**2*a_0 - 4*T*(3*v_0 + 2*v_T) + 20*ds +
-                        20*v_T*(T - T_m)) + 4*T*t**3*(3*T**2*a_0 + 2*T*(8*v_0 + 7*v_T) - 30*ds - 30*v_T*(T - T_m))
-                          + 5*t**4*(-T**2*a_0 - 6*T*(v_0 + v_T) + 12*ds + 12*v_T*(T - T_m)))/(2*T**5)
+        return lambda t: (2 * T ** 5 * (a_0 * t + v_0) + 3 * T ** 2 * t ** 2 * (
+            -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * ds +
+            20 * v_T * (T - T_m)) + 4 * T * t ** 3 * (
+                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds - 30 * v_T * (T - T_m))
+                          + 5 * t ** 4 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * ds + 12 * v_T * (T - T_m))) / (
+                             2 * T ** 5)
 
     @staticmethod
     def acceleration_profile_function(a_0: float, v_0: float, v_T: float, ds: float, T: float, T_m: float):
@@ -436,18 +431,17 @@ class QuinticPoly1D(Poly1D):
         :param v_T: [m/sec] terminal velocity (at time T)
         :param dx: [m] distance to travel between time 0 and time T
         :param T: [sec] horizon
-        :return: labmda function that takes relative time in seconds and returns the velocity
+        :return: lambda function(s) that takes relative time in seconds and returns the velocity
         """
-        return lambda t: (T**5*a_0 - 3*T**2*t*(3*T**2*a_0 + 4*T*(3*v_0 + 2*v_T) - 20*ds - 20*v_T*(T - T_m))
-                    + 6*T*t**2*(3*T**2*a_0 + 2*T*(8*v_0 + 7*v_T) - 30*ds - 30*v_T*(T - T_m))
-                          + 10*t**3*(-T**2*a_0 - 6*T*(v_0 + v_T) + 12*ds + 12*v_T*(T - T_m)))/T**5
+        return lambda t: (T ** 5 * a_0 - 3 * T ** 2 * t * (
+            3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * ds - 20 * v_T * (T - T_m))
+                          + 6 * T * t ** 2 * (
+                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds - 30 * v_T * (T - T_m))
+                          + 10 * t ** 3 * (
+                              -T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * ds + 12 * v_T * (T - T_m))) / T ** 5
 
 
 class DynamicsCallables:
-    """
-
-    """
-
     def __init__(self, distance_function, velocity_function, acceleration_function):
         self._distance_function = distance_function
         self._velocity_function = velocity_function

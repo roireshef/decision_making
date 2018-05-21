@@ -22,15 +22,14 @@ from mapping.src.service.map_service import MapService
 
 
 class DynamicActionSpace(ActionSpace):
-    def __init__(self, logger: Logger, predictor: Predictor):
+    def __init__(self, logger: Logger, predictor: Predictor, filtering: RecipeFiltering):
         super().__init__(logger,
                          recipes=[DynamicActionRecipe.from_args_list(comb)
                                   for comb in cartesian([RelativeLane,
                                                          RelativeLongitudinalPosition,
                                                          [ActionType.FOLLOW_VEHICLE, ActionType.OVER_TAKE_VEHICLE],
                                                          AggressivenessLevel])],
-                         recipe_filtering=RecipeFiltering(recipe_filter_bank.dynamic_filters))
-
+                         recipe_filtering=filtering)
         self.predictor = predictor
 
     @property
@@ -77,9 +76,10 @@ class DynamicActionSpace(ActionSpace):
         # longitudinal difference between object and ego at t=0 (positive if obj in front of ego)
         init_longitudinal_difference = target_fstate[:, FS_SX] - ego_init_fstate[FS_SX]
         # margin_sign is -1 for FOLLOW_VEHICLE (behind target) and +1 for OVER_TAKE_VEHICLE (in front of target)
-        margin_sign = np.array([action_recipe.action_type.value*2-5 for action_recipe in action_recipes])
+        margin_sign = np.array([action_recipe.action_type.value * 2 - 5 for action_recipe in action_recipes])
 
-        ds = init_longitudinal_difference + margin_sign*(LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + ego.size.length/2 + target_length/2)
+        ds = init_longitudinal_difference + margin_sign * (
+            LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + ego.size.length / 2 + target_length / 2)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
@@ -106,5 +106,3 @@ class DynamicActionSpace(ActionSpace):
                         for i, t in enumerate(T)]
 
         return action_specs
-
-

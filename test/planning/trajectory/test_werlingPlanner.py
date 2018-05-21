@@ -15,13 +15,14 @@ from decision_making.src.global_constants import OBSTACLE_SIGMOID_K_PARAM, LATER
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.planning.trajectory.cost_function import Costs, Jerk
-from decision_making.src.planning.trajectory.optimal_control.frenet_constraints import FrenetConstraints
-from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import Poly1D
+from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
+from decision_making.src.planning.utils.optimal_control.poly1d import Poly1D
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, CartesianPoint2D, C_Y, \
     CartesianExtendedTrajectory, C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, CartesianExtendedState, CartesianTrajectory
-from decision_making.src.planning.trajectory.optimal_control.werling_planner import WerlingPlanner, \
-    SamplableWerlingTrajectory
+from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner, SamplableWerlingTrajectory
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.utils.math import Math
+from decision_making.src.planning.utils.optimal_control.poly1d import Poly1D
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
