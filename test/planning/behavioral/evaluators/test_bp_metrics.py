@@ -7,14 +7,14 @@ import pytest
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
-from decision_making.src.planning.behavioral.constants import DEFAULT_STATIC_RECIPE_FILTERING, \
-    DEFAULT_DYNAMIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel, \
     ActionRecipe, RelativeLane, DynamicActionRecipe, RelativeLongitudinalPosition, StaticActionRecipe
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, MINIMAL_STATIC_ACTION_TIME
+from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
+    DEFAULT_DYNAMIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.evaluators.heuristic_action_spec_evaluator import \
     HeuristicActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.naive_value_approximator import NaiveValueApproximator
