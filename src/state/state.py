@@ -105,6 +105,24 @@ class MapState(PUBSUB_MSG_IMPL):
         self.segment_id = segment_id
         self.lane_id = lane_id
 
+    def serialize(self):
+        # type: () -> LcmMapState
+        lcm_msg = LcmMapState()
+        lcm_msg.lane_state = LCMUtils.numpy_array_to_lcm_numpy_array(self.lane_state)
+        lcm_msg.road_state = LCMUtils.numpy_array_to_lcm_numpy_array(self.road_state)
+        lcm_msg.road_id = self.road_id
+        lcm_msg.segment_id = self.segment_id
+        lcm_msg.lane_id = self.lane_id
+        return lcm_msg
+
+    @classmethod
+    def deserialize(cls, lcmMsg):
+        # type: (LcmMapState) -> MapState
+        return cls(lcmMsg.lane_state, lcmMsg.road_state
+                 , lcmMsg.road_id
+                 , lcmMsg.segment_id
+                 , lcmMsg.lane_id)
+
 
 # TODO: Add properties
 # TODO: add member annotations
@@ -229,10 +247,10 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmDynamicObject) -> DynamicObject
         return cls(lcmMsg.obj_id, lcmMsg.timestamp
-                 , lcmMsg.x, lcmMsg.y, lcmMsg.z, lcmMsg.yaw
+                 , lcmMsg._cached_cartesian_state
+                 , lcmMsg._cached_map_state
                  , ObjectSize.deserialize(lcmMsg.size)
-                 , lcmMsg.confidence, lcmMsg.v_x, lcmMsg.v_y
-                 , lcmMsg.acceleration_lon, lcmMsg.omega_yaw)
+                 , lcmMsg.confidence)
 
 class DynamicObject(PUBSUB_MSG_IMPL):
     ''' Members annotations for python 2 compliant classes '''
