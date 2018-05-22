@@ -251,6 +251,20 @@ class QuarticPoly1D(Poly1D):
         """
         return cls.are_derivatives_in_limits(degree=1, poly_coefs=poly_coefs, T_vals=T_vals, limits=vel_limits)
 
+    # TODO: document
+    @staticmethod
+    def time_cost_function(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float):
+        return lambda T: (T ** 4 * w_T + 4 * w_J * (
+            T ** 2 * a_0 ** 2 + 3 * T * a_0 * v_0 - 3 * T * a_0 * v_T + 3 * v_0 ** 2 - 6 * v_0 * v_T + 3 * v_T ** 2)) / T ** 3
+
+    @staticmethod
+    def time_cost_function_derivative(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float):
+        return lambda T: (
+                             T ** 4 * w_T
+                             - 4 * T ** 2 * a_0 ** 2 * w_J
+                             + 24 * T * (a_0 * v_T * w_J - a_0 * v_0 * w_J)
+                             - 36 * v_0 ** 2 * w_J + 72 * v_0 * v_T * w_J - 36 * v_T ** 2 * w_J) / T ** 4
+
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
                                             v_T: np.ndarray):
@@ -385,6 +399,24 @@ class QuinticPoly1D(Poly1D):
                720 * a4 * a5 * T ** 4 + \
                720 * a5 ** 2 * T ** 5
 
+    # TODO: document
+    @staticmethod
+    def time_cost_function(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds: float, T_m: float):
+        return lambda T: (T ** 6 * w_T + 3 * w_J * (
+            3 * T ** 4 * a_0 ** 2 + 24 * T ** 3 * a_0 * v_0 - 24 * T ** 3 * a_0 * v_T + 40 * T ** 2 * T_m * a_0 * v_T -
+            40 * T ** 2 * a_0 * ds + 64 * T ** 2 * v_0 ** 2 - 128 * T ** 2 * v_0 * v_T + 64 * T ** 2 * v_T ** 2 + 240 * T * T_m * v_0 * v_T -
+            240 * T * T_m * v_T ** 2 - 240 * T * ds * v_0 + 240 * T * ds * v_T + 240 * T_m ** 2 * v_T ** 2 - 480 * T_m * ds * v_T +
+            240 * ds ** 2)) / T ** 5
+
+    @staticmethod
+    def time_cost_function_derivative(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds: float,
+                                      T_m: float):
+        return lambda T: (
+                             T ** 6 * w_T - 9 * T ** 4 * a_0 ** 2 * w_J - 144 * T ** 3 * a_0 * v_0 * w_J + 144 * T ** 3 * a_0 * v_T * w_J -
+                             360 * T ** 2 * T_m * a_0 * v_T * w_J + 360 * T ** 2 * a_0 * ds * w_J - 576 * T ** 2 * v_0 ** 2 * w_J + 1152 * T ** 2 * v_0 * v_T * w_J -
+                             576 * T ** 2 * v_T ** 2 * w_J - 2880 * T * T_m * v_0 * v_T * w_J + 2880 * T * T_m * v_T ** 2 * w_J + 2880 * T * ds * v_0 * w_J -
+                             2880 * T * ds * v_T * w_J - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * ds * v_T * w_J - 3600 * ds ** 2 * w_J) / T ** 6
+
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
                                             v_T: np.ndarray, dx: np.ndarray, T_m: np.ndarray):
@@ -428,6 +460,22 @@ class QuinticPoly1D(Poly1D):
                                   3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (
                                       T - T_m)) + t ** 4 * (
                                   -T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx + 12 * v_T * (T - T_m))) / (2 * T ** 5)
+
+    @staticmethod
+    def distance_from_target(a_0: float, v_0: float, v_T: float, ds0: float, T: float, T_m: float):
+        """
+        relative distance travelled by ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param ds: [m] initial distance to target in time 0
+        :param T: [sec] horizon
+        :return: lambda function(s) that takes relative time in seconds and returns the relative distance
+        travelled since time 0
+        """
+        return lambda t: (-T**5*t*(a_0*t + 2*v_0) + 2*T**5*(ds0 + t*v_T) + T**2*t**3*(3*T**2*a_0 + 4*T*(3*v_0 + 2*v_T)
+                        - 20*ds0 - 20*v_T*(T - T_m)) - T*t**4*(3*T**2*a_0 + 2*T*(8*v_0 + 7*v_T) - 30*ds0 - 30*v_T*(T - T_m))
+                          + t**5*(T**2*a_0 + 6*T*(v_0 + v_T) - 12*ds0 - 12*v_T*(T - T_m)))/(2*T**5)
 
     @staticmethod
     def distance_from_target_derivative_coefs(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):

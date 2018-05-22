@@ -27,7 +27,7 @@ class DynamicActionSpace(ActionSpace):
                          recipes=[DynamicActionRecipe.from_args_list(comb)
                                   for comb in cartesian([RelativeLane,
                                                          RelativeLongitudinalPosition,
-                                                         [ActionType.FOLLOW_VEHICLE, ActionType.OVER_TAKE_VEHICLE],
+                                                         [ActionType.FOLLOW_VEHICLE, ActionType.OVERTAKE_VEHICLE],
                                                          AggressivenessLevel])],
                          recipe_filtering=filtering)
         self.predictor = predictor

@@ -48,19 +48,17 @@ class FilterBadExpectedTrajectory(RecipeFilter):
         v_0 = ego_state.v_x
         a_0 = ego_state.acceleration_lon
         wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
-
-        # Distance, velocity and acceleration grids for brute-force filtering purposes
         if (action_type == ActionType.FOLLOW_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.FRONT) \
                 or (
-                action_type == ActionType.OVER_TAKE_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.REAR):
+                action_type == ActionType.OVERTAKE_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.REAR):
             recipe_cell = (recipe.relative_lane, recipe.relative_lon)
             if recipe_cell in behavioral_state.road_occupancy_grid:
 
                 relative_dynamic_object = behavioral_state.road_occupancy_grid[recipe_cell][0]
                 dynamic_object = relative_dynamic_object.dynamic_object
-                margin_sign = -1 if recipe.action_type == ActionType.FOLLOW_VEHICLE else +1
+                margin_sign = +1 if recipe.action_type == ActionType.FOLLOW_VEHICLE else -1
                 # TODO: the following is not accurate because it returns "same-lon" cars distance as 0
-                s_T = relative_dynamic_object.distance + margin_sign * (LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
+                s_T = relative_dynamic_object.distance -(LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
                                                                         ego_state.size.length / 2 + dynamic_object.size.length / 2)
                 v_T = dynamic_object.v_x
                 wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
@@ -68,7 +66,7 @@ class FilterBadExpectedTrajectory(RecipeFilter):
 
                 # TODO: bug when s_T < 0 (on follow of near car)
                 return predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
-                                 FILTER_S_T_GRID.get_index(s_T), FILTER_V_T_GRID.get_index(v_T)] > 0
+                                 FILTER_S_T_GRID.get_index(margin_sign*s_T), FILTER_V_T_GRID.get_index(v_T)] > 0
             else:
                 return False
         elif action_type == ActionType.FOLLOW_LANE:
@@ -92,7 +90,7 @@ class FilterActionsTowardBackAndParallelCells(RecipeFilter):
 
 class FilterOvertakeActions(RecipeFilter):
     def filter(self, recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
-        return recipe.action_type != ActionType.OVER_TAKE_VEHICLE
+        return recipe.action_type != ActionType.OVERTAKE_VEHICLE
 
 
 # StaticActionRecipe Filters

@@ -12,7 +12,7 @@ class ActionType(Enum):
     """
     FOLLOW_LANE = 1
     FOLLOW_VEHICLE = 2
-    OVER_TAKE_VEHICLE = 3
+    OVERTAKE_VEHICLE = 3
 
 
 class AggressivenessLevel(Enum):
