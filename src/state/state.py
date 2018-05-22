@@ -12,8 +12,12 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmState
 
 from decision_making.src.exceptions import NoUniqueObjectStateForEvaluation
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.planning.types import CartesianExtendedState
 from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW
+from decision_making.src.planning.types import FrenetState2D
 from mapping.src.model.localization import RoadLocalization
+
+from decision_making.src.planning.utils.map_utils import MapUtils
 from mapping.src.service.map_service import MapService
 
 
@@ -87,6 +91,85 @@ class ObjectSize(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmObjectSize) -> ObjectSize
         return cls(lcmMsg.length, lcmMsg.width, lcmMsg.height)
+
+
+class MapState(PUBSUB_MSG_IMPL):
+    def __init__(self, lane_state, road_state, road_id, segment_id, lane_id):
+        # type: (FrenetState2D, FrenetState2D, int, int, int) -> MapState
+        self.lane_state = lane_state
+        self.road_state = road_state
+        self.road_id = road_id
+        self.segment_id = segment_id
+        self.lane_id = lane_id
+
+
+# TODO: Add properties
+# TODO: add member annotations
+class NewDynamicObject(PUBSUB_MSG_IMPL):
+    obj_id = int
+    timestamp = int
+    cartesian_state = CartesianExtendedState
+    map_state = MapState
+    size = ObjectSize
+    confidence = float
+
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
+        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float) -> NewDynamicObject
+        """
+        Data object that hold
+        :param obj_id: object id
+        :param timestamp: time of perception [nanosec.]
+        :param cartesian_state: localization relative to map's cartesian origin frame
+        :param map_state: localization in a map-object's frame (road,segment,lane)
+        :param size: class ObjectSize
+        :param confidence: of object's existence
+        """
+        self.obj_id = obj_id
+        self.timestamp = timestamp
+        self._cached_cartesian_state = cartesian_state
+        self._cached_map_state = map_state
+        self.size = copy.copy(size)
+        self.confidence = confidence
+
+    @classmethod
+    def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence):
+        # type: (int, int, CartesianExtendedState, ObjectSize, float) -> NewDynamicObject
+        """
+        Constructor that gets only cartesian-state (without map-state)
+        :param obj_id: object id
+        :param timestamp: time of perception [nanosec.]
+        :param cartesian_state: localization relative to map's cartesian origin frame
+        :param size: class ObjectSize
+        :param confidence: of object's existence
+        """
+        cls(obj_id, timestamp, cartesian_state, None, size, confidence)
+
+    @classmethod
+    def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence):
+        # type: (int, int, MapState, ObjectSize, float) -> NewDynamicObject
+        """
+        Constructor that gets only map-state (without cartesian-state)
+        :param obj_id: object id
+        :param timestamp: time of perception [nanosec.]
+        :param map_state: localization in a map-object's frame (road,segment,lane)
+        :param size: class ObjectSize
+        :param confidence: of object's existence
+        """
+        cls(obj_id, timestamp, None, map_state, size, confidence)
+
+    @property
+    def cartesian_state(self):
+        # type: () -> CartesianExtendedState
+        if self._cached_cartesian_state is None:
+            self._cached_cartesian_state = MapUtils.convert_map_to_cartesian_state(self._cached_map_state)
+        return self._cached_cartesian_state
+
+    @property
+    def map_state(self):
+        # type: () -> MapState
+        if self._cached_map_state is None:
+            self._cached_map_state = MapUtils.convert_cartesian_to_map_state(self._cached_cartesian_state)
+        return self._cached_map_state
 
 
 class DynamicObject(PUBSUB_MSG_IMPL):
@@ -171,7 +254,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     @property
     # TODO: road localization needs to use frenet transformations
     def road_localization(self):
-        # type: () -> RoadLocalization
+        # type: () -> MapState
         if self._cached_road_localization is None:
             self._cached_road_localization = MapService.get_instance().compute_road_localization(
                 np.array([self.x, self.y, self.z]), self.yaw)
