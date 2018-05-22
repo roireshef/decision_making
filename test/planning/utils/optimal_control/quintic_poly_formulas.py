@@ -1,11 +1,13 @@
 import time
-
+import sympy as sp
 import numpy as np
+from sympy import symbols
+from sympy.matrices import *
 
 from decision_making.paths import Paths
 from decision_making.src.global_constants import LON_ACC_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS, \
     BP_ACTION_T_LIMITS, EPS
-from decision_making.src.planning.behavioral.constants import v_0_grid, a_0_grid, v_T_grid, s_T_grid
+from decision_making.src.planning.behavioral.constants_grids import v_0_grid, a_0_grid, v_T_grid, s_T_grid
 from decision_making.src.planning.behavioral.data_objects import ActionType
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 from decision_making.src.planning.utils.math import Math
@@ -14,7 +16,7 @@ from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPol
 
 def create_quintic_motion_funcs(a_0, v_0, v_T, s_T, T, T_m):
 
-    return QuinticPoly1D.distance_profile_function(a_0, v_0, v_T, s_T, T, T_m), \
+    return QuinticPoly1D.distance_from_target(a_0, v_0, v_T, s_T, T, T_m), \
            QuinticPoly1D.distance_from_target_derivative_coefs(a_0, v_0, v_T, s_T, T, T_m), \
            QuinticPoly1D.velocity_profile_function(a_0, v_0, v_T, s_T, T, T_m),\
            QuinticPoly1D.acceleration_profile_function(a_0, v_0, v_T, s_T, T, T_m)
@@ -72,8 +74,8 @@ if __name__ == "__main__":
     # a_t_desmos = temp_a_t.subs(a0, 0).simplify()
 
     start_time = time.time()
-    for action_type in [ActionType.FOLLOW_VEHICLE, ActionType.OVER_TAKE_VEHICLE]:
-        if action_type == ActionType.OVER_TAKE_VEHICLE:
+    for action_type in [ActionType.FOLLOW_VEHICLE, ActionType.OVERTAKE_VEHICLE]:
+        if action_type == ActionType.OVERTAKE_VEHICLE:
             T_m *= -1
             s_T_grid = -1*s_T_grid
         for weight in BP_JERK_S_JERK_D_TIME_WEIGHTS:
@@ -107,7 +109,7 @@ if __name__ == "__main__":
                             is_acc_in_range = (min_a >= LON_ACC_LIMITS[0]) and (max_a <= LON_ACC_LIMITS[1]+EPS)
                             if action_type == ActionType.FOLLOW_VEHICLE:
                                 is_dist_safe = np.all(extremum_delta_s_val >= T_m*v_T)
-                            elif action_type == ActionType.OVER_TAKE_VEHICLE:
+                            elif action_type == ActionType.OVERTAKE_VEHICLE:
                                 is_dist_safe = np.all(extremum_delta_s_val <= T_m*v_T)
                             else:
                                 is_dist_safe = True

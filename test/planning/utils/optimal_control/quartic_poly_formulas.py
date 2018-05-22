@@ -4,7 +4,7 @@ import numpy as np
 from decision_making.paths import Paths
 from decision_making.src.global_constants import LON_ACC_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS, \
     BP_ACTION_T_LIMITS, EPS
-from decision_making.src.planning.behavioral.constants import v_0_grid, a_0_grid, v_T_grid
+from decision_making.src.planning.behavioral.constants_grids import v_0_grid, a_0_grid, v_T_grid
 from decision_making.src.planning.behavioral.data_objects import ActionType
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 from decision_making.src.planning.utils.math import Math

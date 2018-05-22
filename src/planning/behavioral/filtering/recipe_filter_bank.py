@@ -3,7 +3,7 @@ import os
 from decision_making.paths import Paths
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.constants import v_0_grid, a_0_grid, v_T_grid, s_T_grid
+from decision_making.src.planning.behavioral.constants_grids import v_0_grid, a_0_grid, v_T_grid, s_T_grid
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
@@ -47,7 +47,7 @@ class FilterBadExpectedTrajectory(RecipeFilter):
         wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
         if (action_type == ActionType.FOLLOW_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.FRONT) \
                 or (
-                action_type == ActionType.OVER_TAKE_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.REAR):
+                action_type == ActionType.OVERTAKE_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.REAR):
             recipe_cell = (recipe.relative_lane, recipe.relative_lon)
             if recipe_cell in behavioral_state.road_occupancy_grid:
 
@@ -89,7 +89,7 @@ class FilterActionsTowardBackAndParallelCells(RecipeFilter):
 
 class FilterOvertakeActions(RecipeFilter):
     def filter(self, recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
-        return recipe.action_type != ActionType.OVER_TAKE_VEHICLE
+        return recipe.action_type != ActionType.OVERTAKE_VEHICLE
 
 
 # StaticActionRecipe Filters
