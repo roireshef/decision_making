@@ -78,13 +78,25 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # ActionSpec filtering
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
 
+        # TODO: FOR DEBUG PURPOSES!
+        pre_evaluation_time = time.time()
+
         # State-Action Evaluation
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
+
+        # TODO: FOR DEBUG PURPOSES!
+        post_evaluation_time = time.time()
+        self.logger.debug('action evaluation took %s [sec], costs: %s', post_evaluation_time - pre_evaluation_time)
+        self.logger.debug('action evaluation costs: %s', np.array_repr(action_costs).replace('\n', ' '))
 
         # approximate cost-to-go per terminal state
         terminal_behavioral_states = self._generate_terminal_states(state, action_specs, action_specs_mask)
         terminal_states_values = np.array([self.value_approximator.approximate(state) if action_specs_mask[i] else np.nan
                                            for i, state in enumerate(terminal_behavioral_states)])
+
+        post_value_time = time.time()
+        self.logger.debug('terminal states generation and value evaluation took %s [sec]', post_value_time - post_evaluation_time)
+        self.logger.debug('terminal states value: %s', np.array_repr(terminal_states_values).replace('\n', ' '))
 
         # compute "approximated Q-value" (action cost +  cost-to-go) for all actions
         action_q_cost = action_costs + terminal_states_values
