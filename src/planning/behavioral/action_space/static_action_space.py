@@ -3,13 +3,13 @@ from typing import Optional, List, Type
 import numpy as np
 from sklearn.utils.extmath import cartesian
 
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, SAFE_DIST_TIME_DELAY
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
+    SAFE_DIST_TIME_DELAY, VELOCITY_LIMITS
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.constants import VELOCITY_STEP, MAX_VELOCITY, MIN_VELOCITY
+from decision_making.src.global_constants import VELOCITY_STEP
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, StaticActionRecipe
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
-from decision_making.src.planning.behavioral.filtering import recipe_filter_bank
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FS_SV, FS_SA, FS_DX, FS_DA, FS_DV, FS_SX
 from decision_making.src.planning.utils.map_utils import MapUtils
@@ -20,7 +20,9 @@ from mapping.src.service.map_service import MapService
 
 class StaticActionSpace(ActionSpace):
     def __init__(self, logger, filtering: RecipeFiltering):
-        self._velocity_grid = np.arange(MIN_VELOCITY, MAX_VELOCITY + np.finfo(np.float16).eps, VELOCITY_STEP)
+        self._velocity_grid = np.arange(VELOCITY_LIMITS[LIMIT_MIN],
+                                        VELOCITY_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
+                                        VELOCITY_STEP)
         super().__init__(logger,
                          recipes=[StaticActionRecipe.from_args_list(comb)
                                   for comb in cartesian([RelativeLane, self._velocity_grid, AggressivenessLevel])],
@@ -28,10 +30,18 @@ class StaticActionSpace(ActionSpace):
 
     @property
     def recipe_classes(self) -> List[Type]:
+        """a list of Recipe classes this action space can handle with"""
         return [StaticActionRecipe]
 
     def specify_goals(self, action_recipes: List[StaticActionRecipe], behavioral_state: BehavioralGridState) -> \
             List[Optional[ActionSpec]]:
+        """
+        This method's purpose is to specify the enumerated actions (recipes) that the agent can take.
+        Each semantic action (ActionRecipe) is translated into a terminal state specification (ActionSpec).
+        :param action_recipes: an enumerated semantic action [ActionRecipe].
+        :param behavioral_state: a Frenet state of ego at initial point
+        :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
+        """
         ego = behavioral_state.ego_state
         road_frenet = MapUtils.get_road_rhs_frenet(ego)
 
@@ -69,7 +79,7 @@ class StaticActionSpace(ActionSpace):
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 1], a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV], v_T=0,
-            ds=latitudinal_difference, T_m=SAFE_DIST_TIME_DELAY)
+            dx=latitudinal_difference, T_m=SAFE_DIST_TIME_DELAY)
         roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         T_d = np.fmin.reduce(roots_d, axis=-1)
 

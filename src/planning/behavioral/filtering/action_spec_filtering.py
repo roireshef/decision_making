@@ -1,5 +1,7 @@
+import traceback
 from abc import ABCMeta, abstractmethod
-from typing import List
+from logging import Logger
+from typing import List, Optional
 
 import six
 
@@ -27,12 +29,17 @@ class ActionSpecFiltering:
     The gateway to execute filtering on one (or more) ActionSpec(s). From efficiency point of view, the filters
     should be sorted from the strongest (the one filtering the largest number of recipes) to the weakest.
     """
-    def __init__(self, filters: List[ActionSpecFilter]=None):
+    def __init__(self, filters: Optional[List[ActionSpecFilter]], logger: Logger):
         self._filters: List[ActionSpecFilter] = filters or []
+        self.logger = logger
 
     def filter_action_spec(self, action_spec: ActionSpec, behavioral_state: BehavioralState) -> bool:
         for action_spec_filter in self._filters:
-            if not action_spec_filter.filter(action_spec, behavioral_state):
+            try:
+                if not action_spec_filter.filter(action_spec, behavioral_state):
+                    return False
+            except Exception:
+                self.logger.warning('Exception during filtering at %s: %s', self.__class__.__name__, traceback.format_exc())
                 return False
         return True
 
