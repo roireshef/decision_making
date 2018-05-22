@@ -61,10 +61,11 @@ def test_evaluate_rangesForLFLB():
     size = ObjectSize(4, 2, 1)
 
     predictor = RoadFollowingPredictor(logger)
-    action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger), DynamicActionSpace(logger, predictor)])
+    action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
+                                                 DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
     #action_space = DynamicActionSpace(logger, predictor)
     spec_evaluator = HeuristicActionSpecEvaluator(logger)
-    action_spec_validator = ActionSpecFiltering(action_spec_filter_bank.action_spec_filters)
+    action_spec_validator = ActionSpecFiltering([FilterIfNone()], logger)
     value_approximator = NaiveValueApproximator(logger)
     road_frenet = MapUtils.get_road_rhs_frenet_by_road_id(road_id)
 
@@ -90,13 +91,13 @@ def test_evaluate_rangesForLFLB():
                         t1 = abs(des_vel - ego_vel) / 1.
                         t2 = max(0., 100 - t1)
                         vel_profile = VelocityProfile(v_init=ego_vel, t1=t1, v_mid=des_vel, t2=t2, t3=0, v_tar=des_vel)
-                        t_c = vel_profile.calc_last_safe_time(ego_lon, size.length / 2, F, np.inf, 1.6, 1.6)
-                        # t_c = calc_collision_time(ego_vel, des_vel, 0.5, F_vel, F_lon - ego_lon)
-                        if t_c < 0:
+                        safe_time_F = vel_profile.calc_last_safe_time(ego_lon, size.length / 2, F, np.inf, 1.6, 1.6)
+                        if safe_time_F < 0:
                             continue
 
                         LB_lon = ego_lon - LB_vel * sec_to_LB - 6 * (LB_vel - ego_vel)
                         LB = MapUtils.create_canonic_object(2, 0, LB_lon, 3 * lane_width / 2, LB_vel, size, road_frenet)
+                        safe_time_LB = vel_profile.calc_last_safe_time(ego_lon, size.length / 2, LB, np.inf, 2, 2)
 
                         LF_lon = ego_lon + sec_to_LF * (ego_vel + des_vel)
                         LF = MapUtils.create_canonic_object(3, 0, LF_lon, 3 * lane_width / 2, LF_vel, size, road_frenet)
@@ -116,24 +117,33 @@ def test_evaluate_rangesForLFLB():
 
                         # State-Action Evaluation
                         costs = spec_evaluator.evaluate(behavioral_state, recipes, list(specs), specs_mask)
-                        # costs = np.array([costs[i] / spec.t if specs_mask[i] else np.inf for i, spec in enumerate(specs)])
+                        # approximate cost-to-go per terminal state
+                        terminal_behavioral_states = SingleStepBehavioralPlanner.generate_terminal_states(
+                            state, list(specs), recipes, specs_mask, logger)
 
-                        next_state_values = np.array([approximate_value_function(state, recipes[i], spec, value_approximator)
-                                                      if specs_mask[i] and not np.isinf(costs[i]) else np.inf for i, spec in
-                                                      enumerate(specs)])
-                        Q_values = np.array([costs[i] + next_state_values[i] for i, spec in enumerate(specs)])
+                        # generate goals for all terminal_behavioral_states, containing all lanes at the same distance of
+                        # 20 * desired_velocity from the current ego location
+                        navigation_goals = SingleStepBehavioralPlanner.generate_goals(
+                            ego.road_localization.road_id, ego.road_localization.road_lon, terminal_behavioral_states)
+
+                        terminal_states_values = np.array([value_approximator.approximate(state, navigation_goals[i])
+                                                           if specs_mask[i] else np.nan
+                                                           for i, state in enumerate(terminal_behavioral_states)])
+
+                        # compute "approximated Q-value" (action cost +  cost-to-go) for all actions
+                        action_q_cost = costs + terminal_states_values
 
                         valid_idx = np.where(specs_mask)[0]
-                        best_idx = valid_idx[Q_values[valid_idx].argmin()]
+                        best_idx = valid_idx[action_q_cost[valid_idx].argmin()]
                         selected_lane = recipes[best_idx].relative_lane.value
 
                         print('ego_vel=%.2f F_vel=%.2f LF_vel=%.2f LB_vel=%.2f sec_to_F=%.2f sec_to_LF=%.2f '
                               'sec_to_LB=%.2f: i=%d lane=%d\n' %
                               (ego_vel, F_vel, LF_vel, LB_vel, sec_to_F, sec_to_LF, sec_to_LB, best_idx, selected_lane))
 
-                        if t_c > 12 or F_vel >= des_vel-1 or sec_to_LB < 3:
+                        if safe_time_F > 12 or F_vel >= des_vel-1 or sec_to_LB <= 2 or LF_vel <= F_vel+1:
                             assert selected_lane == 0
-                        if 3. < t_c < 5 and F_vel <= des_vel-3:
+                        if 3. < safe_time_F < 5 and F_vel <= des_vel-3 and safe_time_LB > 3 and LF_vel > F_vel+3:
                             assert selected_lane == 1
 
 
@@ -155,8 +165,8 @@ def test_evaluate_rangesForEgoAndF():
     road_frenet = MapUtils.get_road_rhs_frenet_by_road_id(road_id)
 
     ego_vel_range = np.arange(des_vel-9, des_vel+9.1, 3)
-    F_vel_range = np.arange(des_vel-9, des_vel+6.1, 3)
-    sec_to_F_range = np.array([2, 2.5, 3, 4, 6])
+    F_vel_range = np.arange(des_vel-9, des_vel+9.1, 3)
+    sec_to_F_range = np.array([2, 2.5, 3, 4, 6, 8])
 
     for ego_vel in ego_vel_range:
         for F_vel in F_vel_range:
@@ -170,7 +180,7 @@ def test_evaluate_rangesForEgoAndF():
                 vel_profile = VelocityProfile(v_init=ego_vel, t1=t1, v_mid=des_vel, t2=t2, t3=0, v_tar=des_vel)
                 t_c = vel_profile.calc_last_safe_time(ego_lon, size.length/2, F, np.inf, 1.6, 1.6)
                 # t_c = calc_collision_time(ego_vel, des_vel, 0.5, F_vel, F_lon - ego_lon)
-                if t_c < 0:
+                if t_c < 0:  # unsafe state
                     continue
 
                 state = State(None, [F], ego)
@@ -187,11 +197,6 @@ def test_evaluate_rangesForEgoAndF():
 
                 # State-Action Evaluation
                 costs = spec_evaluator.evaluate(behavioral_state, recipes, list(specs), specs_mask)
-                # costs = np.array([costs[i] / spec.t if specs_mask[i] else np.inf for i, spec in enumerate(specs)])
-
-                # next_state_values = np.array([approximate_value_function(state, recipes[i], spec, value_approximator)
-                #      if specs_mask[i] and not np.isinf(costs[i]) else np.inf for i, spec in enumerate(specs)])
-                # Q_values = np.array([costs[i] + next_state_values[i] for i, spec in enumerate(specs)])
 
                 # approximate cost-to-go per terminal state
                 terminal_behavioral_states = SingleStepBehavioralPlanner.generate_terminal_states(
@@ -217,9 +222,12 @@ def test_evaluate_rangesForEgoAndF():
                       (ego_vel, F_vel, sec_to_F, F_lon-ego_lon, t_c, costs[best_idx], terminal_states_values[best_idx],
                        best_idx, selected_lane))
 
-                if t_c > 12 or F_vel >= des_vel-1:
+                if ego_vel>=20 and F_vel>=8 and sec_to_F>=2.5:
+                    continue
+
+                if t_c > 9 or F_vel >= des_vel-1:
                     assert selected_lane == 0
-                if 3. < t_c < 5 and F_vel <= des_vel-3:
+                if 3. < t_c < 6 and F_vel <= des_vel-3:
                     assert selected_lane == 1
 
 
