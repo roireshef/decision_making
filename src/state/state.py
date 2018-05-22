@@ -383,6 +383,31 @@ class DynamicObject(PUBSUB_MSG_IMPL):
                  , lcmMsg.acceleration_lon, lcmMsg.omega_yaw)
 
 
+class NewEgoState(NewDynamicObject):
+    ''' Members annotations for python 2 compliant classes '''
+    obj_id = int
+    timestamp = int
+    cartesian_state = CartesianExtendedState
+    map_state = MapState
+    size = ObjectSize
+    confidence = float
+
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
+        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float) -> NewEgoState
+
+        """
+        IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
+
+        Data object that hold
+        :param obj_id: object id
+        :param timestamp: time of perception [nanosec.]
+        :param cartesian_state: localization relative to map's cartesian origin frame
+        :param map_state: localization in a map-object's frame (road,segment,lane)
+        :param size: class ObjectSize
+        :param confidence: of object's existence
+        """
+        NewDynamicObject.__init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence)
+
 class EgoState(DynamicObject):
     ''' Members annotations for python 2 compliant classes '''
     obj_id = int
