@@ -1,5 +1,6 @@
 import copy
 from typing import List
+from typing import Optional
 
 import numpy as np
 
@@ -9,14 +10,16 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedNumpyArray
 from common_data.lcm.generatedFiles.gm_lcm import LcmObjectSize
 from common_data.lcm.generatedFiles.gm_lcm import LcmOccupancyState
 from common_data.lcm.generatedFiles.gm_lcm import LcmState
+from common_data.lcm.generatedFiles.gm_lcm.LcmNumpyArray import LcmNumpyArray
 
 from decision_making.src.exceptions import NoUniqueObjectStateForEvaluation
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.planning.types import CartesianExtendedState
+from decision_making.src.planning.types import CartesianExtendedState, C_K, C_A
 from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW
 from decision_making.src.planning.types import FrenetState2D
 from mapping.src.model.localization import RoadLocalization
 
+from decision_making.src.planning.utils.lcm_utils import LCMUtils
 from decision_making.src.planning.utils.map_utils import MapUtils
 from mapping.src.service.map_service import MapService
 
@@ -131,8 +134,50 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
         self.size = copy.copy(size)
         self.confidence = confidence
 
+    @property
+    def x(self):
+        return self.cartesian_state[C_X]
+
+    @property
+    def y(self):
+        return self.cartesian_state[C_Y]
+
+    @property
+    def z(self):
+        return 0
+
+    @property
+    def yaw(self):
+        return self.cartesian_state[C_YAW]
+
+    @property
+    def velocity(self):
+        return self.cartesian_state[C_V]
+
+    @property
+    def acceleration(self):
+        return self.cartesian_state[C_A]
+
+    @property
+    def curvature(self):
+        return self.cartesian_state[C_K]
+
+    @property
+    def cartesian_state(self):
+        # type: () -> CartesianExtendedState
+        if self._cached_cartesian_state is None:
+            self._cached_cartesian_state = MapUtils.convert_map_to_cartesian_state(self._cached_map_state)
+        return self._cached_cartesian_state
+
+    @property
+    def map_state(self):
+        # type: () -> MapState
+        if self._cached_map_state is None:
+            self._cached_map_state = MapUtils.convert_cartesian_to_map_state(self._cached_cartesian_state)
+        return self._cached_map_state
+
     @classmethod
-    def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence):
+    def create_from_cartesian_state(cls, obj_id: object, timestamp: object, cartesian_state: object, size: object, confidence: object):
         # type: (int, int, CartesianExtendedState, ObjectSize, float) -> NewDynamicObject
         """
         Constructor that gets only cartesian-state (without map-state)
@@ -157,20 +202,37 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
         """
         cls(obj_id, timestamp, None, map_state, size, confidence)
 
-    @property
-    def cartesian_state(self):
-        # type: () -> CartesianExtendedState
-        if self._cached_cartesian_state is None:
-            self._cached_cartesian_state = MapUtils.convert_map_to_cartesian_state(self._cached_map_state)
-        return self._cached_cartesian_state
+    def clone_from_cartesian_state(self, cartesian_state, timestamp=None):
+        # type: (CartesianState, Optional[float]) -> NewDynamicObject
+        """clones self while overriding cartesian_state and optionally timestamp"""
+        return self.create_from_cartesian_state(self.obj_id, timestamp or self.timestamp, cartesian_state,
+                                                self.size, self.confidence)
 
-    @property
-    def map_state(self):
-        # type: () -> MapState
-        if self._cached_map_state is None:
-            self._cached_map_state = MapUtils.convert_cartesian_to_map_state(self._cached_cartesian_state)
-        return self._cached_map_state
+    def clone_from_map_state(self, map_state, timestamp=None):
+        # type: (MapState, Optional[float]) -> NewDynamicObject
+        """clones self while overriding map_state and optionally timestamp"""
+        return self.create_from_map_state(self.obj_id, timestamp or self.timestamp, map_state,
+                                          self.size, self.confidence)
 
+    def serialize(self):
+        # type: () -> LcmDynamicObject
+        lcm_msg = LcmDynamicObject()
+        lcm_msg.obj_id = self.obj_id
+        lcm_msg.timestamp = self.timestamp
+        lcm_msg._cached_cartesian_state = LCMUtils.numpy_array_to_lcm_numpy_array(self.cartesian_state)
+        lcm_msg._cached_map_state = self.map_state.serialize()
+        lcm_msg.size = self.size.serialize()
+        lcm_msg.confidence = self.confidence
+        return lcm_msg
+
+    @classmethod
+    def deserialize(cls, lcmMsg):
+        # type: (LcmDynamicObject) -> DynamicObject
+        return cls(lcmMsg.obj_id, lcmMsg.timestamp
+                 , lcmMsg.x, lcmMsg.y, lcmMsg.z, lcmMsg.yaw
+                 , ObjectSize.deserialize(lcmMsg.size)
+                 , lcmMsg.confidence, lcmMsg.v_x, lcmMsg.v_y
+                 , lcmMsg.acceleration_lon, lcmMsg.omega_yaw)
 
 class DynamicObject(PUBSUB_MSG_IMPL):
     ''' Members annotations for python 2 compliant classes '''
