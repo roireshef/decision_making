@@ -46,6 +46,8 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
                 "The input arrays have different sizes: len(semantic_actions)=%d, len(actions_spec)=%d",
                 len(action_recipes), len(action_specs))
 
+        MIN_OVERTAKE_VEL = 3
+
         # get indices of semantic_actions array for 3 actions: goto-right, straight, goto-left
         current_lane_action_ind = RuleBasedActionSpecEvaluator._get_action_ind(
             action_recipes, action_specs_mask, (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT))
