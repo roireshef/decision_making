@@ -54,12 +54,9 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         # get front dynamic objects' velocities from the occupancy grid
         front_objects = self._get_front_objects(behavioral_state)
 
-        print('\ntime=%.1f ego_v=%.2f ego_lat=%.2f ego_dv=%.2f grid_size=%d, \nego_cstate=%s \nego_fstate=%s '
-              '\nroad_loc.yaw=%.2f' %
+        print('\ntime=%.1f ego_v=%.2f ego_lat=%.2f ego_dv=%.2f grid_size=%d' %
               (ego.timestamp_in_sec, ego.v_x, ego_road.intra_road_lat, ego_fstate[FS_DV],
-               len(behavioral_state.road_occupancy_grid),
-               np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature]), ego_fstate,
-               ego_road.intra_road_yaw))
+               len(behavioral_state.road_occupancy_grid)))
 
         action_costs = np.full(len(action_recipes), np.inf)
 
@@ -68,9 +65,6 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                 continue
 
             action_recipe = action_recipes[i]
-            #if ego_lane + action_recipe.relative_lane.value > 0:
-            #    continue
-
             target_lane = ego_lane + action_recipe.relative_lane.value
             lat_dist = (target_lane + 0.5) * lane_width - ego_road.intra_road_lat
             # calculate lateral time according to the CALM aggressiveness level

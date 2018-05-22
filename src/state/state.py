@@ -286,9 +286,7 @@ class EgoState(DynamicObject):
         circle that tangents the curve at that point. HERE, CURVATURE IS SIGNED (same sign as steering_angle).
         For more information please see: https://en.wikipedia.org/wiki/Curvature#Curvature_of_plane_curves
         """
-        if self.v_x == 0:
-            return 0
-        return self.omega_yaw / self.v_x
+        return np.tan(self.steering_angle) / self.size.length
 
     def serialize(self):
         # type: () -> LcmEgoState
