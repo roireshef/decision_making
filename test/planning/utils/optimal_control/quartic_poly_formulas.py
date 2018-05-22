@@ -78,7 +78,6 @@ class QuarticMotionPredicatesCreator:
         :param v0_grid: A grid of initial velocities by which the predicates will be created (typically constant)
         :param a0_grid: A grid of initial accelerations by which the predicates will be created (typically constant)
         :param vT_grid: A grid of final velocities by which the predicates will be created (typically constant)
-        :param T_m: Safety time interval for following/overtaking actions (typically constant)
         :param predicates_resources_target_directory: A target directory inside resources directory where the predicates
                 will be created(typically constant)
         """
