@@ -116,16 +116,10 @@ class MapState(PUBSUB_MSG_IMPL):
         return lcm_msg
 
     @classmethod
-    def deserialize(cls, lcmMsg):
+    def deserialize(cls, lcm_msg):
         # type: (LcmMapState) -> MapState
-        return cls(lcmMsg.lane_state, lcmMsg.road_state
-                 , lcmMsg.road_id
-                 , lcmMsg.segment_id
-                 , lcmMsg.lane_id)
+        return cls(lcm_msg.lane_state, lcm_msg.road_state,lcm_msg.road_id, lcm_msg.segment_id, lcm_msg.lane_id)
 
-
-# TODO: Add properties
-# TODO: add member annotations
 class NewDynamicObject(PUBSUB_MSG_IMPL):
     obj_id = int
     timestamp = int
@@ -245,10 +239,9 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, lcmMsg):
-        # type: (LcmDynamicObject) -> DynamicObject
+        # type: (LcmDynamicObject) -> NewDynamicObject
         return cls(lcmMsg.obj_id, lcmMsg.timestamp
-                 , lcmMsg._cached_cartesian_state
-                 , lcmMsg._cached_map_state
+                 , lcmMsg._cached_cartesian_state, lcmMsg._cached_map_state
                  , ObjectSize.deserialize(lcmMsg.size)
                  , lcmMsg.confidence)
 
