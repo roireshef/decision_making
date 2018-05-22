@@ -63,8 +63,12 @@ class UniformGrid:
     def __len__(self):
         return self.length
 
+    @property
+    def array(self):
+        return np.arange(self.start, self.end + np.finfo(np.float32).eps, self.resolution)
+
     def __iter__(self):
-        return np.arange(self.start, self.end + np.finfo(np.float32).eps, self.resolution).__iter__()
+        return self.array.__iter__()
 
     def get_index(self, value):
         """
@@ -75,3 +79,4 @@ class UniformGrid:
         assert self.start <= value <= self.end, "value %s is outside the grid %s" % (value, str(self))
         index = np.round((value - self.start) / self.resolution)
         return int(max(min(index, self.length), 0))
+
