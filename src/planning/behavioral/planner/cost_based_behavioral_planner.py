@@ -138,7 +138,8 @@ class CostBasedBehavioralPlanner:
         lanes_widths = [lane.get_width(ego.map_state.lane_state[FS_SX]) for lane in lanes]
         cum_widths = np.cumsum(lanes_widths)
         # find lane index containing reference_route_latitude
-        ref_route_lane_idx = np.where(reference_route_latitude < cum_widths)[0][-1]
+        assert reference_route_latitude < cum_widths[-1]
+        ref_route_lane_idx = np.where(reference_route_latitude < cum_widths)[0][0]
 
         # lateral distance in [m] from ref. path to rightmost edge of lane
         right_lane_offset = reference_route_latitude - ego.size.width / 2
