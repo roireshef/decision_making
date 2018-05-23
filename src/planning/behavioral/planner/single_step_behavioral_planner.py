@@ -86,7 +86,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         # TODO: FOR DEBUG PURPOSES!
         post_evaluation_time = time.time()
-        self.logger.debug('action evaluation took %s [sec], costs: %s', post_evaluation_time - pre_evaluation_time)
+        self.logger.debug('action evaluation took %s [sec]', post_evaluation_time - pre_evaluation_time)
         self.logger.debug('action evaluation costs: %s', np.array_repr(action_costs).replace('\n', ' '))
 
         # approximate cost-to-go per terminal state
