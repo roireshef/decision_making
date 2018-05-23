@@ -132,13 +132,3 @@ class QuarticMotionPredicatesCreator:
                 '%s/%s' % (self.predicates_resources_target_directory,
                            output_predicate_file_name))
             BinaryReadWrite.save(array=self.predicate, file_path=output_predicate_file_path)
-
-
-def main():
-    quartic_predicates_creator = QuarticMotionPredicatesCreator(FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_V_T_GRID,
-                                                                'predicates')
-    quartic_predicates_creator.create_predicates(BP_JERK_S_JERK_D_TIME_WEIGHTS)
-
-
-if __name__ == '__main__':
-    main()

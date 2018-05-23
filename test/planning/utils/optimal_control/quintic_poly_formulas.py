@@ -10,7 +10,7 @@ from decision_making.src.global_constants import LON_ACC_LIMITS, BP_JERK_S_JERK_
     BP_ACTION_T_LIMITS, EPS, FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID, \
     FILTER_V_T_GRID, SAFE_DIST_TIME_DELAY
 from decision_making.src.planning.behavioral.data_objects import ActionType
-from decision_making.src.planning.utils.file_utils import BinaryReadWrite
+from decision_making.src.planning.utils.file_utils import BinaryReadWrite, TextReadWrite
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
@@ -162,14 +162,3 @@ class QuinticMotionPredicatesCreator:
                 output_predicate_file_path = Paths.get_resource_absolute_path_filename('%s/%s' % (self.predicates_resources_target_directory,
                                                                                                   output_predicate_file_name))
                 BinaryReadWrite.save(array=self.predicate, file_path=output_predicate_file_path)
-
-
-def main():
-    quintic_predicates_creator = QuinticMotionPredicatesCreator(FILTER_V_0_GRID, FILTER_A_0_GRID,FILTER_S_T_GRID,
-                                                                FILTER_V_T_GRID, SAFE_DIST_TIME_DELAY, 'predicates')
-    quintic_predicates_creator.create_predicates(BP_JERK_S_JERK_D_TIME_WEIGHTS, [ActionType.FOLLOW_VEHICLE, ActionType.OVERTAKE_VEHICLE])
-
-
-if __name__ == '__main__':
-    main()
-
