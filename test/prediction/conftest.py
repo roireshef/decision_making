@@ -59,7 +59,7 @@ def predicted_cartesian_state_1_constant_yaw() -> CartesianState:
 
 @pytest.fixture(scope='function')
 def predicted_cartesian_state_1_road_yaw() -> CartesianState:
-    yield np.array([590.0, 0.0,  1.4711276743, 10.0])
+    yield np.array([590.0, 0.0,  0.0, 10.0])
 
 
 @pytest.fixture(scope='function')
@@ -69,7 +69,7 @@ def predicted_cartesian_state_2_constant_yaw() -> CartesianState:
 
 @pytest.fixture(scope='function')
 def predicted_cartesian_state_2_road_yaw() -> CartesianState:
-    yield np.array([600.0, 100.0, 1.4711276743, 10.0])
+    yield np.array([600.0, 94.892, 1.5707, 10.0])
 
 
 @pytest.fixture(scope='function')

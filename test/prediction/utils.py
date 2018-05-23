@@ -16,6 +16,6 @@ class Utils:
 
         for field_name in actual_fields.keys():
             try:
-                assert np.isclose(actual_fields[field_name], expected_fields[field_name])
+                assert np.isclose(actual_fields[field_name], expected_fields[field_name], rtol=1e-2, atol=1e-2)
             except TypeError as e:
                 pass
