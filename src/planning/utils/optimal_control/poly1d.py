@@ -1,0 +1,536 @@
+from abc import abstractmethod
+from typing import Union, Callable
+
+import numpy as np
+
+from decision_making.src.global_constants import WERLING_TIME_RESOLUTION
+from decision_making.src.planning.types import Limits
+from decision_making.src.planning.utils.math import Math
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
+
+
+class Poly1D:
+    @staticmethod
+    @abstractmethod
+    def num_coefs():
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
+        """
+        Given the quartic polynomial setting, this function returns A as a tensor with the first dimension iterating
+        over different values of T (time-horizon) provided in <terminal_times>
+        :param terminal_times: 1D numpy array of different values for T
+        :return: 3D numpy array of shape [len(terminal_times), self.num_coefs(), self.num_coefs()]
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+        """
+        Computes cumulative jerk from time 0 to time T for the x(t) whose coefficients are given in <poly_coefs>
+        :param poly_coefs: distance polynomial coefficients
+        :param T: relative time in seconds
+        :return: [float] the cummulative jerk: sum(x'''(t)^2)
+        """
+        pass
+
+    @classmethod
+    def jerk_between(cls, poly_coefs: np.ndarray, a: Union[float, np.ndarray], b: Union[float, np.ndarray]):
+        return cls.cumulative_jerk(poly_coefs, b) - cls.cumulative_jerk(poly_coefs, a)
+
+    @staticmethod
+    def solve(A_inv: np.ndarray, constraints: np.ndarray) -> np.ndarray:
+        """
+        Given a 1D polynom x(t) with self.num_coefs() differential constraints on t0 (initial time) and tT (terminal time),
+        this code solves the problem of minimizing the sum of its squared third-degree derivative sum[ x'''(t) ^ 2 ]
+        according to:
+        {Local path planning and motion control for AGV in positioning. In IEEE/RSJ International Workshop on
+        Intelligent Robots and Systems’ 89. The Autonomous Mobile Robots and Its Applications. IROS’89.
+        Proceedings., pages 392–397, 1989}
+        :param A_inv: given that the constraints are Ax = B, and x are the polynom coeficients to seek,
+        this is the A ^ -1
+        :param constraints: given that the constraints are Ax = B, and x are the polynom coeficients to seek,
+        every row in here is a B (so that this variable can hold a set of B's that results in a set of solutions)
+        :return: x(t) coefficients
+        """
+        poly_coefs = np.fliplr(np.dot(constraints, A_inv.transpose()))
+        return poly_coefs
+
+    @staticmethod
+    def zip_solve(A_inv: np.ndarray, constraints: np.ndarray) -> np.ndarray:
+        poly_coefs = np.fliplr(np.einsum('ijk,ik->ij', A_inv, constraints))
+        return poly_coefs
+
+    @staticmethod
+    def polyval_with_derivatives(poly_coefs: np.ndarray, time_samples: np.ndarray) -> np.ndarray:
+        """
+        For each x(t) position polynomial(s) and time-sample it generates 3 values:
+          1. position (evaluation of the polynomial)
+          2. velocity (evaluation of the 1st derivative of the polynomial)
+          2. acceleration (evaluation of the 2st derivative of the polynomial)
+        :param poly_coefs: 2d numpy array [MxL] of the quartic (position) polynomials coefficients, where
+         each row out of the M is a different polynomial and contains L coefficients
+        :param time_samples: 1d numpy array [K] of the time stamps for the evaluation of the polynomials
+        :return: 3d numpy array [M,K,3] with the following dimnesions:
+            1. solution (corresponds to a given polynomial coefficients  vector in <poly_coefs>)
+            2. time stamp
+            3. [position value, velocity value, acceleration value]
+        """
+        # compute the coefficients of the polynom's 1st derivative (m=1)
+        poly_dot_coefs = np.apply_along_axis(func1d=np.polyder, axis=1, arr=poly_coefs, m=1)
+        # compute the coefficients of the polynom's 2nd derivative (m=2)
+        poly_dotdot_coefs = np.apply_along_axis(func1d=np.polyder, axis=1, arr=poly_coefs, m=2)
+
+        x_vals = Math.polyval2d(poly_coefs, time_samples)
+        x_dot_vals = Math.polyval2d(poly_dot_coefs, time_samples)
+        x_dotdot_vals = Math.polyval2d(poly_dotdot_coefs, time_samples)
+
+        return np.dstack((x_vals, x_dot_vals, x_dotdot_vals))
+
+    @classmethod
+    def time_constraints_matrix(cls, T: float) -> np.ndarray:
+        """
+        Given the polynomial setting, this function returns A as a tensor with the first dimension iterating
+        over different values of T (time-horizon) provided in <terminal_times>
+        :param terminal_times: 1D numpy array of different values for T
+        :return: 3D numpy array of shape [len(terminal_times), cls.num_coefs(), cls.num_coefs()]
+        """
+        return cls.time_constraints_tensor(np.array([T]))[0]
+
+    @staticmethod
+    def are_derivatives_in_limits(degree: int, poly_coefs: np.ndarray, T_vals: np.ndarray, limits: Limits):
+        """
+                Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
+                polynomial x(t), and restrictions on its <degree> derivative, return True if restrictions are met,
+                False otherwise
+                :param degree:
+                :param polys_coefs: 2D numpy array with N polynomials and <cls.num_coefs()> coefficients each
+                :param T_vals: 1D numpy array of planning-times [N]
+                :param limits: minimal and maximal allowed values for the <degree> derivative of x(t)
+                :return: 1D numpy array of booleans where True means the restrictions are met.
+                """
+        # a(0) and a(T) checks are omitted as they they are provided by the user.
+        # compute extrema points, by finding the roots of the 3rd derivative
+        jerk_poly = Math.polyder2d(poly_coefs, m=degree + 1)
+        acc_poly = Math.polyder2d(poly_coefs, m=degree)
+        # Giving np.apply_along_axis a complex type enables us to get complex roots (which means acceleration doesn't
+        # have extrema in range).
+
+        #  Find roots of jerk_poly, either real or complex.
+        acc_suspected_points = Poly1D.calc_polynomial_roots(jerk_poly)
+        # Check whether the roots are real or complex. The problem is that real roots may have very small
+        # imaginary part (e.g. 1e-15), which are identified as complex by numpy.
+        # Therefore, we check if the imaginary part is close to 0.
+        is_real = np.isclose(np.imag(acc_suspected_points), 0.0).astype(int)
+        # If a root is found as real, then take it's real part. Otherwise take it as is.
+        acc_suspected_points = np.real(acc_suspected_points) * is_real + acc_suspected_points * (1 - is_real)
+        acc_suspected_values = Math.zip_polyval2d(acc_poly, acc_suspected_points)
+
+        # are extrema points out of [0, T] range and are they non-complex
+        is_suspected_point_in_time_range = np.greater_equal(acc_suspected_points, 0) & \
+                                           np.less_equal(acc_suspected_points, T_vals[:, np.newaxis]) & \
+                                           is_real
+
+        # check if extrema values are within [a_min, a_max] limits
+        is_suspected_value_in_limits = NumpyUtils.is_in_limits(acc_suspected_values, limits)
+
+        # for all non-complex extrema points that are inside the time range, verify their values are in [a_min, a_max]
+        return np.all(np.logical_or(np.logical_not(is_suspected_point_in_time_range), is_suspected_value_in_limits),
+                      axis=1)
+
+    @classmethod
+    def are_accelerations_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, acc_limits: Limits) -> np.ndarray:
+        return cls.are_derivatives_in_limits(degree=2, poly_coefs=poly_coefs, T_vals=T_vals, limits=acc_limits)
+
+    @classmethod
+    def is_acceleration_in_limits(cls, poly_coefs: np.ndarray, T: float, acc_limits: Limits) -> bool:
+        """
+        given coefficients vector of a polynomial x(t), and restrictions on the acceleration values,
+        return True if restrictions are met, False otherwise
+        :param poly_coefs: 1D numpy array of x(t)'s coefficients
+        :param T: planning time horizon [sec]
+        :param acc_limits: minimal and maximal allowed values of acceleration/deceleration [m/sec^2]
+        :return: True if restrictions are met, False otherwise
+        """
+        return cls.are_accelerations_in_limits(np.array([poly_coefs]), np.array([T]), acc_limits)[0]
+
+    @classmethod
+    def are_velocities_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, vel_limits: Limits) -> np.ndarray:
+        """
+        Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
+        polynomial x(t), and restrictions on the velocity values, return True if restrictions are met,
+        False otherwise
+        :param polys_coefs: 2D numpy array with N polynomials and 6 coefficients each [Nx6]
+        :param T_vals: 1D numpy array of planning-times [N]
+        :param vel_limits: minimal and maximal allowed values of velocities [m/sec]
+        :return: 1D numpy array of booleans where True means the restrictions are met.
+        """
+        pass
+
+    @classmethod
+    def is_velocity_in_limits(cls, poly_coefs: np.ndarray, T: float, vel_limits: Limits) -> bool:
+        """
+        given coefficients vector of a polynomial x(t), and restrictions on the velocity values,
+        return True if restrictions are met, False otherwise
+        :param poly_coefs: 1D numpy array of x(t)'s coefficients
+        :param T: planning time horizon [sec]
+        :param vel_limits: minimal and maximal allowed values of velocities [m/sec]
+        :return: True if restrictions are met, False otherwise
+        """
+        return cls.are_velocities_in_limits(np.array([poly_coefs]), np.array([T]), vel_limits)[0]
+
+    @staticmethod
+    def calc_polynomial_roots(poly_coefs: np.ndarray):
+        """
+        calculate roots of polynomial with poly_coefs, either square or linear
+        :param poly_coefs: 2D numpy array with N polynomials and 6 coefficients each [Nx6]
+        :return: 2D numpy array with Nx2 or Nx1 roots, depending on the polynomials degree
+        """
+        if poly_coefs.shape[1] == 3:
+            poly_coefs[poly_coefs[:, 0] == 0, 0] = np.finfo(np.float32).eps  # prevent zero first coefficient
+            poly = poly_coefs.astype(np.complex)
+            det = np.sqrt(poly[:, 1] ** 2 - 4 * poly[:, 0] * poly[:, 2])
+            roots1 = (-poly[:, 1] + det) / (2 * poly[:, 0])
+            roots2 = (-poly[:, 1] - det) / (2 * poly[:, 0])
+            return np.c_[roots1, roots2]
+        elif poly_coefs.shape[1] == 2:
+            roots = -poly_coefs[:, 1] / poly_coefs[:, 0]
+            return roots[:, np.newaxis]
+        else:
+            return np.apply_along_axis(np.roots, 1, poly_coefs.astype(np.complex))
+
+
+class QuarticPoly1D(Poly1D):
+    @staticmethod
+    def num_coefs():
+        return 5
+
+    @staticmethod
+    def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+        """
+        Computes cumulative jerk from time 0 to time T for the x(t) whose coefficients are given in <poly_coefs>
+        :param poly_coefs: distance polynomial coefficients
+        :param T: relative time in seconds
+        :return: [float] the cummulative jerk: sum(x'''(t)^2)
+        """
+        a4, a3, a2, a1, a0 = np.split(poly_coefs, 5, axis=-1)
+        a4, a3, a2, a1, a0 = a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
+        return 36 * (a3 ** 2) * T + \
+               144 * a3 * a4 * T ** 2 + \
+               192 * a4 ** 2 * T ** 3
+
+    @staticmethod
+    def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
+        """
+        Given the quartic polynomial setting, this function returns A as a tensor with the first dimension iterating
+        over different values of T (time-horizon) provided in <terminal_times>
+        :param terminal_times: 1D numpy array of different values for T
+        :return: 3D numpy array of shape [len(terminal_times), 6, 6]
+        """
+        return np.array(
+            [[[1.0, 0.0, 0.0, 0.0, 0.0],  # x(0)
+              [0.0, 1.0, 0.0, 0.0, 0.0],  # x_dot(0)
+              [0.0, 0.0, 2.0, 0.0, 0.0],  # x_dotdot(0)
+              [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3],  # x_dot(T)
+              [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2]]  # x_dotdot(T)
+             for T in terminal_times], dtype=np.float)
+
+    @classmethod
+    def are_velocities_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, vel_limits: Limits) -> np.ndarray:
+        """
+        Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
+        polynomial x(t), and restrictions on the velocity values, return True if restrictions are met,
+        False otherwise
+        :param polys_coefs: 2D numpy array with N polynomials and 6 coefficients each [Nx6]
+        :param T_vals: 1D numpy array of planning-times [N]
+        :param vel_limits: minimal and maximal allowed values of velocities [m/sec]
+        :return: 1D numpy array of booleans where True means the restrictions are met.
+        """
+        return cls.are_derivatives_in_limits(degree=1, poly_coefs=poly_coefs, T_vals=T_vals, limits=vel_limits)
+
+    # TODO: document
+    @staticmethod
+    def time_cost_function(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float):
+        return lambda T: (T ** 4 * w_T + 4 * w_J * (
+            T ** 2 * a_0 ** 2 + 3 * T * a_0 * v_0 - 3 * T * a_0 * v_T + 3 * v_0 ** 2 - 6 * v_0 * v_T + 3 * v_T ** 2)) / T ** 3
+
+    @staticmethod
+    def time_cost_function_derivative(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float):
+        return lambda T: (
+                             T ** 4 * w_T
+                             - 4 * T ** 2 * a_0 ** 2 * w_J
+                             + 24 * T * (a_0 * v_T * w_J - a_0 * v_0 * w_J)
+                             - 36 * v_0 ** 2 * w_J + 72 * v_0 * v_T * w_J - 36 * v_T ** 2 * w_J) / T ** 4
+
+    @staticmethod
+    def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
+                                            v_T: np.ndarray):
+        """
+        For given weights and constraints on a jerk-optimal polynomial solution, this function returns a matrix that
+        contains (in each row:) the coefficients of the derivative of the cost function use for finding the optimal time
+        horizon: f(T) = w_T * T + w_J * J(T) where J(T) is the accumulated jerk for given time horizon T.
+        :param w_T: weight for Time component
+        :param w_J: weight for Jerk component
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :return: coefficient matrix for all possibilities
+        """
+        zeros = np.zeros(w_T.shape[0])
+        return np.c_[w_T,
+                     zeros,
+                     - 4 * a_0 ** 2 * w_J, + 24 * (a_0 * v_T * w_J - a_0 * v_0 * w_J),
+                     - 36 * v_0 ** 2 * w_J + 72 * v_0 * v_T * w_J - 36 * v_T ** 2 * w_J]
+
+    @staticmethod
+    def distance_profile_function(a_0: float, v_0: float, v_T: float, T: float):
+        """
+        relative distance travelled by ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param T: [sec] horizon
+        :return: lambda function(s) that takes relative time in seconds and returns the relative distance
+        travelled since time 0
+        """
+        return lambda t: t * (6 * T ** 3 * (a_0 * t + 2 * v_0) - 4 * T * t ** 2 * (2 * T * a_0 + 3 * v_0 - 3 * v_T) +
+                              3 * t ** 3 * (T * a_0 + 2 * v_0 - 2 * v_T)) / (12 * T ** 3)
+
+    @staticmethod
+    def velocity_profile_function(a_0: float, v_0: float, v_T: float, T: float):
+        """
+        velocity of ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param T: [sec] horizon
+        :return: lambda function(s) that takes relative time in seconds and returns the velocity
+        """
+        return lambda t: (T ** 3 * (a_0 * t + v_0) - T * t ** 2 * (2 * T * a_0 + 3 * v_0 - 3 * v_T) + t ** 3 * (
+            T * a_0 + 2 * v_0 - 2 * v_T)) / T ** 3
+
+    @staticmethod
+    def acceleration_profile_function(a_0: float, v_0: float, v_T: float, T: float):
+        """
+        acceleration of ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param T: [sec] horizon
+        :return: lambda function(s) that takes relative time in seconds and returns the velocity
+        """
+        return lambda t: (T ** 3 * a_0 - 2 * T * t * (2 * T * a_0 + 3 * v_0 - 3 * v_T) + 3 * t ** 2 * (
+            T * a_0 + 2 * v_0 - 2 * v_T)) / T ** 3
+
+
+class QuinticPoly1D(Poly1D):
+    """
+    In the quintic polynomial setting we model our 2P-BVP problem as linear system of constraints Ax=b where
+    x is a vector of the quintic polynomial coefficients; b is a vector of the values (p[t] is the value of the
+    polynomial at time t): [p[0], p_dot[0], p_dotdot[0], p[T], p_dot[T], p_dotdot[T]]; A's rows are the
+    polynomial elements at time 0 (first 3 rows) and T (last 3 rows) - the 3 rows in each block correspond to
+    p, p_dot, p_dotdot.
+    """
+
+    @staticmethod
+    def num_coefs():
+        return 6
+
+    @staticmethod
+    def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
+        """
+        Given the quintic polynomial setting, this function returns A as a tensor with the first dimension iterating
+        over different values of T (time-horizon) provided in <terminal_times>
+        :param terminal_times: 1D numpy array of different values for T
+        :return: 3D numpy array of shape [len(terminal_times), 6, 6]
+        """
+        return np.array(
+            [[[1.0, 0.0, 0.0, 0.0, 0.0, 0.0],  # x(0)
+              [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],  # x_dot(0)
+              [0.0, 0.0, 2.0, 0.0, 0.0, 0.0],  # x_dotdot(0)
+              [1.0, T, T ** 2, T ** 3, T ** 4, T ** 5],  # x(T)
+              [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],  # x_dot(T)
+              [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]]  # x_dotdot(T)
+             for T in terminal_times], dtype=np.float)
+
+    @classmethod
+    def are_velocities_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, vel_limits: Limits) -> np.ndarray:
+        """
+        Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
+        polynomial x(t), and restrictions on the velocity values, return True if restrictions are met,
+        False otherwise
+        :param polys_coefs: 2D numpy array with N polynomials and 6 coefficients each [Nx6]
+        :param T_vals: 1D numpy array of planning-times [N]
+        :param vel_limits: minimal and maximal allowed values of velocities [m/sec]
+        :return: 1D numpy array of booleans where True means the restrictions are met.
+        """
+        # For quintic polynomials 3rd degree np.roots calculation is in for loop and inefficient.
+        # Then in this case check limits by velocities calculation in all sampled points.
+        if len(T_vals) > 1:
+            (min_T, max_T, dt) = (np.min(T_vals), np.max(T_vals), T_vals[1] - T_vals[0])
+        else:
+            dt = WERLING_TIME_RESOLUTION
+            min_T = max_T = T_vals[0]
+        vel_poly_s = Math.polyder2d(poly_coefs, m=1)
+        traj_times = np.arange(dt, max_T - np.finfo(np.float16).eps, dt)  # from dt to max_T-dt
+        times = np.array([traj_times, ] * len(T_vals))  # repeat full traj_times for all T_vals
+        velocities = Math.zip_polyval2d(vel_poly_s, times)  # get velocities for all T_vals and all t[i,j] < T_vals[i]
+        # zero irrelevant velocities to get lower triangular matrix: 0 <= t[i,j] < T_val[i]
+        if len(T_vals) > 1:
+            velocities = np.tril(velocities, int(round(min_T / dt)) - 2)
+        return np.all(NumpyUtils.is_in_limits(velocities, vel_limits), axis=1)
+
+    @staticmethod
+    def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+        """
+        Computes cumulative jerk from time 0 to time T for the x(t) whose coefficients are given in <poly_coefs>
+        :param poly_coefs: distance polynomial coefficients
+        :param T: relative time in seconds
+        :return: [float] the cummulative jerk: sum(x'''(t)^2)
+        """
+        a5, a4, a3, a2, a1, a0 = np.split(poly_coefs, 6, axis=-1)
+        a5, a4, a3, a2, a1, a0 = a5.flatten(), a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
+        return 36 * a3 ** 2 * T + \
+               144 * a3 * a4 * T ** 2 + \
+               (240 * a3 * a5 + 192 * a4 ** 2) * T ** 3 + \
+               720 * a4 * a5 * T ** 4 + \
+               720 * a5 ** 2 * T ** 5
+
+    # TODO: document
+    @staticmethod
+    def time_cost_function(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds: float, T_m: float):
+        return lambda T: (T ** 6 * w_T + 3 * w_J * (
+            3 * T ** 4 * a_0 ** 2 + 24 * T ** 3 * a_0 * v_0 - 24 * T ** 3 * a_0 * v_T + 40 * T ** 2 * T_m * a_0 * v_T -
+            40 * T ** 2 * a_0 * ds + 64 * T ** 2 * v_0 ** 2 - 128 * T ** 2 * v_0 * v_T + 64 * T ** 2 * v_T ** 2 + 240 * T * T_m * v_0 * v_T -
+            240 * T * T_m * v_T ** 2 - 240 * T * ds * v_0 + 240 * T * ds * v_T + 240 * T_m ** 2 * v_T ** 2 - 480 * T_m * ds * v_T +
+            240 * ds ** 2)) / T ** 5
+
+    @staticmethod
+    def time_cost_function_derivative(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds: float,
+                                      T_m: float):
+        return lambda T: (
+                             T ** 6 * w_T - 9 * T ** 4 * a_0 ** 2 * w_J - 144 * T ** 3 * a_0 * v_0 * w_J + 144 * T ** 3 * a_0 * v_T * w_J -
+                             360 * T ** 2 * T_m * a_0 * v_T * w_J + 360 * T ** 2 * a_0 * ds * w_J - 576 * T ** 2 * v_0 ** 2 * w_J + 1152 * T ** 2 * v_0 * v_T * w_J -
+                             576 * T ** 2 * v_T ** 2 * w_J - 2880 * T * T_m * v_0 * v_T * w_J + 2880 * T * T_m * v_T ** 2 * w_J + 2880 * T * ds * v_0 * w_J -
+                             2880 * T * ds * v_T * w_J - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * ds * v_T * w_J - 3600 * ds ** 2 * w_J) / T ** 6
+
+    @staticmethod
+    def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
+                                            v_T: np.ndarray, dx: np.ndarray, T_m: np.ndarray):
+        """
+        For given weights and constraints on a jerk-optimal polynomial solution, this function returns a matrix that
+        contains (in each row:) the coefficients of the derivative of the cost function use for finding the optimal time
+        horizon: f(T) = w_T * T + w_J * J(T) where J(T) is the accumulated jerk for given time horizon T.
+        :param w_T: weight for Time component
+        :param w_J: weight for Jerk component
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param dx: [m] distance to travel between time 0 and time T
+        :param T_m: T_m: [sec] T_m * v_T is added to dx
+        :return: coefficient matrix for all possibilities
+        """
+        zeros = np.zeros(w_T.shape[0])
+        return np.c_[w_T,
+                     zeros,
+                     -9 * a_0 ** 2 * w_J,
+                     -144 * a_0 * v_0 * w_J + 144 * a_0 * v_T * w_J,
+                     -360 * T_m * a_0 * v_T * w_J + 360 * a_0 * dx * w_J - 576 * v_0 ** 2 * w_J + 1152 * v_0 * v_T * w_J - 576 * v_T ** 2 * w_J,
+                     -2880 * T_m * v_0 * v_T * w_J + 2880 * T_m * v_T ** 2 * w_J + 2880 * dx * v_0 * w_J - 2880 * dx * v_T * w_J,
+                     - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * dx * v_T * w_J - 3600 * dx ** 2 * w_J]
+
+    @staticmethod
+    def distance_profile_function(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
+        """
+        relative distance travelled by ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param dx: [m] distance to travel between time 0 and time T (see T_m as well)
+        :param T: [sec] horizon
+        :param T_m: [sec] T_m * v_T is added to dx
+        :return: lambda function(s) that takes relative time in seconds and returns the relative distance
+        travelled since time 0
+        """
+        return lambda t: t * (T ** 5 * (a_0 * t + 2 * v_0) + T ** 2 * t ** 2 * (
+            -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * dx + 20 * v_T * (T - T_m)) + T * t ** 3 * (
+                                  3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (
+                                      T - T_m)) + t ** 4 * (
+                                  -T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx + 12 * v_T * (T - T_m))) / (2 * T ** 5)
+
+    @staticmethod
+    def distance_from_target(a_0: float, v_0: float, v_T: float, ds0: float, T: float, T_m: float):
+        """
+        relative distance travelled by ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param ds: [m] initial distance to target in time 0
+        :param T: [sec] horizon
+        :return: lambda function(s) that takes relative time in seconds and returns the relative distance
+        travelled since time 0
+        """
+        return lambda t: (-T**5*t*(a_0*t + 2*v_0) + 2*T**5*(ds0 + t*v_T) + T**2*t**3*(3*T**2*a_0 + 4*T*(3*v_0 + 2*v_T)
+                        - 20*ds0 - 20*v_T*(T - T_m)) - T*t**4*(3*T**2*a_0 + 2*T*(8*v_0 + 7*v_T) - 30*ds0 - 30*v_T*(T - T_m))
+                          + t**5*(T**2*a_0 + 6*T*(v_0 + v_T) - 12*ds0 - 12*v_T*(T - T_m)))/(2*T**5)
+
+    @staticmethod
+    def distance_from_target_derivative_coefs(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
+        """
+        velocity of ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param dx: [m] distance to travel between time 0 and time T (see T_m as well)
+        :param T: [sec] horizon
+        :param T_m: [sec] T_m * v_T is added to dx
+        :return: lambda function(s) that takes relative time in seconds and returns the velocity
+        """
+        coefs = np.array([5 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * dx - 12 * v_T * (T - T_m)),
+                          -4 * T * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m)),
+                          +3 * T ** 2 * (
+                              3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * dx - 20 * v_T * (T - T_m)),
+                          -2 * T ** 5 * a_0,
+                          2 * T ** 5 * (v_T - v_0)])
+        return coefs
+
+    @staticmethod
+    def velocity_profile_function(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
+        """
+        velocity of ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param dx: [m] distance to travel between time 0 and time T (see T_m as well)
+        :param T: [sec] horizon
+        :param T_m: [sec] T_m * v_T is added to dx
+        :return: lambda function(s) that takes relative time in seconds and returns the velocity
+        """
+        return lambda t: (2 * T ** 5 * (a_0 * t + v_0) + 3 * T ** 2 * t ** 2 * (
+            -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * dx +
+            20 * v_T * (T - T_m)) + 4 * T * t ** 3 * (
+                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m))
+                          + 5 * t ** 4 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx + 12 * v_T * (T - T_m))) / (
+                             2 * T ** 5)
+
+    @staticmethod
+    def acceleration_profile_function(a_0: float, v_0: float, v_T: float, ds: float, T: float, T_m: float):
+        """
+        acceleration of ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param dx: [m] distance to travel between time 0 and time T
+        :param T: [sec] horizon
+        :return: lambda function(s) that takes relative time in seconds and returns the velocity
+        """
+        return lambda t: (T ** 5 * a_0 - 3 * T ** 2 * t * (
+            3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * ds - 20 * v_T * (T - T_m))
+                          + 6 * T * t ** 2 * (
+                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds - 30 * v_T * (T - T_m))
+                          + 10 * t ** 3 * (
+                              -T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * ds + 12 * v_T * (T - T_m))) / T ** 5
+

@@ -1,11 +1,11 @@
 import numpy as np
 
 from decision_making.src.messages.str_serializable import StrSerializable
+from decision_making.src.planning.utils.numpy_utils import UniformGrid
 
 # General constants
-
 UNKNOWN_DEFAULT_VAL = 0.0
-
+EPS = np.finfo(np.float32).eps
 
 # Communication Layer
 
@@ -16,7 +16,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
-BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 50.0
+BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 90.0
 
 # When retrieving the lookahead path of a given dynamic object, we will multiply the path length
 # by the following ratio in order to avoid extrapolation when resampling the path (due to path sampling
@@ -65,19 +65,20 @@ DEVIATION_FROM_GOAL_COST = 2.5 * 1e2        # cost of longitudinal deviation fro
 GOAL_SIGMOID_K_PARAM = 0.5                  # sigmoid k (slope) param of going out-of-goal
 GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
 
-LON_JERK_COST = 1.0                         # cost of longitudinal jerk
-LAT_JERK_COST = 1.0                         # cost of lateral jerk
+LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
+LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
 # [m/sec] speed to plan towards by default in BP
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
 
-# [m/s] min & max velocity limits are additional parameters for TP
-VELOCITY_LIMITS = np.array([0.0, 20.0])
+# [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
+VELOCITY_LIMITS = np.array([0.0, 20])
+VELOCITY_STEP = 10/3.6
 
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
 BP_ACTION_T_LIMITS = np.array([2.0, 20.0])
-BP_ACTION_T_RES = 0.05
+BP_ACTION_T_RES = 0.0001
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
@@ -94,7 +95,7 @@ LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
-SAFE_DIST_TIME_DELAY = 2.5
+SAFE_DIST_TIME_DELAY = 2
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
@@ -102,6 +103,11 @@ MIN_OVERTAKE_VEL = 3.5
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
 
+# Uniform grids for BP Filters
+FILTER_A_0_GRID = UniformGrid(LON_ACC_LIMITS, 0.5)
+FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
+FILTER_V_T_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
+FILTER_S_T_GRID = UniformGrid(np.array([0, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
 
 # Trajectory Planner #
 

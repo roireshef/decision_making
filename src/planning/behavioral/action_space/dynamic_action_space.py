@@ -1,121 +1,116 @@
 from logging import Logger
-from typing import Optional
+from typing import Optional, List, Type
 
 import numpy as np
-from decision_making.src.planning.behavioral.filtering import recipe_filter_bank
-from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
+from sklearn.utils.extmath import cartesian
+
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SAFE_DIST_TIME_DELAY, \
+    BP_JERK_S_JERK_D_TIME_WEIGHTS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
+from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     ActionType, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from sklearn.utils.extmath import cartesian
-
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_ACTION_T_RES, SAFE_DIST_TIME_DELAY
-from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
-from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
-from decision_making.src.planning.trajectory.optimal_control.optimal_control_utils import QuinticPoly1D
-from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory
-from decision_making.src.planning.types import FP_SX, LIMIT_MAX, FS_SV, FS_SX, LIMIT_MIN
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.behavioral.filtering import recipe_filter_bank
+from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
+from decision_making.src.planning.types import LIMIT_MAX, FS_SV, FS_SX, LIMIT_MIN, FS_SA, FS_DA, FS_DV, FS_DX
+from decision_making.src.planning.utils.map_utils import MapUtils
+from decision_making.src.planning.utils.math import Math
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.predictor import Predictor
 from mapping.src.service.map_service import MapService
 
 
 class DynamicActionSpace(ActionSpace):
-
-    def __init__(self, logger: Logger, predictor: Predictor):
+    def __init__(self, logger: Logger, predictor: Predictor, filtering: RecipeFiltering):
         super().__init__(logger,
                          recipes=[DynamicActionRecipe.from_args_list(comb)
                                   for comb in cartesian([RelativeLane,
                                                          RelativeLongitudinalPosition,
-                                                         [ActionType.FOLLOW_VEHICLE, ActionType.TAKE_OVER_VEHICLE],
+                                                         [ActionType.FOLLOW_VEHICLE, ActionType.OVERTAKE_VEHICLE],
                                                          AggressivenessLevel])],
-                         recipe_filtering=RecipeFiltering(recipe_filter_bank.dynamic_filters))
-
+                         recipe_filtering=filtering)
         self.predictor = predictor
 
-    def specify_goal(self, action_recipe: DynamicActionRecipe,
-                     behavioral_state: BehavioralGridState) -> Optional[ActionSpec]:
+    @property
+    def recipe_classes(self) -> List[Type]:
+        """a list of Recipe classes this action space can handle with"""
+        return [DynamicActionRecipe]
+
+    def specify_goals(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> \
+            List[Optional[ActionSpec]]:
         """
-        Given a state and a high level SemanticAction towards an object, generate a SemanticActionSpec.
-        Internally, the reference route here is the RHS of the road, and the ActionSpec is specified with respect to it.
-        :param action_recipe:
-        :param behavioral_state: Frenet state of ego at initial point
-        :return: semantic action specification
+        This method's purpose is to specify the enumerated actions (recipes) that the agent can take.
+        Each semantic action (ActionRecipe) is translated into a terminal state specification (ActionSpec).
+        :param action_recipes: an enumerated semantic action [ActionRecipe].
+        :param behavioral_state: a Frenet state of ego at initial point
+        :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
         ego = behavioral_state.ego_state
-        ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
+        road_frenet = MapUtils.get_road_rhs_frenet(ego)
+
+        # project ego vehicle onto the road
+        ego_init_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
+
+        # get the relevant desired center lane latitude (from road's RHS)
         road_id = ego.road_localization.road_id
-        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)  # TODO: use nav_plan
-        road_frenet = FrenetSerret2DFrame(road_points)
-        ego_init_fstate = road_frenet.cstate_to_fstate(ego_init_cstate)
+        road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id)
+        relative_lane = np.array([action_recipe.relative_lane.value for action_recipe in action_recipes])
+        desired_lane = ego.road_localization.lane_num + relative_lane
+        desired_center_lane_latitude = road_lane_latitudes[desired_lane]
 
-        target_obj = behavioral_state.road_occupancy_grid[(action_recipe.relative_lane.value,
-                                                           action_recipe.relative_lon.value)][0]
-        target_obj_fpoint = road_frenet.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))
-        _, _, _, road_curvature_at_obj_location, _ = road_frenet._taylor_interp(target_obj_fpoint[FP_SX])
-        obj_init_fstate = road_frenet.cstate_to_fstate(np.array([
-            target_obj.x, target_obj.y,
-            target_obj.yaw,
-            target_obj.total_speed,
-            target_obj.acceleration_lon,
-            road_curvature_at_obj_location  # We don't care about other agent's curvature, only the road's
-        ]))
+        # get relevant aggressiveness weights for all actions
+        aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
+        weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness]
 
-        # Extract relevant details from state on Reference-Object
-        obj_on_road = target_obj.road_localization
-        road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id=obj_on_road.road_id)
-        obj_center_lane_latitude = road_lane_latitudes[obj_on_road.lane_num]
+        targets = [behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
+                   for action_recipe in action_recipes]
+        target_length = np.array([target.dynamic_object.size.length for target in targets])
+        target_fstate = np.array([target.fstate for target in targets])
 
-        T_vals = np.arange(BP_ACTION_T_LIMITS[LIMIT_MIN], BP_ACTION_T_LIMITS[LIMIT_MAX] + np.finfo(np.float16).eps,
-                           BP_ACTION_T_RES)
+        # get desired terminal velocity
+        v_T = target_fstate[:, FS_SV]
 
-        # TODO: should be swapped with current implementation of Predictor.predict_object_on_road
-        obj_saT = 0  # obj_init_fstate[FS_SA]
-        obj_svT = obj_init_fstate[FS_SV] + obj_saT * T_vals
-        obj_sxT = obj_init_fstate[FS_SX] + obj_svT * T_vals + obj_saT * T_vals ** 2 / 2
+        # latitudinal difference to target
+        init_latitudinal_difference = desired_center_lane_latitude - ego_init_fstate[FS_DX]
 
-        safe_lon_dist = obj_svT * SAFE_DIST_TIME_DELAY
-        lon_margin = SemanticActionsUtils.get_ego_lon_margin(ego.size) + target_obj.size.length / 2
+        # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
+        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
+            w_T=weights[:, 2], w_J=weights[:, 1], dx=init_latitudinal_difference,
+            a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV], v_T=0, T_m=SAFE_DIST_TIME_DELAY)
+        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
+        T_d = np.fmin.reduce(roots_d, axis=-1)
 
-        if action_recipe.action_type == ActionType.FOLLOW_VEHICLE:
-            desired_lon = obj_sxT - safe_lon_dist - lon_margin
-        elif action_recipe.action_type == ActionType.TAKE_OVER_VEHICLE:
-            desired_lon = obj_sxT + safe_lon_dist + lon_margin
-        else:
-            raise NotImplemented("Action Type %s is not handled in DynamicActionSpace specification",
-                                 action_recipe.action_type)
+        # longitudinal difference between object and ego at t=0 (positive if obj in front of ego)
+        init_longitudinal_difference = target_fstate[:, FS_SX] - ego_init_fstate[FS_SX]
+        # margin_sign is -1 for FOLLOW_VEHICLE (behind target) and +1 for OVER_TAKE_VEHICLE (in front of target)
+        margin_sign = np.array([action_recipe.action_type.value * 2 - 5 for action_recipe in action_recipes])
 
-        constraints_s = ActionSpace.define_lon_constraints(len(T_vals), ego_init_fstate, obj_saT, obj_svT, desired_lon)
-        constraints_d = ActionSpace.define_lat_constraints(len(T_vals), ego_init_fstate, obj_center_lane_latitude)
-        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_vals))
+        ds = init_longitudinal_difference + margin_sign * (
+            LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + ego.size.length / 2 + target_length / 2)
 
-        # solve for s(t) and d(t)
-        poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
-        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
+        # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
+        cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
+            w_T=weights[:, 2], w_J=weights[:, 0], dx=ds,
+            a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV], v_T=v_T, T_m=SAFE_DIST_TIME_DELAY)
+        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
+        T_s = np.fmin.reduce(roots_s, axis=-1)
 
-        optimum_time_idx, optimum_time_satisfies_constraints = ActionSpace.find_optimum_planning_time(T_vals,
-                                                                                                      poly_coefs_s,
-                                                                                                      QuinticPoly1D,
-                                                                                                      poly_coefs_d,
-                                                                                                      QuinticPoly1D,
-                                                                                                      action_recipe.aggressiveness)
+        # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
+        # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later
+        # when setting T
+        T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
 
-        if not optimum_time_satisfies_constraints:
-            # self.logger.debug("Can\'t specify Recipe %s given ego state %s ", str(action_recipe), str(ego))
-            return None
+        # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
+        T = np.maximum(np.maximum(T_d, T_s), BP_ACTION_T_LIMITS[LIMIT_MIN])
 
-        # Note: We create the samplable trajectory as a reference trajectory of the current action.from
-        # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
-        samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
-                                                          T_s=T_vals[optimum_time_idx],
-                                                          T_d=T_vals[optimum_time_idx],
-                                                          frenet_frame=road_frenet,
-                                                          poly_s_coefs=poly_coefs_s[optimum_time_idx],
-                                                          poly_d_coefs=poly_coefs_d[optimum_time_idx])
+        # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution
+        distance_s = QuinticPoly1D.distance_profile_function(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
+                                                             v_T=v_T, T=T, dx=ds, T_m=SAFE_DIST_TIME_DELAY)(T)
+        target_s = distance_s + ego_init_fstate[FS_SX]
 
-        return ActionSpec(t=T_vals[optimum_time_idx], v=obj_svT[optimum_time_idx],
-                          s=constraints_s[optimum_time_idx, 3],
-                          d=constraints_d[optimum_time_idx, 3],
-                          samplable_trajectory=samplable_trajectory)
+        action_specs = [ActionSpec(t, v_T[i], target_s[i], desired_center_lane_latitude[i])
+                        if ~np.isnan(t) else None
+                        for i, t in enumerate(T)]
 
+        return action_specs
