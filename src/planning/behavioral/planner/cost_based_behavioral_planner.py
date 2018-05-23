@@ -9,7 +9,7 @@ from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATI
     SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, \
     DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, \
     OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, \
-    DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST, LAT_JERK_COST, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS
+    DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
@@ -22,9 +22,10 @@ from decision_making.src.planning.behavioral.evaluators.value_approximator impor
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
+from decision_making.src.planning.types import FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import State, ObjectSize
+from decision_making.src.state.state import State, ObjectSize, NewEgoState
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -124,33 +125,39 @@ class CostBasedBehavioralPlanner:
 
         return trajectory_parameters
 
+
     @staticmethod
-    def _generate_cost_params(road_id: int, ego_size: ObjectSize, reference_route_latitude: float) -> \
-            TrajectoryCostParams:
-        """
-        Generate cost specification for trajectory planner
-        :param road_id: the road's id - it currently assumes a single road for the whole action.
-        :param ego_size: ego size used to extract margins (for dilation of other objects on road)
-        :param reference_route_latitude: the latitude of the reference route. This is used to compute out-of-lane cost
-        :return: a TrajectoryCostParams instance that encodes all parameters for TP cost computation.
-        """
-        road = MapService.get_instance().get_road(road_id)
-        target_lane_num = int(reference_route_latitude / road.lane_width)
+    def _generate_cost_params(ego: NewEgoState, reference_route_latitude: float) -> TrajectoryCostParams:
+
+        # TODO: here we assume a constant lane width along trajectory
+        map_api = MapService.get_instance()
+        lanes = map_api.get_segment(ego.map_state.segment_id).lanes
+        road = map_api.get_road(ego.map_state.road_id)
+
+        # get all lanes widths for the current ego longitude
+        lanes_widths = [lane.get_width(ego.map_state.lane_state[FS_SX]) for lane in lanes]
+        cum_widths = np.cumsum(lanes_widths)
+        # find lane index containing reference_route_latitude
+        ref_route_lane_idx = np.where(reference_route_latitude < cum_widths)[0][-1]
 
         # lateral distance in [m] from ref. path to rightmost edge of lane
-        right_lane_offset = max(0.0, reference_route_latitude - ego_size.width / 2 - target_lane_num * road.lane_width)
+        right_lane_offset = reference_route_latitude - ego.size.width / 2
+        if ref_route_lane_idx > 0:
+            right_lane_offset -= cum_widths[ref_route_lane_idx-1]
         # lateral distance in [m] from ref. path to leftmost edge of lane
-        left_lane_offset = (road.road_width - reference_route_latitude) - ego_size.width / 2 - \
-                           (road.lanes_num - target_lane_num - 1) * road.lane_width
+        left_lane_offset = cum_widths[ref_route_lane_idx] - reference_route_latitude - ego.size.width / 2
+
         # as stated above, for shoulders
-        right_shoulder_offset = reference_route_latitude - ego_size.width / 2 + SHOULDER_SIGMOID_OFFSET
+        right_shoulder_offset = reference_route_latitude - ego.size.width / 2 + SHOULDER_SIGMOID_OFFSET
         # as stated above, for shoulders
-        left_shoulder_offset = (road.road_width - reference_route_latitude) - ego_size.width / 2 + \
+        left_shoulder_offset = (cum_widths[-1] - reference_route_latitude) - ego.size.width / 2 + \
                                SHOULDER_SIGMOID_OFFSET
+
         # as stated above, for whole road including shoulders
-        right_road_offset = reference_route_latitude - ego_size.width / 2 + ROAD_SHOULDERS_WIDTH
+        right_road_offset = reference_route_latitude - ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
         # as stated above, for whole road including shoulders
-        left_road_offset = (road.road_width - reference_route_latitude) - ego_size.width / 2 + ROAD_SHOULDERS_WIDTH
+        left_road_offset = road.get_width(ego.map_state.road_state[FS_SX]) - reference_route_latitude - \
+                           ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
 
         # Set road-structure-based cost parameters
         right_lane_cost = SigmoidFunctionParams(w=DEVIATION_FROM_LANE_COST, k=LANE_SIGMOID_K_PARAM,
@@ -168,8 +175,8 @@ class CostBasedBehavioralPlanner:
 
         # Set objects parameters
         # dilate each object by ego length + safety margin
-        objects_dilation_length = SemanticActionsUtils.get_ego_lon_margin(ego_size)
-        objects_dilation_width = SemanticActionsUtils.get_ego_lat_margin(ego_size)
+        objects_dilation_length = SemanticActionsUtils.get_ego_lon_margin(ego.size)
+        objects_dilation_width = SemanticActionsUtils.get_ego_lat_margin(ego.size)
         objects_cost_x = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
                                                offset=objects_dilation_length)  # Very high (inf) cost
         objects_cost_y = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
@@ -188,12 +195,11 @@ class CostBasedBehavioralPlanner:
                                            right_road_cost=right_road_cost,
                                            dist_from_goal_cost=dist_from_goal_cost,
                                            dist_from_goal_lat_factor=dist_from_goal_lat_factor,
-                                           lon_jerk_cost=LON_JERK_COST,
-                                           lat_jerk_cost=LAT_JERK_COST,
+                                           lon_jerk_cost=LON_JERK_COST_WEIGHT,
+                                           lat_jerk_cost=LAT_JERK_COST_WEIGHT,
                                            velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
                                            lat_acceleration_limits=LAT_ACC_LIMITS)
 
         return cost_params
-
 
