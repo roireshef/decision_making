@@ -11,16 +11,15 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmObjectSize
 from common_data.lcm.generatedFiles.gm_lcm import LcmOccupancyState
 from common_data.lcm.generatedFiles.gm_lcm import LcmState
 from common_data.lcm.generatedFiles.gm_lcm.LcmNumpyArray import LcmNumpyArray
+from common_data.lcm.generatedFiles.gm_lcm import LcmMapState
 
 from decision_making.src.exceptions import NoUniqueObjectStateForEvaluation
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import CartesianExtendedState, C_K, C_A
 from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW
 from decision_making.src.planning.types import FrenetState2D
-from mapping.src.model.localization import RoadLocalization
 
 from decision_making.src.planning.utils.lcm_utils import LCMUtils
-from decision_making.src.planning.utils.map_utils import MapUtils
 from mapping.src.service.map_service import MapService
 
 
@@ -97,6 +96,12 @@ class ObjectSize(PUBSUB_MSG_IMPL):
 
 
 class MapState(PUBSUB_MSG_IMPL):
+    lane_state = FrenetState2D
+    road_state = FrenetState2D
+    road_id = int
+    segment_id = int
+    lane_id = int
+
     def __init__(self, lane_state, road_state, road_id, segment_id, lane_id):
         # type: (FrenetState2D, FrenetState2D, int, int, int) -> MapState
         self.lane_state = lane_state
@@ -118,13 +123,19 @@ class MapState(PUBSUB_MSG_IMPL):
     @classmethod
     def deserialize(cls, lcm_msg):
         # type: (LcmMapState) -> MapState
-        return cls(lcm_msg.lane_state, lcm_msg.road_state,lcm_msg.road_id, lcm_msg.segment_id, lcm_msg.lane_id)
+        return cls(np.ndarray(shape=tuple(lcm_msg.lane_state.shape)
+                              , buffer=np.array(lcm_msg.lane_state.data)
+                              , dtype=float),
+                   np.ndarray(shape=tuple(lcm_msg.road_state.shape)
+                              , buffer=np.array(lcm_msg.road_state.data)
+                              , dtype=float)
+        ,lcm_msg.road_id, lcm_msg.segment_id, lcm_msg.lane_id)
 
 class NewDynamicObject(PUBSUB_MSG_IMPL):
     obj_id = int
     timestamp = int
-    cartesian_state = CartesianExtendedState
-    map_state = MapState
+    _cached_cartesian_state = CartesianExtendedState
+    _cached_map_state = MapState
     size = ObjectSize
     confidence = float
 
@@ -178,6 +189,7 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
     def cartesian_state(self):
         # type: () -> CartesianExtendedState
         if self._cached_cartesian_state is None:
+            from decision_making.src.planning.utils.map_utils import MapUtils
             self._cached_cartesian_state = MapUtils.convert_map_to_cartesian_state(self._cached_map_state)
         return self._cached_cartesian_state
 
@@ -185,8 +197,17 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
     def map_state(self):
         # type: () -> MapState
         if self._cached_map_state is None:
+            from decision_making.src.planning.utils.map_utils import MapUtils
             self._cached_map_state = MapUtils.convert_cartesian_to_map_state(self._cached_cartesian_state)
         return self._cached_map_state
+
+    @property
+    def timestamp_in_sec(self):
+        return self.timestamp * 1e-9
+
+    @timestamp_in_sec.setter
+    def timestamp_in_sec(self, value):
+        self.timestamp = int(value * 1e9)
 
     @classmethod
     def create_from_cartesian_state(cls, obj_id: object, timestamp: object, cartesian_state: object, size: object, confidence: object):
@@ -241,7 +262,10 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmDynamicObject) -> NewDynamicObject
         return cls(lcmMsg.obj_id, lcmMsg.timestamp
-                 , lcmMsg._cached_cartesian_state, lcmMsg._cached_map_state
+                 , np.ndarray(shape=tuple(lcmMsg._cached_cartesian_state.shape)
+                              , buffer=np.array(lcmMsg._cached_cartesian_state.data)
+                              , dtype=float)
+                    , MapState.deserialize(lcmMsg._cached_map_state)
                  , ObjectSize.deserialize(lcmMsg.size)
                  , lcmMsg.confidence)
 
@@ -395,13 +419,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
 
 class NewEgoState(NewDynamicObject):
-    ''' Members annotations for python 2 compliant classes '''
-    obj_id = int
-    timestamp = int
-    cartesian_state = CartesianExtendedState
-    map_state = MapState
-    size = ObjectSize
-    confidence = float
+
 
     def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
         # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float) -> NewEgoState
@@ -417,7 +435,23 @@ class NewEgoState(NewDynamicObject):
         :param size: class ObjectSize
         :param confidence: of object's existence
         """
-        NewDynamicObject.__init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence)
+        super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state, map_state=map_state, size=size, confidence=confidence)
+
+    def serialize(self):
+        # type: () -> LcmEgoState
+        lcm_msg = LcmEgoState()
+        lcm_msg.dynamic_obj = super(self.__class__, self).serialize()
+        return lcm_msg
+
+    @classmethod
+    def deserialize(cls, lcmMsg):
+        # type: (LcmEgoState) -> NewEgoState
+        dyn_obj = NewDynamicObject.deserialize(lcmMsg.dynamic_obj)
+        return cls(dyn_obj.obj_id, dyn_obj.timestamp
+                 , dyn_obj._cached_cartesian_state, dyn_obj._cached_map_state
+                 , dyn_obj.size
+                 , dyn_obj.confidence)
+
 
 class EgoState(DynamicObject):
     ''' Members annotations for python 2 compliant classes '''
@@ -490,11 +524,11 @@ class EgoState(DynamicObject):
 class State(PUBSUB_MSG_IMPL):
     ''' Members annotations for python 2 compliant classes '''
     occupancy_state = OccupancyState
-    dynamic_objects = List[DynamicObject]
-    ego_state = EgoState
+    dynamic_objects = List[NewDynamicObject]
+    ego_state = NewEgoState
 
     def __init__(self, occupancy_state, dynamic_objects, ego_state):
-        # type: (OccupancyState, List[DynamicObject], EgoState) -> None
+        # type: (OccupancyState, List[NewDynamicObject], NewEgoState) -> None
         """
         main class for the world state. deep copy is required by self.clone_with!
         :param occupancy_state: free space
@@ -506,7 +540,7 @@ class State(PUBSUB_MSG_IMPL):
         self.ego_state = copy.deepcopy(ego_state)
 
     def clone_with(self, occupancy_state=None, dynamic_objects=None, ego_state=None):
-        # type: (OccupancyState, List[DynamicObject], EgoState) -> State
+        # type: (OccupancyState, List[NewDynamicObject], NewEgoState) -> State
         """
         clones state object with potential overriding of specific fields.
         requires deep-copying of all fields in State.__init__ !!
@@ -532,11 +566,11 @@ class State(PUBSUB_MSG_IMPL):
         # type: (LcmState) -> State
         dynamic_objects = list()
         for i in range(lcmMsg.num_obj):
-            dynamic_objects.append(DynamicObject.deserialize(lcmMsg.dynamic_objects[i]))
+            dynamic_objects.append(NewDynamicObject.deserialize(lcmMsg.dynamic_objects[i]))
         ''' [DynamicObject.deserialize(lcmMsg.dynamic_objects[i]) for i in range(lcmMsg.num_obj)] '''
         return cls(OccupancyState.deserialize(lcmMsg.occupancy_state)
                  , dynamic_objects
-                 , EgoState.deserialize(lcmMsg.ego_state))
+                 , NewEgoState.deserialize(lcmMsg.ego_state))
 
     # TODO: remove when access to dynamic objects according to dictionary will be available.
     @classmethod
