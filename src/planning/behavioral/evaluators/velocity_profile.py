@@ -244,13 +244,15 @@ class VelocityProfile:
         print('NO PROFILE v_init_rel <= v_max_rel: t1=%.2f a=%.2f v_init=%.2f v_tar=%.2f T=%.2f' % (t1, a, v_init, v_tar, T))
         return None
 
-    def calc_last_safe_time(self, ego_lon: float, ego_half_size: float, dyn_obj: DynamicObject, T: float,
-                            td_0: float, td_T: float) -> float:
+    def calc_last_safe_time(self, init_s_ego: float, ego_length: float, init_s_obj: float, init_v_obj: float,
+                            obj_length: float, T: float, td_0: float, td_T: float) -> float:
         """
         Given ego velocity profile and dynamic object, calculate the last time, when the safety complies.
-        :param ego_lon: ego initial longitude
-        :param ego_half_size: [m] half length of ego
-        :param dyn_obj: the dynamic object, for which the safety is tested
+        :param init_s_ego: ego initial longitude
+        :param ego_length: [m] length of ego
+        :param init_s_obj: longitude of the dynamic object, for which the safety is tested
+        :param init_v_obj: velocity of the dynamic object
+        :param obj_length: length of the dynamic object
         :param T: maximal time to check the safety (usually T_d for safety w.r.t. F and LB)
         :param td_0: reaction time of the back car at time 0
         :param td_T: reaction time of the back car at time T_max
@@ -259,31 +261,27 @@ class VelocityProfile:
         if T <= 0:
             return np.inf
 
-        margin = ego_half_size + dyn_obj.size.length / 2
-        # initialization of motion parameters
-        (init_s_ego, init_v_obj, a_obj) = (ego_lon, dyn_obj.v_x, dyn_obj.acceleration_lon)
-        init_s_obj = dyn_obj.road_localization.road_lon
+        margin = (ego_length + obj_length) / 2
+        if init_s_ego < init_s_obj:
+            v_front = init_v_obj
+            v_back = self.v_init
+        else:
+            v_back = init_v_obj
+            v_front = self.v_init
+        if not VelocityProfile.is_safe_state(v_front, v_back, abs(init_s_obj - init_s_ego), td_0, margin):
+            return -1
+        if self._is_safe_profile(init_s_ego, init_s_obj, init_v_obj, margin, T, td_0, td_T):
+            return np.inf
 
-        if abs(a_obj) < 0.01:  # the object has constant velocity, then use fast safety test
-            dist = abs(init_s_obj - init_s_ego)
-            if init_s_ego < init_s_obj:
-                v_front = init_v_obj
-                v_back = self.v_init
-            else:
-                v_back = init_v_obj
-                v_front = self.v_init
-            if not VelocityProfile.is_safe_state(v_front, v_back, dist, td_0, margin):
-                return -1
-            if self._is_safe_profile(ego_lon, ego_half_size, dyn_obj, T, td_0, td_T):
-                return np.inf
-
+        # find the latest safe time
         t, t_cum, s_ego, v_ego, a_ego = self.get_details(T)
         s_ego += init_s_ego
-        s_obj = init_s_obj + init_v_obj * t_cum[:-1] + 0.5 * a_obj * t_cum[:-1] * t_cum[:-1]
-        v_obj = init_v_obj + a_obj * t_cum[:-1]
+        s_obj = init_s_obj + init_v_obj * t_cum[:-1]
+        v_obj = np.repeat(init_v_obj, t.shape[0])
+        a_obj = np.repeat(0., t.shape[0])
 
         # create (ego, obj) pairs of longitudes, velocities and accelerations for all segments
-        (s, v, a) = (np.c_[s_ego, s_obj], np.c_[v_ego, v_obj], np.c_[a_ego, np.repeat(a_obj, t.shape[0])])
+        (s, v, a) = (np.c_[s_ego, s_obj], np.c_[v_ego, v_obj], np.c_[a_ego, a_obj])
 
         front = int(init_s_ego < init_s_obj)  # 0 if the object is behind ego; 1 otherwise
         back = 1 - front
@@ -312,15 +310,13 @@ class VelocityProfile:
                     if init_s_ego < init_s_obj:
                         s_back, v_back = self.sample_at(T)
                         s_back += init_s_ego
-                        s_front = init_s_obj + init_v_obj * T + 0.5 * a_obj * last_safe_time * last_safe_time - \
-                                  0.5 * a_max * braking_time * braking_time
-                        v_front = max(0., init_v_obj + a_obj * last_safe_time - a_max * td)
+                        s_front = init_s_obj + init_v_obj * T - 0.5 * a_max * braking_time * braking_time
+                        v_front = max(0., init_v_obj - a_max * td)
                     else:
                         s_front, v_front = self.sample_at(T)
                         s_front += init_s_ego
-                        s_back = init_s_obj + init_v_obj * T + 0.5 * a_obj * last_safe_time * last_safe_time - \
-                                 0.5 * a_max * braking_time * braking_time
-                        v_back = max(0., init_v_obj + a_obj * last_safe_time - a_max * td)
+                        s_back = init_s_obj + init_v_obj * T - 0.5 * a_max * braking_time * braking_time
+                        v_back = max(0., init_v_obj - a_max * td)
                     if max(0., v_back**2 - v_front**2)/(2*a_max) + margin <= s_front - s_back:
                         last_safe_time = t_cum[seg + 1]
                         continue  # this segment is safe
@@ -332,8 +328,8 @@ class VelocityProfile:
                       max_brake: float=-LON_ACC_LIMITS[0]):
         return max(0., v_back**2 - v_front**2) / (2*max_brake) + v_back*time_delay + margin < dist
 
-    def _is_safe_profile(self, ego_lon: float, ego_half_size: float, dyn_obj: DynamicObject, T: float,
-                         td_0: float, td_T: float) -> bool:
+    def _is_safe_profile(self, init_s_ego: float, init_s_obj: float, v_obj: float, margin: float,
+                         T: float, td_0: float, td_T: float) -> bool:
         """
         Given ego velocity profile and dynamic object, check if the profile complies safety.
         Here we assume the object has a constant velocity.
@@ -347,8 +343,6 @@ class VelocityProfile:
         """
         if T <= 0:
             return True
-        (init_s_ego, init_s_obj, v_obj) = (ego_lon, dyn_obj.road_localization.road_lon, dyn_obj.v_x)
-        margin = ego_half_size + dyn_obj.size.length / 2
         cut_profile = self.cut_by_time(T)
 
         if init_s_ego < init_s_obj:  # the object is in front of ego

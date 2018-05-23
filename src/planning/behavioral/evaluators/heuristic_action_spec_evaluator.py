@@ -72,7 +72,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                 continue  # infeasible action
 
             # calculate the latest safe time
-            T_d_max = self._calc_largest_safe_time(behavioral_state, recipe, i, vel_profile, ego.size.length/2,
+            T_d_max = self._calc_largest_safe_time(behavioral_state, recipe, i, vel_profile, ego.size.length,
                                                    T_d_calm, lane_width)
             if T_d_max < 0:
                 continue  # the action is unsafe from the beginning
@@ -115,14 +115,14 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             return VelocityProfile(v_init=ego_fstate[FS_SV], t1=spec.t, v_mid=spec.v, t2=t2, t3=0, v_tar=spec.v)
 
     def _calc_largest_safe_time(self, behavioral_state: BehavioralGridState, action: ActionRecipe, i: int,
-                                vel_profile: VelocityProfile, ego_half_size: float, T_d: float, lane_width: float) -> float:
+                                vel_profile: VelocityProfile, ego_length: float, T_d: float, lane_width: float) -> float:
         """
         For a lane change action, given ego velocity profile and behavioral_state, get two cars that may
         require faster lateral movement (the front overtaken car and the back interfered car) and calculate the last
         time, for which the safety holds w.r.t. these two cars.
         :param behavioral_state: semantic actions grid behavioral state
         :param vel_profile: the velocity profile of ego
-        :param ego_half_size: half ego length
+        :param ego_length: half ego length
         :param T_d: time for comfortable lane change
         :param lane_width: lane width of the road
         :return: the latest time, when ego is still safe; return -1 if the current state is unsafe for this action
@@ -159,7 +159,8 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                 td = big_follow_td
             td += 2 * additional_time_delay
 
-            forward_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_half_size, followed_obj, np.inf, td, td)
+            forward_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_length,
+                    followed_obj.road_localization.road_lon, followed_obj.v_x, followed_obj.size.length, np.inf, td, td)
             if forward_safe_time < vel_profile.total_time():
                 obj_lon = followed_obj.road_localization.road_lon
                 act_time = vel_profile.total_time()
@@ -186,7 +187,8 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                 # td_0 > td_T, since as latitude advances ego can escape laterally easier
                 td_T = min_front_td + additional_time_delay
                 td_0 = AV_TIME_DELAY * lat_dist_to_target + additional_time_delay
-                front_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_half_size, front_obj, 0.75*T_d, td_0, td_T)
+                front_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_length,
+                    front_obj.road_localization.road_lon, front_obj.v_x, front_obj.size.length, 0.75 * T_d, td_0, td_T)
                 if front_safe_time < np.inf:
                     print('front_safe_time=%.2f action %d(%d %d): front_dist=%.2f front_vel=%.2f lat_d=%.2f td_0=%.2f td_T=%.2f' %
                           (front_safe_time, i, action.action_type.value, action.aggressiveness.value,
@@ -199,7 +201,8 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             if side_rear_cell in behavioral_state.road_occupancy_grid:
                 back_obj = behavioral_state.road_occupancy_grid[side_rear_cell][0].dynamic_object
                 td = SAFE_DIST_TIME_DELAY + 3*additional_time_delay
-                back_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_half_size, back_obj, T_d, td, td)
+                back_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_length,
+                        back_obj.road_localization.road_lon, back_obj.v_x, back_obj.size.length, T_d, td, td)
                 if back_safe_time < np.inf:
                     print('back_safe_time=%.2f action %d(%d %d): back_dist=%.2f back_vel=%.2f rel_lat=%.2f td=%.2f' %
                           (back_safe_time, i, action.action_type.value, action.aggressiveness.value,
@@ -223,7 +226,8 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                     if rear_cell in behavioral_state.road_occupancy_grid:
                         td = SAFE_DIST_TIME_DELAY
                         rear_obj = behavioral_state.road_occupancy_grid[rear_cell][0].dynamic_object
-                        back_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_half_size, rear_obj, T_d, td, td)
+                        back_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_length,
+                                rear_obj.road_localization.road_lon, rear_obj.v_x, rear_obj.size.length, T_d, td, td)
                         if back_safe_time <= 0:
                             return -1
                         safe_time = min(safe_time, back_safe_time)

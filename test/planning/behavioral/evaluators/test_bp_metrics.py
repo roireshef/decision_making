@@ -12,7 +12,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionType, Agg
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
-    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, MINIMAL_STATIC_ACTION_TIME, AV_TIME_DELAY
+    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, MINIMAL_STATIC_ACTION_TIME, AV_TIME_DELAY, LON_ACC_LIMITS
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
     DEFAULT_DYNAMIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.evaluators.heuristic_action_spec_evaluator import \
@@ -51,19 +51,41 @@ from rte.python.logger.AV_logger import AV_Logger
 #         return dist / v_init_rel
 
 
+def test_calcLastSafeTime():
+    max_brake = -LON_ACC_LIMITS[0]
+    vel_profile = VelocityProfile(v_init=10, t1=10, v_mid=20, t2=10, t3=10, v_tar=10)
+    init_s_obj = 100
+    v_obj = 10
+    length = 4
+    td = 2
+    last_safe_time = vel_profile.calc_last_safe_time(init_s_ego=0, ego_length=length, init_s_obj=init_s_obj,
+                                                     init_v_obj=v_obj, obj_length=length, T=np.inf, td_0=td, td_T=td)
+    s_ego, v_ego = vel_profile.sample_at(last_safe_time + td)
+    s_obj = init_s_obj + last_safe_time * v_obj
+    d = s_obj - s_ego - (v_ego**2 - v_obj**2) / (2*max_brake) - length
+    assert abs(d) < 0.001
+
+    init_s_obj = 150
+    last_safe_time = vel_profile.calc_last_safe_time(init_s_ego=0, ego_length=length, init_s_obj=init_s_obj,
+                                                     init_v_obj=v_obj, obj_length=length, T=np.inf, td_0=td, td_T=td)
+    s_ego, v_ego = vel_profile.sample_at(last_safe_time + td)
+    s_obj = init_s_obj + last_safe_time * v_obj
+    d = s_obj - s_ego - (v_ego**2 - v_obj**2) / (2*max_brake) - length
+    assert abs(d) < 0.001
+
+
 def test_evaluate_ranges_F_LF():
     logger = Logger("test_BP_costs")
     road_id = 20
     des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
     ego_lon = 400.
     lane_width = MapService.get_instance().get_road(road_id).lane_width
-    road_mid_lat = MapService.get_instance().get_road(road_id).lanes_num * lane_width / 2
-    size = ObjectSize(4, 2, 1)
+    length = 4
+    size = ObjectSize(length, 2, 1)
 
     predictor = RoadFollowingPredictor(logger)
     action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
                                                  DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
-    #action_space = DynamicActionSpace(logger, predictor)
     spec_evaluator = HeuristicActionSpecEvaluator(logger)
     action_spec_validator = ActionSpecFiltering([FilterIfNone()], logger)
     value_approximator = NaiveValueApproximator(logger)
@@ -87,11 +109,11 @@ def test_evaluate_ranges_F_LF():
                 t1 = abs(des_vel - ego_vel) / 1.
                 t2 = max(0., 100 - t1)
                 vel_profile = VelocityProfile(v_init=ego_vel, t1=t1, v_mid=des_vel, t2=t2, t3=0, v_tar=des_vel)
-                safe_to_F = vel_profile.calc_last_safe_time(ego_lon, size.length / 2, F, np.inf, 2, 2)
+                safe_to_F = vel_profile.calc_last_safe_time(ego_lon, length, F_lon, F_vel, length, np.inf, 2, 2)
 
                 LF_lon = ego_lon + sec_to_LF * (ego_vel + des_vel) / 2
                 LF = MapUtils.create_canonic_object(3, 0, LF_lon, 3 * lane_width / 2, LF_vel, size, road_frenet)
-                safe_to_LF = vel_profile.calc_last_safe_time(ego_lon, size.length / 2, LF, np.inf, 2, 2)
+                safe_to_LF = vel_profile.calc_last_safe_time(ego_lon, length, LF_lon, LF_vel, length, np.inf, 2, 2)
 
                 objects = [F, LF]
                 state = State(None, objects, ego)
@@ -146,12 +168,12 @@ def test_evaluate_rangesForLB():
     des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
     ego_lon = 400.
     lane_width = MapService.get_instance().get_road(road_id).lane_width
-    size = ObjectSize(4, 2, 1)
+    length = 4
+    size = ObjectSize(length, 2, 1)
 
     predictor = RoadFollowingPredictor(logger)
     action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
                                                  DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
-    #action_space = DynamicActionSpace(logger, predictor)
     spec_evaluator = HeuristicActionSpecEvaluator(logger)
     action_spec_validator = ActionSpecFiltering([FilterIfNone()], logger)
     value_approximator = NaiveValueApproximator(logger)
@@ -174,11 +196,10 @@ def test_evaluate_rangesForLB():
             t1 = abs(des_vel - ego_vel) / 1.
             t2 = max(0., 100 - t1)
             vel_profile = VelocityProfile(v_init=ego_vel, t1=t1, v_mid=des_vel, t2=t2, t3=0, v_tar=des_vel)
-            safe_to_F = vel_profile.calc_last_safe_time(ego_lon, size.length / 2, F, 5, 2, 2)
 
             LB_lon = ego_lon - LB_vel * sec_to_LB - 6 * (LB_vel - ego_vel)
             LB = MapUtils.create_canonic_object(2, 0, LB_lon, 3 * lane_width / 2, LB_vel, size, road_frenet)
-            safe_to_LB = vel_profile.calc_last_safe_time(ego_lon, size.length / 2, LB, np.inf, 2.0, 2.0)
+            safe_to_LB = vel_profile.calc_last_safe_time(ego_lon, length, LB_lon, LB_vel, length, np.inf, 2.0, 2.0)
 
             objects = [F, LB]
             state = State(None, objects, ego)
@@ -221,7 +242,7 @@ def test_evaluate_rangesForLB():
 
             if safe_to_LB < 6:
                 assert selected_lane == 0
-            if safe_to_LB > 8:
+            if safe_to_LB > 9:
                 assert selected_lane == 1
 
 
@@ -231,12 +252,12 @@ def test_evaluate_rangesForF():
     des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
     ego_lon = 400.
     lane_width = MapService.get_instance().get_road(road_id).lane_width
-    size = ObjectSize(4, 2, 1)
+    length = 4
+    size = ObjectSize(length, 2, 1)
 
     predictor = RoadFollowingPredictor(logger)
     action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
                                                  DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
-    # action_space = DynamicActionSpace(logger, predictor)
     spec_evaluator = HeuristicActionSpecEvaluator(logger)
     action_spec_validator = ActionSpecFiltering([FilterIfNone()], logger)
     value_approximator = NaiveValueApproximator(logger)
@@ -256,7 +277,7 @@ def test_evaluate_rangesForF():
                 t1 = abs(des_vel - ego_vel) / 1.
                 t2 = max(0., 100 - t1)
                 vel_profile = VelocityProfile(v_init=ego_vel, t1=t1, v_mid=des_vel, t2=t2, t3=0, v_tar=des_vel)
-                safe_to_F = vel_profile.calc_last_safe_time(ego_lon, size.length/2, F, np.inf, 1.6, 1.6)
+                safe_to_F = vel_profile.calc_last_safe_time(ego_lon, length, F_lon, F_vel, length, np.inf, 1.6, 1.6)
                 if safe_to_F < 0:  # unsafe state
                     continue
 
@@ -318,7 +339,6 @@ def test_evaluate_ranges_FtoRight():
     predictor = RoadFollowingPredictor(logger)
     action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
                                                  DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
-    #action_space = DynamicActionSpace(logger, predictor)
     spec_evaluator = HeuristicActionSpecEvaluator(logger)
     action_spec_validator = ActionSpecFiltering([FilterIfNone()], logger)
     value_approximator = NaiveValueApproximator(logger)
@@ -440,74 +460,3 @@ def test_speedProfiling():
     end = time.time()
 
     print('action num=%d; filtered actions=%d; time = %f' % (len(action_recipes), np.count_nonzero(recipes_mask), end - start))
-
-
-import matplotlib.pyplot as plt
-@pytest.mark.skip(reason="not test, just building a table of parameteres")
-def test_behavioralScenarios_moveToLeft_findThresholds():
-    """
-    Test lane change to the left if the velocity of the car F is des_vel-2.
-    Test different distances from F, different initial velocities of ego, empty/occupied left lane, longitude of LB.
-    Desired result: for all initial velocities, don't overtake when dist=4 sec and overtake when dist=3 sec.
-    :return:
-    """
-    logger = Logger("test_behavioralScenarios")
-    road_id = 20
-    des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-    ego_lon = 200.
-    lane_width = MapService.get_instance().get_road(road_id).lane_width
-    road_mid_lat = MapService.get_instance().get_road(road_id).lanes_num * lane_width / 2
-    size = ObjectSize(4, 2, 1)
-
-    evaluator = HeuristicActionRecipeEvaluator(logger)
-
-    dv = 1.
-    ego_vel_range = np.arange(des_vel - des_vel/2., des_vel + des_vel/2. + 0.1, dv)
-    F_vel_range = np.arange(des_vel - des_vel/2., des_vel + des_vel/2. + 0.1, dv)
-    dist_range = np.arange(7.0, 0.9, -0.2)
-
-    F_lon_tab = np.zeros((len(ego_vel_range), len(F_vel_range)))
-
-    for ego_vel in ego_vel_range:
-        for F_vel in F_vel_range:
-            for dist_from_F_in_sec in dist_range:
-
-                ego_cpoint, ego_yaw = MapService.get_instance().convert_road_rhs_to_global_coordinates(
-                    road_id, ego_lon, road_mid_lat - lane_width)
-                ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, ego_vel, 0, 0, 0, 0)
-
-                F_lon = ego_lon + dist_from_F_in_sec * (ego_vel + des_vel)/2 + (des_vel**2 - F_vel**2)/16  # 3*(des_vel - F_vel)**2
-                F_cpoint, F_yaw = MapService.get_instance().convert_road_rhs_to_global_coordinates(
-                    road_id, F_lon, road_mid_lat - lane_width)
-                F = DynamicObject(1, 0, F_cpoint[0], F_cpoint[1], F_cpoint[2], F_yaw, size, 0, F_vel, 0, 0, 0)
-
-                objects = [F]
-                state = State(None, objects, ego)
-                behavioral_state = BehavioralGridState.create_from_state(state, logger)
-
-                actions = []
-                # create actions based on the occupancy grid
-                if (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT) in behavioral_state.road_occupancy_grid:
-                    right_action = DynamicActionRecipe(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT,
-                                                       ActionType.FOLLOW_VEHICLE, AggressivenessLevel.CALM)
-                    actions.append(right_action)
-                right_action_stat = StaticActionRecipe(RelativeLane.SAME_LANE, des_vel, AggressivenessLevel.CALM)
-                actions.append(right_action_stat)
-                left_action = StaticActionRecipe(RelativeLane.LEFT_LANE, des_vel, AggressivenessLevel.CALM)
-                actions.append(left_action)
-
-                costs = evaluator.evaluate(behavioral_state, actions, [True] * len(actions))
-
-                best_idx = np.argmin(costs)
-
-                if actions[best_idx].relative_lane == RelativeLane.LEFT_LANE:
-                    ego_i = int((ego_vel - ego_vel_range[0]) / dv + 0.5)
-                    F_i = int((F_vel - F_vel_range[0]) / dv + 0.5)
-                    F_lon_tab[ego_i, F_i] = dist_from_F_in_sec
-                    break
-
-    np.savetxt('test.txt', F_lon_tab, fmt='%1.1f ')
-
-    #plt.imshow(F_lon_tab)
-    #plt.show()
-    #time.sleep(10)
