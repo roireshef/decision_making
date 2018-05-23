@@ -6,6 +6,7 @@ from mapping.src.localization.localization import GlobalLocalization, SegmentLoc
 from mapping.src.service.map_service import MapService
 import numpy as np
 
+
 class MapUtils:
     @staticmethod
     def convert_cartesian_to_map_state(cartesian_state: CartesianExtendedState):
@@ -124,6 +125,13 @@ class MapUtils:
         segment_frenet = segment.get_as_frame().get_center_frame()
 
         return road_frenet.cstate_to_fstate(segment_frenet.fstate_to_cstate(lane_state))
+
+
+
+
+
+
+
 
     # TODO: replace with navigation plan aware function from map API
     @staticmethod
