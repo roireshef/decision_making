@@ -192,9 +192,9 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             if forward_safe_time < vel_profile.total_time():
                 obj_lon = followed_obj.road_localization.road_lon
                 act_time = vel_profile.total_time()
-                print('forward unsafe: %d(%d) rel_lat=%d dist=%.2f t=%.2f final_dist=%.2f v_obj=%.2f '
+                print('forward unsafe: %d(%d %d) rel_lat=%d dist=%.2f t=%.2f final_dist=%.2f v_obj=%.2f '
                       'prof=(t=[%.2f %.2f %.2f] v=[%.2f %.2f %.2f]) safe_time=%.2f td=%.2f' %
-                      (i, action.action_type.value, action_lat_cell.value, obj_lon - ego_lon,
+                      (i, action.action_type.value, action.aggressiveness.value, action_lat_cell.value, obj_lon - ego_lon,
                        act_time, obj_lon + act_time * followed_obj.v_x - (ego_lon + vel_profile.total_dist()),
                        followed_obj.v_x, vel_profile.t1, vel_profile.t2, vel_profile.t3, vel_profile.v_init,
                        vel_profile.v_mid, vel_profile.v_tar, forward_safe_time, td))
@@ -217,9 +217,9 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                 td_0 = AV_TIME_DELAY * lat_dist_to_target + additional_time_delay
                 front_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_half_size, front_obj, 0.75*T_d, td_0, td_T)
                 if front_safe_time < np.inf:
-                    print('front_safe_time=%.2f front_dist=%.2f front_vel=%.2f lat_d=%.2f td_0=%.2f td_T=%.2f: action %d' %
-                          (front_safe_time, front_obj.road_localization.road_lon - ego_lon, front_obj.v_x,
-                           lat_dist_to_target, td_0, td_T, i))
+                    print('front_safe_time=%.2f action %d(%d %d): front_dist=%.2f front_vel=%.2f lat_d=%.2f td_0=%.2f td_T=%.2f' %
+                          (front_safe_time, i, action.action_type.value, action.aggressiveness.value,
+                           front_obj.road_localization.road_lon - ego_lon, front_obj.v_x, lat_dist_to_target, td_0, td_T))
                 if front_safe_time <= 0:
                     return -1
                 safe_time = min(safe_time, front_safe_time)
@@ -230,9 +230,9 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                 td = SAFE_DIST_TIME_DELAY + 3*additional_time_delay
                 back_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_half_size, back_obj, T_d, td, td)
                 if back_safe_time < np.inf:
-                    print('back_safe_time=%.2f back_dist=%.2f back_vel=%.2f rel_lat=%.2f td=%.2f: action %d' %
-                          (back_safe_time, ego_lon - back_obj.road_localization.road_lon, back_obj.v_x,
-                           action_lat_cell.value, td, i))
+                    print('back_safe_time=%.2f action %d(%d %d): back_dist=%.2f back_vel=%.2f rel_lat=%.2f td=%.2f' %
+                          (back_safe_time, i, action.action_type.value, action.aggressiveness.value,
+                           ego_lon - back_obj.road_localization.road_lon, back_obj.v_x, action_lat_cell.value, td))
                 # if ego is unsafe w.r.t. back_obj, then save a flag for the case ego will enter to its lane,
                 # such that ego will check safety w.r.t to the rear object
                 if back_safe_time <= 0 and is_moving_laterally_to_target:
