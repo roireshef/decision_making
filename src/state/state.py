@@ -147,7 +147,9 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
     def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
         # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float) -> NewDynamicObject
         """
-        Data object that hold
+        Data object that holds all relevant information regarding another vehicle on the road.
+        !! Tend to not use this constructor, but with one of the two other constructors below,
+        according to the localization type you use !!
         :param obj_id: object id
         :param timestamp: time of perception [nanosec.]
         :param cartesian_state: localization relative to map's cartesian origin frame
@@ -161,6 +163,32 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
         self._cached_map_state = map_state
         self.size = copy.copy(size)
         self.confidence = confidence
+
+    @classmethod
+    def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence):
+        # type: (int, int, CartesianExtendedState, ObjectSize, float) -> NewDynamicObject
+        """
+        Constructor that gets only cartesian-state (without map-state)
+        :param obj_id: object id
+        :param timestamp: time of perception [nanosec.]
+        :param cartesian_state: localization relative to map's cartesian origin frame
+        :param size: class ObjectSize
+        :param confidence: of object's existence
+        """
+        cls(obj_id, timestamp, cartesian_state, None, size, confidence)
+
+    @classmethod
+    def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence):
+        # type: (int, int, MapState, ObjectSize, float) -> NewDynamicObject
+        """
+        Constructor that gets only map-state (without cartesian-state)
+        :param obj_id: object id
+        :param timestamp: time of perception [nanosec.]
+        :param map_state: localization in a map-object's frame (road,segment,lane)
+        :param size: class ObjectSize
+        :param confidence: of object's existence
+        """
+        cls(obj_id, timestamp, None, map_state, size, confidence)
 
     @property
     def x(self):
@@ -211,32 +239,6 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
     @timestamp_in_sec.setter
     def timestamp_in_sec(self, value):
         self.timestamp = int(value * 1e9)
-
-    @classmethod
-    def create_from_cartesian_state(cls, obj_id: object, timestamp: object, cartesian_state: object, size: object, confidence: object):
-        # type: (int, int, CartesianExtendedState, ObjectSize, float) -> NewDynamicObject
-        """
-        Constructor that gets only cartesian-state (without map-state)
-        :param obj_id: object id
-        :param timestamp: time of perception [nanosec.]
-        :param cartesian_state: localization relative to map's cartesian origin frame
-        :param size: class ObjectSize
-        :param confidence: of object's existence
-        """
-        cls(obj_id, timestamp, cartesian_state, None, size, confidence)
-
-    @classmethod
-    def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence):
-        # type: (int, int, MapState, ObjectSize, float) -> NewDynamicObject
-        """
-        Constructor that gets only map-state (without cartesian-state)
-        :param obj_id: object id
-        :param timestamp: time of perception [nanosec.]
-        :param map_state: localization in a map-object's frame (road,segment,lane)
-        :param size: class ObjectSize
-        :param confidence: of object's existence
-        """
-        cls(obj_id, timestamp, None, map_state, size, confidence)
 
     def clone_from_cartesian_state(self, cartesian_state, timestamp=None):
         # type: (CartesianState, Optional[float]) -> NewDynamicObject
