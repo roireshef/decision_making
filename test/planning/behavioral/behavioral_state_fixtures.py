@@ -3,9 +3,11 @@ from typing import List
 import numpy as np
 import pytest
 
+from decision_making.src.global_constants import EPS
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
     RelativeLongitudinalPosition
-from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionType, AggressivenessLevel
+from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionType, AggressivenessLevel, \
+    StaticActionRecipe
 from decision_making.src.state.state import OccupancyState, State, EgoState, DynamicObject, ObjectSize
 from mapping.src.model.map_api import MapAPI
 from mapping.src.service.map_service import MapService, MapServiceArgs
@@ -72,7 +74,16 @@ def behavioral_grid_state(state_with_sorrounding_objects: State):
 
 
 @pytest.fixture(scope='function')
-def follow_recipes_towards_front_cells():
+def follow_vehicle_recipes_towards_front_cells():
     yield [DynamicActionRecipe(lane, RelativeLongitudinalPosition.FRONT, ActionType.FOLLOW_VEHICLE, agg)
            for lane in RelativeLane
+           for agg in AggressivenessLevel]
+
+
+@pytest.fixture(scope='function')
+def follow_lane_recipes():
+    velocity_grid = np.arange(0, 20 + EPS, 10/3.6)
+    yield [StaticActionRecipe(lane, velocity, agg)
+           for lane in RelativeLane
+           for velocity in velocity_grid
            for agg in AggressivenessLevel]

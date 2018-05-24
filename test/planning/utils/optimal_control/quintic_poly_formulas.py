@@ -10,7 +10,7 @@ from decision_making.src.global_constants import LON_ACC_LIMITS, BP_JERK_S_JERK_
     BP_ACTION_T_LIMITS, EPS, FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID, \
     FILTER_V_T_GRID, SAFE_DIST_TIME_DELAY
 from decision_making.src.planning.behavioral.data_objects import ActionType
-from decision_making.src.planning.utils.file_utils import BinaryReadWrite
+from decision_making.src.planning.utils.file_utils import BinaryReadWrite, TextReadWrite
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
@@ -100,6 +100,46 @@ class QuinticMotionPredicatesCreator:
         self.predicate = np.full(shape=[len(v0_grid), len(a0_grid), len(sT_grid), len(vT_grid)],
                         fill_value=False)
 
+    @staticmethod
+    def generate_predicate_value(action_type, w_T, w_J, a_0, v_0, v_T, s_T, T_m):
+        time_cost_poly_coefs = \
+            QuinticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
+                                                              np.array([a_0]), np.array([v_0]),
+                                                              np.array([v_T]), np.array([s_T]),
+                                                              np.array([T_m]))[0]
+        cost_roots_reals = Math.find_real_roots_in_limits(time_cost_poly_coefs, np.array(
+            [EPS, BP_ACTION_T_LIMITS[1]]))
+        extremum_T = cost_roots_reals[np.isfinite(cost_roots_reals)]
+
+        if len(extremum_T) == 0:
+            return False
+
+        T = extremum_T.min()  # First extrema is our local (and sometimes global) minimum
+
+        delta_s_t_func, coefs_s_der, v_t_func, a_t_func = create_quintic_motion_funcs(a_0, v_0,
+                                                                                      v_T, s_T,
+                                                                                      T,
+                                                                                      T_m=T_m)
+        time_res_for_extremum_query = 0.01
+        s_roots_reals = Math.find_real_roots_in_limits(coefs_s_der, np.array([time_res_for_extremum_query, T-time_res_for_extremum_query]))
+        extremum_delta_s_val = delta_s_t_func(s_roots_reals[np.isfinite(s_roots_reals)])
+
+        t = np.arange(0, T, time_res_for_extremum_query)
+        min_v, max_v = min(v_t_func(t)), max(v_t_func(t))
+        min_a, max_a = min(a_t_func(t)), max(a_t_func(t))
+
+        is_T_in_range = (T >= EPS) and (T <= BP_ACTION_T_LIMITS[1] + EPS)
+        is_vel_in_range = (min_v >= VELOCITY_LIMITS[0] + EPS) and (max_v <= VELOCITY_LIMITS[1] + EPS)
+        is_acc_in_range = (min_a >= LON_ACC_LIMITS[0] + EPS) and (max_a <= LON_ACC_LIMITS[1] + EPS)
+        if action_type == ActionType.FOLLOW_VEHICLE:
+            is_dist_safe = np.all(extremum_delta_s_val >= T_m * v_T)
+        elif action_type == ActionType.OVERTAKE_VEHICLE:
+            is_dist_safe = np.all(extremum_delta_s_val <= T_m * v_T)
+        else:
+            is_dist_safe = True
+
+        return is_T_in_range and is_vel_in_range and is_acc_in_range and is_dist_safe
+
     def create_predicates(self, jerk_time_weights: np.ndarray, action_types: List[ActionType]) -> None:
         """
         Creates predicates for the jerk-time weights and dynamic action types given
@@ -110,66 +150,21 @@ class QuinticMotionPredicatesCreator:
         """
         for action_type in action_types:
             margin_sign = +1 if action_type == ActionType.FOLLOW_VEHICLE else -1
-            self.T_m *= margin_sign
-            self.sT_grid = margin_sign * self.sT_grid.array
+            T_m = self.T_m * margin_sign
+            sT_grid = margin_sign * self.sT_grid.array
             for weight in jerk_time_weights:
                 w_J, w_T = weight[0], weight[2]
                 print('weights are: %.2f,%.2f' % (w_J, w_T))
                 for k, v_0 in enumerate(self.v0_grid):
                     print('v_0 is: %.1f' % v_0)
                     for m, a_0 in enumerate(self.a0_grid):
-                        for i, s_T in enumerate(self.sT_grid):
+                        for i, s_T in enumerate(sT_grid):
                             for j, v_T in enumerate(self.vT_grid):
-                                time_cost_poly_coefs = \
-                                QuinticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
-                                                                                  np.array([a_0]), np.array([v_0]),
-                                                                                  np.array([v_T]), np.array([s_T]),
-                                                                                  np.array([self.T_m]))[0]
-                                cost_roots_reals = Math.find_real_roots_in_limits(time_cost_poly_coefs, np.array(
-                                    [EPS, BP_ACTION_T_LIMITS[1]]))
-                                extremum_T = cost_roots_reals[np.isfinite(cost_roots_reals)]
-                                if len(extremum_T) == 0:
-                                    self.predicate[k, m, i, j] = False
-                                    continue
-                                T = extremum_T.min()  # First extrema is our local (and sometimes global) minimum
-
-                                delta_s_t_func, coefs_s_der, v_t_func, a_t_func = create_quintic_motion_funcs(a_0, v_0,
-                                                                                                              v_T, s_T,
-                                                                                                              T,
-                                                                                                              T_m=self.T_m)
-
-                                s_roots_reals = Math.find_real_roots_in_limits(coefs_s_der, np.array([EPS, T]))
-
-                                t = np.arange(0, T, 0.01)
-                                extremum_delta_s_val = delta_s_t_func(s_roots_reals[np.isfinite(s_roots_reals)])
-                                min_v, max_v = min(v_t_func(t)), max(v_t_func(t))
-                                min_a, max_a = min(a_t_func(t)), max(a_t_func(t))
-
-                                is_T_in_range = (T >= EPS) and (T <= BP_ACTION_T_LIMITS[1] + EPS)
-                                is_vel_in_range = (min_v >= VELOCITY_LIMITS[0]) and (max_v <= VELOCITY_LIMITS[1] + EPS)
-                                is_acc_in_range = (min_a >= LON_ACC_LIMITS[0]) and (max_a <= LON_ACC_LIMITS[1] + EPS)
-                                if action_type == ActionType.FOLLOW_VEHICLE:
-                                    is_dist_safe = np.all(extremum_delta_s_val >= self.T_m * v_T)
-                                elif action_type == ActionType.OVERTAKE_VEHICLE:
-                                    is_dist_safe = np.all(extremum_delta_s_val <= self.T_m * v_T)
-                                else:
-                                    is_dist_safe = True
-
-                                self.predicate[k, m, i, j] = (
-                                            is_T_in_range and is_vel_in_range and is_acc_in_range and is_dist_safe)
+                                self.predicate[k, m, i, j] = \
+                                    QuinticMotionPredicatesCreator.generate_predicate_value(
+                                        action_type, w_T, w_J, a_0, v_0, v_T, s_T, T_m)
 
                 output_predicate_file_name = '%s_predicate_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
                 output_predicate_file_path = Paths.get_resource_absolute_path_filename('%s/%s' % (self.predicates_resources_target_directory,
                                                                                                   output_predicate_file_name))
                 BinaryReadWrite.save(array=self.predicate, file_path=output_predicate_file_path)
-
-
-def main():
-    quintic_predicates_creator = QuinticMotionPredicatesCreator(FILTER_V_0_GRID, FILTER_A_0_GRID,FILTER_S_T_GRID,
-                                                                FILTER_V_T_GRID, SAFE_DIST_TIME_DELAY, 'predicates')
-    quintic_predicates_creator.create_predicates(BP_JERK_S_JERK_D_TIME_WEIGHTS, [ActionType.FOLLOW_VEHICLE, ActionType.OVERTAKE_VEHICLE])
-
-
-if __name__ == '__main__':
-    main()
-
