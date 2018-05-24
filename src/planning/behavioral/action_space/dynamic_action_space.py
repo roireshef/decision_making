@@ -47,26 +47,18 @@ class DynamicActionSpace(ActionSpace):
         :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
         ego = behavioral_state.ego_state
-        road_frenet = MapUtils.get_road_rhs_frenet(ego)
+        ego_init_fstate = ego.map_state
 
-        # project ego vehicle onto the road
-        ego_init_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
+        targets = [behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
+                   for action_recipe in action_recipes]
 
-        # get the relevant desired center lane latitude (from road's RHS)
-        road_id = ego.road_localization.road_id
-        road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id)
-        relative_lane = np.array([action_recipe.relative_lane.value for action_recipe in action_recipes])
-        desired_lane = ego.road_localization.lane_num + relative_lane
-        desired_center_lane_latitude = road_lane_latitudes[desired_lane]
+        desired_center_lane_latitude = np.array([target.center_lane_latitude for target in targets])
+        target_length = np.array([target.dynamic_object.size.length for target in targets])
+        target_fstate = np.array([target.dynamic_object.map_state for target in targets])
 
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
         weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness]
-
-        targets = [behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
-                   for action_recipe in action_recipes]
-        target_length = np.array([target.dynamic_object.size.length for target in targets])
-        target_fstate = np.array([target.fstate for target in targets])
 
         # get desired terminal velocity
         v_T = target_fstate[:, FS_SV]
@@ -87,7 +79,7 @@ class DynamicActionSpace(ActionSpace):
         margin_sign = np.array([action_recipe.action_type.value * 2 - 5 for action_recipe in action_recipes])
 
         ds = init_longitudinal_difference + margin_sign * (
-            LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + ego.size.length / 2 + target_length / 2)
+                LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + ego.size.length / 2 + target_length / 2)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(

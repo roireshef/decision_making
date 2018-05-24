@@ -7,6 +7,7 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
+from decision_making.src.planning.types import FS_SV, FS_SA
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite, TextReadWrite
 
 
@@ -74,8 +75,8 @@ class FilterBadExpectedTrajectory(RecipeFilter):
     def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
         action_type = recipe.action_type
         ego_state = behavioral_state.ego_state
-        v_0 = ego_state.v_x
-        a_0 = ego_state.acceleration_lon
+        v_0 = ego_state.map_state[FS_SV]
+        a_0 = ego_state.map_state[FS_SA]
         wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
         if (action_type == ActionType.FOLLOW_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.FRONT) \
                 or (
@@ -89,7 +90,7 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                 # TODO: the following is not accurate because it returns "same-lon" cars distance as 0
                 s_T = relative_dynamic_object.distance -(LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
                                                                         ego_state.size.length / 2 + dynamic_object.size.length / 2)
-                v_T = dynamic_object.v_x
+                v_T = dynamic_object.map_state[FS_SV]
 
                 predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
 
