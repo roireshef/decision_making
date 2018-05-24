@@ -107,7 +107,7 @@ LON_MARGIN_FROM_EGO = 1
 FILTER_A_0_GRID = UniformGrid(LON_ACC_LIMITS, 0.5)
 FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
 FILTER_V_T_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
-FILTER_S_T_GRID = UniformGrid(np.array([0, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
+FILTER_S_T_GRID = UniformGrid(np.array([-10, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
 
 # Trajectory Planner #
 
