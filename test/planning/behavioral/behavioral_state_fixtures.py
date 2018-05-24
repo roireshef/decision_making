@@ -27,9 +27,9 @@ def state_with_sorrounding_objects(testable_map_api):
     ego_pos, ego_yaw = testable_map_api.convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
                                                                             lat=ego_road_lat)
 
-    ego_state = EgoState(obj_id=0, timestamp=0, x=ego_pos[0], y=ego_pos[1], z=ego_pos[2], yaw=ego_yaw,
-                         size=car_size, confidence=1.0, v_x=0.0, v_y=0.0, steering_angle=0.0,
-                         acceleration_lon=0.0, omega_yaw=0.0)
+    ego_state = EgoState(obj_id=0, timestamp=0, cartesian_state=np.array([ego_pos[0], ego_pos[1], ego_yaw, 0.0, 0.0, 0]),
+                         map_state=None,
+                         size=car_size, confidence=1.0)
 
     # Generate objects at the following locations:
     obj_id = 1
@@ -49,9 +49,8 @@ def state_with_sorrounding_objects(testable_map_api):
                                                                                     lon=obj_road_lon,
                                                                                     lat=obj_road_lat)
 
-            dynamic_object = DynamicObject(obj_id=obj_id, timestamp=0, x=obj_pos[0], y=obj_pos[1], z=obj_pos[2],
-                                           yaw=obj_yaw, size=car_size, confidence=1.0, v_x=0.0, v_y=0.0,
-                                           acceleration_lon=0.0, omega_yaw=0.0)
+            dynamic_object = DynamicObject(obj_id=obj_id, timestamp=0, cartesian_state=np.array([obj_pos[0],obj_pos[1],
+                                           obj_yaw, 0.0, 0.0, 0.0]), map_state=None, size=car_size, confidence=1.0)
 
             dynamic_objects.append(dynamic_object)
             obj_id += 1
@@ -74,9 +73,8 @@ def state_with_ego_on_right_lane(testable_map_api):
     ego_pos, ego_yaw = testable_map_api.convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
                                                                    lat=ego_road_lat)
 
-    ego_state = EgoState(obj_id=0, timestamp=0, x=ego_pos[0], y=ego_pos[1], z=ego_pos[2], yaw=ego_yaw,
-                         size=car_size, confidence=1.0, v_x=0.0, v_y=0.0, steering_angle=0.0,
-                         acceleration_lon=0.0, omega_yaw=0.0)
+    ego_state = EgoState(obj_id=0, timestamp=0, cartesian_state=np.array([ego_pos[0], ego_pos[1], ego_yaw, 0.0, 0.0, 0.0]),
+                         map_state=None, size=car_size, confidence=1.0)
 
     dynamic_objects = []
 
@@ -98,9 +96,10 @@ def state_with_ego_on_left_lane(testable_map_api):
     ego_pos, ego_yaw = testable_map_api.convert_road_to_global_coordinates(road_id=ego_road_id, lon=ego_road_lon,
                                                                    lat=ego_road_lat)
 
-    ego_state = EgoState(obj_id=0, timestamp=0, x=ego_pos[0], y=ego_pos[1], z=ego_pos[2], yaw=ego_yaw,
-                         size=car_size, confidence=1.0, v_x=0.0, v_y=0.0, steering_angle=0.0,
-                         acceleration_lon=0.0, omega_yaw=0.0)
+    ego_state = EgoState(obj_id=0, timestamp=0, cartesian_state=np.array([ego_pos[0], ego_pos[1], ego_pos[2], ego_yaw,
+                                                                          0.0, 0.0, 0.0]),
+                         map_state=None,
+                         size=car_size, confidence=1.0)
 
     dynamic_objects = []
 
@@ -109,13 +108,11 @@ def state_with_ego_on_left_lane(testable_map_api):
 
 @pytest.fixture(scope='function')
 def semantic_state():
-    ego_state = EgoState(obj_id=0, timestamp=0, x=15.0, y=0.0, z=0.0, yaw=0.0,
-                         size=ObjectSize(length=2.5, width=1.5, height=1.0), confidence=1.0, v_x=7.0, v_y=0.0,
-                         acceleration_lon=0.0, omega_yaw=0.0, steering_angle=0.0)
+    ego_state = EgoState(obj_id=0, timestamp=0, cartesian_state=np.array([15.0, 0.0, 0.0, 7.0, 0.0, 0.0]),map_state=None,
+                         size=ObjectSize(length=2.5, width=1.5, height=1.0), confidence=1.0)
 
-    obj = DynamicObject(acceleration_lon=0.0, confidence=1.0, obj_id=9, omega_yaw=0.0,
-                        size=ObjectSize(height=1.0, length=2.5, width=1.5), timestamp=0, v_x=10.0, v_y=0.0, x=20.0,
-                        y=-3.0, yaw=0.0, z=0.0)
+    obj = DynamicObject(confidence=1.0, obj_id=9, cartesian_state=np.array([20.0, -3.0, 0.0, 10.0, 0, 0]), map_state=None,
+                        size=ObjectSize(height=1.0, length=2.5, width=1.5), timestamp=0)
 
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     yield State(occupancy_state, [obj], ego_state)
