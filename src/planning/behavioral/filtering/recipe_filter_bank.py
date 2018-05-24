@@ -90,7 +90,7 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                 s_T = relative_dynamic_object.distance -(LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
                                                                         ego_state.size.length / 2 + dynamic_object.size.length / 2)
                 v_T = dynamic_object.v_x
-                wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
+
                 predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
 
                 # TODO: bug when s_T < 0 (on follow of near car)

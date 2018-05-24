@@ -13,7 +13,7 @@ from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import ObjectSize, EgoState, State
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
-    follow_recipes_towards_front_cells, state_with_sorrounding_objects, pg_map_api
+    follow_vehicle_recipes_towards_front_cells, state_with_sorrounding_objects, pg_map_api
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
