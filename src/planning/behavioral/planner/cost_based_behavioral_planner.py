@@ -74,7 +74,8 @@ class CostBasedBehavioralPlanner:
         :param navigation_plan: navigation plan of the rest of the roads to be followed (used to create a ref. route)
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
-        ego = behavioral_state.ego_state
+        map_api = MapService.get_instance()
+        ego: NewEgoState = behavioral_state.ego_state
 
         # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
         # caused by the curve linearization approximation in the resampling process
@@ -88,34 +89,20 @@ class CostBasedBehavioralPlanner:
         # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
         # TODO: better than sending the whole road. Fix when map service is redesigned!
         center_lane_reference_route = MapService.get_instance().get_uniform_path_lookahead(
-            road_id=ego.road_localization.road_id,
+            road_id=ego.map_state.road_id,
             lat_shift=action_spec.d,  # THIS ASSUMES THE GOAL ALWAYS FALLS ON THE REFERENCE ROUTE
             starting_lon=0,
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
             steps_num=int(np.ceil(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
             navigation_plan=navigation_plan)
 
-        # The frenet frame used in specify (RightHandSide of road)
-        rhs_reference_route = MapService.get_instance().get_uniform_path_lookahead(
-            road_id=ego.road_localization.road_id,
-            lat_shift=0,
-            starting_lon=0,
-            lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
-            steps_num=int(np.ceil(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
-            navigation_plan=navigation_plan)
-        rhs_frenet = FrenetSerret2DFrame(rhs_reference_route)
+        # Convert goal state from frenet-frame to Cartesian state
+        # TODO: remove it when Frenet frame will be transferred to TP
+        ego_frame = map_api.get_lane(ego.map_state.lane_id).frame
+        goal_cstate = ego_frame.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0, 0, 0, 0]))
 
-        # Get road details
-        road_id = ego.road_localization.road_id
-
-        # Convert goal state from rhs-frenet-frame to center-lane-frenet-frame
-        goal_cstate = rhs_frenet.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0]))
-
-        cost_params = CostBasedBehavioralPlanner._generate_cost_params(
-            road_id=road_id,
-            ego_size=ego.size,
-            reference_route_latitude=action_spec.d  # this assumes the target falls on the reference route
-        )
+        # this assumes the target falls on the reference route
+        cost_params = CostBasedBehavioralPlanner._generate_cost_params(ego, reference_route_latitude=action_spec.d)
 
         trajectory_parameters = TrajectoryParams(reference_route=center_lane_reference_route,
                                                  time=action_spec.t + ego.timestamp_in_sec,
