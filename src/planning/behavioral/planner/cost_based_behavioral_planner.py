@@ -98,7 +98,7 @@ class CostBasedBehavioralPlanner:
 
         # Convert goal state from frenet-frame to Cartesian state
         # TODO: remove it when Frenet frame will be transferred to TP
-        ego_frame = map_api.get_lane(ego.map_state.lane_id).frame
+        ego_frame = map_api.get_lane(ego.map_state.lane_id).get_as_frame()._center_frame
         goal_cstate = ego_frame.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0, 0, 0, 0]))
 
         # this assumes the target falls on the reference route
