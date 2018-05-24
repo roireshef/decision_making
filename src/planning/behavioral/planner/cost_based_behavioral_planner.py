@@ -86,65 +86,54 @@ class CostBasedBehavioralPlanner:
         # when it is long, the error will potentially be big.
         lookahead_distance = action_spec.s * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
-        # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
-        # TODO: better than sending the whole road. Fix when map service is redesigned!
-        center_lane_reference_route = MapService.get_instance().get_uniform_path_lookahead(
-            road_id=ego.map_state.road_id,
-            lat_shift=action_spec.d,  # THIS ASSUMES THE GOAL ALWAYS FALLS ON THE REFERENCE ROUTE
-            starting_lon=0,
-            lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
-            steps_num=int(np.ceil(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
-            navigation_plan=navigation_plan)
+        # TODO: here we assume that ego and the target share the same road
+        road = map_api.get_segment(ego.map_state.road_id)
+        target_lane_id = road.get_lane_by_lat(action_spec.s, action_spec.d)
+        if target_lane_id is None:
+            return None
+        target_frame = road.get_as_frame()._center_frame
+
+        # TODO: remove it when Frenet frame will be transferred to TP
+        longitudes = np.arange(0, lookahead_distance, TRAJECTORY_ARCLEN_RESOLUTION)
+        lookahead_fpoints = np.c_[longitudes, np.repeat(0, len(longitudes))]
+        center_lane_reference_route = target_frame.fpoints_to_cpoints(lookahead_fpoints)
 
         # Convert goal state from frenet-frame to Cartesian state
-        # TODO: remove it when Frenet frame will be transferred to TP
-        ego_frame = map_api.get_lane(ego.map_state.lane_id).get_as_frame()._center_frame
-        goal_cstate = ego_frame.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0, 0, 0, 0]))
+        goal_cstate = target_frame.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0, 0, 0, 0]))
 
         # this assumes the target falls on the reference route
-        cost_params = CostBasedBehavioralPlanner._generate_cost_params(ego, reference_route_latitude=action_spec.d)
+        cost_params = CostBasedBehavioralPlanner._generate_cost_params(ego, action_spec.d, action_spec.s)
 
         trajectory_parameters = TrajectoryParams(reference_route=center_lane_reference_route,
                                                  time=action_spec.t + ego.timestamp_in_sec,
                                                  target_state=goal_cstate,
                                                  cost_params=cost_params,
                                                  strategy=TrajectoryPlanningStrategy.HIGHWAY)
-
         return trajectory_parameters
 
 
     @staticmethod
-    def _generate_cost_params(ego: NewEgoState, reference_route_latitude: float) -> TrajectoryCostParams:
+    def _generate_cost_params(ego: NewEgoState, reference_route_latitude: float, road_lon: float) -> TrajectoryCostParams:
+        map_api = MapService.get_instance()
+        ego_road = map_api.get_road(ego.map_state.road_id)
+        target_segment = ego_road.get_segment_by_lon(road_lon)
+        lanes_widths = target_segment.get_lanes_widths(road_lon - target_segment.lon_on_road)
+        lat_from_right, lat_from_left = target_segment.get_intra_lane_lat(reference_route_latitude, lanes_widths)
 
         # TODO: here we assume a constant lane width along trajectory
-        map_api = MapService.get_instance()
-        lanes = map_api.get_segment(ego.map_state.segment_id).lanes
-        road = map_api.get_road(ego.map_state.road_id)
-
-        # get all lanes widths for the current ego longitude
-        lanes_widths = [lane.get_width(ego.map_state.lane_state[FS_SX]) for lane in lanes]
-        cum_widths = np.cumsum(lanes_widths)
-        # find lane index containing reference_route_latitude
-        assert reference_route_latitude < cum_widths[-1]
-        ref_route_lane_idx = np.where(reference_route_latitude < cum_widths)[0][0]
-
-        # lateral distance in [m] from ref. path to rightmost edge of lane
-        right_lane_offset = reference_route_latitude - ego.size.width / 2
-        if ref_route_lane_idx > 0:
-            right_lane_offset -= cum_widths[ref_route_lane_idx-1]
-        # lateral distance in [m] from ref. path to leftmost edge of lane
-        left_lane_offset = cum_widths[ref_route_lane_idx] - reference_route_latitude - ego.size.width / 2
+        right_lane_offset = lat_from_right - ego.size.width / 2
+        left_lane_offset = lat_from_left - ego.size.width / 2
 
         # as stated above, for shoulders
         right_shoulder_offset = reference_route_latitude - ego.size.width / 2 + SHOULDER_SIGMOID_OFFSET
         # as stated above, for shoulders
-        left_shoulder_offset = (cum_widths[-1] - reference_route_latitude) - ego.size.width / 2 + \
+        left_shoulder_offset = (np.sum(lanes_widths) - reference_route_latitude) - ego.size.width / 2 + \
                                SHOULDER_SIGMOID_OFFSET
 
         # as stated above, for whole road including shoulders
         right_road_offset = reference_route_latitude - ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
         # as stated above, for whole road including shoulders
-        left_road_offset = road.get_width(ego.map_state.road_state[FS_SX]) - reference_route_latitude - \
+        left_road_offset = ego_road.get_width(ego.map_state.road_state[FS_SX]) - reference_route_latitude - \
                            ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
 
         # Set road-structure-based cost parameters
@@ -190,4 +179,3 @@ class CostBasedBehavioralPlanner:
                                            lat_acceleration_limits=LAT_ACC_LIMITS)
 
         return cost_params
-
