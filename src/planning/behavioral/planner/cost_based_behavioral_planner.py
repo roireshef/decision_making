@@ -27,6 +27,7 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize, NewEgoState
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
+from mapping.src.model.lane import Lane
 from mapping.src.service.map_service import MapService
 
 
@@ -88,9 +89,6 @@ class CostBasedBehavioralPlanner:
 
         # TODO: here we assume that ego and the target share the same road
         road = map_api.get_segment(ego.map_state.road_id)
-        target_lane_id = road.get_lane_by_lat(action_spec.s, action_spec.d)
-        if target_lane_id is None:
-            return None
         target_frame = road.get_as_frame()._center_frame
 
         # TODO: remove it when Frenet frame will be transferred to TP
@@ -117,8 +115,8 @@ class CostBasedBehavioralPlanner:
         map_api = MapService.get_instance()
         ego_road = map_api.get_road(ego.map_state.road_id)
         target_segment = ego_road.get_segment_by_lon(road_lon)
-        lanes_widths = target_segment.get_lanes_widths(road_lon - target_segment.lon_on_road)
-        lat_from_right, lat_from_left = target_segment.get_intra_lane_lat(reference_route_latitude, lanes_widths)
+        segment_lon = road_lon - target_segment.lon_on_road
+        lat_from_right, lat_from_left = target_segment.get_intra_lane_lat(segment_lon, reference_route_latitude)
 
         # TODO: here we assume a constant lane width along trajectory
         right_lane_offset = lat_from_right - ego.size.width / 2
@@ -127,8 +125,8 @@ class CostBasedBehavioralPlanner:
         # as stated above, for shoulders
         right_shoulder_offset = reference_route_latitude - ego.size.width / 2 + SHOULDER_SIGMOID_OFFSET
         # as stated above, for shoulders
-        left_shoulder_offset = (np.sum(lanes_widths) - reference_route_latitude) - ego.size.width / 2 + \
-                               SHOULDER_SIGMOID_OFFSET
+        left_shoulder_offset = (target_segment.get_width(segment_lon) - reference_route_latitude) - \
+                               ego.size.width / 2 + SHOULDER_SIGMOID_OFFSET
 
         # as stated above, for whole road including shoulders
         right_road_offset = reference_route_latitude - ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
