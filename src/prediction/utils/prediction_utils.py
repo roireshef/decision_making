@@ -11,7 +11,7 @@ from mapping.src.transformations.geometry_utils import CartesianFrame
 class PredictionUtils:
     @staticmethod
     def convert_ctrajectory_to_dynamic_objects(dynamic_object: DynamicObject, predictions: CartesianTrajectory,
-                                                prediction_timestamps: np.ndarray) -> List[DynamicObject]:
+                                               prediction_timestamps: np.ndarray) -> List[DynamicObject]:
         """
         Given original dynamic object, its predictions, and their respective time stamps, creates a list of dynamic
          objects corresponding to the predicted object in those timestamps.
@@ -20,19 +20,15 @@ class PredictionUtils:
         :param prediction_timestamps: the prediction timestamps
         :return:creates a list of dynamic objects corresponding to the predicted object ctrajectory in those timestamps.
         """
-        # Initiate array of DynamicObject at predicted times
-        predicted_object_states: List[DynamicObject] = list()
 
-        # Fill with predicted state
-        for t_ind in range(len(prediction_timestamps)):
-            predicted_object_states.append(
-                dynamic_object.clone_cartesian_state(timestamp_in_sec=prediction_timestamps[t_ind],
-                                                     cartesian_state=predictions[t_ind]))
+        predicted_object_states = [dynamic_object.clone_cartesian_state(timestamp_in_sec=prediction_timestamps[t_ind],
+                                                                        cartesian_state=predictions[t_ind]) for t_ind in
+                                   range(len(prediction_timestamps)]
+
         return predicted_object_states
 
-
     @staticmethod
-    def constant_velocity_x_y_prediction(dynamic_object: DynamicObject, prediction_timestamps: np.ndarray)\
+    def constant_velocity_x_y_prediction(dynamic_object: DynamicObject, prediction_timestamps: np.ndarray) \
             -> CartesianPath2D:
         """
         """
@@ -71,4 +67,3 @@ class PredictionUtils:
                 dynamic_object.obj_id, str(dynamic_object)))
 
         return route_xy
-
