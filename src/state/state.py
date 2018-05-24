@@ -20,6 +20,7 @@ from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_
 from decision_making.src.planning.types import FrenetState2D
 
 from decision_making.src.planning.utils.lcm_utils import LCMUtils
+from decision_making.src.planning.utils.map_utils import MapUtils
 from mapping.src.service.map_service import MapService
 
 
@@ -95,26 +96,32 @@ class ObjectSize(PUBSUB_MSG_IMPL):
         return cls(lcmMsg.length, lcmMsg.width, lcmMsg.height)
 
 
+# TODO: configure to initialize from segment_state and road_state ? (3 lazily-cached localizations)
 class MapState(PUBSUB_MSG_IMPL):
     lane_state = FrenetState2D
-    road_state = FrenetState2D
     road_id = int
     segment_id = int
     lane_id = int
 
-    def __init__(self, lane_state, road_state, road_id, segment_id, lane_id):
-        # type: (FrenetState2D, FrenetState2D, int, int, int) -> MapState
+    def __init__(self, lane_state, road_id, segment_id, lane_id):
+        # type: (FrenetState2D, int, int, int) -> MapState
         self.lane_state = lane_state
-        self.road_state = road_state
         self.road_id = road_id
         self.segment_id = segment_id
         self.lane_id = lane_id
+
+    @property
+    def road_state(self):
+        return MapUtils.convert_lane_to_road_localization(self.lane_state, self.road_id, self.segment_id, self.lane_id)
+
+    @property
+    def segment_state(self):
+        return MapUtils.convert_lane_to_segment_localization(self.lane_state, self.road_id, self.segment_id, self.lane_id)
 
     def serialize(self):
         # type: () -> LcmMapState
         lcm_msg = LcmMapState()
         lcm_msg.lane_state = LCMUtils.numpy_array_to_lcm_numpy_array(self.lane_state)
-        lcm_msg.road_state = LCMUtils.numpy_array_to_lcm_numpy_array(self.road_state)
         lcm_msg.road_id = self.road_id
         lcm_msg.segment_id = self.segment_id
         lcm_msg.lane_id = self.lane_id
@@ -125,11 +132,9 @@ class MapState(PUBSUB_MSG_IMPL):
         # type: (LcmMapState) -> MapState
         return cls(np.ndarray(shape=tuple(lcm_msg.lane_state.shape)
                               , buffer=np.array(lcm_msg.lane_state.data)
-                              , dtype=float),
-                   np.ndarray(shape=tuple(lcm_msg.road_state.shape)
-                              , buffer=np.array(lcm_msg.road_state.data)
                               , dtype=float)
         ,lcm_msg.road_id, lcm_msg.segment_id, lcm_msg.lane_id)
+
 
 class NewDynamicObject(PUBSUB_MSG_IMPL):
     obj_id = int
