@@ -29,10 +29,6 @@ class BP_EfficiencyMetric:
                         profile_time
         avg_vel = des_vel - avg_deviation
 
-        # print('profile_time=%f avg_vel=%f t1=%f t2=%f t3=%f v_mid=%f obj_vel=%f' %
-        #       (profile_time, avg_vel, vel_profile.t1, vel_profile.t2, vel_profile.t3,
-        #        vel_profile.v_mid, target_vel))
-
         efficiency_cost = BP_EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel]))[0]
         return BP_EFFICIENCY_COST_WEIGHT * efficiency_cost * profile_time
 
@@ -70,18 +66,6 @@ class BP_ComfortMetric:
         :param T_d: maximal permitted lateral movement time, bounded according to the safety
         :return: comfort cost in units of the general performance metrics cost
         """
-        # # calculate factor between the comfortable lateral movement time and the required lateral movement time
-        # if T_d <= T_d_max:
-        #     time_factor = 1  # comfortable lane change
-        # else:
-        #     time_factor = T_d / max(np.finfo(np.float16).eps, T_d_max)
-        # # acc_factor = np.sqrt((AGGRESSIVENESS_TO_LAT_ACC[aggressiveness.value] / AGGRESSIVENESS_TO_LAT_ACC[0]) ** 5)
-        # lat_time = min(T_d, T_d_max)
-        # change_lat_dir_time = 0
-        # if lat_vel_to_tar < 0:  # only negative lateral velocity increases the cost
-        #     change_lat_dir_time = CHANGE_LAT_VEL_WEIGHT * lat_vel_to_tar**2
-        # lat_cost = (lat_time + change_lat_dir_time) * (time_factor ** 5) * LAT_ACC_TO_JERK_FACTOR * LAT_JERK_COST_WEIGHT
-
         lat_cost = lon_cost = 0
         # lateral jerk
         if 0. < T_d < np.inf:
@@ -97,16 +81,6 @@ class BP_ComfortMetric:
             lon_jerk = QuinticPoly1D.cumulative_jerk_from_constraints(
                 ego_fstate[FS_SA], ego_fstate[FS_SV], spec.v, spec.s - ego_fstate[FS_SX], spec.t)
             lon_cost = lon_jerk * LON_JERK_COST_WEIGHT
-            # print('lon: a0=%.2f v0=%.2f vT=%.2f s=%.2f t=%.2f' %
-            # (ego_fstate[FS_SA], ego_fstate[FS_SV], spec.v, spec.s - ego_fstate[FS_SX], spec.t))
-
-        # if vel_profile.t1 + vel_profile.t3 > 0:
-        #     jerk1 = jerk2 = 0
-        #     if vel_profile.t1 > 0:
-        #         jerk1 = LON_ACC_TO_JERK_FACTOR * ((vel_profile.v_mid - vel_profile.v_init) ** 2) / (vel_profile.t1 ** 3)
-        #     if vel_profile.t3 > 0:
-        #         jerk2 = LON_ACC_TO_JERK_FACTOR * ((vel_profile.v_tar - vel_profile.v_mid) ** 2) / (vel_profile.t3 ** 3)
-        #     lon_cost = (jerk1 + jerk2) * LON_JERK_COST_WEIGHT
 
         return lon_cost, lat_cost
 
