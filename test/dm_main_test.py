@@ -100,7 +100,7 @@ class DmMockInitialization:
 
         cost_params = CostBasedBehavioralPlanner._generate_cost_params(
             road_id=BP_MOCK_FIXED_SPECS['ROAD_ID'], ego_size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
-            reference_route_latitude=desired_lat)
+            reference_route_lat=desired_lat)
 
         # time here is relative for the moment, but upon triggering of the BehavioralFacadeMock,
         # the ego.timestamp_in_sec is being added.

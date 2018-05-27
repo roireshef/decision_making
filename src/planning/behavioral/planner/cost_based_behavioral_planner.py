@@ -87,17 +87,16 @@ class CostBasedBehavioralPlanner:
         # when it is long, the error will potentially be big.
         lookahead_distance = action_spec.s * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
-        # TODO: here we assume that ego and the target share the same road
+        # TODO: here we assume that ego and the goal share the same road. Use nav_plan instead
         road = map_api.get_segment(ego.map_state.road_id)
-        target_frame = road.get_as_frame()._center_frame
+        road_frame = road.get_as_frame()._center_frame
 
         # TODO: remove it when Frenet frame will be transferred to TP
         longitudes = np.arange(0, lookahead_distance, TRAJECTORY_ARCLEN_RESOLUTION)
         lookahead_fpoints = np.c_[longitudes, np.repeat(0, len(longitudes))]
-        center_lane_reference_route = target_frame.fpoints_to_cpoints(lookahead_fpoints)
-
+        center_lane_reference_route = road_frame.fpoints_to_cpoints(lookahead_fpoints)
         # Convert goal state from frenet-frame to Cartesian state
-        goal_cstate = target_frame.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0, 0, 0, 0]))
+        goal_cstate = road_frame.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0, 0, 0, 0]))
 
         # this assumes the target falls on the reference route
         cost_params = CostBasedBehavioralPlanner._generate_cost_params(ego, action_spec.d, action_spec.s)
@@ -111,28 +110,31 @@ class CostBasedBehavioralPlanner:
 
 
     @staticmethod
-    def _generate_cost_params(ego: NewEgoState, reference_route_latitude: float, road_lon: float) -> TrajectoryCostParams:
+    def _generate_cost_params(ego: NewEgoState, reference_route_lat: float, goal_road_lon: float) -> \
+            TrajectoryCostParams:
+
         map_api = MapService.get_instance()
+
+        # TODO: here we assume ego and the goal are on the same road. Use nav_plan instead
         ego_road = map_api.get_road(ego.map_state.road_id)
-        target_segment = ego_road.get_segment_by_lon(road_lon)
-        segment_lon = road_lon - target_segment.lon_on_road
-        lat_from_right, lat_from_left = target_segment.get_intra_lane_lat(segment_lon, reference_route_latitude)
+        goal_segment = ego_road.get_segment_by_lon(goal_road_lon)
+        segment_lon = goal_road_lon - goal_segment.s_start
 
-        # TODO: here we assume a constant lane width along trajectory
-        right_lane_offset = lat_from_right - ego.size.width / 2
-        left_lane_offset = lat_from_left - ego.size.width / 2
+        # TODO: here we assume a constant lane width along the trajectory
+        _, lane_right_bound, lane_left_bound = goal_segment.find_lane_lateral_bounds(segment_lon, reference_route_lat)
+        right_lane_offset = reference_route_lat - lane_right_bound - ego.size.width / 2
+        left_lane_offset = lane_left_bound - reference_route_lat - ego.size.width / 2
 
+        road_width = ego_road.get_width(goal_road_lon)
         # as stated above, for shoulders
-        right_shoulder_offset = reference_route_latitude - ego.size.width / 2 + SHOULDER_SIGMOID_OFFSET
+        right_shoulder_offset = reference_route_lat - ego.size.width / 2 + SHOULDER_SIGMOID_OFFSET
         # as stated above, for shoulders
-        left_shoulder_offset = (target_segment.get_width(segment_lon) - reference_route_latitude) - \
-                               ego.size.width / 2 + SHOULDER_SIGMOID_OFFSET
+        left_shoulder_offset = road_width - reference_route_lat - ego.size.width / 2 + SHOULDER_SIGMOID_OFFSET
 
         # as stated above, for whole road including shoulders
-        right_road_offset = reference_route_latitude - ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
+        right_road_offset = reference_route_lat - ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
         # as stated above, for whole road including shoulders
-        left_road_offset = ego_road.get_width(ego.map_state.road_state[FS_SX]) - reference_route_latitude - \
-                           ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
+        left_road_offset = road_width - reference_route_lat - ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
 
         # Set road-structure-based cost parameters
         right_lane_cost = SigmoidFunctionParams(w=DEVIATION_FROM_LANE_COST, k=LANE_SIGMOID_K_PARAM,

@@ -203,7 +203,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
                                                                v0, vT, start_ego_lat, goal_latitude)
 
             cost_params = CostBasedBehavioralPlanner._generate_cost_params(road_id=ROAD_ID, ego_size=state.ego_state.size,
-                                                                          reference_route_latitude=reference_route_latitude)
+                                                                           reference_route_lat=reference_route_latitude)
 
             # run Werling planner
             planner = WerlingPlanner(logger, predictor)
