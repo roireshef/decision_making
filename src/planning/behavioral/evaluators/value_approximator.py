@@ -12,10 +12,9 @@ from decision_making.src.planning.behavioral.data_objects import AggressivenessL
     ActionSpec
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, \
     RelativeLongitudinalPosition
-from decision_making.src.planning.types import FS_SV, LIMIT_MIN, LIMIT_MAX, FS_SX, FS_DX
+from decision_making.src.planning.types import FS_SV, LIMIT_MIN, LIMIT_MAX, FS_SX, FS_DX, FrenetState2D
 from decision_making.src.planning.utils.map_utils import MapUtils
-from decision_making.src.state.state import DynamicObject, ObjectSize
-from mapping.src.model.localization import RoadLocalization
+from decision_making.src.state.state import DynamicObject, ObjectSize, NewEgoState, NewDynamicObject
 from mapping.src.service.map_service import MapService
 
 
@@ -26,17 +25,15 @@ class ValueApproximator:
 
     def approximate(self, behavioral_state: BehavioralGridState, goal: NavigationGoal) -> float:
 
-        ego = behavioral_state.ego_state
-        ego_loc = ego.road_localization
-        (ego_lane, ego_lon, ego_length, road_id) = (ego_loc.lane_num, ego_loc.road_lon, ego.size.length, ego_loc.road_id)
-        road_frenet = MapUtils.get_road_rhs_frenet(ego)
-        ego_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
+        ego: NewEgoState = behavioral_state.ego_state
+        ego_fstate = ego.map_state.road_state
+        (ego_lane, ego_lon, ego_vel, ego_length, road_id) = \
+            (ego.map_state.lane_id, ego_fstate[FS_SX], ego_fstate[FS_SV], ego.size.length, ego.map_state.road_id)
 
-        lane_width = MapService.get_instance().get_road(road_id).lane_width
+        TYPICAL_LANE_WIDTH = 3.5
         if self.calm_lat_comfort_cost is None:
-            spec = ActionSpec(0, 0, 0, lane_width)
-            _, self.calm_lat_comfort_cost = BP_ComfortMetric.calc_cost(
-                ego_fstate, spec, BP_CALM_LANE_CHANGE_TIME)
+            spec = ActionSpec(0, 0, 0, TYPICAL_LANE_WIDTH)
+            _, self.calm_lat_comfort_cost = BP_ComfortMetric.calc_cost(ego_fstate, spec, BP_CALM_LANE_CHANGE_TIME)
 
         F = LF = RF = LB = RB = L = R = None
         if (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT) in behavioral_state.road_occupancy_grid:
@@ -54,34 +51,39 @@ class ValueApproximator:
         if (RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.PARALLEL) in behavioral_state.road_occupancy_grid:
             R = behavioral_state.road_occupancy_grid[(RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.PARALLEL)][0].dynamic_object
 
-        num_lanes = MapService.get_instance().get_road(road_id).lanes_num
-        map_based_nav_plan = MapService.get_instance().get_road_based_navigation_plan(road_id)
-        # goal.lon - ego_loc.road_lon
-        dist_to_goal = MapService.get_instance().get_longitudinal_difference(
-            road_id, ego_loc.road_lon, goal.road_id, goal.lon, map_based_nav_plan)
+        ego_segment = MapService.get_instance().get_segment(ego.map_state.segment_id)
+        num_lanes = ego_segment.num_lanes
+
+        dist_to_goal = goal.lon - ego_lon  # TODO: use navigation plan
+        # map_based_nav_plan = MapService.get_instance().get_road_based_navigation_plan(road_id)
+        # dist_to_goal = MapService.get_instance().get_longitudinal_difference(
+        #     road_id, ego_lon, goal.road_id, goal.lon, map_based_nav_plan)
 
         # calculate cost for every lane change option
         F_vel, F_lon, F_len = ValueApproximator._get_vel_lon_len(F, 1)
-        forward_cost = self._calc_cost_for_lane(ego.v_x, F_vel, F_lon - ego_lon, ego_loc, RelativeLane.SAME_LANE,
-                                                (F_len + ego_length)/2, goal, dist_to_goal, ego_fstate)
+        dist_to_F = F_lon - ego_lon  # TODO: use navigation plan
+        forward_cost = self._calc_cost_for_lane(ego_vel, F_vel, dist_to_F, ego_fstate, ego_lane,
+                                                RelativeLane.SAME_LANE, (F_len + ego_length)/2, goal, dist_to_goal)
 
         right_cost = left_cost = np.inf
         lane_change_time = 5
-        if dist_to_goal >= lane_change_time * ego.v_x:  # enough time to change lane
+        if dist_to_goal >= lane_change_time * ego_vel:  # enough time to change lane
             moderate_brake = -LON_ACC_LIMITS[LIMIT_MIN] / 2
             RB_vel, RB_lon, RB_len = ValueApproximator._get_vel_lon_len(RB, -1)
             if ego_lane > 0 and R is None and VelocityProfile.is_safe_state(
-                    ego.v_x, RB_vel, ego_lon - RB_lon, SAFE_DIST_TIME_DELAY, (RB_len + ego_length)/2, moderate_brake):
+                    ego_vel, RB_vel, ego_lon - RB_lon, SAFE_DIST_TIME_DELAY, (RB_len + ego_length)/2, moderate_brake):
                 RF_vel, RF_lon, RF_len = ValueApproximator._get_vel_lon_len(RF, 1)
-                right_cost = self._calc_cost_for_lane(ego.v_x, RF_vel, RF_lon - ego_lon, ego_loc, RelativeLane.RIGHT_LANE,
-                                                      (RF_len + ego_length)/2, goal, dist_to_goal, ego_fstate)
+                dist_to_RF = RF_lon - ego_lon  # TODO: use navigation plan
+                right_cost = self._calc_cost_for_lane(ego_vel, RF_vel, dist_to_RF, ego_fstate, ego_lane,
+                                                      RelativeLane.RIGHT_LANE, (RF_len + ego_length)/2, goal, dist_to_goal)
 
             LB_vel, LB_lon, LB_len = ValueApproximator._get_vel_lon_len(LB, -1)
             if ego_lane < num_lanes - 1 and L is None and VelocityProfile.is_safe_state(
-                    ego.v_x, LB_vel, ego_lon - LB_lon, SAFE_DIST_TIME_DELAY, (LB_len + ego_length)/2, moderate_brake):
+                    ego_vel, LB_vel, ego_lon - LB_lon, SAFE_DIST_TIME_DELAY, (LB_len + ego_length)/2, moderate_brake):
                 LF_vel, LF_lon, LF_len = ValueApproximator._get_vel_lon_len(LF, 1)
-                left_cost = self._calc_cost_for_lane(ego.v_x, LF_vel, LF_lon - ego_lon, ego_loc, RelativeLane.LEFT_LANE,
-                                                     (LF_len + ego_length)/2, goal, dist_to_goal, ego_fstate)
+                dist_to_LF = LF_lon - ego_lon  # TODO: use navigation plan
+                left_cost = self._calc_cost_for_lane(ego_vel, LF_vel, dist_to_LF, ego_fstate, ego_lane,
+                                                     RelativeLane.LEFT_LANE, (LF_len + ego_length)/2, goal, dist_to_goal)
 
         min_cost = min(forward_cost, min(right_cost, left_cost))
 
@@ -89,16 +91,16 @@ class ValueApproximator:
 
         return min_cost
 
-    def _calc_cost_for_lane(self, v_init: float, v_tar: float, cur_dist_from_obj: float, ego_loc: RoadLocalization,
-                            lane_action: RelativeLane, cars_size_margin: float, goal: NavigationGoal,
-                            dist_to_goal: float, ego_fstate: np.array) -> float:
+    def _calc_cost_for_lane(self, v_init: float, v_tar: float, cur_dist_from_obj: float, ego_fstate: FrenetState2D,
+                            ego_lane_num: int, lane_action: RelativeLane, cars_size_margin: float, goal: NavigationGoal,
+                            dist_to_goal: float) -> float:
 
         if lane_action != RelativeLane.SAME_LANE and \
                 not VelocityProfile.is_safe_state(v_tar, v_init, cur_dist_from_obj, AV_TIME_DELAY, cars_size_margin):
             return np.inf  # unsafe lane change
 
         v_des = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-        final_lane = ego_loc.lane_num + lane_action.value
+        final_lane = ego_lane_num + lane_action.value
         eff_cost = comf_cost = non_right_lane_cost = goal_cost = 0
 
         if dist_to_goal > 0:
@@ -149,8 +151,8 @@ class ValueApproximator:
         return eff_cost + comf_cost + non_right_lane_cost + goal_cost
 
     @staticmethod
-    def _get_vel_lon_len(obj: DynamicObject, sgn: int) -> [float, float, float]:
+    def _get_vel_lon_len(obj: NewDynamicObject, sgn: int) -> [float, float, float]:
         if obj is None:
             return BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, sgn * np.inf, 0
         else:
-            return obj.v_x, obj.road_localization.road_lon, obj.size.length
+            return obj.map_state.road_state[FS_SV], obj.map_state.road_state[FS_SX], obj.size.length

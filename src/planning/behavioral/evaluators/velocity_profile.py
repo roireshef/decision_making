@@ -176,8 +176,8 @@ class VelocityProfile:
         return None  # illegal action
 
     @staticmethod
-    def calc_lateral_time(init_lat_vel: float, signed_lat_dist: float, lane_width: float,
-                          aggressiveness_level: AggressivenessLevel) -> [float, float, float]:
+    def calc_lateral_time(init_lat_vel: float, signed_lat_dist: float, aggressiveness_level: AggressivenessLevel) -> \
+            [float, float, float]:
         """
         Given initial lateral velocity and signed lateral distance, estimate a time it takes to perform the movement.
         The time estimation assumes movement by velocity profile like in the longitudinal case.
@@ -194,8 +194,7 @@ class VelocityProfile:
             lat_v_init_toward_target = -init_lat_vel
         # normalize lat_acc by lane_width, such that T_d will NOT depend on lane_width
         acc = AGGRESSIVENESS_TO_LAT_ACC[aggressiveness_level.value]
-        lat_acc = acc * lane_width / 3.6
-        lateral_profile = VelocityProfile._calc_profile_given_acc(lat_v_init_toward_target, lat_acc, abs(signed_lat_dist), 0)
+        lateral_profile = VelocityProfile._calc_profile_given_acc(lat_v_init_toward_target, acc, abs(signed_lat_dist), 0)
 
         return lateral_profile.t1 + lateral_profile.t3
 
