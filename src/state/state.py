@@ -11,13 +11,13 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmObjectSize
 from common_data.lcm.generatedFiles.gm_lcm import LcmOccupancyState
 from common_data.lcm.generatedFiles.gm_lcm import LcmState
 from common_data.lcm.generatedFiles.gm_lcm.LcmNumpyArray import LcmNumpyArray
+from common_data.lcm.generatedFiles.gm_lcm import LcmMapState
 
 from decision_making.src.exceptions import NoUniqueObjectStateForEvaluation
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import CartesianExtendedState, C_K, C_A
 from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW
 from decision_making.src.planning.types import FrenetState2D
-from mapping.src.model.localization import RoadLocalization
 
 from decision_making.src.planning.utils.lcm_utils import LCMUtils
 from decision_making.src.planning.utils.map_utils import MapUtils
@@ -96,20 +96,32 @@ class ObjectSize(PUBSUB_MSG_IMPL):
         return cls(lcmMsg.length, lcmMsg.width, lcmMsg.height)
 
 
+# TODO: configure to initialize from segment_state and road_state ? (3 lazily-cached localizations)
 class MapState(PUBSUB_MSG_IMPL):
-    def __init__(self, lane_state, road_state, road_id, segment_id, lane_id):
-        # type: (FrenetState2D, FrenetState2D, int, int, int) -> MapState
+    lane_state = FrenetState2D
+    road_id = int
+    segment_id = int
+    lane_id = int
+
+    def __init__(self, lane_state, road_id, segment_id, lane_id):
+        # type: (FrenetState2D, int, int, int) -> MapState
         self.lane_state = lane_state
-        self.road_state = road_state
         self.road_id = road_id
         self.segment_id = segment_id
         self.lane_id = lane_id
+
+    @property
+    def road_state(self):
+        return MapUtils.convert_lane_to_road_localization(self.lane_state, self.road_id, self.segment_id, self.lane_id)
+
+    @property
+    def segment_state(self):
+        return MapUtils.convert_lane_to_segment_localization(self.lane_state, self.road_id, self.segment_id, self.lane_id)
 
     def serialize(self):
         # type: () -> LcmMapState
         lcm_msg = LcmMapState()
         lcm_msg.lane_state = LCMUtils.numpy_array_to_lcm_numpy_array(self.lane_state)
-        lcm_msg.road_state = LCMUtils.numpy_array_to_lcm_numpy_array(self.road_state)
         lcm_msg.road_id = self.road_id
         lcm_msg.segment_id = self.segment_id
         lcm_msg.lane_id = self.lane_id
@@ -118,20 +130,26 @@ class MapState(PUBSUB_MSG_IMPL):
     @classmethod
     def deserialize(cls, lcm_msg):
         # type: (LcmMapState) -> MapState
-        return cls(lcm_msg.lane_state, lcm_msg.road_state,lcm_msg.road_id, lcm_msg.segment_id, lcm_msg.lane_id)
+        return cls(np.ndarray(shape=tuple(lcm_msg.lane_state.shape)
+                              , buffer=np.array(lcm_msg.lane_state.data)
+                              , dtype=float)
+        ,lcm_msg.road_id, lcm_msg.segment_id, lcm_msg.lane_id)
+
 
 class NewDynamicObject(PUBSUB_MSG_IMPL):
     obj_id = int
     timestamp = int
-    cartesian_state = CartesianExtendedState
-    map_state = MapState
+    _cached_cartesian_state = CartesianExtendedState
+    _cached_map_state = MapState
     size = ObjectSize
     confidence = float
 
     def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
         # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float) -> NewDynamicObject
         """
-        Data object that hold
+        Data object that holds all relevant information regarding another vehicle on the road.
+        !! Tend to not use this constructor, but with one of the two other constructors below,
+        according to the localization type you use !!
         :param obj_id: object id
         :param timestamp: time of perception [nanosec.]
         :param cartesian_state: localization relative to map's cartesian origin frame
@@ -145,6 +163,32 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
         self._cached_map_state = map_state
         self.size = copy.copy(size)
         self.confidence = confidence
+
+    @classmethod
+    def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence):
+        # type: (int, int, CartesianExtendedState, ObjectSize, float) -> NewDynamicObject
+        """
+        Constructor that gets only cartesian-state (without map-state)
+        :param obj_id: object id
+        :param timestamp: time of perception [nanosec.]
+        :param cartesian_state: localization relative to map's cartesian origin frame
+        :param size: class ObjectSize
+        :param confidence: of object's existence
+        """
+        cls(obj_id, timestamp, cartesian_state, None, size, confidence)
+
+    @classmethod
+    def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence):
+        # type: (int, int, MapState, ObjectSize, float) -> NewDynamicObject
+        """
+        Constructor that gets only map-state (without cartesian-state)
+        :param obj_id: object id
+        :param timestamp: time of perception [nanosec.]
+        :param map_state: localization in a map-object's frame (road,segment,lane)
+        :param size: class ObjectSize
+        :param confidence: of object's existence
+        """
+        cls(obj_id, timestamp, None, map_state, size, confidence)
 
     @property
     def x(self):
@@ -188,31 +232,13 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
             self._cached_map_state = MapUtils.convert_cartesian_to_map_state(self._cached_cartesian_state)
         return self._cached_map_state
 
-    @classmethod
-    def create_from_cartesian_state(cls, obj_id: object, timestamp: object, cartesian_state: object, size: object, confidence: object):
-        # type: (int, int, CartesianExtendedState, ObjectSize, float) -> NewDynamicObject
-        """
-        Constructor that gets only cartesian-state (without map-state)
-        :param obj_id: object id
-        :param timestamp: time of perception [nanosec.]
-        :param cartesian_state: localization relative to map's cartesian origin frame
-        :param size: class ObjectSize
-        :param confidence: of object's existence
-        """
-        cls(obj_id, timestamp, cartesian_state, None, size, confidence)
+    @property
+    def timestamp_in_sec(self):
+        return self.timestamp * 1e-9
 
-    @classmethod
-    def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence):
-        # type: (int, int, MapState, ObjectSize, float) -> NewDynamicObject
-        """
-        Constructor that gets only map-state (without cartesian-state)
-        :param obj_id: object id
-        :param timestamp: time of perception [nanosec.]
-        :param map_state: localization in a map-object's frame (road,segment,lane)
-        :param size: class ObjectSize
-        :param confidence: of object's existence
-        """
-        cls(obj_id, timestamp, None, map_state, size, confidence)
+    @timestamp_in_sec.setter
+    def timestamp_in_sec(self, value):
+        self.timestamp = int(value * 1e9)
 
     def clone_from_cartesian_state(self, cartesian_state, timestamp=None):
         # type: (CartesianState, Optional[float]) -> NewDynamicObject
@@ -241,9 +267,13 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmDynamicObject) -> NewDynamicObject
         return cls(lcmMsg.obj_id, lcmMsg.timestamp
-                 , lcmMsg._cached_cartesian_state, lcmMsg._cached_map_state
+                 , np.ndarray(shape=tuple(lcmMsg._cached_cartesian_state.shape)
+                              , buffer=np.array(lcmMsg._cached_cartesian_state.data)
+                              , dtype=float)
+                    , MapState.deserialize(lcmMsg._cached_map_state)
                  , ObjectSize.deserialize(lcmMsg.size)
                  , lcmMsg.confidence)
+
 
 class DynamicObject(PUBSUB_MSG_IMPL):
     ''' Members annotations for python 2 compliant classes '''
@@ -395,14 +425,6 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
 
 class NewEgoState(NewDynamicObject):
-    ''' Members annotations for python 2 compliant classes '''
-    obj_id = int
-    timestamp = int
-    cartesian_state = CartesianExtendedState
-    map_state = MapState
-    size = ObjectSize
-    confidence = float
-
     def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
         # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float) -> NewEgoState
 
@@ -417,84 +439,100 @@ class NewEgoState(NewDynamicObject):
         :param size: class ObjectSize
         :param confidence: of object's existence
         """
-        NewDynamicObject.__init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence)
-
-class EgoState(DynamicObject):
-    ''' Members annotations for python 2 compliant classes '''
-    obj_id = int
-    timestamp = int
-    x = float
-    y = float
-    z = float
-    yaw = float
-    size = ObjectSize
-    confidence = float
-    v_x = float
-    v_y = float
-    acceleration_lon = float
-    omega_yaw = float
-    steering_angle = float
-
-    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence,
-                 v_x, v_y, acceleration_lon, omega_yaw, steering_angle):
-        # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float, float) -> None
-        """
-        IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
-        :param obj_id:
-        :param timestamp:
-        :param x:
-        :param y:
-        :param z:
-        :param yaw:
-        :param size:
-        :param confidence:
-        :param v_x: velocity in ego's heading direction [m/sec]
-        :param v_y: velocity in ego's side (left) direction [m/sec]
-        :param acceleration_lon: in m/s^2
-        :param omega_yaw: radius of turning of the ego
-        :param steering_angle: equivalent to knowing of turn_radius
-        """
-        DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
-                               acceleration_lon, omega_yaw)
-        self.steering_angle = steering_angle
-
-    @property
-    # TODO: change <length> to the distance between the two axles
-    # TODO: understand (w.r.t which axle counts) if we should use sin or tan here + validate vs sensor-alignments
-    def curvature(self):
-        """
-        For any point on a curve, the curvature measure is defined as 1/R where R is the radius length of a
-        circle that tangents the curve at that point. HERE, CURVATURE IS SIGNED (same sign as steering_angle).
-        For more information please see: https://en.wikipedia.org/wiki/Curvature#Curvature_of_plane_curves
-        """
-        return np.tan(self.steering_angle) / self.size.length
+        super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state, map_state=map_state, size=size, confidence=confidence)
 
     def serialize(self):
         # type: () -> LcmEgoState
         lcm_msg = LcmEgoState()
         lcm_msg.dynamic_obj = super(self.__class__, self).serialize()
-        lcm_msg.steering_angle = self.steering_angle
         return lcm_msg
 
     @classmethod
     def deserialize(cls, lcmMsg):
-        # type: (LcmEgoState) -> EgoState
-        dyn_obj = DynamicObject.deserialize(lcmMsg.dynamic_obj)
+        # type: (LcmEgoState) -> NewEgoState
+        dyn_obj = NewDynamicObject.deserialize(lcmMsg.dynamic_obj)
         return cls(dyn_obj.obj_id, dyn_obj.timestamp
-                 , dyn_obj.x, dyn_obj.y, dyn_obj.z, dyn_obj.yaw
-                 , dyn_obj.size, dyn_obj.confidence
-                 , dyn_obj.v_x, dyn_obj.v_y, dyn_obj.acceleration_lon
-                 , dyn_obj.omega_yaw, lcmMsg.steering_angle)
+                 , dyn_obj._cached_cartesian_state, dyn_obj._cached_map_state
+                 , dyn_obj.size
+                 , dyn_obj.confidence)
+
+#
+# class EgoState(DynamicObject):
+#     ''' Members annotations for python 2 compliant classes '''
+#     obj_id = int
+#     timestamp = int
+#     x = float
+#     y = float
+#     z = float
+#     yaw = float
+#     size = ObjectSize
+#     confidence = float
+#     v_x = float
+#     v_y = float
+#     acceleration_lon = float
+#     omega_yaw = float
+#     steering_angle = float
+#
+#     def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence,
+#                  v_x, v_y, acceleration_lon, omega_yaw, steering_angle):
+#         # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float, float) -> None
+#         """
+#         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
+#         :param obj_id:
+#         :param timestamp:
+#         :param x:
+#         :param y:
+#         :param z:
+#         :param yaw:
+#         :param size:
+#         :param confidence:
+#         :param v_x: velocity in ego's heading direction [m/sec]
+#         :param v_y: velocity in ego's side (left) direction [m/sec]
+#         :param acceleration_lon: in m/s^2
+#         :param omega_yaw: radius of turning of the ego
+#         :param steering_angle: equivalent to knowing of turn_radius
+#         """
+#         DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
+#                                acceleration_lon, omega_yaw)
+#         self.steering_angle = steering_angle
+#
+#     @property
+#     # TODO: change <length> to the distance between the two axles
+#     # TODO: understand (w.r.t which axle counts) if we should use sin or tan here + validate vs sensor-alignments
+#     def curvature(self):
+#         """
+#         For any point on a curve, the curvature measure is defined as 1/R where R is the radius length of a
+#         circle that tangents the curve at that point. HERE, CURVATURE IS SIGNED (same sign as steering_angle).
+#         For more information please see: https://en.wikipedia.org/wiki/Curvature#Curvature_of_plane_curves
+#         """
+#         return np.tan(self.steering_angle) / self.size.length
+#
+#     def serialize(self):
+#         # type: () -> LcmEgoState
+#         lcm_msg = LcmEgoState()
+#         lcm_msg.dynamic_obj = super(self.__class__, self).serialize()
+#         lcm_msg.steering_angle = self.steering_angle
+#         return lcm_msg
+#
+#     @classmethod
+#     def deserialize(cls, lcmMsg):
+#         # type: (LcmEgoState) -> EgoState
+#         dyn_obj = DynamicObject.deserialize(lcmMsg.dynamic_obj)
+#         return cls(dyn_obj.obj_id, dyn_obj.timestamp
+#                  , dyn_obj.x, dyn_obj.y, dyn_obj.z, dyn_obj.yaw
+#                  , dyn_obj.size, dyn_obj.confidence
+#                  , dyn_obj.v_x, dyn_obj.v_y, dyn_obj.acceleration_lon
+#                  , dyn_obj.omega_yaw, lcmMsg.steering_angle)
 
 
 class State(PUBSUB_MSG_IMPL):
     ''' Members annotations for python 2 compliant classes '''
     occupancy_state = OccupancyState
-    dynamic_objects = List[DynamicObject]
-    ego_state = EgoState
+    dynamic_objects = List[NewDynamicObject]
+    ego_state = NewEgoState
 
     def __init__(self, occupancy_state, dynamic_objects, ego_state):
-        # type: (OccupancyState, List[DynamicObject], EgoState) -> None
+        # type: (OccupancyState, List[NewDynamicObject], NewEgoState) -> None
         """
         main class for the world state. deep copy is required by self.clone_with!
         :param occupancy_state: free space
@@ -506,7 +544,7 @@ class State(PUBSUB_MSG_IMPL):
         self.ego_state = copy.deepcopy(ego_state)
 
     def clone_with(self, occupancy_state=None, dynamic_objects=None, ego_state=None):
-        # type: (OccupancyState, List[DynamicObject], EgoState) -> State
+        # type: (OccupancyState, List[NewDynamicObject], NewEgoState) -> State
         """
         clones state object with potential overriding of specific fields.
         requires deep-copying of all fields in State.__init__ !!
@@ -532,11 +570,11 @@ class State(PUBSUB_MSG_IMPL):
         # type: (LcmState) -> State
         dynamic_objects = list()
         for i in range(lcmMsg.num_obj):
-            dynamic_objects.append(DynamicObject.deserialize(lcmMsg.dynamic_objects[i]))
+            dynamic_objects.append(NewDynamicObject.deserialize(lcmMsg.dynamic_objects[i]))
         ''' [DynamicObject.deserialize(lcmMsg.dynamic_objects[i]) for i in range(lcmMsg.num_obj)] '''
         return cls(OccupancyState.deserialize(lcmMsg.occupancy_state)
                  , dynamic_objects
-                 , EgoState.deserialize(lcmMsg.ego_state))
+                 , NewEgoState.deserialize(lcmMsg.ego_state))
 
     # TODO: remove when access to dynamic objects according to dictionary will be available.
     @classmethod

@@ -61,62 +61,6 @@ class DmMockInitialization:
                                                               strategy_handlers=strategy_handlers)
         return trajectory_planning_module
 
-    @staticmethod
-    def create_behavioral_planner() -> BehavioralPlanningFacade:
-        logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
-
-        # Init map
-        MapService.initialize()
-
-        road = MapService.get_instance().get_road(BP_MOCK_FIXED_SPECS['ROAD_ID'])
-        desired_lat = road.lane_width * (BP_MOCK_FIXED_SPECS['LANE_NUM'] + 0.5)
-        nav_plan = NavigationPlanMsg(road_ids=np.array([BP_MOCK_FIXED_SPECS['ROAD_ID']]))
-        trigger_point = BP_MOCK_FIXED_SPECS['TRIGGER_POINT']
-
-        # get the trigger-point's longitude from the road's beginning
-        _, init_point_longitude, _, _, _ = MapService.get_instance().convert_global_to_road_coordinates(
-            trigger_point[0], trigger_point[1], 0)
-
-        ref_route, _ = MapService.get_instance().get_lookahead_points(
-            initial_road_id=BP_MOCK_FIXED_SPECS['ROAD_ID'],
-            initial_lon=init_point_longitude,
-            lookahead_dist=BP_MOCK_FIXED_SPECS['LOOKAHEAD_DISTANCE'] * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO,
-            desired_lat=desired_lat,
-            navigation_plan=nav_plan
-        )
-
-        _, target_lon = MapService.get_instance().advance_on_plan(
-            initial_road_id=BP_MOCK_FIXED_SPECS['ROAD_ID'],
-            initial_lon=init_point_longitude,
-            lookahead_dist=BP_MOCK_FIXED_SPECS['LOOKAHEAD_DISTANCE'],
-            navigation_plan=nav_plan
-        )
-
-        target_pose, target_yaw = MapService.get_instance().convert_road_to_global_coordinates(
-            road_id=BP_MOCK_FIXED_SPECS['ROAD_ID'], lon=target_lon, lat=desired_lat)
-
-        target_state = np.append(target_pose[[C_X, C_Y]], [target_yaw, BP_MOCK_FIXED_SPECS['TARGET_VELOCITY']])
-
-        cost_params = CostBasedBehavioralPlanner._generate_cost_params(
-            road_id=BP_MOCK_FIXED_SPECS['ROAD_ID'], ego_size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
-            reference_route_lat=desired_lat)
-
-        # time here is relative for the moment, but upon triggering of the BehavioralFacadeMock,
-        # the ego.timestamp_in_sec is being added.
-        params = TrajectoryParams(strategy=TrajectoryPlanningStrategy.HIGHWAY,
-                                  reference_route=ref_route,
-                                  target_state=target_state,
-                                  cost_params=cost_params,
-                                  time=BP_MOCK_FIXED_SPECS['PLANNING_TIME'])
-
-        viz_msg = BehavioralVisualizationMsg(reference_route=ref_route)
-
-        behavioral_module = BehavioralFacadeMock(pubsub=pubsub, logger=logger,
-                                                 trigger_pos=BP_MOCK_FIXED_SPECS['TRIGGER_POINT'],
-                                                 trajectory_params=params, visualization_msg=viz_msg)
-        return behavioral_module
-
 
 def main():
     """
@@ -134,7 +78,6 @@ def main():
                       trigger_args={}),
 
             DmProcess(DmInitialization.create_behavioral_planner,
-            # DmProcess(DmMockInitialization.create_behavioral_planner,
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 

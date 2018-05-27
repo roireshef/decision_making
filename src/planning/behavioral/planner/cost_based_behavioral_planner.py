@@ -21,9 +21,13 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
+from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import FS_SX
+from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
+from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.utils.map_utils import MapUtils
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize, NewEgoState
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
@@ -34,7 +38,8 @@ from mapping.src.service.map_service import MapService
 @six.add_metaclass(ABCMeta)
 class CostBasedBehavioralPlanner:
     def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
-                 action_spec_evaluator: Optional[ActionSpecEvaluator], action_spec_validator: Optional[ActionSpecFiltering],
+                 action_spec_evaluator: Optional[ActionSpecEvaluator],
+                 action_spec_validator: Optional[ActionSpecFiltering],
                  value_approximator: ValueApproximator, predictor: Predictor, logger: Logger):
         self.action_space = action_space
         self.recipe_evaluator = recipe_evaluator
@@ -108,6 +113,37 @@ class CostBasedBehavioralPlanner:
                                                  strategy=TrajectoryPlanningStrategy.HIGHWAY)
         return trajectory_parameters
 
+    @staticmethod
+    def generate_baseline_trajectory(ego: EgoState, action_spec: ActionSpec) -> SamplableTrajectory:
+        """
+        Creates a SamplableTrajectory as a reference trajectory for a given ActionSpec, assuming T_d=T_s
+        :param ego: ego object
+        :param action_spec: action specification that contains all relevant info about the action's terminal state
+        :return: a SamplableWerlingTrajectory object
+        """
+        # Note: We create the samplable trajectory as a reference trajectory of the current action.from
+        # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
+        road_frenet = MapUtils.get_road_rhs_frenet(ego)
+
+        # project ego vehicle onto the road
+        ego_init_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
+
+        target_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
+
+        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_matrix(action_spec.t))
+
+        constraints_s = np.concatenate((ego_init_fstate[FS_SX:(FS_SA + 1)], target_fstate[FS_SX:(FS_SA + 1)]))
+        constraints_d = np.concatenate((ego_init_fstate[FS_DX:(FS_DA + 1)], target_fstate[FS_DX:(FS_DA + 1)]))
+
+        poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
+        poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
+
+        return SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
+                                          T_s=action_spec.t,
+                                          T_d=action_spec.t,
+                                          frenet_frame=road_frenet,
+                                          poly_s_coefs=poly_coefs_s,
+                                          poly_d_coefs=poly_coefs_d)
 
     @staticmethod
     def _generate_cost_params(ego: NewEgoState, reference_route_lat: float, goal_road_lon: float) -> \

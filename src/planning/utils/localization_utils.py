@@ -1,11 +1,11 @@
-from decision_making.src.planning.types import Limits
+from decision_making.src.planning.types import Limits, FP_SX, FP_DX
 from logging import Logger
 
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, NEGLIGIBLE_DISPOSITION_LAT, \
     NEGLIGIBLE_DISPOSITION_LON, EGO_ORIGIN_LON_FROM_CENTER
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
-from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, FrenetPoint, FP_SX, FP_DX, C_V
-from decision_making.src.state.state import EgoState
+from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, FrenetPoint, C_V
+from decision_making.src.state.state import NewEgoState
 
 import numpy as np
 
@@ -18,7 +18,7 @@ class LocalizationUtils:
     def is_actual_state_close_to_expected_state(current_ego_state,
                                                 last_trajectory,
                                                 logger, calling_class_name):
-        # type: (EgoState, SamplableTrajectory, Logger, str) -> bool
+        # type: (NewEgoState, SamplableTrajectory, Logger, str) -> bool
         """
         checks if the actual ego state at time t[current] is close (currently in terms of Euclidean distance of position
         [x,y] only) to the desired state at t[current] according to the plan of the last trajectory.
@@ -35,8 +35,9 @@ class LocalizationUtils:
         logger.debug("%s time-difference from last planned trajectory is %s",
                      calling_class_name, current_time - last_trajectory.timestamp_in_sec)
 
-        current_expected_state = last_trajectory.sample(np.array([current_time]))[0] #type: CartesianExtendedState
-        current_actual_location = np.array([current_ego_state.x, current_ego_state.y, DEFAULT_OBJECT_Z_VALUE])
+        current_expected_state = last_trajectory.sample(np.array([current_time]))[0]  # type: CartesianExtendedState
+        current_actual_location = np.array([current_ego_state.cartesian_state[C_X],
+                                            current_ego_state.cartesian_state[C_Y], DEFAULT_OBJECT_Z_VALUE])
 
         errors_in_expected_frame, _ = CartesianFrame.convert_global_to_relative_frame(
             global_pos=current_actual_location,
@@ -45,14 +46,14 @@ class LocalizationUtils:
             frame_orientation=current_expected_state[C_YAW]
         )
 
-        distances_in_expected_frame = np.abs(errors_in_expected_frame) #type: FrenetPoint
+        distances_in_expected_frame = np.abs(errors_in_expected_frame)  # type: FrenetPoint
 
         logger.debug(("is_actual_state_close_to_expected_state stats called from %s: "
                       "{desired_localization: %s, actual_localization: %s, desired_velocity: %s, "
                       "actual_velocity: %s, lon_lat_errors: %s, velocity_error: %s}" %
                       (calling_class_name, current_expected_state, current_actual_location, current_expected_state[C_V],
-                       current_ego_state.v_x, distances_in_expected_frame,
-                       current_ego_state.v_x - current_expected_state[C_V])).replace('\n', ' '))
+                       current_ego_state.cartesian_state[C_V], distances_in_expected_frame,
+                       current_ego_state.cartesian_state[C_V] - current_expected_state[C_V])).replace('\n', ' '))
 
         return distances_in_expected_frame[FP_SX] <= NEGLIGIBLE_DISPOSITION_LON and \
                distances_in_expected_frame[FP_DX] <= NEGLIGIBLE_DISPOSITION_LAT
