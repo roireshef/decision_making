@@ -111,8 +111,8 @@ class QuarticMotionPredicatesCreator:
         min_a, max_a = min(a_t_func(t)), max(a_t_func(t))
 
         is_T_in_range = (T >= EPS) and (T <= BP_ACTION_T_LIMITS[1] + EPS)
-        is_vel_in_range = (min_v >= VELOCITY_LIMITS[0]) and (max_v <= VELOCITY_LIMITS[1] + EPS)
-        is_acc_in_range = (min_a >= LON_ACC_LIMITS[0]) and (max_a <= LON_ACC_LIMITS[1] + EPS)
+        is_vel_in_range = (min_v >= VELOCITY_LIMITS[0] - EPS) and (max_v <= VELOCITY_LIMITS[1] + EPS)
+        is_acc_in_range = (min_a >= LON_ACC_LIMITS[0] - EPS) and (max_a <= LON_ACC_LIMITS[1] + EPS)
 
         return is_T_in_range and is_vel_in_range and is_acc_in_range
 
