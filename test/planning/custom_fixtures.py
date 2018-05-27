@@ -11,7 +11,7 @@ from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanM
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.state.state import OccupancyState, ObjectSize, EgoState, State, DynamicObject
+from decision_making.src.state.state import OccupancyState, ObjectSize, EgoState, State, DynamicObject, NewDynamicObject
 from decision_making.test.prediction.mock_predictor import TestPredictorMock
 
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
@@ -158,10 +158,12 @@ def state():
     v_x = 2.0
     v_y = 2.0
     v = np.linalg.norm([v_x, v_y])
-    dyn1 = DynamicObject(obj_id=1, timestamp=34, cartesian_state=np.array([0.1, 0.1, np.pi / 8.0, v, 0.0, 0.0]),
-                         map_state=None, size=ObjectSize(1, 1, 1), confidence=1.0)
-    dyn2 = DynamicObject(obj_id=1, timestamp=35, cartesian_state=np.array([10.0, 0.0, np.pi / 8.0, v, 0.0, 0.0]),
-                         map_state=None, size=ObjectSize(1, 1, 1), confidence=1.0)
+    dyn1 = NewDynamicObject.create_from_cartesian_state(
+        obj_id=1, timestamp=34, cartesian_state=np.array([0.1, 0.1, np.pi / 8.0, v, 0.0, 0.0]),
+        size=ObjectSize(1, 1, 1), confidence=1.0)
+    dyn2 = NewDynamicObject.create_from_cartesian_state(
+        obj_id=1, timestamp=35, cartesian_state=np.array([10.0, 0.0, np.pi / 8.0, v, 0.0, 0.0]),
+        size=ObjectSize(1, 1, 1), confidence=1.0)
     dynamic_objects = [dyn1, dyn2]
     size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
     ego_state = EgoState(obj_id=0, timestamp=0, cartesian_state=np.array([1, 0, 0, 1.0, 0.0, 0]), map_state=None,
