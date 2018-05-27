@@ -5,6 +5,7 @@ from typing import List
 import numpy as np
 import six
 
+import rte.python.profiler as prof
 from decision_making.src.planning.behavioral.behavioral_grid_state import \
     BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe
@@ -16,6 +17,7 @@ class ActionSpecEvaluator:
         self.logger = logger
 
     @abstractmethod
+    @prof.ProfileFunction()
     def evaluate(self, behavioral_state: BehavioralGridState,
                  action_recipes: List[ActionRecipe],
                  action_specs: List[ActionSpec],
@@ -29,6 +31,7 @@ class ActionRecipeEvaluator:
         self.logger = logger
 
     @abstractmethod
+    @prof.ProfileFunction()
     def evaluate(self, behavioral_state: BehavioralGridState,
                  action_recipes: List[ActionRecipe],
                  action_recipes_mask: List[bool]) -> np.ndarray:

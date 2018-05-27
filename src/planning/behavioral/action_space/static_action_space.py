@@ -3,6 +3,7 @@ from typing import Optional, List, Type
 import numpy as np
 from sklearn.utils.extmath import cartesian
 
+import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
     SAFE_DIST_TIME_DELAY, VELOCITY_LIMITS
 from decision_making.src.global_constants import VELOCITY_STEP
@@ -33,6 +34,7 @@ class StaticActionSpace(ActionSpace):
         """a list of Recipe classes this action space can handle with"""
         return [StaticActionRecipe]
 
+    @prof.ProfileFunction()
     def specify_goals(self, action_recipes: List[StaticActionRecipe], behavioral_state: BehavioralGridState) -> \
             List[Optional[ActionSpec]]:
         """

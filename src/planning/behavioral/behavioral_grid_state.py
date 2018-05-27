@@ -3,6 +3,7 @@ from enum import Enum
 from logging import Logger
 from typing import Dict, List, Tuple
 
+import rte.python.profiler as prof
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_LOOKAHEAD_DIST
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
@@ -60,6 +61,7 @@ class BehavioralGridState(BehavioralState):
         self.left_lane_exists = left_lane_exists
 
     @classmethod
+    @prof.ProfileFunction()
     def create_from_state(cls, state: State, logger: Logger):
         """
         Occupy the occupancy grid.
@@ -95,8 +97,8 @@ class BehavioralGridState(BehavioralState):
         return cls(grid_sorted_by_distances, state.ego_state,
                    right_lane_exists=ego_lane > 0, left_lane_exists=ego_lane < lanes_num-1)
 
-
     @staticmethod
+    @prof.ProfileFunction()
     def project_objects_on_grid(objects: List[DynamicObject], ego_state: EgoState, road_frenet: FrenetSerret2DFrame) -> \
             Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]:
         """

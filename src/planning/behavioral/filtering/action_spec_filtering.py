@@ -5,6 +5,7 @@ from typing import List, Optional
 
 import six
 
+import rte.python.profiler as prof
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 
@@ -43,6 +44,7 @@ class ActionSpecFiltering:
                 return False
         return True
 
+    @prof.ProfileFunction()
     def filter_action_specs(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState) -> List[bool]:
         return [self.filter_action_spec(action_spec, behavioral_state) for action_spec in action_specs]
 
