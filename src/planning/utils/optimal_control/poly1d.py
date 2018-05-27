@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Union, Callable
+from typing import Union
 
 import numpy as np
 
@@ -251,20 +251,6 @@ class QuarticPoly1D(Poly1D):
         """
         return cls.are_derivatives_in_limits(degree=1, poly_coefs=poly_coefs, T_vals=T_vals, limits=vel_limits)
 
-    # TODO: document
-    @staticmethod
-    def time_cost_function(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float):
-        return lambda T: (T ** 4 * w_T + 4 * w_J * (
-            T ** 2 * a_0 ** 2 + 3 * T * a_0 * v_0 - 3 * T * a_0 * v_T + 3 * v_0 ** 2 - 6 * v_0 * v_T + 3 * v_T ** 2)) / T ** 3
-
-    @staticmethod
-    def time_cost_function_derivative(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float):
-        return lambda T: (
-                             T ** 4 * w_T
-                             - 4 * T ** 2 * a_0 ** 2 * w_J
-                             + 24 * T * (a_0 * v_T * w_J - a_0 * v_0 * w_J)
-                             - 36 * v_0 ** 2 * w_J + 72 * v_0 * v_T * w_J - 36 * v_T ** 2 * w_J) / T ** 4
-
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
                                             v_T: np.ndarray):
@@ -398,24 +384,6 @@ class QuinticPoly1D(Poly1D):
                (240 * a3 * a5 + 192 * a4 ** 2) * T ** 3 + \
                720 * a4 * a5 * T ** 4 + \
                720 * a5 ** 2 * T ** 5
-
-    # TODO: document
-    @staticmethod
-    def time_cost_function(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds: float, T_m: float):
-        return lambda T: (T ** 6 * w_T + 3 * w_J * (
-            3 * T ** 4 * a_0 ** 2 + 24 * T ** 3 * a_0 * v_0 - 24 * T ** 3 * a_0 * v_T + 40 * T ** 2 * T_m * a_0 * v_T -
-            40 * T ** 2 * a_0 * ds + 64 * T ** 2 * v_0 ** 2 - 128 * T ** 2 * v_0 * v_T + 64 * T ** 2 * v_T ** 2 + 240 * T * T_m * v_0 * v_T -
-            240 * T * T_m * v_T ** 2 - 240 * T * ds * v_0 + 240 * T * ds * v_T + 240 * T_m ** 2 * v_T ** 2 - 480 * T_m * ds * v_T +
-            240 * ds ** 2)) / T ** 5
-
-    @staticmethod
-    def time_cost_function_derivative(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds: float,
-                                      T_m: float):
-        return lambda T: (
-                             T ** 6 * w_T - 9 * T ** 4 * a_0 ** 2 * w_J - 144 * T ** 3 * a_0 * v_0 * w_J + 144 * T ** 3 * a_0 * v_T * w_J -
-                             360 * T ** 2 * T_m * a_0 * v_T * w_J + 360 * T ** 2 * a_0 * ds * w_J - 576 * T ** 2 * v_0 ** 2 * w_J + 1152 * T ** 2 * v_0 * v_T * w_J -
-                             576 * T ** 2 * v_T ** 2 * w_J - 2880 * T * T_m * v_0 * v_T * w_J + 2880 * T * T_m * v_T ** 2 * w_J + 2880 * T * ds * v_0 * w_J -
-                             2880 * T * ds * v_T * w_J - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * ds * v_T * w_J - 3600 * ds ** 2 * w_J) / T ** 6
 
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
