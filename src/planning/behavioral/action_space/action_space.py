@@ -4,6 +4,7 @@ from collections import defaultdict
 from logging import Logger
 from typing import List, Optional, Type
 
+import rte.python.profiler as prof
 from decision_making.src.exceptions import raises
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState

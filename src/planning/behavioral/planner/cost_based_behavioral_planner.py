@@ -1,9 +1,10 @@
 from abc import abstractmethod, ABCMeta
 from logging import Logger
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 import six
+from copy import deepcopy
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, TRAJECTORY_ARCLEN_RESOLUTION, \
