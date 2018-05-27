@@ -7,7 +7,7 @@ from decision_making.src.planning.trajectory.trajectory_planner import Samplable
 from decision_making.src.state.state import State, DynamicObject
 
 
-class ActionAwarePredictor(metaclass=ABCMeta):
+class EgoAwarePredictor(metaclass=ABCMeta):
     """
     Base class for advanced prediction logic, which is able to account for reactions to ego's action
     """
