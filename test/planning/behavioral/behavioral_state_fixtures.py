@@ -12,6 +12,7 @@ from decision_making.src.state.state import OccupancyState, State, NewEgoState, 
 from mapping.src.api.map_api import MapAPI
 from mapping.src.service.map_service import MapService, MapServiceArgs
 
+
 @pytest.fixture(scope='function')
 def pg_map_api():
     MapService.initialize(MapServiceArgs(map_source='TestingGroundMap3Lanes.bin'))
