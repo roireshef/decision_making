@@ -28,11 +28,13 @@ from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 UPDATED_TIMESTAMP_PARAM = 'updated_timestamp'
 OLD_TIMESTAMP_PARAM = 'old_timestamp'
 
+
 ### MESSAGES ###
 
 @pytest.fixture(scope='function')
 def car_size():
     yield ObjectSize(length=3.0, width=2.0, height=1.2)
+
 
 @pytest.fixture(scope='function')
 def navigation_plan():
@@ -153,11 +155,17 @@ def dynamic_objects_not_on_road():
 @pytest.fixture(scope='function')
 def state():
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
-    dyn1 = DynamicObject(1, 34, 0.1, 0.1, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
-    dyn2 = DynamicObject(1, 35, 10.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
+    v_x = 2.0
+    v_y = 2.0
+    v = np.linalg.norm([v_x, v_y])
+    dyn1 = DynamicObject(obj_id=1, timestamp=34, cartesian_state=np.array([0.1, 0.1, np.pi / 8.0, v, 0.0, 0.0]),
+                         map_state=None, size=ObjectSize(1, 1, 1), confidence=1.0)
+    dyn2 = DynamicObject(obj_id=1, timestamp=35, cartesian_state=np.array([10.0, 0.0, np.pi / 8.0, v, 0.0, 0.0]),
+                         map_state=None, size=ObjectSize(1, 1, 1), confidence=1.0)
     dynamic_objects = [dyn1, dyn2]
     size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
-    ego_state = EgoState(0, 0, 1, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
+    ego_state = EgoState(obj_id=0, timestamp=0, cartesian_state=np.array([1, 0, 0, 1.0, 0.0, 0]), map_state=None,
+                         size=size, confidence=0)
     yield State(occupancy_state, dynamic_objects, ego_state)
 
 
@@ -168,20 +176,31 @@ def state_with_old_object(request) -> State:
     """
     updated_timestamp = request.param[UPDATED_TIMESTAMP_PARAM]
     old_timestamp = request.param[OLD_TIMESTAMP_PARAM]
-
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
-    dyn1 = DynamicObject(1, updated_timestamp, 0.1, 0.1, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
-    dyn2 = DynamicObject(2, old_timestamp, 10.0, 0.0, 0.0, np.pi / 8.0, ObjectSize(1, 1, 1), 1.0, 2.0, 2.0, 0.0, 0.0)
+    v_x = 2.0
+    v_y = 2.0
+    v = np.linalg.norm([v_x, v_y])
+    dyn1 = DynamicObject(obj_id=1, timestamp=updated_timestamp,
+                         cartesian_state=np.array([0.1, 0.1, np.pi / 8.0, v, 0.0, 0.0]), map_state=None,
+                         size=ObjectSize(1, 1, 1), confidence=1.0)
+    dyn2 = DynamicObject(obj_id=2, timestamp=old_timestamp, cartesian_state=np.array([10.0, 0.0, np.pi / 8.0, v, 0.0,0.0]),
+                         map_state=None,size=ObjectSize(1, 1, 1),confidence= 1.0)
     dynamic_objects = [dyn1, dyn2]
     size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
-    ego_state = EgoState(1, old_timestamp, 1, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
+
+    ego_state = EgoState(obj_id=1, timestamp=old_timestamp, cartesian_state=np.array([1, 0, 0, 1.0, 0.0, 0]), map_state=None,
+                         size=size, confidence=0)
 
     yield State(occupancy_state, dynamic_objects, ego_state)
+
 
 @pytest.fixture(scope='function')
 def ego_state_fix():
     size = ObjectSize(0, 0, 0)
-    ego_state = EgoState(0, 5, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0, 0)
+
+    ego_state = EgoState(obj_id=0, timestamp=5, cartesian_state=np.array([0, 0, 0, 1.0, 0.0, 0]),
+                         map_state=None,
+                         size=size, confidence=0)
     yield ego_state
 
 
@@ -276,6 +295,7 @@ def trajectory_planner_facade(pubsub, trajectory, trajectory_visualization_msg):
     trajectory_planning_module.start()
     yield trajectory_planning_module
     trajectory_planning_module.stop()
+
 
 @pytest.fixture(scope='function')
 def predictor():
