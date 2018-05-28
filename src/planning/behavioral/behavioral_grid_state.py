@@ -44,6 +44,12 @@ class DynamicObjectWithRoadSemantics:
     its frenet state.
     """
     def __init__(self, dynamic_object: DynamicObject, distance: float, center_lane_latitude: float, fstate: FrenetState2D):
+        """
+        :param dynamic_object:
+        :param distance: Distance relative to ego
+        :param center_lane_latitude:
+        :param fstate: frenet state of dynamic object relative to road frenet curve
+        """
         self.dynamic_object = dynamic_object
         self.distance = distance
         self.center_lane_latitude = center_lane_latitude
