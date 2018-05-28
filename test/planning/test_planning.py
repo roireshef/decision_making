@@ -77,7 +77,8 @@ def test_behavioralPlanningFacade_semanticPolicy_anyResult(pubsub: PubSub, state
     planner = SingleStepBehavioralPlanner(action_space=action_space,
                                           recipe_evaluator=None,
                                           action_spec_evaluator=RuleBasedActionSpecEvaluator(bp_logger),
-                                          action_spec_validator=ActionSpecFiltering(filters=[FilterIfNone()]),
+                                          action_spec_validator=ActionSpecFiltering(filters=[FilterIfNone()],
+                                                                                    logger=bp_logger),
                                           value_approximator=ZeroValueApproximator(bp_logger),
                                           predictor=predictor, logger=bp_logger)
 
