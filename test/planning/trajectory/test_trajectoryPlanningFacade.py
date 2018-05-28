@@ -29,9 +29,8 @@ def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTr
     facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 
     exact_desired_state = samplable_trajectory.sample(np.array([1001]))[0]
-    close_state = EgoState(-1, 1001e9, exact_desired_state[C_X] + 0.1, exact_desired_state[C_Y] + 0.1,
-                           DEFAULT_OBJECT_Z_VALUE, exact_desired_state[C_YAW], ObjectSize(0, 0, 0), 1.0,
-                           exact_desired_state[C_V], 0.0, exact_desired_state[C_A], 0.0, 0.0)
+    close_state = EgoState(-1, 1001e9, np.array([exact_desired_state[C_X] + 0.1, exact_desired_state[C_Y] + 0.1,
+                           exact_desired_state[C_YAW],exact_desired_state[C_V], exact_desired_state[C_A], 0.0]), None, ObjectSize(0, 0, 0), 1.0)
 
     assert LocalizationUtils.is_actual_state_close_to_expected_state(close_state, facade._last_trajectory,
                                                                      facade.logger,
@@ -53,9 +52,9 @@ def test_isActualStateCloseToExpectedState_nonCloseTranslatedOnlyEgoState_return
     facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 
     exact_desired_state = samplable_trajectory.sample(np.array([1001]))[0]
-    close_state = EgoState(-1, 1001e9, exact_desired_state[C_X] + 200, exact_desired_state[C_Y] + 200,
-                           DEFAULT_OBJECT_Z_VALUE, exact_desired_state[C_YAW], ObjectSize(0, 0, 0), 1.0,
-                           exact_desired_state[C_V], 0.0, exact_desired_state[C_A], 0.0, 0.0)
+    close_state = EgoState(-1, 1001e9, np.array([exact_desired_state[C_X] + 200, exact_desired_state[C_Y] + 200,
+                           exact_desired_state[C_YAW],
+                           exact_desired_state[C_V], exact_desired_state[C_A], 0.0]), None, ObjectSize(0, 0, 0), 1.0)
 
     assert not LocalizationUtils.is_actual_state_close_to_expected_state(close_state, facade._last_trajectory,
                                                                          facade.logger,

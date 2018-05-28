@@ -5,7 +5,6 @@ import numpy as np
 
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE
 from decision_making.src.planning.types import C_Y, C_X, C_V, C_YAW
-from decision_making.test.planning.custom_fixtures import car_size
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import DynamicObject, EgoState, State, OccupancyState
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
@@ -51,21 +50,6 @@ def test_predictObject_zeroSpeedZeroLookahead_samePoint(car_size):
     predicted_traj = predictor.predict_object(dyn_obj, pred_timestamps)
 
     assert np.any(np.isclose(global_state, predicted_traj))
-
-
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-def test_predictObjectOnRoad_precisePrediction():
-    logger = AV_Logger.get_logger("test_predictObjectOnRoad_precisePrediction")
-    predictor = RoadFollowingPredictor(logger)
-    global_pos = np.array([500.0, 0.0, 0.0, 10.0])
-    dynamic_object = DynamicObject(obj_id=1, timestamp=0, x=global_pos[C_X], y=global_pos[C_Y], z=DEFAULT_OBJECT_Z_VALUE,
-                                   yaw=global_pos[C_YAW], size=car_size, confidence=0, v_x=global_pos[C_V], v_y=0,
-                                   acceleration_lon=0, omega_yaw=0)
-
-    pred_timestamps = np.arange(4.0, 11.0, 0.1)
-    pred_object_state = predictor.predict_object_on_road(dynamic_object, pred_timestamps)
-    assert np.isclose(pred_object_state[0].road_localization.road_lon, 540.) and \
-           np.isclose(pred_object_state[-1].road_localization.road_lon, 609.)
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
