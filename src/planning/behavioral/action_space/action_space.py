@@ -116,6 +116,7 @@ class ActionSpaceContainer(ActionSpace):
             [zip(grouped_idxs[action_class], self._recipe_handler[action_class].specify_goals(action_list, behavioral_state))
              for action_class, action_list in grouped_actions.items()]))
 
+        # returns action_specs, sorted by their initial recipe ordering
         return [action for idx, action in sorted(indexed_action_specs, key=lambda idx_action: idx_action[0])]
 
     @raises(NotImplemented)

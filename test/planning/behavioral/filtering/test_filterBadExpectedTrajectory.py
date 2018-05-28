@@ -33,7 +33,7 @@ from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import
 import numpy as np
 
 
-def test_filter_follow_vehicle_tracking_filter_results_match_expected(
+def test_filter_followVehicleTracking_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_filtering_tracking_mode: BehavioralGridState,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
     logger = AV_Logger.get_logger()
@@ -53,7 +53,7 @@ def test_filter_follow_vehicle_tracking_filter_results_match_expected(
     np.testing.assert_array_almost_equal(filter_results, expected_filter_results)
 
 
-def test_filter_follow_vehicle_sT_negative_filter_results_match_expected(
+def test_filter_followVehicleSTNegative_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_filtering_negative_sT: BehavioralGridState,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
     logger = AV_Logger.get_logger()
@@ -74,7 +74,7 @@ def test_filter_follow_vehicle_sT_negative_filter_results_match_expected(
     np.testing.assert_array_almost_equal(filter_results, expected_filter_results)
 
 
-def test_filter_follow_vehicle_too_aggressive_filter_results_match_expected(
+def test_filter_followVehicleTooAggressive_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_filtering_too_aggressive: BehavioralGridState,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
     logger = AV_Logger.get_logger()
@@ -95,7 +95,7 @@ def test_filter_follow_vehicle_too_aggressive_filter_results_match_expected(
     np.testing.assert_array_almost_equal(filter_results, expected_filter_results)
 
 
-def test_filter_follow_lane_filter_results_match_expected(
+def test_filter_followLane_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_filtering_tracking_mode: BehavioralGridState,
         follow_lane_recipes: List[StaticActionRecipe]):
     logger = AV_Logger.get_logger()
