@@ -39,11 +39,16 @@ class RelativeLongitudinalPosition(Enum):
 
 
 class DynamicObjectWithRoadSemantics:
+    """
+    This data object holds together the dynamic_object coupled with the distance from ego, his lane center latitude and
+    its frenet state.
+    """
     def __init__(self, dynamic_object: DynamicObject, distance: float, center_lane_latitude: float, fstate: FrenetState2D):
         self.dynamic_object = dynamic_object
         self.distance = distance
         self.center_lane_latitude = center_lane_latitude
         self.fstate = fstate
+
 
 # Define semantic cell
 SemanticGridCell = Tuple[RelativeLane, RelativeLongitudinalPosition]

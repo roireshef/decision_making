@@ -130,9 +130,9 @@ def test_specifyGoals_acceleration_accelerationsCoverage():
             acc_values = Math.polyval2d(acc_poly, T_vals)[0]
             max_acc.append(np.max(acc_values))
 
-    # calm acceleration       = [0.4 - 0.8]
-    # standard acceleration   = [0.8 - 1.5]
-    # aggressive acceleration = [1.5 - 3.0]
-    assert len(max_acc) >= 3
-    assert max_acc[2] / max_acc[1] < 3
-    assert max_acc[1] / max_acc[0] < 3
+    # calm acceleration       = [0.3 - 0.5]
+    # standard acceleration   = [0.5 - 0.7]
+    # aggressive acceleration = [2.3 - 2.5]
+    assert len(max_acc) == 3
+    assert max_acc[2] / max_acc[1] < 4
+    assert max_acc[1] / max_acc[0] < 2

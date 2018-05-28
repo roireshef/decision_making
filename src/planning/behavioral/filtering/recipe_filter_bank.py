@@ -28,6 +28,11 @@ class FilterBadExpectedTrajectory(RecipeFilter):
 
     @staticmethod
     def read_predicates(predicates_dir):
+        """
+        This method reads boolean maps from file into a dictionary mapping a tuple of (action_type,weights) to a binary LUT.
+        :param predicates_dir: The directory holding all binary maps (.bin files)
+        :return: a dictionary mapping a tuple of (action_type,weights) to a binary LUT.
+        """
         directory = Paths.get_resource_absolute_path_filename(predicates_dir)
         predicates = {}
         for filename in os.listdir(directory):
@@ -45,6 +50,7 @@ class FilterBadExpectedTrajectory(RecipeFilter):
 
         return predicates
 
+    # TODO: Move to test folder when agent is in steady state (global constants don't get changed)
     @staticmethod
     def validate_predicate_constants(predicates_dir):
         """
@@ -72,6 +78,14 @@ class FilterBadExpectedTrajectory(RecipeFilter):
         return True
 
     def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
+        """
+        This filter checks if recipe might cause a bad action specification, meaning velocity or acceleration are too
+        aggressive, action time is too long or safety will be violated by entering non-safe zone while action is being
+        taken. Filtering is based on querying a boolean predicate (LUT) created offline.
+        :param recipe:
+        :param behavioral_state:
+        :return: True if recipe is valid, otherwise False
+        """
         action_type = recipe.action_type
         ego_state = behavioral_state.ego_state
         v_0 = ego_state.v_x
