@@ -92,19 +92,25 @@ class CostBasedBehavioralPlanner:
         # when it is long, the error will potentially be big.
         lookahead_distance = action_spec.s * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
-        # TODO: here we assume that ego and the goal share the same road. Use nav_plan instead
-        road = map_api.get_segment(ego.map_state.road_id)
-        road_frame = road.get_as_frame()._center_frame
+        ego_road = map_api.get_road(ego.map_state.road_id)
+        # TODO: here we assume ego and the goal share the same road. Use nav_plan instead
+        goal_segment = ego_road.get_segment_by_lon(action_spec.s)
+        goal_lane = goal_segment.get_lane_by_lat(action_spec.s - goal_segment.s_start, action_spec.d)
+        goal_lane_frame = goal_lane.get_as_frame()._center_frame
 
         # TODO: remove it when Frenet frame will be transferred to TP
         longitudes = np.arange(0, lookahead_distance, TRAJECTORY_ARCLEN_RESOLUTION)
-        lookahead_fpoints = np.c_[longitudes, np.repeat(0, len(longitudes))]
-        center_lane_reference_route = road_frame.fpoints_to_cpoints(lookahead_fpoints)
-        # Convert goal state from frenet-frame to Cartesian state
-        goal_cstate = road_frame.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0, 0, 0, 0]))
+        lookahead_fpoints = np.c_[longitudes, np.repeat(0, len(longitudes))]  # center-lane points in goal_lane frenet
+        center_lane_reference_route = goal_lane_frame.fpoints_to_cpoints(lookahead_fpoints)
+
+        # Convert goal state from ROAD frenet-frame to Cartesian state
+        road_id = ego.map_state.road_id
+        road_frame = map_api.get_segment(road_id).get_as_frame()._center_frame
+        goal_cstate = road_frame.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0,
+                                                            action_spec.d - road_width?, 0, 0]))
 
         # this assumes the target falls on the reference route
-        cost_params = CostBasedBehavioralPlanner._generate_cost_params(ego, action_spec.d, action_spec.s)
+        cost_params = CostBasedBehavioralPlanner._generate_cost_params(ego.size, road_id, action_spec.d, action_spec.s)
 
         trajectory_parameters = TrajectoryParams(reference_route=center_lane_reference_route,
                                                  time=action_spec.t + ego.timestamp_in_sec,
@@ -114,7 +120,7 @@ class CostBasedBehavioralPlanner:
         return trajectory_parameters
 
     @staticmethod
-    def generate_baseline_trajectory(ego: EgoState, action_spec: ActionSpec) -> SamplableTrajectory:
+    def generate_baseline_trajectory(ego: NewEgoState, action_spec: ActionSpec) -> SamplableTrajectory:
         """
         Creates a SamplableTrajectory as a reference trajectory for a given ActionSpec, assuming T_d=T_s
         :param ego: ego object
@@ -146,31 +152,31 @@ class CostBasedBehavioralPlanner:
                                           poly_d_coefs=poly_coefs_d)
 
     @staticmethod
-    def _generate_cost_params(ego: NewEgoState, reference_route_lat: float, goal_road_lon: float) -> \
-            TrajectoryCostParams:
+    def _generate_cost_params(ego_size: ObjectSize, ego_road_id: int, reference_route_lat: float,
+                              goal_road_lon: float) -> TrajectoryCostParams:
 
         map_api = MapService.get_instance()
 
         # TODO: here we assume ego and the goal are on the same road. Use nav_plan instead
-        ego_road = map_api.get_road(ego.map_state.road_id)
+        ego_road = map_api.get_road(ego_road_id)
         goal_segment = ego_road.get_segment_by_lon(goal_road_lon)
         segment_lon = goal_road_lon - goal_segment.s_start
 
         # TODO: here we assume a constant lane width along the trajectory
         _, lane_right_bound, lane_left_bound = goal_segment.find_lane_lateral_bounds(segment_lon, reference_route_lat)
-        right_lane_offset = reference_route_lat - lane_right_bound - ego.size.width / 2
-        left_lane_offset = lane_left_bound - reference_route_lat - ego.size.width / 2
+        right_lane_offset = reference_route_lat - lane_right_bound - ego_size.width / 2
+        left_lane_offset = lane_left_bound - reference_route_lat - ego_size.width / 2
 
         road_width = ego_road.get_width(goal_road_lon)
         # as stated above, for shoulders
-        right_shoulder_offset = reference_route_lat - ego.size.width / 2 + SHOULDER_SIGMOID_OFFSET
+        right_shoulder_offset = reference_route_lat - ego_size.width / 2 + SHOULDER_SIGMOID_OFFSET
         # as stated above, for shoulders
-        left_shoulder_offset = road_width - reference_route_lat - ego.size.width / 2 + SHOULDER_SIGMOID_OFFSET
+        left_shoulder_offset = road_width - reference_route_lat - ego_size.width / 2 + SHOULDER_SIGMOID_OFFSET
 
         # as stated above, for whole road including shoulders
-        right_road_offset = reference_route_lat - ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
+        right_road_offset = reference_route_lat - ego_size.width / 2 + ROAD_SHOULDERS_WIDTH
         # as stated above, for whole road including shoulders
-        left_road_offset = road_width - reference_route_lat - ego.size.width / 2 + ROAD_SHOULDERS_WIDTH
+        left_road_offset = road_width - reference_route_lat - ego_size.width / 2 + ROAD_SHOULDERS_WIDTH
 
         # Set road-structure-based cost parameters
         right_lane_cost = SigmoidFunctionParams(w=DEVIATION_FROM_LANE_COST, k=LANE_SIGMOID_K_PARAM,
@@ -188,8 +194,8 @@ class CostBasedBehavioralPlanner:
 
         # Set objects parameters
         # dilate each object by ego length + safety margin
-        objects_dilation_length = SemanticActionsUtils.get_ego_lon_margin(ego.size)
-        objects_dilation_width = SemanticActionsUtils.get_ego_lat_margin(ego.size)
+        objects_dilation_length = SemanticActionsUtils.get_ego_lon_margin(ego_size)
+        objects_dilation_width = SemanticActionsUtils.get_ego_lat_margin(ego_size)
         objects_cost_x = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
                                                offset=objects_dilation_length)  # Very high (inf) cost
         objects_cost_y = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,

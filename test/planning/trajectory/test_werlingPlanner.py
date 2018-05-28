@@ -146,7 +146,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
 
     for test_idx in range(0, 49):
 
-        reference_route_latitude = 3 * lane_width / 2
+        reference_route_lat = 3 * lane_width / 2
         start_ego_lat = lane_width / 2
 
         if test_idx < 20 or test_idx >= 40:
@@ -159,7 +159,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             goal_latitude = lane_width / 2
         else:  # test jerk vs. goal
             obs_poses = np.array([])
-            goal_latitude = reference_route_latitude = start_ego_lat = lane_width / 2
+            goal_latitude = reference_route_lat = start_ego_lat = lane_width / 2
             v0 = 8
             vT = 8
             T = 2*lng/(v0+vT + (test_idx-40))
@@ -180,18 +180,18 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
         # Create reference route (normal and extended). The extension is intended to prevent
         # overflow of projection on the ref route
         route_points, ext_route_points, map = create_route_for_test_werlingPlanner(ROAD_ID, num_lanes, lane_width,
-                                                                              reference_route_latitude, lng, ext,
+                                                                              reference_route_lat, lng, ext,
                                                                               curvature)
         with patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=lambda : map):
 
             frenet = FrenetSerret2DFrame(ext_route_points[:, :2])
 
             # create state and goal based on ego parameters and obstacles' location
-            state, goal = create_state_for_test_werlingPlanner(frenet, obs_poses, reference_route_latitude, ext, lng,
+            state, goal = create_state_for_test_werlingPlanner(frenet, obs_poses, reference_route_lat, ext, lng,
                                                                v0, vT, start_ego_lat, goal_latitude)
 
-            cost_params = CostBasedBehavioralPlanner._generate_cost_params(road_id=ROAD_ID, ego_size=state.ego_state.size,
-                                                                           reference_route_lat=reference_route_latitude)
+            cost_params = CostBasedBehavioralPlanner._generate_cost_params(state.ego_state.size,
+                                                                           ROAD_ID, reference_route_lat, ext)
 
             # run Werling planner
             planner = WerlingPlanner(logger, predictor)
@@ -209,10 +209,10 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
 
             # create pixels grid of the visualization image and compute costs for these pixels for given time samples
             t = 0  # time index of time_samples
-            pixels, pixel_costs = compute_pixel_costs(route_points, reference_route_latitude, road_width, state,
+            pixels, pixel_costs = compute_pixel_costs(route_points, reference_route_lat, road_width, state,
                                                       cost_params, time_samples[t:(t + 1)], planner, frenet)
 
-            visualize_test_scenario(route_points, reference_route_latitude, road_width, state, goal, ctrajectories, costs,
+            visualize_test_scenario(route_points, reference_route_lat, road_width, state, goal, ctrajectories, costs,
                                     pixels, pixel_costs, plottable_obs, 'test_costs' + str(test_idx) + '.png')
 
 
