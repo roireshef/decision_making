@@ -4,6 +4,7 @@ from typing import Optional, List, Type
 import numpy as np
 from sklearn.utils.extmath import cartesian
 
+import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, SAFE_DIST_TIME_DELAY, \
     BP_JERK_S_JERK_D_TIME_WEIGHTS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
@@ -11,7 +12,6 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, DynamicActionRecipe, \
     ActionType, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
-from decision_making.src.planning.behavioral.filtering import recipe_filter_bank
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import LIMIT_MAX, FS_SV, FS_SX, LIMIT_MIN, FS_SA, FS_DA, FS_DV, FS_DX
 from decision_making.src.planning.utils.map_utils import MapUtils
@@ -37,6 +37,7 @@ class DynamicActionSpace(ActionSpace):
         """a list of Recipe classes this action space can handle with"""
         return [DynamicActionRecipe]
 
+    @prof.ProfileFunction()
     def specify_goals(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> \
             List[Optional[ActionSpec]]:
         """

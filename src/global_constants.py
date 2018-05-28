@@ -78,7 +78,6 @@ VELOCITY_STEP = 10/3.6
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
 BP_ACTION_T_LIMITS = np.array([2.0, 20.0])
-BP_ACTION_T_RES = 0.0001
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
@@ -248,6 +247,3 @@ LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME = "BehavioralFacade._periodic_action_impl t
 
 # Resolution of car timestamps in sec
 TIMESTAMP_RESOLUTION_IN_SEC = 1e-9
-
-# Maximal prediction horizon in [sec] for short-time alignment predictor
-TIME_ALIGNMENT_PREDICTOR_MAX_HORIZON = 0.4

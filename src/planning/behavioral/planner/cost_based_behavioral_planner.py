@@ -1,15 +1,18 @@
 from abc import abstractmethod, ABCMeta
 from logging import Logger
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 import six
+from copy import deepcopy
 
+import rte.python.profiler as prof
 from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, TRAJECTORY_ARCLEN_RESOLUTION, \
     SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, \
     DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, \
     OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, \
-    DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS
+    DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, \
+    LAT_ACC_LIMITS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
@@ -65,7 +68,37 @@ class CostBasedBehavioralPlanner:
         """
         pass
 
+    @prof.ProfileFunction()
+    def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray) -> List[State]:
+        """
+        Given current state and action specifications, generate a corresponding list of future states using the
+        predictor. Uses mask over list of action specifications to avoid unnecessary computation
+        :param state: the current world state
+        :param action_specs: list of action specifications
+        :param mask: 1D mask vector (boolean) for filtering valid action specifications
+        :return: a list of terminal states
+        """
+        # TODO: validate time units (all in seconds? global?)
+        # generate the simulated terminal states for all actions using predictor
+        action_horizons = np.array([action_spec.t
+                                    if mask[i] else np.nan
+                                    for i, action_spec in enumerate(action_specs)])
+
+        # TODO: replace numpy array with fast sparse-list implementation
+        terminal_states = np.full(shape=action_horizons.shape, fill_value=None)
+        terminal_states[mask] = deepcopy(state)          # TODO: fix bug in predictor
+        # self.predictor.predict_state(state, action_horizons[mask] + state.ego_state.timestamp_in_sec)
+        terminal_states = list(terminal_states)
+
+        # transform terminal states into behavioral states
+        terminal_behavioral_states = [BehavioralGridState.create_from_state(state=terminal_state, logger=self.logger)
+                                      if mask[i] else None
+                                      for i, terminal_state in enumerate(terminal_states)]
+
+        return terminal_behavioral_states
+
     @staticmethod
+    @prof.ProfileFunction()
     def _generate_trajectory_specs(behavioral_state: BehavioralGridState,
                                    action_spec: ActionSpec,
                                    navigation_plan: NavigationPlanMsg) -> TrajectoryParams:
@@ -131,6 +164,7 @@ class CostBasedBehavioralPlanner:
         return trajectory_parameters
 
     @staticmethod
+    @prof.ProfileFunction()
     def generate_baseline_trajectory(ego: EgoState, action_spec: ActionSpec) -> SamplableTrajectory:
         """
         Creates a SamplableTrajectory as a reference trajectory for a given ActionSpec, assuming T_d=T_s
