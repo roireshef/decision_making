@@ -52,7 +52,7 @@ def test_specifyGoals_accelerationFrom0_atLeastOneActionInLimits():
     lane_width = MapService.get_instance().get_road(road_id).lane_width
     road_mid_lat = MapService.get_instance().get_road(road_id).lanes_num * lane_width / 2
     size = ObjectSize(4, 2, 1)
-    target_vel = 57 / 3.6
+    target_vel = 47 / 3.6
 
     action_space = StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING)
     action_space._recipes = np.array([StaticActionRecipe(RelativeLane.SAME_LANE, target_vel, AggressivenessLevel.CALM),
@@ -68,8 +68,11 @@ def test_specifyGoals_accelerationFrom0_atLeastOneActionInLimits():
 
     state = State(None, [], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, logger)
-
-    action_specs = action_space.specify_goals(action_space.recipes, behavioral_state)
+    action_recipes = action_space.recipes
+    recipes_mask = action_space.filter_recipes(action_recipes, behavioral_state)
+    action_specs = np.full(action_recipes.__len__(), None)
+    valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
+    action_specs[recipes_mask] = action_space.specify_goals(valid_action_recipes, behavioral_state)
 
     # at least one spec should be in limits
     in_limits = False
@@ -109,8 +112,11 @@ def test_specifyGoals_acceleration_accelerationsCoverage():
 
     state = State(None, [], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, logger)
-
-    action_specs = action_space.specify_goals(action_space.recipes, behavioral_state)
+    action_recipes = action_space.recipes
+    recipes_mask = action_space.filter_recipes(action_recipes, behavioral_state)
+    action_specs = np.full(action_recipes.__len__(), None)
+    valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
+    action_specs[recipes_mask] = action_space.specify_goals(valid_action_recipes, behavioral_state)
 
     max_acc = []
     for spec in action_specs:
