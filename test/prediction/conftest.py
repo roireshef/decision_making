@@ -8,8 +8,7 @@ from decision_making.src.planning.trajectory.trajectory_planner import Samplable
 from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_YAW, C_V
 from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
     PhysicalTimeAlignmentPredictor
-from decision_making.src.prediction.action_unaware_prediction.road_ego_unaware_predictor import \
-    RoadEgoUnawarePredictor
+
 from decision_making.src.prediction.ego_aware_prediction.road_ego_aware_predictor import RoadEgoAwarePredictor
 from decision_making.src.state.state import DynamicObject, ObjectSize, EgoState, State, OccupancyState
 from decision_making.test.planning.trajectory.mock_samplable_trajectory import MockSamplableTrajectory
@@ -23,12 +22,6 @@ EGO_OBJECT_ID = 0
 def physical_time_alignment_predictor() -> PhysicalTimeAlignmentPredictor:
     logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
     yield PhysicalTimeAlignmentPredictor(logger)
-
-
-@pytest.fixture(scope='function')
-def road_action_unaware_predictor() -> RoadEgoUnawarePredictor:
-    logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
-    yield RoadEgoUnawarePredictor(logger)
 
 
 @pytest.fixture(scope='function')

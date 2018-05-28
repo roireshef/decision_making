@@ -23,7 +23,7 @@ class PredictionUtils:
 
         predicted_object_states = [dynamic_object.clone_cartesian_state(timestamp_in_sec=prediction_timestamps[t_ind],
                                                                         cartesian_state=predictions[t_ind]) for t_ind in
-                                   range(len(prediction_timestamps)]
+                                   range(len(prediction_timestamps))]
 
         return predicted_object_states
 
