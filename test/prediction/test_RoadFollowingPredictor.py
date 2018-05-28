@@ -10,7 +10,7 @@ from decision_making.src.state.state import DynamicObject, EgoState, State, Occu
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
-
+from decision_making.test.planning.custom_fixtures import car_size
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_predictObjectTrajectories_precisePredictionDynamicAndStaticObjectMultipleSingleTimestamp(car_size):
