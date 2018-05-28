@@ -13,10 +13,8 @@ from decision_making.src.state.state import ObjectSize, EgoState, State
 from mapping.src.service.map_service import MapService
 
 
-
 # test Specify, when ego starts with velocity very close to the target velocity
-def test_specifyGoal_closeToTargetVelocity_specifyNotFail():
-
+def test_specifyGoals_closeToTargetVelocity_specifyNotFail():
     logger = Logger("test_specifyStaticAction")
     road_id = 20
     ego_lon = 400.
@@ -28,17 +26,18 @@ def test_specifyGoal_closeToTargetVelocity_specifyNotFail():
 
     target_vel = action_space.recipes[0].velocity
     ego_vel = target_vel + 0.01
-    ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon, road_mid_lat - lane_width)
+    ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon,
+                                                                                       road_mid_lat - lane_width)
     ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, ego_vel, 0, 0, 0, 0)
 
     state = State(None, [], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, logger)
 
-    action_specs = [action_space.specify_goal(recipe, behavioral_state) for i, recipe in enumerate(action_space.recipes)]
+    action_specs = action_space.specify_goals(action_space.recipes, behavioral_state)
 
     specs = [action_specs[i] for i, recipe in enumerate(action_space.recipes)
-                if recipe.relative_lane == RelativeLane.SAME_LANE and recipe.aggressiveness == AggressivenessLevel.CALM
-                        and recipe.velocity == target_vel]
+             if recipe.relative_lane == RelativeLane.SAME_LANE and recipe.aggressiveness == AggressivenessLevel.CALM
+             and recipe.velocity == target_vel]
 
     # check specification of CALM SAME_LANE static action
     assert len(specs) > 0 and specs[0] is not None
@@ -46,29 +45,31 @@ def test_specifyGoal_closeToTargetVelocity_specifyNotFail():
 
 # check if accelerations for different aggressiveness levels are in limits
 # static action from 0 to 57 km/h
-def test_specifyGoal_accelerationFrom0_atLeastOneActionInLimits():
-
+def test_specifyGoals_accelerationFrom0_atLeastOneActionInLimits():
     logger = Logger("test_specifyStaticAction")
     road_id = 20
     ego_lon = 400.
     lane_width = MapService.get_instance().get_road(road_id).lane_width
     road_mid_lat = MapService.get_instance().get_road(road_id).lanes_num * lane_width / 2
     size = ObjectSize(4, 2, 1)
-    target_vel = 57/3.6
+    target_vel = 57 / 3.6
 
     action_space = StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING)
     action_space._recipes = np.array([StaticActionRecipe(RelativeLane.SAME_LANE, target_vel, AggressivenessLevel.CALM),
-                                      StaticActionRecipe(RelativeLane.SAME_LANE, target_vel, AggressivenessLevel.STANDARD),
-                                      StaticActionRecipe(RelativeLane.SAME_LANE, target_vel, AggressivenessLevel.AGGRESSIVE)])
+                                      StaticActionRecipe(RelativeLane.SAME_LANE, target_vel,
+                                                         AggressivenessLevel.STANDARD),
+                                      StaticActionRecipe(RelativeLane.SAME_LANE, target_vel,
+                                                         AggressivenessLevel.AGGRESSIVE)])
 
     ego_vel = 0
-    ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon, road_mid_lat - lane_width)
+    ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon,
+                                                                                       road_mid_lat - lane_width)
     ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, ego_vel, 0, 0, 0, 0)
 
     state = State(None, [], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, logger)
 
-    action_specs = [action_space.specify_goal(recipe, behavioral_state) for i, recipe in enumerate(action_space.recipes)]
+    action_specs = action_space.specify_goals(action_space.recipes, behavioral_state)
 
     # at least one spec should be in limits
     in_limits = False
@@ -84,8 +85,7 @@ def test_specifyGoal_accelerationFrom0_atLeastOneActionInLimits():
 
 # check if accelerations for different aggressiveness levels cover various accelerations
 # test static actions from 9 to 14 m/s
-def test_specifyGoal_acceleration_accelerationsCoverage():
-
+def test_specifyGoals_acceleration_accelerationsCoverage():
     logger = Logger("test_specifyStaticAction")
     road_id = 20
     ego_lon = 400.
@@ -96,18 +96,21 @@ def test_specifyGoal_acceleration_accelerationsCoverage():
 
     action_space = StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING)
     action_space._recipes = np.array([StaticActionRecipe(RelativeLane.SAME_LANE, target_vel, AggressivenessLevel.CALM),
-                                      StaticActionRecipe(RelativeLane.SAME_LANE, target_vel, AggressivenessLevel.STANDARD),
-                                      StaticActionRecipe(RelativeLane.SAME_LANE, target_vel, AggressivenessLevel.AGGRESSIVE)])
+                                      StaticActionRecipe(RelativeLane.SAME_LANE, target_vel,
+                                                         AggressivenessLevel.STANDARD),
+                                      StaticActionRecipe(RelativeLane.SAME_LANE, target_vel,
+                                                         AggressivenessLevel.AGGRESSIVE)])
 
     # verify the specification times are not too long for accelerations from 32 to 50 km/h
     ego_vel = 9
-    ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon, road_mid_lat - lane_width)
+    ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon,
+                                                                                       road_mid_lat - lane_width)
     ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, ego_vel, 0, 0, 0, 0)
 
     state = State(None, [], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, logger)
 
-    action_specs = [action_space.specify_goal(recipe, behavioral_state) for i, recipe in enumerate(action_space.recipes)]
+    action_specs = action_space.specify_goals(action_space.recipes, behavioral_state)
 
     max_acc = []
     for spec in action_specs:

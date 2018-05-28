@@ -8,6 +8,16 @@ from decision_making.src.planning.utils.file_utils import TextReadWrite
 from decision_making.test.planning.utils.optimal_control.quartic_poly_formulas import QuarticMotionPredicatesCreator
 from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import QuinticMotionPredicatesCreator
 
+"""
+This script initializes predicate creators objects and then use them to create predicates (boolean LUTs) for filtering 
+recipes which are supposed to be non-valid and thus don't need to be specified. The predicates are created based on
+constants defined in global_constants and has to stay the same in the environment of the one running it. 
+The constants we use are the sets of jerk-time weights, the grids that define the resolution of the predicates and
+the safety time behind or ahead of the followed or overtaken vehicle, respectively. These constants are documented by
+being written to a .txt file that will be read in the initializing of the predicates and their values will be verified
+against the values used in the target machine.  
+"""
+
 
 def main():
     weights = BP_JERK_S_JERK_D_TIME_WEIGHTS

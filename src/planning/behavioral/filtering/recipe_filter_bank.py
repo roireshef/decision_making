@@ -1,6 +1,6 @@
 import os
 
-from decision_making.src.exceptions import ResourcesNotUpdatedException
+from decision_making.src.exceptions import ResourcesNotUpToDateException
 from decision_making.src.global_constants import *
 from decision_making.paths import Paths
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -23,7 +23,7 @@ class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
 class FilterBadExpectedTrajectory(RecipeFilter):
     def __init__(self, predicates_dir: str):
         if not self.validate_predicate_constants(predicates_dir):
-            raise ResourcesNotUpdatedException('Predicates files were creates with other set of constants')
+            raise ResourcesNotUpToDateException('Predicates files were creates with other set of constants')
         self.predicates = self.read_predicates(predicates_dir)
 
     @staticmethod

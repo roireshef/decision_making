@@ -16,64 +16,59 @@ from decision_making.src.planning.utils.numpy_utils import UniformGrid
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
 
-def create_quintic_motion_funcs(a_0, v_0, v_T, s_T, T, T_m):
-    return QuinticPoly1D.distance_from_target(a_0, v_0, v_T, s_T, T, T_m), \
-           QuinticPoly1D.distance_from_target_derivative_coefs(a_0, v_0, v_T, s_T, T, T_m), \
-           QuinticPoly1D.velocity_profile_function(a_0, v_0, v_T, s_T, T, T_m), \
-           QuinticPoly1D.acceleration_profile_function(a_0, v_0, v_T, s_T, T, T_m)
+class QuinticMotionSymbolicsCreator:
+    @staticmethod
+    def create_symbolic_quintic_motion_equations():
+        """
+        This function uses symbolic package SymPy and computes the motion equations and cost function used for analysis of
+        trajectories (in e.g. desmos) , action specification and filtering.
+        """
+        T = symbols('T')
+        t = symbols('t')
+        Tm = symbols('T_m')  # safety margin in seconds
 
+        s0, v0, a0, sT, vT, aT = symbols('s_0 v_0 a_0 s_T v_T a_T')
 
-def create_symbolic_quintic_motion_equations():
-    """
-    This function uses symbolic package SymPy and computes the motion equations and cost function used for analysis of
-    trajectories (in e.g. desmos) , action specification and filtering.
-    """
-    T = symbols('T')
-    t = symbols('t')
-    Tm = symbols('T_m')  # safety margin in seconds
+        A = Matrix([
+            [0, 0, 0, 0, 0, 1],
+            [0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 2, 0, 0],
+            [T ** 5, T ** 4, T ** 3, T ** 2, T, 1],
+            [5 * T ** 4, 4 * T ** 3, 3 * T ** 2, 2 * T, 1, 0],
+            [20 * T ** 3, 12 * T ** 2, 6 * T, 2, 0, 0]]
+        )
 
-    s0, v0, a0, sT, vT, aT = symbols('s_0 v_0 a_0 s_T v_T a_T')
+        # solve to get solution
+        # this assumes a0=aT==0 (constant velocity)
+        [c5, c4, c3, c2, c1, c0] = A.inv() * Matrix([s0, v0, a0, sT + vT * (T - Tm), vT, aT])
 
-    A = Matrix([
-        [0, 0, 0, 0, 0, 1],
-        [0, 0, 0, 0, 1, 0],
-        [0, 0, 0, 2, 0, 0],
-        [T ** 5, T ** 4, T ** 3, T ** 2, T, 1],
-        [5 * T ** 4, 4 * T ** 3, 3 * T ** 2, 2 * T, 1, 0],
-        [20 * T ** 3, 12 * T ** 2, 6 * T, 2, 0, 0]]
-    )
+        x_t = (c5 * t ** 5 + c4 * t ** 4 + c3 * t ** 3 + c2 * t ** 2 + c1 * t + c0).simplify()
+        v_t = sp.diff(x_t, t).simplify()
+        a_t = sp.diff(v_t, t).simplify()
+        j_t = sp.diff(a_t, t).simplify()
 
-    # solve to get solution
-    # this assumes a0=aT==0 (constant velocity)
-    [c5, c4, c3, c2, c1, c0] = A.inv() * Matrix([s0, v0, a0, sT + vT * (T - Tm), vT, aT])
+        J = sp.integrate(j_t ** 2, (t, 0, T)).simplify()
 
-    x_t = (c5 * t ** 5 + c4 * t ** 4 + c3 * t ** 3 + c2 * t ** 2 + c1 * t + c0).simplify()
-    v_t = sp.diff(x_t, t).simplify()
-    a_t = sp.diff(v_t, t).simplify()
-    j_t = sp.diff(a_t, t).simplify()
+        wJ, wT = symbols('w_J w_T')
 
-    J = sp.integrate(j_t ** 2, (t, 0, T)).simplify()
+        cost = (wJ * J + wT * T).simplify()
 
-    wJ, wT = symbols('w_J w_T')
+        cost = cost.subs(s0, 0).subs(aT, 0).simplify()
+        cost_diff = sp.diff(cost, T).simplify()
 
-    cost = (wJ * J + wT * T).simplify()
+        package_v_t = v_t.subs(s0, 0).subs(aT, 0).simplify()
+        package_delta_s_t = (sT + vT * t - x_t.subs(s0, 0).subs(aT, 0)).simplify()
+        package_distance_from_target_deriv = sp.diff(package_delta_s_t, t).simplify()
+        package_a_t = sp.diff(package_v_t, t).simplify()
 
-    cost = cost.subs(s0, 0).subs(aT, 0).simplify()
-    cost_diff = sp.diff(cost, T).simplify()
+        cost_desmos = cost.subs(a0, 0).simplify()
+        cost_diff_desmos = cost_diff.subs(a0, 0).simplify()
+        delta_s_t_desmos = package_delta_s_t.subs(a0, 0).simplify()
+        v_t_desmos = package_v_t.subs(a0, 0).simplify()
+        a_t_desmos = package_a_t.subs(a0, 0).simplify()
 
-    package_v_t = v_t.subs(s0, 0).subs(aT, 0).simplify()
-    package_delta_s_t = (sT + vT * t - x_t.subs(s0, 0).subs(aT, 0)).simplify()
-    package_distance_from_target_deriv = sp.diff(package_delta_s_t, t).simplify()
-    package_a_t = sp.diff(package_v_t, t).simplify()
-
-    cost_desmos = cost.subs(a0, 0).simplify()
-    cost_diff_desmos = cost_diff.subs(a0, 0).simplify()
-    delta_s_t_desmos = package_delta_s_t.subs(a0, 0).simplify()
-    v_t_desmos = package_v_t.subs(a0, 0).simplify()
-    a_t_desmos = package_a_t.subs(a0, 0).simplify()
-
-    return package_v_t, package_delta_s_t, package_distance_from_target_deriv, package_a_t, cost_desmos, \
-           cost_diff_desmos, delta_s_t_desmos, v_t_desmos, a_t_desmos
+        return package_v_t, package_delta_s_t, package_distance_from_target_deriv, package_a_t, cost_desmos, \
+               cost_diff_desmos, delta_s_t_desmos, v_t_desmos, a_t_desmos
 
 
 class QuinticMotionPredicatesCreator:
@@ -101,6 +96,23 @@ class QuinticMotionPredicatesCreator:
                         fill_value=False)
 
     @staticmethod
+    def create_quintic_motion_funcs(a_0, v_0, v_T, s_T, T, T_m):
+        """
+        :param a_0: initial acceleration [m/s^2]
+        :param v_0: initial velocity [m/s^2]
+        :param v_T: desired velocity [m/s^2]
+        :param s_T: initial distance from target [m]
+        :param T: action_time [s]
+        :param T_m: safety time behind or ahead of target vehicle [s]
+        :return: lambda functions of distance_from_target, the coefficients of the derivative polynomial of distance
+         from target, velocity and acceleration w.r.t time (valid in the range [0,T])
+        """
+        return QuinticPoly1D.distance_from_target(a_0, v_0, v_T, s_T, T, T_m), \
+               QuinticPoly1D.distance_from_target_derivative_coefs(a_0, v_0, v_T, s_T, T, T_m), \
+               QuinticPoly1D.velocity_profile_function(a_0, v_0, v_T, s_T, T, T_m), \
+               QuinticPoly1D.acceleration_profile_function(a_0, v_0, v_T, s_T, T, T_m)
+
+    @staticmethod
     def generate_predicate_value(action_type, w_T, w_J, a_0, v_0, v_T, s_T, T_m):
         time_cost_poly_coefs = \
             QuinticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
@@ -116,7 +128,7 @@ class QuinticMotionPredicatesCreator:
 
         T = extremum_T.min()  # First extrema is our local (and sometimes global) minimum
 
-        delta_s_t_func, coefs_s_der, v_t_func, a_t_func = create_quintic_motion_funcs(a_0, v_0,
+        delta_s_t_func, coefs_s_der, v_t_func, a_t_func = QuinticMotionPredicatesCreator.create_quintic_motion_funcs(a_0, v_0,
                                                                                       v_T, s_T,
                                                                                       T,
                                                                                       T_m=T_m)

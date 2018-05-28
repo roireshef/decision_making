@@ -13,59 +13,55 @@ from decision_making.src.planning.utils.numpy_utils import UniformGrid
 from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D
 
 
-def create_quartic_motion_funcs(a_0, v_0, v_T, T):
-    return QuarticPoly1D.velocity_profile_function(a_0, v_0, v_T, T), \
-           QuarticPoly1D.acceleration_profile_function(a_0, v_0, v_T, T)
+class QuarticMotionSymbolicsCreator:
+    @staticmethod
+    def create_symbolic_quartic_motion_equations():
+        """
+        This function uses symbolic package SymPy and computes the motion equations and cost function used for analysis of
+        trajectories (in e.g. desmos) , action specification and filtering.
+        """
+        T = symbols('T')
+        t = symbols('t')
 
+        s0, v0, a0, vT, aT = symbols('s_0 v_0 a_0 v_T a_T')
 
-def create_symbolic_quintic_motion_equations():
-    """
-    This function uses symbolic package SymPy and computes the motion equations and cost function used for analysis of
-    trajectories (in e.g. desmos) , action specification and filtering.
-    """
-    T = symbols('T')
-    t = symbols('t')
-    Tm = symbols('T_m')  # safety margin in seconds
+        A = Matrix([
+            [0, 0, 0, 0, 1],
+            [0, 0, 0, 1, 0],
+            [0, 0, 2, 0, 0],
+            [4 * T ** 3, 3 * T ** 2, 2 * T, 1, 0],
+            [12 * T ** 2, 6 * T, 2, 0, 0]
+        ])
 
-    s0, v0, a0, vT, aT = symbols('s_0 v_0 a_0 v_T a_T')
+        # solve to get solution
+        # this assumes a0=aT==0 (constant velocity)
+        [c4, c3, c2, c1, c0] = A.inv() * Matrix([s0, v0, a0, vT, aT])
 
-    A = Matrix([
-        [0, 0, 0, 0, 1],
-        [0, 0, 0, 1, 0],
-        [0, 0, 2, 0, 0],
-        [4 * T ** 3, 3 * T ** 2, 2 * T, 1, 0],
-        [12 * T ** 2, 6 * T, 2, 0, 0]
-    ])
+        x_t = (c4 * t ** 4 + c3 * t ** 3 + c2 * t ** 2 + c1 * t + c0).simplify()
+        v_t = sp.diff(x_t, t).simplify()
+        a_t = sp.diff(v_t, t).simplify()
+        j_t = sp.diff(a_t, t).simplify()
 
-    # solve to get solution
-    # this assumes a0=aT==0 (constant velocity)
-    [c4, c3, c2, c1, c0] = A.inv() * Matrix([s0, v0, a0, vT, aT])
+        J = sp.integrate(j_t ** 2, (t, 0, T)).simplify()
 
-    x_t = (c4 * t ** 4 + c3 * t ** 3 + c2 * t ** 2 + c1 * t + c0).simplify()
-    v_t = sp.diff(x_t, t).simplify()
-    a_t = sp.diff(v_t, t).simplify()
-    j_t = sp.diff(a_t, t).simplify()
+        wJ, wT = symbols('w_J w_T')
 
-    J = sp.integrate(j_t ** 2, (t, 0, T)).simplify()
+        cost = (wJ * J + wT * T).simplify()
 
-    wJ, wT = symbols('w_J w_T')
+        cost = cost.subs(s0, 0).subs(aT, 0).simplify()
+        cost_diff = sp.diff(cost, T).simplify()
 
-    cost = (wJ * J + wT * T).simplify()
+        package_x_t = x_t.subs(s0, 0).subs(aT, 0).simplify()
+        package_v_t = v_t.subs(s0, 0).subs(aT, 0).simplify()
+        package_a_t = sp.diff(package_v_t, t).simplify()
 
-    cost = cost.subs(s0, 0).subs(aT, 0).simplify()
-    cost_diff = sp.diff(cost, T).simplify()
+        cost_desmos = cost.subs(a0, 0).simplify()
+        cost_diff_desmos = cost_diff.subs(a0, 0).simplify()
+        x_t_desmos = package_x_t.subs(a0, 0).simplify()
+        v_t_desmos = package_v_t.subs(a0, 0).simplify()
+        a_t_desmos = package_a_t.subs(a0, 0).simplify()
 
-    package_x_t = x_t.subs(s0, 0).subs(aT, 0).simplify()
-    package_v_t = v_t.subs(s0, 0).subs(aT, 0).simplify()
-    package_a_t = sp.diff(package_v_t, t).simplify()
-
-    cost_desmos = cost.subs(a0, 0).simplify()
-    cost_diff_desmos = cost_diff.subs(a0, 0).simplify()
-    x_t_desmos = package_x_t.subs(a0, 0).simplify()
-    v_t_desmos = package_v_t.subs(a0, 0).simplify()
-    a_t_desmos = package_a_t.subs(a0, 0).simplify()
-
-    return package_x_t, package_v_t, package_a_t, cost_desmos, cost_diff_desmos, x_t_desmos, v_t_desmos, a_t_desmos
+        return package_x_t, package_v_t, package_a_t, cost_desmos, cost_diff_desmos, x_t_desmos, v_t_desmos, a_t_desmos
 
 
 class QuarticMotionPredicatesCreator:
@@ -89,6 +85,18 @@ class QuarticMotionPredicatesCreator:
                                  fill_value=False)
 
     @staticmethod
+    def create_quartic_motion_funcs(a_0, v_0, v_T, T):
+        """
+        :param a_0: initial acceleration [m/s^2]
+        :param v_0: initial velocity [m/s^2]
+        :param v_T: desired velocity [m/s^2]
+        :param T: action_time [s]
+        :return: lambda functions of velocity and acceleration w.r.t time (valid in the range [0,T])
+        """
+        return QuarticPoly1D.velocity_profile_function(a_0, v_0, v_T, T), \
+               QuarticPoly1D.acceleration_profile_function(a_0, v_0, v_T, T)
+
+    @staticmethod
     def generate_predicate_value(w_T, w_J, a_0, v_0, v_T):
         time_cost_poly_coefs = \
             QuarticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
@@ -103,7 +111,7 @@ class QuarticMotionPredicatesCreator:
 
         T = extremum_T.min()  # First extrema is our local (and sometimes global) minimum
 
-        v_t_func, a_t_func = create_quartic_motion_funcs(a_0, v_0, v_T, T)
+        v_t_func, a_t_func = QuarticMotionPredicatesCreator.create_quartic_motion_funcs(a_0, v_0, v_T, T)
 
         time_res_for_extremum_query = 0.01
         t = np.arange(0, T, time_res_for_extremum_query)

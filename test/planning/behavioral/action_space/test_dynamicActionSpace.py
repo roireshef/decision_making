@@ -22,15 +22,15 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAM
 import numpy as np
 
 def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCellsWell(behavioral_grid_state: BehavioralGridState,
-                                                                                       follow_recipes_towards_front_cells: List[DynamicActionRecipe]):
+                                                                                       follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
     logger = AV_Logger.get_logger()
     predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
 
     dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=DEFAULT_DYNAMIC_RECIPE_FILTERING)
-    actions = dynamic_action_space.specify_goals(follow_recipes_towards_front_cells, behavioral_grid_state)
+    actions = dynamic_action_space.specify_goals(follow_vehicle_recipes_towards_front_cells, behavioral_grid_state)
 
     targets = [behavioral_grid_state.road_occupancy_grid[(recipe.relative_lane, recipe.relative_lon)][0]
-                          for recipe in follow_recipes_towards_front_cells]
+                          for recipe in follow_vehicle_recipes_towards_front_cells]
 
     # terminal action-spec latitude equals the current latitude of target vehicle
     expected_latitudes = [1.8, 1.8, 1.8, 5.4, 5.4, 5.4, 9, 9, 9]
