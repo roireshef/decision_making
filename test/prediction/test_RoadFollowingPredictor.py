@@ -5,7 +5,6 @@ import numpy as np
 
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE
 from decision_making.src.planning.types import C_Y, C_X, C_V, C_YAW
-from decision_making.test.planning.custom_fixtures import car_size
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import DynamicObject, EgoState, State, OccupancyState
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
