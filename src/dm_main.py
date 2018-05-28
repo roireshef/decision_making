@@ -97,7 +97,7 @@ class DmInitialization:
         action_spec_evaluator = RuleBasedActionSpecEvaluator(logger)
         value_approximator = ZeroValueApproximator(logger)
 
-        action_spec_filtering = ActionSpecFiltering(filters=[FilterIfNone()])
+        action_spec_filtering = ActionSpecFiltering(filters=[FilterIfNone()], logger=logger)
         planner = SingleStepBehavioralPlanner(action_space, recipe_evaluator, action_spec_evaluator,
                                               action_spec_filtering, value_approximator, predictor, logger)
 

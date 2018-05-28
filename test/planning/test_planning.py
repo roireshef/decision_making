@@ -64,7 +64,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-def test_behavioralPlanningFacade_semanticPolicy_anyResult(pubsub: PubSub, state_module,
+def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub, state_module,
                                                            navigation_facade):
     bp_logger = MagicMock()
     predictor_logger = MagicMock()
