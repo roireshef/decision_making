@@ -91,6 +91,7 @@ class StaticActionSpace(ActionSpace):
         # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution
         distance_s = QuarticPoly1D.distance_profile_function(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
                                                              v_T=v_T, T=T)(T)
+        # Absolute longitudinal position of target
         target_s = distance_s + ego_init_fstate[FS_SX]
 
         action_specs = [ActionSpec(t, v_T[i], target_s[i], desired_center_lane_latitude[i])
