@@ -103,11 +103,13 @@ class CostBasedBehavioralPlanner:
         lookahead_fpoints = np.c_[longitudes, np.repeat(0, len(longitudes))]  # center-lane points in goal_lane frenet
         center_lane_reference_route = goal_lane_frame.fpoints_to_cpoints(lookahead_fpoints)
 
-        # Convert goal state from ROAD frenet-frame to Cartesian state
+        # Convert goal state to Cartesian state. Use ego lane frenet-frame, like in specify
         road_id = ego.map_state.road_id
-        road_frame = map_api.get_segment(road_id).get_as_frame()._center_frame
-        goal_cstate = road_frame.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0,
-                                                            action_spec.d - road_width?, 0, 0]))
+        road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id)
+        ego_lane_num = MapService.get_instance().get_lane(ego.map_state.lane_id).ordinal
+        ego_lane_frame = map_api.get_lane(ego.map_state.lane_id).get_as_frame()._center_frame
+        goal_cstate = ego_lane_frame.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0,
+                                                      action_spec.d - road_lane_latitudes[ego_lane_num], 0, 0]))
 
         # this assumes the target falls on the reference route
         cost_params = CostBasedBehavioralPlanner._generate_cost_params(ego.size, road_id, action_spec.d, action_spec.s)
@@ -129,10 +131,11 @@ class CostBasedBehavioralPlanner:
         """
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
-        road_frenet = MapUtils.get_road_rhs_frenet(ego)
+        road_rhs_frenet = MapUtils.get_road_rhs_frenet(ego)
 
         # project ego vehicle onto the road
-        ego_init_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
+        ego_cstate = MapUtils.convert_map_to_cartesian_state(ego.map_state.lane_state)
+        ego_init_fstate = road_rhs_frenet.cstate_to_fstate(ego_cstate)
 
         target_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
 
@@ -147,7 +150,7 @@ class CostBasedBehavioralPlanner:
         return SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
                                           T_s=action_spec.t,
                                           T_d=action_spec.t,
-                                          frenet_frame=road_frenet,
+                                          frenet_frame=road_rhs_frenet,
                                           poly_s_coefs=poly_coefs_s,
                                           poly_d_coefs=poly_coefs_d)
 
