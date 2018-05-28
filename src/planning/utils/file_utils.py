@@ -37,7 +37,7 @@ class TextReadWrite:
     @staticmethod
     def write(lines_list: List[str], file_path):
         """
-        Creates and opens a binary file, and writes a multi-dimensional array to it
+        Creates and opens a text file, and writes a list of lines to it
         :param lines_list: A list of strings to be written as distinct rows in txt file.
         :param file_path:
         :return:
@@ -49,7 +49,7 @@ class TextReadWrite:
     @staticmethod
     def read(file_path):
         """
-        Opens a file, loads a multi-dimensional array from it, and reshapes it to the desired shape.
+        Opens a text file, and reads lines of text from it into a list of strings.
         :param file_path:
         :return:
         """
