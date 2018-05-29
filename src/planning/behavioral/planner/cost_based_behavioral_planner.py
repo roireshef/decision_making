@@ -1,15 +1,18 @@
 from abc import abstractmethod, ABCMeta
 from logging import Logger
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 import six
+from copy import deepcopy
 
+import rte.python.profiler as prof
 from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, TRAJECTORY_ARCLEN_RESOLUTION, \
     SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, \
     DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, \
     OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, \
-    DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST, LAT_JERK_COST, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS
+    DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, \
+    LAT_ACC_LIMITS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
@@ -21,10 +24,15 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
+from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
+from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
+from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.utils.map_utils import MapUtils
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import State, ObjectSize
+from decision_making.src.state.state import State, ObjectSize, EgoState
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -32,7 +40,8 @@ from mapping.src.service.map_service import MapService
 @six.add_metaclass(ABCMeta)
 class CostBasedBehavioralPlanner:
     def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
-                 action_spec_evaluator: Optional[ActionSpecEvaluator], action_spec_validator: Optional[ActionSpecFiltering],
+                 action_spec_evaluator: Optional[ActionSpecEvaluator],
+                 action_spec_validator: Optional[ActionSpecFiltering],
                  value_approximator: ValueApproximator, predictor: Predictor, logger: Logger):
         self.action_space = action_space
         self.recipe_evaluator = recipe_evaluator
@@ -59,7 +68,37 @@ class CostBasedBehavioralPlanner:
         """
         pass
 
+    @prof.ProfileFunction()
+    def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray) -> List[State]:
+        """
+        Given current state and action specifications, generate a corresponding list of future states using the
+        predictor. Uses mask over list of action specifications to avoid unnecessary computation
+        :param state: the current world state
+        :param action_specs: list of action specifications
+        :param mask: 1D mask vector (boolean) for filtering valid action specifications
+        :return: a list of terminal states
+        """
+        # TODO: validate time units (all in seconds? global?)
+        # generate the simulated terminal states for all actions using predictor
+        action_horizons = np.array([action_spec.t
+                                    if mask[i] else np.nan
+                                    for i, action_spec in enumerate(action_specs)])
+
+        # TODO: replace numpy array with fast sparse-list implementation
+        terminal_states = np.full(shape=action_horizons.shape, fill_value=None)
+        terminal_states[mask] = deepcopy(state)          # TODO: fix bug in predictor
+        # self.predictor.predict_state(state, action_horizons[mask] + state.ego_state.timestamp_in_sec)
+        terminal_states = list(terminal_states)
+
+        # transform terminal states into behavioral states
+        terminal_behavioral_states = [BehavioralGridState.create_from_state(state=terminal_state, logger=self.logger)
+                                      if mask[i] else None
+                                      for i, terminal_state in enumerate(terminal_states)]
+
+        return terminal_behavioral_states
+
     @staticmethod
+    @prof.ProfileFunction()
     def _generate_trajectory_specs(behavioral_state: BehavioralGridState,
                                    action_spec: ActionSpec,
                                    navigation_plan: NavigationPlanMsg) -> TrajectoryParams:
@@ -125,6 +164,39 @@ class CostBasedBehavioralPlanner:
         return trajectory_parameters
 
     @staticmethod
+    @prof.ProfileFunction()
+    def generate_baseline_trajectory(ego: EgoState, action_spec: ActionSpec) -> SamplableTrajectory:
+        """
+        Creates a SamplableTrajectory as a reference trajectory for a given ActionSpec, assuming T_d=T_s
+        :param ego: ego object
+        :param action_spec: action specification that contains all relevant info about the action's terminal state
+        :return: a SamplableWerlingTrajectory object
+        """
+        # Note: We create the samplable trajectory as a reference trajectory of the current action.from
+        # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
+        road_frenet = MapUtils.get_road_rhs_frenet(ego)
+
+        # project ego vehicle onto the road
+        ego_init_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
+
+        target_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
+
+        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_matrix(action_spec.t))
+
+        constraints_s = np.concatenate((ego_init_fstate[FS_SX:(FS_SA + 1)], target_fstate[FS_SX:(FS_SA + 1)]))
+        constraints_d = np.concatenate((ego_init_fstate[FS_DX:(FS_DA + 1)], target_fstate[FS_DX:(FS_DA + 1)]))
+
+        poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
+        poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
+
+        return SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
+                                          T_s=action_spec.t,
+                                          T_d=action_spec.t,
+                                          frenet_frame=road_frenet,
+                                          poly_s_coefs=poly_coefs_s,
+                                          poly_d_coefs=poly_coefs_d)
+
+    @staticmethod
     def _generate_cost_params(road_id: int, ego_size: ObjectSize, reference_route_latitude: float) -> \
             TrajectoryCostParams:
         """
@@ -188,12 +260,10 @@ class CostBasedBehavioralPlanner:
                                            right_road_cost=right_road_cost,
                                            dist_from_goal_cost=dist_from_goal_cost,
                                            dist_from_goal_lat_factor=dist_from_goal_lat_factor,
-                                           lon_jerk_cost=LON_JERK_COST,
-                                           lat_jerk_cost=LAT_JERK_COST,
+                                           lon_jerk_cost=LON_JERK_COST_WEIGHT,
+                                           lat_jerk_cost=LAT_JERK_COST_WEIGHT,
                                            velocity_limits=VELOCITY_LIMITS,
                                            lon_acceleration_limits=LON_ACC_LIMITS,
                                            lat_acceleration_limits=LAT_ACC_LIMITS)
 
         return cost_params
-
-

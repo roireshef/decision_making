@@ -74,6 +74,7 @@ def test_calc_safe_speed_forward_line_of_sight_CheckSpeed_successful():
     assert AcdaApi.calc_safe_speed_forward_line_of_sight(forward_sight_distance=10.0) > 0
 
 
+@pytest.mark.skip(reason="Not used right now")
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=testable_map_api_for_acda)
 def test_AcdaFeaturesInComplexScenraio_successful(testable_navigation_plan):
     logger = AV_Logger.get_logger('acda_test')
