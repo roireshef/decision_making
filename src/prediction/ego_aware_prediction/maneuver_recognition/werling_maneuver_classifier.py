@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from typing import Optional
 
 import numpy as np
 
@@ -17,7 +18,7 @@ class WerlingManeuverClassifier(ManeuverClassifier):
     """
 
     @abstractmethod
-    def classify_maneuver(self, state: State, object_id: int) -> ManeuverSpec:
+    def classify_maneuver(self, state: State, object_id: int, T_s: Optional[float] = None) -> ManeuverSpec:
         """
         Predicts the type of maneuver an object will execute
         Assuming zero acceleration in the initial state

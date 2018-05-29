@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 
 from decision_making.src.prediction.ego_aware_prediction.maneuver_recognition.werling_maneuver_classifier import \
@@ -8,6 +10,7 @@ from mapping.src.service.map_service import MapService
 from decision_making.src.prediction.ego_aware_prediction.maneuver_spec_params import ManeuverSpecParams
 
 KEEP_LAT_D_VALUE = 10.0
+
 
 class WerlingManeuverClassifierMock(WerlingManeuverClassifier):
     """
@@ -34,7 +37,7 @@ class WerlingManeuverClassifierMock(WerlingManeuverClassifier):
         self._T_d_grid = T_d_grid
 
         # Set default values for mock's output parameters
-        self._trajectory_class_t_d = T_d_grid[0]
+        self._trajectory_class_t_s = T_d_grid[0]
         self._trajectory_class_avg_s_a = average_s_a_grid[0]
         self._trajectory_class_s_a_final = s_a_final_grid[0]
         self._trajectory_class_d_in_lanes = relative_lane_grid[0]
@@ -52,7 +55,7 @@ class WerlingManeuverClassifierMock(WerlingManeuverClassifier):
                     for d_in_lanes in self._relative_lane_grid:
                         for lat in self._lat_normalized_grid:
                             # Set trajectory parameters to be used by classification module
-                            self._trajectory_class_t_d = T_d
+                            self._trajectory_class_t_s = T_d
                             self._trajectory_class_avg_s_a = avg_s_a
                             self._trajectory_class_s_a_final = s_a_final
                             self._trajectory_class_d_in_lanes = d_in_lanes
@@ -62,7 +65,7 @@ class WerlingManeuverClassifierMock(WerlingManeuverClassifier):
                             yield ManeuverSpecParams(T_d=T_d, avg_s_a=avg_s_a, s_a_final=s_a_final,
                                                      relative_lane=d_in_lanes, lat_normalized=lat)
 
-    def classify_maneuver(self, state: State, object_id: int) -> ManeuverSpec:
+    def classify_maneuver(self, state: State, object_id: int, T_s: Optional[float] = None) -> ManeuverSpec:
         """
         Predicts the type of maneuver an object will execute
         Assuming zero acceleration in the initial state
@@ -74,7 +77,7 @@ class WerlingManeuverClassifierMock(WerlingManeuverClassifier):
         map_api = MapService().get_instance()
 
         # Fetch trajectory parameters
-        t_d = self._trajectory_class_t_d
+        T_s = self._trajectory_class_t_s
         avg_s_a = self._trajectory_class_avg_s_a
         s_a_final = self._trajectory_class_s_a_final
         d_in_lanes = self._trajectory_class_d_in_lanes
@@ -87,5 +90,5 @@ class WerlingManeuverClassifierMock(WerlingManeuverClassifier):
             lane_width = map_api.get_road(road_id=object_state.road_localization.road_id).lane_width
             lat = (object_state.road_localization.intra_lane_lat - lane_width / 2.0) / lane_width
 
-        return self._generate_maneuver_spec(object_state=object_state, T_d=t_d, avg_s_a=avg_s_a, s_a_final=s_a_final,
-                                            d_in_lanes=d_in_lanes, lat=lat)
+        return self._generate_maneuver_spec(object_state=object_state, T_s=T_s, T_d=T_s, avg_s_a=avg_s_a,
+                                            s_a_final=s_a_final, d_in_lanes=d_in_lanes, lat=lat)
