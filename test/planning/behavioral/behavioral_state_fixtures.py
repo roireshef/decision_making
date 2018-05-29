@@ -175,8 +175,7 @@ def state_with_objects_for_filtering_too_aggressive(pg_map_api: MapAPI):
                                                                      lat=ego_road_lat)
 
     ego_state = EgoState(obj_id=0, timestamp=0, x=ego_pos[0], y=ego_pos[1], z=ego_pos[2], yaw=ego_yaw,
-                         size=car_size, confidence=1.0, v_x=ego_vel, v_y=0.0, steering_angle=0.0,
-                         acceleration_lon=0.0, curvature=0.0)
+                         size=car_size, confidence=1.0, v_x=ego_vel, v_y=0.0, acceleration_lon=0.0, curvature=0.0)
 
     # Generate objects at the following locations:
     obj_road_lon = ego_road_lon + 58
