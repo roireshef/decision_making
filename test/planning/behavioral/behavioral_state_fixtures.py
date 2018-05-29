@@ -104,7 +104,7 @@ def state_with_objects_for_filtering_tracking_mode(pg_map_api: MapAPI):
 
     dynamic_object = DynamicObject(obj_id=obj_id, timestamp=0, x=obj_pos[0], y=obj_pos[1], z=obj_pos[2],
                                    yaw=obj_yaw, size=car_size, confidence=1.0, v_x=obj_vel, v_y=0.0,
-                                   acceleration_lon=0.0, omega_yaw=0.0)
+                                   acceleration_lon=0.0, curvature=0.0)
 
     dynamic_objects.append(dynamic_object)
 
@@ -176,7 +176,7 @@ def state_with_objects_for_filtering_too_aggressive(pg_map_api: MapAPI):
 
     ego_state = EgoState(obj_id=0, timestamp=0, x=ego_pos[0], y=ego_pos[1], z=ego_pos[2], yaw=ego_yaw,
                          size=car_size, confidence=1.0, v_x=ego_vel, v_y=0.0, steering_angle=0.0,
-                         acceleration_lon=0.0, omega_yaw=0.0)
+                         acceleration_lon=0.0, curvature=0.0)
 
     # Generate objects at the following locations:
     obj_road_lon = ego_road_lon + 58
@@ -192,7 +192,7 @@ def state_with_objects_for_filtering_too_aggressive(pg_map_api: MapAPI):
 
     dynamic_object = DynamicObject(obj_id=obj_id, timestamp=0, x=obj_pos[0], y=obj_pos[1], z=obj_pos[2],
                                    yaw=obj_yaw, size=car_size, confidence=1.0, v_x=obj_vel, v_y=0.0,
-                                   acceleration_lon=0.0, omega_yaw=0.0)
+                                   acceleration_lon=0.0, curvature=0.0)
 
     dynamic_objects.append(dynamic_object)
 
