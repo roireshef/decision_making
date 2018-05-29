@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Union, Callable
+from typing import Union
 
 import numpy as np
 
@@ -18,11 +18,23 @@ class Poly1D:
     @staticmethod
     @abstractmethod
     def time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
+        """
+        Given the quartic polynomial setting, this function returns A as a tensor with the first dimension iterating
+        over different values of T (time-horizon) provided in <terminal_times>
+        :param terminal_times: 1D numpy array of different values for T
+        :return: 3D numpy array of shape [len(terminal_times), self.num_coefs(), self.num_coefs()]
+        """
         pass
 
     @staticmethod
     @abstractmethod
     def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+        """
+        Computes cumulative jerk from time 0 to time T for the x(t) whose coefficients are given in <poly_coefs>
+        :param poly_coefs: distance polynomial coefficients
+        :param T: relative time in seconds
+        :return: [float] the cummulative jerk: sum(x'''(t)^2)
+        """
         pass
 
     @classmethod
@@ -198,6 +210,12 @@ class QuarticPoly1D(Poly1D):
 
     @staticmethod
     def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+        """
+        Computes cumulative jerk from time 0 to time T for the x(t) whose coefficients are given in <poly_coefs>
+        :param poly_coefs: distance polynomial coefficients
+        :param T: relative time in seconds
+        :return: [float] the cummulative jerk: sum(x'''(t)^2)
+        """
         a4, a3, a2, a1, a0 = np.split(poly_coefs, 5, axis=-1)
         a4, a3, a2, a1, a0 = a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
         return 36 * (a3 ** 2) * T + \
@@ -233,23 +251,20 @@ class QuarticPoly1D(Poly1D):
         """
         return cls.are_derivatives_in_limits(degree=1, poly_coefs=poly_coefs, T_vals=T_vals, limits=vel_limits)
 
-    # TODO: document
-    @staticmethod
-    def time_cost_function(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float):
-        return lambda T: (T ** 4 * w_T + 4 * w_J * (
-            T ** 2 * a_0 ** 2 + 3 * T * a_0 * v_0 - 3 * T * a_0 * v_T + 3 * v_0 ** 2 - 6 * v_0 * v_T + 3 * v_T ** 2)) / T ** 3
-
-    @staticmethod
-    def time_cost_function_derivative(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float):
-        return lambda T: (
-                             T ** 4 * w_T
-                             - 4 * T ** 2 * a_0 ** 2 * w_J
-                             + 24 * T * (a_0 * v_T * w_J - a_0 * v_0 * w_J)
-                             - 36 * v_0 ** 2 * w_J + 72 * v_0 * v_T * w_J - 36 * v_T ** 2 * w_J) / T ** 4
-
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
                                             v_T: np.ndarray):
+        """
+        For given weights and constraints on a jerk-optimal polynomial solution, this function returns a matrix that
+        contains (in each row:) the coefficients of the derivative of the cost function use for finding the optimal time
+        horizon: f(T) = w_T * T + w_J * J(T) where J(T) is the accumulated jerk for given time horizon T.
+        :param w_T: weight for Time component
+        :param w_J: weight for Jerk component
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :return: coefficient matrix for all possibilities
+        """
         zeros = np.zeros(w_T.shape[0])
         return np.c_[w_T,
                      zeros,
@@ -258,16 +273,41 @@ class QuarticPoly1D(Poly1D):
 
     @staticmethod
     def distance_profile_function(a_0: float, v_0: float, v_T: float, T: float):
+        """
+        relative distance travelled by ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param T: [sec] horizon
+        :return: lambda function(s) that takes relative time in seconds and returns the relative distance
+        travelled since time 0
+        """
         return lambda t: t * (6 * T ** 3 * (a_0 * t + 2 * v_0) - 4 * T * t ** 2 * (2 * T * a_0 + 3 * v_0 - 3 * v_T) +
                               3 * t ** 3 * (T * a_0 + 2 * v_0 - 2 * v_T)) / (12 * T ** 3)
 
     @staticmethod
     def velocity_profile_function(a_0: float, v_0: float, v_T: float, T: float):
+        """
+        velocity of ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param T: [sec] horizon
+        :return: lambda function(s) that takes relative time in seconds and returns the velocity
+        """
         return lambda t: (T ** 3 * (a_0 * t + v_0) - T * t ** 2 * (2 * T * a_0 + 3 * v_0 - 3 * v_T) + t ** 3 * (
             T * a_0 + 2 * v_0 - 2 * v_T)) / T ** 3
 
     @staticmethod
     def acceleration_profile_function(a_0: float, v_0: float, v_T: float, T: float):
+        """
+        acceleration of ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param T: [sec] horizon
+        :return: lambda function(s) that takes relative time in seconds and returns the velocity
+        """
         return lambda t: (T ** 3 * a_0 - 2 * T * t * (2 * T * a_0 + 3 * v_0 - 3 * v_T) + 3 * t ** 2 * (
             T * a_0 + 2 * v_0 - 2 * v_T)) / T ** 3
 
@@ -331,6 +371,12 @@ class QuinticPoly1D(Poly1D):
 
     @staticmethod
     def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
+        """
+        Computes cumulative jerk from time 0 to time T for the x(t) whose coefficients are given in <poly_coefs>
+        :param poly_coefs: distance polynomial coefficients
+        :param T: relative time in seconds
+        :return: [float] the cummulative jerk: sum(x'''(t)^2)
+        """
         a5, a4, a3, a2, a1, a0 = np.split(poly_coefs, 6, axis=-1)
         a5, a4, a3, a2, a1, a0 = a5.flatten(), a4.flatten(), a3.flatten(), a2.flatten(), a1.flatten(), a0.flatten()
         return 36 * a3 ** 2 * T + \
@@ -345,81 +391,103 @@ class QuinticPoly1D(Poly1D):
                 120.0 * T ** 2 * a_0 * ds + 192.0 * T ** 2 * v_0 ** 2 + 336.0 * T ** 2 * v_0 * v_T +
                 192.0 * T ** 2 * v_T ** 2 - 720.0 * T * ds * v_0 - 720.0 * T * ds * v_T + 720.0 * ds ** 2) / T ** 5
 
-
-    # TODO: document
-    @staticmethod
-    def time_cost_function(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds: float, T_m: float):
-        return lambda T: (T ** 6 * w_T + 3 * w_J * (
-            3 * T ** 4 * a_0 ** 2 + 24 * T ** 3 * a_0 * v_0 - 24 * T ** 3 * a_0 * v_T + 40 * T ** 2 * T_m * a_0 * v_T -
-            40 * T ** 2 * a_0 * ds + 64 * T ** 2 * v_0 ** 2 - 128 * T ** 2 * v_0 * v_T + 64 * T ** 2 * v_T ** 2 + 240 * T * T_m * v_0 * v_T -
-            240 * T * T_m * v_T ** 2 - 240 * T * ds * v_0 + 240 * T * ds * v_T + 240 * T_m ** 2 * v_T ** 2 - 480 * T_m * ds * v_T +
-            240 * ds ** 2)) / T ** 5
-
-    @staticmethod
-    def time_cost_function_derivative(w_T: float, w_J: float, a_0: float, v_0: float, v_T: float, ds: float,
-                                      T_m: float):
-        return lambda T: (
-                             T ** 6 * w_T - 9 * T ** 4 * a_0 ** 2 * w_J - 144 * T ** 3 * a_0 * v_0 * w_J + 144 * T ** 3 * a_0 * v_T * w_J -
-                             360 * T ** 2 * T_m * a_0 * v_T * w_J + 360 * T ** 2 * a_0 * ds * w_J - 576 * T ** 2 * v_0 ** 2 * w_J + 1152 * T ** 2 * v_0 * v_T * w_J -
-                             576 * T ** 2 * v_T ** 2 * w_J - 2880 * T * T_m * v_0 * v_T * w_J + 2880 * T * T_m * v_T ** 2 * w_J + 2880 * T * ds * v_0 * w_J -
-                             2880 * T * ds * v_T * w_J - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * ds * v_T * w_J - 3600 * ds ** 2 * w_J) / T ** 6
-
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
-                                            v_T: np.ndarray, ds: np.ndarray, T_m: np.ndarray):
+                                            v_T: np.ndarray, dx: np.ndarray, T_m: np.ndarray):
+        """
+        For given weights and constraints on a jerk-optimal polynomial solution, this function returns a matrix that
+        contains (in each row:) the coefficients of the derivative of the cost function use for finding the optimal time
+        horizon: f(T) = w_T * T + w_J * J(T) where J(T) is the accumulated jerk for given time horizon T.
+        :param w_T: weight for Time component
+        :param w_J: weight for Jerk component
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param dx: [m] distance to travel between time 0 and time T
+        :param T_m: T_m: [sec] T_m * v_T is added to dx
+        :return: coefficient matrix for all possibilities
+        """
         zeros = np.zeros(w_T.shape[0])
         return np.c_[w_T,
                      zeros,
                      -9 * a_0 ** 2 * w_J,
                      -144 * a_0 * v_0 * w_J + 144 * a_0 * v_T * w_J,
-                     -360 * T_m * a_0 * v_T * w_J + 360 * a_0 * ds * w_J - 576 * v_0 ** 2 * w_J + 1152 * v_0 * v_T * w_J - 576 * v_T ** 2 * w_J,
-                     -2880 * T_m * v_0 * v_T * w_J + 2880 * T_m * v_T ** 2 * w_J + 2880 * ds * v_0 * w_J - 2880 * ds * v_T * w_J,
-                     - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * ds * v_T * w_J - 3600 * ds ** 2 * w_J]
+                     -360 * T_m * a_0 * v_T * w_J + 360 * a_0 * dx * w_J - 576 * v_0 ** 2 * w_J + 1152 * v_0 * v_T * w_J - 576 * v_T ** 2 * w_J,
+                     -2880 * T_m * v_0 * v_T * w_J + 2880 * T_m * v_T ** 2 * w_J + 2880 * dx * v_0 * w_J - 2880 * dx * v_T * w_J,
+                     - 3600 * T_m ** 2 * v_T ** 2 * w_J + 7200 * T_m * dx * v_T * w_J - 3600 * dx ** 2 * w_J]
 
     @staticmethod
-    def distance_profile_function(a_0: float, v_0: float, v_T: float, ds: float, T: float, T_m: float):
+    def distance_profile_function(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
         """
         relative distance travelled by ego at time t, given a solution to the conditions in the parameters
         :param a_0: [m/sec^2] acceleration at time 0
         :param v_0: [m/sec] velocity at time 0
         :param v_T: [m/sec] terminal velocity (at time T)
-        :param ds: [m] distance to travel between time 0 and time T
+        :param dx: [m] distance to travel between time 0 and time T (see T_m as well)
         :param T: [sec] horizon
+        :param T_m: [sec] T_m * v_T is added to dx
         :return: lambda function(s) that takes relative time in seconds and returns the relative distance
         travelled since time 0
         """
         return lambda t: t * (T ** 5 * (a_0 * t + 2 * v_0) + T ** 2 * t ** 2 * (
-            -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * ds + 20 * v_T * (T - T_m)) + T * t ** 3 * (
-                                  3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds - 30 * v_T * (
+            -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * dx + 20 * v_T * (T - T_m)) + T * t ** 3 * (
+                                  3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (
                                       T - T_m)) + t ** 4 * (
-                                  -T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * ds + 12 * v_T * (T - T_m))) / (2 * T ** 5)
+                                  -T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx + 12 * v_T * (T - T_m))) / (2 * T ** 5)
 
     @staticmethod
-    def distance_from_target_derivative_coefs(a_0: float, v_0: float, v_T: float, ds: float, T: float, T_m: float):
-        coefs = np.array([5 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * ds - 12 * v_T * (T - T_m)),
-                          -4 * T * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds - 30 * v_T * (T - T_m)),
-                          +3 * T ** 2 * (
-                              3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * ds - 20 * v_T * (T - T_m)),
-                          -2 * T ** 5 * a_0,
-                          2 * T ** 5 * (v_T - v_0)])
-        return coefs
+    def distance_from_target(a_0: float, v_0: float, v_T: float, ds0: float, T: float, T_m: float):
+        """
+        relative distance travelled by ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param ds: [m] initial distance to target in time 0
+        :param T: [sec] horizon
+        :return: lambda function(s) that takes relative time in seconds and returns the relative distance
+        travelled since time 0
+        """
+        return lambda t: (-T**5*t*(a_0*t + 2*v_0) + 2*T**5*(ds0 + t*v_T) + T**2*t**3*(3*T**2*a_0 + 4*T*(3*v_0 + 2*v_T)
+                        - 20*ds0 - 20*v_T*(T - T_m)) - T*t**4*(3*T**2*a_0 + 2*T*(8*v_0 + 7*v_T) - 30*ds0 - 30*v_T*(T - T_m))
+                          + t**5*(T**2*a_0 + 6*T*(v_0 + v_T) - 12*ds0 - 12*v_T*(T - T_m)))/(2*T**5)
 
     @staticmethod
-    def velocity_profile_function(a_0: float, v_0: float, v_T: float, ds: float, T: float, T_m: float):
+    def distance_from_target_derivative_coefs(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
         """
         velocity of ego at time t, given a solution to the conditions in the parameters
         :param a_0: [m/sec^2] acceleration at time 0
         :param v_0: [m/sec] velocity at time 0
         :param v_T: [m/sec] terminal velocity (at time T)
-        :param dx: [m] distance to travel between time 0 and time T
+        :param dx: [m] distance to travel between time 0 and time T (see T_m as well)
         :param T: [sec] horizon
+        :param T_m: [sec] T_m * v_T is added to dx
+        :return: lambda function(s) that takes relative time in seconds and returns the velocity
+        """
+        coefs = np.array([5 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * dx - 12 * v_T * (T - T_m)),
+                          -4 * T * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m)),
+                          +3 * T ** 2 * (
+                              3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * dx - 20 * v_T * (T - T_m)),
+                          -2 * T ** 5 * a_0,
+                          2 * T ** 5 * (v_T - v_0)])
+        return coefs
+
+    @staticmethod
+    def velocity_profile_function(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
+        """
+        velocity of ego at time t, given a solution to the conditions in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param dx: [m] distance to travel between time 0 and time T (see T_m as well)
+        :param T: [sec] horizon
+        :param T_m: [sec] T_m * v_T is added to dx
         :return: lambda function(s) that takes relative time in seconds and returns the velocity
         """
         return lambda t: (2 * T ** 5 * (a_0 * t + v_0) + 3 * T ** 2 * t ** 2 * (
-            -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * ds +
+            -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * dx +
             20 * v_T * (T - T_m)) + 4 * T * t ** 3 * (
-                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds - 30 * v_T * (T - T_m))
-                          + 5 * t ** 4 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * ds + 12 * v_T * (T - T_m))) / (
+                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m))
+                          + 5 * t ** 4 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx + 12 * v_T * (T - T_m))) / (
                              2 * T ** 5)
 
     @staticmethod
@@ -440,16 +508,3 @@ class QuinticPoly1D(Poly1D):
                           + 10 * t ** 3 * (
                               -T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * ds + 12 * v_T * (T - T_m))) / T ** 5
 
-
-class DynamicsCallables:
-    def __init__(self, distance_function, velocity_function, acceleration_function):
-        self._distance_function = distance_function
-        self._velocity_function = velocity_function
-        self._acceleration_function = acceleration_function
-
-    def dynamics_for_time(self, time_points: np.ndarray):
-        self._distance_function(time_points)
-        self._velocity_function(time_points)
-        self._acceleration_function(time_points)
-        return np.hstack((self._distance_function(time_points), self._velocity_function(time_points),
-                          self._acceleration_function(time_points)))

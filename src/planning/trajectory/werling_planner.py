@@ -14,7 +14,7 @@ from decision_making.src.planning.trajectory.trajectory_planner import Trajector
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianExtendedTrajectory, \
     CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, FrenetState2D, C_A, C_K, FrenetState1D, \
-    FrenetTrajectory1D, D5, Limits
+    FrenetTrajectory1D, D5, Limits, FrenetTrajectory2D
 from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
@@ -44,6 +44,24 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         (longitudinal) and partially (up to some time-horizon cached in self.lon_plan_horizon) from d-axis polynomial
         (lateral) and extrapolate the rest of the states in d-axis to conform to the trajectory's total duration"""
 
+        # Sample the trajectory in the desired points in time in Frenet coordinates
+        fstates = self.sample_frenet(time_points=time_points)
+
+        # project from road coordinates to cartesian coordinate frame
+        cstates = self.frenet_frame.ftrajectory_to_ctrajectory(fstates)
+
+        return cstates
+
+    def sample_frenet(self, time_points: np.ndarray) -> FrenetTrajectory2D:
+        """
+        This function takes an array of time stamps and returns an array of Frenet states along the trajectory.
+        We sample from s-axis polynomial (longitudinal) and partially (up to some time-horizon cached in
+        self.lon_plan_horizon) from d-axis polynomial (lateral) and extrapolate the rest of the states in d-axis
+        to conform to the trajectory's total duration.
+        :param time_points: 1D numpy array of time stamps *in seconds* (global self.timestamp)
+        :return: Frenet Trajectory
+        """
+
         relative_time_points = time_points - self.timestamp_in_sec
 
         # Make sure no unplanned extrapolation will occur due to overreaching time points
@@ -58,12 +76,13 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         is_within_horizon_d = relative_time_points <= self.T_d
 
         fstates_d[is_within_horizon_d] = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]),
-                                                                                   relative_time_points[is_within_horizon_d])
+                                                                                relative_time_points[
+                                                                                    is_within_horizon_d])
 
         # Expand lateral solution to the size of the longitudinal solution with its final positions replicated
         # NOTE: we assume that velocity and accelerations = 0 !!
         end_of_horizon_state_d = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]),
-                                                                           np.array([self.T_d]))[0]
+                                                                        np.array([self.T_d]))[0]
         extrapolation_state_d = WerlingPlanner.repeat_1d_state(
             fstate=end_of_horizon_state_d,
             repeats=1,
@@ -72,12 +91,10 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
 
         fstates_d[np.logical_not(is_within_horizon_d)] = extrapolation_state_d
 
+        # Return trajectory in Frenet coordinates
         fstates = np.hstack((fstates_s, fstates_d))
 
-        # project from road coordinates to cartesian coordinate frame
-        cstates = self.frenet_frame.ftrajectory_to_ctrajectory(fstates)
-
-        return cstates
+        return fstates
 
 
 class WerlingPlanner(TrajectoryPlanner):
@@ -140,7 +157,7 @@ class WerlingPlanner(TrajectoryPlanner):
         #  time axis, lon_time_samples, won't fit).
 
         # TODO: figure out if T_s can be not rounded
-        #T_s = Math.round_to_step(T_s, self.dt)
+        # T_s = Math.round_to_step(T_s, self.dt)
 
         # planning is done on the time dimension relative to an anchor (currently the timestamp of the ego vehicle)
         # so time points are from t0 = 0 until some T (lon_plan_horizon)
@@ -169,7 +186,8 @@ class WerlingPlanner(TrajectoryPlanner):
                                                                 cost_params, frenet.s_limits)
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
-        ctrajectories: CartesianExtendedTrajectories = frenet.ftrajectories_to_ctrajectories(ftrajectories[frenet_filtered_indices])
+        ctrajectories: CartesianExtendedTrajectories = frenet.ftrajectories_to_ctrajectories(
+            ftrajectories[frenet_filtered_indices])
 
         # filter resulting trajectories by velocity and accelerations limits - this is now done in Cartesian frame
         # which takes into account the curvature of the road applied to trajectories planned in the Frenet frame
@@ -223,7 +241,8 @@ class WerlingPlanner(TrajectoryPlanner):
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
-        self._logger.debug("Chosen trajectory planned with lateral horizon : {}".format(T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]]))
+        self._logger.debug("Chosen trajectory planned with lateral horizon : {}".format(
+            T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]]))
 
         samplable_trajectory = SamplableWerlingTrajectory(
             timestamp_in_sec=state.ego_state.timestamp_in_sec,
@@ -317,7 +336,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         ''' point-wise costs: obstacles, deviations, jerk '''
         pointwise_costs = Costs.compute_pointwise_costs(ctrajectories, ftrajectories, state, params,
-                                                                  global_time_samples, predictor, dt)
+                                                        global_time_samples, predictor, dt)
 
         return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs
 
@@ -332,7 +351,7 @@ class WerlingPlanner(TrajectoryPlanner):
         :return: Low bound for lateral time horizon.
         """
         min_lat_movement = np.min(np.abs(fconstraints_tT.get_grid_d()[:, 0] - fconstraints_t0.get_grid_d()[0, 0]))
-        low_bound_lat_plan_horizon = max(np.sqrt((2*min_lat_movement) / LAT_ACC_LIMITS[LIMIT_MAX]), dt)
+        low_bound_lat_plan_horizon = max(np.sqrt((2 * min_lat_movement) / LAT_ACC_LIMITS[LIMIT_MAX]), dt)
         return max(low_bound_lat_plan_horizon, TD_MIN_DT * self.dt)
 
     @staticmethod

@@ -1,16 +1,17 @@
 import os
 
+from decision_making.src.exceptions import ResourcesNotUpToDateException
+from decision_making.src.global_constants import *
 from decision_making.paths import Paths
-from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_V_T_GRID, FILTER_S_T_GRID
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
-from decision_making.src.planning.utils.file_utils import BinaryReadWrite
+from decision_making.src.planning.utils.file_utils import BinaryReadWrite, TextReadWrite
 
 
 # DynamicActionRecipe Filters
+from decision_making.src.planning.utils.numpy_utils import UniformGrid
 
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
@@ -21,10 +22,17 @@ class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
 
 class FilterBadExpectedTrajectory(RecipeFilter):
     def __init__(self, predicates_dir: str):
+        if not self.validate_predicate_constants(predicates_dir):
+            raise ResourcesNotUpToDateException('Predicates files were creates with other set of constants')
         self.predicates = self.read_predicates(predicates_dir)
 
     @staticmethod
     def read_predicates(predicates_dir):
+        """
+        This method reads boolean maps from file into a dictionary mapping a tuple of (action_type,weights) to a binary LUT.
+        :param predicates_dir: The directory holding all binary maps (.bin files)
+        :return: a dictionary mapping a tuple of (action_type,weights) to a binary LUT.
+        """
         directory = Paths.get_resource_absolute_path_filename(predicates_dir)
         predicates = {}
         for filename in os.listdir(directory):
@@ -42,33 +50,66 @@ class FilterBadExpectedTrajectory(RecipeFilter):
 
         return predicates
 
+    # TODO: Move to test folder when agent is in steady state (global constants don't get changed)
+    @staticmethod
+    def validate_predicate_constants(predicates_dir):
+        """
+        This method checks if the predicates were created with the constants that are used right now
+        :param predicates_dir: predicates directory under resources directory
+        :return: True if constants are the same, False otherwise
+        """
+        # For this method to work, global_constants have to be imported
+        metadata_path = Paths.get_resource_absolute_path_filename('%s/%s' % (predicates_dir, 'PredicatesMetaData.txt'))
+        metadata_content = TextReadWrite.read(metadata_path)
+        for line in metadata_content[1:5]:
+            const_name = line.split()[0]
+            grid_def = line.split('(', 1)[1].split(')')[0]
+            grid_start, grid_end, grid_res = float(grid_def.split()[0].split(',')[0]), \
+                                             float(grid_def.split()[2].split(',')[0]), \
+                                             float(grid_def.split()[4].split(',')[0])
+            file_grid = UniformGrid([grid_start, grid_end], grid_res)
+            if not globals()[const_name] == file_grid:
+                return False
+        for line in metadata_content[5:]:
+            const_name = line.split()[0]
+            const_value = float(line.split()[2])
+            if not globals()[const_name] == const_value:
+                return False
+        return True
+
     def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
+        """
+        This filter checks if recipe might cause a bad action specification, meaning velocity or acceleration are too
+        aggressive, action time is too long or safety will be violated by entering non-safe zone while action is being
+        taken. Filtering is based on querying a boolean predicate (LUT) created offline.
+        :param recipe:
+        :param behavioral_state:
+        :return: True if recipe is valid, otherwise False
+        """
         action_type = recipe.action_type
         ego_state = behavioral_state.ego_state
         v_0 = ego_state.v_x
         a_0 = ego_state.acceleration_lon
         wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
-
-        # Distance, velocity and acceleration grids for brute-force filtering purposes
         if (action_type == ActionType.FOLLOW_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.FRONT) \
                 or (
-                action_type == ActionType.OVER_TAKE_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.REAR):
+                action_type == ActionType.OVERTAKE_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.REAR):
             recipe_cell = (recipe.relative_lane, recipe.relative_lon)
             if recipe_cell in behavioral_state.road_occupancy_grid:
 
                 relative_dynamic_object = behavioral_state.road_occupancy_grid[recipe_cell][0]
                 dynamic_object = relative_dynamic_object.dynamic_object
-                margin_sign = -1 if recipe.action_type == ActionType.FOLLOW_VEHICLE else +1
+                margin_sign = +1 if recipe.action_type == ActionType.FOLLOW_VEHICLE else -1
                 # TODO: the following is not accurate because it returns "same-lon" cars distance as 0
-                s_T = relative_dynamic_object.distance + margin_sign * (LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
+                s_T = relative_dynamic_object.distance -(LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
                                                                         ego_state.size.length / 2 + dynamic_object.size.length / 2)
                 v_T = dynamic_object.v_x
-                wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
+
                 predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
 
                 # TODO: bug when s_T < 0 (on follow of near car)
                 return predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
-                                 FILTER_S_T_GRID.get_index(s_T), FILTER_V_T_GRID.get_index(v_T)] > 0
+                                 FILTER_S_T_GRID.get_index(margin_sign*s_T), FILTER_V_T_GRID.get_index(v_T)] > 0
             else:
                 return False
         elif action_type == ActionType.FOLLOW_LANE:
@@ -92,7 +133,7 @@ class FilterActionsTowardBackAndParallelCells(RecipeFilter):
 
 class FilterOvertakeActions(RecipeFilter):
     def filter(self, recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
-        return recipe.action_type != ActionType.OVER_TAKE_VEHICLE
+        return recipe.action_type != ActionType.OVERTAKE_VEHICLE
 
 
 # StaticActionRecipe Filters

@@ -64,7 +64,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-def test_behavioralPlanningFacade_semanticPolicy_anyResult(pubsub: PubSub, state_module,
+def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub, state_module,
                                                            navigation_facade):
     bp_logger = MagicMock()
     predictor_logger = MagicMock()
@@ -77,7 +77,8 @@ def test_behavioralPlanningFacade_semanticPolicy_anyResult(pubsub: PubSub, state
     planner = SingleStepBehavioralPlanner(action_space=action_space,
                                           recipe_evaluator=None,
                                           action_spec_evaluator=RuleBasedActionSpecEvaluator(bp_logger),
-                                          action_spec_validator=ActionSpecFiltering(filters=[FilterIfNone()]),
+                                          action_spec_validator=ActionSpecFiltering(filters=[FilterIfNone()],
+                                                                                    logger=bp_logger),
                                           value_approximator=ZeroValueApproximator(bp_logger),
                                           predictor=predictor, logger=bp_logger)
 

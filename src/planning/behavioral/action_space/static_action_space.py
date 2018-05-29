@@ -3,11 +3,12 @@ from typing import Optional, List, Type
 import numpy as np
 from sklearn.utils.extmath import cartesian
 
+import rte.python.profiler as prof
 from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
     SAFE_DIST_TIME_DELAY, VELOCITY_LIMITS
+from decision_making.src.global_constants import VELOCITY_STEP
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.global_constants import VELOCITY_STEP
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, StaticActionRecipe
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
@@ -30,10 +31,19 @@ class StaticActionSpace(ActionSpace):
 
     @property
     def recipe_classes(self) -> List[Type]:
+        """a list of Recipe classes this action space can handle with"""
         return [StaticActionRecipe]
 
+    @prof.ProfileFunction()
     def specify_goals(self, action_recipes: List[StaticActionRecipe], behavioral_state: BehavioralGridState) -> \
             List[Optional[ActionSpec]]:
+        """
+        This method's purpose is to specify the enumerated actions (recipes) that the agent can take.
+        Each semantic action (ActionRecipe) is translated into a terminal state specification (ActionSpec).
+        :param action_recipes: an enumerated semantic action [ActionRecipe].
+        :param behavioral_state: a Frenet state of ego at initial point
+        :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
+        """
         ego = behavioral_state.ego_state
         road_frenet = MapUtils.get_road_rhs_frenet(ego)
 
@@ -71,11 +81,9 @@ class StaticActionSpace(ActionSpace):
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 1], a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV], v_T=0,
-            ds=lateral_difference, T_m=SAFE_DIST_TIME_DELAY)
+            dx=lateral_difference, T_m=SAFE_DIST_TIME_DELAY)
         roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         T_d = np.fmin.reduce(roots_d, axis=-1)
-
-        # print('ego_init_fstate = %s, roots_d=%s' % (ego_init_fstate, roots_d))
 
         # if both T_d[i] and T_s[i] are defined for i, then take maximum. otherwise leave it nan.
         T = np.maximum(np.maximum(T_d, T_s), BP_ACTION_T_LIMITS[LIMIT_MIN])
@@ -83,6 +91,7 @@ class StaticActionSpace(ActionSpace):
         # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution
         distance_s = QuarticPoly1D.distance_profile_function(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
                                                              v_T=v_T, T=T)(T)
+        # Absolute longitudinal position of target
         target_s = distance_s + ego_init_fstate[FS_SX]
 
         action_specs = [ActionSpec(t, v_T[i], target_s[i], desired_center_lane_latitude[i])

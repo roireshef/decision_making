@@ -16,7 +16,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
-BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 200.0
+BEHAVIORAL_PLANNING_LOOKAHEAD_DIST = 90.0
 
 # When retrieving the lookahead path of a given dynamic object, we will multiply the path length
 # by the following ratio in order to avoid extrapolation when resampling the path (due to path sampling
@@ -82,7 +82,6 @@ VELOCITY_STEP = 10/3.6
 # Planning horizon for the TP query sent by BP [sec]
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
 BP_ACTION_T_LIMITS = np.array([2.0, 20.0])
-BP_ACTION_T_RES = 0.0001
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
@@ -112,7 +111,7 @@ LON_MARGIN_FROM_EGO = 1
 FILTER_A_0_GRID = UniformGrid(LON_ACC_LIMITS, 0.5)
 FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
 FILTER_V_T_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
-FILTER_S_T_GRID = UniformGrid(np.array([0, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
+FILTER_S_T_GRID = UniformGrid(np.array([-10, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
 
 # [m/s^2] accelerations for different aggressiveness levels
 AGGRESSIVENESS_TO_LON_ACC = np.array([1, 1.5, 2.25])
@@ -284,6 +283,3 @@ LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME = "BehavioralFacade._periodic_action_impl t
 
 # Resolution of car timestamps in sec
 TIMESTAMP_RESOLUTION_IN_SEC = 1e-9
-
-# Maximal prediction horizon in [sec] for short-time alignment predictor
-TIME_ALIGNMENT_PREDICTOR_MAX_HORIZON = 0.4

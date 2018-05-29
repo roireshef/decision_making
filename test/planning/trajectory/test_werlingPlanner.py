@@ -1,25 +1,20 @@
 import time
+from typing import List
 from unittest.mock import patch
 
 import numpy as np
 import pytest
-from typing import List
 
-from decision_making.src.global_constants import OBSTACLE_SIGMOID_K_PARAM, LATERAL_SAFETY_MARGIN_FROM_OBJECT, \
-    OBSTACLE_SIGMOID_COST, DEVIATION_FROM_ROAD_COST, DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_LANE_COST, \
-    ROAD_SIGMOID_K_PARAM, EGO_LENGTH, EGO_WIDTH, \
-    SHOULDER_SIGMOID_OFFSET, SHOULDER_SIGMOID_K_PARAM, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
-    DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LANE_SIGMOID_K_PARAM, \
-    DEVIATION_FROM_GOAL_LAT_LON_RATIO, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, TD_STEPS, \
-    LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_MARGIN_FROM_EGO
+from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, \
+    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, \
+    DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_MARGIN_FROM_EGO
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.planning.trajectory.cost_function import Costs, Jerk
-from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
-from decision_making.src.planning.utils.optimal_control.poly1d import Poly1D
-from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, CartesianPoint2D, C_Y, \
-    CartesianExtendedTrajectory, C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, CartesianExtendedState, CartesianTrajectory
-from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner, SamplableWerlingTrajectory
+from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner, \
+    SamplableWerlingTrajectory
+from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, \
+    CartesianExtendedState, CartesianTrajectory
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import Poly1D
@@ -27,20 +22,12 @@ from decision_making.src.prediction.road_following_predictor import RoadFollowin
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidDynamicBoxObstacle, \
-    WerlingVisualizer, PlottableSigmoidStaticBoxObstacle
+    WerlingVisualizer
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
-from decision_making.src.planning.utils.math import Math
 from mapping.src.model.map_api import MapAPI
-from mapping.src.model.naive_cache_map import NaiveCacheMap
-from mapping.src.service.map_service import MapService
-from mapping.test.model.map_model_utils import TestMapModelUtils
-from mapping.test.model.testable_map_fixtures import testable_map_api
 from mapping.src.transformations.geometry_utils import CartesianFrame
-from mapping.test.model.testable_map_fixtures import map_api_mock
+from mapping.test.model.map_model_utils import TestMapModelUtils
 from rte.python.logger.AV_logger import AV_Logger
-from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
-from decision_making.src.planning.utils.math import Math
-
 
 mock_td_steps = 5
 
