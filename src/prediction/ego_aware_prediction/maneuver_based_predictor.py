@@ -88,9 +88,10 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
         predicted_objects_states_dict: Dict[int, List[DynamicObject]] = dict()
 
         for obj_id in object_ids:
-            predicted_maneuver_spec = self._maneuver_classifier.classify_maneuver(state=state, object_id=obj_id)
-
             dynamic_object = State.get_object_from_state(state=state, target_obj_id=obj_id)
+            horizon = prediction_timestamps[-1] - dynamic_object.timestamp_in_sec
+            predicted_maneuver_spec = self._maneuver_classifier.classify_maneuver(state=state, object_id=obj_id, T_s=horizon)
+
             frenet_frame = MapService.get_instance().get_road_center_frenet_frame(
                 road_id=dynamic_object.road_localization.road_id)
 

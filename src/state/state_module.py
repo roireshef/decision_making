@@ -10,6 +10,7 @@ from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.planning.types import CartesianPoint3D
 from decision_making.src.planning.utils.transformations import Transformations
 from decision_making.src.state.state import OccupancyState, EgoState, DynamicObject, ObjectSize, State
+from decision_making.src.state.state_utils import get_object_fstate
 from mapping.src.exceptions import MapCellNotFound, raises
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 
@@ -138,6 +139,7 @@ class StateModule(DmModule):
                                             acceleration_lon, omega_yaw)
                     self._dynamic_objects_memory_map[id] = dyn_obj
                     dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
+
                 else:
                     continue
 
