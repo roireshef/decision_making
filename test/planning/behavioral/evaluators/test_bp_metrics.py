@@ -32,29 +32,6 @@ from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
 
-def test_calcLastSafeTime():
-    max_brake = -LON_ACC_LIMITS[0]
-    vel_profile = VelocityProfile(v_init=10, t1=10, v_mid=20, t2=10, t3=10, v_tar=10)
-    init_s_obj = 100
-    v_obj = 10
-    length = 4
-    td = 2
-    last_safe_time = vel_profile.calc_last_safe_time(init_s_ego=0, ego_length=length, init_s_obj=init_s_obj,
-                                                     init_v_obj=v_obj, obj_length=length, T=np.inf, td_0=td, td_T=td)
-    s_ego, v_ego = vel_profile.sample_at(last_safe_time + td)
-    s_obj = init_s_obj + last_safe_time * v_obj
-    d = s_obj - s_ego - (v_ego**2 - v_obj**2) / (2*max_brake) - length
-    assert abs(d) < 0.001
-
-    init_s_obj = 150
-    last_safe_time = vel_profile.calc_last_safe_time(init_s_ego=0, ego_length=length, init_s_obj=init_s_obj,
-                                                     init_v_obj=v_obj, obj_length=length, T=np.inf, td_0=td, td_T=td)
-    s_ego, v_ego = vel_profile.sample_at(last_safe_time + td)
-    s_obj = init_s_obj + last_safe_time * v_obj
-    d = s_obj - s_ego - (v_ego**2 - v_obj**2) / (2*max_brake) - length
-    assert abs(d) < 0.001
-
-
 def test_evaluate_rangesForF():
     logger = Logger("test_BP_costs")
     road_id = 20
@@ -172,11 +149,11 @@ def test_evaluate_ranges_F_LF():
                 t1 = abs(des_vel - ego_vel) / 1.
                 t2 = max(0., 100 - t1)
                 vel_profile = VelocityProfile(v_init=ego_vel, t1=t1, v_mid=des_vel, t2=t2, t3=0, v_tar=des_vel)
-                safe_to_F = vel_profile.calc_last_safe_time(ego_lon, length, F_lon, F_vel, length, np.inf, 2, 2)
+                safe_to_F = vel_profile.calc_last_safe_time(ego_lon, length, F_lon, F_vel, length, np.inf, 1.6, 1.6)
 
                 LF_lon = ego_lon + sec_to_LF * (ego_vel + des_vel) / 2
                 LF = MapUtils.create_canonic_object(3, 0, LF_lon, 3 * lane_width / 2, LF_vel, size, road_frenet)
-                safe_to_LF = vel_profile.calc_last_safe_time(ego_lon, length, LF_lon, LF_vel, length, np.inf, 2, 2)
+                safe_to_LF = vel_profile.calc_last_safe_time(ego_lon, length, LF_lon, LF_vel, length, np.inf, 1.6, 1.6)
 
                 objects = [F, LF]
                 state = State(None, objects, ego)
@@ -219,10 +196,15 @@ def test_evaluate_ranges_F_LF():
                        F_vel, safe_to_F, F_lon-ego_lon,
                        LF_vel, safe_to_LF, LF_lon-ego_lon))
 
-                if (safe_to_F+8) / (safe_to_LF+8) > 1.4 * ((LF_vel+2)/(F_vel+2))**2 or F_vel >= des_vel-1:
+                if safe_to_LF < 0 or safe_to_LF - safe_to_F < 0 or safe_to_F > 9 or F_vel >= des_vel-1:
                     assert selected_lane == 0
-                if (safe_to_F+8) / (safe_to_LF+8) < 0.7 * ((LF_vel+2)/(F_vel+2))**2 and F_vel <= des_vel-3:
+                if safe_to_LF >= 0 and safe_to_LF - safe_to_F > 2 and 3. < safe_to_F < 6 and F_vel <= des_vel-3:
                     assert selected_lane == 1
+
+                # if (safe_to_F+8) / (safe_to_LF+8) > 1.4 * ((LF_vel+2)/(F_vel+2))**2 or F_vel >= des_vel-1:
+                #     assert selected_lane == 0
+                # if (safe_to_F+8) / (safe_to_LF+8) < 0.7 * ((LF_vel+2)/(F_vel+2))**2 and F_vel <= des_vel-3:
+                #     assert selected_lane == 1
 
 
 def test_evaluate_rangesForLB():
@@ -441,3 +423,26 @@ def test_speedProfiling():
     end = time.time()
 
     print('action num=%d; filtered actions=%d; time = %f' % (len(action_recipes), np.count_nonzero(recipes_mask), end - start))
+
+
+def test_calcLastSafeTime():
+    max_brake = -LON_ACC_LIMITS[0]
+    vel_profile = VelocityProfile(v_init=10, t1=10, v_mid=20, t2=10, t3=10, v_tar=10)
+    init_s_obj = 100
+    v_obj = 10
+    length = 4
+    td = 2
+    last_safe_time = vel_profile.calc_last_safe_time(init_s_ego=0, ego_length=length, init_s_obj=init_s_obj,
+                                                     init_v_obj=v_obj, obj_length=length, T=np.inf, td_0=td, td_T=td)
+    s_ego, v_ego = vel_profile.sample_at(last_safe_time + td)
+    s_obj = init_s_obj + last_safe_time * v_obj
+    d = s_obj - s_ego - (v_ego**2 - v_obj**2) / (2*max_brake) - length
+    assert abs(d) < 0.001
+
+    init_s_obj = 150
+    last_safe_time = vel_profile.calc_last_safe_time(init_s_ego=0, ego_length=length, init_s_obj=init_s_obj,
+                                                     init_v_obj=v_obj, obj_length=length, T=np.inf, td_0=td, td_T=td)
+    s_ego, v_ego = vel_profile.sample_at(last_safe_time + td)
+    s_obj = init_s_obj + last_safe_time * v_obj
+    d = s_obj - s_ego - (v_ego**2 - v_obj**2) / (2*max_brake) - length
+    assert abs(d) < 0.001
