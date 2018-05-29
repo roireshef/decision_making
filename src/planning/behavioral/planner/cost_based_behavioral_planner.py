@@ -68,8 +68,9 @@ class CostBasedBehavioralPlanner:
         """
         pass
 
+    @staticmethod
     @prof.ProfileFunction()
-    def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], action_recipes: List[ActionRecipe],
+    def _generate_terminal_states(state: State, action_specs: List[ActionSpec], action_recipes: List[ActionRecipe],
                                   mask: np.ndarray, logger: Logger) -> List[BehavioralGridState]:
         """
         Given current state and action specifications, generate a corresponding list of future states using the

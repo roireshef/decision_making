@@ -23,6 +23,7 @@ from decision_making.src.planning.behavioral.filtering import action_spec_filter
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering, \
     ActionSpecFilter
+from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, C_A, C_K
 from decision_making.src.planning.utils.map_utils import MapUtils
@@ -52,20 +53,22 @@ def test_evaluate_rangesForF():
     ego_vel_range = np.arange(des_vel-9, des_vel+9.1, 3)
     F_vel_range = np.arange(des_vel-9, des_vel+9.1, 3)
     sec_to_F_range = np.array([2, 2.5, 3, 4, 6, 8])
+    TC_F_range = np.arange(2, 8.001)
 
     for ego_vel in ego_vel_range:
         for F_vel in F_vel_range:
-            for sec_to_F in sec_to_F_range:
+            for TC_F in TC_F_range:
                 ego = MapUtils.create_canonic_ego(0, ego_lon, lane_width / 2, ego_vel, size, road_frenet)
-                F_lon = ego_lon + sec_to_F * (ego_vel + des_vel) / 2
+                F_lon = ego_lon + calc_init_dist_by_safe_time(True, ego_vel, F_vel, TC_F, 1.6, length, -LON_ACC_LIMITS[0])
+                # F_lon = ego_lon + sec_to_F * (ego_vel + des_vel) / 2
                 F = MapUtils.create_canonic_object(1, 0, F_lon, lane_width / 2, F_vel, size, road_frenet)
 
-                t1 = abs(des_vel - ego_vel) / 1.
-                t2 = max(0., 100 - t1)
-                vel_profile = VelocityProfile(v_init=ego_vel, t1=t1, v_mid=des_vel, t2=t2, t3=0, v_tar=des_vel)
-                safe_to_F = vel_profile.calc_last_safe_time(ego_lon, length, F_lon, F_vel, length, np.inf, 1.6, 1.6)
-                if safe_to_F < 0:  # unsafe state
-                    continue
+                # t1 = abs(des_vel - ego_vel) / 1.
+                # t2 = max(0., 100 - t1)
+                # vel_profile = VelocityProfile(v_init=ego_vel, t1=t1, v_mid=des_vel, t2=t2, t3=0, v_tar=des_vel)
+                # safe_to_F = vel_profile.calc_last_safe_time(ego_lon, length, F_lon, F_vel, length, np.inf, 1.6, 1.6)
+                # if safe_to_F < 0:  # unsafe state
+                #     continue
 
                 state = State(None, [F], ego)
                 behavioral_state = BehavioralGridState.create_from_state(state, logger)
@@ -83,11 +86,11 @@ def test_evaluate_rangesForF():
                 costs = spec_evaluator.evaluate(behavioral_state, recipes, list(specs), specs_mask)
 
                 # approximate cost-to-go per terminal state
-                terminal_behavioral_states = SingleStepBehavioralPlanner.generate_terminal_states(
+                terminal_behavioral_states = CostBasedBehavioralPlanner._generate_terminal_states(
                     state, list(specs), recipes, specs_mask, logger)
 
                 # generate goals for all terminal_behavioral_states
-                navigation_goals = SingleStepBehavioralPlanner.generate_goals(
+                navigation_goals = CostBasedBehavioralPlanner._generate_goals(
                     ego.road_localization.road_id, ego.road_localization.road_lon, terminal_behavioral_states)
 
                 terminal_states_values = np.array([value_approximator.approximate(state, navigation_goals[i])
@@ -101,16 +104,16 @@ def test_evaluate_rangesForF():
                 best_idx = valid_idx[action_q_cost[valid_idx].argmin()]
                 selected_lane = recipes[best_idx].relative_lane.value
 
-                print('ego_vel=%.2f F_vel=%.2f sec=%.2f dist=%.2f t_c=%.2f: cost=%.2f val=%.2f; i=%d lane=%d\n' %
-                      (ego_vel, F_vel, sec_to_F, F_lon-ego_lon, safe_to_F, costs[best_idx], terminal_states_values[best_idx],
+                print('ego_vel=%.2f F_vel=%.2f sec=%.2f dist=%.2f cost=%.2f val=%.2f; i=%d lane=%d\n' %
+                      (ego_vel, F_vel, TC_F, F_lon-ego_lon, costs[best_idx], terminal_states_values[best_idx],
                        best_idx, selected_lane))
 
-                if ego_vel>=20 and F_vel>=8 and sec_to_F>=2.5:
-                    continue
+                # if ego_vel>=20 and F_vel>=8 and TC_F>=2.5:
+                #     continue
 
-                if safe_to_F > 9 or F_vel >= des_vel-1:
+                if TC_F > 9 or F_vel >= des_vel-1:
                     assert selected_lane == 0
-                if 3. < safe_to_F < 6 and F_vel <= des_vel-3:
+                if 3. < TC_F < 6 and F_vel <= des_vel-3 and ego_vel >= F_vel:
                     assert selected_lane == 1
 
 
@@ -262,11 +265,11 @@ def test_evaluate_rangesForLB():
             # State-Action Evaluation
             costs = spec_evaluator.evaluate(behavioral_state, recipes, list(specs), specs_mask)
             # approximate cost-to-go per terminal state
-            terminal_behavioral_states = SingleStepBehavioralPlanner.generate_terminal_states(
+            terminal_behavioral_states = CostBasedBehavioralPlanner._generate_terminal_states(
                 state, list(specs), recipes, specs_mask, logger)
 
             # generate goals for all terminal_behavioral_states
-            navigation_goals = SingleStepBehavioralPlanner.generate_goals(
+            navigation_goals = CostBasedBehavioralPlanner._generate_goals(
                 ego.road_localization.road_id, ego.road_localization.road_lon, terminal_behavioral_states)
 
             terminal_states_values = np.array([value_approximator.approximate(state, navigation_goals[i])
@@ -446,3 +449,23 @@ def test_calcLastSafeTime():
     s_obj = init_s_obj + last_safe_time * v_obj
     d = s_obj - s_ego - (v_ego**2 - v_obj**2) / (2*max_brake) - length
     assert abs(d) < 0.001
+
+
+def calc_init_dist_by_safe_time(obj_ahead: bool, ego_v: float, obj_v: float, t: float, time_delay: float, margin: float,
+                                max_brake: float):
+    des_v = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    t1 = abs(des_v - ego_v) / 1.
+    t2 = max(0., 100 - t1)
+    vel_profile = VelocityProfile(v_init=ego_v, t1=t1, v_mid=des_v, t2=t2, t3=0, v_tar=des_v)
+
+    if obj_ahead:
+        ego_s_at_td, ego_v_at_td = vel_profile.sample_at(t + time_delay)
+        dist = max(0., (ego_v_at_td**2 - obj_v**2) / (2*max_brake) - obj_v * t + ego_s_at_td) + margin
+    else:
+        ego_s_at_t, ego_v_at_t = vel_profile.sample_at(t)
+        dist = max(0., obj_v ** 2 - ego_v_at_t ** 2) / (2 * max_brake) + time_delay * obj_v + margin - obj_v * t + ego_s_at_t
+        # for DEBUG
+        TC = vel_profile.calc_last_safe_time(dist, margin, 0, obj_v, margin, np.inf, time_delay, time_delay)
+        assert abs(TC - t) < 0.01
+
+    return dist
