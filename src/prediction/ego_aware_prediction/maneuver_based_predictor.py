@@ -1,5 +1,5 @@
 from logging import Logger
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 import copy
 import numpy as np
@@ -33,7 +33,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
         self._trajectory_generator = trajectory_generator
         self._maneuver_classifier = maneuver_classifier
 
-    def predict_state(self, state: State, prediction_timestamps: np.ndarray, action_trajectory: SamplableTrajectory) \
+    def predict_state(self, state: State, prediction_timestamps: np.ndarray, action_trajectory: Optional[SamplableTrajectory]) \
             -> (List[State]):
         """
         Predicts the future states of the given state, for the specified timestamps
@@ -48,8 +48,9 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
         # Simple object-wise prediction
         object_ids = [obj.obj_id for obj in state.dynamic_objects]
 
-        action_trajectory_sampled_extended = action_trajectory.sample(time_points=prediction_timestamps)
-        action_trajectory_sampled = action_trajectory_sampled_extended[:, [C_X, C_Y, C_YAW, C_V]]
+        if action_trajectory is not None:
+            action_trajectory_sampled_extended = action_trajectory.sample(time_points=prediction_timestamps)
+            action_trajectory_sampled = action_trajectory_sampled_extended[:, [C_X, C_Y, C_YAW, C_V]]
 
         predicted_objects_states_dict = self.predict_objects(state=state, object_ids=object_ids,
                                                              prediction_timestamps=prediction_timestamps,
@@ -60,9 +61,13 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
         for time_idx in range(len(prediction_timestamps)):
             predicted_dynamic_objects = [future_object_states[time_idx] for future_object_states in
                                          predicted_objects_states_dict.values()]
-            predicted_ego_state = state.ego_state.clone_cartesian_state(
-                timestamp_in_sec=prediction_timestamps[time_idx],
-                cartesian_state=action_trajectory_sampled[time_idx])
+
+            if action_trajectory is not None:
+                predicted_ego_state = state.ego_state.clone_cartesian_state(
+                    timestamp_in_sec=prediction_timestamps[time_idx],
+                    cartesian_state=action_trajectory_sampled[time_idx])
+            else:
+                predicted_ego_state = None
 
             state = State(occupancy_state=copy.deepcopy(state.occupancy_state),
                           ego_state=predicted_ego_state,
@@ -73,7 +78,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
         return future_states
 
     def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray,
-                        action_trajectory: SamplableTrajectory) -> Dict[int, List[DynamicObject]]:
+                        action_trajectory: Optional[SamplableTrajectory]) -> Dict[int, List[DynamicObject]]:
         """
         Predicte the future of the specified objects, for the specified timestamps
         :param state: the initial state to begin prediction from. Though predicting a single object, the full state
