@@ -50,6 +50,13 @@ class BP_EfficiencyMetric:
 
     @staticmethod
     def _calc_avg_vel_deviation(v1: float, v2: float, des_vel: float) -> float:
+        """
+        given a velocity segment, calculate average deviation from the desired velocity
+        :param v1: [m/s] initial segment velocity
+        :param v2: [m/s] terminal segment velocity
+        :param des_vel: [m/s] desired velocity
+        :return: [m/s] average deviation
+        """
         if (v1 - des_vel) * (v2 - des_vel) >= 0:  # v1 and v2 are on the same side of des_vel
             return abs(0.5 * (v1 + v2) - des_vel)  # simple average deviation
         else:  # v1 and v2 are on different sides of des_vel
@@ -73,7 +80,7 @@ class BP_ComfortMetric:
             lat_jerk1 = QuinticPoly1D.cumulative_jerk_from_constraints(
                 ego_fstate[FS_DA], ego_fstate[FS_DV], 0, dist, T_d)
             lat_jerk2 = QuinticPoly1D.cumulative_jerk_from_constraints(
-                ego_fstate[FS_DA], ego_fstate[FS_DV], 0, dist, 2*T_d)
+                ego_fstate[FS_DA], ego_fstate[FS_DV], 0, dist, min(2*T_d, spec.t))
             lat_cost = min(lat_jerk1, lat_jerk2) * LAT_JERK_COST_WEIGHT
 
         # longitudinal jerk
@@ -88,10 +95,21 @@ class BP_ComfortMetric:
 class BP_RightLaneMetric:
     @staticmethod
     def calc_cost(time_period: float, lane_idx: int) -> float:
+        """
+        Calculate non-right lane cost for the given lane
+        :param time_period: [s] time period of the action
+        :param lane_idx: lane index (0 means the rightest lane)
+        :return: non-right lane cost
+        """
         return BP_RIGHT_LANE_COST_WEIGHT * lane_idx * time_period
 
 
 class BP_LaneDeviationMetric:
     @staticmethod
     def calc_cost(lat_dev: float) -> float:
+        """
+        Calculate lane deviation cost for an action
+        :param lat_dev: [m] maximal lateral deviation during an action
+        :return: lane deviation cost
+        """
         return BP_METRICS_LANE_DEVIATION_COST_WEIGHT * lat_dev * lat_dev

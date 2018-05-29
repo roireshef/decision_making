@@ -142,6 +142,9 @@ BP_MISSING_GOAL_COST = 100.
 # TODO: will be removed after implementation of value function
 MINIMAL_STATIC_ACTION_TIME = 8
 
+# [m] default longitudinal distance to the next navigation goal
+DEFAULT_DISTANCE_TO_NAVIGATION_GOAL = 300
+
 
 
 # Trajectory Planner #

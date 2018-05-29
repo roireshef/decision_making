@@ -2,9 +2,8 @@ import numpy as np
 import copy
 
 from decision_making.src.global_constants import AGGRESSIVENESS_TO_LON_ACC, LON_ACC_LIMITS, AGGRESSIVENESS_TO_LAT_ACC
-from decision_making.src.planning.behavioral.data_objects import ActionType, AggressivenessLevel
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.types import LIMIT_MIN
-from decision_making.src.state.state import DynamicObject
 
 
 class VelocityProfile:
@@ -16,7 +15,7 @@ class VelocityProfile:
         self.t3 = t3            # deceleration/acceleration time
         self.v_tar = v_tar      # end velocity
 
-    def get_details(self, T_max: float=np.inf) -> [np.array, np.array, np.array, np.array, np.array]:
+    def calc_profile_details(self, T_max: float=np.inf) -> [np.array, np.array, np.array, np.array, np.array]:
         """
         Return times, longitudes, velocities, accelerations for the current velocity profile.
         :param T_max: if the profile is longer than max_time, then truncate it
@@ -55,12 +54,25 @@ class VelocityProfile:
         return t, t_cum, s_cum, v, a
 
     def total_time(self) -> float:
+        """
+        total profile time
+        :return: [s] total time
+        """
         return self.t1 + self.t2 + self.t3
 
     def total_dist(self) -> float:
+        """
+        total profile distance
+        :return: [m] total distance
+        """
         return 0.5 * ((self.v_init + self.v_mid) * self.t1 + (self.v_mid + self.v_tar) * self.t3) + self.v_mid * self.t2
 
     def sample_at(self, t: float) -> [float, float]:
+        """
+        sample profile at time t and return elapsed distance and velocity at time t
+        :param t: [s] time since profile beginning
+        :return: elapsed distance and velocity at t
+        """
         if t < self.t1:
             a1 = (self.v_mid - self.v_init) / self.t1
             return t * (self.v_init + 0.5 * a1 * t), self.v_init + a1 * t
@@ -107,6 +119,11 @@ class VelocityProfile:
         return t
 
     def cut_by_time(self, max_time: float):
+        """
+        cut profile in a given time
+        :param max_time: [s] cutting time
+        :return: a new cut profile
+        """
         tot_time = self.total_time()
         if tot_time <= max_time:
             return copy.copy(self)
@@ -274,7 +291,7 @@ class VelocityProfile:
             return np.inf
 
         # find the latest safe time
-        t, t_cum, s_ego, v_ego, a_ego = self.get_details(T)
+        t, t_cum, s_ego, v_ego, a_ego = self.calc_profile_details(T)
         s_ego += init_s_ego
         s_obj = init_s_obj + init_v_obj * t_cum[:-1]
         v_obj = np.repeat(init_v_obj, t.shape[0])
@@ -325,7 +342,17 @@ class VelocityProfile:
 
     @staticmethod
     def is_safe_state(v_front: float, v_back: float, dist: float, time_delay: float, margin: float,
-                      max_brake: float=-LON_ACC_LIMITS[0]):
+                      max_brake: float=-LON_ACC_LIMITS[0]) -> bool:
+        """
+        safety test by the longitudinal RSS formula
+        :param v_front: [m/s] front vehicle velocity
+        :param v_back: [m/s] back vehicle velocity
+        :param dist: [m] distance between the vehicles
+        :param time_delay: time delay of the back vehicle
+        :param margin: [m] cars sizes margin
+        :param max_brake: [m/s^2] maximal deceleration of the vehicles
+        :return: True if the back vehicle is safe
+        """
         return max(0., v_back**2 - v_front**2) / (2*max_brake) + v_back*time_delay + margin < dist
 
     def _is_safe_profile(self, init_s_ego: float, init_s_obj: float, v_obj: float, margin: float,
@@ -333,9 +360,10 @@ class VelocityProfile:
         """
         Given ego velocity profile and dynamic object, check if the profile complies safety.
         Here we assume the object has a constant velocity.
-        :param ego_lon: ego initial longitude
-        :param ego_half_size: [m] half length of ego
-        :param dyn_obj: the dynamic object, for which the safety is tested
+        :param init_s_ego: [m] ego initial longitude
+        :param init_s_obj: [m] object's initial longitude
+        :param v_obj: [m/s] object's constant velocity
+        :param margin: [m] cars sizes margin
         :param T: maximal time to check the safety (usually T_d for safety w.r.t. F and LB)
         :param td_0: reaction time of the back car at time 0
         :param td_T: reaction time of the back car at time T_max
@@ -435,21 +463,3 @@ class VelocityProfile:
         if t2 >= 0:
             return min(t2, T)
         return T
-
-    @staticmethod
-    def calc_collision_time(v_init: float, v_max: float, acc: float, v_tar: float, dist: float) -> float:
-        v_init_rel = v_init - v_tar
-        v_max_rel = v_max - v_tar
-        if v_max_rel <= 0 and v_init_rel <= 0:
-            return np.inf
-        if v_init_rel < v_max_rel:
-            acceleration_dist = (v_max_rel**2 - v_init_rel**2) / (2*acc)
-            if acceleration_dist < dist:
-                acceleration_time = (v_max_rel - v_init_rel) / acc
-                const_vel_time = (dist - acceleration_dist) / v_max_rel
-                return acceleration_time + const_vel_time
-            else:  # acceleration_dist >= dist; solve for t: v*t + at^2/2 = dist
-                acceleration_time = (np.sqrt(v_init_rel**2 + 2*acc*dist) - v_init_rel) / acc
-                return acceleration_time
-        else:  # v_init_rel > v_max_rel
-            return dist / v_init_rel

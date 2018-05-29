@@ -12,13 +12,13 @@ from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATI
     DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, \
     OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, \
     DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS
+    LAT_ACC_LIMITS, DEFAULT_DISTANCE_TO_NAVIGATION_GOAL
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, NavigationGoal
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator, \
     ActionRecipeEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
@@ -69,35 +69,58 @@ class CostBasedBehavioralPlanner:
         pass
 
     @prof.ProfileFunction()
-    def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray) -> List[State]:
+    def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], action_recipes: List[ActionRecipe],
+                                  mask: np.ndarray, logger: Logger) -> List[BehavioralGridState]:
         """
         Given current state and action specifications, generate a corresponding list of future states using the
         predictor. Uses mask over list of action specifications to avoid unnecessary computation
         :param state: the current world state
         :param action_specs: list of action specifications
+        :param action_recipes: list of action recipes
         :param mask: 1D mask vector (boolean) for filtering valid action specifications
+        :param logger:
         :return: a list of terminal states
         """
-        # TODO: validate time units (all in seconds? global?)
-        # generate the simulated terminal states for all actions using predictor
-        action_horizons = np.array([action_spec.t
-                                    if mask[i] else np.nan
-                                    for i, action_spec in enumerate(action_specs)])
+        # create a new behavioral state at the action end
+        ego = state.ego_state
+        cur_ego_loc = ego.road_localization
+        road_id = cur_ego_loc.road_id
+        lane_width = MapService.get_instance().get_road(road_id).lane_width
 
-        # TODO: replace numpy array with fast sparse-list implementation
-        terminal_states = np.full(shape=action_horizons.shape, fill_value=None)
-        terminal_states[mask] = deepcopy(state)          # TODO: fix bug in predictor
-        # self.predictor.predict_state(state, action_horizons[mask] + state.ego_state.timestamp_in_sec)
-        terminal_states = list(terminal_states)
-
-        # transform terminal states into behavioral states
-        terminal_behavioral_states = [BehavioralGridState.create_from_state(state=terminal_state, logger=self.logger)
-                                      if mask[i] else None
-                                      for i, terminal_state in enumerate(terminal_states)]
+        terminal_behavioral_states = []
+        for i, spec in enumerate(action_specs):
+            if not mask[i]:
+                terminal_behavioral_states.append(None)
+                continue
+            recipe = action_recipes[i]
+            target_lane = cur_ego_loc.lane_num + recipe.relative_lane.value
+            cpoint, yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, spec.s, target_lane * lane_width)
+            terminal_ego = EgoState(ego.obj_id, ego.timestamp + int(spec.t * 1e9), cpoint[0], cpoint[1], cpoint[2], yaw,
+                                    ego.size, 0, spec.v, 0, 0, 0, 0)
+            predicted_objects = []  # TODO: use predictor
+            terminal_state = State(None, predicted_objects, terminal_ego)
+            new_behavioral_state = BehavioralGridState.create_from_state(terminal_state, logger)
+            terminal_behavioral_states.append(new_behavioral_state)
 
         return terminal_behavioral_states
 
     @staticmethod
+    def _generate_goals(road_id: int, current_lon: float, terminal_behavioral_states: List[BehavioralGridState]) -> \
+            List[NavigationGoal]:
+        """
+        Given current longitude and terminal behavioral states, create navigation goals containing all lanes -
+        a goal for each behavioral state. All goals are located at the same distance from the current longitude.
+        :param road_id: road id of ego and of the goal (we assume the same road_id)
+        :param current_lon: current ego longitude
+        :param terminal_behavioral_states: terminal states of the actions
+        :return: list of navigation goals
+        """
+        num_lanes = MapService.get_instance().get_road(road_id).lanes_num
+        goal_lon = current_lon + DEFAULT_DISTANCE_TO_NAVIGATION_GOAL
+        navigation_goal = NavigationGoal(road_id, goal_lon, list(range(0, num_lanes)))
+        return [navigation_goal if behavioral_state is not None else None
+                for i, behavioral_state in enumerate(terminal_behavioral_states)]
+
     @prof.ProfileFunction()
     def _generate_trajectory_specs(behavioral_state: BehavioralGridState,
                                    action_spec: ActionSpec,
