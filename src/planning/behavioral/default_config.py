@@ -10,7 +10,7 @@ DEFAULT_STATIC_RECIPE_FILTERING = RecipeFiltering(filters=[FilterIfNone(), Filte
                                                   logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))
 DEFAULT_DYNAMIC_RECIPE_FILTERING = RecipeFiltering(filters=[FilterIfNone(), FilterActionsTowardsNonOccupiedCells(),
                                                             FilterActionsTowardBackAndParallelCells(),
-                                                            FilterOvertakeActions(), FilterNonCalmActions(),
+                                                            FilterOvertakeActions(),
                                                             FilterBadExpectedTrajectory('predicates')],
                                                    logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))
 
