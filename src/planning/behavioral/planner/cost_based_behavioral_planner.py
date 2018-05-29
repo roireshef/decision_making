@@ -86,8 +86,8 @@ class CostBasedBehavioralPlanner:
 
         # TODO: replace numpy array with fast sparse-list implementation
         terminal_states = np.full(shape=action_horizons.shape, fill_value=None)
-        terminal_states[mask] = deepcopy(state)          # TODO: fix bug in predictor
-        # self.predictor.predict_state(state, action_horizons[mask] + state.ego_state.timestamp_in_sec)
+        # terminal_states[mask] = deepcopy(state)          # TODO: fix bug in predictor
+        self.predictor.predict_state(state, action_horizons[mask] + state.ego_state.timestamp_in_sec)
         terminal_states = list(terminal_states)
 
         # transform terminal states into behavioral states
