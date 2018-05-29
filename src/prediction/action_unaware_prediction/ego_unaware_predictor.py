@@ -3,6 +3,7 @@ from typing import List, Dict
 import numpy as np
 from logging import Logger
 
+from decision_making.src.planning.types import GlobalTimeStampInSec, MinGlobalTimeStampInSec
 from decision_making.src.state.state import State, DynamicObject
 
 
@@ -36,3 +37,22 @@ class EgoUnawarePredictor(metaclass=ABCMeta):
         Global, not relative
         :return: a list of predicted states for the requested prediction_timestamps
         """
+
+    def align_objects_to_most_recent_timestamp(self, state: State,
+                                               current_timestamp: GlobalTimeStampInSec = MinGlobalTimeStampInSec) -> State:
+        """
+        Returns state with all objects aligned to the most recent timestamp.
+        Most recent timestamp is taken as the max between the current_timestamp, and the most recent
+        timestamp of all objects in the scene.
+        :param current_timestamp: current timestamp in global time in [sec]
+        :param state: state containing objects with different timestamps
+        :return: new state with all objects aligned
+        """
+        ego_timestamp_in_sec = state.ego_state.timestamp_in_sec
+        objects_timestamp_in_sec = [state.dynamic_objects[x].timestamp_in_sec for x in
+                                    range(len(state.dynamic_objects))]
+        objects_timestamp_in_sec.append(ego_timestamp_in_sec)
+        most_recent_timestamp = np.max(objects_timestamp_in_sec)
+        most_recent_timestamp = np.maximum(most_recent_timestamp, current_timestamp)
+        self._logger.debug("Prediction of ego by: %s sec", most_recent_timestamp - ego_timestamp_in_sec)
+        return self.predict_state(state=state, prediction_timestamps=np.array([most_recent_timestamp]))[0]

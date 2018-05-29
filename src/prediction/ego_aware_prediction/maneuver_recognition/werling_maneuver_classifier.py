@@ -8,7 +8,7 @@ from decision_making.src.prediction.ego_aware_prediction.maneuver_spec import Ma
 from decision_making.src.state.state import State, DynamicObject
 from mapping.src.service.map_service import MapService
 from decision_making.src.prediction.ego_aware_prediction.maneuver_recognition.maneuver_classifier import ManeuverClassifier
-from prediction_research.src.utils.state_utils import get_object_fstate
+from decision_making.src.state.state_utils import get_object_fstate
 
 
 class WerlingManeuverClassifier(ManeuverClassifier):

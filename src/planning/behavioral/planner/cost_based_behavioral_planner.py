@@ -31,6 +31,7 @@ from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize, EgoState
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
@@ -42,7 +43,7 @@ class CostBasedBehavioralPlanner:
     def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
                  action_spec_evaluator: Optional[ActionSpecEvaluator],
                  action_spec_validator: Optional[ActionSpecFiltering],
-                 value_approximator: ValueApproximator, predictor: Predictor, logger: Logger):
+                 value_approximator: ValueApproximator, predictor: EgoAwarePredictor, logger: Logger):
         self.action_space = action_space
         self.recipe_evaluator = recipe_evaluator
         self.action_spec_evaluator = action_spec_evaluator
@@ -84,10 +85,13 @@ class CostBasedBehavioralPlanner:
                                     if mask[i] else np.nan
                                     for i, action_spec in enumerate(action_specs)])
 
+        action_trajectories = [CostBasedBehavioralPlanner.generate_baseline_trajectory(state.ego_state, action_spec)
+                               if mask[i] else np.nan for i, action_spec in enumerate(action_specs)]
+
         # TODO: replace numpy array with fast sparse-list implementation
-        terminal_states = np.full(shape=action_horizons.shape, fill_value=None)
-        # terminal_states[mask] = deepcopy(state)          # TODO: fix bug in predictor
-        self.predictor.predict_state(state, action_horizons[mask] + state.ego_state.timestamp_in_sec)
+        terminal_states = [self.predictor.predict_state(state, np.array([action_horizons[i] + state.ego_state.timestamp_in_sec]),
+                                                        action_trajectory=action_trajectories[i])[0] if mask[i] else np.nan
+                           for i, action_spec in enumerate(action_specs)]
         terminal_states = list(terminal_states)
 
         # transform terminal states into behavioral states
