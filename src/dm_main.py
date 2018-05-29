@@ -13,7 +13,7 @@ from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, 
     BEHAVIORAL_PLANNING_MODULE_PERIOD, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
     TRAJECTORY_PLANNING_MODULE_PERIOD, \
-    DM_MANAGER_NAME_FOR_LOGGING
+    DM_MANAGER_NAME_FOR_LOGGING, MAX_PREDICTION_HORIZON
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
@@ -34,6 +34,13 @@ from decision_making.src.planning.navigation.navigation_facade import Navigation
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
+from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
+    PhysicalTimeAlignmentPredictor
+from decision_making.src.prediction.ego_aware_prediction.maneuver_based_predictor import ManeuverBasedPredictor
+from decision_making.src.prediction.ego_aware_prediction.maneuver_recognition.constant_velocity_maneuver_classifier import \
+    ConstantVelocityManeuverClassifier
+from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.werling_trajectory_generator import \
+    WerlingTrajectoryGenerator
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import OccupancyState
 from decision_making.src.state.state_module import StateModule
@@ -87,11 +94,17 @@ class DmInitialization:
         # Init map
         MapService.initialize(MapServiceArgs(map_source_type=MapSourceType.File, map_source=MAP_FILE_NAME))
 
-        predictor = RoadFollowingPredictor(logger)
+        # predictor = RoadFollowingPredictor(logger)
+        maneuver_classifier = ConstantVelocityManeuverClassifier(T_s=MAX_PREDICTION_HORIZON)
+        werling_trajectory_generator = WerlingTrajectoryGenerator()
+        predictor = ManeuverBasedPredictor(logger, maneuver_classifier=maneuver_classifier,
+                                           trajectory_generator=werling_trajectory_generator)
 
         action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
-                                                     DynamicActionSpace(logger, predictor,
+                                                     DynamicActionSpace(logger, None,
                                                                         DEFAULT_DYNAMIC_RECIPE_FILTERING)])
+
+        time_alignment_predictor = PhysicalTimeAlignmentPredictor(logger=logger)
 
         recipe_evaluator = None
         action_spec_evaluator = RuleBasedActionSpecEvaluator(logger)
@@ -103,7 +116,7 @@ class DmInitialization:
 
         behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger,
                                                      behavioral_planner=planner,
-                                                     short_time_predictor=predictor, last_trajectory=None)
+                                                     short_time_predictor=time_alignment_predictor, last_trajectory=None)
         return behavioral_module
 
     @staticmethod
