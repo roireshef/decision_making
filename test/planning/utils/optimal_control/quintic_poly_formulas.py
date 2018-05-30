@@ -6,11 +6,10 @@ from sympy import symbols
 from sympy.matrices import *
 
 from decision_making.paths import Paths
-from decision_making.src.global_constants import LON_ACC_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS, \
-    BP_ACTION_T_LIMITS, EPS, FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID, \
-    FILTER_V_T_GRID, SAFE_DIST_TIME_DELAY
+from decision_making.src.global_constants import LON_ACC_LIMITS, VELOCITY_LIMITS, \
+    BP_ACTION_T_LIMITS, EPS
 from decision_making.src.planning.behavioral.data_objects import ActionType
-from decision_making.src.planning.utils.file_utils import BinaryReadWrite, TextReadWrite
+from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
@@ -120,13 +119,18 @@ class QuinticMotionPredicatesCreator:
                                                               np.array([v_T]), np.array([s_T]),
                                                               np.array([T_m]))[0]
         cost_roots_reals = Math.find_real_roots_in_limits(time_cost_poly_coefs, np.array(
-            [EPS, BP_ACTION_T_LIMITS[1]]))
+            [0, BP_ACTION_T_LIMITS[1]]))
         extremum_T = cost_roots_reals[np.isfinite(cost_roots_reals)]
 
         if len(extremum_T) == 0:
             return False
 
         T = extremum_T.min()  # First extrema is our local (and sometimes global) minimum
+
+        # Handling the case of an action where we'd like to continue doing what we're doing, so action time is zero
+        # or very small and gets quantized to zero.
+        if T == 0:
+            return True
 
         delta_s_t_func, coefs_s_der, v_t_func, a_t_func = QuinticMotionPredicatesCreator.create_quintic_motion_funcs(a_0, v_0,
                                                                                       v_T, s_T,
@@ -136,7 +140,7 @@ class QuinticMotionPredicatesCreator:
         s_roots_reals = Math.find_real_roots_in_limits(coefs_s_der, np.array([time_res_for_extremum_query, T-time_res_for_extremum_query]))
         extremum_delta_s_val = delta_s_t_func(s_roots_reals[np.isfinite(s_roots_reals)])
 
-        t = np.arange(0, T, time_res_for_extremum_query)
+        t = np.arange(0, T+EPS, time_res_for_extremum_query)
         min_v, max_v = min(v_t_func(t)), max(v_t_func(t))
         min_a, max_a = min(a_t_func(t)), max(a_t_func(t))
 
