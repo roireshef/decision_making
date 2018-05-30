@@ -103,6 +103,7 @@ class ActionSpaceContainer(ActionSpace):
     def recipe_classes(self) -> List:
         return list(itertools.chain.from_iterable(aspace.recipe_classes for aspace in self._action_spaces))
 
+    @raises(NotImplemented)
     def specify_goals(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> \
             List[Optional[ActionSpec]]:
         grouped_actions = defaultdict(list)
@@ -118,10 +119,12 @@ class ActionSpaceContainer(ActionSpace):
         # returns action_specs, sorted by their initial recipe ordering
         return [action for idx, action in sorted(indexed_action_specs, key=lambda idx_action: idx_action[0])]
 
+    @raises(NotImplemented)
     def filter_recipe(self, action_recipe: ActionRecipe, behavioral_state: BehavioralState) -> bool:
         return self._recipe_handler[action_recipe.__class__].filter_recipe(action_recipe, behavioral_state)
 
     # TODO: figure out how to remove the for loop for better efficiency and stay consistent with ordering
+    @raises(NotImplemented)
     def filter_recipes(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralState):
         return [self.filter_recipe(action_recipe, behavioral_state)
                 for action_recipe in action_recipes]

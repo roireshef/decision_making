@@ -65,11 +65,9 @@ DEVIATION_FROM_GOAL_COST = 2.5 * 1e2        # cost of longitudinal deviation fro
 GOAL_SIGMOID_K_PARAM = 0.5                  # sigmoid k (slope) param of going out-of-goal
 GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goal: cost = w/(1+e^(k*(m-d)))
 
-LON_JERK_COST_WEIGHT = 1.0                         # cost of longitudinal jerk
-LAT_JERK_COST_WEIGHT = 1.0                         # cost of lateral jerk
+LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
+LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
-EFFICIENCY_COST_WEIGHT = 0.6                # cost of zero velocity on one trajectory point
-EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO = 2  # ratio UNDER_C'(0) / UNDER_C'(v_desired)
 RIGHT_LANE_COST_WEIGHT = 0.005              # cost of using non-right lane on one trajectory point
 
 # [m/sec] speed to plan towards by default in BP
@@ -96,9 +94,10 @@ LON_ACC_LIMITS = np.array([-4.0, 3.0])  # taken from SuperCruise presentation
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 
-# Assumed response delay on road [sec]
-# Used to compute safe distance from other agents on road
+# Response delay of a human driver [sec]
 SAFE_DIST_TIME_DELAY = 2.0
+
+# Response delay of AV (ego) agent [sec]
 AV_TIME_DELAY = 0.8  # TODO: may be increased when TP will work with RSS
 
 # [m/sec] Minimal difference of velocities to justify an overtake
@@ -120,15 +119,13 @@ AGGRESSIVENESS_TO_LAT_ACC = np.array([0.4, 0.6, 0.9])
 # [sec] T_d according to specify_goal
 BP_CALM_LANE_CHANGE_TIME = 6.42
 
-# # conversion factor from acceleration to comfort cost
-# LON_ACC_TO_JERK_FACTOR = 12.05  # exact constant for quartic jerk, don't change it
-# LAT_ACC_TO_JERK_FACTOR = 0.2    # exact constant for lane change jerk, don't change it
-# CHANGE_LAT_VEL_WEIGHT = 50.     # penalty factor for changing lateral movement direction
-#
-# [sec] performance metrics for BP minimal plan time
-BP_METRICS_TIME_HORIZON = BP_ACTION_T_LIMITS[1]
-
+# performance metrics for BP: efficiency cost weight
 BP_EFFICIENCY_COST_WEIGHT = 5.
+
+# The following constant adjusts convexity of the efficiency cost as function of velocity (used by efficiency cost).
+# Let E(v) be the efficiency cost as function of velocity v.
+# The following constant is the ratio between derivatives E'(0) / E'(desired_vel)
+BP_EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO = 2
 
 # performance metrics for BP: lane deviation cost weight
 BP_METRICS_LANE_DEVIATION_COST_WEIGHT = 1.0
