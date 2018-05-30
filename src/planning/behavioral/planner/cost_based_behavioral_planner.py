@@ -32,7 +32,7 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from decision_making.src.planning.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import State, ObjectSize, EgoState
+from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -78,22 +78,31 @@ class CostBasedBehavioralPlanner:
         :param mask: 1D mask vector (boolean) for filtering valid action specifications
         :return: a list of terminal states
         """
-        # TODO: validate time units (all in seconds? global?)
-        # generate the simulated terminal states for all actions using predictor
-        action_horizons = np.array([action_spec.t
-                                    if mask[i] else np.nan
-                                    for i, action_spec in enumerate(action_specs)])
+        # create a new behavioral state at the action end
+        ego = state.ego_state
+        cur_ego_loc = ego.road_localization
+        road_id = cur_ego_loc.road_id
+        road_frenet = MapService.get_instance()._rhs_roads_frenet[road_id]   # TODO: assumes everyone on the same road!
 
-        # TODO: replace numpy array with fast sparse-list implementation
-        terminal_states = np.full(shape=action_horizons.shape, fill_value=None)
-        terminal_states[mask] = deepcopy(state)          # TODO: fix bug in predictor
-        # self.predictor.predict_state(state, action_horizons[mask] + state.ego_state.timestamp_in_sec)
-        terminal_states = list(terminal_states)
+        # TODO: This is hacky - use predictor!
+        terminal_behavioral_states = []
+        for i, spec in enumerate(action_specs):
+            if not mask[i]:
+                terminal_behavioral_states.append(None)
+                continue
+            cpoint, yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, spec.s, spec.d)
+            terminal_ego = EgoState(ego.obj_id, ego.timestamp + int(spec.t * 1e9), cpoint[0], cpoint[1], cpoint[2], yaw,
+                                    ego.size, 0, spec.v, 0, 0, 0, 0)
+            predicted_objects = []
+            for obj in state.dynamic_objects:
+                obj_fstate = MapUtils.get_object_road_localization(obj, road_frenet)
+                obj_cstate = road_frenet.fstate_to_cstate(obj_fstate)
+                predicted_objects.append(obj.clone_cartesian_state(timestamp_in_sec=obj.timestamp_in_sec + spec.t,
+                                                                   cartesian_state=obj_cstate))
 
-        # transform terminal states into behavioral states
-        terminal_behavioral_states = [BehavioralGridState.create_from_state(state=terminal_state, logger=self.logger)
-                                      if mask[i] else None
-                                      for i, terminal_state in enumerate(terminal_states)]
+            terminal_state = State(None, predicted_objects, terminal_ego)
+            new_behavioral_state = BehavioralGridState.create_from_state(terminal_state, self.logger)
+            terminal_behavioral_states.append(new_behavioral_state)
 
         return terminal_behavioral_states
 
