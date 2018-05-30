@@ -44,7 +44,7 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                     predicate_shape = (len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_V_T_GRID))
                 else:
                     predicate_shape = (
-                    len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_S_T_GRID), len(FILTER_V_T_GRID))
+                        len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_S_T_GRID), len(FILTER_V_T_GRID))
                 predicate = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
                 predicates[(action_type, wT, wJ)] = predicate
 
@@ -105,7 +105,7 @@ class FilterBadExpectedTrajectory(RecipeFilter):
             # pull target vehicle
             relative_dynamic_object = behavioral_state.road_occupancy_grid[recipe_cell][0]
             dynamic_object = relative_dynamic_object.dynamic_object
-            # safety distance is behind or ahead of target car if we follow or overtake it, respectively.
+            # safety distance is behind or ahead of target vehicle if we follow or overtake it, respectively.
             margin_sign = +1 if recipe.action_type == ActionType.FOLLOW_VEHICLE else -1
             # compute distance from target vehicle +/- safety margin
             s_T = relative_dynamic_object.distance - (LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
