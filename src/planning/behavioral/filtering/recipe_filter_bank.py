@@ -107,7 +107,6 @@ class FilterBadExpectedTrajectory(RecipeFilter):
             dynamic_object = relative_dynamic_object.dynamic_object
             # safety distance is behind or ahead of target car if we follow or overtake it, respectively.
             margin_sign = +1 if recipe.action_type == ActionType.FOLLOW_VEHICLE else -1
-            # TODO: the following is not accurate because it returns "same-lon" cars distance as 0
             # compute distance from target vehicle +/- safety margin
             s_T = relative_dynamic_object.distance - (LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
                                                       ego_state.size.length / 2 + dynamic_object.size.length / 2)
