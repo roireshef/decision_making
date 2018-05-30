@@ -387,6 +387,15 @@ class QuinticPoly1D(Poly1D):
 
     @staticmethod
     def cumulative_jerk_from_constraints(a_0: float, v_0: float, v_T: float, ds: float, T: float):
+        """
+        Computes cumulative 1D jerk from initial constraints (0, v_0, a_0) and end constraints (ds, v_T, 0)
+        :param a_0: [m/s^2] initial acceleration
+        :param v_0: [m/s] initial velocity
+        :param v_T: [m/s] end velocity
+        :param ds: [m] the distance to travel from time 0 to time T
+        :param T: [sec] the travel time period
+        :return: 1D cumulative jerk: sum(x'''(t)^2)
+        """
         return (9.0 * T ** 4 * a_0 ** 2 + 72.0 * T ** 3 * a_0 * v_0 + 48.0 * T ** 3 * a_0 * v_T -
                 120.0 * T ** 2 * a_0 * ds + 192.0 * T ** 2 * v_0 ** 2 + 336.0 * T ** 2 * v_0 * v_T +
                 192.0 * T ** 2 * v_T ** 2 - 720.0 * T * ds * v_0 - 720.0 * T * ds * v_T + 720.0 * ds ** 2) / T ** 5

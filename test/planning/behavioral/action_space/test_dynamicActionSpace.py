@@ -44,3 +44,6 @@ def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCel
                            for i, target in enumerate(targets)]
     longitudes = [action.s for action in actions]
     np.testing.assert_array_almost_equal(longitudes, expected_longitudes)
+
+
+

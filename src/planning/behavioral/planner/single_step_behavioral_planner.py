@@ -93,8 +93,6 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         selected_action_index = valid_idxs[action_q_cost[valid_idxs].argmin()]
         selected_action_spec = action_specs[selected_action_index]
 
-        print('Selected action: %d; rel_lat=%d\n' % (selected_action_index, action_recipes[selected_action_index].relative_lane.value))
-
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(behavioral_state=behavioral_state,
                                                                                       action_spec=selected_action_spec,
                                                                                       navigation_plan=nav_plan)

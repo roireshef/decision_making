@@ -1,3 +1,5 @@
+from logging import Logger
+
 import numpy as np
 import copy
 
@@ -7,12 +9,12 @@ from decision_making.src.planning.types import LIMIT_MIN
 
 
 class VelocityProfile:
-    def __init__(self, v_init: float, t1: float, v_mid: float, t2: float, t3: float, v_tar: float):
+    def __init__(self, v_init: float, t_acc: float, v_mid: float, t_flat: float, t_dec: float, v_tar: float):
         self.v_init = v_init    # initial ego velocity
-        self.t1 = t1            # acceleration/deceleration time period
-        self.v_mid = v_mid      # maximal velocity after acceleration
-        self.t2 = t2            # time period for going with maximal velocity
-        self.t3 = t3            # deceleration/acceleration time
+        self.t_acc = t_acc      # acceleration time period
+        self.v_mid = v_mid      # constant velocity after acceleration
+        self.t_flat = t_flat    # time period for going with maximal velocity
+        self.t_dec = t_dec      # deceleration time
         self.v_tar = v_tar      # end velocity
 
     def calc_profile_details(self, T_max: float=np.inf) -> [np.array, np.array, np.array, np.array, np.array]:
@@ -27,18 +29,18 @@ class VelocityProfile:
             accelerations: accelerations per segment
         All arrays' size is equal to the (truncated) segments number, except t_cum having extra 0 at the beginning.
         """
-        t = np.array([self.t1, self.t2, self.t3])
+        t = np.array([self.t_acc, self.t_flat, self.t_dec])
         t_cum = np.concatenate(([0], np.cumsum(t)))
         T_max = max(0., T_max)
 
         acc1 = acc3 = 0
-        if self.t1 > 0:
-            acc1 = (self.v_mid - self.v_init) / self.t1
-        if self.t3 > 0:
-            acc3 = (self.v_tar - self.v_mid) / self.t3
+        if self.t_acc > 0:
+            acc1 = (self.v_mid - self.v_init) / self.t_acc
+        if self.t_dec > 0:
+            acc3 = (self.v_tar - self.v_mid) / self.t_dec
         a = np.array([acc1, 0, acc3])
         v = np.array([self.v_init, self.v_mid, self.v_mid])
-        lengths = np.array([0.5 * (self.v_init + self.v_mid) * self.t1, self.v_mid * self.t2])  # without the last segment
+        lengths = np.array([0.5 * (self.v_init + self.v_mid) * self.t_acc, self.v_mid * self.t_flat])  # without the last segment
 
         if t_cum[-1] > T_max:  # then truncate all arrays by max_time
             truncated_size = np.where(t_cum[:-1] < T_max)[0][-1] + 1
@@ -58,14 +60,15 @@ class VelocityProfile:
         total profile time
         :return: [s] total time
         """
-        return self.t1 + self.t2 + self.t3
+        return self.t_acc + self.t_flat + self.t_dec
 
     def total_dist(self) -> float:
         """
         total profile distance
         :return: [m] total distance
         """
-        return 0.5 * ((self.v_init + self.v_mid) * self.t1 + (self.v_mid + self.v_tar) * self.t3) + self.v_mid * self.t2
+        return 0.5 * ((self.v_init + self.v_mid) * self.t_acc + (self.v_mid + self.v_tar) * self.t_dec) + \
+               self.v_mid * self.t_flat
 
     def sample_at(self, t: float) -> [float, float]:
         """
@@ -73,49 +76,51 @@ class VelocityProfile:
         :param t: [s] time since profile beginning
         :return: elapsed distance and velocity at t
         """
-        if t < self.t1:
-            a1 = (self.v_mid - self.v_init) / self.t1
-            return t * (self.v_init + 0.5 * a1 * t), self.v_init + a1 * t
-        d1 = 0.5 * (self.v_init + self.v_mid) * self.t1
-        if t < self.t1 + self.t2:
-            return d1 + self.v_mid * (t - self.t1), self.v_mid
-        d2 = self.v_mid * self.t2
+        if t < self.t_acc:
+            acc = (self.v_mid - self.v_init) / self.t_acc
+            return t * (self.v_init + 0.5 * acc * t), self.v_init + acc * t
+        s_acc = 0.5 * (self.v_init + self.v_mid) * self.t_acc
+        if t < self.t_acc + self.t_flat:
+            return s_acc + self.v_mid * (t - self.t_acc), self.v_mid
+        s_flat = self.v_mid * self.t_flat
         if t < self.total_time():
-            a3 = (self.v_tar - self.v_mid) / self.t3
-            t3 = t - self.t1 - self.t2
-            return d1 + d2 + t3 * (self.v_mid + 0.5 * a3 * t3), self.v_mid + a3 * t3
-        return d1 + d2 + 0.5 * (self.v_mid + self.v_tar) * self.t3, self.v_tar
+            dec = (self.v_tar - self.v_mid) / self.t_dec
+            t_dec = t - self.t_acc - self.t_flat
+            s_dec = t_dec * (self.v_mid + 0.5 * dec * t_dec)
+            return s_acc + s_flat + s_dec, self.v_mid + dec * t_dec
+        s_dec = 0.5 * (self.v_mid + self.v_tar) * self.t_dec
+        return s_acc + s_flat + s_dec, self.v_tar
 
-    def when_decel_velocity_is_equal_to(self, v: float) -> float:
+    def when_decel_velocity_is_equal_to(self, vel: float) -> float:
         """
         Search only during deceleration
-        :param v: velocity to search
+        :param vel: velocity to search
         :return: time during deceleration when the velocity is equal to v
         """
-        if v > self.v_mid or v < self.v_tar:
+        if vel > self.v_mid or vel < self.v_tar:
             return None
-        if v == self.v_mid:
-            return self.t1 + self.t2
+        if vel == self.v_mid:
+            return self.t_acc + self.t_flat
         t = None
-        if v >= self.v_tar:  # v_tar <= v < v_mid, then self.t3 > 0
-            a3 = (self.v_tar - self.v_mid) / self.t3
-            t = (v - self.v_mid) / a3
-        return self.t1 + self.t2 + t
+        if vel >= self.v_tar:  # v_tar <= v < v_mid, then self.t_dec > 0
+            a_dec = (self.v_tar - self.v_mid) / self.t_dec
+            t = (vel - self.v_mid) / a_dec
+        return self.t_acc + self.t_flat + t
 
-    def when_accel_velocity_is_equal_to(self, v: float) -> float:
+    def when_accel_velocity_is_equal_to(self, vel: float) -> float:
         """
         Search only during acceleration
-        :param v: velocity to search
+        :param vel: velocity to search
         :return: time during acceleration when the velocity is equal to v
         """
-        if v > self.v_mid or v < self.v_init:
+        if vel > self.v_mid or vel < self.v_init:
             return None
-        if v == self.v_mid:
-            return self.t1
+        if vel == self.v_mid:
+            return self.t_acc
         t = None
-        if v >= self.v_init:  # v_init <= v < v_mid, then self.t1 > 0
-            a1 = (self.v_mid - self.v_init) / self.t1
-            t = (v - self.v_init) / a1
+        if vel >= self.v_init:  # v_init <= v < v_mid, then self.t1 > 0
+            a_acc = (self.v_mid - self.v_init) / self.t_acc
+            t = (vel - self.v_init) / a_acc
         return t
 
     def cut_by_time(self, max_time: float):
@@ -127,18 +132,18 @@ class VelocityProfile:
         tot_time = self.total_time()
         if tot_time <= max_time:
             return copy.copy(self)
-        if self.t1 + self.t2 <= max_time:
-            a = (self.v_tar - self.v_mid) / self.t3
-            t3 = max_time - self.t1 - self.t2
-            v_tar = self.v_mid + a * t3
-            return VelocityProfile(self.v_init, self.t1, self.v_mid, self.t2, t3, v_tar)
-        if self.t1 <= max_time:
-            t2 = max_time - self.t1
-            return VelocityProfile(self.v_init, self.t1, self.v_mid, t2, 0, self.v_mid)
-        a = (self.v_mid - self.v_init) / self.t1
-        t1 = max_time
-        v_tar = self.v_init + a * t1
-        return VelocityProfile(self.v_init, t1, v_tar, 0, 0, v_tar)
+        if self.t_acc + self.t_flat <= max_time:
+            acc = (self.v_tar - self.v_mid) / self.t_dec
+            t_dec = max_time - self.t_acc - self.t_flat
+            v_tar = self.v_mid + acc * t_dec
+            return VelocityProfile(self.v_init, self.t_acc, self.v_mid, self.t_flat, t_dec, v_tar)
+        if self.t_acc <= max_time:
+            t_flat = max_time - self.t_acc
+            return VelocityProfile(self.v_init, self.t_acc, self.v_mid, t_flat, 0, self.v_mid)
+        acc = (self.v_mid - self.v_init) / self.t_acc
+        t_acc = max_time
+        v_tar = self.v_init + acc * t_acc
+        return VelocityProfile(self.v_init, t_acc, v_tar, 0, 0, v_tar)
 
     @classmethod
     def _calc_profile_given_acc(cls, v_init: float, a: float, dist: float, v_tar: float):
@@ -168,28 +173,30 @@ class VelocityProfile:
         v_mid_rel_sqr = v_init_rel * v_init_rel / 2 + dist * a
         if v_mid_rel_sqr >= 0:
             v_mid_rel = np.sqrt(v_mid_rel_sqr)  # should be positive
-            t1 = (v_mid_rel - v_init_rel) / a  # acceleration time
-            t3 = v_mid_rel / a                 # deceleration time
-            if t1 >= 0 and t3 >= 0:  # negative time, try single segment with another acceleration
-                return cls(v_init, t1, v_mid_rel + v_tar, 0, t3, v_tar)
+            t_acc = (v_mid_rel - v_init_rel) / a  # acceleration time
+            t_dec = v_mid_rel / a                 # deceleration time
+            if t_acc >= 0 and t_dec >= 0:  # negative time, try single segment with another acceleration
+                return cls(v_init, t_acc, v_mid_rel + v_tar, 0, t_dec, v_tar)
 
         # try opposite order: first deceleration, then acceleration
         # here the formula (v^2 - vm^2)/2(a+a_tar) - vm^2/2(a-a_tar) = dist
         v_mid_rel_sqr = v_init_rel * v_init_rel / 2 - dist * a
         if v_mid_rel_sqr >= 0:
             v_mid_rel = -np.sqrt(v_mid_rel_sqr)  # should be negative
-            t1 = (v_init_rel - v_mid_rel) / a  # deceleration time
-            t3 = -v_mid_rel / a  # acceleration time
-            if t1 >= 0 and t3 >= 0:  # negative time, try single segment with another acceleration
-                return cls(v_init, t1, v_mid_rel + v_tar, 0, t3, v_tar)
+            t_acc = (v_init_rel - v_mid_rel) / a  # deceleration time
+            t_dec = -v_mid_rel / a  # acceleration time
+            if t_acc >= 0 and t_dec >= 0:  # negative time, try single segment with another acceleration
+                return cls(v_init, t_acc, v_mid_rel + v_tar, 0, t_dec, v_tar)
 
         # if two segments failed, try a single segment with lower acceleration
         if v_init_rel * dist > 0:
-            t1 = 2 * dist / v_init_rel
-            return cls(v_init, t1, v_tar, 0, 0, v_tar)
+            t_acc = 2 * dist / v_init_rel
+            return cls(v_init, t_acc, v_tar, 0, 0, v_tar)
 
         # take single segment with another acceleration
-        print('NO PROFILE: v_mid_rel_sqr=%f; v_init_rel=%f a=%f dist=%f' % (v_mid_rel_sqr, v_init_rel, a, dist))
+        logger = Logger("VelocityProfile._calc_profile_given_acc")
+        logger.warning("NO PROFILE: v_mid_rel_sqr=%f; v_init_rel=%f a=%f dist=%f" %
+                            (v_mid_rel_sqr, v_init_rel, a, dist))
         return None  # illegal action
 
     @staticmethod
@@ -214,7 +221,7 @@ class VelocityProfile:
         lat_acc = acc * lane_width / 3.6
         lateral_profile = VelocityProfile._calc_profile_given_acc(lat_v_init_toward_target, lat_acc, abs(signed_lat_dist), 0)
 
-        return lateral_profile.t1 + lateral_profile.t3
+        return lateral_profile.t_acc + lateral_profile.t_dec
 
     @classmethod
     def calc_profile_given_T(cls, v_init: float, T: float, dist: float, v_tar: float):
@@ -229,16 +236,17 @@ class VelocityProfile:
         :param v_tar: target object velocity
         return: VelocityProfile class or None in case of infeasible semantic action
         """
+        logger = Logger("VelocityProfile.calc_profile_given_T")
         if T <= 0:
-            print('NO PROFILE: T=%.2f' % T)
+            logger.warning("NO PROFILE: T=%.2f" % T)
             return None
         # first try acceleration + constant vel
         v_init_rel = v_init - v_tar  # relative velocity; may be negative
         if v_init_rel * dist > 0:
-            t1 = 2 * dist / v_init_rel
-            a = v_init_rel / t1
-            if t1 <= T and abs(a) <= AGGRESSIVENESS_TO_LON_ACC[AggressivenessLevel.CALM.value]:
-                return cls(v_init, t1, v_tar, T - t1, 0, v_tar)  # acceleration/deceleration + constant vel
+            t_acc = 2 * dist / v_init_rel
+            acc = v_init_rel / t_acc
+            if t_acc <= T and abs(acc) <= AGGRESSIVENESS_TO_LON_ACC[AggressivenessLevel.CALM.value]:
+                return cls(v_init, t_acc, v_tar, T - t_acc, 0, v_tar)  # acceleration/deceleration + constant vel
         # let v = v_init_rel, v1 = v_mid_rel, t = t1, d = dist, solve for a (acceleration)
         # for the simple case (acceleration, deceleration) solve the following equations:
         # v1^2 - v^2 = 2ad, v1 = v + at, v1 = a(T-t)
@@ -247,18 +255,20 @@ class VelocityProfile:
         Tv_2d = (2 * dist - T * v_init_rel) / (T ** 2)
         sqrt_disc = np.sqrt(Tv_2d ** 2 + (T * v_init_rel) ** 2) / (T ** 2)
         # try acceleration + deceleration
-        a = Tv_2d + sqrt_disc  # always positive
-        t1 = 0.5 * (T - v_init_rel / a)
-        if 0. <= t1 <= T:  # valid t1
-            v_mid_rel = v_init_rel + a * t1
-            return cls(v_init, t1, v_mid_rel + v_tar, 0, T - t1, v_tar)  # acceleration, deceleration
+        acc = Tv_2d + sqrt_disc  # always positive
+        t_acc = 0.5 * (T - v_init_rel / acc)
+        if 0. <= t_acc <= T:  # valid t1
+            v_mid_rel = v_init_rel + acc * t_acc
+            return cls(v_init, t_acc, v_mid_rel + v_tar, 0, T - t_acc, v_tar)  # acceleration, deceleration
         # try deceleration + acceleration
-        a = Tv_2d - sqrt_disc  # always negative
-        t1 = 0.5 * (T - v_init_rel / a)
-        if 0. <= t1 <= T:  # valid t1
-            v_mid_rel = v_init_rel + a * t1
-            return cls(v_init, t1, v_mid_rel + v_tar, 0, T - t1, v_tar)  # acceleration, deceleration
-        print('NO PROFILE v_init_rel <= v_max_rel: t1=%.2f a=%.2f v_init=%.2f v_tar=%.2f T=%.2f' % (t1, a, v_init, v_tar, T))
+        acc = Tv_2d - sqrt_disc  # always negative
+        t_acc = 0.5 * (T - v_init_rel / acc)
+        if 0. <= t_acc <= T:  # valid t1
+            v_mid_rel = v_init_rel + acc * t_acc
+            return cls(v_init, t_acc, v_mid_rel + v_tar, 0, T - t_acc, v_tar)  # acceleration, deceleration
+
+        logger.warning("NO PROFILE v_init_rel <= v_max_rel: t1=%.2f a=%.2f v_init=%.2f v_tar=%.2f T=%.2f" %
+                       (t_acc, acc, v_init, v_tar, T))
         return None
 
     def calc_last_safe_time(self, init_s_ego: float, ego_length: float, init_s_obj: float, init_v_obj: float,
@@ -407,20 +417,21 @@ class VelocityProfile:
                 return (init_s_ego + s) - (init_s_obj + v_obj*t) > v_obj * td + margin
 
     @staticmethod
-    def _calc_largest_time_for_segment(s1: float, v1: float, a1: float, s2: float, v2: float, a2: float,
-                                       T: float, margin: float, td: float) -> float:
+    def _calc_largest_time_for_segment(s_front: float, v_front: float, a_front: float,
+                                       s_back: float, v_back: float, a_back: float,
+                                       T: float, margin: float, td_back: float) -> float:
         """
         Given two vehicles with constant acceleration in time period [0, T], calculate the largest 0 <= t <= T,
         for which the second car (rear) is safe w.r.t. the first car in [0, t].
-        :param s1: first car longitude
-        :param v1: first car initial velocity
-        :param a1: first car acceleration
-        :param s2: second car longitude
-        :param v2: second car initial velocity
-        :param a2: second car acceleration
+        :param s_front: first car longitude
+        :param v_front: first car initial velocity
+        :param a_front: first car acceleration
+        :param s_back: second car longitude
+        :param v_back: second car initial velocity
+        :param a_back: second car acceleration
         :param T: time period
         :param margin: size margin of the cars
-        :param td: back car's time delay i.e. reaction time of the back car (for AV td is smaller)
+        :param td_back: back car's time delay i.e. reaction time of the back car (for AV td is smaller)
         :return: the largest safe time; if unsafe for t=0, return -1
         """
         if T < 0:
@@ -434,15 +445,16 @@ class VelocityProfile:
 
         a_max = -LON_ACC_LIMITS[LIMIT_MIN]
 
-        C = s1 - s2 + (v1*v1 - v2*v2)/(2*a_max) - (0.5 * a2 * td + v2) * td * (1 + a2 / a_max) - margin
+        C = s_front - s_back + (v_front * v_front - v_back * v_back) / (2 * a_max) - \
+            (0.5 * a_back * td_back + v_back) * td_back * (1 + a_back / a_max) - margin
 
         if C < 0:
             return -1  # the current state (for t=0) is not safe
         if T == 0:
             return 0  # the current state (for t=0) is safe
 
-        A = (a1-a2) * (a_max+a1+a2) / (2*a_max)
-        B = (a1*v1 - a2*v2)/a_max + v1 - v2 - a2 * td * (1 + a2 / a_max)
+        A = (a_front - a_back) * (a_max + a_front + a_back) / (2 * a_max)
+        B = (a_front * v_front - a_back * v_back) / a_max + v_front - v_back - a_back * td_back * (1 + a_back / a_max)
         if A == 0 and B == 0:  # constant function C > 0
             return T  # for all t it's safe
         if A == 0:  # B != 0; linear inequality
@@ -456,10 +468,10 @@ class VelocityProfile:
         if discriminant < 0:
             return T  # for all t it's safe
         sqrt_disc = np.sqrt(discriminant)
-        t1 = (-B - sqrt_disc)/(2*A)
-        t2 = (-B + sqrt_disc)/(2*A)
-        if t1 >= 0:
-            return min(t1, T)
-        if t2 >= 0:
-            return min(t2, T)
+        t_root1 = (-B - sqrt_disc)/(2*A)
+        t_root2 = (-B + sqrt_disc)/(2*A)
+        if t_root1 >= 0:
+            return min(t_root1, T)
+        if t_root2 >= 0:
+            return min(t_root2, T)
         return T

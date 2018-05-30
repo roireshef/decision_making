@@ -66,7 +66,7 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
 
         # Make sure no unplanned extrapolation will occur due to overreaching time points
         # This check is done in relative-to-ego units
-        assert max(relative_time_points) < self.T_s + np.finfo(np.float16).eps
+        assert max(relative_time_points) <= self.T_s
 
         # assign values from <time_points> in s-axis polynomial
         fstates_s = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), relative_time_points)[0]
@@ -202,17 +202,14 @@ class WerlingPlanner(TrajectoryPlanner):
 
         if len(ctrajectories) == 0:
             raise CouldNotGenerateTrajectories("No valid cartesian trajectories. time: %f, goal: %s, state: %s. "
-                                               "Longitudes range: [%s, %s] (limits: %s)\n"
-                                               "Min frenet velocity: %s; "
-                                               "Number of trajectories passed according to Frenet limits: %s/%s; "
-                                               "fstate_s(t0)=[%.2f %.2f %.2f]; fgoal=[%.2f %.2f %.2f]" %
+                                               "Longitudes range: [%s, %s] (limits: %s)"
+                                               "Min frenet velocity: %s"
+                                               "number of trajectories passed according to Frenet limits: %s/%s;" %
                                                (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                                 np.min(ftrajectories[:, :, FS_SX]), np.max(ftrajectories[:, :, FS_SX]),
                                                 frenet.s_limits,
                                                 np.min(ftrajectories[:, :, FS_SV]),
-                                                len(frenet_filtered_indices), len(ftrajectories),
-                                                fconstraints_t0._sx, fconstraints_t0._sv, fconstraints_t0._sa,
-                                                goal_frenet_state[0], goal_frenet_state[1], goal_frenet_state[2]))
+                                                len(frenet_filtered_indices), len(ftrajectories)))
         elif len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
             raise NoValidTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s. "

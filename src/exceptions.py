@@ -63,6 +63,10 @@ class NoValidLanesFound(BehavioralPlanningException):
     pass
 
 
+class MissingNavigationGoal(BehavioralPlanningException):
+    pass
+
+
 def raises(*e):
     # type: (Exception)
     """

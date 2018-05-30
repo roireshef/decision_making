@@ -89,7 +89,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                               ego_lane + recipe.relative_lane.value,
                               HeuristicActionSpecEvaluator._dist_to_target(behavioral_state, recipe),
                               T_d_calm, spec.t, spec.s - ego_fstate[0], spec.v, vel_profile.v_mid,
-                              (vel_profile.v_mid - vel_profile.v_init) / vel_profile.t1,
+                              (vel_profile.v_mid - vel_profile.v_init) / vel_profile.t_acc,
                               sub_costs[0], sub_costs[1], sub_costs[2], sub_costs[3], sub_costs[4], costs[i])
 
         if np.isinf(np.min(costs)):
@@ -114,7 +114,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             return VelocityProfile.calc_profile_given_T(ego_fstate[FS_SV], spec.t, dist, spec.v)
         else:  # static action (FOLLOW_LANE)
             t2 = max(0., MINIMAL_STATIC_ACTION_TIME - spec.t)  # TODO: remove it after implementation of value function
-            return VelocityProfile(v_init=ego_fstate[FS_SV], t1=spec.t, v_mid=spec.v, t2=t2, t3=0, v_tar=spec.v)
+            return VelocityProfile(v_init=ego_fstate[FS_SV], t_acc=spec.t, v_mid=spec.v, t_flat=t2, t_dec=0, v_tar=spec.v)
 
     def _calc_largest_safe_time(self, behavioral_state: BehavioralGridState, action: ActionRecipe, i: int,
                                 vel_profile: VelocityProfile, ego_length: float, T_d: float, lane_width: float) -> float:
@@ -162,7 +162,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                       'prof=(t=[%.2f %.2f %.2f] v=[%.2f %.2f %.2f]) safe_time=%.2f td=%.2f' %
                       (i, action.action_type.value, action.aggressiveness.value, action_lat_cell.value, obj_lon - ego_lon,
                        act_time, obj_lon + act_time * followed_obj.v_x - (ego_lon + vel_profile.total_dist()),
-                       followed_obj.v_x, vel_profile.t1, vel_profile.t2, vel_profile.t3, vel_profile.v_init,
+                       followed_obj.v_x, vel_profile.t_acc, vel_profile.t_flat, vel_profile.t_dec, vel_profile.v_init,
                        vel_profile.v_mid, vel_profile.v_tar, forward_safe_time, td))
                 return -1
 

@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 
 from decision_making.src.exceptions import BehavioralPlanningException
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MIN_OVERTAKE_VEL, \
     SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import \
     BehavioralGridState, SemanticGridCell, RelativeLane, RelativeLongitudinalPosition
@@ -45,8 +45,6 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
             raise BehavioralPlanningException(
                 "The input arrays have different sizes: len(semantic_actions)=%d, len(actions_spec)=%d",
                 len(action_recipes), len(action_specs))
-
-        MIN_OVERTAKE_VEL = 3
 
         # get indices of semantic_actions array for 3 actions: goto-right, straight, goto-left
         current_lane_action_ind = RuleBasedActionSpecEvaluator._get_action_ind(

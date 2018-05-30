@@ -1,9 +1,9 @@
 import numpy as np
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, ActionSpec
+from decision_making.src.planning.behavioral.data_objects import ActionSpec
 
 from decision_making.src.global_constants import BP_RIGHT_LANE_COST_WEIGHT, BP_EFFICIENCY_COST_WEIGHT, \
     LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
-    BP_METRICS_LANE_DEVIATION_COST_WEIGHT, EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO
+    BP_METRICS_LANE_DEVIATION_COST_WEIGHT, BP_EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO
 from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
 from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DA, FS_DV, FS_DX
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
@@ -25,7 +25,7 @@ class BP_EfficiencyMetric:
         deviation2 = abs(vel_profile.v_mid - des_vel)
         deviation3 = BP_EfficiencyMetric._calc_avg_vel_deviation(vel_profile.v_mid, vel_profile.v_tar, des_vel)
 
-        avg_deviation = (vel_profile.t1 * deviation1 + vel_profile.t2 * deviation2 + vel_profile.t3 * deviation3) / \
+        avg_deviation = (vel_profile.t_acc * deviation1 + vel_profile.t_flat * deviation2 + vel_profile.t_dec * deviation3) / \
                         profile_time
         avg_vel = des_vel - avg_deviation
 
@@ -40,27 +40,27 @@ class BP_EfficiencyMetric:
         :param vel: input velocities: either 1D or 2D array
         :return: array of size vel.shape of efficiency costs per point
         """
-        r = EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO  # C'(0)/C'(vel_des) = P'(1)/P'(0)
+        r = BP_EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO  # C'(0)/C'(vel_des) = P'(1)/P'(0)
         # the following two lines are the solution of two equations on a and b: P(1) = 1, P'(1)/P'(0) = r
-        a = (r-1)/(r+1)
-        b = 2/(r+1)
+        coef_2 = (r-1)/(r+1)    # coefficient of x^2
+        coef_1 = 2/(r+1)        # coefficient of x
         normalized_vel = np.absolute(1 - vel / BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
-        costs = normalized_vel * (a * normalized_vel + b)
+        costs = normalized_vel * (coef_2 * normalized_vel + coef_1)
         return costs
 
     @staticmethod
-    def _calc_avg_vel_deviation(v1: float, v2: float, des_vel: float) -> float:
+    def _calc_avg_vel_deviation(v_init: float, v_end: float, v_des: float) -> float:
         """
         given a velocity segment, calculate average deviation from the desired velocity
-        :param v1: [m/s] initial segment velocity
-        :param v2: [m/s] terminal segment velocity
-        :param des_vel: [m/s] desired velocity
+        :param v_init: [m/s] initial segment velocity
+        :param v_end: [m/s] terminal segment velocity
+        :param v_des: [m/s] desired velocity
         :return: [m/s] average deviation
         """
-        if (v1 - des_vel) * (v2 - des_vel) >= 0:  # v1 and v2 are on the same side of des_vel
-            return abs(0.5 * (v1 + v2) - des_vel)  # simple average deviation
+        if (v_init - v_des) * (v_end - v_des) >= 0:  # v1 and v2 are on the same side of des_vel
+            return abs(0.5 * (v_init + v_end) - v_des)  # simple average deviation
         else:  # v1 and v2 are on different sides of des_vel
-            return 0.5 * ((v1 - des_vel) ** 2 + (v2 - des_vel) ** 2) / abs(v2 - v1)
+            return 0.5 * ((v_init - v_des) ** 2 + (v_end - v_des) ** 2) / abs(v_end - v_init)
 
 
 class BP_ComfortMetric:

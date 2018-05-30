@@ -63,12 +63,7 @@ class Predictor:
 
         ego_state = state.ego_state
         dynamic_objects = state.dynamic_objects
-
-        # TODO: temporal bug fix: refrain from prediction of ego state if it has the latest timestamp
-        if len(prediction_timestamps) == 1 and ego_state.timestamp_in_sec == prediction_timestamps[0]:
-            predicted_ego_states = np.array([ego_state])
-        else:
-            predicted_ego_states = self._predict_object_state(ego_state, prediction_timestamps)
+        predicted_ego_states = self._predict_object_state(ego_state, prediction_timestamps)
 
         # populate list of dynamic objects in future times
         for dynamic_object in dynamic_objects:
