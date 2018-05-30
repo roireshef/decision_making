@@ -48,17 +48,20 @@ class NaiveValueApproximator(ValueApproximator):
 
         # calculate efficiency and non-right lane costs
         efficiency_cost = right_lane_cost = lane_deviation_cost = comfort_cost = goal_cost = 0
-        if time_to_goal > 0:
+        if 0 < time_to_goal < np.inf:
             efficiency_cost = BP_EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([ego.v_x]))[0] * \
                               BP_EFFICIENCY_COST_WEIGHT * time_to_goal
             right_lane_cost = ego_lane * time_to_goal * BP_RIGHT_LANE_COST_WEIGHT
+        elif np.isinf(time_to_goal):
+            efficiency_cost = np.inf
 
         # calculate lane deviation and comfort cost for reaching the goal
         # in case of missing the goal, there is a missing goal cost
         if len(goal.lanes_list) > 0 and ego_lane not in goal.lanes_list:  # outside of the lanes range of the goal
             if ego_lon >= goal.lon:  # we missed the goal
-                raise MissingNavigationGoal("Missing a navigation goal on road_id=%d, longitude=%.2f, lanes=%s" %
-                                            (goal.road_id, goal.lon, goal.lanes_list))
+                raise MissingNavigationGoal("Missing a navigation goal on road_id=%d, longitude=%.2f, lanes=%s; "
+                                            "ego_lon=%.2f ego_lane=%d" %
+                                            (goal.road_id, goal.lon, goal.lanes_list, ego_lon, ego_lane))
             else:  # if still did not arrive to the goal, calculate lateral comfort for reaching the goal
                 lanes_from_goal = np.min(np.abs(np.array(goal.lanes_list) - ego_lane))
                 T_d_max_per_lane = BP_CALM_LANE_CHANGE_TIME

@@ -51,8 +51,9 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         ego_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
         lane_width = MapService.get_instance().get_road(ego_road.road_id).lane_width
 
-        print('\ntime=%.1f ego_v=%.2f ego_lat=%.2f ego_dv=%.2f grid_size=%d' %
-              (ego.timestamp_in_sec, ego.v_x, ego_road.intra_road_lat, ego_fstate[FS_DV], len(behavioral_state.road_occupancy_grid)))
+        print('\ntime=%.1f ego_lon=%.2f ego_v=%.2f ego_lat=%.2f ego_dv=%.2f grid_size=%d' %
+              (ego.timestamp_in_sec, ego.road_localization.road_lon, ego.v_x, ego_road.intra_road_lat,
+               ego_fstate[FS_DV], len(behavioral_state.road_occupancy_grid)))
 
         costs = np.full(len(action_recipes), np.inf)
 

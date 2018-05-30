@@ -95,7 +95,8 @@ class CostBasedBehavioralPlanner:
                 continue
             recipe = action_recipes[i]
             target_lane = cur_ego_loc.lane_num + recipe.relative_lane.value
-            cpoint, yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, spec.s, target_lane * lane_width)
+            cpoint, yaw = MapService.get_instance().convert_road_to_global_coordinates(
+                road_id, spec.s, (target_lane + 0.5) * lane_width)
             terminal_ego = EgoState(ego.obj_id, ego.timestamp + int(spec.t * 1e9), cpoint[0], cpoint[1], cpoint[2], yaw,
                                     ego.size, 0, spec.v, 0, 0, 0, 0)
             predicted_objects = []  # TODO: use predictor
