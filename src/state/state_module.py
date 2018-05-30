@@ -115,7 +115,6 @@ class StateModule(DmModule):
                 size = ObjectSize(length, width, height)
                 glob_v_x = lcm_dyn_obj.velocity.v_x
                 glob_v_y = lcm_dyn_obj.velocity.v_y
-                omega_yaw = lcm_dyn_obj.velocity.omega_yaw
 
                 # convert velocity from map coordinates to relative to its own yaw
                 # TODO: ask perception to send v_x, v_y in dynamic vehicle's coordinate frame and not global frame.
@@ -124,7 +123,9 @@ class StateModule(DmModule):
 
                 # TODO: currently acceleration_lon is 0 for dynamic_objects.
                 # TODO: When it won't be zero, consider that the speed and acceleration should be in the same direction
+                # TODO: The same for curvature.
                 acceleration_lon = UNKNOWN_DEFAULT_VAL
+                curvature = UNKNOWN_DEFAULT_VAL
 
                 is_predicted = lcm_dyn_obj.tracking_status.is_predicted
 
@@ -135,7 +136,7 @@ class StateModule(DmModule):
                 if not FILTER_OFF_ROAD_OBJECTS or self._is_object_on_road(global_coordinates, global_yaw):
                     dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
                                             global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
-                                            acceleration_lon, omega_yaw)
+                                            acceleration_lon, curvature)
                     self._dynamic_objects_memory_map[id] = dyn_obj
                     dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
                 else:
@@ -185,14 +186,12 @@ class StateModule(DmModule):
             v_x = self_localization.velocity.v_x
             v_y = self_localization.velocity.v_y
             a_x = self_localization.acceleration.a_x
+            curvature = self_localization.curvature
             size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
             # Update state information under lock
             with self._ego_state_lock:
-                # TODO: replace two last fields with curvature
-                self._ego_state = EgoState(EGO_ID, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, a_x,
-                                           UNKNOWN_DEFAULT_VAL, UNKNOWN_DEFAULT_VAL)
-
+                self._ego_state = EgoState(EGO_ID, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, a_x, curvature)
                 self._ego_state = Transformations.transform_ego_from_origin_to_center(self._ego_state)
 
             self._publish_state_if_full()

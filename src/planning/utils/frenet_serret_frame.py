@@ -38,9 +38,9 @@ class FrenetSerret2DFrame:
 
     def get_curvature(self, s: np.ndarray):
         """
-        Computes signed curvature in [1/m] in a given progress on the curve
+        Computes curvature for a certain point on the curve given by s (progress from the curve's start)
         :param s: progress on the curve from its beginning in meters (any tensor shape)
-        :return: signed curvature in [1/m] (tensor shape is the same as <s>)
+        :return: curvature in [1/m]
         """
         _, _, _, k_r, _ = self._taylor_interp(s)
         return k_r
