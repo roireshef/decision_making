@@ -83,6 +83,16 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             sub_costs = HeuristicActionSpecEvaluator._calc_action_costs(ego_fstate, vel_profile, spec, lane_width, T_d_max)
             costs[i] = np.sum(sub_costs)
 
+            print('action %d(%d %d) lane %d: dist=%.1f [td=%.2f t=%.2f s=%.2f v=%.2f] [v_mid=%.2f a=%.2f] '
+                  '[eff %.3f comf %.2f,%.2f right %.2f dev %.2f]: tot %.2f' %
+                  (i, recipe.action_type.value, recipe.aggressiveness.value,
+                  ego_lane + recipe.relative_lane.value,
+                  HeuristicActionSpecEvaluator._dist_to_target(behavioral_state, recipe),
+                  T_d_calm, spec.t, spec.s - ego_fstate[0], spec.v, vel_profile.v_mid,
+                  (vel_profile.v_mid - vel_profile.v_init) / vel_profile.t_acc,
+                  sub_costs[0], sub_costs[1], sub_costs[2], sub_costs[3], sub_costs[4], costs[i]))
+
+
             self.logger.debug("action %d(%d %d) lane %d: dist=%.1f [td=%.2f t=%.2f s=%.2f v=%.2f] [v_mid=%.2f a=%.2f] "
                               "[eff %.3f comf %.2f,%.2f right %.2f dev %.2f]: tot %.2f",
                               i, recipe.action_type.value, recipe.aggressiveness.value,
@@ -93,6 +103,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                               sub_costs[0], sub_costs[1], sub_costs[2], sub_costs[3], sub_costs[4], costs[i])
 
         if np.isinf(np.min(costs)):
+            print("********************  NO SAFE ACTION!  **********************")
             self.logger.warning("********************  NO SAFE ACTION!  **********************")
         else:
             best_action = int(np.argmin(costs))

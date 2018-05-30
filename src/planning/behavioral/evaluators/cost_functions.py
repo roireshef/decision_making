@@ -79,8 +79,10 @@ class BP_ComfortMetric:
             dist = spec.d - ego_fstate[FS_DX]
             lat_jerk1 = QuinticPoly1D.cumulative_jerk_from_constraints(
                 ego_fstate[FS_DA], ego_fstate[FS_DV], 0, dist, T_d)
-            lat_jerk2 = QuinticPoly1D.cumulative_jerk_from_constraints(
-                ego_fstate[FS_DA], ego_fstate[FS_DV], 0, dist, min(2*T_d, spec.t))
+            lat_jerk2 = np.inf
+            if spec.t > 0:
+                lat_jerk2 = QuinticPoly1D.cumulative_jerk_from_constraints(
+                    ego_fstate[FS_DA], ego_fstate[FS_DV], 0, dist, min(2*T_d, spec.t))
             lat_cost = min(lat_jerk1, lat_jerk2) * LAT_JERK_COST_WEIGHT
 
         # longitudinal jerk

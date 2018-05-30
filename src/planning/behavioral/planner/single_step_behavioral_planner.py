@@ -105,6 +105,9 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(state.ego_state,
                                                                                       selected_action_spec)
 
+        print('Chosen behavioral semantic action %d: %s, %s' %
+              (selected_action_index, action_recipes[selected_action_index].__dict__, selected_action_spec.__dict__))
+
         self.logger.debug("Chosen behavioral semantic action is %s, %s",
                           action_recipes[selected_action_index].__dict__, selected_action_spec.__dict__)
 

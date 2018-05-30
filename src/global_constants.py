@@ -101,7 +101,7 @@ SAFE_DIST_TIME_DELAY = 2.0
 AV_TIME_DELAY = 0.8  # TODO: may be increased when TP will work with RSS
 
 # [m/sec] Minimal difference of velocities to justify an overtake
-# MIN_OVERTAKE_VEL = 3
+MIN_OVERTAKE_VEL = 3
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
