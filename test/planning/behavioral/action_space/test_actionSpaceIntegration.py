@@ -26,13 +26,13 @@ def test_specifyGoal_slightlyUnsafeState_shouldSucceed():
     ego_vel = 10
     ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon,
                                                                                        road_mid_lat - lane_width)
-    ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, ego_vel, 0, 0, 0, 0)
+    ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, ego_vel, 0, 0, 0)
 
     obj_vel = 10
     obj_lon = ego_lon + 20
     obj_cpoint, obj_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, obj_lon,
                                                                                        road_mid_lat - lane_width)
-    obj = EgoState(0, 0, obj_cpoint[0], obj_cpoint[1], obj_cpoint[2], obj_yaw, size, 0, obj_vel, 0, 0, 0, 0)
+    obj = EgoState(0, 0, obj_cpoint[0], obj_cpoint[1], obj_cpoint[2], obj_yaw, size, 0, obj_vel, 0, 0, 0)
 
     state = State(None, [obj], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, logger)
