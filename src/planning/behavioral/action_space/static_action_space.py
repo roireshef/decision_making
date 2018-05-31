@@ -4,8 +4,7 @@ import numpy as np
 from sklearn.utils.extmath import cartesian
 
 import rte.python.profiler as prof
-from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
-    SAFE_DIST_TIME_DELAY, VELOCITY_LIMITS
+from decision_making.src.global_constants import BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS, VELOCITY_LIMITS
 from decision_making.src.global_constants import VELOCITY_STEP
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -81,7 +80,7 @@ class StaticActionSpace(ActionSpace):
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 1], a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV], v_T=0,
-            dx=lateral_difference, T_m=SAFE_DIST_TIME_DELAY)
+            dx=lateral_difference, T_m=0)
         roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         T_d = np.fmin.reduce(roots_d, axis=-1)
 

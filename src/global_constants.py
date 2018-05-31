@@ -94,11 +94,11 @@ LON_ACC_LIMITS = np.array([-4.0, 3.0])  # taken from SuperCruise presentation
 # Latitudinal Acceleration Limits [m/sec^2]
 LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 
-# Response delay of a human driver [sec]
-SAFE_DIST_TIME_DELAY = 2.0
+# Assumed response delay on road [sec]
+# Used to compute safe distance from other agents on road
+SPECIFICATION_MARGIN_TIME_DELAY = 2
+SAFETY_MARGIN_TIME_DELAY = 1
 
-# Response delay of AV (ego) agent [sec]
-AV_TIME_DELAY = 1.0  # TODO: may be increased when TP will work with RSS
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3
