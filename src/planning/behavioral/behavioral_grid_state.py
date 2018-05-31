@@ -190,8 +190,8 @@ class BehavioralGridState(BehavioralState):
         than LON_MARGIN_FROM_EGO. Otherwise, the object is set to be parallel to ego.
         :param longitudinal_difference: longitudinal difference (on road's progress dimension) from ego to an object
         (positive if object is in front). difference is computed between objects'-centers
-        :param ego_length: the length of the ego vehicle
-        :param obj_length: the length of the another object
+        :param object: the object to project onto the ego-relative grid
+        :param ego_state: ego state for localization and size
         :return: RelativeLongitudinalPosition enum's value representing the longitudinal projection on the relative-grid
         """
         obj_length = object.dynamic_object.size.length
