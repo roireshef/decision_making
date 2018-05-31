@@ -92,7 +92,7 @@ def init_dyn_obj(init_cartesian_state) -> DynamicObject:
                         z=DEFAULT_OBJECT_Z_VALUE,
                         yaw=init_cartesian_state[C_YAW], size=car_size, confidence=0, v_x=init_cartesian_state[C_V],
                         v_y=0,
-                        acceleration_lon=0, omega_yaw=0)
+                        acceleration_lon=0, curvature=0)
 
 
 @pytest.fixture(scope='function')
@@ -102,7 +102,7 @@ def init_ego_state(static_cartesian_state) -> EgoState:
                    z=DEFAULT_OBJECT_Z_VALUE,
                    yaw=static_cartesian_state[C_YAW], size=car_size, confidence=0, v_x=static_cartesian_state[C_V],
                    v_y=0,
-                   acceleration_lon=0, omega_yaw=0, steering_angle=0)
+                   acceleration_lon=0, curvature=0)
 
 
 @pytest.fixture(scope='function')
@@ -114,13 +114,13 @@ def init_state(init_ego_state, init_dyn_obj) -> State:
 @pytest.fixture(scope='function')
 def unaligned_dynamic_object(predicted_cartesian_state_1_constant_yaw, prediction_timestamps):
     yield DynamicObject(obj_id=DYNAMIC_OBJECT_ID, timestamp=int(prediction_timestamps[1] * 1e9),
-                        x=predicted_cartesian_state_1_constant_yaw[C_X],
-                        y=predicted_cartesian_state_1_constant_yaw[C_Y],
-                        z=DEFAULT_OBJECT_Z_VALUE,
-                        yaw=predicted_cartesian_state_1_constant_yaw[C_YAW], size=car_size, confidence=0,
-                        v_x=predicted_cartesian_state_1_constant_yaw[C_V],
-                        v_y=0,
-                        acceleration_lon=0, omega_yaw=0)
+                                   x=predicted_cartesian_state_1_constant_yaw[C_X],
+                                   y=predicted_cartesian_state_1_constant_yaw[C_Y],
+                                   z=DEFAULT_OBJECT_Z_VALUE,
+                                   yaw=predicted_cartesian_state_1_constant_yaw[C_YAW], size=car_size, confidence=0,
+                                   v_x=predicted_cartesian_state_1_constant_yaw[C_V],
+                                   v_y=0,
+                                   acceleration_lon=0, curvature=0)
 
 
 @pytest.fixture(scope='function')
@@ -149,22 +149,21 @@ def predicted_dyn_object_states_constant_yaw(predicted_cartesian_state_0: Cartes
                       yaw=predicted_cartesian_state_0[C_YAW], size=car_size, confidence=0,
                       v_x=predicted_cartesian_state_0[C_V],
                       v_y=0,
-                      acceleration_lon=0, omega_yaw=0),
-        DynamicObject(obj_id=DYNAMIC_OBJECT_ID, timestamp=int(prediction_timestamps[1] * 1e9),
-                      x=predicted_cartesian_state_1_constant_yaw[C_X],
+                      acceleration_lon=0, curvature=0),
+        DynamicObject(obj_id=DYNAMIC_OBJECT_ID, timestamp=int(prediction_timestamps[1] * 1e9), x=predicted_cartesian_state_1_constant_yaw[C_X],
                       y=predicted_cartesian_state_1_constant_yaw[C_Y],
                       z=DEFAULT_OBJECT_Z_VALUE,
                       yaw=predicted_cartesian_state_1_constant_yaw[C_YAW], size=car_size, confidence=0,
                       v_x=predicted_cartesian_state_1_constant_yaw[C_V],
                       v_y=0,
-                      acceleration_lon=0, omega_yaw=0),
+                      acceleration_lon=0, curvature=0),
         DynamicObject(obj_id=DYNAMIC_OBJECT_ID, timestamp=int(prediction_timestamps[2] * 1e9),
                       x=predicted_cartesian_state_2_constant_yaw[C_X], y=predicted_cartesian_state_2_constant_yaw[C_Y],
                       z=DEFAULT_OBJECT_Z_VALUE,
                       yaw=predicted_cartesian_state_2_constant_yaw[C_YAW], size=car_size, confidence=0,
                       v_x=predicted_cartesian_state_2_constant_yaw[C_V],
                       v_y=0,
-                      acceleration_lon=0, omega_yaw=0)]
+                      acceleration_lon=0, curvature=0)]
     yield object_states
 
 
@@ -181,22 +180,21 @@ def predicted_dyn_object_states_road_yaw(predicted_cartesian_state_0: CartesianS
                       yaw=predicted_cartesian_state_0[C_YAW], size=car_size, confidence=0,
                       v_x=predicted_cartesian_state_0[C_V],
                       v_y=0,
-                      acceleration_lon=0, omega_yaw=0),
-        DynamicObject(obj_id=DYNAMIC_OBJECT_ID, timestamp=int(prediction_timestamps[1] * 1e9),
-                      x=predicted_cartesian_state_1_road_yaw[C_X],
+                      acceleration_lon=0, curvature=0),
+        DynamicObject(obj_id=DYNAMIC_OBJECT_ID, timestamp=int(prediction_timestamps[1] * 1e9), x=predicted_cartesian_state_1_road_yaw[C_X],
                       y=predicted_cartesian_state_1_road_yaw[C_Y],
                       z=DEFAULT_OBJECT_Z_VALUE,
                       yaw=predicted_cartesian_state_1_road_yaw[C_YAW], size=car_size, confidence=0,
                       v_x=predicted_cartesian_state_1_road_yaw[C_V],
                       v_y=0,
-                      acceleration_lon=0, omega_yaw=0),
+                      acceleration_lon=0, curvature=0),
         DynamicObject(obj_id=DYNAMIC_OBJECT_ID, timestamp=int(prediction_timestamps[2] * 1e9),
                       x=predicted_cartesian_state_2_road_yaw[C_X], y=predicted_cartesian_state_2_road_yaw[C_Y],
                       z=DEFAULT_OBJECT_Z_VALUE,
                       yaw=predicted_cartesian_state_2_road_yaw[C_YAW], size=car_size, confidence=0,
                       v_x=predicted_cartesian_state_2_road_yaw[C_V],
                       v_y=0,
-                      acceleration_lon=0, omega_yaw=0)]
+                      acceleration_lon=0, curvature=0)]
     yield object_states
 
 
@@ -210,21 +208,43 @@ def predicted_static_ego_states(static_cartesian_state: CartesianState, predicti
                  yaw=static_cartesian_state[C_YAW], size=car_size, confidence=0,
                  v_x=static_cartesian_state[C_V],
                  v_y=0,
-                 acceleration_lon=0, omega_yaw=0, steering_angle=0),
+                 acceleration_lon=0, curvature=0),
         EgoState(obj_id=EGO_OBJECT_ID, timestamp=int(prediction_timestamps[1] * 1e9), x=static_cartesian_state[C_X],
                  y=static_cartesian_state[C_Y],
                  z=DEFAULT_OBJECT_Z_VALUE,
                  yaw=static_cartesian_state[C_YAW], size=car_size, confidence=0,
                  v_x=static_cartesian_state[C_V],
                  v_y=0,
-                 acceleration_lon=0, omega_yaw=0, steering_angle=0),
+                 acceleration_lon=0, curvature=0),
         EgoState(obj_id=EGO_OBJECT_ID, timestamp=int(prediction_timestamps[2] * 1e9), x=static_cartesian_state[C_X],
                  y=static_cartesian_state[C_Y],
                  z=DEFAULT_OBJECT_Z_VALUE,
                  yaw=static_cartesian_state[C_YAW], size=car_size, confidence=0,
                  v_x=static_cartesian_state[C_V],
                  v_y=0,
-                 acceleration_lon=0, omega_yaw=0, steering_angle=0)]
+                 acceleration_lon=0, curvature=0)]
+def predicted_static_ego_states(static_cartesian_state: CartesianState, prediction_timestamps: np.ndarray) -> List[EgoState]:
+    ego_states = [EgoState(obj_id=EGO_OBJECT_ID, timestamp=int(prediction_timestamps[0] * 1e9), x=static_cartesian_state[C_X],
+                           y=static_cartesian_state[C_Y],
+                           z=DEFAULT_OBJECT_Z_VALUE,
+                           yaw=static_cartesian_state[C_YAW], size=car_size, confidence=0,
+                           v_x=static_cartesian_state[C_V],
+                           v_y=0,
+                           acceleration_lon=0, curvature=0),
+                  EgoState(obj_id=EGO_OBJECT_ID, timestamp=int(prediction_timestamps[1] * 1e9), x=static_cartesian_state[C_X],
+                           y=static_cartesian_state[C_Y],
+                           z=DEFAULT_OBJECT_Z_VALUE,
+                           yaw=static_cartesian_state[C_YAW], size=car_size, confidence=0,
+                           v_x=static_cartesian_state[C_V],
+                           v_y=0,
+                           acceleration_lon=0, curvature=0),
+                  EgoState(obj_id=EGO_OBJECT_ID, timestamp=int(prediction_timestamps[2] * 1e9), x=static_cartesian_state[C_X],
+                           y=static_cartesian_state[C_Y],
+                           z=DEFAULT_OBJECT_Z_VALUE,
+                           yaw=static_cartesian_state[C_YAW], size=car_size, confidence=0,
+                           v_x=static_cartesian_state[C_V],
+                           v_y=0,
+                           acceleration_lon=0, curvature=0)]
     yield ego_states
 
 
