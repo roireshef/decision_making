@@ -4,7 +4,7 @@ from typing import List, Optional
 import numpy as np
 import sys
 
-from decision_making.src.global_constants import SAFE_DIST_TIME_DELAY, AV_TIME_DELAY, AGGRESSIVENESS_TO_LAT_ACC, \
+from decision_making.src.global_constants import SPECIFICATION_MARGIN_TIME_DELAY, SAFETY_MARGIN_TIME_DELAY, AGGRESSIVENESS_TO_LAT_ACC, \
     MINIMAL_STATIC_ACTION_TIME
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, \
     RelativeLongitudinalPosition
@@ -161,7 +161,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         if forward_cell in behavioral_state.road_occupancy_grid:
             followed_obj = behavioral_state.road_occupancy_grid[forward_cell][0].dynamic_object
             # calculate initial and final safety w.r.t. the followed object
-            td = AV_TIME_DELAY
+            td = SAFETY_MARGIN_TIME_DELAY
             margin = 0.5 * (ego.size.length + followed_obj.size.length)
             (act_time, act_dist) = (vel_profile.total_time(), vel_profile.total_dist())
             obj_lon = followed_obj.road_localization.road_lon
@@ -194,7 +194,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                 # time delay decreases as function of lateral distance to the target: td_0 = td_T + 1
                 # td_0 > td_T, since as latitude advances ego can escape laterally easier
                 td_T = 0.  # dist to F after completing lane change. TODO: increase it when the planning will be deep
-                td_0 = AV_TIME_DELAY * lat_dist_to_target
+                td_0 = SAFETY_MARGIN_TIME_DELAY * lat_dist_to_target
                 # calculate last safe time w.r.t. F
                 front_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_length,
                     front_obj.road_localization.road_lon, front_obj.v_x, front_obj.size.length, 0.75 * T_d, td_0, td_T)
@@ -209,7 +209,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             # check safety w.r.t. the back object on the original lane (if exists)
             if side_rear_cell in behavioral_state.road_occupancy_grid:
                 back_obj = behavioral_state.road_occupancy_grid[side_rear_cell][0].dynamic_object
-                td = SAFE_DIST_TIME_DELAY
+                td = SPECIFICATION_MARGIN_TIME_DELAY
                 # calculate last safe time w.r.t. LB or RB
                 back_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_length,
                         back_obj.road_localization.road_lon, back_obj.v_x, back_obj.size.length, T_d, td, td)
@@ -234,7 +234,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                 # and if this action is to the danger_lane center, then check safety w.r.t. the rear object
                 if self.back_danger_lane == ego_road.lane_num and self.back_danger_side == action_lat_cell.value and \
                    ego_road.intra_lane_lat * action_lat_cell.value < 0 and rear_cell in behavioral_state.road_occupancy_grid:
-                        td = SAFE_DIST_TIME_DELAY
+                        td = SPECIFICATION_MARGIN_TIME_DELAY
                         rear_obj = behavioral_state.road_occupancy_grid[rear_cell][0].dynamic_object
                         # calculate last safe time w.r.t. R
                         back_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_length,

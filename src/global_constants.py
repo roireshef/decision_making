@@ -96,9 +96,11 @@ LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
-SPECIFICATION_MARGIN_TIME_DELAY = 2
-SAFETY_MARGIN_TIME_DELAY = 1
+# [sec] safe distance for specification, divided by front vehicle velocity
+SPECIFICATION_MARGIN_TIME_DELAY = 2.
 
+# [sec] time delay of AV vehicle
+SAFETY_MARGIN_TIME_DELAY = 1.
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3

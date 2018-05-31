@@ -12,7 +12,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionType, Agg
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
-    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, MINIMAL_STATIC_ACTION_TIME, AV_TIME_DELAY, LON_ACC_LIMITS
+    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, MINIMAL_STATIC_ACTION_TIME, SAFETY_MARGIN_TIME_DELAY, LON_ACC_LIMITS
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
     DEFAULT_DYNAMIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.evaluators.heuristic_action_spec_evaluator import \
@@ -424,7 +424,7 @@ def test_evaluate_differentDistancesAndVeloctiesOfFandRF_laneChangeAccordingToTh
 
             if sec_to_RF > 9 or (RF_vel >= des_vel and sec_to_RF > 2.5):
                 assert rel_lane == -1
-            if (sec_to_RF < 6 and RF_vel < des_vel - 2) or sec_to_RF <= AV_TIME_DELAY:
+            if (sec_to_RF < 6 and RF_vel < des_vel - 2) or sec_to_RF <= SAFETY_MARGIN_TIME_DELAY:
                 assert rel_lane == 0
 
 
