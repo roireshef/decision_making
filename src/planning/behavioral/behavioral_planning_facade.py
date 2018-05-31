@@ -148,3 +148,10 @@ class BehavioralPlanningFacade(DmModule):
     def _publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
         self.pubsub.publish(pubsub_topics.VISUALIZATION_TOPIC, visualization_message.serialize())
 
+    @property
+    def planner(self):
+        return self._planner
+
+    @property
+    def predictor(self):
+        return self._predictor

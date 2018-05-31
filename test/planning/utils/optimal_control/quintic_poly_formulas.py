@@ -73,8 +73,9 @@ class QuinticMotionSymbolicsCreator:
 class QuinticMotionPredicatesCreator:
     """This class creates predicates for filtering trajectories before specification according to initial velocity and
      acceleration, distance from target vehicle, and final velocity"""
+
     def __init__(self, v0_grid: UniformGrid, a0_grid: UniformGrid, sT_grid: UniformGrid, vT_grid: UniformGrid,
-                 T_m: float, T_safety:float, predicates_resources_target_directory: str):
+                 T_m: float, T_safety: float, predicates_resources_target_directory: str):
         """
         :param v0_grid: A grid of initial velocities by which the predicates will be created (typically constant)
         :param a0_grid: A grid of initial accelerations by which the predicates will be created (typically constant)
@@ -94,7 +95,7 @@ class QuinticMotionPredicatesCreator:
 
         self.predicates_resources_target_directory = predicates_resources_target_directory  # 'predicates'
         self.predicate = np.full(shape=[len(v0_grid), len(a0_grid), len(sT_grid), len(vT_grid)],
-                        fill_value=False)
+                                 fill_value=False)
 
     @staticmethod
     def create_quintic_motion_funcs(a_0, v_0, v_T, s_T, T, T_m):
@@ -115,6 +116,20 @@ class QuinticMotionPredicatesCreator:
 
     @staticmethod
     def generate_predicate_value(action_type, w_T, w_J, a_0, v_0, v_T, s_T, T_m, T_safety):
+        """
+        Generates the actual predicate value (true/false) for the given action,weights and scenario params
+        :param action_type:
+        :param w_T: weight of Time component in time-jerk cost function
+        :param w_J: weight of longitudinal jerk component in time-jerk cost function
+        :param a_0: initial acceleration [m/s^2]
+        :param v_0: initial velocity [m/s]
+        :param v_T: desired final velocity [m/s]
+        :param s_T: initial distance from target car (+/- constant safety margin) [m]
+        :param T_m: specification margin from target vehicle [s]
+        :param T_safety: safety margin from target vehicle [s]
+        :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
+                acceleration constraints and doesn't get into target vehicle safety zone.
+        """
         time_cost_poly_coefs = \
             QuinticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
                                                               np.array([a_0]), np.array([v_0]),
@@ -134,15 +149,17 @@ class QuinticMotionPredicatesCreator:
         if T == 0:
             return True
 
-        delta_s_t_func, coefs_s_der, v_t_func, a_t_func = QuinticMotionPredicatesCreator.create_quintic_motion_funcs(a_0, v_0,
-                                                                                      v_T, s_T,
-                                                                                      T,
-                                                                                      T_m=T_m)
+        delta_s_t_func, coefs_s_der, v_t_func, a_t_func = QuinticMotionPredicatesCreator.create_quintic_motion_funcs(
+            a_0, v_0,
+            v_T, s_T,
+            T,
+            T_m=T_m)
         time_res_for_extremum_query = 0.01
-        s_roots_reals = Math.find_real_roots_in_limits(coefs_s_der, np.array([time_res_for_extremum_query, T-time_res_for_extremum_query]))
+        s_roots_reals = Math.find_real_roots_in_limits(coefs_s_der, np.array(
+            [time_res_for_extremum_query, T - time_res_for_extremum_query]))
         extremum_delta_s_val = delta_s_t_func(s_roots_reals[np.isfinite(s_roots_reals)])
 
-        t = np.arange(0, T+EPS, time_res_for_extremum_query)
+        t = np.arange(0, T + EPS, time_res_for_extremum_query)
         min_v, max_v = min(v_t_func(t)), max(v_t_func(t))
         min_a, max_a = min(a_t_func(t)), max(a_t_func(t))
 
@@ -184,6 +201,7 @@ class QuinticMotionPredicatesCreator:
                                         action_type, w_T, w_J, a_0, v_0, v_T, s_T, T_m, T_safety)
 
                 output_predicate_file_name = '%s_predicate_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
-                output_predicate_file_path = Paths.get_resource_absolute_path_filename('%s/%s' % (self.predicates_resources_target_directory,
-                                                                                                  output_predicate_file_name))
+                output_predicate_file_path = Paths.get_resource_absolute_path_filename(
+                    '%s/%s' % (self.predicates_resources_target_directory,
+                               output_predicate_file_name))
                 BinaryReadWrite.save(array=self.predicate, file_path=output_predicate_file_path)

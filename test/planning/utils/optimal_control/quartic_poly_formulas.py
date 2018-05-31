@@ -98,6 +98,16 @@ class QuarticMotionPredicatesCreator:
 
     @staticmethod
     def generate_predicate_value(w_T, w_J, a_0, v_0, v_T):
+        """
+        Generates the actual predicate value (true/false) for the given action,weights and scenario params
+        :param w_T: weight of Time component in time-jerk cost function
+        :param w_J: weight of longitudinal jerk component in time-jerk cost function
+        :param a_0: initial acceleration [m/s^2]
+        :param v_0: initial velocity [m/s]
+        :param v_T: desired final velocity [m/s]
+        :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
+                acceleration constraints.
+        """
         time_cost_poly_coefs = \
             QuarticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
                                                               np.array([a_0]), np.array([v_0]),
