@@ -13,7 +13,7 @@ class MapUtils:
 
     # TODO: replace this call with the road localization once it is updated to be hold a frenet state
     @staticmethod
-    def get_object_road_localization(obj: DynamicObject, road_frenet: FrenetSerret2DFrame):
+    def get_object_road_localization(obj: DynamicObject, road_frenet: FrenetSerret2DFrame) -> FrenetState2D:
         target_obj_fpoint = road_frenet.cpoint_to_fpoint(np.array([obj.x, obj.y]))
         obj_init_fstate = road_frenet.cstate_to_fstate(np.array([
             obj.x, obj.y,

@@ -23,7 +23,7 @@ def test_specifyGoals_closeToTargetVelocity_specifyNotFail():
     ego_vel = target_vel + 0.01
     ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon,
                                                                                        road_mid_lat - lane_width)
-    ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, ego_vel, 0, 0, 0, 0)
+    ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, ego_vel, 0, 0, 0)
 
     state = State(None, [], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, logger)
