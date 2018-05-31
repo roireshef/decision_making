@@ -102,9 +102,9 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     v_x = float
     v_y = float
     acceleration_lon = float
-    omega_yaw = float
+    curvature = float
 
-    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, acceleration_lon, omega_yaw):
+    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, acceleration_lon, curvature):
         # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float) -> DynamicObject
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
@@ -120,7 +120,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param v_x: velocity in object's heading direction [m/sec]
         :param v_y: velocity in object's side (left) direction [m/sec] (usually close to zero)
         :param acceleration_lon: acceleration in longitude axis
-        :param omega_yaw: 0 for straight motion, positive for CCW (yaw increases), negative for CW
+        :param curvature: [1/m] inverse of radius of turn, signed - CCW
         """
         self.obj_id = obj_id
         self.timestamp = timestamp
@@ -133,7 +133,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         self.v_x = v_x
         self.v_y = v_y
         self.acceleration_lon = acceleration_lon
-        self.omega_yaw = omega_yaw
+        self.curvature = curvature
         self._cached_road_localization = None
 
     def clone_cartesian_state(self, timestamp_in_sec, cartesian_state):
@@ -225,7 +225,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         lcm_msg.v_x = self.v_x
         lcm_msg.v_y = self.v_y
         lcm_msg.acceleration_lon = self.acceleration_lon
-        lcm_msg.omega_yaw = self.omega_yaw
+        lcm_msg.curvature = self.curvature
         return lcm_msg
 
     @classmethod
@@ -235,7 +235,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
                  , lcmMsg.x, lcmMsg.y, lcmMsg.z, lcmMsg.yaw
                  , ObjectSize.deserialize(lcmMsg.size)
                  , lcmMsg.confidence, lcmMsg.v_x, lcmMsg.v_y
-                 , lcmMsg.acceleration_lon, lcmMsg.omega_yaw)
+                 , lcmMsg.acceleration_lon, lcmMsg.curvature)
 
 
 class EgoState(DynamicObject):
@@ -251,12 +251,10 @@ class EgoState(DynamicObject):
     v_x = float
     v_y = float
     acceleration_lon = float
-    omega_yaw = float
-    steering_angle = float
+    curvature = float
 
-    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence,
-                 v_x, v_y, acceleration_lon, omega_yaw, steering_angle):
-        # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float, float) -> None
+    def __init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, acceleration_lon, curvature):
+        # type: (int, int, float, float, float, float, ObjectSize, float, float, float, float, float) -> None
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
         :param obj_id:
@@ -270,29 +268,15 @@ class EgoState(DynamicObject):
         :param v_x: velocity in ego's heading direction [m/sec]
         :param v_y: velocity in ego's side (left) direction [m/sec]
         :param acceleration_lon: in m/s^2
-        :param omega_yaw: radius of turning of the ego
-        :param steering_angle: equivalent to knowing of turn_radius
+        :param curvature: [1/m] signed (CCW) inverse of radius of turning of the ego
         """
-        DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y,
-                               acceleration_lon, omega_yaw)
-        self.steering_angle = steering_angle
-
-    @property
-    # TODO: change <length> to the distance between the two axles
-    # TODO: understand (w.r.t which axle counts) if we should use sin or tan here + validate vs sensor-alignments
-    def curvature(self):
-        """
-        For any point on a curve, the curvature measure is defined as 1/R where R is the radius length of a
-        circle that tangents the curve at that point. HERE, CURVATURE IS SIGNED (same sign as steering_angle).
-        For more information please see: https://en.wikipedia.org/wiki/Curvature#Curvature_of_plane_curves
-        """
-        return np.tan(self.steering_angle) / self.size.length
+        DynamicObject.__init__(self, obj_id, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, acceleration_lon,
+                               curvature)
 
     def serialize(self):
         # type: () -> LcmEgoState
         lcm_msg = LcmEgoState()
         lcm_msg.dynamic_obj = super(self.__class__, self).serialize()
-        lcm_msg.steering_angle = self.steering_angle
         return lcm_msg
 
     @classmethod
@@ -303,7 +287,7 @@ class EgoState(DynamicObject):
                  , dyn_obj.x, dyn_obj.y, dyn_obj.z, dyn_obj.yaw
                  , dyn_obj.size, dyn_obj.confidence
                  , dyn_obj.v_x, dyn_obj.v_y, dyn_obj.acceleration_lon
-                 , dyn_obj.omega_yaw, lcmMsg.steering_angle)
+                 , dyn_obj.curvature)
 
 
 class State(PUBSUB_MSG_IMPL):

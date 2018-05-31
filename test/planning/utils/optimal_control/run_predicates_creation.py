@@ -1,8 +1,6 @@
-import re
-
 from decision_making.paths import Paths
 from decision_making.src.global_constants import FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID, FILTER_V_T_GRID, \
-    SAFE_DIST_TIME_DELAY, BP_JERK_S_JERK_D_TIME_WEIGHTS
+    SPECIFICATION_MARGIN_TIME_DELAY, BP_JERK_S_JERK_D_TIME_WEIGHTS, SAFETY_MARGIN_TIME_DELAY
 from decision_making.src.planning.behavioral.data_objects import ActionType
 from decision_making.src.planning.utils.file_utils import TextReadWrite
 from decision_making.test.planning.utils.optimal_control.quartic_poly_formulas import QuarticMotionPredicatesCreator
@@ -25,7 +23,8 @@ def main():
     resources_directory = 'predicates'
     # Quintic predicates creation
     quintic_predicates_creator = QuinticMotionPredicatesCreator(FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID,
-                                                                FILTER_V_T_GRID, T_m=SAFE_DIST_TIME_DELAY,
+                                                                FILTER_V_T_GRID, T_m=SPECIFICATION_MARGIN_TIME_DELAY,
+                                                                T_safety=SAFETY_MARGIN_TIME_DELAY,
                                                                 predicates_resources_target_directory=resources_directory)
     quintic_predicates_creator.create_predicates(weights, dynamic_actions)
     # Quartic predicates creation
@@ -45,7 +44,8 @@ def document_created_predicates(target_directory):
                 'FILTER_A_0_GRID : ' + str(FILTER_A_0_GRID),
                 'FILTER_S_T_GRID : ' + str(FILTER_S_T_GRID),
                 'FILTER_V_T_GRID : ' + str(FILTER_V_T_GRID),
-                'SAFE_DIST_TIME_DELAY : ' + str(SAFE_DIST_TIME_DELAY)]
+                'SPECIFICATION_MARGIN_TIME_DELAY : ' + str(SPECIFICATION_MARGIN_TIME_DELAY),
+                'SAFETY_MARGIN_TIME_DELAY : ' + str(SAFETY_MARGIN_TIME_DELAY)]
     TextReadWrite.write(lines_in, output_predicate_file_path)
 
 
