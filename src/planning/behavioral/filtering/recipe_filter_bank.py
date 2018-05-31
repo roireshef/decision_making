@@ -19,6 +19,11 @@ class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
         return recipe_cell in behavioral_state.road_occupancy_grid
 
 
+class FilterActionsTowardsOtherLanes(RecipeFilter):
+    def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
+        return recipe.relative_lane == RelativeLane.SAME_LANE
+
+
 class FilterBadExpectedTrajectory(RecipeFilter):
     def __init__(self, predicates_dir: str):
         if not self.validate_predicate_constants(predicates_dir):
