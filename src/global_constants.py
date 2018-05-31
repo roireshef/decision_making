@@ -74,7 +74,7 @@ RIGHT_LANE_COST_WEIGHT = 0.005              # cost of using non-right lane on on
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
-VELOCITY_LIMITS = np.array([0.0, 20])
+VELOCITY_LIMITS = np.array([0.0, 30])
 VELOCITY_STEP = 10/3.6
 
 # Planning horizon for the TP query sent by BP [sec]
@@ -98,7 +98,7 @@ LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 SAFE_DIST_TIME_DELAY = 2.0
 
 # Response delay of AV (ego) agent [sec]
-AV_TIME_DELAY = 0.8  # TODO: may be increased when TP will work with RSS
+AV_TIME_DELAY = 1.0  # TODO: may be increased when TP will work with RSS
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3

@@ -142,44 +142,46 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         :return: the latest time, when ego is still safe; return -1 if the current state is unsafe for this action
         """
         action_lat_cell = action.relative_lane
-        ego_road = behavioral_state.ego_state.road_localization
+        ego = behavioral_state.ego_state
+        ego_road = ego.road_localization
         ego_lon = ego_road.road_lon
-        cur_time = behavioral_state.ego_state.timestamp_in_sec
+        cur_time = ego.timestamp_in_sec
 
         forward_cell = (action_lat_cell, RelativeLongitudinalPosition.FRONT)
         front_cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
         side_rear_cell = (action_lat_cell, RelativeLongitudinalPosition.REAR)
         rear_cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.REAR)
 
+        lane_change = (action_lat_cell != RelativeLane.SAME_LANE)
         lat_dist_to_target = abs(action_lat_cell.value - (ego_road.intra_lane_lat / lane_width - 0.5))  # in [0, 1.5]
         # increase time delay if ego does not move laterally according to the current action
-        is_moving_laterally_to_target = (action_lat_cell != RelativeLane.SAME_LANE and
-                                         ego_road.intra_road_yaw * action_lat_cell.value <= 0)
+        is_moving_laterally_to_target = (lane_change and ego_road.intra_road_yaw * action_lat_cell.value <= 0)
 
         # check safety w.r.t. the followed object on the target lane (if exists)
         if forward_cell in behavioral_state.road_occupancy_grid:
             followed_obj = behavioral_state.road_occupancy_grid[forward_cell][0].dynamic_object
-
+            # calculate initial and final safety w.r.t. the followed object
             td = AV_TIME_DELAY
-            if action.action_type == ActionType.FOLLOW_LANE:
-                td = SAFE_DIST_TIME_DELAY  # TODO: remove it after value function implementation
-
-            # calculate last safe time w.r.t. the followed object
-            forward_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_length,
-                    followed_obj.road_localization.road_lon, followed_obj.v_x, followed_obj.size.length, np.inf, td, td)
-            if forward_safe_time < vel_profile.total_time():
-                obj_lon = followed_obj.road_localization.road_lon
-                act_time = vel_profile.total_time()
+            margin = 0.5 * (ego.size.length + followed_obj.size.length)
+            (act_time, act_dist) = (vel_profile.total_time(), vel_profile.total_dist())
+            obj_lon = followed_obj.road_localization.road_lon
+            (end_ego_lon, end_obj_lon) = (ego_lon + act_dist, obj_lon + followed_obj.v_x * act_time)
+            init_safe_dist = VelocityProfile.get_safety_dist(followed_obj.v_x, ego.v_x, obj_lon - ego_lon, td, margin)
+            end_safe_dist = VelocityProfile.get_safety_dist(followed_obj.v_x, vel_profile.v_tar,
+                                                            end_obj_lon - end_ego_lon, td, margin)
+            # the action is unsafe if: (change_lane and initially unsafe) or (finally_unsafe and worse than initially)
+            if (lane_change and init_safe_dist <= 0) or end_safe_dist <= min(0., init_safe_dist):
                 print('forward unsafe: %d(%d %d) rel_lat=%d dist=%.2f t=%.2f final_dist=%.2f v_obj=%.2f '
-                      'prof=(t=[%.2f %.2f %.2f] v=[%.2f %.2f %.2f]) safe_time=%.2f td=%.2f' %
-                      (i, action.action_type.value, action.aggressiveness.value, action_lat_cell.value, obj_lon - ego_lon,
-                       act_time, obj_lon + act_time * followed_obj.v_x - (ego_lon + vel_profile.total_dist()),
+                      'prof=(t=[%.2f %.2f %.2f] v=[%.2f %.2f %.2f]) init_safe=%.2f final_safe=%.2f; td=%.2f' %
+                      (i, action.action_type.value, action.aggressiveness.value, action_lat_cell.value,
+                       obj_lon - ego_lon, act_time,
+                       obj_lon + act_time * followed_obj.v_x - (ego_lon + act_dist),
                        followed_obj.v_x, vel_profile.t_acc, vel_profile.t_flat, vel_profile.t_dec, vel_profile.v_init,
-                       vel_profile.v_mid, vel_profile.v_tar, forward_safe_time, td))
+                       vel_profile.v_mid, vel_profile.v_tar, init_safe_dist, end_safe_dist, td))
                 return -1
 
         safe_time = np.inf
-        if action_lat_cell != RelativeLane.SAME_LANE:  # lane change action
+        if lane_change:  # for lane change actions check safety w.r.t. F, LB, RB
             # TODO: move it to a filter
             # check whether there is a car in the neighbor cell (same longitude)
             if (action_lat_cell, RelativeLongitudinalPosition.PARALLEL) in behavioral_state.road_occupancy_grid:
@@ -228,10 +230,10 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         # check safety w.r.t. the rear object R for the case we are after back danger and arrived to the dangerous lane
         if self.back_danger_lane is not None:
             if cur_time - self.back_danger_time < 4:  # the danger is still relevant
-                lat_dist = self.back_danger_lane - (ego_road.intra_road_lat/lane_width - 0.5)
-                if 0.25 < abs(lat_dist) < 0.5 and lat_dist * self.back_danger_side > 0 and \
-                                     action_lat_cell.value * self.back_danger_side >= 0:
-                    if rear_cell in behavioral_state.road_occupancy_grid:
+                # if ego is on the danger_lane but still didn't reach the lane center,
+                # and if this action is to the danger_lane center, then check safety w.r.t. the rear object
+                if self.back_danger_lane == ego_road.lane_num and self.back_danger_side == action_lat_cell.value and \
+                   ego_road.intra_lane_lat * action_lat_cell.value < 0 and rear_cell in behavioral_state.road_occupancy_grid:
                         td = SAFE_DIST_TIME_DELAY
                         rear_obj = behavioral_state.road_occupancy_grid[rear_cell][0].dynamic_object
                         # calculate last safe time w.r.t. R

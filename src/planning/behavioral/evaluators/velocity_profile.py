@@ -351,6 +351,22 @@ class VelocityProfile:
         return np.inf  # always safe
 
     @staticmethod
+    def get_safety_dist(v_front: float, v_back: float, dist: float, time_delay: float, margin: float,
+                        max_brake: float=-LON_ACC_LIMITS[0]) -> float:
+        """
+        Calculate difference between the actual distance and minimal safe distance (longitudinal RSS formula)
+        :param v_front: [m/s] front vehicle velocity
+        :param v_back: [m/s] back vehicle velocity
+        :param dist: [m] distance between the vehicles
+        :param time_delay: time delay of the back vehicle
+        :param margin: [m] cars sizes margin
+        :param max_brake: [m/s^2] maximal deceleration of the vehicles
+        :return: Positive if the back vehicle is safe, negative otherwise
+        """
+        safe_dist = max(0., v_back**2 - v_front**2) / (2*max_brake) + v_back*time_delay + margin
+        return dist - safe_dist
+
+    @staticmethod
     def is_safe_state(v_front: float, v_back: float, dist: float, time_delay: float, margin: float,
                       max_brake: float=-LON_ACC_LIMITS[0]) -> bool:
         """
@@ -363,7 +379,7 @@ class VelocityProfile:
         :param max_brake: [m/s^2] maximal deceleration of the vehicles
         :return: True if the back vehicle is safe
         """
-        return max(0., v_back**2 - v_front**2) / (2*max_brake) + v_back*time_delay + margin < dist
+        return VelocityProfile.get_safety_dist(v_front, v_back, dist, time_delay, margin, max_brake) > 0
 
     def _is_safe_profile(self, init_s_ego: float, init_s_obj: float, v_obj: float, margin: float,
                          T: float, td_0: float, td_T: float) -> bool:

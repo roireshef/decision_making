@@ -98,7 +98,7 @@ class CostBasedBehavioralPlanner:
             cpoint, yaw = MapService.get_instance().convert_road_to_global_coordinates(
                 road_id, spec.s, (target_lane + 0.5) * lane_width)
             terminal_ego = EgoState(ego.obj_id, ego.timestamp + int(spec.t * 1e9), cpoint[0], cpoint[1], cpoint[2], yaw,
-                                    ego.size, 0, spec.v, 0, 0, 0, 0)
+                                    ego.size, 0, spec.v, 0, 0, 0)
             predicted_objects = []  # TODO: use predictor
             terminal_state = State(None, predicted_objects, terminal_ego)
             new_behavioral_state = BehavioralGridState.create_from_state(terminal_state, logger)
