@@ -173,9 +173,7 @@ class BehavioralGridState(BehavioralState):
                 continue
 
             # compute longitudinal projection on the grid
-            object_relative_long = BehavioralGridState._get_longitudinal_grid_cell(obj.longitudinal_distance,
-                                                                                   ego_state.size.length,
-                                                                                   obj.dynamic_object.size.length)
+            object_relative_long = BehavioralGridState._get_longitudinal_grid_cell(obj, ego_state)
 
             grid[(object_relative_lane, object_relative_long)].append(obj)
 
@@ -183,12 +181,12 @@ class BehavioralGridState(BehavioralState):
 
     @staticmethod
     @prof.ProfileFunction()
-    def _get_longitudinal_grid_cell(longitudinal_difference: float, ego_length: float, obj_length: float):
+    def _get_longitudinal_grid_cell(object: DynamicObjectWithRoadSemantics, ego_state: EgoState):
         """
-        Given longitudinal difference (on road's progress dimension) from ego to an object (positive if object is in
-        front), calculate what is the proper longitudinal relative-grid-cell to project it on.
-        An object is set to be in FRONT cell if the distance from its rear to ego's front is greater than
-        LON_MARGIN_FROM_EGO. An object is set to be in REAR cell if the distance from its front to ego's rear is greater
+        Given a dynamic object representation and ego state, calculate what is the proper longitudinal
+        relative-grid-cell to project it on. An object is set to be in FRONT cell if the distance from its rear to ego's
+        front is greater than LON_MARGIN_FROM_EGO.
+        An object is set to be in REAR cell if the distance from its front to ego's rear is greater
         than LON_MARGIN_FROM_EGO. Otherwise, the object is set to be parallel to ego.
         :param longitudinal_difference: longitudinal difference (on road's progress dimension) from ego to an object
         (positive if object is in front). difference is computed between objects'-centers
@@ -196,9 +194,11 @@ class BehavioralGridState(BehavioralState):
         :param obj_length: the length of the another object
         :return: RelativeLongitudinalPosition enum's value representing the longitudinal projection on the relative-grid
         """
-        if longitudinal_difference > (obj_length / 2 + ego_length / 2 + LON_MARGIN_FROM_EGO):
+        obj_length = object.dynamic_object.size.length
+        ego_length = ego_state.size.length
+        if object.longitudinal_distance > (obj_length / 2 + ego_length / 2 + LON_MARGIN_FROM_EGO):
             return RelativeLongitudinalPosition.FRONT
-        elif longitudinal_difference < -(obj_length / 2 + ego_length / 2 + LON_MARGIN_FROM_EGO):
+        elif object.longitudinal_distance < -(obj_length / 2 + ego_length / 2 + LON_MARGIN_FROM_EGO):
             return RelativeLongitudinalPosition.REAR
         else:
             return RelativeLongitudinalPosition.PARALLEL
