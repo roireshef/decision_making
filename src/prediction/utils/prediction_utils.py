@@ -40,20 +40,14 @@ class PredictionUtils:
         num_lanes = map_api.get_road(road_id=road_id).lanes_num
         road_width = lane_width * num_lanes
 
-        # Motion model (in Frenet frame)
-        t_axis = np.arange(0.0, ended_maneuver_params.T_s + 10 * np.finfo(float).eps, WERLING_TIME_RESOLUTION)
-        # Calculate velocity according to average acceleration
-        s_v_vec = obj_init_fstate[FS_SV] + ended_maneuver_params.avg_s_a * t_axis
-        # Clip negative velocities if starting velocity is positive
-        if obj_init_fstate[FS_SV] > 0:
-            s_v_vec = np.clip(s_v_vec, 0.0, np.inf)
-        s_x_vec = obj_init_fstate[FS_SX] + np.cumsum(s_v_vec * WERLING_TIME_RESOLUTION)
+        s_x_final, s_v_final = PredictionUtils.compute_x_from_average_a(ended_maneuver_params.T_s,
+                                                                        ended_maneuver_params.avg_s_a,
+                                                                        obj_init_fstate[FS_SX],
+                                                                        obj_init_fstate[FS_SV])
 
-        s_x_final = s_x_vec[-1]
-        s_v_final = s_v_vec[-1]
         s_a_final = ended_maneuver_params.s_a_final
         d_x_final = (-road_width / 2.0 + object_center_lane_latitude) + lane_width * (
-        ended_maneuver_params.relative_lane + ended_maneuver_params.lat_normalized)
+            ended_maneuver_params.relative_lane + ended_maneuver_params.lat_normalized)
         d_v_final = 0.0
         d_a_final = 0.0
 
@@ -61,6 +55,28 @@ class PredictionUtils:
 
         return ManeuverSpec(init_state=obj_init_fstate, final_state=obj_final_fstate, T_s=ended_maneuver_params.T_s,
                             T_d=ended_maneuver_params.T_s)
+
+    @staticmethod
+    def compute_x_from_average_a(t: float, avg_a: float, init_x: float, init_v: float) -> (float, float):
+        """
+
+        :param t:
+        :param avg_a:
+        :param init_x:
+        :param init_v:
+        :return:
+        """
+        # Motion model (in Frenet frame)
+        t_axis = np.arange(0.0, t + 10 * np.finfo(float).eps, WERLING_TIME_RESOLUTION)
+        # Calculate velocity according to average acceleration
+        s_v_vec = init_v + avg_a * t_axis
+        # Clip negative velocities if starting velocity is positive
+        if init_v > 0:
+            s_v_vec = np.clip(s_v_vec, 0.0, np.inf)
+        s_x_vec = init_x + np.cumsum(s_v_vec[1:] * WERLING_TIME_RESOLUTION)
+        s_x_vec = np.r_[init_x, s_x_vec]
+
+        return s_x_vec[-1], s_v_vec[-1]
 
     @staticmethod
     def convert_ctrajectory_to_dynamic_objects(dynamic_object: DynamicObject, predictions: CartesianTrajectory,

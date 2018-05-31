@@ -18,7 +18,7 @@ def get_object_cstate(object_state: DynamicObject, frenet_frame: FrenetSerret2DF
     velocity_yaw = np.arctan2(object_state.v_y, object_state.v_x)
     object_acceleration = 0.0
 
-    # Object's Frenet state
+    # Object's Cartesian state
     obj_cstate = np.array([
         object_state.x,
         object_state.y,
