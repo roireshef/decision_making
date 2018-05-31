@@ -16,7 +16,11 @@ from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.w
     WerlingTrajectoryGenerator
 from decision_making.src.state.state import DynamicObject, ObjectSize, EgoState, State, OccupancyState
 from decision_making.test.planning.trajectory.mock_samplable_trajectory import MockSamplableTrajectory
+from mapping.src.service.map_service import MapService
+from mapping.test.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
+from unittest.mock import patch
+
 
 DYNAMIC_OBJECT_ID = 1
 EGO_OBJECT_ID = 0
@@ -199,30 +203,6 @@ def predicted_dyn_object_states_road_yaw(predicted_cartesian_state_0: CartesianS
 
 
 @pytest.fixture(scope='function')
-def predicted_static_ego_states(static_cartesian_state: CartesianState, prediction_timestamps: np.ndarray) -> List[
-    EgoState]:
-    ego_states = [
-        EgoState(obj_id=EGO_OBJECT_ID, timestamp=int(prediction_timestamps[0] * 1e9), x=static_cartesian_state[C_X],
-                 y=static_cartesian_state[C_Y],
-                 z=DEFAULT_OBJECT_Z_VALUE,
-                 yaw=static_cartesian_state[C_YAW], size=car_size, confidence=0,
-                 v_x=static_cartesian_state[C_V],
-                 v_y=0,
-                 acceleration_lon=0, curvature=0),
-        EgoState(obj_id=EGO_OBJECT_ID, timestamp=int(prediction_timestamps[1] * 1e9), x=static_cartesian_state[C_X],
-                 y=static_cartesian_state[C_Y],
-                 z=DEFAULT_OBJECT_Z_VALUE,
-                 yaw=static_cartesian_state[C_YAW], size=car_size, confidence=0,
-                 v_x=static_cartesian_state[C_V],
-                 v_y=0,
-                 acceleration_lon=0, curvature=0),
-        EgoState(obj_id=EGO_OBJECT_ID, timestamp=int(prediction_timestamps[2] * 1e9), x=static_cartesian_state[C_X],
-                 y=static_cartesian_state[C_Y],
-                 z=DEFAULT_OBJECT_Z_VALUE,
-                 yaw=static_cartesian_state[C_YAW], size=car_size, confidence=0,
-                 v_x=static_cartesian_state[C_V],
-                 v_y=0,
-                 acceleration_lon=0, curvature=0)]
 def predicted_static_ego_states(static_cartesian_state: CartesianState, prediction_timestamps: np.ndarray) -> List[EgoState]:
     ego_states = [EgoState(obj_id=EGO_OBJECT_ID, timestamp=int(prediction_timestamps[0] * 1e9), x=static_cartesian_state[C_X],
                            y=static_cartesian_state[C_Y],
@@ -256,3 +236,53 @@ def ego_samplable_trajectory(static_cartesian_state) -> SamplableTrajectory:
          np.append(static_cartesian_state, a_k_zero_array),
          np.append(static_cartesian_state, a_k_zero_array)])
     yield MockSamplableTrajectory(cartesian_extended_trajectory)
+
+
+@pytest.fixture(scope='function')
+def original_state_with_sorrounding_objects():
+    with patch.object(MapService, 'get_instance', map_api_mock):
+        # Stub of occupancy grid
+        occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+
+        car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+
+        # Ego state
+        ego_road_id = 1
+        ego_road_lon = 15.0
+        ego_road_lat = 4.5
+
+        ego_pos, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id=ego_road_id,
+                                                                                        lon=ego_road_lon,
+                                                                                        lat=ego_road_lat)
+
+        ego_state = EgoState(obj_id=0, timestamp=0, x=ego_pos[0], y=ego_pos[1], z=ego_pos[2], yaw=ego_yaw,
+                             size=car_size, confidence=1.0, v_x=0.0, v_y=0.0,
+                             acceleration_lon=0.0, curvature=0.0)
+
+        # Generate objects at the following locations:
+        obj_id = 1
+        obj_road_id = 1
+        obj_road_lons = [5.0, 10.0, 15.0, 20.0, 25.0]
+        obj_road_lats = [1.5, 4.5, 6.0]
+
+        dynamic_objects: List[DynamicObject] = list()
+        for obj_road_lon in obj_road_lons:
+            for obj_road_lat in obj_road_lats:
+
+                if obj_road_lon == ego_road_lon and obj_road_lat == ego_road_lat:
+                    # Don't create an object where the ego is
+                    continue
+
+                obj_pos, obj_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id=obj_road_id,
+                                                                                                lon=obj_road_lon,
+                                                                                                lat=obj_road_lat)
+
+                dynamic_object = DynamicObject(obj_id=obj_id, timestamp=0, x=obj_pos[0], y=obj_pos[1], z=obj_pos[2],
+                                               yaw=obj_yaw, size=car_size, confidence=1.0, v_x=0.0, v_y=0.0,
+                                               acceleration_lon=0.0, curvature=0.0)
+
+                dynamic_objects.append(dynamic_object)
+                obj_id += 1
+
+        yield State(occupancy_state=occupancy_state, dynamic_objects=dynamic_objects, ego_state=ego_state)
+

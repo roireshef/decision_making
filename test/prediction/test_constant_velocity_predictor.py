@@ -1,7 +1,13 @@
+from typing import List
 from unittest.mock import patch
+import numpy as np
 
+from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
+from decision_making.src.state.state import DynamicObject, State, EgoState
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from decision_making.test.prediction.conftest import *
+from decision_making.test.prediction.conftest import constant_velocity_predictor, init_state, prediction_timestamps, \
+    predicted_dyn_object_states_road_yaw, ego_samplable_trajectory, static_cartesian_state, \
+    predicted_static_ego_states, static_cartesian_state, DYNAMIC_OBJECT_ID
 from decision_making.test.prediction.utils import Utils
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from decision_making.src.prediction.ego_aware_prediction.maneuver_based_predictor import ManeuverBasedPredictor
