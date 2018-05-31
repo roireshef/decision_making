@@ -112,11 +112,6 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                                                       ego_state.size.length / 2 + dynamic_object.size.length / 2)
             v_T = dynamic_object.v_x
 
-            # TODO: remove this hack when predicates that take this into account are created
-            if FILTER_V_0_GRID.get_index(v_0) == FILTER_V_T_GRID.get_index(v_T) and \
-                    FILTER_A_0_GRID.get_index(a_0) == FILTER_A_0_GRID.get_index(0.0):
-                return True
-
             predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
 
             return predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
@@ -125,11 +120,6 @@ class FilterBadExpectedTrajectory(RecipeFilter):
         elif action_type == ActionType.FOLLOW_LANE:
 
             v_T = recipe.velocity
-
-            # TODO: remove this hack when predicates that take this into account are created
-            if FILTER_V_0_GRID.get_index(v_0) == FILTER_V_T_GRID.get_index(v_T) and \
-                    FILTER_A_0_GRID.get_index(a_0) == FILTER_A_0_GRID.get_index(0.0):
-                return True
 
             predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
 

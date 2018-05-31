@@ -1,5 +1,3 @@
-import re
-
 from decision_making.paths import Paths
 from decision_making.src.global_constants import FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID, FILTER_V_T_GRID, \
     SPECIFICATION_MARGIN_TIME_DELAY, BP_JERK_S_JERK_D_TIME_WEIGHTS, SAFETY_MARGIN_TIME_DELAY
