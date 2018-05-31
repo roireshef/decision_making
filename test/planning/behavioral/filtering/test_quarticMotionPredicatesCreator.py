@@ -8,7 +8,7 @@ from decision_making.test.planning.utils.optimal_control.quartic_poly_formulas i
 
 
 def test_createPredicates_predicateFileMatchesCurrentPredicateGeneration():
-    # This test generates some random motion parameters (v0,a0,sT,vT) and generates a predicate for these values
+    # This test generates some random motion parameters (v0,a0,vT) and generates a predicate for these values
     # using QuarticMotionPredicatesCreator create_predicates method. It then checks that all predicates generated now
     # are aligned with the values stored in the predicate file.
     directory = Paths.get_resource_absolute_path_filename('predicates')
