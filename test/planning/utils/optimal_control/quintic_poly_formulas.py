@@ -81,6 +81,7 @@ class QuinticMotionPredicatesCreator:
         :param sT_grid: A grid of initial distances from target by which the predicates will be created (typically constant)
         :param vT_grid: A grid of final velocities by which the predicates will be created (typically constant)
         :param T_m: Specification margin time interval for following/overtaking actions (typically constant)
+        :param T_safety: Safety margin time interval for following/overtaking actions (typically constant)
         :param predicates_resources_target_directory: A target directory inside resources directory where the predicates
                 will be created(typically constant)
         """
