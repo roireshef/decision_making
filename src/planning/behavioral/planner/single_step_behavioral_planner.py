@@ -117,8 +117,10 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(state.ego_state,
                                                                                       selected_action_spec)
 
-        self.logger.debug("Chosen behavioral action recipe %s", action_recipes[selected_action_index])
-        self.logger.debug("Chosen behavioral action spec %s", selected_action_spec)
+        self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
+                          action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
+        self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)",
+                          selected_action_spec, state.ego_state.timestamp_in_sec)
 
         return trajectory_parameters, baseline_trajectory, visualization_message
 
