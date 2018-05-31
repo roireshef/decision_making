@@ -188,7 +188,6 @@ class BehavioralGridState(BehavioralState):
         front is greater than LON_MARGIN_FROM_EGO.
         An object is set to be in REAR cell if the distance from its front to ego's rear is greater
         than LON_MARGIN_FROM_EGO. Otherwise, the object is set to be parallel to ego.
-        :param longitudinal_difference: longitudinal difference (on road's progress dimension) from ego to an object
         (positive if object is in front). difference is computed between objects'-centers
         :param object: the object to project onto the ego-relative grid
         :param ego_state: ego state for localization and size
