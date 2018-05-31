@@ -44,7 +44,7 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                     predicate_shape = (len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_V_T_GRID))
                 else:
                     predicate_shape = (
-                    len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_S_T_GRID), len(FILTER_V_T_GRID))
+                        len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_S_T_GRID), len(FILTER_V_T_GRID))
                 predicate = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
                 predicates[(action_type, wT, wJ)] = predicate
 
@@ -105,17 +105,12 @@ class FilterBadExpectedTrajectory(RecipeFilter):
             # pull target vehicle
             relative_dynamic_object = behavioral_state.road_occupancy_grid[recipe_cell][0]
             dynamic_object = relative_dynamic_object.dynamic_object
-            # safety distance is behind or ahead of target car if we follow or overtake it, respectively.
+            # safety distance is behind or ahead of target vehicle if we follow or overtake it, respectively.
             margin_sign = +1 if recipe.action_type == ActionType.FOLLOW_VEHICLE else -1
             # compute distance from target vehicle +/- safety margin
             s_T = relative_dynamic_object.distance - (LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
                                                       ego_state.size.length / 2 + dynamic_object.size.length / 2)
             v_T = dynamic_object.v_x
-
-            # TODO: remove this hack when predicates that take this into account are created
-            if FILTER_V_0_GRID.get_index(v_0) == FILTER_V_T_GRID.get_index(v_T) and \
-                    FILTER_A_0_GRID.get_index(a_0) == FILTER_A_0_GRID.get_index(0.0):
-                return True
 
             predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
 
@@ -125,11 +120,6 @@ class FilterBadExpectedTrajectory(RecipeFilter):
         elif action_type == ActionType.FOLLOW_LANE:
 
             v_T = recipe.velocity
-
-            # TODO: remove this hack when predicates that take this into account are created
-            if FILTER_V_0_GRID.get_index(v_0) == FILTER_V_T_GRID.get_index(v_T) and \
-                    FILTER_A_0_GRID.get_index(a_0) == FILTER_A_0_GRID.get_index(0.0):
-                return True
 
             predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
 
