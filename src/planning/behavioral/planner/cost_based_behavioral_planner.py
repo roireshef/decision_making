@@ -99,13 +99,13 @@ class CostBasedBehavioralPlanner:
 
             # predict objects (using road-following prediction logic, including alignment to road)
             predicted_objects = []
-            for obj in state.dynamic_objects:
-                obj_fstate = MapUtils.get_object_road_localization(obj, road_frenet)
-                obj_terminal_fstate = np.array([obj_fstate[FS_SX] + obj_fstate[FS_SV] * spec.t, obj_fstate[FS_SV], 0,
-                                                obj_fstate[FS_DX], 0, 0])
-                obj_terminal_cstate = road_frenet.fstate_to_cstate(obj_terminal_fstate)
-                predicted_objects.append(obj.clone_cartesian_state(timestamp_in_sec=obj.timestamp_in_sec + spec.t,
-                                                                   cartesian_state=obj_terminal_cstate))
+            # for obj in state.dynamic_objects:
+            #     obj_fstate = MapUtils.get_object_road_localization(obj, road_frenet)
+            #     obj_terminal_fstate = np.array([obj_fstate[FS_SX] + obj_fstate[FS_SV] * spec.t, obj_fstate[FS_SV], 0,
+            #                                     obj_fstate[FS_DX], 0, 0])
+            #     obj_terminal_cstate = road_frenet.fstate_to_cstate(obj_terminal_fstate)
+            #     predicted_objects.append(obj.clone_cartesian_state(timestamp_in_sec=obj.timestamp_in_sec + spec.t,
+            #                                                        cartesian_state=obj_terminal_cstate))
 
             # create a BehavioralGridState from State
             terminal_state = State(None, predicted_objects, terminal_ego_state)
