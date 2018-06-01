@@ -188,7 +188,7 @@ def test_evaluate_differentDistancesAndVeloctiesOfFandLF_laneChangeAccordingToTh
 
                 t1 = abs(des_vel - ego_vel) / 1.
                 t2 = max(0., 100 - t1)
-                vel_profile = VelocityProfile(v_init=ego_vel, t_acc=t1, v_mid=des_vel, t_flat=t2, t_dec=0, v_tar=des_vel)
+                vel_profile = VelocityProfile(v_init=ego_vel, t_first=t1, v_mid=des_vel, t_flat=t2, t_last=0, v_tar=des_vel)
                 safe_to_F = vel_profile.calc_last_safe_time(ego_lon, length, F_lon, F_vel, length, np.inf, 1.6, 1.6)
 
                 LF_lon = ego_lon + sec_to_LF * (ego_vel + des_vel) / 2
@@ -291,7 +291,7 @@ def test_evaluate_differentDistancesAndVeloctiesOfLB_laneChangeAccordingToTheLog
 
             t1 = abs(des_vel - ego_vel) / 1.
             t2 = max(0., 100 - t1)
-            vel_profile = VelocityProfile(v_init=ego_vel, t_acc=t1, v_mid=des_vel, t_flat=t2, t_dec=0, v_tar=des_vel)
+            vel_profile = VelocityProfile(v_init=ego_vel, t_first=t1, v_mid=des_vel, t_flat=t2, t_last=0, v_tar=des_vel)
 
             LB_lon = ego_lon - LB_vel * sec_to_LB - 6 * (LB_vel - ego_vel)
             LB = create_canonic_object(2, 0, LB_lon, 3 * lane_width / 2, LB_vel, size, road_frenet)
@@ -435,7 +435,7 @@ def test_calcLastSafeTime_differentDistancesFromObject_atTimeTCegoInMinimalSafeD
     :return:
     """
     max_brake = -LON_ACC_LIMITS[0]
-    vel_profile = VelocityProfile(v_init=10, t_acc=10, v_mid=20, t_flat=10, t_dec=10, v_tar=10)
+    vel_profile = VelocityProfile(v_init=10, t_first=10, v_mid=20, t_flat=10, t_last=10, v_tar=10)
     init_s_obj = 100
     v_obj = 10
     length = 4
@@ -473,7 +473,7 @@ def calc_init_dist_by_safe_time(obj_ahead: bool, ego_v: float, obj_v: float, t: 
     des_v = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
     t1 = abs(des_v - ego_v) / 1.
     t2 = max(0., 100 - t1)
-    vel_profile = VelocityProfile(v_init=ego_v, t_acc=t1, v_mid=des_v, t_flat=t2, t_dec=0, v_tar=des_v)
+    vel_profile = VelocityProfile(v_init=ego_v, t_first=t1, v_mid=des_v, t_flat=t2, t_last=0, v_tar=des_v)
 
     if obj_ahead:
         ego_s_at_td, ego_v_at_td = vel_profile.sample_at(t + time_delay)

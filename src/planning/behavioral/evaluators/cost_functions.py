@@ -25,7 +25,7 @@ class BP_EfficiencyMetric:
         deviation2 = abs(vel_profile.v_mid - des_vel)
         deviation3 = BP_EfficiencyMetric._calc_avg_vel_deviation(vel_profile.v_mid, vel_profile.v_tar, des_vel)
 
-        avg_deviation = (vel_profile.t_acc * deviation1 + vel_profile.t_flat * deviation2 + vel_profile.t_dec * deviation3) / \
+        avg_deviation = (vel_profile.t_first * deviation1 + vel_profile.t_flat * deviation2 + vel_profile.t_last * deviation3) / \
                         profile_time
         avg_vel = des_vel - avg_deviation
 

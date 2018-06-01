@@ -71,8 +71,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
 
         # approximate cost-to-go per terminal state
-        terminal_behavioral_states = CostBasedBehavioralPlanner._generate_terminal_states(
-            state, action_specs, action_recipes, action_specs_mask, self.logger)
+        terminal_behavioral_states = self._generate_terminal_states(state, action_specs, action_specs_mask)
 
         # generate navigation goals at the same distance for all terminal_behavioral_states, containing all lanes
         navigation_goals = CostBasedBehavioralPlanner._generate_goals(
@@ -104,7 +103,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(state.ego_state,
                                                                                       selected_action_spec)
-
+        print('chosen action %3d: %s' % (selected_action_index, action_recipes[selected_action_index]))
         self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
                           action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
         self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)",
