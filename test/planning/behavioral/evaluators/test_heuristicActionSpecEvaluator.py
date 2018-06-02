@@ -78,14 +78,14 @@ def test_evaluate_differentDistancesAndVeloctiesOfF_laneChangeAccordingToTheLogi
         for F_vel in F_vel_range:
             for TC_F in TC_F_range:
                 ego = create_canonic_ego(0, ego_lon, lane_width / 2, ego_vel, size, road_frenet)
-                F_lon = ego_lon + calc_init_dist_by_safe_time(True, ego_vel, F_vel, TC_F, 1.6, length, -LON_ACC_LIMITS[0])
+                F_lon = ego_lon + calc_init_dist_by_safe_time(True, ego_vel, F_vel, TC_F, 1.6, length)
                 # F_lon = ego_lon + sec_to_F * (ego_vel + des_vel) / 2
                 F = create_canonic_object(1, 0, F_lon, lane_width / 2, F_vel, size, road_frenet)
 
                 # t1 = abs(des_vel - ego_vel) / 1.
                 # t2 = max(0., 100 - t1)
                 # vel_profile = VelocityProfile(v_init=ego_vel, t1=t1, v_mid=des_vel, t2=t2, t3=0, v_tar=des_vel)
-                # safe_to_F = vel_profile.calc_last_safe_time(ego_lon, length, F_lon, F_vel, length, np.inf, 1.6, 1.6)
+                # safe_to_F = vel_profile.calc_last_safe_time(ego_lon, length, F_lon, F_vel, length, np.inf, 1.6)
                 # if safe_to_F < 0:  # unsafe state
                 #     continue
 
@@ -189,11 +189,11 @@ def test_evaluate_differentDistancesAndVeloctiesOfFandLF_laneChangeAccordingToTh
                 t1 = abs(des_vel - ego_vel) / 1.
                 t2 = max(0., 100 - t1)
                 vel_profile = VelocityProfile(v_init=ego_vel, t_first=t1, v_mid=des_vel, t_flat=t2, t_last=0, v_tar=des_vel)
-                safe_to_F = vel_profile.calc_last_safe_time(ego_lon, length, F_lon, F_vel, length, np.inf, 1.6, 1.6)
+                safe_to_F = vel_profile.calc_last_safe_time(ego_lon, length, F_lon, F_vel, length, np.inf, 1.6)
 
                 LF_lon = ego_lon + sec_to_LF * (ego_vel + des_vel) / 2
                 LF = create_canonic_object(3, 0, LF_lon, 3 * lane_width / 2, LF_vel, size, road_frenet)
-                safe_to_LF = vel_profile.calc_last_safe_time(ego_lon, length, LF_lon, LF_vel, length, np.inf, 1.6, 1.6)
+                safe_to_LF = vel_profile.calc_last_safe_time(ego_lon, length, LF_lon, LF_vel, length, np.inf, 1.6)
 
                 objects = [F, LF]
                 state = State(None, objects, ego)
@@ -295,7 +295,7 @@ def test_evaluate_differentDistancesAndVeloctiesOfLB_laneChangeAccordingToTheLog
 
             LB_lon = ego_lon - LB_vel * sec_to_LB - 6 * (LB_vel - ego_vel)
             LB = create_canonic_object(2, 0, LB_lon, 3 * lane_width / 2, LB_vel, size, road_frenet)
-            safe_to_LB = vel_profile.calc_last_safe_time(ego_lon, length, LB_lon, LB_vel, length, np.inf, 2.0, 2.0)
+            safe_to_LB = vel_profile.calc_last_safe_time(ego_lon, length, LB_lon, LB_vel, length, np.inf, 2.0)
 
             objects = [F, LB]
             state = State(None, objects, ego)
@@ -441,7 +441,7 @@ def test_calcLastSafeTime_differentDistancesFromObject_atTimeTCegoInMinimalSafeD
     length = 4
     td = 2
     last_safe_time = vel_profile.calc_last_safe_time(init_s_ego=0, ego_length=length, init_s_obj=init_s_obj,
-                                                     init_v_obj=v_obj, obj_length=length, T=np.inf, td_0=td, td_T=td)
+                                                     init_v_obj=v_obj, obj_length=length, T=np.inf, td_0=td)
     s_ego, v_ego = vel_profile.sample_at(last_safe_time + td)
     s_obj = init_s_obj + last_safe_time * v_obj
     d = s_obj - s_ego - (v_ego**2 - v_obj**2) / (2*max_brake) - length
@@ -449,43 +449,11 @@ def test_calcLastSafeTime_differentDistancesFromObject_atTimeTCegoInMinimalSafeD
 
     init_s_obj = 150
     last_safe_time = vel_profile.calc_last_safe_time(init_s_ego=0, ego_length=length, init_s_obj=init_s_obj,
-                                                     init_v_obj=v_obj, obj_length=length, T=np.inf, td_0=td, td_T=td)
+                                                     init_v_obj=v_obj, obj_length=length, T=np.inf, td_0=td)
     s_ego, v_ego = vel_profile.sample_at(last_safe_time + td)
     s_obj = init_s_obj + last_safe_time * v_obj
     d = s_obj - s_ego - (v_ego**2 - v_obj**2) / (2*max_brake) - length
     assert abs(d) < 0.001
-
-
-def calc_init_dist_by_safe_time(obj_ahead: bool, ego_v: float, obj_v: float, t: float, time_delay: float, margin: float,
-                                max_brake: float):
-    """
-    The inverse function of VelocityProfile.calc_last_safe_time(), is used by the above BP cost tests.
-    Given "time to collision" from an object, calculate the initial distance from the object.
-    :param obj_ahead: [bool] True if the object is ahead of ego, False if the object is behind ego
-    :param ego_v: [m/s] ego initial velocity
-    :param obj_v: [m/s] object's constant velocity
-    :param t: [sec] "time to collision" (the result of VelProfile.calc_last_safe_time)
-    :param time_delay: [sec] reaction delay of the back object (ego or obj)
-    :param margin: [m] cars' lengths margin (half sum of the two cars lengths)
-    :param max_brake: [m/s^2] maximal deceleration of the objects
-    :return: initial distance from the object to obtain the required "time to collision"
-    """
-    des_v = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-    t1 = abs(des_v - ego_v) / 1.
-    t2 = max(0., 100 - t1)
-    vel_profile = VelocityProfile(v_init=ego_v, t_first=t1, v_mid=des_v, t_flat=t2, t_last=0, v_tar=des_v)
-
-    if obj_ahead:
-        ego_s_at_td, ego_v_at_td = vel_profile.sample_at(t + time_delay)
-        dist = max(0., (ego_v_at_td**2 - obj_v**2) / (2*max_brake) - obj_v * t + ego_s_at_td) + margin
-    else:
-        ego_s_at_t, ego_v_at_t = vel_profile.sample_at(t)
-        dist = max(0., obj_v ** 2 - ego_v_at_t ** 2) / (2 * max_brake) + time_delay * obj_v + margin - obj_v * t + ego_s_at_t
-        # for DEBUG
-        TC = vel_profile.calc_last_safe_time(dist, margin, 0, obj_v, margin, np.inf, time_delay, time_delay)
-        assert abs(TC - t) < 0.01
-
-    return dist
 
 
 def test_speedProfiling():
@@ -547,6 +515,38 @@ def test_speedProfiling():
     end = time.time()
 
     print('action num=%d; filtered actions=%d; time = %f' % (len(action_recipes), np.count_nonzero(recipes_mask), end - start))
+
+
+def calc_init_dist_by_safe_time(obj_ahead: bool, ego_v: float, obj_v: float, TC: float, time_delay: float,
+                                margin: float, max_brake: float=-LON_ACC_LIMITS[0]):
+    """
+    The inverse function of VelocityProfile.calc_last_safe_time(), is used by the above BP cost tests.
+    Given "time to collision" from an object, calculate the initial distance from the object.
+    :param obj_ahead: [bool] True if the object is ahead of ego, False if the object is behind ego
+    :param ego_v: [m/s] ego initial velocity
+    :param obj_v: [m/s] object's constant velocity
+    :param TC: [sec] "time to collision" (the result of VelProfile.calc_last_safe_time)
+    :param time_delay: [sec] reaction delay of the back object (ego or obj)
+    :param margin: [m] cars' lengths margin (half sum of the two cars lengths)
+    :param max_brake: [m/s^2] maximal deceleration of the objects
+    :return: initial distance from the object to obtain the required "time to collision"
+    """
+    des_v = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    t1 = abs(des_v - ego_v) / 1.
+    t2 = max(0., 100 - t1)
+    vel_profile = VelocityProfile(v_init=ego_v, t_first=t1, v_mid=des_v, t_flat=t2, t_last=0, v_tar=des_v)
+
+    if obj_ahead:
+        ego_s_at_td, ego_v_at_td = vel_profile.sample_at(TC + time_delay)
+        dist = max(0., (ego_v_at_td**2 - obj_v**2) / (2*max_brake) - obj_v * TC + ego_s_at_td) + margin
+    else:
+        ego_s_at_t, ego_v_at_t = vel_profile.sample_at(TC)
+        dist = max(0., obj_v ** 2 - ego_v_at_t ** 2) / (2 * max_brake) + time_delay * obj_v + margin - obj_v * TC + ego_s_at_t
+        # for DEBUG
+        TC = vel_profile.calc_last_safe_time(dist, margin, 0, obj_v, margin, np.inf, time_delay)
+        assert abs(TC - TC) < 0.01
+
+    return dist
 
 
 def create_canonic_ego(timestamp: int, lon: float, lat: float, vel: float, size: ObjectSize,
