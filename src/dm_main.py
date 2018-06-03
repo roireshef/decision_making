@@ -37,7 +37,7 @@ from decision_making.src.planning.trajectory.werling_planner import WerlingPlann
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import OccupancyState
 from decision_making.src.state.state_module import StateModule
-from decision_making_sim.src.global_constants import MAP_FILE_NAME
+from mapping.src.global_constants import DEFAULT_MAP_FILE
 from mapping.src.service.map_service import MapService
 from mapping.src.service.map_service import MapServiceArgs, MapSourceType
 from rte.python.logger.AV_logger import AV_Logger
@@ -85,7 +85,7 @@ class DmInitialization:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
         # Init map
-        MapService.initialize(MapServiceArgs(map_source_type=MapSourceType.File, map_source=MAP_FILE_NAME))
+        MapService.initialize(MapServiceArgs(map_source_type=MapSourceType.File, map_source=DEFAULT_MAP_FILE))
 
         predictor = RoadFollowingPredictor(logger)
 
