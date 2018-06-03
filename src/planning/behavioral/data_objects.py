@@ -43,14 +43,23 @@ class StaticActionRecipe(ActionRecipe):
         super().__init__(relative_lane, ActionType.FOLLOW_LANE, aggressiveness)
         self.velocity = velocity
 
+    def __str__(self):
+        return 'StaticActionRecipe(type: %s, lane: %s, velocity: %.2f [KM/h], agg: %s)' % \
+               (self.action_type.name, self.relative_lane.name, self.velocity * 3.6, self.aggressiveness.name)
+
 
 class DynamicActionRecipe(ActionRecipe):
     """"
     Data object containing the fields needed for specifying a certain dynamic action, together with the state.
     """
-    def __init__(self, relative_lane: RelativeLane, relative_lon: RelativeLongitudinalPosition,  action_type: ActionType, aggressiveness: AggressivenessLevel):
+    def __init__(self, relative_lane: RelativeLane, relative_lon: RelativeLongitudinalPosition, action_type: ActionType,
+                 aggressiveness: AggressivenessLevel):
         super().__init__(relative_lane, action_type, aggressiveness)
         self.relative_lon = relative_lon
+
+    def __str__(self):
+        return 'DynamicActionRecipe(type: %s, towards: (%s, %s), agg: %s)' % \
+               (self.action_type.name, self.relative_lane.name, self.relative_lon.name, self.aggressiveness.name)
 
 
 class ActionSpec:

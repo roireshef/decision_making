@@ -27,12 +27,12 @@ from decision_making.src.planning.behavioral.semantic_actions_utils import Seman
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
-from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
+from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FS_SV
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import State, ObjectSize, EgoState
+from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -68,40 +68,48 @@ class CostBasedBehavioralPlanner:
         """
         pass
 
-    @staticmethod
     @prof.ProfileFunction()
-    def _generate_terminal_states(state: State, action_specs: List[ActionSpec], action_recipes: List[ActionRecipe],
-                                  mask: np.ndarray, logger: Logger) -> List[BehavioralGridState]:
+    def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray) -> \
+            List[BehavioralGridState]:
         """
         Given current state and action specifications, generate a corresponding list of future states using the
         predictor. Uses mask over list of action specifications to avoid unnecessary computation
         :param state: the current world state
         :param action_specs: list of action specifications
-        :param action_recipes: list of action recipes
         :param mask: 1D mask vector (boolean) for filtering valid action specifications
-        :param logger:
         :return: a list of terminal states
         """
         # create a new behavioral state at the action end
         ego = state.ego_state
-        cur_ego_loc = ego.road_localization
-        road_id = cur_ego_loc.road_id
-        lane_width = MapService.get_instance().get_road(road_id).lane_width
+        road_id = ego.road_localization.road_id
+        road_frenet = MapService.get_instance()._rhs_roads_frenet[road_id]   # TODO: assumes everyone on the same road!
 
+        # TODO: This is hacky - use predictor!
         terminal_behavioral_states = []
         for i, spec in enumerate(action_specs):
+            # For invalid actions (masked out), return None
             if not mask[i]:
                 terminal_behavioral_states.append(None)
                 continue
-            recipe = action_recipes[i]
-            target_lane = cur_ego_loc.lane_num + recipe.relative_lane.value
-            cpoint, yaw = MapService.get_instance().convert_road_to_global_coordinates(
-                road_id, spec.s, (target_lane + 0.5) * lane_width)
-            terminal_ego = EgoState(ego.obj_id, ego.timestamp + int(spec.t * 1e9), cpoint[0], cpoint[1], cpoint[2], yaw,
-                                    ego.size, 0, spec.v, 0, 0, 0)
-            predicted_objects = []  # TODO: use predictor
-            terminal_state = State(None, predicted_objects, terminal_ego)
-            new_behavioral_state = BehavioralGridState.create_from_state(terminal_state, logger)
+
+            # predict ego (s,d,v_s are according to action_spec)
+            terminal_ego_cstate = road_frenet.fstate_to_cstate(np.array([spec.s, spec.v, 0, spec.d, 0, 0]))
+            terminal_ego_state = ego.clone_cartesian_state(timestamp_in_sec=ego.timestamp_in_sec + spec.t,
+                                                           cartesian_state=terminal_ego_cstate)
+
+            # predict objects (using road-following prediction logic, including alignment to road)
+            predicted_objects = []
+            # for obj in state.dynamic_objects:
+            #     obj_fstate = MapUtils.get_object_road_localization(obj, road_frenet)
+            #     obj_terminal_fstate = np.array([obj_fstate[FS_SX] + obj_fstate[FS_SV] * spec.t, obj_fstate[FS_SV], 0,
+            #                                     obj_fstate[FS_DX], 0, 0])
+            #     obj_terminal_cstate = road_frenet.fstate_to_cstate(obj_terminal_fstate)
+            #     predicted_objects.append(obj.clone_cartesian_state(timestamp_in_sec=obj.timestamp_in_sec + spec.t,
+            #                                                        cartesian_state=obj_terminal_cstate))
+
+            # create a BehavioralGridState from State
+            terminal_state = State(None, predicted_objects, terminal_ego_state)
+            new_behavioral_state = BehavioralGridState.create_from_state(terminal_state, self.logger)
             terminal_behavioral_states.append(new_behavioral_state)
 
         return terminal_behavioral_states

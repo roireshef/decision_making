@@ -3,7 +3,7 @@ import os
 
 from decision_making.paths import Paths
 from decision_making.src.global_constants import FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID, FILTER_V_T_GRID, \
-    SPECIFICATION_MARGIN_TIME_DELAY
+    SPECIFICATION_MARGIN_TIME_DELAY, SAFETY_MARGIN_TIME_DELAY
 from decision_making.src.planning.behavioral.data_objects import ActionType
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import QuinticMotionPredicatesCreator
@@ -16,6 +16,7 @@ def test_createPredicates_predicateFileMatchesCurrentPredicateGeneration():
     directory = Paths.get_resource_absolute_path_filename('predicates')
     num_trials = 1000
     T_m = SPECIFICATION_MARGIN_TIME_DELAY
+    T_safety = SAFETY_MARGIN_TIME_DELAY
     for filename in os.listdir(directory):
         if filename.endswith(".bin"):
             result_now = np.zeros(shape=num_trials)
@@ -31,7 +32,7 @@ def test_createPredicates_predicateFileMatchesCurrentPredicateGeneration():
             predicate_shape = (
                 len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_S_T_GRID), len(FILTER_V_T_GRID))
             predicates_creator = QuinticMotionPredicatesCreator(FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID,
-                                                                FILTER_V_T_GRID, T_m, 'predicates')
+                                                                FILTER_V_T_GRID, T_m, T_safety, 'predicates')
             predicate = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
 
             for i in range(num_trials):
@@ -43,7 +44,8 @@ def test_createPredicates_predicateFileMatchesCurrentPredicateGeneration():
                 action_type = ActionType.FOLLOW_VEHICLE if action_name == 'follow_vehicle' else ActionType.OVERTAKE_VEHICLE
                 margin_sign = +1 if action_type == ActionType.FOLLOW_VEHICLE else -1
                 result_now[i] = predicates_creator.generate_predicate_value(action_type, wT, wJ, a_0,
-                                                                            v_0, v_T, margin_sign*s_T, margin_sign*T_m)
+                                                                            v_0, v_T, margin_sign*s_T, margin_sign*T_m,
+                                                                            margin_sign * T_safety)
                 result_lut[i] = predicate[FILTER_V_0_GRID.get_index(v_0),
                                           FILTER_A_0_GRID.get_index(a_0),
                                           FILTER_S_T_GRID.get_index(s_T),
