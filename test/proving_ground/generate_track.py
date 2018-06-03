@@ -5,7 +5,7 @@ from decision_making.src.planning.types import FP_SX, FP_DX, C_V, C_A, C_K, Cart
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.test.planning.trajectory.utils import WerlingVisualizer
 from mapping.src.model.map_api import MapAPI
-from mapping.src.service.map_service import MapService, MapServiceArgs
+from mapping.src.service.map_service import MapService
 
 import numpy as np
 import matplotlib
@@ -19,7 +19,7 @@ class OfflineTrajectoryGenerator:
         :param road_id: the road id on which the trajectory will be planned
         :param map_file_name: the filename for MapService to work on
         """
-        MapService.initialize(MapServiceArgs(map_source=map_file_name))
+        MapService.initialize(map_file_name)
         self.map: MapAPI = MapService.get_instance()
         self.road = self.map.get_road(road_id)
         self.frenet = FrenetSerret2DFrame(self.road._points)
@@ -34,7 +34,8 @@ class OfflineTrajectoryGenerator:
         goal lateral deviation [lanes], goal velocity [m/sec])
         :return: a single trajectory that goes through all intermediate goals specified
         """
-        map_coordinates = np.array(self.map.convert_geo_to_map_coordinates(geo_coordinates[0], geo_coordinates[1]))
+        map_x, map_y, utm_zone = self.map.convert_geo_to_map_coordinates(geo_coordinates[0], geo_coordinates[1])
+        map_coordinates = np.array([map_x, map_y])
 
         finit = self.frenet.cpoint_to_fpoint(map_coordinates)
         init_fstate_vec = np.array([finit[FP_SX], init_velocity, 0, finit[FP_DX], 0, 0])
