@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 from decision_making.src.exceptions import ResourcesNotUpToDateException
 from decision_making.src.global_constants import *
@@ -161,3 +162,11 @@ class FilterIfNoLane(RecipeFilter):
         return (recipe.relative_lane == RelativeLane.SAME_LANE or
                 (recipe.relative_lane == RelativeLane.RIGHT_LANE and behavioral_state.right_lane_exists) or
                 (recipe.relative_lane == RelativeLane.LEFT_LANE and behavioral_state.left_lane_exists))
+
+
+class FilterInvalidLanes(RecipeFilter):
+    def __init__(self, invalid_lanes: List[RelativeLane]):
+        self.invalid_lanes = invalid_lanes
+
+    def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
+        return recipe.relative_lane not in self.invalid_lanes
