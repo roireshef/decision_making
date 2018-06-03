@@ -24,6 +24,9 @@ from decision_making.src.planning.behavioral.action_space.static_action_space im
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING
+from decision_making.src.planning.behavioral.evaluators.heuristic_action_spec_evaluator import \
+    HeuristicActionSpecEvaluator
+from decision_making.src.planning.behavioral.evaluators.naive_value_approximator import NaiveValueApproximator
 from decision_making.src.planning.behavioral.evaluators.rule_based_action_spec_evaluator import \
     RuleBasedActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
@@ -94,8 +97,8 @@ class DmInitialization:
                                                                         DEFAULT_DYNAMIC_RECIPE_FILTERING)])
 
         recipe_evaluator = None
-        action_spec_evaluator = RuleBasedActionSpecEvaluator(logger)
-        value_approximator = ZeroValueApproximator(logger)
+        action_spec_evaluator = HeuristicActionSpecEvaluator(logger)
+        value_approximator = NaiveValueApproximator(logger)
 
         action_spec_filtering = ActionSpecFiltering(filters=[FilterIfNone()], logger=logger)
         planner = SingleStepBehavioralPlanner(action_space, recipe_evaluator, action_spec_evaluator,
