@@ -48,6 +48,12 @@ def test_calcEfficiencyCost_differentDeviationsFromDesiredVel_costsComplyEfficie
 def test_calcComfortCost():
     ego_fstate = np.array([0, 0, 0, 0, 0, 0])
     spec = ActionSpec(t=10, v=20, s=100, d=3.5)
-    T_d = 3
-    lon_cost, lat_cost = BP_CostFunctions.calc_comfort_cost(ego_fstate, spec, T_d)
-    lon_cost = lon_cost
+    T_d_max = 3
+    lon_cost1, lat_cost1 = BP_CostFunctions.calc_comfort_cost(ego_fstate, spec, T_d_max, T_d_approx=T_d_max)
+    lon_cost2, lat_cost2 = BP_CostFunctions.calc_comfort_cost(ego_fstate, spec, T_d_max, T_d_approx=T_d_max+3)
+    lon_cost3, lat_cost3 = BP_CostFunctions.calc_comfort_cost(ego_fstate, spec, T_d_max, T_d_approx=T_d_max-1)
+    assert lat_cost1 == lat_cost2 == lat_cost3 and lon_cost1 == lon_cost2 == lon_cost3
+
+    # if T_d_max is not imposed, the lateral jerk is lower, although the approximated T_d is the same
+    lon_cost4, lat_cost4 = BP_CostFunctions.calc_comfort_cost(ego_fstate, spec, np.inf, T_d_approx=T_d_max)
+    assert lat_cost1 > lat_cost4 and lon_cost1 == lon_cost4
