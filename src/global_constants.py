@@ -68,11 +68,13 @@ GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goa
 LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
 LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
+RIGHT_LANE_COST_WEIGHT = 0.005              # cost of using non-right lane on one trajectory point
+
 # [m/sec] speed to plan towards by default in BP
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
-VELOCITY_LIMITS = np.array([0.0, 20])
+VELOCITY_LIMITS = np.array([0.0, 30])
 VELOCITY_STEP = 10/3.6
 
 # Planning horizon for the TP query sent by BP [sec]
@@ -94,12 +96,14 @@ LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
-SPECIFICATION_MARGIN_TIME_DELAY = 2
-SAFETY_MARGIN_TIME_DELAY = 1
+# [sec] safe distance for specification, divided by front vehicle velocity
+SPECIFICATION_MARGIN_TIME_DELAY = 2.
 
+# [sec] time delay of AV vehicle
+SAFETY_MARGIN_TIME_DELAY = 1.
 
 # [m/sec] Minimal difference of velocities to justify an overtake
-MIN_OVERTAKE_VEL = 3.5
+MIN_OVERTAKE_VEL = 3
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
@@ -109,6 +113,38 @@ FILTER_A_0_GRID = UniformGrid(LON_ACC_LIMITS, 0.5)
 FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
 FILTER_V_T_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
 FILTER_S_T_GRID = UniformGrid(np.array([-10, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
+
+# [m/s^2] accelerations for different aggressiveness levels
+AGGRESSIVENESS_TO_LON_ACC = np.array([1, 1.5, 2.25])
+AGGRESSIVENESS_TO_LAT_ACC = np.array([0.4, 0.6, 0.9])
+
+# [sec] T_d according to specify_goal
+BP_CALM_LANE_CHANGE_TIME = 6.42
+
+# performance metrics for BP: efficiency cost weight
+BP_EFFICIENCY_COST_WEIGHT = 5.
+
+# The following constant adjusts convexity of the efficiency cost as function of velocity (used by efficiency cost).
+# Let E(v) be the efficiency cost as function of velocity v.
+# The following constant is the ratio between derivatives E'(0) / E'(desired_vel)
+BP_EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO = 2
+
+# performance metrics for BP: lane deviation cost weight
+BP_METRICS_LANE_DEVIATION_COST_WEIGHT = 1.0
+
+# performance metrics for BP: non-right lane cost weight
+BP_RIGHT_LANE_COST_WEIGHT = 0.15              # cost of using non-right lane on one trajectory point
+
+# performance metrics for BP: missing goal cost
+BP_MISSING_GOAL_COST = 100.
+
+# TODO: will be removed after implementation of value function
+MINIMAL_STATIC_ACTION_TIME = 8
+
+# [m] default longitudinal distance to the next navigation goal
+DEFAULT_DISTANCE_TO_NAVIGATION_GOAL = 300
+
+
 
 # Trajectory Planner #
 
