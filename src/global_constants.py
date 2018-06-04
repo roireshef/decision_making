@@ -71,7 +71,7 @@ LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 RIGHT_LANE_COST_WEIGHT = 0.005              # cost of using non-right lane on one trajectory point
 
 # [m/sec] speed to plan towards by default in BP
-BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
+BP_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
 VELOCITY_LIMITS = np.array([0.0, 30])
@@ -127,7 +127,7 @@ BP_EFFICIENCY_COST_WEIGHT = 5.
 # The following constant adjusts convexity of the efficiency cost as function of velocity (used by efficiency cost).
 # Let E(v) be the efficiency cost as function of velocity v.
 # The following constant is the ratio between derivatives E'(0) / E'(desired_vel)
-BP_EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO = 2
+BP_EFFICIENCY_COST_CONVEXITY_RATIO = 2
 
 # performance metrics for BP: lane deviation cost weight
 BP_METRICS_LANE_DEVIATION_COST_WEIGHT = 1.0

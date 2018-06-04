@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 
 from decision_making.src.exceptions import BehavioralPlanningException
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MIN_OVERTAKE_VEL, \
+from decision_making.src.global_constants import BP_DEFAULT_DESIRED_SPEED, MIN_OVERTAKE_VEL, \
     SPECIFICATION_MARGIN_TIME_DELAY, LON_ACC_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import \
     BehavioralGridState, SemanticGridCell, RelativeLane, RelativeLongitudinalPosition
@@ -60,7 +60,7 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         # Otherwise remain on the current lane.
 
         # TODO - this needs to come from map
-        desired_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+        desired_vel = BP_DEFAULT_DESIRED_SPEED
 
         # boolean whether the forward-right cell is fast enough (may be empty grid cell)
         is_forward_right_fast = right_lane_action_ind is not None and \
