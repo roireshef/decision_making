@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 from decision_making.src.exceptions import ResourcesNotUpToDateException
 from decision_making.src.global_constants import *
@@ -108,7 +109,7 @@ class FilterBadExpectedTrajectory(RecipeFilter):
             # safety distance is behind or ahead of target vehicle if we follow or overtake it, respectively.
             margin_sign = +1 if recipe.action_type == ActionType.FOLLOW_VEHICLE else -1
             # compute distance from target vehicle +/- safety margin
-            s_T = relative_dynamic_object.distance - (LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
+            s_T = relative_dynamic_object.longitudinal_distance - (LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
                                                       ego_state.size.length / 2 + dynamic_object.size.length / 2)
             v_T = dynamic_object.v_x
 
@@ -161,3 +162,11 @@ class FilterIfNoLane(RecipeFilter):
         return (recipe.relative_lane == RelativeLane.SAME_LANE or
                 (recipe.relative_lane == RelativeLane.RIGHT_LANE and behavioral_state.right_lane_exists) or
                 (recipe.relative_lane == RelativeLane.LEFT_LANE and behavioral_state.left_lane_exists))
+
+
+class FilterInvalidLanes(RecipeFilter):
+    def __init__(self, invalid_lanes: List[RelativeLane]):
+        self.invalid_lanes = invalid_lanes
+
+    def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
+        return recipe.relative_lane not in self.invalid_lanes

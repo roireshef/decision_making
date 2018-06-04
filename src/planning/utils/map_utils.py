@@ -28,27 +28,3 @@ class MapUtils:
     def get_ego_road_localization(ego: EgoState, road_frenet: FrenetSerret2DFrame):
         ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
         return road_frenet.cstate_to_fstate(ego_init_cstate)
-
-    @staticmethod
-    def nonoverlapping_longitudinal_distance(ego_fstate: FrenetState2D, obj_fstate: FrenetState2D,
-                                             ego_length: float, obj_length: float):
-        """
-        Given dynamic object in a cell, calculate the distance from the object's boundaries to ego vehicle boundaries
-        :param ego_fstate: FrenetState2D of the ego vehicle
-        :param obj_fstate: FrenetState2D of the another object
-        :param ego_length: the length of the ego vehicle
-        :param obj_length: the length of the another object
-        :return: if object is in front of ego, then the returned value is positive and reflect the longitudinal distance
-        between object's rear to ego-front. If the object behind ego, then the returned value is negative and reflect
-        the longitudinal distance between object's front to ego-rear. If there's an overlap between ego and object on
-        the longitudinal axis, the returned value is 0
-        """
-        # Relative longitudinal distance
-        object_relative_lon = obj_fstate[FS_SX] - ego_fstate[FS_SX]
-
-        if object_relative_lon > (obj_length / 2 + ego_length / 2):
-            return object_relative_lon - (obj_length / 2 + ego_length / 2)
-        elif object_relative_lon < -(obj_length / 2 + ego_length / 2):
-            return object_relative_lon + (obj_length / 2 + ego_length / 2)
-        else:
-            return 0
