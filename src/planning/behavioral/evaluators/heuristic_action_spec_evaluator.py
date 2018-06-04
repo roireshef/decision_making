@@ -63,9 +63,9 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             recipe = action_recipes[i]
             target_lane = ego_lane + recipe.relative_lane.value
             lat_dist = (target_lane + 0.5) * lane_width - ego_road.intra_road_lat
-            # calculate lateral time according to the CALM aggressiveness level
-            T_d_calm = HeuristicActionSpecEvaluator._calc_lateral_time(ego_fstate[FS_DV], lat_dist, lane_width,
-                                                                       AggressivenessLevel.CALM)
+            # calculate approximated lateral time according to the CALM aggressiveness level
+            T_d_approx = HeuristicActionSpecEvaluator._calc_lateral_time(ego_fstate[FS_DV], lat_dist, lane_width,
+                                                                         AggressivenessLevel.CALM)
 
             # create velocity profile, whose length is at least as the lateral time
             vel_profile = HeuristicActionSpecEvaluator._calc_velocity_profile(ego_fstate, recipe, spec)
@@ -74,23 +74,23 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
 
             # calculate the latest safe time
             T_d_max = self._calc_largest_safe_time(behavioral_state, recipe, i, vel_profile, ego.size.length,
-                                                   T_d_calm, lane_width)
+                                                   T_d_approx, lane_width)
             if T_d_max < 0:
                 continue  # the action is unsafe from the beginning
-            T_d_max = min(T_d_max, T_d_calm)
 
             # calculate actions costs
-            sub_costs = HeuristicActionSpecEvaluator._calc_action_costs(ego_fstate, vel_profile, spec, lane_width, T_d_max)
+            sub_costs = HeuristicActionSpecEvaluator._calc_action_costs(ego_fstate, vel_profile, spec, lane_width,
+                                                                        T_d_approx, T_d_max)
             costs[i] = np.sum(sub_costs)
 
             print('action %d(%d %d) lane %d: dist=%.1f [td=%.2f t=%.2f s=%.2f v=%.2f] [t1=%.2f v_mid=%.2f a=%.2f] '
                   '[eff %.3f comf %.2f,%.2f right %.2f dev %.2f]: tot %.2f' %
                   (i, recipe.action_type.value, recipe.aggressiveness.value,
-                  ego_lane + recipe.relative_lane.value,
-                  HeuristicActionSpecEvaluator._dist_to_target(behavioral_state, recipe),
-                  T_d_calm, spec.t, spec.s - ego_fstate[0], spec.v, vel_profile.t_first, vel_profile.v_mid,
-                  (vel_profile.v_mid - vel_profile.v_init) / vel_profile.t_first,
-                  sub_costs[0], sub_costs[1], sub_costs[2], sub_costs[3], sub_costs[4], costs[i]))
+                   ego_lane + recipe.relative_lane.value,
+                   HeuristicActionSpecEvaluator._dist_to_target(behavioral_state, recipe),
+                   T_d_approx, spec.t, spec.s - ego_fstate[0], spec.v, vel_profile.t_first, vel_profile.v_mid,
+                   (vel_profile.v_mid - vel_profile.v_init) / vel_profile.t_first,
+                   sub_costs[0], sub_costs[1], sub_costs[2], sub_costs[3], sub_costs[4], costs[i]))
 
             self.logger.debug("action %d(%d %d) lane %d: dist=%.1f [td=%.2f t=%.2f s=%.2f v=%.2f] "
                               "[t1=%.2f v_mid=%.2f a=%.2f] "
@@ -98,7 +98,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                               i, recipe.action_type.value, recipe.aggressiveness.value,
                               ego_lane + recipe.relative_lane.value,
                               HeuristicActionSpecEvaluator._dist_to_target(behavioral_state, recipe),
-                              T_d_calm, spec.t, spec.s - ego_fstate[0], spec.v, vel_profile.t_first, vel_profile.v_mid,
+                              T_d_approx, spec.t, spec.s - ego_fstate[0], spec.v, vel_profile.t_first, vel_profile.v_mid,
                               (vel_profile.v_mid - vel_profile.v_init) / vel_profile.t_first,
                               sub_costs[0], sub_costs[1], sub_costs[2], sub_costs[3], sub_costs[4], costs[i])
 
@@ -278,20 +278,20 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
 
     @staticmethod
     def _calc_action_costs(ego_fstate: np.array, vel_profile: VelocityProfile, action_spec: ActionSpec,
-                           lane_width: float, T_d: float) -> [float, np.array]:
+                           lane_width: float, T_d_max: float, T_d_approx: float) -> [float, np.array]:
         """
         Calculate the cost of the action
         :param vel_profile: longitudinal velocity profile
         :param action_spec: action spec
         :param lane_width: lane width
-        :param T_d_max: the largest possible lateral time, may be bounded by safety
+        :param T_d_max: [sec] the largest possible lateral time imposed by safety. np.inf if it's not imposed
+        :param T_d_approx: [sec] heuristic approximation of lateral time, according to the initial and end constraints
         :return: the action's cost and the cost components array (for debugging)
         """
         # calculate efficiency, comfort and non-right lane costs
-        efficiency_cost = lon_comf_cost = lat_comf_cost = right_lane_cost = 0
         target_lane = int(action_spec.d / lane_width)
         efficiency_cost = BP_CostFunctions.calc_efficiency_cost(vel_profile)
-        lon_comf_cost, lat_comf_cost = BP_CostFunctions.calc_comfort_cost(ego_fstate, action_spec, T_d)
+        lon_comf_cost, lat_comf_cost = BP_CostFunctions.calc_comfort_cost(ego_fstate, action_spec, T_d_max, T_d_approx)
         right_lane_cost = BP_CostFunctions.calc_right_lane_cost(action_spec.t, target_lane)
 
         # calculate maximal deviation from lane center for lane deviation cost
