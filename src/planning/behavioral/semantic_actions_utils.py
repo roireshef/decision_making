@@ -1,4 +1,4 @@
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_HORIZON, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_HORIZON, BP_DEFAULT_DESIRED_SPEED, \
     LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.state.state import ObjectSize
 

@@ -2,8 +2,8 @@ import numpy as np
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 
 from decision_making.src.global_constants import BP_RIGHT_LANE_COST_WEIGHT, BP_EFFICIENCY_COST_WEIGHT, \
-    LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
-    BP_METRICS_LANE_DEVIATION_COST_WEIGHT, BP_EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO
+    LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, BP_DEFAULT_DESIRED_SPEED, \
+    BP_METRICS_LANE_DEVIATION_COST_WEIGHT, BP_EFFICIENCY_COST_CONVEXITY_RATIO
 from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
 from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DA, FS_DV, FS_DX
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
@@ -20,7 +20,7 @@ class BP_EfficiencyCost:
         :return: the efficiency cost
         """
         profile_time = vel_profile.total_time()
-        des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+        des_vel = BP_DEFAULT_DESIRED_SPEED
         deviation1 = BP_EfficiencyCost._calc_avg_vel_deviation(vel_profile.v_init, vel_profile.v_mid, des_vel)
         deviation2 = abs(vel_profile.v_mid - des_vel)
         deviation3 = BP_EfficiencyCost._calc_avg_vel_deviation(vel_profile.v_mid, vel_profile.v_tar, des_vel)
@@ -40,11 +40,11 @@ class BP_EfficiencyCost:
         :param vel: input velocities: either 1D or 2D array
         :return: array of size vel.shape of efficiency costs per point
         """
-        r = BP_EFFICIENCY_COST_DERIV_ZERO_DESIRED_RATIO  # C'(0)/C'(vel_des) = P'(1)/P'(0)
+        r = BP_EFFICIENCY_COST_CONVEXITY_RATIO  # C'(0)/C'(vel_des) = P'(1)/P'(0)
         # the following two lines are the solution of two equations on a and b: P(1) = 1, P'(1)/P'(0) = r
         coef_2 = (r-1)/(r+1)    # coefficient of x^2
         coef_1 = 2/(r+1)        # coefficient of x
-        normalized_vel = np.absolute(1 - vel / BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED)
+        normalized_vel = np.absolute(1 - vel / BP_DEFAULT_DESIRED_SPEED)
         costs = normalized_vel * (coef_2 * normalized_vel + coef_1)
         return costs
 

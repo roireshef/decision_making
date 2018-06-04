@@ -11,7 +11,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionType, Agg
     ActionRecipe, RelativeLane, DynamicActionRecipe, RelativeLongitudinalPosition, StaticActionRecipe
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, \
+from decision_making.src.global_constants import BP_DEFAULT_DESIRED_SPEED, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, MINIMAL_STATIC_ACTION_TIME, SAFETY_MARGIN_TIME_DELAY, LON_ACC_LIMITS
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
     DEFAULT_DYNAMIC_RECIPE_FILTERING
@@ -55,7 +55,7 @@ def test_evaluate_differentDistancesAndVeloctiesOfF_laneChangeAccordingToTheLogi
     """
     logger = Logger("test_BP_costs")
     road_id = 20
-    des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    des_vel = BP_DEFAULT_DESIRED_SPEED
     ego_lon = 400.
     lane_width = MapService.get_instance().get_road(road_id).lane_width
     length = 4
@@ -157,7 +157,7 @@ def test_evaluate_differentDistancesAndVeloctiesOfFandLF_laneChangeAccordingToTh
     """
     logger = Logger("test_BP_costs")
     road_id = 20
-    des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    des_vel = BP_DEFAULT_DESIRED_SPEED
     ego_lon = 400.
     lane_width = MapService.get_instance().get_road(road_id).lane_width
     length = 4
@@ -261,7 +261,7 @@ def test_evaluate_differentDistancesAndVeloctiesOfLB_laneChangeAccordingToTheLog
     """
     logger = Logger("test_BP_costs")
     road_id = 20
-    des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    des_vel = BP_DEFAULT_DESIRED_SPEED
     ego_lon = 400.
     lane_width = MapService.get_instance().get_road(road_id).lane_width
     length = 4
@@ -358,7 +358,7 @@ def test_evaluate_differentDistancesAndVeloctiesOfFandRF_laneChangeAccordingToTh
     """
     logger = Logger("test_BP_costs")
     road_id = 20
-    des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    des_vel = BP_DEFAULT_DESIRED_SPEED
     ego_lon = 400.
     lane_width = MapService.get_instance().get_road(road_id).lane_width
     size = ObjectSize(4, 2, 1)
@@ -458,7 +458,7 @@ def test_calcLastSafeTime_differentDistancesFromObject_atTimeTCegoInMinimalSafeD
 
 def test_speedProfiling():
     logger = Logger("test_behavioralScenarios")
-    des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    des_vel = BP_DEFAULT_DESIRED_SPEED
     ego_lon = 250
     road_id = 20
     lane_width = MapService.get_instance().get_road(road_id).lane_width
@@ -531,7 +531,7 @@ def calc_init_dist_by_safe_time(obj_ahead: bool, ego_v: float, obj_v: float, TC:
     :param max_brake: [m/s^2] maximal deceleration of the objects
     :return: initial distance from the object to obtain the required "time to collision"
     """
-    des_v = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+    des_v = BP_DEFAULT_DESIRED_SPEED
     t1 = abs(des_v - ego_v) / 1.
     t2 = max(0., 100 - t1)
     vel_profile = VelocityProfile(v_init=ego_v, t_first=t1, v_mid=des_v, t_flat=t2, t_last=0, v_tar=des_v)
