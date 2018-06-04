@@ -11,9 +11,7 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionType, \
     AggressivenessLevel, RelativeLane, NavigationGoal, ActionSpec
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator
-from decision_making.src.planning.behavioral.evaluators.cost_functions import \
-    BP_EfficiencyCost, \
-    BP_ComfortCost, BP_RightLaneCost, VelocityProfile, BP_LaneDeviationCost
+from decision_making.src.planning.behavioral.evaluators.cost_functions import BP_CostFunctions, VelocityProfile
 from decision_making.src.planning.types import FP_SX, FS_DV, FS_DX, FS_SX, FS_SV
 from decision_making.src.planning.utils.map_utils import MapUtils
 from mapping.src.service.map_service import MapService
@@ -292,9 +290,9 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         # calculate efficiency, comfort and non-right lane costs
         efficiency_cost = lon_comf_cost = lat_comf_cost = right_lane_cost = 0
         target_lane = int(action_spec.d / lane_width)
-        efficiency_cost = BP_EfficiencyCost.calc_cost(vel_profile)
-        lon_comf_cost, lat_comf_cost = BP_ComfortCost.calc_cost(ego_fstate, action_spec, T_d)
-        right_lane_cost = BP_RightLaneCost.calc_cost(action_spec.t, target_lane)
+        efficiency_cost = BP_CostFunctions.calc_efficiency_cost(vel_profile)
+        lon_comf_cost, lat_comf_cost = BP_CostFunctions.calc_comfort_cost(ego_fstate, action_spec, T_d)
+        right_lane_cost = BP_CostFunctions.calc_right_lane_cost(action_spec.t, target_lane)
 
         # calculate maximal deviation from lane center for lane deviation cost
         signed_lat_dist = action_spec.d - ego_fstate[FS_DX]
@@ -303,7 +301,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         if signed_lat_dist * rel_vel < 0:  # changes lateral direction
             rel_lat += rel_vel*rel_vel/(2*AGGRESSIVENESS_TO_LAT_ACC[0])  # predict maximal deviation
         max_lane_dev = min(2*rel_lat, 1)  # for half-lane deviation, max_lane_dev = 1
-        lane_deviation_cost = BP_LaneDeviationCost.calc_cost(max_lane_dev)
+        lane_deviation_cost = BP_CostFunctions.calc_lane_deviation_cost(max_lane_dev)
         return np.array([efficiency_cost, lon_comf_cost, lat_comf_cost, right_lane_cost, lane_deviation_cost])
 
     @staticmethod

@@ -4,7 +4,7 @@ from logging import Logger
 from decision_making.src.exceptions import MissingNavigationGoal
 from decision_making.src.global_constants import BP_METRICS_LANE_DEVIATION_COST_WEIGHT, BP_MISSING_GOAL_COST, \
     BP_RIGHT_LANE_COST_WEIGHT, BP_EFFICIENCY_COST_WEIGHT, BP_CALM_LANE_CHANGE_TIME
-from decision_making.src.planning.behavioral.evaluators.cost_functions import BP_EfficiencyCost, BP_ComfortCost
+from decision_making.src.planning.behavioral.evaluators.cost_functions import BP_CostFunctions
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.data_objects import NavigationGoal, ActionSpec
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -72,7 +72,7 @@ class NaiveValueApproximator(ValueApproximator):
     def _calc_efficiency_cost(ego_vel: float, time_to_goal: float):
         if time_to_goal <= 0:
             return 0
-        return BP_EfficiencyCost.calc_pointwise_cost_for_velocities(np.array([ego_vel]))[0] * \
+        return BP_CostFunctions.calc_efficiency_cost_for_velocities(np.array([ego_vel]))[0] * \
                BP_EFFICIENCY_COST_WEIGHT * time_to_goal
 
     @staticmethod
@@ -94,5 +94,5 @@ class NaiveValueApproximator(ValueApproximator):
         if T_d_max_per_lane >= BP_CALM_LANE_CHANGE_TIME:
             return 0
         spec = ActionSpec(0, 0, 0, lane_width)
-        _, goal_comfort_cost = lanes_from_goal * BP_ComfortCost.calc_cost(ego_fstate, spec, T_d_max_per_lane)
+        _, goal_comfort_cost = lanes_from_goal * BP_CostFunctions.calc_comfort_cost(ego_fstate, spec, T_d_max_per_lane)
         return min(BP_MISSING_GOAL_COST, goal_comfort_cost)

@@ -9,9 +9,9 @@ from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DA, FS_DV
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
 
-class BP_EfficiencyCost:
+class BP_CostFunctions:
     @staticmethod
-    def calc_cost(vel_profile: VelocityProfile) -> float:
+    def calc_efficiency_cost(vel_profile: VelocityProfile) -> float:
         """
         Calculate efficiency cost for a planned following car or lane.
         Do it by calculation of average velocity during achieving the followed car and then following it with
@@ -21,19 +21,19 @@ class BP_EfficiencyCost:
         """
         profile_time = vel_profile.total_time()
         des_vel = BP_DEFAULT_DESIRED_SPEED
-        deviation1 = BP_EfficiencyCost._calc_avg_vel_deviation(vel_profile.v_init, vel_profile.v_mid, des_vel)
+        deviation1 = BP_CostFunctions._calc_avg_vel_deviation(vel_profile.v_init, vel_profile.v_mid, des_vel)
         deviation2 = abs(vel_profile.v_mid - des_vel)
-        deviation3 = BP_EfficiencyCost._calc_avg_vel_deviation(vel_profile.v_mid, vel_profile.v_tar, des_vel)
+        deviation3 = BP_CostFunctions._calc_avg_vel_deviation(vel_profile.v_mid, vel_profile.v_tar, des_vel)
 
-        avg_deviation = (vel_profile.t_first * deviation1 + vel_profile.t_flat * deviation2 + vel_profile.t_last * deviation3) / \
-                        profile_time
+        avg_deviation = (vel_profile.t_first * deviation1 + vel_profile.t_flat * deviation2 +
+                         vel_profile.t_last * deviation3) / profile_time
         avg_vel = des_vel - avg_deviation
 
-        efficiency_cost = BP_EfficiencyCost.calc_pointwise_cost_for_velocities(np.array([avg_vel]))[0]
+        efficiency_cost = BP_CostFunctions.calc_efficiency_cost_for_velocities(np.array([avg_vel]))[0]
         return BP_EFFICIENCY_COST_WEIGHT * efficiency_cost * profile_time
 
     @staticmethod
-    def calc_pointwise_cost_for_velocities(vel: np.array) -> np.array:
+    def calc_efficiency_cost_for_velocities(vel: np.array) -> np.array:
         """
         calculate efficiency (velocity) cost by parabola function
         C(vel) = P(v) = a*v*v + b*v, where v = abs(1 - vel/vel_des), C(vel_des) = 0, C(0) = 1, C'(0)/C'(vel_des) = r
@@ -62,10 +62,8 @@ class BP_EfficiencyCost:
         else:  # v1 and v2 are on different sides of des_vel
             return 0.5 * ((v_init - v_des) ** 2 + (v_end - v_des) ** 2) / abs(v_end - v_init)
 
-
-class BP_ComfortCost:
     @staticmethod
-    def calc_cost(ego_fstate: np.array, spec: ActionSpec, T_d: float) -> [float, float]:
+    def calc_comfort_cost(ego_fstate: np.array, spec: ActionSpec, T_d: float) -> [float, float]:
         """
         Calculate comfort cost for lateral and longitudinal movement
         :param ego_fstate: initial ego Frenet state
@@ -93,10 +91,8 @@ class BP_ComfortCost:
 
         return lon_cost, lat_cost
 
-
-class BP_RightLaneCost:
     @staticmethod
-    def calc_cost(time_period: float, lane_idx: int) -> float:
+    def calc_right_lane_cost(time_period: float, lane_idx: int) -> float:
         """
         Calculate non-right lane cost for the given lane
         :param time_period: [s] time period of the action
@@ -105,10 +101,8 @@ class BP_RightLaneCost:
         """
         return BP_RIGHT_LANE_COST_WEIGHT * lane_idx * time_period
 
-
-class BP_LaneDeviationCost:
     @staticmethod
-    def calc_cost(relative_lat_dev: float) -> float:
+    def calc_lane_deviation_cost(relative_lat_dev: float) -> float:
         """
         Calculate lane deviation cost for an action
         :param relative_lat_dev: maximal relative lateral deviation during an action. The range: [0, 1].
