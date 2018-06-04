@@ -4,7 +4,7 @@ import numpy as np
 
 from decision_making.src.exceptions import PredictObjectInPastTimes, PredictedObjectHasNegativeVelocity
 from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
-from decision_making.src.planning.types import C_X, C_Y, CartesianTrajectory
+from decision_making.src.planning.types import C_X, C_Y, CartesianTrajectory, C_YAW, C_V
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject
 from mapping.src.service.map_service import MapService
@@ -67,63 +67,83 @@ class RoadFollowingPredictor(Predictor):
         """
         See base class
         """
+        # TODO: use navigation plan
+        relative_timestamps = prediction_timestamps - dynamic_object.timestamp_in_sec
+        road_id = dynamic_object.road_localization.road_id
+        init_lon = dynamic_object.road_localization.road_lon
+        lat = dynamic_object.road_localization.intra_road_lat
+        size = len(relative_timestamps)
+        if size > 1:
+            fstates = np.c_[init_lon + dynamic_object.v_x * relative_timestamps, np.repeat(dynamic_object.v_x, size),
+                            np.repeat(0., size), np.repeat(0, size), np.repeat(0., size), np.repeat(0., size)]
+            cstates = MapService.get_instance()._rhs_roads_frenet[road_id].ftrajectory_to_ctrajectory(fstates)
+            shifted_points = MapService.get_instance()._shift_road_points(cstates[:, :2], lat)
+            velocity_column = np.repeat(dynamic_object.v_x, size)  # np.ones(shape=[size, 1]) * dynamic_object.v_x
+            route_x_y_theta_v = np.c_[shifted_points, cstates[:, C_YAW], velocity_column]
+        elif size == 1:
+            fstates = np.c_[init_lon + dynamic_object.v_x * relative_timestamps, np.repeat(dynamic_object.v_x, size),
+                            np.repeat(0., size), np.repeat(lat, size), np.repeat(0., size), np.repeat(0., size)]
+            cstates = MapService.get_instance()._rhs_roads_frenet[road_id].ftrajectory_to_ctrajectory(fstates)
+            route_x_y_theta_v = np.c_[cstates[:, :C_V], np.array([dynamic_object.v_x])]
+        else:
+            route_x_y_theta_v = np.array([])
 
         # we assume the object is travelling exactly on a constant latitude. (i.e., lateral speed = 0)
         # TODO: handle objects with negative velocities
         # TODO: If v_y is not small, this computation will be incorrect for ego prediction
-        object_velocity = dynamic_object.total_speed
-
-        # we assume the objects is travelling with a constant velocity, therefore the lookahead distance is
-        lookahead_distance = (prediction_timestamps[-1] - dynamic_object.timestamp_in_sec) * object_velocity
-        # raise exception if trying to predict an object in past times
-        if lookahead_distance < 0.0:
-            raise PredictObjectInPastTimes(
-                'Trying to predict object (id=%d) with timestamp %f [sec] to past timestamps: %s' % (
-                    dynamic_object.obj_id, dynamic_object.timestamp_in_sec, prediction_timestamps))
-        lookahead_distance *= PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
-
-        map_based_nav_plan = \
-            MapService.get_instance().get_road_based_navigation_plan(dynamic_object.road_localization.road_id)
-
-        lookahead_route, initial_yaw = MapService.get_instance().get_lookahead_points(
-            dynamic_object.road_localization.road_id,
-            dynamic_object.road_localization.road_lon,
-            lookahead_distance,
-            dynamic_object.road_localization.intra_road_lat,
-            map_based_nav_plan)
-
-        # resample the route to prediction_timestamps, assuming constant velocity
-        predicted_distances_from_start = object_velocity * (prediction_timestamps - dynamic_object.timestamp_in_sec)
-        # raise exception if trying to predict an object in past times
-        if not np.all(predicted_distances_from_start >= 0.0):
-            raise PredictObjectInPastTimes(
-                'Trying to predict object (id=%d) with timestamp %f [sec] to past timestamps: %s' % (
-                    dynamic_object.obj_id, dynamic_object.timestamp_in_sec, prediction_timestamps))
-
-        # If lookahead_route's length == 1, then a single-point route_xy is duplicated. The yaw can not be calculated.
-        # If lookahead_route's length > 1 but route_xy length == 1, then again the yaw can not be calculated.
-        # In these cases yaw_vector contains a duplicated value of initial_yaw.
-        yaw_vector = None
-        if lookahead_route.shape[0] > 1:
-            _, route_xy, _ = CartesianFrame.resample_curve(curve=lookahead_route,
-                                                           arbitrary_curve_sampling_points=predicted_distances_from_start)
-            if route_xy.shape[0] == 1:
-                yaw_vector = np.ones(shape=[route_xy.shape[0], 1]) * initial_yaw
-        elif lookahead_route.shape[0] == 1:
-            route_xy = np.reshape(np.tile(lookahead_route[0], predicted_distances_from_start.shape[0]), (-1, 2))
-            yaw_vector = np.ones(shape=[route_xy.shape[0], 1]) * initial_yaw
-        else:
-            raise Exception('Predict object (id=%d) has empty lookahead_route. Object info: %s' % (
-                dynamic_object.obj_id, dynamic_object.__dict__))
-
-        # add yaw and velocity
-        route_len = route_xy.shape[0]
-        # Using v_x to preserve the v_x field of dynamic object
-        velocity_column = np.ones(shape=[route_len, 1]) * dynamic_object.v_x
-
-        if yaw_vector is None:
-            route_x_y_theta_v = np.c_[CartesianFrame.add_yaw(route_xy), velocity_column]
-        else:
-            route_x_y_theta_v = np.concatenate((route_xy, yaw_vector, velocity_column), axis=1)
+        # object_velocity = dynamic_object.total_speed
+        #
+        # # we assume the objects is travelling with a constant velocity, therefore the lookahead distance is
+        # lookahead_distance = (prediction_timestamps[-1] - dynamic_object.timestamp_in_sec) * object_velocity
+        # # raise exception if trying to predict an object in past times
+        # if lookahead_distance < 0.0:
+        #     raise PredictObjectInPastTimes(
+        #         'Trying to predict object (id=%d) with timestamp %f [sec] to past timestamps: %s' % (
+        #             dynamic_object.obj_id, dynamic_object.timestamp_in_sec, prediction_timestamps))
+        # lookahead_distance *= PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
+        #
+        # map_based_nav_plan = \
+        #     MapService.get_instance().get_road_based_navigation_plan(dynamic_object.road_localization.road_id)
+        #
+        # lookahead_route, initial_yaw = MapService.get_instance().get_lookahead_points(
+        #     dynamic_object.road_localization.road_id,
+        #     dynamic_object.road_localization.road_lon,
+        #     lookahead_distance,
+        #     dynamic_object.road_localization.intra_road_lat,
+        #     map_based_nav_plan)
+        #
+        # # resample the route to prediction_timestamps, assuming constant velocity
+        # predicted_distances_from_start = object_velocity * (prediction_timestamps - dynamic_object.timestamp_in_sec)
+        # # raise exception if trying to predict an object in past times
+        # if not np.all(predicted_distances_from_start >= 0.0):
+        #     raise PredictObjectInPastTimes(
+        #         'Trying to predict object (id=%d) with timestamp %f [sec] to past timestamps: %s' % (
+        #             dynamic_object.obj_id, dynamic_object.timestamp_in_sec, prediction_timestamps))
+        #
+        # # If lookahead_route's length == 1, then a single-point route_xy is duplicated. The yaw can not be calculated.
+        # # If lookahead_route's length > 1 but route_xy length == 1, then again the yaw can not be calculated.
+        # # In these cases yaw_vector contains a duplicated value of initial_yaw.
+        # yaw_vector = None
+        # if lookahead_route.shape[0] > 1:
+        #     _, route_xy, _ = CartesianFrame.resample_curve(curve=lookahead_route,
+        #                                                    arbitrary_curve_sampling_points=predicted_distances_from_start)
+        #     if route_xy.shape[0] == 1:
+        #         yaw_vector = np.ones(shape=[route_xy.shape[0], 1]) * initial_yaw
+        # elif lookahead_route.shape[0] == 1:
+        #     route_xy = np.reshape(np.tile(lookahead_route[0], predicted_distances_from_start.shape[0]), (-1, 2))
+        #     yaw_vector = np.ones(shape=[route_xy.shape[0], 1]) * initial_yaw
+        # else:
+        #     raise Exception('Predict object (id=%d) has empty lookahead_route. Object info: %s' % (
+        #         dynamic_object.obj_id, dynamic_object.__dict__))
+        #
+        # # add yaw and velocity
+        # route_len = route_xy.shape[0]
+        # # Using v_x to preserve the v_x field of dynamic object
+        # velocity_column = np.ones(shape=[route_len, 1]) * dynamic_object.v_x
+        #
+        # if yaw_vector is None:
+        #     route_x_y_theta_v = np.c_[CartesianFrame.add_yaw(route_xy), velocity_column]
+        # else:
+        #     route_x_y_theta_v = np.concatenate((route_xy, yaw_vector, velocity_column), axis=1)
 
         return route_x_y_theta_v

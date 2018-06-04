@@ -93,7 +93,8 @@ class CostBasedBehavioralPlanner:
                 continue
 
             # predict ego (s,d,v_s are according to action_spec)
-            terminal_ego_cstate = road_frenet.fstate_to_cstate(np.array([spec.s, spec.v, 0, spec.d, 0, 0]))
+            spec_v = max(spec.v, np.finfo(np.float16).eps)
+            terminal_ego_cstate = road_frenet.fstate_to_cstate(np.array([spec.s, spec_v, 0, spec.d, 0, 0]))
             terminal_ego_state = ego.clone_cartesian_state(timestamp_in_sec=ego.timestamp_in_sec + spec.t,
                                                            cartesian_state=terminal_ego_cstate)
 

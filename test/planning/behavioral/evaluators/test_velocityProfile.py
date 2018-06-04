@@ -2,7 +2,7 @@ from logging import Logger
 import numpy as np
 import pytest
 
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, LON_ACC_LIMITS
+from decision_making.src.global_constants import LON_ACC_LIMITS
 from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
 
 

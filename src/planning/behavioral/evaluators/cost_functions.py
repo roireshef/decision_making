@@ -9,7 +9,7 @@ from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DA, FS_DV
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
 
-class BP_EfficiencyMetric:
+class BP_EfficiencyCost:
     @staticmethod
     def calc_cost(vel_profile: VelocityProfile) -> float:
         """
@@ -21,15 +21,15 @@ class BP_EfficiencyMetric:
         """
         profile_time = vel_profile.total_time()
         des_vel = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
-        deviation1 = BP_EfficiencyMetric._calc_avg_vel_deviation(vel_profile.v_init, vel_profile.v_mid, des_vel)
+        deviation1 = BP_EfficiencyCost._calc_avg_vel_deviation(vel_profile.v_init, vel_profile.v_mid, des_vel)
         deviation2 = abs(vel_profile.v_mid - des_vel)
-        deviation3 = BP_EfficiencyMetric._calc_avg_vel_deviation(vel_profile.v_mid, vel_profile.v_tar, des_vel)
+        deviation3 = BP_EfficiencyCost._calc_avg_vel_deviation(vel_profile.v_mid, vel_profile.v_tar, des_vel)
 
         avg_deviation = (vel_profile.t_first * deviation1 + vel_profile.t_flat * deviation2 + vel_profile.t_last * deviation3) / \
                         profile_time
         avg_vel = des_vel - avg_deviation
 
-        efficiency_cost = BP_EfficiencyMetric.calc_pointwise_cost_for_velocities(np.array([avg_vel]))[0]
+        efficiency_cost = BP_EfficiencyCost.calc_pointwise_cost_for_velocities(np.array([avg_vel]))[0]
         return BP_EFFICIENCY_COST_WEIGHT * efficiency_cost * profile_time
 
     @staticmethod
@@ -63,7 +63,7 @@ class BP_EfficiencyMetric:
             return 0.5 * ((v_init - v_des) ** 2 + (v_end - v_des) ** 2) / abs(v_end - v_init)
 
 
-class BP_ComfortMetric:
+class BP_ComfortCost:
     @staticmethod
     def calc_cost(ego_fstate: np.array, spec: ActionSpec, T_d: float) -> [float, float]:
         """
@@ -94,7 +94,7 @@ class BP_ComfortMetric:
         return lon_cost, lat_cost
 
 
-class BP_RightLaneMetric:
+class BP_RightLaneCost:
     @staticmethod
     def calc_cost(time_period: float, lane_idx: int) -> float:
         """
@@ -106,12 +106,12 @@ class BP_RightLaneMetric:
         return BP_RIGHT_LANE_COST_WEIGHT * lane_idx * time_period
 
 
-class BP_LaneDeviationMetric:
+class BP_LaneDeviationCost:
     @staticmethod
-    def calc_cost(lat_dev: float) -> float:
+    def calc_cost(relative_lat_dev: float) -> float:
         """
         Calculate lane deviation cost for an action
-        :param lat_dev: [m] maximal lateral deviation during an action
+        :param relative_lat_dev: maximal relative lateral deviation during an action. The range: [0, 1].
         :return: lane deviation cost
         """
-        return BP_METRICS_LANE_DEVIATION_COST_WEIGHT * lat_dev * lat_dev
+        return BP_METRICS_LANE_DEVIATION_COST_WEIGHT * relative_lat_dev * relative_lat_dev
