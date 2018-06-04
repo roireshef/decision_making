@@ -7,7 +7,6 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
 class ValueApproximator:
     def __init__(self, logger: Logger):
         self.logger = logger
-        self.calm_lat_comfort_cost = None
 
     def approximate(self, behavioral_state: BehavioralGridState, goal: NavigationGoal) -> float:
         pass
