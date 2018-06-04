@@ -1,31 +1,53 @@
 from logging import Logger
 import numpy as np
 import pytest
+import copy
 
 from decision_making.src.global_constants import BP_DEFAULT_DESIRED_SPEED
+from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.behavioral.evaluators.cost_functions import BP_CostFunctions
 from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
 
 
-def test_calcEfficiencyCost():
+def test_calcEfficiencyCost_differentDeviationsFromDesiredVel_costsComplyEfficiencyCostLogic():
+    """
+    Test profiles with different deviations from desired velocity and different times.
+    Verify the resulting costs comply the efficiency_cost logic.
+    """
     v_des = BP_DEFAULT_DESIRED_SPEED
-    vel_profile = VelocityProfile(v_init=v_des, t_first=5, v_mid=v_des-5, t_flat=0, t_last=5, v_tar=v_des)
-    eff_cost1 = BP_CostFunctions.calc_efficiency_cost(vel_profile)
-    vel_profile = VelocityProfile(v_init=v_des, t_first=5, v_mid=v_des+5, t_flat=0, t_last=5, v_tar=v_des)
-    eff_cost2 = BP_CostFunctions.calc_efficiency_cost(vel_profile)
+    # deceleration (5 sec) and acceleration (5 sec)
+    vel_profile1 = VelocityProfile(v_init=v_des, t_first=5, v_mid=v_des-5, t_flat=0, t_last=5, v_tar=v_des)
+    eff_cost1 = BP_CostFunctions.calc_efficiency_cost(vel_profile1)
+
+    # vel_profile2 is symmetric to vel_profile1 around v_des, then has the same cost
+    vel_profile2 = copy.deepcopy(vel_profile1)
+    vel_profile2.v_mid = v_des + 5  # velocities: v_des, v_des+5, v_des
+    eff_cost2 = BP_CostFunctions.calc_efficiency_cost(vel_profile2)
     assert eff_cost1 == eff_cost2
 
-    vel_profile = VelocityProfile(v_init=v_des-2, t_first=5, v_mid=v_des+3, t_flat=0, t_last=5, v_tar=v_des)
-    eff_cost3 = BP_CostFunctions.calc_efficiency_cost(vel_profile)
+    # vel_profile3 has lower deviation from v_des than vel_profile2, then has lower cost
+    vel_profile3 = copy.deepcopy(vel_profile2)
+    vel_profile3.v_init = v_des - 2
+    vel_profile3.v_mid  = v_des + 3  # velocities: v_des-2, v_des+3, v_des
+    eff_cost3 = BP_CostFunctions.calc_efficiency_cost(vel_profile3)
     assert eff_cost3 < eff_cost2
 
-    vel_profile = VelocityProfile(v_init=v_des, t_first=0, v_mid=v_des, t_flat=10, t_last=0, v_tar=v_des)
-    eff_cost4 = BP_CostFunctions.calc_efficiency_cost(vel_profile)
+    # flat profile with desired velocity should have cost = 0
+    vel_profile4 = VelocityProfile(v_init=v_des, t_first=0, v_mid=v_des, t_flat=10, t_last=0, v_tar=v_des)
+    eff_cost4 = BP_CostFunctions.calc_efficiency_cost(vel_profile4)
     assert eff_cost4 == 0
 
-    vel_profile = VelocityProfile(v_init=v_des-2, t_first=10, v_mid=v_des+3, t_flat=0, t_last=10, v_tar=v_des)
-    eff_cost5 = BP_CostFunctions.calc_efficiency_cost(vel_profile)
+    # increase the profile time and verify that the cost increases accordingly
+    vel_profile5 = copy.deepcopy(vel_profile3)
+    vel_profile5.t_first *= 2
+    vel_profile5.t_last *= 2
+    eff_cost5 = BP_CostFunctions.calc_efficiency_cost(vel_profile5)
     assert eff_cost5 == 2*eff_cost3
 
 
-    eff_cost1=eff_cost1
+def test_calcComfortCost():
+    ego_fstate = np.array([0, 0, 0, 0, 0, 0])
+    spec = ActionSpec(t=10, v=20, s=100, d=3.5)
+    T_d = 3
+    lon_cost, lat_cost = BP_CostFunctions.calc_comfort_cost(ego_fstate, spec, T_d)
+    lon_cost = lon_cost
