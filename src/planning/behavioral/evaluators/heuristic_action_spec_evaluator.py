@@ -75,6 +75,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             # calculate the latest safe time
             T_d_max = self._calc_largest_safe_time(behavioral_state, recipe, i, vel_profile, ego.size.length,
                                                    T_d_approx, lane_width)
+            T_d_max = min(T_d_max, spec.t)
             if T_d_max < 0:
                 continue  # the action is unsafe from the beginning
 

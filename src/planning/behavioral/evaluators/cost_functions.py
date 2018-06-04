@@ -68,7 +68,7 @@ class BP_CostFunctions:
         Calculate comfort cost for lateral and longitudinal movement
         :param ego_fstate: initial ego Frenet state
         :param spec: action spec
-        :param T_d_max: [sec] the largest possible lateral time imposed by safety. np.inf if it's not imposed
+        :param T_d_max: [sec] the largest possible lateral time imposed by safety. T_d_max=spec.t if it's not imposed
         :param T_d_approx: [sec] heuristic approximation of lateral time, according to the initial and end constraints
         :return: comfort cost in units of the general performance metrics cost
         """
@@ -78,13 +78,13 @@ class BP_CostFunctions:
         T_d = min(T_d_approx, T_d_max)
         if 0. < T_d < np.inf:
             lat_dist = spec.d - ego_fstate[FS_DX]
-            lat_jerk1 = QuinticPoly1D.cumulative_jerk_from_constraints(
-                ego_fstate[FS_DA], ego_fstate[FS_DV], 0, lat_dist, T_d)
+            lat_jerk1 = QuinticPoly1D.cumulative_jerk_from_constraints(ego_fstate[FS_DA], ego_fstate[FS_DV], 0,
+                                                                       lat_dist, T_d)
             lat_jerk2 = np.inf
             # try to decrease the lateral jerk (if it's possible), by increasing the heuristic lateral time
             if T_d_approx < T_d_max:
-                lat_jerk2 = QuinticPoly1D.cumulative_jerk_from_constraints(
-                    ego_fstate[FS_DA], ego_fstate[FS_DV], 0, lat_dist, min(2 * T_d_approx, T_d_max))
+                lat_jerk2 = QuinticPoly1D.cumulative_jerk_from_constraints(ego_fstate[FS_DA], ego_fstate[FS_DV], 0,
+                                                                           lat_dist, min(2 * T_d_approx, T_d_max))
             lat_cost = min(lat_jerk1, lat_jerk2) * LAT_JERK_COST_WEIGHT
 
         # longitudinal jerk
