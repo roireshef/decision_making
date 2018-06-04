@@ -3,7 +3,7 @@ from logging import Logger
 import numpy as np
 import copy
 
-from decision_making.src.global_constants import AGGRESSIVENESS_TO_LON_ACC, LON_ACC_LIMITS, AGGRESSIVENESS_TO_LAT_ACC
+from decision_making.src.global_constants import AGGRESSIVENESS_TO_LON_ACC, LON_ACC_LIMITS
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.types import LIMIT_MIN
 

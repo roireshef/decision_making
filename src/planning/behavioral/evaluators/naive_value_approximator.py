@@ -53,7 +53,7 @@ class NaiveValueApproximator(ValueApproximator):
 
         # calculate lane deviation and comfort cost for reaching the goal
         # in case of missing the goal, there is a missing goal cost
-        lane_deviation_cost = comfort_cost = 0
+        comfort_cost = 0
         if len(goal.lanes_list) > 0 and ego_lane not in goal.lanes_list:  # outside of the lanes range of the goal
             if ego_lon >= goal.lon:  # we missed the goal
                 raise MissingNavigationGoal("Missing a navigation goal on road_id=%d, longitude=%.2f, lanes=%s; "
@@ -61,11 +61,10 @@ class NaiveValueApproximator(ValueApproximator):
                                             (goal.road_id, goal.lon, goal.lanes_list, ego_lon, ego_lane))
             else:  # if still did not arrive to the goal, calculate lateral comfort for reaching the goal
                 lanes_from_goal = np.min(np.abs(np.array(goal.lanes_list) - ego_lane))
-                lane_deviation_cost = NaiveValueApproximator._calc_lane_deviation_cost(lanes_from_goal)
                 comfort_cost = NaiveValueApproximator._calc_comfort_cost(lanes_from_goal, goal.lon, ego_fstate,
                                                                          lane_width)
 
-        cost = efficiency_cost + comfort_cost + right_lane_cost + lane_deviation_cost
+        cost = efficiency_cost + comfort_cost + right_lane_cost
 
         return cost
 
