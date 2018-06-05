@@ -81,7 +81,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
 
             # calculate actions costs
             sub_costs = HeuristicActionSpecEvaluator._calc_action_costs(ego_fstate, vel_profile, spec, lane_width,
-                                                                        T_d_approx, T_d_max)
+                                                                        T_d_max, T_d_approx)
             costs[i] = np.sum(sub_costs)
 
             print('action %d(%d %d) lane %d: dist=%.1f [td=%.2f t=%.2f s=%.2f v=%.2f] [t1=%.2f v_mid=%.2f a=%.2f] '

@@ -16,7 +16,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
-PLANNING_LOOKAHEAD_DIST = 90.0
+PLANNING_LOOKAHEAD_DIST = 200.0
 
 # When retrieving the lookahead path of a given dynamic object, we will multiply the path length
 # by the following ratio in order to avoid extrapolation when resampling the path (due to path sampling
@@ -74,7 +74,7 @@ RIGHT_LANE_COST_WEIGHT = 0.005              # cost of using non-right lane on on
 BP_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
-VELOCITY_LIMITS = np.array([0.0, 30])
+VELOCITY_LIMITS = np.array([0.0, 20])
 VELOCITY_STEP = 10/3.6
 
 # Planning horizon for the TP query sent by BP [sec]

@@ -94,5 +94,6 @@ class NaiveValueApproximator(ValueApproximator):
         if T_d_max_per_lane >= BP_CALM_LANE_CHANGE_TIME:
             return 0
         spec = ActionSpec(0, 0, 0, lane_width)
-        _, goal_comfort_cost = lanes_from_goal * BP_CostFunctions.calc_comfort_cost(ego_fstate, spec, T_d_max_per_lane)
+        _, goal_comfort_cost = lanes_from_goal * BP_CostFunctions.calc_comfort_cost(ego_fstate, spec,
+                                                                                    T_d_max_per_lane, T_d_max_per_lane)
         return min(BP_MISSING_GOAL_COST, goal_comfort_cost)

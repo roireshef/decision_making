@@ -331,8 +331,8 @@ class VelocityProfile:
                 s[seg, front], v[seg, front], a[seg, front], s[seg, back], v[seg, back], a[seg, back], t[seg], margin)
             if seg_safe_time < t[seg]:
                 # in case of front object decrease safe time by td, since seg_safe_time is the braking time
-                safe_dist = last_safe_time + max(0., seg_safe_time) - td[seg]*front
-                return safe_dist
+                safe_time = last_safe_time + max(0., seg_safe_time) - td[seg]*front
+                return safe_time
             last_safe_time += seg_safe_time
         return np.inf  # always safe
 
