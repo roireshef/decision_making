@@ -123,12 +123,9 @@ def test_evaluate_differentDistancesAndVeloctiesOfF_laneChangeAccordingToTheLogi
                       (ego_vel, F_vel, TC_F, F_lon-ego_lon, costs[best_idx], terminal_states_values[best_idx],
                        best_idx, selected_lane))
 
-                # if ego_vel>=20 and F_vel>=8 and TC_F>=2.5:
-                #     continue
-
                 if TC_F > 9 or F_vel >= v_des-1:
                     assert selected_lane == 0
-                if TC_F < 6 and F_vel <= v_des-3 and ego_vel >= F_vel:
+                if 3 < TC_F < 6 and F_vel <= v_des-3 and ego_vel >= F_vel:
                     assert selected_lane == 1
 
 
@@ -237,16 +234,18 @@ def test_evaluate_differentDistancesAndVeloctiesOfFandLF_laneChangeAccordingToTh
                     assert selected_lane == 1
 
 
-def test_evaluate_differentDistancesAndVeloctiesOfLB_laneChangeAccordingToTheLogic():
+def test_evaluate_differentStatesLBandF_laneChangeAccordingToTheLogic():
     """
-    Test the criterion for lane change for different velocities and distances from LB.
+    Test the criterion for lane change for different distances from LB and different velocities of F.
 
     If one of the following conditions holds:
         TC(LB) < 3                      LB is close
+        F_vel >= v_des-1                F is not slow
     then stay on the same lane
 
     If all following conditions hold:
-        TC(LB) > 9                      LB is far
+        TC(LB) > 5                      LB is far
+        F_vel <= v_des-3                F is slow
     then overtake F to the left
     """
     logger = Logger("test_BP_costs")
@@ -268,16 +267,13 @@ def test_evaluate_differentDistancesAndVeloctiesOfLB_laneChangeAccordingToTheLog
                                           action_spec_validator, value_approximator, predictor, logger)
 
     ego_vel = v_des - 4
-    F_vel = v_des - 4
-    TC_F = 5
+    TC_F = 6
+    LB_vel = 20
 
-    LB_vel_range = np.arange(ego_vel-4, v_des+4.001, 2)
+    F_vel_range = np.arange(v_des-8, v_des+0.001, 2)
     TC_LB_range = np.arange(-2, 8.001, 2)
 
-    LB_vel_range = [12]
-    TC_LB_range = [2]
-
-    for LB_vel in LB_vel_range:
+    for F_vel in F_vel_range:
         for TC_LB in TC_LB_range:
 
             ego = create_canonic_ego(0, ego_lon, lane_width / 2, ego_vel, size, road_frenet)
@@ -324,15 +320,99 @@ def test_evaluate_differentDistancesAndVeloctiesOfLB_laneChangeAccordingToTheLog
             best_idx = valid_idx[action_q_cost[valid_idx].argmin()]
             selected_lane = recipes[best_idx].relative_lane.value
 
-            print('ego_vel=%.2f: i=%d lane=%d\n'
-                  'LB_vel=%.2f safe_to_LB=%.2f dist=%.2f\n' %
-                  (ego_vel, best_idx, selected_lane,
-                   LB_vel, TC_LB, ego_lon-LB_lon))
+            print('ego_vel=%.2f, F_vel=%.2f; i=%d lane=%d\n'
+                  'TC_LB=%.2f dist=%.2f\n' %
+                  (ego_vel, F_vel, best_idx, selected_lane,
+                   TC_LB, ego_lon-LB_lon))
 
-            if TC_LB < 3:
+            if F_vel >= v_des-1 or TC_LB < 3:
                 assert selected_lane == 0
-            if TC_LB > 6:
+            if F_vel <= v_des-3 and ego_vel >= F_vel and TC_LB > 5:
                 assert selected_lane == 1
+
+
+def test_evaluate_differentVeloctiesF_tradeOffBetweenLatJerkAndEfficiency():
+    """
+    Test the trade off between lateral jerk and efficiency for different velocities of F.
+    The lateral jerk is caused both by F and by LB.
+    When F is too slow (6 m/s), the agent overtakes F even on expense of a tangible lateral jerk.
+    When F is not so slow (9 m/s), the agent prefers to follow F.
+    """
+    logger = Logger("test_BP_costs")
+    road_id = 20
+    ego_lon = 400.
+    lane_width = MapService.get_instance().get_road(road_id).lane_width
+    length = 4
+    size = ObjectSize(length, 2, 1)
+
+    predictor = RoadFollowingPredictor(logger)
+    action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
+                                                 DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
+    spec_evaluator = HeuristicActionSpecEvaluator(logger)
+    action_spec_validator = ActionSpecFiltering([FilterIfNone()], logger)
+    value_approximator = NaiveValueApproximator(logger)
+    road_frenet = get_road_rhs_frenet_by_road_id(road_id)
+    planner = SingleStepBehavioralPlanner(action_space, None, spec_evaluator,
+                                          action_spec_validator, value_approximator, predictor, logger)
+
+    ego_vel = 10
+    F_vel_list = [6, 9]
+    F_dist_list = [45, 33]
+    LB_vel = 25
+    LB_dist = 160
+
+    for i, F_vel in enumerate(F_vel_list):
+        F_dist = F_dist_list[i]
+
+        ego = create_canonic_ego(0, ego_lon, lane_width / 2, ego_vel, size, road_frenet)
+        F_lon = ego_lon + F_dist
+        F = create_canonic_object(1, 0, F_lon, lane_width / 2, F_vel, size, road_frenet)
+
+        LB_lon = ego_lon - LB_dist
+        LB = create_canonic_object(2, 0, LB_lon, 3 * lane_width / 2, LB_vel, size, road_frenet)
+
+        objects = [F, LB]
+        state = State(None, objects, ego)
+        behavioral_state = BehavioralGridState.create_from_state(state, logger)
+        recipes = action_space.recipes
+        recipes_mask = action_space.filter_recipes(recipes, behavioral_state)
+
+        # Action specification
+        specs = np.full(recipes.__len__(), None)
+        valid_action_recipes = [recipe for i, recipe in enumerate(recipes) if recipes_mask[i]]
+        specs[recipes_mask] = action_space.specify_goals(valid_action_recipes, behavioral_state)
+
+        specs_mask = action_spec_validator.filter_action_specs(specs, behavioral_state)
+
+        # State-Action Evaluation
+        costs = spec_evaluator.evaluate(behavioral_state, recipes, list(specs), specs_mask)
+        # approximate cost-to-go per terminal state
+        terminal_behavioral_states = planner._generate_terminal_states(state, list(specs), specs_mask)
+
+        # generate goals for all terminal_behavioral_states
+        navigation_goals = CostBasedBehavioralPlanner._generate_goals(
+            ego.road_localization.road_id, ego.road_localization.road_lon, terminal_behavioral_states)
+
+        terminal_states_values = np.array([value_approximator.approximate(state, navigation_goals[i])
+                                           if specs_mask[i] else np.nan
+                                           for i, state in enumerate(terminal_behavioral_states)])
+
+        # compute "approximated Q-value" (action cost +  cost-to-go) for all actions
+        action_q_cost = costs + terminal_states_values
+
+        valid_idx = np.where(specs_mask)[0]
+        best_idx = valid_idx[action_q_cost[valid_idx].argmin()]
+        selected_lane = recipes[best_idx].relative_lane.value
+
+        print('ego_vel=%.2f, F_vel=%.2f; i=%d lane=%d\n'
+              'LB_vel=%.2f LB_dist=%.2f dist=%.2f\n' %
+              (ego_vel, F_vel, best_idx, selected_lane,
+               LB_vel, LB_dist, ego_lon-LB_lon))
+
+        if F_vel > 7:
+            assert selected_lane == 0
+        else:
+            assert selected_lane == 1
 
 
 def test_evaluate_differentDistancesAndVeloctiesOfFandRF_laneChangeAccordingToTheLogic():
@@ -363,6 +443,8 @@ def test_evaluate_differentDistancesAndVeloctiesOfFandRF_laneChangeAccordingToTh
     action_spec_validator = ActionSpecFiltering([FilterIfNone()], logger)
     value_approximator = NaiveValueApproximator(logger)
     road_frenet = get_road_rhs_frenet_by_road_id(road_id)
+    planner = SingleStepBehavioralPlanner(action_space, None, spec_evaluator,
+                                          action_spec_validator, value_approximator, predictor, logger)
 
     ego_vel = v_des - 4
 
@@ -392,11 +474,10 @@ def test_evaluate_differentDistancesAndVeloctiesOfFandRF_laneChangeAccordingToTh
             # State-Action Evaluation
             costs = spec_evaluator.evaluate(behavioral_state, recipes, list(specs), specs_mask)
             # approximate cost-to-go per terminal state
-            terminal_behavioral_states = SingleStepBehavioralPlanner.generate_terminal_states(
-                state, list(specs), recipes, specs_mask, logger)
+            terminal_behavioral_states = planner._generate_terminal_states(state, list(specs), specs_mask)
 
             # generate goals for all terminal_behavioral_states
-            navigation_goals = SingleStepBehavioralPlanner.generate_goals(
+            navigation_goals = SingleStepBehavioralPlanner._generate_goals(
                 ego.road_localization.road_id, ego.road_localization.road_lon, terminal_behavioral_states)
 
             terminal_states_values = np.array([value_approximator.approximate(state, navigation_goals[i])
@@ -419,34 +500,6 @@ def test_evaluate_differentDistancesAndVeloctiesOfFandRF_laneChangeAccordingToTh
                 assert rel_lane == -1
             if (sec_to_RF < 6 and RF_vel < v_des - 2) or sec_to_RF <= SAFETY_MARGIN_TIME_DELAY:
                 assert rel_lane == 0
-
-
-def test_calcLastSafeTime_differentDistancesFromObject_atTimeTCegoInMinimalSafeDistance():
-    """
-    Test the function VelocityProfile.calc_last_safe_time() that is used in the above tests for "time to collision"
-    calculation.
-    :return:
-    """
-    max_brake = -LON_ACC_LIMITS[0]
-    vel_profile = VelocityProfile(v_init=10, t_first=10, v_mid=20, t_flat=10, t_last=10, v_tar=10)
-    init_s_obj = 100
-    v_obj = 10
-    length = 4
-    td = 2
-    last_safe_time = vel_profile.calc_last_safe_time(init_s_ego=0, ego_length=length, init_s_obj=init_s_obj,
-                                                     init_v_obj=v_obj, obj_length=length, T=np.inf, td_0=td)
-    s_ego, v_ego = vel_profile.sample_at(last_safe_time + td)
-    s_obj = init_s_obj + last_safe_time * v_obj
-    d = s_obj - s_ego - (v_ego**2 - v_obj**2) / (2*max_brake) - length
-    assert abs(d) < 0.001
-
-    init_s_obj = 150
-    last_safe_time = vel_profile.calc_last_safe_time(init_s_ego=0, ego_length=length, init_s_obj=init_s_obj,
-                                                     init_v_obj=v_obj, obj_length=length, T=np.inf, td_0=td)
-    s_ego, v_ego = vel_profile.sample_at(last_safe_time + td)
-    s_obj = init_s_obj + last_safe_time * v_obj
-    d = s_obj - s_ego - (v_ego**2 - v_obj**2) / (2*max_brake) - length
-    assert abs(d) < 0.001
 
 
 def test_speedProfiling():
@@ -513,7 +566,7 @@ def test_speedProfiling():
 def calc_init_dist_by_safe_time(obj_ahead: bool, ego_v: float, obj_v: float, TC: float, time_delay: float,
                                 margin: float, max_brake: float=-LON_ACC_LIMITS[0]):
     """
-    The inverse function of VelocityProfile.calc_last_safe_time(), is used by the above BP cost tests.
+    The approximated inverse function of VelocityProfile.calc_last_safe_time(), is used by the above BP cost tests.
     Given "time to collision" from an object, calculate the initial distance from the object.
     :param obj_ahead: [bool] True if the object is ahead of ego, False if the object is behind ego
     :param ego_v: [m/s] ego initial velocity
@@ -543,9 +596,6 @@ def calc_init_dist_by_safe_time(obj_ahead: bool, ego_v: float, obj_v: float, TC:
             return np.inf
         ego_s_at_t, ego_v_at_t = vel_profile.sample_at(TC)
         dist = max(0., obj_v ** 2 - ego_v_at_t ** 2) / (2 * max_brake) + obj_v * (TC + time_delay) - ego_s_at_t + margin
-        # for DEBUG
-        safe_time = vel_profile.calc_last_safe_time(dist, margin, 0, obj_v, margin, np.inf, time_delay)
-        assert abs(TC - safe_time) < 0.01 or (TC <= 0 and safe_time < 0)
 
     return dist
 

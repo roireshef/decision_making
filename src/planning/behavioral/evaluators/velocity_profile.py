@@ -20,39 +20,32 @@ class VelocityProfile:
     def calc_profile_details(self, T_max: float=np.inf) -> [np.array, np.array, np.array, np.array, np.array]:
         """
         Return times, longitudes, velocities, accelerations for the current velocity profile.
-        :param T_max: if the profile is longer than max_time, then truncate it
-        :return: numpy arrays per segment:
+        A profile has at most 3 segments and at most 4 nodes between segments.
+        :param T_max: if the profile is longer than T_max, then truncate it.
+        :return: numpy arrays per segment or per node:
             times: time period of each segment
-            cumulative times: cumulative times of the segments, with leading 0
+            cumulative times: cumulative times per node of the profile, with leading 0
             longitudes: cumulative distances per segment (except the last one), with leading 0
-            velocities: velocities per segment
+            velocities: velocities per node of the profile
             accelerations: accelerations per segment
-        All arrays' size is equal to the (truncated) segments number, except t_cum having extra 0 at the beginning.
         """
-        t = np.array([self.t_first, self.t_flat, self.t_last])
-        t_cum = np.concatenate(([0], np.cumsum(t)))
         T_max = max(0., T_max)
+        truncated = self.cut_by_time(T_max)
+
+        t = np.array([truncated.t_first, truncated.t_flat, truncated.t_last])
+        t_cum = np.concatenate(([0], np.cumsum(t)))
 
         acc1 = acc3 = 0
-        if self.t_first > 0:
-            acc1 = (self.v_mid - self.v_init) / self.t_first
-        if self.t_last > 0:
-            acc3 = (self.v_tar - self.v_mid) / self.t_last
+        if truncated.t_first > 0:
+            acc1 = (truncated.v_mid - truncated.v_init) / truncated.t_first
+        if truncated.t_last > 0:
+            acc3 = (truncated.v_tar - truncated.v_mid) / truncated.t_last
         a = np.array([acc1, 0, acc3])
-        v = np.array([self.v_init, self.v_mid, self.v_mid])
-        lengths = np.array([0.5 * (self.v_init + self.v_mid) * self.t_first, self.v_mid * self.t_flat])  # without the last segment
-
-        if t_cum[-1] > T_max:  # then truncate all arrays by max_time
-            truncated_size = np.where(t_cum[:-1] < T_max)[0][-1] + 1
-            t = t[:truncated_size]  # truncate times array
-            t[-1] -= t_cum[truncated_size] - T_max  # decrease the last segment time
-            t_cum = np.concatenate(([0], np.cumsum(t)))
-            a = a[:truncated_size]  # truncate accelerations array
-            v = v[:truncated_size]  # truncate velocities array
-            lengths = lengths[:(truncated_size-1)]  # truncate distances array
-
+        v = np.array([truncated.v_init, truncated.v_mid, truncated.v_mid, truncated.v_tar])
+        lengths = np.array([0.5 * (truncated.v_init + truncated.v_mid) * truncated.t_first,
+                            truncated.v_mid * truncated.t_flat,
+                            0.5 * (truncated.v_mid + truncated.v_tar) * truncated.t_last])
         s_cum = np.concatenate(([0], np.cumsum(lengths)))
-
         return t, t_cum, s_cum, v, a
 
     def total_time(self) -> float:
@@ -90,59 +83,6 @@ class VelocityProfile:
             return s_acc + s_flat + s_dec, self.v_mid + dec * t_dec
         s_dec = 0.5 * (self.v_mid + self.v_tar) * self.t_last
         return s_acc + s_flat + s_dec, self.v_tar
-
-    def find_vel_during_deceleration(self, vel: float) -> float:
-        """
-        Search only during deceleration
-        :param vel: velocity to search
-        :return: time during deceleration when the velocity is equal to v
-        """
-        if self.v_mid > self.v_tar:  # the last segment is deceleration
-            if vel > self.v_mid or vel < self.v_tar:
-                return None
-            if vel == self.v_mid:
-                return self.t_first + self.t_flat
-            t = None
-            if vel >= self.v_tar:  # v_tar <= v < v_mid, then self.t_dec > 0
-                a_dec = (self.v_tar - self.v_mid) / self.t_last  # negative
-                t = (vel - self.v_mid) / a_dec
-            return self.t_first + self.t_flat + t
-        elif self.v_init > self.v_mid:  # the first segment is deceleration
-            if vel > self.v_init or vel < self.v_mid:
-                return None
-            if vel == self.v_mid:
-                return self.t_first + self.t_flat
-            # v_mid < v <= v_init, then self.t_acc > 0
-            a_dec = (self.v_mid - self.v_init) / self.t_first  # negative
-            t = (vel - self.v_init) / a_dec
-            return t
-        return None
-
-    def find_vel_during_acceleration(self, vel: float) -> float:
-        """
-        Search only during acceleration
-        :param vel: velocity to search
-        :return: time during acceleration when the velocity is equal to v
-        """
-        if self.v_init < self.v_mid:  # the first segment is acceleration
-            if vel > self.v_mid or vel < self.v_init:
-                return None
-            if vel == self.v_mid:
-                return self.t_first
-            # v_init <= v < v_mid, then self.t_acc > 0
-            a_acc = (self.v_mid - self.v_init) / self.t_first
-            t = (vel - self.v_init) / a_acc
-            return t
-        elif self.v_mid < self.v_tar:  # the last segment is acceleration
-            if vel < self.v_mid or vel > self.v_tar:
-                return None
-            if vel == self.v_mid:
-                return self.t_first + self.t_flat
-            # v_mid < v <= v_tar, then self.t_acc > 0
-            a_acc = (self.v_tar - self.v_mid) / self.t_last
-            t = (vel - self.v_mid) / a_acc
-            return self.t_first + self.t_flat + t
-        return None
 
     def cut_by_time(self, max_time: float):
         """
@@ -304,9 +244,6 @@ class VelocityProfile:
         # if the initial state is unsafe, return -1
         if not VelocityProfile.is_safe_state(v_front, v_back, abs(init_s_obj - init_s_ego), td_0, margin):
             return -1
-        # if the profile is fully safe, return inf
-        if self.is_safe_profile(init_s_ego, init_s_obj, init_v_obj, margin, T, td_0, td_T):
-            return np.inf
 
         # here the profile is PARTLY safe, find the latest safe time
         t, t_cum, s_ego, v_ego, a_ego = self.calc_profile_details(T)
@@ -320,20 +257,23 @@ class VelocityProfile:
         s_obj = init_s_obj + init_v_obj * t_cum[:-1] + td_sign * v_obj * td
 
         # create (ego, obj) pairs of longitudes, velocities and accelerations for all segments
-        (s, v, a) = (np.c_[s_ego, s_obj], np.c_[v_ego, v_obj], np.c_[a_ego, a_obj])
+        (s, v, a) = (np.c_[s_ego[:-1], s_obj], np.c_[v_ego[:-1], v_obj], np.c_[a_ego, a_obj])
 
         # calculate last_safe_time
         last_safe_time = 0
         for seg in range(t.shape[0]):
             if t[seg] == 0:
                 continue
-            seg_safe_time = VelocityProfile._calc_largest_time_for_segment(
+            if a[seg, back] <= a[seg, front] and v[seg, back] <= v[seg, front]:
+                last_safe_time += t[seg]
+                continue
+            seg_safe_time = VelocityProfile._calc_last_safe_time_for_segment(
                 s[seg, front], v[seg, front], a[seg, front], s[seg, back], v[seg, back], a[seg, back], t[seg], margin)
             if seg_safe_time < t[seg]:
                 # in case of front object decrease safe time by td, since seg_safe_time is the braking time
                 safe_time = last_safe_time + max(0., seg_safe_time) - td[seg]*front
                 return safe_time
-            last_safe_time += seg_safe_time
+            last_safe_time += t[seg]
         return np.inf  # always safe
 
     @staticmethod
@@ -367,69 +307,9 @@ class VelocityProfile:
         """
         return VelocityProfile.get_safety_dist(v_front, v_back, dist, time_delay, margin, max_brake) > 0
 
-    def is_safe_profile(self, init_s_ego: float, init_s_obj: float, v_obj: float, margin: float,
-                        T: float, td_0: float, td_T: float=None) -> bool:
-        """
-        Given ego velocity profile and dynamic object, check if the profile complies safety.
-        Here we assume the object has a constant velocity.
-        :param init_s_ego: [m] ego initial longitude
-        :param init_s_obj: [m] object's initial longitude
-        :param v_obj: [m/s] object's constant velocity
-        :param margin: [m] cars sizes margin
-        :param T: maximal time to check the safety (usually T_d for safety w.r.t. F and LB)
-        :param td_0: reaction time of the back car at time 0
-        :param td_T: reaction time of the back car at time T_max (by default td_T=td_0)
-        :return: the latest safe time
-        """
-        if T <= 0:
-            return True
-        if td_T is None:
-            td_T = td_0
-        cut_profile = self.cut_by_time(T)
-
-        if init_s_ego < init_s_obj:  # the object is in front of ego
-            v_max = max(max(cut_profile.v_init, cut_profile.v_mid), cut_profile.v_tar)
-            if v_max < v_obj:  # ego is always slower
-                return VelocityProfile.is_safe_state(v_obj, cut_profile.v_init, init_s_obj - init_s_ego, td_0, margin)
-            if cut_profile.v_tar > v_obj:  # ego is faster at the end, then check safety at the end
-                tot_time = cut_profile.total_time()
-                tot_dist = cut_profile.total_dist()
-                if not VelocityProfile.is_safe_state(v_obj, cut_profile.v_tar,
-                                                     (init_s_obj + v_obj * tot_time) - (init_s_ego + tot_dist),
-                                                     td_T, margin):
-                    return False
-            # it's enough to check safety only at time t during deceleration, for which profile vel = v_obj
-            t = cut_profile.find_vel_during_deceleration(v_obj)
-            if t is None:  # deceleration segment does not contain velocity v_obj
-                return True
-            # deceleration segment contains v_obj
-            s, _ = cut_profile.sample_at(t)  # v_ego(t) = v_obj
-            td = td_0 + (td_T - td_0) * t / T
-            return init_s_obj + v_obj*t - (init_s_ego + s) > v_obj * td + margin
-
-        else:  # the object is behind ego
-            v_min = min(min(cut_profile.v_init, cut_profile.v_mid), cut_profile.v_tar)
-            if v_min > v_obj:  # ego is always faster
-                return VelocityProfile.is_safe_state(cut_profile.v_init, v_obj, init_s_ego - init_s_obj, td_0, margin)
-            if cut_profile.v_tar < v_obj:  # ego is slower at the end, then check safety at the end
-                tot_time = cut_profile.total_time()
-                tot_dist = cut_profile.total_dist()
-                if not VelocityProfile.is_safe_state(cut_profile.v_tar, v_obj,
-                                                     (init_s_ego + tot_dist) - (init_s_obj + v_obj * tot_time),
-                                                     td_T, margin):
-                    return False
-            # it's enough to check safety only at time t during acceleration, for which profile vel = v_obj
-            t = cut_profile.find_vel_during_acceleration(v_obj)
-            if t is None:  # acceleration segment does not contain velocity v_obj
-                return True
-            # acceleration segment contains v_obj
-            s, _ = cut_profile.sample_at(t)  # v_ego(t) = v_obj
-            td = td_0 + (td_T - td_0) * t / T
-            return (init_s_ego + s) - (init_s_obj + v_obj*t) > v_obj * td + margin
-
     @staticmethod
-    def _calc_largest_time_for_segment(s_front: float, v_front: float, a_front: float, s_back: float, v_back: float,
-                                       a_back: float, T: float, margin: float) -> float:
+    def _calc_last_safe_time_for_segment(s_front: float, v_front: float, a_front: float, s_back: float, v_back: float,
+                                         a_back: float, T: float, margin: float) -> float:
         """
         Given two vehicles with constant acceleration in time period [0, T], calculate the largest 0 <= t <= T,
         for which the second car (rear) is safe w.r.t. the first car in [0, t].
