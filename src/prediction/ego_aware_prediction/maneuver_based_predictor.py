@@ -9,9 +9,11 @@ from decision_making.src.planning.types import C_X, C_V, C_YAW, C_Y
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.maneuver_recognition.manuever_classifier import \
     ManeuverClassifier
+from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State, DynamicObject
 from mapping.src.service.map_service import MapService
-from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.trajectory_generator import TrajectoryGenerator
+from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.trajectory_generator import \
+    TrajectoryGenerator
 
 
 class ManeuverBasedPredictor(EgoAwarePredictor):
@@ -34,7 +36,8 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
         self._trajectory_generator = trajectory_generator
         self._maneuver_classifier = maneuver_classifier
 
-    def predict_state(self, state: State, prediction_timestamps: np.ndarray, action_trajectory: Optional[SamplableTrajectory]) \
+    def predict_state(self, state: State, prediction_timestamps: np.ndarray,
+                      action_trajectory: Optional[SamplableTrajectory]) \
             -> (List[State]):
         """
         Predicts the future states of the given state, for the specified timestamps
@@ -59,6 +62,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
 
         # Aggregate all object together with ego into list of future states
         future_states: List[State] = list()
+
         for time_idx in range(len(prediction_timestamps)):
             predicted_dynamic_objects = [future_object_states[time_idx] for future_object_states in
                                          predicted_objects_states_dict.values()]
@@ -96,7 +100,8 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
         for obj_id in object_ids:
             dynamic_object = State.get_object_from_state(state=state, target_obj_id=obj_id)
             horizon = prediction_timestamps[-1] - dynamic_object.timestamp_in_sec
-            predicted_maneuver_spec = self._maneuver_classifier.classify_maneuver(state=state, object_id=obj_id, maneuver_horizon=horizon)
+            predicted_maneuver_spec = self._maneuver_classifier.classify_maneuver(state=state, object_id=obj_id,
+                                                                                  maneuver_horizon=horizon)
 
             frenet_frame = MapService.get_instance().get_road_center_frenet_frame(
                 road_id=dynamic_object.road_localization.road_id)
@@ -111,10 +116,8 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
             maneuver_trajectory_extended = maneuver_samplable_trajectory.sample(time_points=prediction_timestamps)
             maneuver_trajectory = maneuver_trajectory_extended[:, [C_X, C_Y, C_YAW, C_V]]
 
-            future_states = [
-                dynamic_object.clone_cartesian_state(timestamp_in_sec=prediction_timestamps[x],
-                                                     cartesian_state=maneuver_trajectory[x]) for
-                x in range(len(prediction_timestamps))]
+            future_states = PredictionUtils.convert_ctrajectory_to_dynamic_objects(dynamic_object, maneuver_trajectory,
+                                                                                   prediction_timestamps)
 
             predicted_objects_states_dict[obj_id] = future_states
 
