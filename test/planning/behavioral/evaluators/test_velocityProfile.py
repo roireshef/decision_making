@@ -19,7 +19,7 @@ def test_calcProfileDetails_3segmentsProfile_verifyAllDetails():
     vel_profile = VelocityProfile(v_init=10, t_first=5, v_mid=15, t_flat=5, t_last=5, v_tar=10)
     t, t_cum, s_cum, v, a = vel_profile.calc_profile_details()
     assert np.sum(t) == t_cum[-1]
-    assert s_cum[-1] + v[2] * t[2] + 0.5 * a[2] * t[2]**2 == vel_profile.total_dist()
+    assert s_cum[-1] == vel_profile.total_dist()
     assert a[0] * t[0] == v[1] - v[0]
     assert a[2] * t[2] == vel_profile.v_tar - v[2]
 
@@ -42,42 +42,6 @@ def test_sampleAt_sample3segmentsProfile_sampleIn3Points():
     s3, v3 = vel_profile.sample_at(t3)
     assert v3 == vel_profile.v_mid + a[2] * (t3 - t_cum[2])
     assert s3 == s_cum[2] + vel_profile.v_mid * (t3 - t_cum[2]) + 0.5 * a[2] * (t3 - t_cum[2])**2
-
-
-def test_findVelDuringDeceleration_differentAccDecOrders_checkExactTime():
-    """
-    Consider two profiles: (1) acceleration, flat, deceleration; (2) deceleration, acceleration
-    Verify that a given velocity is correctly found during deceleration in both profiles.
-    """
-    vel_profile1 = VelocityProfile(v_init=10, t_first=5, v_mid=15, t_flat=5, t_last=5, v_tar=10)
-    t, t_cum, s_cum, v, a = vel_profile1.calc_profile_details()
-    v1 = vel_profile1.v_tar + 2
-    t1 = vel_profile1.find_vel_during_deceleration(v1)
-    assert t1 == t_cum[-1] - (vel_profile1.v_tar - v1) / a[2]
-
-    vel_profile2 = VelocityProfile(v_init=15, t_first=5, v_mid=10, t_flat=0, t_last=5, v_tar=15)
-    t, t_cum, s_cum, v, a = vel_profile2.calc_profile_details()
-    v2 = vel_profile2.v_init - 2
-    t2 = vel_profile2.find_vel_during_deceleration(v2)
-    assert t2 == (v2 - vel_profile2.v_init) / a[0]
-
-
-def test_findVelDuringAcceleration_differentAccDecOrders_checkExactTime():
-    """
-    Consider two profiles: (1) deceleration, acceleration; (2) acceleration, flat, deceleration.
-    Verify that a given velocity is correctly found during acceleration in both profiles.
-    """
-    vel_profile1 = VelocityProfile(v_init=15, t_first=5, v_mid=10, t_flat=0, t_last=5, v_tar=15)
-    t, t_cum, s_cum, v, a = vel_profile1.calc_profile_details()
-    v1 = vel_profile1.v_tar - 2
-    t1 = vel_profile1.find_vel_during_acceleration(v1)
-    assert t1 == t_cum[-1] - (vel_profile1.v_tar - v1) / a[2]
-
-    vel_profile2 = VelocityProfile(v_init=10, t_first=5, v_mid=15, t_flat=5, t_last=5, v_tar=10)
-    t, t_cum, s_cum, v, a = vel_profile2.calc_profile_details()
-    v2 = vel_profile2.v_init + 2
-    t2 = vel_profile2.find_vel_during_acceleration(v2)
-    assert t2 == (v2 - vel_profile2.v_init) / a[0]
 
 
 def test_cutByTime_3segmetsProfile_checkCutInTwoPlaces():
@@ -154,29 +118,29 @@ def test_calcLastSafeTime_accDecProfile_safeDistAtSafeTimeShouldBeEqualToActualD
     length = 4
     v_init = 5
     dist = 12.5
-    v_tar = 10
+    v_obj = 10
     T = 15
     td = 2
     init_s_ego = 400
 
-    vel_profile = VelocityProfile.calc_profile_given_T(v_init=v_init, T=T, dist=dist, v_tar=v_tar)
+    vel_profile = VelocityProfile.calc_profile_given_T(v_init=v_init, T=T, dist=dist, v_tar=v_obj)
 
-    init_s_obj = init_s_ego + dist + length + v_tar * td
-    safe_time = vel_profile.calc_last_safe_time(init_s_ego, length, init_s_obj, v_tar, length, T, td)
+    init_s_obj = init_s_ego + dist + length + v_obj * td
+    safe_time = vel_profile.calc_last_safe_time(init_s_ego, length, init_s_obj, v_obj, length, T, td)
     s_ego_td, v_ego_td = vel_profile.sample_at(safe_time + td)
-    safety_dist = vel_profile.get_safety_dist(v_tar, v_ego_td,
-                                               (init_s_obj + safe_time*v_tar) - (init_s_ego + s_ego_td), 0, length)
+    safety_dist = vel_profile.get_safety_dist(v_obj, v_ego_td,
+                                              (init_s_obj + safe_time*v_obj) - (init_s_ego + s_ego_td), 0, length)
     assert abs(safety_dist) < 0.001
 
-    init_s_obj = init_s_ego + dist + length + v_tar * td - 5
-    safe_time = vel_profile.calc_last_safe_time(init_s_ego, length, init_s_obj, v_tar, length, T, td)
+    init_s_obj = init_s_ego + dist + length + v_obj * td - 5
+    safe_time = vel_profile.calc_last_safe_time(init_s_ego, length, init_s_obj, v_obj, length, T, td)
     s_ego_td, v_ego_td = vel_profile.sample_at(safe_time + td)
-    safety_dist = vel_profile.get_safety_dist(v_tar, v_ego_td,
-                                               (init_s_obj + safe_time*v_tar) - (init_s_ego + s_ego_td), 0, length)
+    safety_dist = vel_profile.get_safety_dist(v_obj, v_ego_td,
+                                              (init_s_obj + safe_time*v_obj) - (init_s_ego + s_ego_td), 0, length)
     assert abs(safety_dist) < 0.001
 
-    init_s_obj = init_s_ego + dist + length + v_tar * td + 1  # safe distance
-    safe_time = vel_profile.calc_last_safe_time(init_s_ego, length, init_s_obj, v_tar, length, T, td)
+    init_s_obj = init_s_ego + dist + length + v_obj * td + 5  # safe distance
+    safe_time = vel_profile.calc_last_safe_time(init_s_ego, length, init_s_obj, v_obj, length, T, td)
     assert safe_time == np.inf
 
     # test a back object
@@ -189,39 +153,7 @@ def test_calcLastSafeTime_accDecProfile_safeDistAtSafeTimeShouldBeEqualToActualD
     assert abs(safety_dist) < 0.001
 
 
-def test_isSafeProfile_twoProfiles_checkSafetyForBoundaryCases():
-    """
-    Check if the profile is fully safe by testing it in boundary cases near the minimal safe distance.
-    """
-    length = 4
-    v_init = 5
-    v_tar = 10
-    dist = 12.5
-    T = 15
-    td = 2
-    init_s_ego = 100
-    vel_profile = VelocityProfile.calc_profile_given_T(v_init=v_init, T=T, dist=dist, v_tar=v_tar)
-
-    # a bit larger than the minimal safe distance
-    init_s_obj = init_s_ego + dist + length + v_tar * td + 0.1
-    assert vel_profile.is_safe_profile(init_s_ego, init_s_obj, v_tar, length, np.inf, td)
-
-    # a bit smaller than the minimal safe distance
-    init_s_obj -= 0.2
-    assert not vel_profile.is_safe_profile(init_s_ego, init_s_obj, v_tar, length, np.inf, td)
-
-    # check profile that first decelerates
-    vel_profile = VelocityProfile(v_init=20, v_mid=10, v_tar=20, t_first=10, t_flat=0, t_last=10)
-
-    max_brake = -LON_ACC_LIMITS[0]
-    init_s_obj = init_s_ego + vel_profile.total_dist() - v_tar * vel_profile.total_time() + \
-                 (vel_profile.v_tar**2 - v_tar**2)/(2*max_brake) + vel_profile.v_tar*td + length + 0.1
-    assert vel_profile.is_safe_profile(init_s_ego, init_s_obj, v_tar, length, np.inf, td)
-    init_s_obj -= 0.2
-    assert not vel_profile.is_safe_profile(init_s_ego, init_s_obj, v_tar, length, np.inf, td)
-
-
-def test_calcLargestTimeForSegment_twoCarsWithConstantAcceleration_safetyDistIsZero():
+def test_calcLargestSafeTimeForSegment_twoCarsWithConstantAcceleration_safetyDistIsZero():
     """
     Test a solution of quadratic equation that finds the time t, for which back object becomes unsafe w.r.t. front
     object. Verify that at time t the safe distance is equal to the actual distance.
@@ -233,7 +165,7 @@ def test_calcLargestTimeForSegment_twoCarsWithConstantAcceleration_safetyDistIsZ
     v_front = 10
     a_back = 1
     a_front = 0.5
-    t = VelocityProfile._calc_largest_time_for_segment(s_front, v_front, a_front, s_back, v_back, a_back, np.inf, margin)
+    t = VelocityProfile._calc_last_safe_time_for_segment(s_front, v_front, a_front, s_back, v_back, a_back, np.inf, margin)
     st_back = s_back + v_back*t + 0.5*a_back*t*t
     st_front = s_front + v_front*t + 0.5*a_front*t*t
     safety_dist = VelocityProfile.get_safety_dist(v_front + a_front*t, v_back + a_back*t, st_front-st_back, 0, margin)
