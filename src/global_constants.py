@@ -114,9 +114,9 @@ FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use V
 FILTER_V_T_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
 FILTER_S_T_GRID = UniformGrid(np.array([-10, 110]), 1)  # TODO: use BEHAVIORAL_PLANNING_LOOKAHEAD_DIST?
 
-# [m/s^2] accelerations for different aggressiveness levels
-AGGRESSIVENESS_TO_LON_ACC = np.array([1, 1.5, 2.25])
-AGGRESSIVENESS_TO_LAT_ACC = np.array([0.4, 0.6, 0.9])
+# [m/s^2] calm longitudinal and lateral accelerations
+LON_CALM_ACC = 1.
+LAT_CALM_ACC = 0.4
 
 # [sec] T_d according to specify_goal
 BP_CALM_LANE_CHANGE_TIME = 6.42

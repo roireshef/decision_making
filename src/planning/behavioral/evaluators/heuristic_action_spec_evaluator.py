@@ -4,8 +4,8 @@ from typing import List, Optional
 import numpy as np
 import sys
 
-from decision_making.src.global_constants import SPECIFICATION_MARGIN_TIME_DELAY, SAFETY_MARGIN_TIME_DELAY, AGGRESSIVENESS_TO_LAT_ACC, \
-    MINIMAL_STATIC_ACTION_TIME
+from decision_making.src.global_constants import SPECIFICATION_MARGIN_TIME_DELAY, SAFETY_MARGIN_TIME_DELAY, \
+    LAT_CALM_ACC, MINIMAL_STATIC_ACTION_TIME
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, \
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionType, \
@@ -146,7 +146,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         else:
             lat_v_init_toward_target = -init_lat_vel
         # normalize lat_acc by lane_width, such that T_d will NOT depend on lane_width
-        acc = AGGRESSIVENESS_TO_LAT_ACC[aggressiveness_level.value]
+        acc = LAT_CALM_ACC
         lat_acc = acc * lane_width / 3.6
         lateral_profile = VelocityProfile.calc_profile_given_acc(lat_v_init_toward_target, lat_acc,
                                                                  abs(signed_lat_dist), 0)
@@ -300,7 +300,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         rel_lat = abs(signed_lat_dist)/lane_width
         rel_vel = ego_fstate[FS_DV]/lane_width
         if signed_lat_dist * rel_vel < 0:  # changes lateral direction
-            rel_lat += rel_vel*rel_vel/(2*AGGRESSIVENESS_TO_LAT_ACC[0])  # predict maximal deviation
+            rel_lat += rel_vel*rel_vel/(2*LAT_CALM_ACC)  # predict maximal deviation
         max_lane_dev = min(2*rel_lat, 1)  # for half-lane deviation, max_lane_dev = 1
         lane_deviation_cost = BP_CostFunctions.calc_lane_deviation_cost(max_lane_dev)
         return np.array([efficiency_cost, lon_comf_cost, lat_comf_cost, right_lane_cost, lane_deviation_cost])
