@@ -3,7 +3,7 @@ from logging import Logger
 import numpy as np
 import copy
 
-from decision_making.src.global_constants import AGGRESSIVENESS_TO_LON_ACC, LON_ACC_LIMITS
+from decision_making.src.global_constants import LON_CALM_ACC, LON_ACC_LIMITS
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.types import LIMIT_MIN
 
@@ -182,7 +182,7 @@ class VelocityProfile:
         if v_init_rel * dist > 0:
             t_acc = 2 * dist / v_init_rel
             acc = v_init_rel / t_acc
-            if t_acc <= T and abs(acc) <= AGGRESSIVENESS_TO_LON_ACC[AggressivenessLevel.CALM.value]:
+            if t_acc <= T and abs(acc) <= LON_CALM_ACC:
                 return cls(v_init, t_acc, v_tar, T - t_acc, 0, v_tar)  # acceleration/deceleration + constant vel
         # let v = v_init_rel, v1 = v_mid_rel, t = t1, d = dist, solve for a (acceleration)
         # for the simple case (acceleration, deceleration) solve the following equations:
