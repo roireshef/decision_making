@@ -169,7 +169,7 @@ def test_evaluate_differentDistancesAndVeloctiesOfFandLF_laneChangeAccordingToTh
     TC_F = 5
 
     LF_vel_range = np.arange(ego_vel-4, v_des+4.001, 2)
-    TC_LF_range = np.arange(-2, 8.001, 2)
+    TC_LF_range = np.arange(-1, 8, 2)
     F_vel_range = np.arange(ego_vel-4, v_des+4.001, 2)
 
     for LF_vel in LF_vel_range:
@@ -182,7 +182,7 @@ def test_evaluate_differentDistancesAndVeloctiesOfFandLF_laneChangeAccordingToTh
                     continue
                 F = create_canonic_object(1, 0, F_lon, lane_width / 2, F_vel, size, road_frenet)
 
-                LF_lon = ego_lon + calc_init_dist_by_safe_time(True, ego_vel, F_vel, TC_LF, SAFETY_MARGIN_TIME_DELAY, car_length)
+                LF_lon = ego_lon + calc_init_dist_by_safe_time(True, ego_vel, LF_vel, TC_LF, SAFETY_MARGIN_TIME_DELAY + 0.5, car_length)
                 if np.isinf(LF_lon):
                     continue
                 LF = create_canonic_object(3, 0, LF_lon, 3 * lane_width / 2, LF_vel, size, road_frenet)
@@ -197,9 +197,9 @@ def test_evaluate_differentDistancesAndVeloctiesOfFandLF_laneChangeAccordingToTh
                        F_vel, TC_F, F_lon-ego_lon,
                        LF_vel, TC_LF, LF_lon-ego_lon))
 
-                if TC_LF < 0 or (TC_LF - TC_F) + (LF_vel - F_vel) < -3 or TC_F > 9 or F_vel >= v_des-1:
+                if TC_LF < 0 or TC_F > 9 or F_vel >= v_des-1:
                     assert selected_lane == 0
-                if TC_LF >= 0 and (TC_LF - TC_F) + (LF_vel - F_vel) > 1 and TC_F < 6 and F_vel <= min(v_des, LF_vel) - 3:
+                if TC_LF >= 0 and TC_F < 6 and F_vel <= min(v_des, LF_vel) - 3:
                     assert selected_lane == 1
 
 
@@ -320,11 +320,11 @@ def test_evaluate_differentDistancesAndVeloctiesOfFandRF_laneChangeAccordingToTh
     sec_to_RF_range = np.arange(2, 8.001, 2)
     RF_vel_range = np.arange(ego_vel-4, v_des+4.001, 2)
 
-    for sec_to_RF in sec_to_RF_range:
+    for TC_RF in sec_to_RF_range:
         for RF_vel in RF_vel_range:
 
             ego = create_canonic_ego(0, ego_lon, 3 * lane_width / 2, ego_vel, size, road_frenet)
-            RF_lon = ego_lon + sec_to_RF * ego_vel
+            RF_lon = ego_lon + TC_RF * ego_vel
             RF = create_canonic_object(1, 0, RF_lon, lane_width / 2, RF_vel, size, road_frenet)
 
             selected_lane, best_idx, rel_lane, best_cost, best_val = evaluate_action_state(
@@ -333,11 +333,11 @@ def test_evaluate_differentDistancesAndVeloctiesOfFandRF_laneChangeAccordingToTh
             print('ego_vel=%.2f: i=%d rel_lane=%d\n'
                   'RF_vel =%.2f sec_to_RF =%.2f dist=%.2f\n' %
                   (ego_vel, best_idx, rel_lane,
-                   RF_vel, sec_to_RF, RF_lon-ego_lon))
+                   RF_vel, TC_RF, RF_lon-ego_lon))
 
-            if sec_to_RF > 9 or (RF_vel >= v_des and sec_to_RF > 2.5):
+            if TC_RF > 9 or (RF_vel >= v_des and TC_RF > 0):
                 assert rel_lane == -1
-            if (sec_to_RF < 6 and RF_vel < v_des - 2) or sec_to_RF <= SAFETY_MARGIN_TIME_DELAY:
+            if (TC_RF < 6 and RF_vel < v_des - 2) or TC_RF <= SAFETY_MARGIN_TIME_DELAY:
                 assert rel_lane == 0
 
 
