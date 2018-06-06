@@ -132,6 +132,7 @@ class CostBasedBehavioralPlanner:
         return [navigation_goal if behavioral_state is not None else None
                 for i, behavioral_state in enumerate(terminal_behavioral_states)]
 
+    @staticmethod
     @prof.ProfileFunction()
     def _generate_trajectory_specs(behavioral_state: BehavioralGridState,
                                    action_spec: ActionSpec,
