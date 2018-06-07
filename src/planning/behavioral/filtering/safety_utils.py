@@ -1,297 +1,250 @@
 from logging import Logger
 import numpy as np
+import math
 
 from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY, SPECIFICATION_MARGIN_TIME_DELAY, \
-    LON_ACC_LIMITS
+    LON_ACC_LIMITS, BP_ACTION_T_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
     RelativeLongitudinalPosition
-from decision_making.src.planning.behavioral.data_objects import ActionRecipe
-from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
-from decision_making.src.planning.types import LIMIT_MIN
+from decision_making.src.planning.behavioral.data_objects import ActionSpec
+from decision_making.src.planning.types import LIMIT_MIN, FrenetTrajectory2D, FS_SV, FS_SX, FrenetState2D, FS_SA, \
+    FS_DX, FS_DV, LIMIT_MAX, FS_DA
+from decision_making.src.planning.utils.math import Math
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from mapping.src.service.map_service import MapService
 
 
 class SafetyUtils:
 
-    def __init__(self):
-        self.back_danger_lane = None
-        self.back_danger_side = None
-        self.back_danger_time = None
-        self.front_blame = False
-
-    def _calc_largest_safe_time(self, behavioral_state: BehavioralGridState, recipe: ActionRecipe, i: int,
-                                vel_profile: VelocityProfile, ego_length: float, T_d: float, lane_width: float) -> float:
+    @staticmethod
+    def is_safe_spec(behavioral_state: BehavioralGridState, ego_init_fstate: FrenetState2D, spec: ActionSpec):
         """
-        For a lane change action, given ego velocity profile and behavioral_state, get two cars that may
-        require faster lateral movement (the front overtaken car and the back interfered car) and calculate the last
-        time, for which the safety holds w.r.t. these two cars.
-        :param behavioral_state: semantic actions grid behavioral state
-        :param vel_profile: the velocity profile of ego
-        :param ego_length: half ego length
-        :param T_d: time for comfortable lane change
-        :param lane_width: lane width of the road
-        :return: the latest time, when ego is still safe; return -1 if the current state is unsafe for this action
+        Check safety for the spec w.r.t. F, and LF/RF, LB/RB in case of lane change.
+        The safety w.r.t. the followed object is calculated for the whole ego trajectory (used for static actions).
+        In case of lane change the safety w.r.t. F, LB/RB is calculated only for the most aggressive lateral movement.
+        :param behavioral_state: current behavioral state
+        :param ego_init_fstate: initial ego frenet state
+        :param spec: action specification
+        :return: True for safe action, False for unsafe action (see the description above)
         """
-        action_lat_cell = recipe.relative_lane
         ego = behavioral_state.ego_state
-        ego_road = ego.road_localization
-        ego_lon = ego_road.road_lon
-        cur_time = ego.timestamp_in_sec
+        rel_lane = SafetyUtils._get_rel_lane_from_spec(ego.road_localization.road_id, ego_init_fstate, spec)
+        forward_cell = (rel_lane, RelativeLongitudinalPosition.FRONT)
 
-        forward_cell = (action_lat_cell, RelativeLongitudinalPosition.FRONT)
-        front_cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
-        side_rear_cell = (action_lat_cell, RelativeLongitudinalPosition.REAR)
-        rear_cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.REAR)
-
-        lane_change = (action_lat_cell != RelativeLane.SAME_LANE)
-        lat_dist_to_target = abs(action_lat_cell.value - (ego_road.intra_lane_lat / lane_width - 0.5))  # in [0, 1.5]
-        # increase time delay if ego does not move laterally according to the current action
-        is_moving_laterally_to_target = (lane_change and ego_road.intra_road_yaw * action_lat_cell.value <= 0)
+        # create time samples for safety checking
+        sampling_step = spec.t / math.ceil(spec.t)  # approximately every second
+        time_samples = np.arange(0, spec.t + np.finfo(np.float16).eps, sampling_step)
+        zeros = np.zeros(len(time_samples))
+        ego_ftrajectory = None
 
         # check safety w.r.t. the followed object on the target lane (if exists)
         if forward_cell in behavioral_state.road_occupancy_grid:
-            followed_obj = behavioral_state.road_occupancy_grid[forward_cell][0].dynamic_object
-            # calculate initial and final safety w.r.t. the followed object
-            td = SAFETY_MARGIN_TIME_DELAY
-            margin = 0.5 * (ego.size.length + followed_obj.size.length)
-            (act_time, act_dist) = (vel_profile.total_time(), vel_profile.total_dist())
-            obj_lon = followed_obj.road_localization.road_lon
-            (end_ego_lon, end_obj_lon) = (ego_lon + act_dist, obj_lon + followed_obj.v_x * act_time)
-            init_safe_dist = SafetyUtils.get_safety_dist(followed_obj.v_x, ego.v_x, obj_lon - ego_lon, td, margin)
-            end_safe_dist = SafetyUtils.get_safety_dist(followed_obj.v_x, vel_profile.v_tar,
-                                                            end_obj_lon - end_ego_lon, td, margin)
+            cell = behavioral_state.road_occupancy_grid[forward_cell][0]
+            obj_ftrajectory = np.c_[cell.fstate[FS_SX] + cell.fstate[FS_SV] * time_samples, cell.fstate[FS_SV] + zeros,
+                                    zeros, zeros, zeros, zeros]
+            time_delay = np.repeat(SAFETY_MARGIN_TIME_DELAY, len(time_samples))
 
-            # the action is unsafe if:  (change_lane and initially unsafe) or
-            #                           (finally_unsafe and worse than initially)
-            if (lane_change and (init_safe_dist <= 0 or end_safe_dist <= 0)) or \
-                            end_safe_dist <= min(0., init_safe_dist):
-                print('forward unsafe: %d(%d %d) rel_lat=%d dist=%.2f t=%.2f final_dist=%.2f v_obj=%.2f '
-                      'prof=(t=[%.2f %.2f %.2f] v=[%.2f %.2f %.2f]) init_safe=%.2f final_safe=%.2f; td=%.2f' %
-                      (i, recipe.action_type.value, recipe.aggressiveness.value, action_lat_cell.value,
-                       obj_lon - ego_lon, act_time,
-                       obj_lon + act_time * followed_obj.v_x - (ego_lon + act_dist),
-                       followed_obj.v_x, vel_profile.t_first, vel_profile.t_flat, vel_profile.t_last, vel_profile.v_init,
-                       vel_profile.v_mid, vel_profile.v_tar, init_safe_dist, end_safe_dist, td))
-                return -1
+            # create longitudinal ego frenet trajectory for the time samples based on the spec
+            if ego_ftrajectory is None:
+                ego_ftrajectory = SafetyUtils._calc_longitudinal_ego_trajectory(ego_init_fstate, spec, time_samples)
 
-        safe_time = np.inf
-        if lane_change:  # for lane change actions check safety w.r.t. F, LB, RB
-            # check whether there is a car in the neighbor cell (same longitude)
-            if (action_lat_cell, RelativeLongitudinalPosition.PARALLEL) in behavioral_state.road_occupancy_grid:
-                print('side unsafe rel_lat=%d: action %d' % (action_lat_cell.value, i))
-                return -1
+            last_safe_time = SafetyUtils._get_last_safe_time_for_trajectories(
+                obj_ftrajectory, ego_ftrajectory, (ego.size.length + cell.dynamic_object.size.length)/2, time_delay, time_samples)
+            if last_safe_time < spec.t:
+                return False
 
-            # check safety w.r.t. the front object F on the original lane (if exists)
-            if front_cell in behavioral_state.road_occupancy_grid:
-                front_obj = behavioral_state.road_occupancy_grid[front_cell][0].dynamic_object
-                # time delay decreases as function of lateral distance to the target: td_0 = td_T + 1
-                # td_0 > td_T, since as latitude advances ego can escape laterally easier
-                td_T = 0.  # dist to F after completing lane change.
-                td_0 = SAFETY_MARGIN_TIME_DELAY * lat_dist_to_target
-                # calculate last safe time w.r.t. F
-                front_safe_time = SafetyUtils.calc_last_safe_time(vel_profile, ego_lon, ego_length,
-                    front_obj.road_localization.road_lon, front_obj.v_x, front_obj.size.length, 0.75 * T_d, td_0, td_T)
-                if front_safe_time < np.inf:
-                    print('front_safe_time=%.2f action %d(%d %d): front_dist=%.2f front_vel=%.2f lat_d=%.2f td_0=%.2f td_T=%.2f' %
-                          (front_safe_time, i, recipe.action_type.value, recipe.aggressiveness.value,
-                           front_obj.road_localization.road_lon - ego_lon, front_obj.v_x, lat_dist_to_target, td_0, td_T))
-                if front_safe_time <= 0:
-                    return -1
-                safe_time = min(safe_time, front_safe_time)
+        # for lane change actions check safety w.r.t. F, LB, RB
+        if rel_lane != RelativeLane.SAME_LANE:
+            # filter action if there is a side car
+            if (rel_lane, RelativeLongitudinalPosition.PARALLEL) in behavioral_state.road_occupancy_grid:
+                return False
+            aggressive_weights = np.array([0.1, 1])  # aggressive lateral movement
+            T_d_min = SafetyUtils._calc_T_d(aggressive_weights, ego_init_fstate, spec)
+            lateral_time_samples = time_samples[np.where(time_samples < T_d_min)]
 
-            # check safety w.r.t. the back object on the original lane (if exists)
-            if side_rear_cell in behavioral_state.road_occupancy_grid:
-                back_obj = behavioral_state.road_occupancy_grid[side_rear_cell][0].dynamic_object
-                td = SPECIFICATION_MARGIN_TIME_DELAY
-                # calculate last safe time w.r.t. LB or RB
-                back_safe_time = SafetyUtils.calc_last_safe_time(vel_profile, ego_lon, ego_length,
-                        back_obj.road_localization.road_lon, back_obj.v_x, back_obj.size.length, T_d, td)
-                if back_safe_time < np.inf:
-                    print('back_safe_time=%.2f action %d(%d %d): back_dist=%.2f back_vel=%.2f rel_lat=%.2f td=%.2f' %
-                          (back_safe_time, i, recipe.action_type.value, recipe.aggressiveness.value,
-                           ego_lon - back_obj.road_localization.road_lon, back_obj.v_x, action_lat_cell.value, td))
-                # if ego is unsafe w.r.t. back_obj, then save a flag for the case ego will enter to its lane,
-                # such that ego will check safety w.r.t to the rear object
-                if back_safe_time <= 0 and is_moving_laterally_to_target:
-                    self.back_danger_lane = ego_road.lane_num + action_lat_cell.value
-                    self.back_danger_side = action_lat_cell.value  # -1 or 1
-                    self.back_danger_time = cur_time
-                if back_safe_time <= 0:
-                    return -1
-                safe_time = min(safe_time, back_safe_time)
+            last_safe_time = SafetyUtils._calc_last_safe_time_for_time_samples(
+                behavioral_state, ego_init_fstate, ego_ftrajectory, spec, lateral_time_samples, rel_lane)
+            if last_safe_time < T_d_min:
+                return False
 
-        # check safety w.r.t. the rear object R for the case we are after back danger and arrived to the dangerous lane
-        if self.back_danger_lane is not None:
-            if cur_time - self.back_danger_time < 4:  # the danger is still relevant
-                # if ego is on the danger_lane but still didn't reach the lane center,
-                # and if this action is to the danger_lane center, then check safety w.r.t. the rear object
-                if self.back_danger_lane == ego_road.lane_num and self.back_danger_side == action_lat_cell.value and \
-                   ego_road.intra_lane_lat * action_lat_cell.value < 0 and rear_cell in behavioral_state.road_occupancy_grid:
-                        td = SPECIFICATION_MARGIN_TIME_DELAY
-                        rear_obj = behavioral_state.road_occupancy_grid[rear_cell][0].dynamic_object
-                        # calculate last safe time w.r.t. R
-                        back_safe_time = SafetyUtils.calc_last_safe_time(vel_profile, ego_lon, ego_length,
-                                rear_obj.road_localization.road_lon, rear_obj.v_x, rear_obj.size.length, T_d, td)
-                        if back_safe_time <= 0:
-                            return -1
-                        safe_time = min(safe_time, back_safe_time)
-            else:  # after timeout, delete the danger flag
-                self.back_danger_lane = None
-
-        return safe_time
+        return True
 
     @staticmethod
-    def calc_last_safe_time(vel_profile: VelocityProfile, init_s_ego: float, ego_length: float, init_s_obj: float,
-                            init_v_obj: float, obj_length: float, T: float, td_0: float, td_T: float=None) -> float:
+    def calc_lane_change_last_safe_time(behavioral_state: BehavioralGridState, ego_init_fstate: FrenetState2D,
+                                        spec: ActionSpec) -> float:
         """
-        Given ego velocity profile and dynamic object, calculate the last time, when the safety complies.
-        :param vel_profile: piecewise linear velocity profile of ego
-        :param init_s_ego: ego initial longitude
-        :param ego_length: [m] length of ego
-        :param init_s_obj: longitude of the dynamic object, for which the safety is tested
-        :param init_v_obj: velocity of the dynamic object
-        :param obj_length: length of the dynamic object
-        :param T: maximal time to check the safety (usually T_d for safety w.r.t. F and LB)
-        :param td_0: reaction time of the back car at time 0
-        :param td_T: reaction time of the back car at time T_max (by default td_T = td_0)
-        :return: the latest safe time
+        Calculate the last safe time for a lane change action
+        :param behavioral_state:
+        :param ego_init_fstate:
+        :param spec:
+        :return: the last safe time
         """
-        if T <= 0:
+        rel_lane = SafetyUtils._get_rel_lane_from_spec(behavioral_state.ego_state.road_localization.road_id,
+                                                       ego_init_fstate, spec)
+        if rel_lane == RelativeLane.SAME_LANE:  # for lane change actions check safety w.r.t. F, LB, RB
             return np.inf
-        if td_T is None:
-            td_T = td_0
 
-        # first check if the profile is fully unsafe or fully safe
-        margin = (ego_length + obj_length) / 2
-        if init_s_ego < init_s_obj:
-            v_front = init_v_obj
-            v_back = vel_profile.v_init
-            td_sign = -1
-            front = 1  # whether the object is in front of ego
-        else:
-            v_back = init_v_obj
-            v_front = vel_profile.v_init
-            td_sign = 1
-            front = 0
-        back = 1 - front
+        front_cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
+        side_rear_cell = (rel_lane, RelativeLongitudinalPosition.REAR)
+        if front_cell in behavioral_state.road_occupancy_grid or side_rear_cell in behavioral_state.road_occupancy_grid:
+            # calculate calm T_d
+            calm_weights = np.array([1.5, 1])  # calm lateral movement
+            T_d = SafetyUtils._calc_T_d(calm_weights, ego_init_fstate, spec)
+            sampling_step = 0.1
+            time_samples = np.arange(0, T_d, sampling_step)
 
-        # if the initial state is unsafe, return -1
-        if not SafetyUtils.is_safe_state(v_front, v_back, abs(init_s_obj - init_s_ego), td_0, margin):
-            return -1
-
-        # here the profile is PARTLY safe, find the latest safe time
-        t, t_cum, s_ego, v_ego, a_ego = vel_profile.calc_profile_details(T)
-        s_ego += init_s_ego
-        td = td_0 + (td_T - td_0) * t_cum[:-1] / T  # time delay td changes from td_0 to td_T
-
-        # calculate object's parameters at the beginning of each segment
-        a_obj = np.repeat(0., t.shape[0])
-        v_obj = np.repeat(init_v_obj, t.shape[0])
-        # instead of moving ego by td, move the front/back object backward/forward by td
-        s_obj = init_s_obj + init_v_obj * t_cum[:-1] + td_sign * v_obj * td
-
-        # create (ego, obj) pairs of longitudes, velocities and accelerations for all segments
-        (s, v, a) = (np.c_[s_ego[:-1], s_obj], np.c_[v_ego[:-1], v_obj], np.c_[a_ego, a_obj])
-
-        # calculate last_safe_time
-        last_safe_time = 0
-        for seg in range(t.shape[0]):
-            if t[seg] == 0:
-                continue
-            if a[seg, back] <= a[seg, front] and v[seg, back] <= v[seg, front]:
-                last_safe_time += t[seg]
-                continue
-            seg_safe_time = SafetyUtils._calc_last_safe_time_for_segment(
-                s[seg, front], v[seg, front], a[seg, front], s[seg, back], v[seg, back], a[seg, back], t[seg], margin)
-            if seg_safe_time < t[seg]:
-                # in case of front object decrease safe time by td, since seg_safe_time is the braking time
-                safe_time = last_safe_time + max(0., seg_safe_time) - td[seg]*front
-                return safe_time
-            last_safe_time += t[seg]
-        return np.inf  # always safe
+            return SafetyUtils._calc_last_safe_time_for_time_samples(
+                behavioral_state, ego_init_fstate, None, spec, time_samples, rel_lane)
+        return np.inf
 
     @staticmethod
-    def get_safety_dist(v_front: float, v_back: float, dist: float, time_delay: float, margin: float,
-                        max_brake: float=-LON_ACC_LIMITS[LIMIT_MIN]) -> float:
+    def _calc_last_safe_time_for_time_samples(behavioral_state: BehavioralGridState, ego_init_fstate: FrenetState2D,
+                                              ego_ftrajectory: FrenetTrajectory2D, spec: ActionSpec,
+                                              time_samples: np.array, rel_lane: RelativeLane) -> float:
         """
-        Calculate difference between the actual distance and minimal safe distance (longitudinal RSS formula)
-        :param v_front: [m/s] front vehicle velocity
-        :param v_back: [m/s] back vehicle velocity
-        :param dist: [m] distance between the vehicles
-        :param time_delay: time delay of the back vehicle
-        :param margin: [m] cars sizes margin
+        Calculate last safe time w.r.t. F, LB, RB, for the given time samples.
+        :param behavioral_state:
+        :param ego_init_fstate:
+        :param ego_ftrajectory: may be None, is calculated on demand
+        :param spec:
+        :param time_samples: starting from 0
+        :param rel_lane:
+        :return: last safe time w.r.t. F, LB, RB; np.inf if always safe; -1 if unsafe from the beginning
+        """
+        if rel_lane == RelativeLane.SAME_LANE:
+            return np.inf
+        ego = behavioral_state.ego_state
+        ego_length = ego.size.length
+        lane_width = MapService.get_instance().get_road(ego.road_localization.road_id).lane_width
+        front_cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
+        side_rear_cell = (rel_lane, RelativeLongitudinalPosition.REAR)
+        last_safe_time = np.inf
+        zeros = np.zeros(len(time_samples))
+
+        # check safety w.r.t. the front object F on the original lane (if exists)
+        if front_cell in behavioral_state.road_occupancy_grid:
+            # calculate last safe time w.r.t. F
+            cell = behavioral_state.road_occupancy_grid[front_cell][0]
+            obj_ftrajectory = np.c_[cell.fstate[FS_SX] + cell.fstate[FS_SV] * time_samples,
+                                    cell.fstate[FS_SV] + zeros, zeros, zeros, zeros, zeros]
+
+            # time delay decreases as function of lateral distance to the target,
+            # since as latitude advances the lateral escape is easier
+            td_0 = SAFETY_MARGIN_TIME_DELAY * abs(spec.d - ego_init_fstate[FS_DX]) / lane_width
+            td_T = 0  # dist to F after completing lane change. TODO: increase it when the planning will be deep
+            time_delay = np.arange(td_0, td_T, (td_T - td_0) / len(time_samples))
+
+            # create longitudinal ego frenet trajectory for the time samples based on the spec
+            if ego_ftrajectory is None:
+                ego_ftrajectory = SafetyUtils._calc_longitudinal_ego_trajectory(ego_init_fstate, spec, time_samples)
+
+            safe_time = SafetyUtils._get_last_safe_time_for_trajectories(
+                obj_ftrajectory, ego_ftrajectory, (ego_length + cell.dynamic_object.size.length)/2, time_delay, time_samples)
+            last_safe_time = min(safe_time, last_safe_time)
+            if last_safe_time < 0:
+                return -1
+
+        # check safety w.r.t. the back object LB / RB on the target lane (if exists)
+        if side_rear_cell in behavioral_state.road_occupancy_grid:
+            cell = behavioral_state.road_occupancy_grid[side_rear_cell][0]
+            obj_ftrajectory = np.c_[cell.fstate[FS_SX] + cell.fstate[FS_SV] * time_samples,
+                                    cell.fstate[FS_SV] + zeros, zeros, zeros, zeros, zeros]
+            time_delay = np.repeat(SPECIFICATION_MARGIN_TIME_DELAY, len(time_samples))
+
+            # create longitudinal ego frenet trajectory for the time samples based on the spec
+            if ego_ftrajectory is None:
+                ego_ftrajectory = SafetyUtils._calc_longitudinal_ego_trajectory(ego_init_fstate, spec, time_samples)
+
+            safe_time = SafetyUtils._get_last_safe_time_for_trajectories(
+                ego_ftrajectory, obj_ftrajectory, (ego_length + cell.dynamic_object.size.length)/2, time_delay, time_samples)
+            last_safe_time = min(safe_time, last_safe_time)
+
+        return last_safe_time
+
+    @staticmethod
+    def _get_rel_lane_from_spec(road_id: int, ego_init_fstate: FrenetState2D, spec: ActionSpec) -> RelativeLane:
+        lane_width = MapService.get_instance().get_road(road_id).lane_width
+        if abs(spec.d - ego_init_fstate[FS_DX]) <= lane_width/2:
+            return RelativeLane.SAME_LANE
+        elif spec.d - ego_init_fstate[FS_DX] > lane_width/2:
+            return RelativeLane.LEFT_LANE
+        else:
+            return RelativeLane.RIGHT_LANE
+
+    @staticmethod
+    def _calc_longitudinal_ego_trajectory(ego_init_fstate: FrenetState2D, spec: ActionSpec, time_samples: np.array) -> \
+            FrenetTrajectory2D:
+        """
+        Calculate longitudinal ego trajectory for the given time samples.
+        :param ego_init_fstate:
+        :param spec:
+        :param time_samples:
+        :return:
+        """
+        # TODO: Acceleration is not calculated.
+        # profiles for the cases, when dynamic object is in front of ego
+        dist_profile = QuinticPoly1D.distance_profile_function(ego_init_fstate[FS_SA], ego_init_fstate[FS_SV],
+                                                               spec.v, spec.s, spec.t, T_m=0)
+        vel_profile = QuinticPoly1D.velocity_profile_function(ego_init_fstate[FS_SA], ego_init_fstate[FS_SV],
+                                                              spec.v, spec.s, spec.t, T_m=0)
+        zeros = np.zeros(len(time_samples))
+        ego_fstates = np.c_[ego_init_fstate[FS_SX] + dist_profile(time_samples), vel_profile(time_samples),
+                            zeros, zeros, zeros, zeros]
+        return ego_fstates
+
+    @staticmethod
+    def _calc_T_d(weights: np.array, ego_init_fstate: FrenetState2D, spec: ActionSpec) -> float:
+        """
+        Calculate lateral movement time for the given Jerk/T weights.
+        :param weights: array of size 2: weights[0] is jerk weight, weights[1] is T weight
+        :param ego_init_fstate: ego initial frenet state
+        :param spec: action specification
+        :return: lateral movement time
+        """
+        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
+            w_T=np.array([weights[1]]), w_J=np.array([weights[0]]), dx=np.array([spec.d - ego_init_fstate[FS_DX]]),
+            a_0=np.array([ego_init_fstate[FS_DA]]), v_0=np.array([ego_init_fstate[FS_DV]]),
+            v_T=np.array([0]), T_m=np.array([0]))
+        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
+        T_d = np.fmin.reduce(roots_d, axis=-1)
+        return min(T_d, spec.t)
+
+    @staticmethod
+    def _get_last_safe_time_for_trajectories(front_traj: FrenetTrajectory2D, back_traj: FrenetTrajectory2D,
+                                             cars_length_margin: float, time_delay: np.array,
+                                             time_samples: np.array) -> float:
+        """
+        Calculate last time sample complying longitudinal safety for given front & back Frenet trajectories.
+        :param front_traj: Frenet trajectory of the front vehicle
+        :param back_traj: Frenet trajectory of the back vehicle
+        :param cars_length_margin: half sum of the vehicles lengths
+        :param time_delay: array of reaction delays of the back vehicle
+        :param time_samples: time samples, for which the safety is checked
+        :return: last safe time sample from the given time_samples array
+        """
+        safety_dist = SafetyUtils._get_safety_dist(front_traj[:, FS_SV], back_traj[:, FS_SV],
+                                                   front_traj[:, FS_SX] - back_traj[:, FS_SX], time_delay,
+                                                   cars_length_margin)
+        last_safe_time = np.inf
+        unsafe_idxs = np.where(safety_dist <= 0)[0]
+        if len(unsafe_idxs) > 0:
+            last_safe_time = -1
+            if unsafe_idxs[0] > 0:
+                last_safe_time = time_samples[unsafe_idxs[0] - 1]
+        return last_safe_time
+
+    @staticmethod
+    def _get_safety_dist(v_front: np.array, v_back: np.array, dist: np.array, time_delay: np.array, margin: float,
+                         max_brake: float=-LON_ACC_LIMITS[LIMIT_MIN]) -> np.array:
+        """
+        Calculate differences between the actual distances and minimal safe distances (longitudinal RSS formula)
+        :param v_front: [m/s] array of front vehicle velocities
+        :param v_back: [m/s] array of back vehicle velocities
+        :param dist: [m] array of distances between the vehicles
+        :param time_delay: [sec] array of time delays of the back vehicle
+        :param margin: [m] cars size margin
         :param max_brake: [m/s^2] maximal deceleration of the vehicles
-        :return: Positive if the back vehicle is safe, negative otherwise
+        :return: Array of safety distances: positive if the back vehicle is safe, negative otherwise
         """
         safe_dist = max(0., v_back**2 - v_front**2) / (2*max_brake) + v_back*time_delay + margin
         return dist - safe_dist
-
-    @staticmethod
-    def is_safe_state(v_front: float, v_back: float, dist: float, time_delay: float, margin: float,
-                      max_brake: float=-LON_ACC_LIMITS[LIMIT_MIN]) -> bool:
-        """
-        safety test by the longitudinal RSS formula
-        :param v_front: [m/s] front vehicle velocity
-        :param v_back: [m/s] back vehicle velocity
-        :param dist: [m] distance between the vehicles
-        :param time_delay: time delay of the back vehicle
-        :param margin: [m] cars sizes margin
-        :param max_brake: [m/s^2] maximal deceleration of the vehicles
-        :return: True if the back vehicle is safe
-        """
-        return SafetyUtils.get_safety_dist(v_front, v_back, dist, time_delay, margin, max_brake) > 0
-
-    @staticmethod
-    def _calc_last_safe_time_for_segment(s_front: float, v_front: float, a_front: float, s_back: float, v_back: float,
-                                         a_back: float, T: float, margin: float) -> float:
-        """
-        Given two vehicles with constant acceleration in time period [0, T], calculate the largest 0 <= t <= T,
-        for which the second car (rear) is safe w.r.t. the first car in [0, t].
-        :param s_front: first car longitude
-        :param v_front: first car initial velocity
-        :param a_front: first car acceleration
-        :param s_back: second car longitude
-        :param v_back: second car initial velocity
-        :param a_back: second car acceleration
-        :param T: time period
-        :param margin: size margin of the cars
-        :return: the largest safe time; if unsafe for t=0, return -1
-        """
-        if T < 0:
-            return -1
-        # the first vehicle is in front of the second one
-        # s1(t) = s1 + v1*t + a1*t^2/2, s2(t) = s2 + v2*t + a2*t^2/2
-        # v1(t) = v1 + a1*t, v2(t) = v2 + a2*t
-        # safe_dist(t) = (v2(t)^2 - v1(t)^2) / (2*a_max) + margin
-        # solve quadratic inequality: s1(t) - s2(t) - safe_dist(t) = A*t^2 + B*t + C >= 0
-
-        a_max = -LON_ACC_LIMITS[LIMIT_MIN]
-
-        C = s_front - s_back + (v_front * v_front - v_back * v_back) / (2 * a_max) - margin
-
-        if C < 0:
-            return -1  # the current state (for t=0) is not safe
-        if T == 0:
-            return 0  # the current state (for t=0) is safe
-
-        A = (a_front - a_back) * (a_max + a_front + a_back) / (2 * a_max)
-        B = (a_front * v_front - a_back * v_back) / a_max + v_front - v_back
-        if A == 0 and B == 0:  # constant function C > 0
-            return T  # for all t it's safe
-        if A == 0:  # B != 0; linear inequality
-            t = -C/B
-            if t >= 0:
-                return min(T, t)
-            return T  # for all t it's safe
-
-        # solve quadratic inequality
-        discriminant = B*B - 4*A*C
-        if discriminant < 0:
-            return T  # for all t it's safe
-        sqrt_disc = np.sqrt(discriminant)
-        t_root1 = (-B - sqrt_disc)/(2*A)
-        t_root2 = (-B + sqrt_disc)/(2*A)
-        if t_root1 >= 0:
-            return min(t_root1, T)
-        if t_root2 >= 0:
-            return min(t_root2, T)
-        return T
