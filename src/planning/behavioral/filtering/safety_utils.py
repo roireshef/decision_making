@@ -10,7 +10,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.types import LIMIT_MIN, FrenetTrajectory2D, FS_SV, FS_SX, FrenetState2D, FS_SA, \
     FS_DX, FS_DV, LIMIT_MAX, FS_DA
 from decision_making.src.planning.utils.math import Math
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from mapping.src.service.map_service import MapService
 
 
@@ -182,14 +182,15 @@ class SafetyUtils:
         :return:
         """
         # TODO: Acceleration is not calculated.
+
+        dx = spec.s - ego_init_fstate[FS_SX]
         # profiles for the cases, when dynamic object is in front of ego
-        dist_profile = QuinticPoly1D.distance_profile_function(ego_init_fstate[FS_SA], ego_init_fstate[FS_SV],
-                                                               spec.v, spec.s, spec.t, T_m=0)
-        vel_profile = QuinticPoly1D.velocity_profile_function(ego_init_fstate[FS_SA], ego_init_fstate[FS_SV],
-                                                              spec.v, spec.s, spec.t, T_m=0)
+        dist_profile = QuinticPoly1D.distance_profile_function(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
+                                                               v_T=spec.v, dx=dx, T=spec.t, T_m=0)(time_samples)
+        vel_profile = QuinticPoly1D.velocity_profile_function(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
+                                                              v_T=spec.v, dx=dx, T=spec.t, T_m=0)(time_samples)
         zeros = np.zeros(len(time_samples))
-        ego_fstates = np.c_[ego_init_fstate[FS_SX] + dist_profile(time_samples), vel_profile(time_samples),
-                            zeros, zeros, zeros, zeros]
+        ego_fstates = np.c_[ego_init_fstate[FS_SX] + dist_profile, vel_profile, zeros, zeros, zeros, zeros]
         return ego_fstates
 
     @staticmethod
