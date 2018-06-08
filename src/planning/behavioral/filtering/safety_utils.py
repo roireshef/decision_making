@@ -32,7 +32,7 @@ class SafetyUtils:
         forward_cell = (rel_lane, RelativeLongitudinalPosition.FRONT)
 
         # create time samples for safety checking
-        sampling_step = spec.t / math.ceil(spec.t)  # approximately every second
+        sampling_step = spec.t / np.round(spec.t)  # approximately every second
         time_samples = np.arange(0, spec.t + np.finfo(np.float16).eps, sampling_step)
         zeros = np.zeros(len(time_samples))
         ego_ftrajectory = None
@@ -58,9 +58,16 @@ class SafetyUtils:
             # filter action if there is a side car
             if (rel_lane, RelativeLongitudinalPosition.PARALLEL) in behavioral_state.road_occupancy_grid:
                 return False
-            aggressive_weights = np.array([0.1, 1])  # aggressive lateral movement
+            aggressive_weights = np.array([0.016, 1])  # very aggressive lateral movement
             T_d_min = SafetyUtils._calc_T_d(aggressive_weights, ego_init_fstate, spec)
-            lateral_time_samples = time_samples[np.where(time_samples < T_d_min)]
+
+            # Pick lateral_time_samples, such that lateral_time_samples is a subset of time_samples,
+            # since if ego_ftrajectory was calculated based on original time_samples, then lateral_time_samples
+            # should be a subset of time_samples, so there is no need to recalculate ego_ftrajectory.
+            lat_samples_num = len(np.where(time_samples < T_d_min + 0.5)[0])
+            lateral_time_samples = time_samples[:lat_samples_num]
+            if ego_ftrajectory is not None:
+                ego_ftrajectory = ego_ftrajectory[:lat_samples_num]
 
             last_safe_time = SafetyUtils._calc_last_safe_time_for_time_samples(
                 behavioral_state, ego_init_fstate, ego_ftrajectory, spec, lateral_time_samples, rel_lane)
@@ -132,7 +139,7 @@ class SafetyUtils:
             # since as latitude advances the lateral escape is easier
             td_0 = SAFETY_MARGIN_TIME_DELAY * abs(spec.d - ego_init_fstate[FS_DX]) / lane_width
             td_T = 0  # dist to F after completing lane change. TODO: increase it when the planning will be deep
-            time_delay = np.arange(td_0, td_T, (td_T - td_0) / len(time_samples))
+            time_delay = np.arange(td_0 + np.finfo(np.float16).eps, td_T, (td_T - td_0) / (len(time_samples) - 1))
 
             # create longitudinal ego frenet trajectory for the time samples based on the spec
             if ego_ftrajectory is None:
@@ -185,10 +192,10 @@ class SafetyUtils:
 
         dx = spec.s - ego_init_fstate[FS_SX]
         # profiles for the cases, when dynamic object is in front of ego
-        dist_profile = QuinticPoly1D.distance_profile_function(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
-                                                               v_T=spec.v, dx=dx, T=spec.t, T_m=0)(time_samples)
-        vel_profile = QuinticPoly1D.velocity_profile_function(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
-                                                              v_T=spec.v, dx=dx, T=spec.t, T_m=0)(time_samples)
+        dist_profile = QuinticPoly1D.distance_by_constraints(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
+                                                             v_T=spec.v, ds=dx, T=spec.t)(time_samples)
+        vel_profile = QuinticPoly1D.velocity_by_constraints(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
+                                                            v_T=spec.v, ds=dx, T=spec.t)(time_samples)
         zeros = np.zeros(len(time_samples))
         ego_fstates = np.c_[ego_init_fstate[FS_SX] + dist_profile, vel_profile, zeros, zeros, zeros, zeros]
         return ego_fstates
@@ -207,7 +214,7 @@ class SafetyUtils:
             a_0=np.array([ego_init_fstate[FS_DA]]), v_0=np.array([ego_init_fstate[FS_DV]]),
             v_T=np.array([0]), T_m=np.array([0]))
         roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
-        T_d = np.fmin.reduce(roots_d, axis=-1)
+        T_d = np.fmin.reduce(roots_d, axis=-1)[0]
         return min(T_d, spec.t)
 
     @staticmethod
@@ -247,5 +254,5 @@ class SafetyUtils:
         :param max_brake: [m/s^2] maximal deceleration of the vehicles
         :return: Array of safety distances: positive if the back vehicle is safe, negative otherwise
         """
-        safe_dist = max(0., v_back**2 - v_front**2) / (2*max_brake) + v_back*time_delay + margin
+        safe_dist = np.clip(v_back**2 - v_front**2, 0, None) / (2*max_brake) + v_back*time_delay + margin
         return dist - safe_dist

@@ -436,7 +436,7 @@ class QuinticPoly1D(Poly1D):
         :param a_0: [m/sec^2] acceleration at time 0
         :param v_0: [m/sec] velocity at time 0
         :param v_T: [m/sec] terminal velocity (at time T)
-        :param ds: [m] initial distance to target in time 0
+        :param ds0: [m] initial distance to target in time 0
         :param T: [sec] horizon
         :return: lambda function(s) that takes relative time in seconds and returns the relative distance
         travelled since time 0
@@ -444,6 +444,37 @@ class QuinticPoly1D(Poly1D):
         return lambda t: (-T**5*t*(a_0*t + 2*v_0) + 2*T**5*(ds0 + t*v_T) + T**2*t**3*(3*T**2*a_0 + 4*T*(3*v_0 + 2*v_T)
                         - 20*ds0 - 20*v_T*(T - T_m)) - T*t**4*(3*T**2*a_0 + 2*T*(8*v_0 + 7*v_T) - 30*ds0 - 30*v_T*(T - T_m))
                           + t**5*(T**2*a_0 + 6*T*(v_0 + v_T) - 12*ds0 - 12*v_T*(T - T_m)))/(2*T**5)
+
+    @staticmethod
+    def distance_by_constraints(a_0: float, v_0: float, v_T: float, ds: float, T: float):
+        """
+        distance travelled by ego at time t, given by solution for the constraints in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param ds: [m] initial distance to target in time 0
+        :param T: [sec] horizon
+        :return: lambda function(s) that takes relative time in seconds and returns the distance
+        travelled since time 0
+        """
+        return lambda t: t*(T**5*(a_0*t + 2*v_0) + T**2*t**2*(-3*T**2*a_0 - 4*T*(3*v_0 + 2*v_T) + 20*ds) +
+                            T*t**3*(3*T**2*a_0 + 2*T*(8*v_0 + 7*v_T) - 30*ds) +
+                            t**4*(-T**2*a_0 - 6*T*(v_0 + v_T) + 12*ds))/(2*T**5)
+
+    @staticmethod
+    def velocity_by_constraints(a_0: float, v_0: float, v_T: float, ds: float, T: float):
+        """
+        velocity of ego at time t, given by solution for the constraints in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param ds: [m] initial distance to target in time 0
+        :param T: [sec] horizon
+        :return: lambda function(s) that takes relative time in seconds and returns ego velocity since time 0
+        """
+        return lambda t: a_0*t + v_0 - 9*a_0*t**2/(2*T) + 6*a_0*t**3/T**2 - 18*t**2*v_0/T**2 - 12*t**2*v_T/T**2 - \
+                         5*a_0*t**4/(2*T**3) + 30*ds*t**2/T**3 + 32*t**3*v_0/T**3 + 28*t**3*v_T/T**3 - \
+                         60*ds*t**3/T**4 - 15*t**4*v_0/T**4 - 15*t**4*v_T/T**4 + 30*ds*t**4/T**5
 
     @staticmethod
     def distance_from_target_derivative_coefs(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
