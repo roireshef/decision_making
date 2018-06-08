@@ -3,7 +3,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec
 
 from decision_making.src.global_constants import BP_RIGHT_LANE_COST_WEIGHT, BP_EFFICIENCY_COST_WEIGHT, \
     LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, BP_DEFAULT_DESIRED_SPEED, \
-    BP_METRICS_LANE_DEVIATION_COST_WEIGHT, BP_EFFICIENCY_COST_CONVEXITY_RATIO
+    BP_METRICS_LANE_DEVIATION_COST_WEIGHT, BP_EFFICIENCY_COST_CONVEXITY_RATIO, MINIMAL_STATIC_ACTION_TIME
 from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
 from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DA, FS_DV, FS_DX
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
@@ -11,26 +11,18 @@ from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPol
 
 class BP_CostFunctions:
     @staticmethod
-    def calc_efficiency_cost(vel_profile: VelocityProfile) -> float:
+    def calc_efficiency_cost(ego_fstate: np.array, spec: ActionSpec) -> float:
         """
         Calculate efficiency cost for a planned following car or lane.
         Do it by calculation of average velocity during achieving the followed car and then following it with
         constant velocity. Total considered time is given by time_horizon.
-        :param vel_profile: velocity profile
+        :param ego_fstate: initial ego Frenet state
+        :param spec: action specification
         :return: the efficiency cost
         """
-        profile_time = vel_profile.total_time()
-        des_vel = BP_DEFAULT_DESIRED_SPEED
-        deviation1 = BP_CostFunctions._calc_avg_vel_deviation(vel_profile.v_init, vel_profile.v_mid, des_vel)
-        deviation2 = abs(vel_profile.v_mid - des_vel)
-        deviation3 = BP_CostFunctions._calc_avg_vel_deviation(vel_profile.v_mid, vel_profile.v_tar, des_vel)
-
-        avg_deviation = (vel_profile.t_first * deviation1 + vel_profile.t_flat * deviation2 +
-                         vel_profile.t_last * deviation3) / profile_time
-        avg_vel = des_vel - avg_deviation
-
+        avg_vel = (spec.s - ego_fstate[FS_SX]) / spec.t
         efficiency_cost = BP_CostFunctions.calc_efficiency_cost_for_velocities(np.array([avg_vel]))[0]
-        return BP_EFFICIENCY_COST_WEIGHT * efficiency_cost * profile_time
+        return BP_EFFICIENCY_COST_WEIGHT * efficiency_cost * spec.t
 
     @staticmethod
     def calc_efficiency_cost_for_velocities(vel: np.array) -> np.array:
@@ -47,20 +39,6 @@ class BP_CostFunctions:
         normalized_vel = np.absolute(1 - vel / BP_DEFAULT_DESIRED_SPEED)
         costs = normalized_vel * (coef_2 * normalized_vel + coef_1)
         return costs
-
-    @staticmethod
-    def _calc_avg_vel_deviation(v_init: float, v_end: float, v_des: float) -> float:
-        """
-        given a velocity segment, calculate average deviation from the desired velocity
-        :param v_init: [m/s] initial segment velocity
-        :param v_end: [m/s] terminal segment velocity
-        :param v_des: [m/s] desired velocity
-        :return: [m/s] average deviation
-        """
-        if (v_init - v_des) * (v_end - v_des) >= 0:  # v1 and v2 are on the same side of des_vel
-            return abs(0.5 * (v_init + v_end) - v_des)  # simple average deviation
-        else:  # v1 and v2 are on different sides of des_vel
-            return 0.5 * ((v_init - v_des) ** 2 + (v_end - v_des) ** 2) / abs(v_end - v_init)
 
     @staticmethod
     def calc_comfort_cost(ego_fstate: np.array, spec: ActionSpec, T_d_max: float, T_d_approx: float) -> [float, float]:
@@ -83,8 +61,9 @@ class BP_CostFunctions:
             lat_jerk2 = np.inf
             # try to decrease the lateral jerk (if it's possible), by increasing the heuristic lateral time
             if T_d_approx < T_d_max:
+                T_d = min(2 * T_d_approx, T_d_max)
                 lat_jerk2 = QuinticPoly1D.cumulative_jerk_from_constraints(ego_fstate[FS_DA], ego_fstate[FS_DV], 0,
-                                                                           lat_dist, min(2 * T_d_approx, T_d_max))
+                                                                           lat_dist, T_d)
             lat_cost = min(lat_jerk1, lat_jerk2) * LAT_JERK_COST_WEIGHT
 
         # longitudinal jerk

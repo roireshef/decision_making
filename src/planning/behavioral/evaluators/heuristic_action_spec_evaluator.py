@@ -80,14 +80,12 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                 continue  # the action is unsafe from the beginning
 
             # calculate actions costs
-            sub_costs = HeuristicActionSpecEvaluator._calc_action_costs(ego_fstate, vel_profile, spec, lane_width,
-                                                                        T_d_max, T_d_approx)
+            sub_costs = HeuristicActionSpecEvaluator._calc_action_costs(ego_fstate, spec, lane_width, T_d_max, T_d_approx)
             costs[i] = np.sum(sub_costs)
 
             print('action %d(%d %d) lane %d: dist=%.1f [td=%.2f t=%.2f s=%.2f v=%.2f] [t1=%.2f v_mid=%.2f a=%.2f] '
                   '[eff %.3f comf %.2f,%.2f right %.2f dev %.2f]: tot %.2f' %
-                  (i, recipe.action_type.value, recipe.aggressiveness.value,
-                   ego_lane + recipe.relative_lane.value,
+                  (i, recipe.action_type.value, recipe.aggressiveness.value, ego_lane + recipe.relative_lane.value,
                    HeuristicActionSpecEvaluator._dist_to_target(behavioral_state, recipe),
                    T_d_approx, spec.t, spec.s - ego_fstate[0], spec.v, vel_profile.t_first, vel_profile.v_mid,
                    (vel_profile.v_mid - vel_profile.v_init) / vel_profile.t_first,
@@ -278,25 +276,24 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         return safe_time
 
     @staticmethod
-    def _calc_action_costs(ego_fstate: np.array, vel_profile: VelocityProfile, action_spec: ActionSpec,
-                           lane_width: float, T_d_max: float, T_d_approx: float) -> [float, np.array]:
+    def _calc_action_costs(ego_fstate: np.array, spec: ActionSpec, lane_width: float,
+                           T_d_max: float, T_d_approx: float) -> [float, np.array]:
         """
         Calculate the cost of the action
-        :param vel_profile: longitudinal velocity profile
-        :param action_spec: action spec
+        :param spec: action spec
         :param lane_width: lane width
         :param T_d_max: [sec] the largest possible lateral time imposed by safety. np.inf if it's not imposed
         :param T_d_approx: [sec] heuristic approximation of lateral time, according to the initial and end constraints
         :return: the action's cost and the cost components array (for debugging)
         """
         # calculate efficiency, comfort and non-right lane costs
-        target_lane = int(action_spec.d / lane_width)
-        efficiency_cost = BP_CostFunctions.calc_efficiency_cost(vel_profile)
-        lon_comf_cost, lat_comf_cost = BP_CostFunctions.calc_comfort_cost(ego_fstate, action_spec, T_d_max, T_d_approx)
-        right_lane_cost = BP_CostFunctions.calc_right_lane_cost(action_spec.t, target_lane)
+        target_lane = int(spec.d / lane_width)
+        efficiency_cost = BP_CostFunctions.calc_efficiency_cost(ego_fstate, spec)
+        lon_comf_cost, lat_comf_cost = BP_CostFunctions.calc_comfort_cost(ego_fstate, spec, T_d_max, T_d_approx)
+        right_lane_cost = BP_CostFunctions.calc_right_lane_cost(spec.t, target_lane)
 
         # calculate maximal deviation from lane center for lane deviation cost
-        signed_lat_dist = action_spec.d - ego_fstate[FS_DX]
+        signed_lat_dist = spec.d - ego_fstate[FS_DX]
         rel_lat = abs(signed_lat_dist)/lane_width
         rel_vel = ego_fstate[FS_DV]/lane_width
         if signed_lat_dist * rel_vel < 0:  # changes lateral direction
