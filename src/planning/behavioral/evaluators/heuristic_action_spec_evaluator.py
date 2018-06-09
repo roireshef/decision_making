@@ -9,9 +9,10 @@ from decision_making.src.global_constants import SPECIFICATION_MARGIN_TIME_DELAY
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, \
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionType, \
-    AggressivenessLevel, RelativeLane, NavigationGoal, ActionSpec
+    RelativeLane, ActionSpec
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator
-from decision_making.src.planning.behavioral.evaluators.cost_functions import BP_CostFunctions, VelocityProfile
+from decision_making.src.planning.behavioral.evaluators.cost_functions import BP_CostFunctions
+from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
 from decision_making.src.planning.types import FP_SX, FS_DV, FS_DX, FS_SX, FS_SV
 from decision_making.src.planning.utils.map_utils import MapUtils
 from mapping.src.service.map_service import MapService
@@ -64,8 +65,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             target_lane = ego_lane + recipe.relative_lane.value
             lat_dist = (target_lane + 0.5) * lane_width - ego_road.intra_road_lat
             # calculate approximated lateral time according to the CALM aggressiveness level
-            T_d_approx = HeuristicActionSpecEvaluator._calc_lateral_time(ego_fstate[FS_DV], lat_dist, lane_width,
-                                                                         AggressivenessLevel.CALM)
+            T_d_approx = HeuristicActionSpecEvaluator._calc_lateral_time(ego_fstate[FS_DV], lat_dist, lane_width)
 
             # create velocity profile, whose length is at least as the lateral time
             vel_profile = HeuristicActionSpecEvaluator._calc_velocity_profile(ego_fstate, recipe, spec)
@@ -127,8 +127,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             return VelocityProfile(v_init=ego_fstate[FS_SV], t_first=spec.t, v_mid=spec.v, t_flat=t2, t_last=0, v_tar=spec.v)
 
     @staticmethod
-    def _calc_lateral_time(init_lat_vel: float, signed_lat_dist: float, lane_width: float,
-                           aggressiveness_level: AggressivenessLevel) -> [float, float, float]:
+    def _calc_lateral_time(init_lat_vel: float, signed_lat_dist: float, lane_width: float) -> [float, float, float]:
         """
         Given initial lateral velocity and signed lateral distance, estimate a time it takes to perform the movement.
         The time estimation assumes movement by velocity profile like in the longitudinal case.
@@ -184,10 +183,13 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             followed_obj = behavioral_state.road_occupancy_grid[forward_cell][0].dynamic_object
             # calculate initial and final safety w.r.t. the followed object
             td = SAFETY_MARGIN_TIME_DELAY
+            td_spec = SPECIFICATION_MARGIN_TIME_DELAY
             margin = 0.5 * (ego.size.length + followed_obj.size.length)
             (act_time, act_dist) = (vel_profile.total_time(), vel_profile.total_dist())
             obj_lon = followed_obj.road_localization.road_lon
             (end_ego_lon, end_obj_lon) = (ego_lon + act_dist, obj_lon + followed_obj.v_x * act_time)
+            init_spec_dist = obj_lon - ego_lon - td_spec * followed_obj.v_x
+            end_spec_dist = end_obj_lon - end_ego_lon - td_spec * followed_obj.v_x
             init_safe_dist = VelocityProfile.get_safety_dist(followed_obj.v_x, ego.v_x, obj_lon - ego_lon, td, margin)
             end_safe_dist = VelocityProfile.get_safety_dist(followed_obj.v_x, vel_profile.v_tar,
                                                             end_obj_lon - end_ego_lon, td, margin)
@@ -195,8 +197,8 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             # the action is unsafe if:  (change_lane and initially unsafe) or
             #                           (finally_unsafe and worse than initially) or
             #                           (the profile is unsafe)
-            if (lane_change and (init_safe_dist <= 0 or end_safe_dist <= 0)) or \
-                            end_safe_dist <= min(0., init_safe_dist):
+            if (lane_change and init_safe_dist <= 0) or end_safe_dist <= 0. or \
+                            end_spec_dist <= min(0., init_spec_dist):
                 print('forward unsafe: %d(%d %d) rel_lat=%d dist=%.2f t=%.2f final_dist=%.2f v_obj=%.2f '
                       'prof=(t=[%.2f %.2f %.2f] v=[%.2f %.2f %.2f]) init_safe=%.2f final_safe=%.2f; td=%.2f' %
                       (i, recipe.action_type.value, recipe.aggressiveness.value, action_lat_cell.value,

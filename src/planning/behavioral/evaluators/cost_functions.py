@@ -3,8 +3,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec
 
 from decision_making.src.global_constants import BP_RIGHT_LANE_COST_WEIGHT, BP_EFFICIENCY_COST_WEIGHT, \
     LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, BP_DEFAULT_DESIRED_SPEED, \
-    BP_METRICS_LANE_DEVIATION_COST_WEIGHT, BP_EFFICIENCY_COST_CONVEXITY_RATIO, MINIMAL_STATIC_ACTION_TIME
-from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
+    BP_METRICS_LANE_DEVIATION_COST_WEIGHT, BP_EFFICIENCY_COST_CONVEXITY_RATIO
 from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DA, FS_DV, FS_DX
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
