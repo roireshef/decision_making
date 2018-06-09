@@ -17,6 +17,7 @@ from decision_making.src.planning.types import FP_SX, FS_DV, FS_DX, FS_SX, FS_SV
 from decision_making.src.planning.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.planning.utils.safety_utils import SafetyUtils
 from mapping.src.service.map_service import MapService
 
 
@@ -31,6 +32,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         self.back_danger_side = None
         self.back_danger_time = None
         self.front_blame = False
+        self.changing_lane = False
 
     def evaluate(self, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
                  action_specs: List[ActionSpec], action_specs_mask: List[bool]) -> np.ndarray:
@@ -74,12 +76,18 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             if vel_profile is None:
                 continue  # infeasible action
 
+            safe_intervals = SafetyUtils.calc_safe_intervals_for_lane_change(
+                behavioral_state, ego_fstate, spec, recipe.action_type == ActionType.FOLLOW_LANE)
+            if len(safe_intervals) == 0:
+                continue
+            T_d_max = safe_intervals[0, 1]
+
             # calculate the latest safe time
-            T_d_max = self._calc_largest_safe_time(behavioral_state, recipe, i, vel_profile, ego.size.length,
-                                                   T_d_approx, lane_width)
-            T_d_max = min(T_d_max, spec.t)
-            if T_d_max < 0:
-                continue  # the action is unsafe from the beginning
+            # T_d_max = self._calc_largest_safe_time(behavioral_state, recipe, i, vel_profile, ego.size.length,
+            #                                        T_d_approx, lane_width)
+            # T_d_max = min(T_d_max, spec.t)
+            # if T_d_max < 0:
+            #     continue  # the action is unsafe from the beginning
 
             # calculate actions costs
             sub_costs = HeuristicActionSpecEvaluator._calc_action_costs(ego_fstate, spec, lane_width, T_d_max, T_d_approx)
@@ -140,26 +148,8 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         [m/s] initial lateral velocity toward target (negative if opposite to the target direction)
         """
         calm_weights = np.array([1.5, 1])  # calm lateral movement
-        T_d = HeuristicActionSpecEvaluator._calc_T_d(calm_weights, ego_fstate, spec)  # TODO: replace by call to SafetyUtils
+        T_d = SafetyUtils._calc_T_d(calm_weights, ego_fstate, spec)
         return T_d
-
-    # TODO: remove it after integration with SafetyUtils
-    @staticmethod
-    def _calc_T_d(weights: np.array, ego_init_fstate: FrenetState2D, spec: ActionSpec) -> float:
-        """
-        Calculate lateral movement time for the given Jerk/T weights.
-        :param weights: array of size 2: weights[0] is jerk weight, weights[1] is T weight
-        :param ego_init_fstate: ego initial frenet state
-        :param spec: action specification
-        :return: lateral movement time
-        """
-        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
-            w_T=np.array([weights[1]]), w_J=np.array([weights[0]]), dx=np.array([spec.d - ego_init_fstate[FS_DX]]),
-            a_0=np.array([ego_init_fstate[FS_DA]]), v_0=np.array([ego_init_fstate[FS_DV]]),
-            v_T=np.array([0]), T_m=np.array([0]))
-        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[1]]))
-        T_d = np.fmin.reduce(roots_d, axis=-1)[0]
-        return min(T_d, spec.t)
 
     def _calc_largest_safe_time(self, behavioral_state: BehavioralGridState, recipe: ActionRecipe, i: int,
                                 vel_profile: VelocityProfile, ego_length: float, T_d: float, lane_width: float) -> float:

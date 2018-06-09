@@ -144,6 +144,7 @@ MINIMAL_STATIC_ACTION_TIME = 8
 # [m] default longitudinal distance to the next navigation goal
 DEFAULT_DISTANCE_TO_NAVIGATION_GOAL = 300
 
+SAFETY_SAMPLING_RESOLUTION = 4
 
 
 # Trajectory Planner #
