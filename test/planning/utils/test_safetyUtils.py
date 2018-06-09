@@ -2,12 +2,11 @@ from logging import Logger
 
 import numpy as np
 
-from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
-from decision_making.src.planning.behavioral.filtering.safety_utils import SafetyUtils
 from decision_making.src.planning.types import C_V, C_YAW, C_Y, C_X, C_K, C_A
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.utils.safety_utils import SafetyUtils
 from decision_making.src.state.state import EgoState, ObjectSize, DynamicObject, State
 from mapping.src.service.map_service import MapService
 
@@ -54,28 +53,49 @@ def test_isSafeSpecCalcLaneChangeLastSafeTime_3objects4specs_fastUnsafeLF_slowUn
     spec = ActionSpec(T, target_vel, ego_lon + s, lane_width/2)  # same lane
     is_safe = SafetyUtils.is_safe_spec(behavioral_state, ego_init_fstate, spec)
     last_safe_time = SafetyUtils.calc_lane_change_last_safe_time(behavioral_state, ego_init_fstate, spec)
-    assert is_safe and last_safe_time == np.inf
+    safe_intervals = SafetyUtils.calc_safe_intervals_for_lane_change(behavioral_state, ego_init_fstate, spec, True)
+    assert is_safe and last_safe_time == np.inf and safe_intervals[0, 0] == 0 and safe_intervals[0, 1] == T
 
     target_vel = ego_vel+4
     s = T * (ego_vel + target_vel)/2
     spec = ActionSpec(T, target_vel, ego_lon + s, 3*lane_width/2)  # goto left
     is_safe = SafetyUtils.is_safe_spec(behavioral_state, ego_init_fstate, spec)
     last_safe_time = SafetyUtils.calc_lane_change_last_safe_time(behavioral_state, ego_init_fstate, spec)
-    assert not is_safe and last_safe_time == np.inf  # unsafe w.r.t. LF because of high velocity
+    safe_intervals = SafetyUtils.calc_safe_intervals_for_lane_change(behavioral_state, ego_init_fstate, spec, True)
+    # unsafe w.r.t. LF because of high velocity
+    assert not is_safe and last_safe_time == np.inf and len(safe_intervals) == 0
 
     target_vel = ego_vel+2
     s = T * (ego_vel + target_vel)/2
     spec = ActionSpec(T, target_vel, ego_lon + s, 3*lane_width/2)  # goto left
     is_safe = SafetyUtils.is_safe_spec(behavioral_state, ego_init_fstate, spec)
     last_safe_time = SafetyUtils.calc_lane_change_last_safe_time(behavioral_state, ego_init_fstate, spec)
-    assert is_safe and T_d_min < last_safe_time < np.inf  # last_safe_time w.r.t. LB
+    safe_intervals = SafetyUtils.calc_safe_intervals_for_lane_change(behavioral_state, ego_init_fstate, spec, True)
+    # last_safe_time w.r.t. LB
+    assert is_safe and T_d_min < last_safe_time < np.inf and safe_intervals[0, 0] == 0 and safe_intervals[0, 1] < 5
 
     target_vel = ego_vel-4
     s = T * (ego_vel + target_vel)/2
     spec = ActionSpec(T, target_vel, ego_lon + s, 3*lane_width/2)  # goto left
     is_safe = SafetyUtils.is_safe_spec(behavioral_state, ego_init_fstate, spec)
     last_safe_time = SafetyUtils.calc_lane_change_last_safe_time(behavioral_state, ego_init_fstate, spec)
-    assert not is_safe and last_safe_time < T_d_min  # unsafe w.r.t. LB because of slow velocity
+    safe_intervals = SafetyUtils.calc_safe_intervals_for_lane_change(behavioral_state, ego_init_fstate, spec, True)
+    # unsafe w.r.t. LB because of slow velocity
+    assert not is_safe and last_safe_time < T_d_min and safe_intervals[0, 0] == 0 and safe_intervals[0, 1] < 3
+
+    LB = create_canonic_object(3, 0, ego_lon - 65,  3*lane_width/2, vel=18, size=size, road_frenet=road_frenet)
+    objects = [F, LB]
+    state = State(None, objects, ego)
+    behavioral_state = BehavioralGridState.create_from_state(state, logger)
+    T = 16
+    target_vel = ego_vel+8
+    s = T * (ego_vel + target_vel)/2
+    spec = ActionSpec(T, target_vel, ego_lon + s, 3*lane_width/2)  # goto left
+    safe_intervals = SafetyUtils.calc_safe_intervals_for_lane_change(behavioral_state, ego_init_fstate, spec, True)
+    # two safe intervals w.r.t. LB and bounded by F
+    assert safe_intervals.shape[0] == 2 and \
+           0 <= safe_intervals[0, 0] + 3 <= safe_intervals[0, 1] < 3.5 and \
+           6 <= safe_intervals[1, 0] + 4 <= safe_intervals[1, 1] <= 10
 
 
 def create_canonic_object(obj_id: int, timestamp: int, lon: float, lat: float, vel: float, size: ObjectSize,

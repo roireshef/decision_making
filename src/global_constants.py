@@ -97,6 +97,9 @@ LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 SPECIFICATION_MARGIN_TIME_DELAY = 2
 SAFETY_MARGIN_TIME_DELAY = 1
 
+# integer number of samples per second for safety test
+SAFETY_SAMPLING_RESOLUTION = 4
+
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
