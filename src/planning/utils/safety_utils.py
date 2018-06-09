@@ -130,6 +130,10 @@ class SafetyUtils:
         zeros = np.zeros(samples_num)
         ego_ftrajectory = None
 
+        forward_safe_times = np.array([True]*samples_num)
+        front_safe_times = np.array([True]*samples_num)
+        back_safe_times = np.array([True]*samples_num)
+
         # check safety w.r.t. the followed object on the target lane (if exists)
         if test_followed_obj and forward_cell in behavioral_state.road_occupancy_grid:
             cell = behavioral_state.road_occupancy_grid[forward_cell][0]
@@ -143,53 +147,54 @@ class SafetyUtils:
 
             forward_safe_times = SafetyUtils._get_safe_time_samples(
                 obj_ftrajectory, ego_ftrajectory, (ego.size.length + cell.dynamic_object.size.length)/2, time_delay)
-            if not np.all(forward_safe_times):
-                return np.array([])  # unsafe action
-        if rel_lane == RelativeLane.SAME_LANE:  # safe everywhere
-            return np.array([np.array([0, spec.t])])
 
-        # check safety w.r.t. the front object F on the original lane (if exists)
-        front_safe_times = np.array([True]*samples_num)
-        back_safe_times = np.array([True]*samples_num)
-        if front_cell in behavioral_state.road_occupancy_grid:
-            # calculate last safe time w.r.t. F
-            cell = behavioral_state.road_occupancy_grid[front_cell][0]
-            obj_ftrajectory = np.c_[cell.fstate[FS_SX] + cell.fstate[FS_SV] * time_samples,
-                                    cell.fstate[FS_SV] + zeros, zeros, zeros, zeros, zeros]
+        if rel_lane != RelativeLane.SAME_LANE:  # safe everywhere
+            # check safety w.r.t. the front object F on the original lane (if exists)
+            if front_cell in behavioral_state.road_occupancy_grid:
+                # calculate last safe time w.r.t. F
+                cell = behavioral_state.road_occupancy_grid[front_cell][0]
+                obj_ftrajectory = np.c_[cell.fstate[FS_SX] + cell.fstate[FS_SV] * time_samples,
+                                        cell.fstate[FS_SV] + zeros, zeros, zeros, zeros, zeros]
 
-            # time delay decreases as function of lateral distance to the target,
-            # since as latitude advances the lateral escape is easier
-            td_0 = SAFETY_MARGIN_TIME_DELAY * abs(spec.d - ego_init_fstate[FS_DX]) / lane_width
-            td_T = 0  # dist to F after completing lane change. TODO: increase it when the planning will be deep
-            time_delay = np.arange(td_0 + np.finfo(np.float16).eps, td_T, (td_T - td_0) / (len(time_samples) - 1))
+                # time delay decreases as function of lateral distance to the target,
+                # since as latitude advances the lateral escape is easier
+                td_0 = SAFETY_MARGIN_TIME_DELAY * abs(spec.d - ego_init_fstate[FS_DX]) / lane_width
+                td_T = 0  # dist to F after completing lane change. TODO: increase it when the planning will be deep
+                time_delay = np.arange(td_0 + np.finfo(np.float16).eps, td_T, (td_T - td_0) / (len(time_samples) - 1))
 
-            # create longitudinal ego frenet trajectory for the time samples based on the spec
-            if ego_ftrajectory is None:
-                ego_ftrajectory = SafetyUtils._calc_longitudinal_ego_trajectory(ego_init_fstate, spec, time_samples)
+                # create longitudinal ego frenet trajectory for the time samples based on the spec
+                if ego_ftrajectory is None:
+                    ego_ftrajectory = SafetyUtils._calc_longitudinal_ego_trajectory(ego_init_fstate, spec, time_samples)
 
-            front_safe_times = SafetyUtils._get_safe_time_samples(
-                obj_ftrajectory, ego_ftrajectory, (ego_length + cell.dynamic_object.size.length) / 2, time_delay)
+                front_safe_times = SafetyUtils._get_safe_time_samples(
+                    obj_ftrajectory, ego_ftrajectory, (ego_length + cell.dynamic_object.size.length) / 2, time_delay)
 
-        # check safety w.r.t. the back object LB / RB on the target lane (if exists)
-        if side_rear_cell in behavioral_state.road_occupancy_grid:
-            cell = behavioral_state.road_occupancy_grid[side_rear_cell][0]
-            obj_ftrajectory = np.c_[cell.fstate[FS_SX] + cell.fstate[FS_SV] * time_samples,
-                                    cell.fstate[FS_SV] + zeros, zeros, zeros, zeros, zeros]
-            time_delay = np.repeat(SPECIFICATION_MARGIN_TIME_DELAY, len(time_samples))
+            # check safety w.r.t. the back object LB / RB on the target lane (if exists)
+            if side_rear_cell in behavioral_state.road_occupancy_grid:
+                cell = behavioral_state.road_occupancy_grid[side_rear_cell][0]
+                obj_ftrajectory = np.c_[cell.fstate[FS_SX] + cell.fstate[FS_SV] * time_samples,
+                                        cell.fstate[FS_SV] + zeros, zeros, zeros, zeros, zeros]
+                time_delay = np.repeat(SPECIFICATION_MARGIN_TIME_DELAY, len(time_samples))
 
-            # create longitudinal ego frenet trajectory for the time samples based on the spec
-            if ego_ftrajectory is None:
-                ego_ftrajectory = SafetyUtils._calc_longitudinal_ego_trajectory(ego_init_fstate, spec, time_samples)
+                # create longitudinal ego frenet trajectory for the time samples based on the spec
+                if ego_ftrajectory is None:
+                    ego_ftrajectory = SafetyUtils._calc_longitudinal_ego_trajectory(ego_init_fstate, spec, time_samples)
 
-            back_safe_times = SafetyUtils._get_safe_time_samples(
-                ego_ftrajectory, obj_ftrajectory, (ego_length + cell.dynamic_object.size.length) / 2, time_delay)
+                back_safe_times = SafetyUtils._get_safe_time_samples(
+                    ego_ftrajectory, obj_ftrajectory, (ego_length + cell.dynamic_object.size.length) / 2, time_delay)
 
-        # find safe intervals
+        # calculate the range of safe indices based on LF and F
+        unsafe_idxs = np.where(np.logical_not(forward_safe_times))[0]
+        forward_safe_from = 0
+        if len(unsafe_idxs) > 0:
+            forward_safe_from = unsafe_idxs[-1] + 1
         unsafe_idxs = np.where(np.logical_not(front_safe_times))[0]
         front_safe_till = samples_num
         if len(unsafe_idxs) > 0:
             front_safe_till = unsafe_idxs[0]
-        ext_safe_times = np.concatenate(([False], back_safe_times[:front_safe_till], [False]))
+
+        # find safe intervals based on the range and LB
+        ext_safe_times = np.concatenate(([False], back_safe_times[forward_safe_from:front_safe_till], [False]))
         start_points = np.where(np.logical_and(ext_safe_times[1:], np.logical_not(ext_safe_times[:-1])))[0]
         end_points = np.where(np.logical_and(ext_safe_times[:-1], np.logical_not(ext_safe_times[1:])))[0]
         intervals = np.c_[time_samples[start_points], time_samples[end_points-1]]
