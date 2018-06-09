@@ -54,16 +54,9 @@ class BP_CostFunctions:
         # lateral jerk
         T_d = min(T_d_approx, T_d_max)
         if 0. < T_d < np.inf:
-            lat_dist = spec.d - ego_fstate[FS_DX]
-            lat_jerk1 = QuinticPoly1D.cumulative_jerk_from_constraints(ego_fstate[FS_DA], ego_fstate[FS_DV], 0,
-                                                                       lat_dist, T_d)
-            lat_jerk2 = np.inf
-            # try to decrease the lateral jerk (if it's possible), by increasing the heuristic lateral time
-            if T_d_approx < T_d_max:
-                T_d = min(2 * T_d_approx, T_d_max)
-                lat_jerk2 = QuinticPoly1D.cumulative_jerk_from_constraints(ego_fstate[FS_DA], ego_fstate[FS_DV], 0,
-                                                                           lat_dist, T_d)
-            lat_cost = min(lat_jerk1, lat_jerk2) * LAT_JERK_COST_WEIGHT
+            lat_jerk = QuinticPoly1D.cumulative_jerk_from_constraints(ego_fstate[FS_DA], ego_fstate[FS_DV], 0,
+                                                                      spec.d - ego_fstate[FS_DX], T_d)
+            lat_cost = lat_jerk * LAT_JERK_COST_WEIGHT
 
         # longitudinal jerk
         if spec.t > 0:

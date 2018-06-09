@@ -5,7 +5,7 @@ import numpy as np
 import sys
 
 from decision_making.src.global_constants import SPECIFICATION_MARGIN_TIME_DELAY, SAFETY_MARGIN_TIME_DELAY, \
-    LAT_CALM_ACC, MINIMAL_STATIC_ACTION_TIME
+    LAT_CALM_ACC, MINIMAL_STATIC_ACTION_TIME, BP_ACTION_T_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, \
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionType, \
@@ -13,8 +13,10 @@ from decision_making.src.planning.behavioral.data_objects import ActionRecipe, A
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.cost_functions import BP_CostFunctions
 from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
-from decision_making.src.planning.types import FP_SX, FS_DV, FS_DX, FS_SX, FS_SV
+from decision_making.src.planning.types import FP_SX, FS_DV, FS_DX, FS_SX, FS_SV, FrenetState2D, FS_DA
 from decision_making.src.planning.utils.map_utils import MapUtils
+from decision_making.src.planning.utils.math import Math
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from mapping.src.service.map_service import MapService
 
 
@@ -65,7 +67,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             target_lane = ego_lane + recipe.relative_lane.value
             lat_dist = (target_lane + 0.5) * lane_width - ego_road.intra_road_lat
             # calculate approximated lateral time according to the CALM aggressiveness level
-            T_d_approx = HeuristicActionSpecEvaluator._calc_lateral_time(ego_fstate[FS_DV], lat_dist, lane_width)
+            T_d_approx = HeuristicActionSpecEvaluator._calc_lateral_time(ego_fstate, spec)
 
             # create velocity profile, whose length is at least as the lateral time
             vel_profile = HeuristicActionSpecEvaluator._calc_velocity_profile(ego_fstate, recipe, spec)
@@ -127,27 +129,37 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             return VelocityProfile(v_init=ego_fstate[FS_SV], t_first=spec.t, v_mid=spec.v, t_flat=t2, t_last=0, v_tar=spec.v)
 
     @staticmethod
-    def _calc_lateral_time(init_lat_vel: float, signed_lat_dist: float, lane_width: float) -> [float, float, float]:
+    def _calc_lateral_time(ego_fstate: FrenetState2D, spec: ActionSpec) -> float:
         """
         Given initial lateral velocity and signed lateral distance, estimate a time it takes to perform the movement.
         The time estimation assumes movement by velocity profile like in the longitudinal case.
-        :param init_lat_vel: [m/s] initial lateral velocity
-        :param signed_lat_dist: [m] signed distance to the target
+        :param ego_fstate: initial ego frenet state
+        :param spec: action specification
         :param lane_width: [m] lane width
-        :param aggressiveness_level: aggressiveness_level
         :return: [s] the lateral movement time to the target, [m] maximal lateral deviation from lane center,
         [m/s] initial lateral velocity toward target (negative if opposite to the target direction)
         """
-        if signed_lat_dist > 0:
-            lat_v_init_toward_target = init_lat_vel
-        else:
-            lat_v_init_toward_target = -init_lat_vel
-        # normalize lat_acc by lane_width, such that T_d will NOT depend on lane_width
-        acc = LAT_CALM_ACC
-        lat_acc = acc * lane_width / 3.6
-        lateral_profile = VelocityProfile.calc_profile_given_acc(lat_v_init_toward_target, lat_acc,
-                                                                 abs(signed_lat_dist), 0)
-        return lateral_profile.t_first + lateral_profile.t_last
+        calm_weights = np.array([1.5, 1])  # calm lateral movement
+        T_d = HeuristicActionSpecEvaluator._calc_T_d(calm_weights, ego_fstate, spec)  # TODO: replace by call to SafetyUtils
+        return T_d
+
+    # TODO: remove it after integration with SafetyUtils
+    @staticmethod
+    def _calc_T_d(weights: np.array, ego_init_fstate: FrenetState2D, spec: ActionSpec) -> float:
+        """
+        Calculate lateral movement time for the given Jerk/T weights.
+        :param weights: array of size 2: weights[0] is jerk weight, weights[1] is T weight
+        :param ego_init_fstate: ego initial frenet state
+        :param spec: action specification
+        :return: lateral movement time
+        """
+        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
+            w_T=np.array([weights[1]]), w_J=np.array([weights[0]]), dx=np.array([spec.d - ego_init_fstate[FS_DX]]),
+            a_0=np.array([ego_init_fstate[FS_DA]]), v_0=np.array([ego_init_fstate[FS_DV]]),
+            v_T=np.array([0]), T_m=np.array([0]))
+        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[1]]))
+        T_d = np.fmin.reduce(roots_d, axis=-1)[0]
+        return min(T_d, spec.t)
 
     def _calc_largest_safe_time(self, behavioral_state: BehavioralGridState, recipe: ActionRecipe, i: int,
                                 vel_profile: VelocityProfile, ego_length: float, T_d: float, lane_width: float) -> float:
