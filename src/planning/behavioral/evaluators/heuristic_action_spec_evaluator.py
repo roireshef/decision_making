@@ -78,7 +78,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
 
             safe_intervals = SafetyUtils.calc_safe_intervals_for_lane_change(
                 behavioral_state, ego_fstate, spec, recipe.action_type == ActionType.FOLLOW_LANE)
-            if len(safe_intervals) == 0:
+            if len(safe_intervals) == 0 or safe_intervals[0, 0] > 0:
                 continue
             T_d_max = safe_intervals[0, 1]
 
@@ -93,11 +93,11 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             sub_costs = HeuristicActionSpecEvaluator._calc_action_costs(ego_fstate, spec, lane_width, T_d_max, T_d_approx)
             costs[i] = np.sum(sub_costs)
 
-            print('action %d(%d %d) lane %d: dist=%.1f [td=%.2f t=%.2f s=%.2f v=%.2f] [t1=%.2f v_mid=%.2f a=%.2f] '
-                  '[eff %.3f comf %.2f,%.2f right %.2f dev %.2f]: tot %.2f' %
+            print('action %d(%d %d) lane %d: dist=%.1f [td=%.2f tdmax=%.2f t=%.2f s=%.2f v=%.2f] '
+                  '[t1=%.2f v_mid=%.2f a=%.2f] [eff %.3f comf %.2f,%.2f right %.2f dev %.2f]: tot %.2f' %
                   (i, recipe.action_type.value, recipe.aggressiveness.value, ego_lane + recipe.relative_lane.value,
                    HeuristicActionSpecEvaluator._dist_to_target(behavioral_state, recipe),
-                   T_d_approx, spec.t, spec.s - ego_fstate[0], spec.v, vel_profile.t_first, vel_profile.v_mid,
+                   T_d_approx, T_d_max, spec.t, spec.s - ego_fstate[0], spec.v, vel_profile.t_first, vel_profile.v_mid,
                    (vel_profile.v_mid - vel_profile.v_init) / vel_profile.t_first,
                    sub_costs[0], sub_costs[1], sub_costs[2], sub_costs[3], sub_costs[4], costs[i]))
 
@@ -148,7 +148,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         [m/s] initial lateral velocity toward target (negative if opposite to the target direction)
         """
         calm_weights = np.array([1.5, 1])  # calm lateral movement
-        T_d = SafetyUtils._calc_T_d(calm_weights, ego_fstate, spec)
+        T_d = SafetyUtils.calc_T_d(calm_weights, ego_fstate, spec)
         return T_d
 
     def _calc_largest_safe_time(self, behavioral_state: BehavioralGridState, recipe: ActionRecipe, i: int,

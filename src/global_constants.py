@@ -122,7 +122,7 @@ LAT_CALM_ACC = 0.4
 BP_CALM_LANE_CHANGE_TIME = 6.42
 
 # performance metrics for BP: efficiency cost weight
-BP_EFFICIENCY_COST_WEIGHT = 5.
+BP_EFFICIENCY_COST_WEIGHT = 3.
 
 # The following constant adjusts convexity of the efficiency cost as function of velocity (used by efficiency cost).
 # Let E(v) be the efficiency cost as function of velocity v.
