@@ -29,12 +29,13 @@ class SafetyUtils:
         """
         ego = behavioral_state.ego_state
         ego_length = ego.size.length
-        rel_lane = SafetyUtils._get_rel_lane_from_spec(ego.road_localization.road_id, ego_init_fstate, spec)
+        rel_origin_lane, rel_target_lane = \
+            SafetyUtils._get_rel_lane_from_spec(ego.road_localization.road_id, ego_init_fstate, spec)
         lane_width = MapService.get_instance().get_road(ego.road_localization.road_id).lane_width
 
-        forward_cell = (rel_lane, RelativeLongitudinalPosition.FRONT)
-        front_cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
-        side_rear_cell = (rel_lane, RelativeLongitudinalPosition.REAR)
+        forward_cell = (rel_target_lane, RelativeLongitudinalPosition.FRONT)
+        front_cell = (rel_origin_lane, RelativeLongitudinalPosition.FRONT)
+        side_rear_cell = (rel_target_lane, RelativeLongitudinalPosition.REAR)
 
         # create time samples for safety checking
         sampling_step = spec.t / (SAFETY_SAMPLING_RESOLUTION * np.round(spec.t))  # the last sample is spec.t
@@ -69,10 +70,11 @@ class SafetyUtils:
             if end_spec_dist <= min(0., start_spec_dist):
                 forward_safe_times[-1] = False
 
-        if rel_lane != RelativeLane.SAME_LANE:  # change lane
+        # change lane
+        if rel_origin_lane != rel_target_lane:
 
             # filter action if there is a side car
-            if (rel_lane, RelativeLongitudinalPosition.PARALLEL) in behavioral_state.road_occupancy_grid:
+            if (rel_target_lane, RelativeLongitudinalPosition.PARALLEL) in behavioral_state.road_occupancy_grid:
                 return np.array([])
 
             # check safety w.r.t. the front object F on the original lane (if exists)
@@ -127,14 +129,27 @@ class SafetyUtils:
         return intervals
 
     @staticmethod
-    def _get_rel_lane_from_spec(road_id: int, ego_init_fstate: FrenetState2D, spec: ActionSpec) -> RelativeLane:
+    def _get_rel_lane_from_spec(road_id: int, ego_fstate: FrenetState2D, spec: ActionSpec) -> \
+            [RelativeLane, RelativeLane]:
+        """
+        Return origin and target relative lanes
+        :param road_id:
+        :param ego_fstate:
+        :param spec:
+        :return: origin & target relative lanes
+        """
         lane_width = MapService.get_instance().get_road(road_id).lane_width
-        if abs(spec.d - ego_init_fstate[FS_DX]) <= lane_width/2:
-            return RelativeLane.SAME_LANE
-        elif spec.d - ego_init_fstate[FS_DX] > lane_width/2:
-            return RelativeLane.LEFT_LANE
+        if abs(spec.d - ego_fstate[FS_DX]) <= lane_width/2:
+            if abs(spec.d - ego_fstate[FS_DX]) <= lane_width/4:
+                return RelativeLane.SAME_LANE, RelativeLane.SAME_LANE
+            elif spec.d - ego_fstate[FS_DX] > lane_width/4:
+                return RelativeLane.RIGHT_LANE, RelativeLane.SAME_LANE
+            else:
+                return RelativeLane.LEFT_LANE, RelativeLane.SAME_LANE
+        elif spec.d - ego_fstate[FS_DX] > lane_width/2:
+            return RelativeLane.SAME_LANE, RelativeLane.LEFT_LANE
         else:
-            return RelativeLane.RIGHT_LANE
+            return RelativeLane.SAME_LANE, RelativeLane.RIGHT_LANE
 
     @staticmethod
     def _calc_longitudinal_ego_trajectory(ego_init_fstate: FrenetState2D, spec: ActionSpec, time_samples: np.array) -> \
