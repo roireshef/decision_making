@@ -15,8 +15,6 @@ from decision_making.src.planning.behavioral.evaluators.cost_functions import BP
 from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
 from decision_making.src.planning.types import FP_SX, FS_DV, FS_DX, FS_SX, FS_SV, FrenetState2D, FS_DA
 from decision_making.src.planning.utils.map_utils import MapUtils
-from decision_making.src.planning.utils.math import Math
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
 from mapping.src.service.map_service import MapService
 
@@ -66,8 +64,6 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                 continue
 
             recipe = action_recipes[i]
-            target_lane = ego_lane + recipe.relative_lane.value
-            lat_dist = (target_lane + 0.5) * lane_width - ego_road.intra_road_lat
             # calculate approximated lateral time according to the CALM aggressiveness level
             T_d_approx = HeuristicActionSpecEvaluator._calc_lateral_time(ego_fstate, spec)
 
@@ -79,6 +75,10 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             safe_intervals = SafetyUtils.calc_safe_intervals_for_lane_change(
                 behavioral_state, ego_fstate, spec, recipe.action_type == ActionType.FOLLOW_LANE)
             if len(safe_intervals) == 0 or safe_intervals[0, 0] > 0:
+                print('unsafe action %3d(%d): lane %d dist=%.2f [t=%.2f td=%.2f s=%.2f v=%.2f]' %
+                      (i, recipe.aggressiveness.value, ego_lane + recipe.relative_lane.value,
+                       HeuristicActionSpecEvaluator._dist_to_target(behavioral_state, ego_fstate, spec),
+                       spec.t, T_d_approx, spec.s - ego_fstate[0], spec.v))
                 continue
             T_d_max = safe_intervals[0, 1]
 
@@ -93,21 +93,21 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             sub_costs = HeuristicActionSpecEvaluator._calc_action_costs(ego_fstate, spec, lane_width, T_d_max, T_d_approx)
             costs[i] = np.sum(sub_costs)
 
-            print('action %d(%d %d) lane %d: dist=%.1f [td=%.2f tdmax=%.2f t=%.2f s=%.2f v=%.2f] '
+            print('action %d(%d %d) lane %d: dist=%.1f [t=%.2f td=%.2f tdmax=%.2f s=%.2f v=%.2f] '
                   '[t1=%.2f v_mid=%.2f a=%.2f] [eff %.3f comf %.2f,%.2f right %.2f dev %.2f]: tot %.2f' %
                   (i, recipe.action_type.value, recipe.aggressiveness.value, ego_lane + recipe.relative_lane.value,
-                   HeuristicActionSpecEvaluator._dist_to_target(behavioral_state, recipe),
-                   T_d_approx, T_d_max, spec.t, spec.s - ego_fstate[0], spec.v, vel_profile.t_first, vel_profile.v_mid,
+                   HeuristicActionSpecEvaluator._dist_to_target(behavioral_state, ego_fstate, spec),
+                   spec.t, T_d_approx, T_d_max, spec.s - ego_fstate[0], spec.v, vel_profile.t_first, vel_profile.v_mid,
                    (vel_profile.v_mid - vel_profile.v_init) / vel_profile.t_first,
                    sub_costs[0], sub_costs[1], sub_costs[2], sub_costs[3], sub_costs[4], costs[i]))
 
-            self.logger.debug("action %d(%d %d) lane %d: dist=%.1f [td=%.2f t=%.2f s=%.2f v=%.2f] "
+            self.logger.debug("action %d(%d %d) lane %d: dist=%.1f [t=%.2f td=%.2f tdmax=%.2f s=%.2f v=%.2f] "
                               "[t1=%.2f v_mid=%.2f a=%.2f] "
                               "[eff %.3f comf %.2f,%.2f right %.2f dev %.2f]: tot %.2f",
                               i, recipe.action_type.value, recipe.aggressiveness.value,
                               ego_lane + recipe.relative_lane.value,
-                              HeuristicActionSpecEvaluator._dist_to_target(behavioral_state, recipe),
-                              T_d_approx, spec.t, spec.s - ego_fstate[0], spec.v, vel_profile.t_first, vel_profile.v_mid,
+                              HeuristicActionSpecEvaluator._dist_to_target(behavioral_state, ego_fstate, spec),
+                              spec.t, T_d_approx, T_d_max, spec.s - ego_fstate[0], spec.v, vel_profile.t_first, vel_profile.v_mid,
                               (vel_profile.v_mid - vel_profile.v_init) / vel_profile.t_first,
                               sub_costs[0], sub_costs[1], sub_costs[2], sub_costs[3], sub_costs[4], costs[i])
 
@@ -307,15 +307,17 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         return np.array([efficiency_cost, lon_comf_cost, lat_comf_cost, right_lane_cost, lane_deviation_cost])
 
     @staticmethod
-    def _dist_to_target(state: BehavioralGridState, recipe: ActionRecipe):
+    def _dist_to_target(state: BehavioralGridState, ego_fstate: FrenetState2D, spec: ActionSpec):
         """
         given action recipe, calculate longitudinal distance from the target object, and inf for static action
         :param state: behavioral state
-        :param recipe: action recipe
+        :param spec: action specification
         :return: distance from the target
         """
+        rel_lane = SafetyUtils._get_rel_lane_from_spec(state.ego_state.road_localization.road_id, ego_fstate, spec)
+        forward_cell = (rel_lane, RelativeLongitudinalPosition.FRONT)
         dist = np.inf
-        if recipe.action_type != ActionType.FOLLOW_LANE:
-            target_obj = state.road_occupancy_grid[(recipe.relative_lane, recipe.relative_lon)][0].dynamic_object
-            dist = target_obj.road_localization.road_lon - state.ego_state.road_localization.road_lon
+        if forward_cell in state.road_occupancy_grid:
+            cell = state.road_occupancy_grid[forward_cell][0]
+            dist = cell.fstate[FS_SX] - ego_fstate[FS_SX]
         return dist
