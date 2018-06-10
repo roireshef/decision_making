@@ -68,9 +68,10 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             T_d_approx = HeuristicActionSpecEvaluator._calc_lateral_time(ego_fstate, spec)
 
             # create velocity profile, whose length is at least as the lateral time
-            vel_profile = HeuristicActionSpecEvaluator._calc_velocity_profile(ego_fstate, recipe, spec)
-            if vel_profile is None:
-                continue  # infeasible action
+            # vel_profile = HeuristicActionSpecEvaluator._calc_velocity_profile(ego_fstate, recipe, spec)
+            # if vel_profile is None:
+            #     continue  # infeasible action
+            vel_profile = VelocityProfile(0,1,0,0,0,0)
 
             safe_intervals = SafetyUtils.calc_safe_intervals_for_lane_change(
                 behavioral_state, ego_fstate, spec, recipe.action_type == ActionType.FOLLOW_LANE)
@@ -314,7 +315,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         :param spec: action specification
         :return: distance from the target
         """
-        rel_lane = SafetyUtils._get_rel_lane_from_spec(state.ego_state.road_localization.road_id, ego_fstate, spec)
+        _, rel_lane = SafetyUtils._get_rel_lane_from_spec(state.ego_state.road_localization.road_id, ego_fstate, spec)
         forward_cell = (rel_lane, RelativeLongitudinalPosition.FRONT)
         dist = np.inf
         if forward_cell in state.road_occupancy_grid:
