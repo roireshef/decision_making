@@ -5,7 +5,7 @@ import numpy as np
 
 from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MIN_OVERTAKE_VEL, \
-    SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS
+    SPECIFICATION_MARGIN_TIME_DELAY, LON_ACC_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import \
     BehavioralGridState, SemanticGridCell, RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType
@@ -137,9 +137,9 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
             back_fpoint = road_frenet.cpoint_to_fpoint(np.array([back_object.x, back_object.y]))
             dist_to_back_obj = ego_fpoint[FP_SX] - back_fpoint[FP_SX]
             if behavioral_state.ego_state.v_x > back_object.v_x:
-                safe_dist_behind_ego = back_object.v_x * SAFE_DIST_TIME_DELAY
+                safe_dist_behind_ego = back_object.v_x * SPECIFICATION_MARGIN_TIME_DELAY
             else:
-                safe_dist_behind_ego = back_object.v_x * SAFE_DIST_TIME_DELAY + \
+                safe_dist_behind_ego = back_object.v_x * SPECIFICATION_MARGIN_TIME_DELAY + \
                                        back_object.v_x ** 2 / (2 * abs(LON_ACC_LIMITS[0])) - \
                                        behavioral_state.ego_state.v_x ** 2 / (2 * abs(LON_ACC_LIMITS[0]))
         return dist_to_back_obj, safe_dist_behind_ego

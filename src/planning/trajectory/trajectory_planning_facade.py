@@ -199,8 +199,7 @@ class TrajectoryPlanningFacade(DmModule):
             v_x=expected_state_vec[C_V],
             v_y=0.0,  # this is ok because we don't PLAN for drift velocity
             acceleration_lon=expected_state_vec[C_A],
-            omega_yaw=state.ego_state.omega_yaw,  # TODO: remove this field
-            steering_angle=np.arctan(state.ego_state.size.length * expected_state_vec[C_K]),
+            curvature=expected_state_vec[C_K],
         )
 
         updated_state = state.clone_with(ego_state=expected_ego_state)

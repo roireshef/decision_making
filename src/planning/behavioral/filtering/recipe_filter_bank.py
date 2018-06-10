@@ -9,7 +9,6 @@ from decision_making.src.planning.behavioral.data_objects import ActionRecipe, D
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite, TextReadWrite
 
-
 # DynamicActionRecipe Filters
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
 
@@ -18,6 +17,11 @@ class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
     def filter(self, recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
         recipe_cell = (recipe.relative_lane, recipe.relative_lon)
         return recipe_cell in behavioral_state.road_occupancy_grid
+
+
+class FilterActionsTowardsOtherLanes(RecipeFilter):
+    def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
+        return recipe.relative_lane == RelativeLane.SAME_LANE
 
 
 class FilterBadExpectedTrajectory(RecipeFilter):
@@ -44,7 +48,8 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                 if action_type == 'follow_lane':
                     predicate_shape = (len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_V_T_GRID))
                 else:
-                    predicate_shape = (len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_S_T_GRID), len(FILTER_V_T_GRID))
+                    predicate_shape = (
+                        len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_S_T_GRID), len(FILTER_V_T_GRID))
                 predicate = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
                 predicates[(action_type, wT, wJ)] = predicate
 
@@ -91,30 +96,38 @@ class FilterBadExpectedTrajectory(RecipeFilter):
         v_0 = ego_state.v_x
         a_0 = ego_state.acceleration_lon
         wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
+
+        # The predicates currently work for follow-front car,overtake-back car or follow-lane actions.
         if (action_type == ActionType.FOLLOW_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.FRONT) \
                 or (
                 action_type == ActionType.OVERTAKE_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.REAR):
+
             recipe_cell = (recipe.relative_lane, recipe.relative_lon)
-            if recipe_cell in behavioral_state.road_occupancy_grid:
 
-                relative_dynamic_object = behavioral_state.road_occupancy_grid[recipe_cell][0]
-                dynamic_object = relative_dynamic_object.dynamic_object
-                margin_sign = +1 if recipe.action_type == ActionType.FOLLOW_VEHICLE else -1
-                # TODO: the following is not accurate because it returns "same-lon" cars distance as 0
-                s_T = relative_dynamic_object.distance -(LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
-                                                                        ego_state.size.length / 2 + dynamic_object.size.length / 2)
-                v_T = dynamic_object.v_x
-
-                predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
-
-                # TODO: bug when s_T < 0 (on follow of near car)
-                return predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
-                                 FILTER_S_T_GRID.get_index(margin_sign*s_T), FILTER_V_T_GRID.get_index(v_T)] > 0
-            else:
+            if recipe_cell not in behavioral_state.road_occupancy_grid:
                 return False
-        elif action_type == ActionType.FOLLOW_LANE:
-            v_T = recipe.velocity
+
+            # pull target vehicle
+            relative_dynamic_object = behavioral_state.road_occupancy_grid[recipe_cell][0]
+            dynamic_object = relative_dynamic_object.dynamic_object
+            # safety distance is behind or ahead of target vehicle if we follow or overtake it, respectively.
+            margin_sign = +1 if recipe.action_type == ActionType.FOLLOW_VEHICLE else -1
+            # compute distance from target vehicle +/- safety margin
+            s_T = relative_dynamic_object.distance - (LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
+                                                      ego_state.size.length / 2 + dynamic_object.size.length / 2)
+            v_T = dynamic_object.v_x
+
             predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
+
+            return predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
+                             FILTER_S_T_GRID.get_index(margin_sign * s_T), FILTER_V_T_GRID.get_index(v_T)] > 0
+
+        elif action_type == ActionType.FOLLOW_LANE:
+
+            v_T = recipe.velocity
+
+            predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
+
             return predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
                              FILTER_V_T_GRID.get_index(v_T)] > 0
         else:
