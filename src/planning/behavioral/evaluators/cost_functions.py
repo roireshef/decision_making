@@ -49,12 +49,14 @@ class BP_CostFunctions:
         :param T_d_approx: [sec] heuristic approximation of lateral time, according to the initial and end constraints
         :return: comfort cost in units of the general performance metrics cost
         """
+        if 0 == T_d_max < T_d_approx:
+            return 0, np.inf
         lat_cost = lon_cost = 0
 
         # lateral jerk
         T_d = min(T_d_approx, T_d_max)
         (dx, dv) = (spec.d - ego_fstate[FS_DX], ego_fstate[FS_DV])
-        if 0. < T_d < np.inf and (abs(dx) > 0.5 or dx * dv < 0):
+        if 0. < T_d < np.inf and (abs(dx) > 0.5 or dx * dv < 0):  # prevent singular point for short
             lat_jerk = QuinticPoly1D.cumulative_jerk_from_constraints(ego_fstate[FS_DA], dv, 0, dx, T_d)
             lat_cost = lat_jerk * LAT_JERK_COST_WEIGHT
 
