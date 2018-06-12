@@ -393,7 +393,7 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
         :param size: class ObjectSize
         :param confidence: of object's existence
         """
-        cls(obj_id, timestamp, None, map_state, size, confidence)
+        return cls(obj_id, timestamp, None, map_state, size, confidence)
 
     def clone_from_cartesian_state(self, cartesian_state, timestamp=None):
         # type: (CartesianState, Optional[float]) -> NewDynamicObject
