@@ -1,6 +1,7 @@
 import numpy as np
-from decision_making.src.planning.types import FP_SX, FrenetState2D, FS_SX
+from decision_making.src.planning.types import FP_SX, FrenetState2D, FS_SX, C_X, C_Y, CartesianExtendedState
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import DynamicObject, EgoState
 from mapping.src.service.map_service import MapService
 
@@ -28,3 +29,27 @@ class MapUtils:
     def get_ego_road_localization(ego: EgoState, road_frenet: FrenetSerret2DFrame):
         ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
         return road_frenet.cstate_to_fstate(ego_init_cstate)
+
+    @staticmethod
+    def convert_cartesian_to_map_state(cartesian_state: CartesianExtendedState):
+        # type: (CartesianExtendedState) -> MapState
+        # TODO: replace with query that returns only the relevant road id
+        map_api = MapService.get_instance()
+
+        relevant_road_ids = map_api._find_roads_containing_point(cartesian_state[C_X], cartesian_state[C_Y])
+        closest_road_id = map_api._find_closest_road(cartesian_state[C_X], cartesian_state[C_Y], relevant_road_ids)
+
+        road_frenet = map_api._rhs_roads_frenet[closest_road_id]
+
+        obj_fstate = road_frenet.cstate_to_fstate(cartesian_state)
+
+        return MapState(obj_fstate, closest_road_id)
+
+    @staticmethod
+    def convert_map_to_cartesian_state(map_state):
+        # type: (MapState) -> CartesianExtendedState
+        map_api = MapService.get_instance()
+
+        road_frenet = map_api._rhs_roads_frenet[map_state.road_id]
+
+        return road_frenet.fstate_to_cstate(map_state.road_fstate)

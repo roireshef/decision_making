@@ -11,8 +11,11 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmOccupancyState
 from common_data.lcm.generatedFiles.gm_lcm import LcmState
 
 from decision_making.src.exceptions import NoUniqueObjectStateForEvaluation
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
+from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K
+from decision_making.src.state.map_state import MapState
+from decision_making.src.utils.lcm_utils import LCMUtils
+from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.model.localization import RoadLocalization
 from mapping.src.service.map_service import MapService
 
@@ -288,6 +291,176 @@ class EgoState(DynamicObject):
                  , dyn_obj.size, dyn_obj.confidence
                  , dyn_obj.v_x, dyn_obj.v_y, dyn_obj.acceleration_lon
                  , dyn_obj.curvature)
+
+
+class NewDynamicObject(PUBSUB_MSG_IMPL):
+    obj_id = int
+    timestamp = int
+    _cached_cartesian_state = CartesianExtendedState
+    _cached_map_state = MapState
+    size = ObjectSize
+    confidence = float
+
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
+        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float) -> NewDynamicObject
+        """
+        Data object that hold
+        :param obj_id: object id
+        :param timestamp: time of perception [nanosec.]
+        :param cartesian_state: localization relative to map's cartesian origin frame
+        :param map_state: localization in a map-object's frame (road,segment,lane)
+        :param size: class ObjectSize
+        :param confidence: of object's existence
+        """
+        self.obj_id = obj_id
+        self.timestamp = timestamp
+        self._cached_cartesian_state = cartesian_state
+        self._cached_map_state = map_state
+        self.size = copy.copy(size)
+        self.confidence = confidence
+
+    @property
+    def x(self):
+        return self.cartesian_state[C_X]
+
+    @property
+    def y(self):
+        return self.cartesian_state[C_Y]
+
+    @property
+    def z(self):
+        return 0
+
+    @property
+    def yaw(self):
+        return self.cartesian_state[C_YAW]
+
+    @property
+    def velocity(self):
+        return self.cartesian_state[C_V]
+
+    @property
+    def acceleration(self):
+        return self.cartesian_state[C_A]
+
+    @property
+    def curvature(self):
+        return self.cartesian_state[C_K]
+
+    @property
+    def cartesian_state(self):
+        # type: () -> CartesianExtendedState
+        if self._cached_cartesian_state is None:
+            self._cached_cartesian_state = MapUtils.convert_map_to_cartesian_state(self._cached_map_state)
+        return self._cached_cartesian_state
+
+    @property
+    def map_state(self):
+        # type: () -> MapState
+        if self._cached_map_state is None:
+            self._cached_map_state = MapUtils.convert_cartesian_to_map_state(self._cached_cartesian_state)
+        return self._cached_map_state
+
+    @property
+    def timestamp_in_sec(self):
+        return self.timestamp * TIMESTAMP_RESOLUTION_IN_SEC
+
+    @timestamp_in_sec.setter
+    def timestamp_in_sec(self, value):
+        self.timestamp = int(value / TIMESTAMP_RESOLUTION_IN_SEC)
+
+    @classmethod
+    def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence):
+        # type: (int, int, CartesianExtendedState, ObjectSize, float) -> NewDynamicObject
+        """
+        Constructor that gets only cartesian-state (without map-state)
+        :param obj_id: object id
+        :param timestamp: time of perception [nanosec.]
+        :param cartesian_state: localization relative to map's cartesian origin frame
+        :param size: class ObjectSize
+        :param confidence: of object's existence
+        """
+        return cls(obj_id, timestamp, cartesian_state, None, size, confidence)
+
+    @classmethod
+    def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence):
+        # type: (int, int, MapState, ObjectSize, float) -> NewDynamicObject
+        """
+        Constructor that gets only map-state (without cartesian-state)
+        :param obj_id: object id
+        :param timestamp: time of perception [nanosec.]
+        :param map_state: localization in a map-object's frame (road,segment,lane)
+        :param size: class ObjectSize
+        :param confidence: of object's existence
+        """
+        cls(obj_id, timestamp, None, map_state, size, confidence)
+
+    def clone_from_cartesian_state(self, cartesian_state, timestamp=None):
+        # type: (CartesianState, Optional[float]) -> NewDynamicObject
+        """clones self while overriding cartesian_state and optionally timestamp"""
+        return self.__class__.create_from_cartesian_state(self.obj_id, timestamp or self.timestamp, cartesian_state,
+                                                self.size, self.confidence)
+
+    def clone_from_map_state(self, map_state, timestamp=None):
+        # type: (MapState, Optional[float]) -> NewDynamicObject
+        """clones self while overriding map_state and optionally timestamp"""
+        return self.create_from_map_state(self.obj_id, timestamp or self.timestamp, map_state,
+                                          self.size, self.confidence)
+
+    def serialize(self):
+        # type: () -> LcmDynamicObject
+        lcm_msg = LcmDynamicObject()
+        lcm_msg.obj_id = self.obj_id
+        lcm_msg.timestamp = self.timestamp
+        lcm_msg._cached_cartesian_state = LCMUtils.numpy_array_to_lcm_non_typed_numpy_array(self.cartesian_state)
+        lcm_msg._cached_map_state = self.map_state.serialize()
+        lcm_msg.size = self.size.serialize()
+        lcm_msg.confidence = self.confidence
+        return lcm_msg
+
+    @classmethod
+    def deserialize(cls, lcmMsg):
+        # type: (LcmDynamicObject) -> NewDynamicObject
+        return cls(lcmMsg.obj_id, lcmMsg.timestamp
+                   , np.ndarray(shape=tuple(lcmMsg._cached_cartesian_state.shape)
+                              , buffer=np.array(lcmMsg._cached_cartesian_state.data)
+                              , dtype=float)
+                   , MapState.deserialize(lcmMsg._cached_map_state)
+                   , ObjectSize.deserialize(lcmMsg.size)
+                   , lcmMsg.confidence)
+
+
+class NewEgoState(NewDynamicObject):
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
+        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float) -> NewEgoState
+
+        """
+        IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
+
+        Data object that hold
+        :param obj_id: object id
+        :param timestamp: time of perception [nanosec.]
+        :param cartesian_state: localization relative to map's cartesian origin frame
+        :param map_state: localization in a map-object's frame (road,segment,lane)
+        :param size: class ObjectSize
+        :param confidence: of object's existence
+        """
+        super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state, map_state=map_state, size=size, confidence=confidence)
+
+    def serialize(self):
+        # type: () -> LcmEgoState
+        lcm_msg = LcmEgoState()
+        lcm_msg.dynamic_obj = super(self.__class__, self).serialize()
+        return lcm_msg
+
+    @classmethod
+    def deserialize(cls, lcmMsg):
+        # type: (LcmEgoState) -> NewEgoState
+        dyn_obj = NewDynamicObject.deserialize(lcmMsg.dynamic_obj)
+        return cls(dyn_obj.obj_id, dyn_obj.timestamp
+                 , dyn_obj._cached_cartesian_state, dyn_obj._cached_map_state
+                 , dyn_obj.size
+                 , dyn_obj.confidence)
 
 
 class State(PUBSUB_MSG_IMPL):

@@ -29,7 +29,7 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FS_SV
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.planning.utils.map_utils import MapUtils
+from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject

@@ -9,7 +9,7 @@ from decision_making.src.global_constants import LON_MARGIN_FROM_EGO
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.types import FS_SX, FrenetState2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.planning.utils.map_utils import MapUtils
+from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.state.state import EgoState
 from decision_making.src.state.state import State, DynamicObject
 from mapping.src.service.map_service import MapService
