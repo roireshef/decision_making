@@ -122,7 +122,7 @@ LAT_CALM_ACC = 0.4
 BP_CALM_LANE_CHANGE_TIME = 6.42
 
 # performance metrics for BP: efficiency cost weight
-BP_EFFICIENCY_COST_WEIGHT = 3.
+BP_EFFICIENCY_COST_WEIGHT = 5.
 
 # The following constant adjusts convexity of the efficiency cost as function of velocity (used by efficiency cost).
 # Let E(v) be the efficiency cost as function of velocity v.
@@ -145,7 +145,7 @@ MINIMAL_STATIC_ACTION_TIME = 8
 DEFAULT_DISTANCE_TO_NAVIGATION_GOAL = 300
 
 # integer number of samples per second for safety test
-SAFETY_SAMPLING_RESOLUTION = 4
+SAFETY_SAMPLING_RESOLUTION = 5
 
 
 # Trajectory Planner #
