@@ -9,6 +9,7 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedNumpyArray
 from common_data.lcm.generatedFiles.gm_lcm import LcmObjectSize
 from common_data.lcm.generatedFiles.gm_lcm import LcmOccupancyState
 from common_data.lcm.generatedFiles.gm_lcm import LcmState
+from common_data.lcm.generatedFiles.gm_lcm import LcmNewDynamicObject
 
 from decision_making.src.exceptions import NoUniqueObjectStateForEvaluation
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
@@ -408,8 +409,8 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
                                           self.size, self.confidence)
 
     def serialize(self):
-        # type: () -> LcmDynamicObject
-        lcm_msg = LcmDynamicObject()
+        # type: () -> LcmNewDynamicObject
+        lcm_msg = LcmNewDynamicObject()
         lcm_msg.obj_id = self.obj_id
         lcm_msg.timestamp = self.timestamp
         lcm_msg._cached_cartesian_state = LCMUtils.numpy_array_to_lcm_non_typed_numpy_array(self.cartesian_state)
@@ -420,7 +421,7 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, lcmMsg):
-        # type: (LcmDynamicObject) -> NewDynamicObject
+        # type: (LcmNewDynamicObject) -> NewDynamicObject
         return cls(lcmMsg.obj_id, lcmMsg.timestamp
                    , np.ndarray(shape=tuple(lcmMsg._cached_cartesian_state.shape)
                               , buffer=np.array(lcmMsg._cached_cartesian_state.data)
