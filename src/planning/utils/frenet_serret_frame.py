@@ -11,9 +11,10 @@ from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
     CartesianVectorsTensor2D, CartesianPointsTensor2D, FrenetState2D, CartesianExtendedState
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
-
+import rte.python.profiler as prof
 
 class FrenetSerret2DFrame:
+    @prof.ProfileFunction()
     def __init__(self, points: CartesianPath2D, ds: float = TRAJECTORY_ARCLEN_RESOLUTION,
                  spline_order=TRAJECTORY_CURVE_SPLINE_FIT_ORDER):
         """
@@ -45,6 +46,7 @@ class FrenetSerret2DFrame:
         _, _, _, k_r, _ = self._taylor_interp(s)
         return k_r
 
+    @prof.ProfileFunction()
     def get_yaw(self, s: np.ndarray):
         """
         Computes yaw (in radians, relative to the origin in which the curve points (self.O) are given
@@ -56,10 +58,12 @@ class FrenetSerret2DFrame:
 
     ## FRENET => CARTESIAN
 
+    @prof.ProfileFunction()
     def fpoint_to_cpoint(self, fpoints: FrenetPoint) -> CartesianPoint2D:
         """Transforms a frenet-frame point to a cartesian-frame point (see self.fpoints_to_cpoints for more details)"""
         return self.fpoints_to_cpoints(fpoints[np.newaxis, :])[0]
 
+    @prof.ProfileFunction()
     def fpoints_to_cpoints(self, fpoints: FrenetTrajectory2D) -> CartesianPath2D:
         """
         Transforms frenet-frame points to cartesian-frame points (using self.curve)
@@ -69,6 +73,7 @@ class FrenetSerret2DFrame:
         a_s, _, N_s, _, _ = self._taylor_interp(fpoints[:, FP_SX])
         return a_s + N_s * fpoints[:, [FP_DX]]
 
+    @prof.ProfileFunction()
     def fstate_to_cstate(self, fstate: FrenetState2D) -> CartesianExtendedState:
         """
         Transforms Frenet-frame state to cartesian-frame state
@@ -77,6 +82,7 @@ class FrenetSerret2DFrame:
         """
         return self.ftrajectory_to_ctrajectory(np.array([fstate]))[0]
 
+    @prof.ProfileFunction()
     def ftrajectory_to_ctrajectory(self, ftrajectory: FrenetTrajectory2D) -> CartesianExtendedTrajectory:
         """
         Transforms Frenet-frame trajectory to cartesian-frame trajectory, using tensor operations
@@ -85,6 +91,7 @@ class FrenetSerret2DFrame:
         """
         return self.ftrajectories_to_ctrajectories(np.array([ftrajectory]))[0]
 
+    @prof.ProfileFunction()
     def ftrajectories_to_ctrajectories(self, ftrajectories: FrenetTrajectories2D) -> CartesianExtendedTrajectories:
         """
         Transforms Frenet-frame trajectories to cartesian-frame trajectories, using tensor operations.
@@ -137,10 +144,12 @@ class FrenetSerret2DFrame:
 
     ## CARTESIAN => FRENET
 
+    @prof.ProfileFunction()
     def cpoint_to_fpoint(self, cpoints: CartesianPoint2D) -> FrenetPoint:
         """Transforms a cartesian-frame point to a frenet-frame point (see self.fpoints_to_cpoints for more details)"""
         return self.cpoints_to_fpoints(cpoints[np.newaxis, :])[0]
 
+    @prof.ProfileFunction()
     def cpoints_to_fpoints(self, cpoints: CartesianPath2D) -> FrenetTrajectory2D:
         """
         Transforms cartesian-frame points to frenet-frame points (using self.curve)
@@ -154,6 +163,7 @@ class FrenetSerret2DFrame:
 
         return np.c_[s, d]
 
+    @prof.ProfileFunction()
     def cstate_to_fstate(self, cstate: CartesianExtendedState) -> FrenetState2D:
         """
         Transforms Cartesian-frame state to Frenet-frame state
@@ -162,6 +172,7 @@ class FrenetSerret2DFrame:
         """
         return self.ctrajectory_to_ftrajectory(np.array([cstate]))[0]
 
+    @prof.ProfileFunction()
     def ctrajectory_to_ftrajectory(self, ctrajectory: CartesianExtendedTrajectory) -> FrenetTrajectory2D:
         """
         Transforms Cartesian-frame trajectory to Frenet-frame trajectory, using tensor operations
@@ -170,6 +181,7 @@ class FrenetSerret2DFrame:
         """
         return self.ctrajectories_to_ftrajectories(np.array([ctrajectory]))[0]
 
+    @prof.ProfileFunction()
     def ctrajectories_to_ftrajectories(self, ctrajectories: CartesianExtendedTrajectories) -> FrenetTrajectories2D:
         """
         Transforms Cartesian-frame trajectories to Frenet-frame trajectories, using tensor operations
@@ -211,6 +223,7 @@ class FrenetSerret2DFrame:
 
     ## UTILITIES ##
 
+    @prof.ProfileFunction()
     def _project_cartesian_points(self, points: np.ndarray) -> \
             (np.ndarray, CartesianPointsTensor2D, CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray, np.ndarray):
         """Given a tensor (any shape) of 2D points in cartesian frame (same origin as self.O),
@@ -260,6 +273,7 @@ class FrenetSerret2DFrame:
 
         return s_approx, a_s, T_s, N_s, k_s, k_s_tag
 
+    @prof.ProfileFunction()
     def _taylor_interp(self, s: np.ndarray) -> \
             (CartesianPointsTensor2D, CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray, np.ndarray):
         """Given arbitrary s tensor (of shape D) of progresses alonge the curve (in the range [0, self.s_max]),
@@ -301,6 +315,7 @@ class FrenetSerret2DFrame:
         return a_s, T_s, N_s, k_s[..., 0], k_s_tag[..., 0]
 
     @staticmethod
+    @prof.ProfileFunction()
     def _fit_frenet_from_splines(start: float, stop: float, step: float,
                                  xy_splines: Tuple[UnivariateSpline, UnivariateSpline]) -> \
             (CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray, np.ndarray):
@@ -348,6 +363,7 @@ class FrenetSerret2DFrame:
 
 
     @staticmethod
+    @prof.ProfileFunction()
     def _fit_frenet(xy: CartesianPath2D, ds: float) -> (CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray,
                                                         np.ndarray):
         """

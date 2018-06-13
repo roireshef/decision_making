@@ -22,6 +22,7 @@ from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
+import rte.python.profiler as prof
 
 
 class SamplableWerlingTrajectory(SamplableTrajectory):
@@ -106,6 +107,7 @@ class WerlingPlanner(TrajectoryPlanner):
     def dt(self):
         return self._dt
 
+    @prof.ProfileFunction()
     def plan(self, state: State, reference_route: np.ndarray, goal: CartesianExtendedState, time_horizon: float,
              cost_params: TrajectoryCostParams) -> \
             Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
@@ -255,6 +257,7 @@ class WerlingPlanner(TrajectoryPlanner):
                filtered_trajectory_costs[sorted_filtered_idxs]
 
     @staticmethod
+    @prof.ProfileFunction()
     def _filter_by_cartesian_limits(ctrajectories: CartesianExtendedTrajectories,
                                     cost_params: TrajectoryCostParams) -> np.ndarray:
         """
@@ -276,6 +279,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return np.argwhere(conforms).flatten()
 
     @staticmethod
+    @prof.ProfileFunction()
     def _filter_by_frenet_limits(ftrajectories: FrenetTrajectories2D, poly_coefs_d: np.ndarray,
                                  T_d_vals: np.ndarray, cost_params: TrajectoryCostParams,
                                  reference_route_limits: Limits) -> np.ndarray:
@@ -306,6 +310,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return np.argwhere(np.logical_and(conforms, frenet_lateral_movement_is_feasible)).flatten()
 
     @staticmethod
+    @prof.ProfileFunction()
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,
                       goal_in_frenet: FrenetState2D, params: TrajectoryCostParams, global_time_samples: np.ndarray,
                       predictor: Predictor, dt: float) -> np.ndarray:
@@ -338,6 +343,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs
 
     # TODO: determine tighter lower bound according to physical constraints and ego control limitations
+    @prof.ProfileFunction()
     def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints, fconstraints_tT: FrenetConstraints,
                                dt) -> float:
         """
@@ -352,6 +358,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return max(low_bound_lat_plan_horizon, TD_MIN_DT * self.dt)
 
     @staticmethod
+    @prof.ProfileFunction()
     def _create_lat_horizon_grid(T_s: float, T_d_low_bound: float, dt: float) -> np.ndarray:
         """
         Receives the lower bound of the lateral time horizon T_d_low_bound and the longitudinal time horizon T_s
@@ -372,6 +379,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return T_d_vals
 
     @staticmethod
+    @prof.ProfileFunction()
     def _solve_1d_poly(constraints: np.ndarray, T: float, poly_impl: Poly1D) -> np.ndarray:
         """
         Solves the two-point boundary value problem, given a set of constraints over the initial and terminal states.
@@ -386,12 +394,14 @@ class WerlingPlanner(TrajectoryPlanner):
         return poly_coefs
 
     @staticmethod
+    @prof.ProfileFunction()
     def repeat_1d_state(fstate: FrenetState1D, repeats: int,
                         override_values: FrenetState1D, override_mask: FrenetState1D):
         """please see documentation in used method"""
         return WerlingPlanner.repeat_1d_states(fstate[np.newaxis, :], repeats, override_values, override_mask)[0]
 
     @staticmethod
+    @prof.ProfileFunction()
     def repeat_1d_states(fstates: FrenetTrajectory1D, repeats: int,
                          override_values: FrenetState1D, override_mask: FrenetState1D):
         """
@@ -410,6 +420,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return repeated_block
 
     @staticmethod
+    @prof.ProfileFunction()
     def _solve_optimization(fconst_0: FrenetConstraints, fconst_t: FrenetConstraints, T_s: float, T_d_vals: np.ndarray,
                             dt: float) -> Tuple[FrenetTrajectories2D, np.ndarray, np.ndarray]:
         """

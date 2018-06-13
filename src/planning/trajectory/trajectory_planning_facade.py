@@ -26,6 +26,7 @@ from decision_making.src.planning.utils.transformations import Transformations
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, EgoState
 from mapping.src.transformations.geometry_utils import CartesianFrame
+import rte.python.profiler as prof
 
 
 class TrajectoryPlanningFacade(DmModule):
@@ -68,62 +69,67 @@ class TrajectoryPlanningFacade(DmModule):
 
             state = self._get_current_state()
 
-            # Update state: align all object to most recent timestamp, based on ego and dynamic objects timestamp
-            state_aligned = self._short_time_predictor.align_objects_to_most_recent_timestamp(state=state)
+            with prof.time_range('TP init'):
+                # Update state: align all object to most recent timestamp, based on ego and dynamic objects timestamp
+                state_aligned = self._short_time_predictor.align_objects_to_most_recent_timestamp(state=state)
 
-            params = self._get_mission_params()
+                params = self._get_mission_params()
 
-            # Longitudinal planning horizon (Ts)
-            lon_plan_horizon = params.time - state.ego_state.timestamp_in_sec
+                # Longitudinal planning horizon (Ts)
+                lon_plan_horizon = params.time - state.ego_state.timestamp_in_sec
 
-            self.logger.debug("input: target_state: %s", params.target_state)
-            self.logger.debug("input: reference_route[0]: %s", params.reference_route[0])
-            self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
-            self.logger.debug("input: ego: v_x: %f, v_y: %f", state.ego_state.v_x, state.ego_state.v_y)
-            self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", lon_plan_horizon)
-            self.logger.debug("state: %d objects detected", len(state.dynamic_objects))
+                self.logger.debug("input: target_state: %s", params.target_state)
+                self.logger.debug("input: reference_route[0]: %s", params.reference_route[0])
+                self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
+                self.logger.debug("input: ego: v_x: %f, v_y: %f", state.ego_state.v_x, state.ego_state.v_y)
+                self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", lon_plan_horizon)
+                self.logger.debug("state: %d objects detected", len(state.dynamic_objects))
 
-            # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
-            # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
-            # Optimal Control and the fact it complies with Bellman principle of optimality.
-            # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
-            if LocalizationUtils.is_actual_state_close_to_expected_state(
-                    state_aligned.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
-                updated_state = self._get_state_with_expected_ego(state_aligned)
-                self.logger.debug("TrajectoryPlanningFacade ego localization was overridden to the expected-state "
-                                  "according to previous plan")
-            else:
-                updated_state = state_aligned
+                # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
+                # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
+                # Optimal Control and the fact it complies with Bellman principle of optimality.
+                # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
+                if LocalizationUtils.is_actual_state_close_to_expected_state(
+                        state_aligned.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
+                    updated_state = self._get_state_with_expected_ego(state_aligned)
+                    self.logger.debug("TrajectoryPlanningFacade ego localization was overridden to the expected-state "
+                                      "according to previous plan")
+                else:
+                    updated_state = state_aligned
 
-            # plan a trajectory according to specification from upper DM level
-            samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon, params.cost_params)
+            with prof.time_range('TP plan'):
+                # plan a trajectory according to specification from upper DM level
+                samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
+                    plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon, params.cost_params)
 
-            center_vehicle_trajectory_points = samplable_trajectory.sample(
-                np.linspace(start=0,
-                            stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
-                            num=TRAJECTORY_NUM_POINTS) + state_aligned.ego_state.timestamp_in_sec)
-            self._last_trajectory = samplable_trajectory
+            with prof.time_range('TP sample'):
+                center_vehicle_trajectory_points = samplable_trajectory.sample(
+                    np.linspace(start=0,
+                                stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
+                                num=TRAJECTORY_NUM_POINTS) + state_aligned.ego_state.timestamp_in_sec)
+                self._last_trajectory = samplable_trajectory
 
-            vehicle_origin_trajectory_points = Transformations.transform_trajectory_between_ego_center_and_ego_origin(
-                center_vehicle_trajectory_points, direction=1)
+            with prof.time_range('TP transform'):
+                vehicle_origin_trajectory_points = Transformations.transform_trajectory_between_ego_center_and_ego_origin(
+                    center_vehicle_trajectory_points, direction=1)
 
-            # publish results to the lower DM level (Control)
-            # TODO: remove ego_state.v_x from the message in version 2.0
-            trajectory_msg = TrajectoryPlanMsg(timestamp=state.ego_state.timestamp,
-                                               trajectory=vehicle_origin_trajectory_points,
-                                               current_speed=state_aligned.ego_state.v_x)
-            self._publish_trajectory(trajectory_msg)
-            self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
+            with prof.time_range('TP publish'):
+                # publish results to the lower DM level (Control)
+                # TODO: remove ego_state.v_x from the message in version 2.0
+                trajectory_msg = TrajectoryPlanMsg(timestamp=state.ego_state.timestamp,
+                                                   trajectory=vehicle_origin_trajectory_points,
+                                                   current_speed=state_aligned.ego_state.v_x)
+                self._publish_trajectory(trajectory_msg)
+                self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
 
-            # publish visualization/debug data - based on short term prediction aligned state!
-            debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
-                state_aligned, params.reference_route, ctrajectories, costs,
-                params.time - state.ego_state.timestamp_in_sec, self._strategy_handlers[params.strategy].predictor)
+                # publish visualization/debug data - based on short term prediction aligned state!
+                debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
+                    state_aligned, params.reference_route, ctrajectories, costs,
+                    params.time - state.ego_state.timestamp_in_sec, self._strategy_handlers[params.strategy].predictor)
 
-            self._publish_debug(debug_results)
+                self._publish_debug(debug_results)
 
-            self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
+                self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
 
         except MsgDeserializationError:
             self.logger.error("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
