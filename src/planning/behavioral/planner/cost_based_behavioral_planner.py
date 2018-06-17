@@ -4,7 +4,6 @@ from typing import Optional, List
 
 import numpy as np
 import six
-from copy import deepcopy
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, TRAJECTORY_ARCLEN_RESOLUTION, \
@@ -27,12 +26,12 @@ from decision_making.src.planning.behavioral.semantic_actions_utils import Seman
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
-from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FS_SV
+from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
+from decision_making.src.state.state import State, ObjectSize, NewEgoState
+from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -81,8 +80,8 @@ class CostBasedBehavioralPlanner:
         """
         # create a new behavioral state at the action end
         ego = state.ego_state
-        road_id = ego.road_localization.road_id
-        road_frenet = MapService.get_instance()._rhs_roads_frenet[road_id]   # TODO: assumes everyone on the same road!
+        road_id = ego.map_state.road_id
+        road_frenet = MapService.get_instance()._rhs_roads_frenet[road_id]  # TODO: assumes everyone on the same road!
 
         # TODO: This is hacky - use predictor!
         terminal_behavioral_states = []
@@ -94,8 +93,8 @@ class CostBasedBehavioralPlanner:
 
             # predict ego (s,d,v_s are according to action_spec)
             terminal_ego_cstate = road_frenet.fstate_to_cstate(np.array([spec.s, spec.v, 0, spec.d, 0, 0]))
-            terminal_ego_state = ego.clone_cartesian_state(timestamp_in_sec=ego.timestamp_in_sec + spec.t,
-                                                           cartesian_state=terminal_ego_cstate)
+            terminal_ego_state = ego.clone_from_cartesian_state(cartesian_state=terminal_ego_cstate,
+                                                                timestamp_in_sec=ego.timestamp_in_sec + spec.t)
 
             # predict objects (using road-following prediction logic, including alignment to road)
             predicted_objects = []
@@ -143,7 +142,7 @@ class CostBasedBehavioralPlanner:
         # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
         # TODO: better than sending the whole road. Fix when map service is redesigned!
         center_lane_reference_route = MapService.get_instance().get_uniform_path_lookahead(
-            road_id=ego.road_localization.road_id,
+            road_id=ego.map_state.road_id,
             lat_shift=action_spec.d,  # THIS ASSUMES THE GOAL ALWAYS FALLS ON THE REFERENCE ROUTE
             starting_lon=0,
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
@@ -152,7 +151,7 @@ class CostBasedBehavioralPlanner:
 
         # The frenet frame used in specify (RightHandSide of road)
         rhs_reference_route = MapService.get_instance().get_uniform_path_lookahead(
-            road_id=ego.road_localization.road_id,
+            road_id=ego.map_state.road_id,
             lat_shift=0,
             starting_lon=0,
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
@@ -161,7 +160,7 @@ class CostBasedBehavioralPlanner:
         rhs_frenet = FrenetSerret2DFrame(rhs_reference_route)
 
         # Get road details
-        road_id = ego.road_localization.road_id
+        road_id = ego.map_state.road_id
 
         # Convert goal state from rhs-frenet-frame to center-lane-frenet-frame
         goal_cstate = rhs_frenet.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0]))
@@ -182,7 +181,7 @@ class CostBasedBehavioralPlanner:
 
     @staticmethod
     @prof.ProfileFunction()
-    def generate_baseline_trajectory(ego: EgoState, action_spec: ActionSpec) -> SamplableTrajectory:
+    def generate_baseline_trajectory(ego: NewEgoState, action_spec: ActionSpec) -> SamplableTrajectory:
         """
         Creates a SamplableTrajectory as a reference trajectory for a given ActionSpec, assuming T_d=T_s
         :param ego: ego object

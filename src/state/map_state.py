@@ -15,7 +15,7 @@ class MapState(PUBSUB_MSG_IMPL):
         self.road_fstate = road_fstate
         self.road_id = road_id
 
-    #TODO: implement. Consider whether this is a property of map state or a different function in Map Utils.
+    # TODO: implement. Consider whether this is a property of map state or a different function in Map Utils.
     @property
     def lane_center_lat(self):
         pass
@@ -25,7 +25,7 @@ class MapState(PUBSUB_MSG_IMPL):
     def intra_lane_lat(self) -> int:
         pass
 
-    #TODO: implement lane number computation from map and fstate
+    # TODO: implement lane number computation from map and fstate
     @property
     def lane_num(self) -> int:
         pass
@@ -41,7 +41,4 @@ class MapState(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcm_msg):
         # type: (LcmMapState) -> MapState
         return cls(np.ndarray(shape=tuple(lcm_msg.lane_state.shape)
-                              , buffer=np.array(lcm_msg.lane_state.data)
-                              , dtype=float)
-        ,lcm_msg.road_id)
-
+                              , buffer=np.array(lcm_msg.lane_state.data), dtype=float), lcm_msg.road_id)

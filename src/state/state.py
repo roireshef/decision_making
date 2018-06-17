@@ -59,12 +59,12 @@ class OccupancyState(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmOccupancyState) -> OccupancyState
         return cls(lcmMsg.timestamp
-                 , np.ndarray(shape = tuple(lcmMsg.free_space.shape)
-                            , buffer = np.array(lcmMsg.free_space.data)
-                            , dtype = float)
-                 , np.ndarray(shape = tuple(lcmMsg.confidence.shape)
-                            , buffer = np.array(lcmMsg.confidence.data)
-                            , dtype = float))
+                   , np.ndarray(shape=tuple(lcmMsg.free_space.shape)
+                                , buffer=np.array(lcmMsg.free_space.data)
+                                , dtype=float)
+                   , np.ndarray(shape=tuple(lcmMsg.confidence.shape)
+                                , buffer=np.array(lcmMsg.confidence.data)
+                                , dtype=float))
 
 
 class ObjectSize(PUBSUB_MSG_IMPL):
@@ -198,7 +198,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         return self.total_speed * np.cos(self.road_localization.intra_road_yaw)
 
     @property
-    #TODO: remove this when yaw issue is fixed
+    # TODO: remove this when yaw issue is fixed
     def total_speed(self):
         # type: () -> float
         """
@@ -236,10 +236,10 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmDynamicObject) -> DynamicObject
         return cls(lcmMsg.obj_id, lcmMsg.timestamp
-                 , lcmMsg.x, lcmMsg.y, lcmMsg.z, lcmMsg.yaw
-                 , ObjectSize.deserialize(lcmMsg.size)
-                 , lcmMsg.confidence, lcmMsg.v_x, lcmMsg.v_y
-                 , lcmMsg.acceleration_lon, lcmMsg.curvature)
+                   , lcmMsg.x, lcmMsg.y, lcmMsg.z, lcmMsg.yaw
+                   , ObjectSize.deserialize(lcmMsg.size)
+                   , lcmMsg.confidence, lcmMsg.v_x, lcmMsg.v_y
+                   , lcmMsg.acceleration_lon, lcmMsg.curvature)
 
 
 class EgoState(DynamicObject):
@@ -288,10 +288,10 @@ class EgoState(DynamicObject):
         # type: (LcmEgoState) -> EgoState
         dyn_obj = DynamicObject.deserialize(lcmMsg.dynamic_obj)
         return cls(dyn_obj.obj_id, dyn_obj.timestamp
-                 , dyn_obj.x, dyn_obj.y, dyn_obj.z, dyn_obj.yaw
-                 , dyn_obj.size, dyn_obj.confidence
-                 , dyn_obj.v_x, dyn_obj.v_y, dyn_obj.acceleration_lon
-                 , dyn_obj.curvature)
+                   , dyn_obj.x, dyn_obj.y, dyn_obj.z, dyn_obj.yaw
+                   , dyn_obj.size, dyn_obj.confidence
+                   , dyn_obj.v_x, dyn_obj.v_y, dyn_obj.acceleration_lon
+                   , dyn_obj.curvature)
 
 
 class NewDynamicObject(PUBSUB_MSG_IMPL):
@@ -396,11 +396,11 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
         """
         return cls(obj_id, timestamp, None, map_state, size, confidence)
 
-    def clone_from_cartesian_state(self, cartesian_state, timestamp=None):
+    def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None):
         # type: (CartesianState, Optional[float]) -> NewDynamicObject
         """clones self while overriding cartesian_state and optionally timestamp"""
-        return self.__class__.create_from_cartesian_state(self.obj_id, timestamp or self.timestamp, cartesian_state,
-                                                self.size, self.confidence)
+        return self.__class__.create_from_cartesian_state(self.obj_id, timestamp_in_sec or self.timestamp_in_sec, cartesian_state,
+                                                          self.size, self.confidence)
 
     def clone_from_map_state(self, map_state, timestamp=None):
         # type: (MapState, Optional[float]) -> NewDynamicObject
@@ -424,8 +424,8 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
         # type: (LcmNewDynamicObject) -> NewDynamicObject
         return cls(lcmMsg.obj_id, lcmMsg.timestamp
                    , np.ndarray(shape=tuple(lcmMsg._cached_cartesian_state.shape)
-                              , buffer=np.array(lcmMsg._cached_cartesian_state.data)
-                              , dtype=float)
+                                , buffer=np.array(lcmMsg._cached_cartesian_state.data)
+                                , dtype=float)
                    , MapState.deserialize(lcmMsg._cached_map_state)
                    , ObjectSize.deserialize(lcmMsg.size)
                    , lcmMsg.confidence)
@@ -446,7 +446,8 @@ class NewEgoState(NewDynamicObject):
         :param size: class ObjectSize
         :param confidence: of object's existence
         """
-        super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state, map_state=map_state, size=size, confidence=confidence)
+        super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state,
+                                             map_state=map_state, size=size, confidence=confidence)
 
     def serialize(self):
         # type: () -> LcmEgoState
@@ -459,19 +460,19 @@ class NewEgoState(NewDynamicObject):
         # type: (LcmEgoState) -> NewEgoState
         dyn_obj = NewDynamicObject.deserialize(lcmMsg.dynamic_obj)
         return cls(dyn_obj.obj_id, dyn_obj.timestamp
-                 , dyn_obj._cached_cartesian_state, dyn_obj._cached_map_state
-                 , dyn_obj.size
-                 , dyn_obj.confidence)
+                   , dyn_obj._cached_cartesian_state, dyn_obj._cached_map_state
+                   , dyn_obj.size
+                   , dyn_obj.confidence)
 
 
 class State(PUBSUB_MSG_IMPL):
     ''' Members annotations for python 2 compliant classes '''
     occupancy_state = OccupancyState
-    dynamic_objects = List[DynamicObject]
-    ego_state = EgoState
+    dynamic_objects = List[NewDynamicObject]
+    ego_state = NewEgoState
 
     def __init__(self, occupancy_state, dynamic_objects, ego_state):
-        # type: (OccupancyState, List[DynamicObject], EgoState) -> None
+        # type: (OccupancyState, List[NewDynamicObject], NewEgoState) -> None
         """
         main class for the world state. deep copy is required by self.clone_with!
         :param occupancy_state: free space
@@ -483,7 +484,7 @@ class State(PUBSUB_MSG_IMPL):
         self.ego_state = copy.deepcopy(ego_state)
 
     def clone_with(self, occupancy_state=None, dynamic_objects=None, ego_state=None):
-        # type: (OccupancyState, List[DynamicObject], EgoState) -> State
+        # type: (OccupancyState, List[NewDynamicObject], NewEgoState) -> State
         """
         clones state object with potential overriding of specific fields.
         requires deep-copying of all fields in State.__init__ !!
@@ -509,16 +510,16 @@ class State(PUBSUB_MSG_IMPL):
         # type: (LcmState) -> State
         dynamic_objects = list()
         for i in range(lcmMsg.num_obj):
-            dynamic_objects.append(DynamicObject.deserialize(lcmMsg.dynamic_objects[i]))
+            dynamic_objects.append(NewDynamicObject.deserialize(lcmMsg.dynamic_objects[i]))
         ''' [DynamicObject.deserialize(lcmMsg.dynamic_objects[i]) for i in range(lcmMsg.num_obj)] '''
         return cls(OccupancyState.deserialize(lcmMsg.occupancy_state)
-                 , dynamic_objects
-                 , EgoState.deserialize(lcmMsg.ego_state))
+                   , dynamic_objects
+                   , NewEgoState.deserialize(lcmMsg.ego_state))
 
     # TODO: remove when access to dynamic objects according to dictionary will be available.
     @classmethod
     def get_object_from_state(cls, state, target_obj_id):
-        # type: (State, int) -> DynamicObject
+        # type: (State, int) -> NewDynamicObject
         """
         Return the object with specific obj_id from world state
         :param state: the state to query
@@ -534,4 +535,3 @@ class State(PUBSUB_MSG_IMPL):
                 'Found %d matching objects for object ID %d' % (len(selected_objects), target_obj_id))
 
         return selected_objects[0]
-

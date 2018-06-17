@@ -19,7 +19,7 @@ from decision_making.src.planning.trajectory.trajectory_planner import Samplable
 from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, C_V, C_A, C_K
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import State, EgoState
+from decision_making.src.state.state import State, NewEgoState
 
 
 class BehavioralPlanningFacade(DmModule):
@@ -124,18 +124,12 @@ class BehavioralPlanningFacade(DmModule):
         """
         current_time = state.ego_state.timestamp_in_sec
         expected_state_vec: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
-
-        expected_ego_state = EgoState(
+        expected_ego_state = NewEgoState.create_from_cartesian_state(
             obj_id=state.ego_state.obj_id,
             timestamp=state.ego_state.timestamp,
-            x=expected_state_vec[C_X], y=expected_state_vec[C_Y], z=state.ego_state.z,
-            yaw=expected_state_vec[C_YAW], size=state.ego_state.size,
-            confidence=state.ego_state.confidence,
-            v_x=expected_state_vec[C_V],
-            v_y=0.0,  # this is ok because we don't PLAN for drift velocity
-            acceleration_lon=expected_state_vec[C_A],
-            curvature=expected_state_vec[C_K]
-        )
+            cartesian_state=expected_state_vec,
+            size=state.ego_state.size,
+            confidence=state.ego_state.confidence)
 
         updated_state = state.clone_with(ego_state=expected_ego_state)
 

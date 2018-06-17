@@ -19,7 +19,7 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import Poly1D
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
+from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject, NewDynamicObject, NewEgoState
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidDynamicBoxObstacle, \
     WerlingVisualizer
@@ -54,15 +54,17 @@ def test_werlingPlanner_toyScenario_noException():
     yaw2 = np.pi / 4
 
     obs = list([
-        DynamicObject(obj_id=0, timestamp=950*10e6, x=pos1[0], y=pos1[1], z=0, yaw=yaw1, size=ObjectSize(1.5, 0.5, 0),
-                      confidence=1.0, v_x=0, v_y=0, acceleration_lon=0.0, curvature=0.0),
-        DynamicObject(obj_id=0, timestamp=950*10e6, x=pos2[0], y=pos2[1], z=0, yaw=yaw2, size=ObjectSize(1.5, 0.5, 0),
-                      confidence=1.0, v_x=0, v_y=0, acceleration_lon=0.0, curvature=0.0)
+        NewDynamicObject.create_from_cartesian_state(obj_id=0, timestamp=950*10e6, cartesian_state=[pos1[0], pos1[1], yaw1, 0, 0, 0],
+                                                     size=ObjectSize(1.5, 0.5, 0), confidence=1.0),
+        NewDynamicObject.create_from_cartesian_state(obj_id=0, timestamp=950 * 10e6,
+                                                     cartesian_state=[pos2[0], pos2[1], yaw2, 0, 0, 0],
+                                                     size=ObjectSize(1.5, 0.5, 0), confidence=1.0)
     ])
 
     # set ego starting longitude > 0 in order to prevent the starting point to be outside the reference route
-    ego = EgoState(obj_id=-1, timestamp=1000*10e6, x=LON_MARGIN_FROM_EGO, y=0, z=0, yaw=0, size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
-                   confidence=1.0, v_x=v0, v_y=0, curvature=0.0, acceleration_lon=0.0)
+    ego = NewEgoState.create_from_cartesian_state(obj_id=-1, timestamp=1000*10e6,
+                                                  cartesian_state=[LON_MARGIN_FROM_EGO, 0, 0, v0, 0.0, 0.0],
+                                                  size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT), confidence=1.0)
 
     state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
 
@@ -272,6 +274,12 @@ def create_state_for_test_werlingPlanner(frenet: FrenetSerret2DFrame, obs_poses:
     ego = EgoState(obj_id=-1, timestamp=0, x=ctraj_start_goal[0][C_X], y=ctraj_start_goal[0][C_Y], z=0,
                    yaw=ctraj_start_goal[0][C_YAW], size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
                    confidence=1.0, v_x=ctraj_start_goal[0][C_V], v_y=0, curvature=0.0, acceleration_lon=0.0)
+
+    ego = NewEgoState.create_from_cartesian_state(obj_id=-1, timestamp=0, size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
+                                                  confidence=1.0,
+                                                  cartesian_state=[ctraj_start_goal[0][C_X], ctraj_start_goal[0][C_Y],
+                                                                   ctraj_start_goal[0][C_YAW], ctraj_start_goal[0][C_V],
+                                                                   0.0, 0.0])
 
     goal = ctraj_start_goal[1]
     goal[C_X] -= 0.001
