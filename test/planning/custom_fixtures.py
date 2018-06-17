@@ -3,7 +3,7 @@ import numpy as np
 
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
-    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST, LAT_JERK_COST, TIMESTAMP_RESOLUTION_IN_SEC
+    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, TIMESTAMP_RESOLUTION_IN_SEC
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
@@ -11,8 +11,7 @@ from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanM
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.state.state import OccupancyState, ObjectSize, EgoState, State, DynamicObject, \
-    NewDynamicObject, NewEgoState
+from decision_making.src.state.state import OccupancyState, ObjectSize, EgoState, State, NewDynamicObject, NewEgoState
 from decision_making.test.prediction.mock_predictor import TestPredictorMock
 
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
@@ -189,7 +188,7 @@ def state_with_old_object(request) -> State:
     dynamic_objects = [dyn1, dyn2]
     size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
-    ego_state = EgoState(obj_id=1, timestamp=old_timestamp, cartesian_state=np.array([1, 0, 0, 1.0, 0.0, 0]), map_state=None,
+    ego_state = NewEgoState.create_from_cartesian_state(obj_id=1, timestamp=old_timestamp, cartesian_state=np.array([1, 0, 0, 1.0, 0.0, 0]),
                          size=size, confidence=0)
 
     yield State(occupancy_state, dynamic_objects, ego_state)

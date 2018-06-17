@@ -1,23 +1,23 @@
 from decision_making.src.planning.types import FrenetState2D, C_X, C_Y, CartesianExtendedState, FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import NewDynamicObject, NewEgoState
+from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
 
 class MapUtils:
     # TODO: replace with navigation plan aware function from map API
     @staticmethod
-    def get_road_rhs_frenet(obj: NewDynamicObject):
+    def get_road_rhs_frenet(obj):
         return MapService.get_instance()._rhs_roads_frenet[obj.map_state.road_id]
 
     # TODO: replace this call with the road localization once it is updated to be hold a frenet state
     @staticmethod
-    def get_object_road_localization(obj: NewDynamicObject, road_frenet: FrenetSerret2DFrame) -> FrenetState2D:
+    def get_object_road_localization(obj, road_frenet: FrenetSerret2DFrame) -> FrenetState2D:
         return obj.map_state.road_fstate
 
     @staticmethod
-    def get_ego_road_localization(ego: NewEgoState, road_frenet: FrenetSerret2DFrame):
+    def get_ego_road_localization(ego, road_frenet: FrenetSerret2DFrame):
         return ego.map_state.road_fstate
 
     @staticmethod

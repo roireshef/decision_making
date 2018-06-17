@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING
-from decision_making.src.state.state import OccupancyState, EgoState, NewEgoState
+from decision_making.src.state.state import OccupancyState, NewEgoState
 from decision_making.src.state.state_module import StateModule
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH, FILTER_OBJECT_OFF_ROAD_PATH
 from gm_lcm import LcmPerceivedDynamicObjectList
