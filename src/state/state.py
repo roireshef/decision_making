@@ -363,22 +363,22 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
         return self._cached_map_state
 
     @staticmethod
-    def sec_to_nanosec(time_in_seconds: float):
+    def sec_to_ticks(time_in_seconds: float):
         # type: (float) -> int
         return int(time_in_seconds / TIMESTAMP_RESOLUTION_IN_SEC)
 
     @staticmethod
-    def nanosec_to_sec(time_in_nanoseconds: int):
+    def ticks_to_sec(time_in_nanoseconds: int):
         # type: (int) -> float
         return time_in_nanoseconds * TIMESTAMP_RESOLUTION_IN_SEC
 
     @property
     def timestamp_in_sec(self):
-        return NewDynamicObject.nanosec_to_sec(self.timestamp)
+        return NewDynamicObject.ticks_to_sec(self.timestamp)
 
     @timestamp_in_sec.setter
     def timestamp_in_sec(self, value):
-        self.timestamp = NewDynamicObject.sec_to_nanosec(value)
+        self.timestamp = NewDynamicObject.sec_to_ticks(value)
 
     @classmethod
     def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence):
@@ -410,7 +410,7 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
         # type: (CartesianExtendedState, Optional[float]) -> NewDynamicObject
         """clones self while overriding cartesian_state and optionally timestamp"""
         return self.__class__.create_from_cartesian_state(self.obj_id,
-                                                          NewDynamicObject.sec_to_nanosec(timestamp_in_sec or self.timestamp),
+                                                          NewDynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp),
                                                           cartesian_state,
                                                           self.size, self.confidence)
 
