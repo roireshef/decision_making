@@ -11,7 +11,7 @@ from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanM
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.state.state import OccupancyState, ObjectSize, EgoState, State, DynamicObject
+from decision_making.src.state.state import OccupancyState, ObjectSize, EgoState, State, DynamicObject, NewDynamicObject
 from decision_making.test.prediction.mock_predictor import TestPredictorMock
 
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
@@ -56,7 +56,7 @@ def dynamic_objects_in_fov():
 
     dyn_obj.bbox = LcmObjectBbox()
 
-    dyn_obj.bbox.yaw = 0
+    dyn_obj.bbox.yaw = 1.107
     dyn_obj.bbox.length = 2
     dyn_obj.bbox.width = 2
     dyn_obj.bbox.height = 2
@@ -93,7 +93,7 @@ def dynamic_objects_not_in_fov():
 
     dyn_obj.bbox = LcmObjectBbox()
 
-    dyn_obj.bbox.yaw = 0
+    dyn_obj.bbox.yaw = 0.982
     dyn_obj.bbox.length = 2
     dyn_obj.bbox.width = 2
     dyn_obj.bbox.height = 2
@@ -130,7 +130,7 @@ def dynamic_objects_not_on_road():
 
     dyn_obj.bbox = LcmObjectBbox()
 
-    dyn_obj.bbox.yaw = 0
+    dyn_obj.bbox.yaw = 0.982
     dyn_obj.bbox.length = 2
     dyn_obj.bbox.width = 2
     dyn_obj.bbox.height = 2
@@ -184,6 +184,21 @@ def ego_state_fix():
     ego_state = EgoState(0, 5, 0, 0, 0, 0, size, 0, 1.0, 0, 0, 0)
     yield ego_state
 
+
+@pytest.fixture(scope='function')
+def dyn_obj_on_road():
+    size = ObjectSize(0, 0, 0)
+    dyn_obj = NewDynamicObject.create_from_cartesian_state(obj_id=0, timestamp=5, cartesian_state=np.array([5.0,1.0, 0, 1.0, 0.0, 0]),
+                                                           size=size, confidence=0)
+    yield dyn_obj
+
+
+@pytest.fixture(scope='function')
+def dyn_obj_outside_road():
+    size = ObjectSize(0, 0, 0)
+    dyn_obj = NewDynamicObject.create_from_cartesian_state(obj_id=0, timestamp=5, cartesian_state=np.array([5.0, -10.0, 0, 1.0, 0.0, 0]),
+                                                           size=size, confidence=0)
+    yield dyn_obj
 
 @pytest.fixture(scope='function')
 def trajectory_params():
