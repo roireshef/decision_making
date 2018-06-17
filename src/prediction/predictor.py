@@ -7,7 +7,7 @@ import numpy as np
 import six
 
 from decision_making.src.planning.types import CartesianTrajectory, GlobalTimeStampInSec, MinGlobalTimeStampInSec
-from decision_making.src.state.state import DynamicObject, State
+from decision_making.src.state.state import NewDynamicObject, State
 from mapping.src.exceptions import LongitudeOutOfRoad
 
 
@@ -21,7 +21,7 @@ class Predictor:
         self._logger = logger
 
     @abstractmethod
-    def predict_object(self, dynamic_object: DynamicObject,
+    def predict_object(self, dynamic_object: NewDynamicObject,
                        prediction_timestamps: np.ndarray) -> CartesianTrajectory:
         """
         Method to compute future locations, yaw, and velocities for dynamic objects. Returns the np.array used by the
@@ -30,18 +30,6 @@ class Predictor:
         :param prediction_timestamps: np array of timestamps in [sec] to predict_object_trajectories for. In ascending order.
         Global, not relative
         :return: predicted object's locations in global map coordinates np.array([x, y, theta, vel])
-        """
-        pass
-
-    @abstractmethod
-    def predict_object_on_road(self, dynamic_object: DynamicObject, prediction_timestamps: np.ndarray) -> List[
-        DynamicObject]:
-        """
-        computes future locations, yaw and velocities for an object directly in the road coordinates-frame
-        :param dynamic_object: dynamic object
-        :param prediction_timestamps: np array of timestamps in [sec] to predict_object_trajectories for. In ascending order.
-        Global, not relative
-        :return: a list of dynamic objects with future localizations that correspond to prediction_timestamps
         """
         pass
 
@@ -59,7 +47,7 @@ class Predictor:
         predicted_states: List[State] = list()
 
         # A list of predited dynamic objects in future times. init with empty lists
-        objects_in_predicted_states: List[List[DynamicObject]] = [list() for x in range(len(prediction_timestamps))]
+        objects_in_predicted_states: List[List[NewDynamicObject]] = [list() for x in range(len(prediction_timestamps))]
 
         ego_state = state.ego_state
         dynamic_objects = state.dynamic_objects
@@ -109,8 +97,8 @@ class Predictor:
         return self.predict_state(state=state, prediction_timestamps=np.array([most_recent_timestamp]))[0]
 
     @staticmethod
-    def _convert_predictions_to_dynamic_objects(dynamic_object: DynamicObject, predictions: CartesianTrajectory,
-                                                prediction_timestamps: np.ndarray) -> List[DynamicObject]:
+    def _convert_predictions_to_dynamic_objects(dynamic_object: NewDynamicObject, predictions: CartesianTrajectory,
+                                                prediction_timestamps: np.ndarray) -> List[NewDynamicObject]:
         """
         given original dynamic object, its predictions, and their respective time stamps, creates a list of dynamic
          objects corresponding to the predicted object in those timestamps.
@@ -120,18 +108,21 @@ class Predictor:
         :return:
         """
         # Initiate array of DynamicObject at predicted times
-        predicted_object_states: List[DynamicObject] = list()
+        predicted_object_states: List[NewDynamicObject] = list()
 
         # Fill with predicted state
         for t_ind in range(len(prediction_timestamps)):
             predicted_object_states.append(
-                dynamic_object.clone_cartesian_state(timestamp_in_sec=prediction_timestamps[t_ind],
-                                                     cartesian_state=predictions[t_ind]))
+                dynamic_object.clone_from_cartesian_state(timestamp_in_sec=prediction_timestamps[t_ind],
+                                                             cartesian_state=np.concatenate((predictions[t_ind],
+                                                                                             np.array([0, 0])))
+                                                          )
+            )
 
         return predicted_object_states
 
-    def _predict_object_state(self, dynamic_object: DynamicObject,
-                              prediction_timestamps: np.ndarray) -> List[DynamicObject]:
+    def _predict_object_state(self, dynamic_object: NewDynamicObject,
+                              prediction_timestamps: np.ndarray) -> List[NewDynamicObject]:
         """
         Wrapper method that uses the predict_object_trajectories method, and creates the dynamic object list.
         :param dynamic_object: in map coordinates
