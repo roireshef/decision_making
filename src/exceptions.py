@@ -2,6 +2,26 @@ import six
 from abc import ABCMeta
 
 
+class NoUniqueObjectStateForEvaluation(Exception):
+    pass
+
+
+class TimeAlignmentPredictionHorizonTooLong(Exception):
+    pass
+
+
+class PredictedObjectHasNegativeVelocity(Exception):
+    pass
+
+
+class ResourcesNotUpToDateException(Exception):
+    pass
+
+
+class PredictObjectInPastTimes(Exception):
+    pass
+
+
 class MsgDeserializationError(Exception):
     pass
 
@@ -19,10 +39,19 @@ class TrjajectoryPlanningException(Exception):
 class NoValidTrajectoriesFound(TrjajectoryPlanningException):
     pass
 
+class CouldNotGenerateTrajectories(TrjajectoryPlanningException):
+    pass
 
-# TRAJECTORY PLANNING
+# BEHAVIORAL PLANNING
 @six.add_metaclass(ABCMeta)
 class BehavioralPlanningException(Exception):
+    pass
+
+class ActionOutOfSpec(BehavioralPlanningException):
+    pass
+
+
+class InvalidAction(BehavioralPlanningException):
     pass
 
 

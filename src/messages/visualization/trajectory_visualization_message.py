@@ -1,7 +1,7 @@
 import numpy as np
 from typing import List
 
-from decision_making.src.planning.types import CartesianPath, CartesianExtendedTrajectories
+from decision_making.src.planning.types import CartesianPath2D, CartesianExtendedTrajectories
 from decision_making.src.state.state import State
 
 from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedNumpyArray
@@ -9,10 +9,10 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryVisualizationMsg
 
 class TrajectoryVisualizationMsg:
     def __init__(self, reference_route, trajectories, costs, state, predicted_states, plan_time):
-        # type: (CartesianPath, CartesianExtendedTrajectories, np.ndarray, State, List[State], float) -> None
+        # type: (CartesianPath2D, CartesianExtendedTrajectories, np.ndarray, State, List[State], float) -> None
         """
         Message that holds debug results of WerlingPlanner to be broadcasted to the visualizer
-        :param reference_route: of type CartesianPath
+        :param reference_route: of type CartesianPath2D
         :param trajectories: a tensor of the best <NUM_ALTERNATIVE_TRAJECTORIES> trajectory points in the vehicle's
         coordinate frame. of type CartesianExtendedTrajectories
         :param costs: 1D numpy array of the above trajectories, respectively.
@@ -28,7 +28,8 @@ class TrajectoryVisualizationMsg:
         self.predicted_states = predicted_states
         self.plan_time = plan_time
 
-    def serialize(self) -> LcmTrajectoryVisualizationMsg:
+    def serialize(self):
+        # type: ()->LcmTrajectoryVisualizationMsg
         lcm_msg = LcmTrajectoryVisualizationMsg()
 
         lcm_msg.reference_route = LcmNonTypedNumpyArray()
@@ -57,7 +58,8 @@ class TrajectoryVisualizationMsg:
         return lcm_msg
 
     @classmethod
-    def deserialize(cls, lcmMsg: LcmTrajectoryVisualizationMsg):
+    def deserialize(cls, lcmMsg):
+        # type: (LcmTrajectoryVisualizationMsg)-> TrajectoryVisualizationMsg
         return cls(np.ndarray(shape = tuple(lcmMsg.reference_route.shape)
                             , buffer = np.array(lcmMsg.reference_route.data)
                             , dtype = float)

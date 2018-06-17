@@ -5,7 +5,7 @@ import pytest
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
-from decision_making.src.planning.behavioral.behavioral_facade import BehavioralFacade
+from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
@@ -13,7 +13,7 @@ from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.planning import custom_fixtures
 
 
-def create_behavioral_planner() -> BehavioralFacade:
+def create_behavioral_planner() -> BehavioralPlanningFacade:
 
     pubsub = PubSubMock(logger=AV_Logger.get_logger(LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING))
     trajectory_params = None
@@ -22,7 +22,7 @@ def create_behavioral_planner() -> BehavioralFacade:
     logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
 
     behavioral_module = BehavioralFacadeMock(pubsub=pubsub, logger=logger, trajectory_params=trajectory_params,
-                                             visualization_msg=behavioral_visualization_msg)
+                                             visualization_msg=behavioral_visualization_msg, trigger_pos=None)
     return behavioral_module
 
 @pytest.fixture()

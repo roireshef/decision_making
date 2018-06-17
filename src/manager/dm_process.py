@@ -6,12 +6,12 @@ from decision_making.src.manager.dm_trigger import DmTriggerType, DmPeriodicTime
 from rte.python.os import catch_interrupt_signals
 from rte.python.logger.AV_logger import AV_Logger
 from os import getpid
+from rte.python.profiler import cleanup as profiler_cleanup
 
 
 class DmProcess:
 
-    # TODO: Get external trigger (requires changes to the PeriodTimer in rte repo)
-    def __init__(self, module_creation_method: Callable[[], DmModule], trigger_type: DmTriggerType, trigger_args: dict) -> None:
+    def __init__(self, module_creation_method: Callable[[], DmModule], trigger_type: DmTriggerType, trigger_args: dict):
         """
         Manager for a single DM module running in a separate process
         :param module_creation_method: the method to create an instance of the DM module to run in a separate process
@@ -101,6 +101,7 @@ class DmProcess:
         if self._trigger.is_active():
             self._trigger.deactivate()
         self._module_instance.stop()
+        profiler_cleanup()
 
     def _trigger_callback(self) -> None:
         """

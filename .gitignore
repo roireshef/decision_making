@@ -19,4 +19,6 @@
 /decision_making.version
 /install_manifest.txt
 **/__pycache__
-
+*.log
+*.pyc
+**/*.pyc
