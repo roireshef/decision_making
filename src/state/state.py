@@ -467,11 +467,11 @@ class NewEgoState(NewDynamicObject):
 class State(PUBSUB_MSG_IMPL):
     ''' Members annotations for python 2 compliant classes '''
     occupancy_state = OccupancyState
-    dynamic_objects = List[DynamicObject]
-    ego_state = EgoState
+    dynamic_objects = List[NewDynamicObject]
+    ego_state = NewEgoState
 
     def __init__(self, occupancy_state, dynamic_objects, ego_state):
-        # type: (OccupancyState, List[DynamicObject], EgoState) -> None
+        # type: (OccupancyState, List[NewDynamicObject], NewEgoState) -> None
         """
         main class for the world state. deep copy is required by self.clone_with!
         :param occupancy_state: free space
@@ -509,16 +509,16 @@ class State(PUBSUB_MSG_IMPL):
         # type: (LcmState) -> State
         dynamic_objects = list()
         for i in range(lcmMsg.num_obj):
-            dynamic_objects.append(DynamicObject.deserialize(lcmMsg.dynamic_objects[i]))
+            dynamic_objects.append(NewDynamicObject.deserialize(lcmMsg.dynamic_objects[i]))
         ''' [DynamicObject.deserialize(lcmMsg.dynamic_objects[i]) for i in range(lcmMsg.num_obj)] '''
         return cls(OccupancyState.deserialize(lcmMsg.occupancy_state)
                  , dynamic_objects
-                 , EgoState.deserialize(lcmMsg.ego_state))
+                 , NewEgoState.deserialize(lcmMsg.ego_state))
 
     # TODO: remove when access to dynamic objects according to dictionary will be available.
     @classmethod
     def get_object_from_state(cls, state, target_obj_id):
-        # type: (State, int) -> DynamicObject
+        # type: (State, int) -> NewDynamicObject
         """
         Return the object with specific obj_id from world state
         :param state: the state to query
