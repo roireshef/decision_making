@@ -1,5 +1,6 @@
 from logging import Logger
 from threading import Lock
+from traceback import format_exc
 from typing import Optional, List, Dict
 
 import numpy as np
@@ -85,7 +86,7 @@ class StateModule(DmModule):
 
             self._publish_state_if_full()
         except Exception as e:
-            self.logger.error("StateModule._dynamic_obj_callback failed due to {}".format(e))
+            self.logger.error("StateModule._dynamic_obj_callback failed due to %s", format_exc())
 
     @raises(MapCellNotFound)
     def create_dyn_obj_list(self, dyn_obj_list: LcmPerceivedDynamicObjectList) -> List[NewDynamicObject]:
