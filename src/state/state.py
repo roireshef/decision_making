@@ -1,4 +1,5 @@
 import copy
+from gm_lcm import LcmNewEgoState
 from typing import List
 
 import numpy as np
@@ -365,7 +366,7 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
     @staticmethod
     def sec_to_ticks(time_in_seconds: float):
         # type: (float) -> int
-        return round(time_in_seconds / TIMESTAMP_RESOLUTION_IN_SEC)
+        return int(round(time_in_seconds / TIMESTAMP_RESOLUTION_IN_SEC))
 
     @staticmethod
     def ticks_to_sec(time_in_nanoseconds: int):
@@ -462,8 +463,8 @@ class NewEgoState(NewDynamicObject):
                                              map_state=map_state, size=size, confidence=confidence)
 
     def serialize(self):
-        # type: () -> LcmEgoState
-        lcm_msg = LcmEgoState()
+        # type: () -> LcmNewEgoState
+        lcm_msg = LcmNewEgoState()
         lcm_msg.dynamic_obj = super(self.__class__, self).serialize()
         return lcm_msg
 
