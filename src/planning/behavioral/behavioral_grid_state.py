@@ -90,28 +90,26 @@ class BehavioralGridState(BehavioralState):
         # TODO: Fix after demo and calculate longitudinal difference properly in the general case
         navigation_plan = MapService.get_instance().get_road_based_navigation_plan(current_road_id=road_id)
 
-        road_frenet = state.ego_state.map_state.road_fstate
-        lanes_num = MapService.get_instance().get_road(road_id).lanes_num
-
-        # Dict[SemanticGridCell, List[ObjectRelativeToEgo]]
+        # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
         dynamic_objects_with_road_semantics = BehavioralGridState._add_road_semantics(state.dynamic_objects,
-                                                                                      state.ego_state, road_frenet)
+                                                                                      state.ego_state)
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
                                                                          state.ego_state)
 
         # for each grid cell - sort the dynamic objects by proximity to ego
-        # Dict[SemanticGridCell, List[ObjectRelativeToEgo]]
+        # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
         grid_sorted_by_distances = {cell: sorted(obj_dist_list, key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
                                     for cell, obj_dist_list in multi_object_grid.items()}
 
         ego_lane = state.ego_state.map_state.lane_num
+        lanes_num = MapService.get_instance().get_road(road_id).lanes_num
 
         return cls(grid_sorted_by_distances, state.ego_state,
                    right_lane_exists=ego_lane > 0, left_lane_exists=ego_lane < lanes_num-1)
 
     @staticmethod
     @prof.ProfileFunction()
-    def _add_road_semantics(dynamic_objects: List[NewDynamicObject], ego_state: NewEgoState, road_frenet: FrenetSerret2DFrame) -> \
+    def _add_road_semantics(dynamic_objects: List[NewDynamicObject], ego_state: NewEgoState) -> \
             List[DynamicObjectWithRoadSemantics]:
         """
         Wraps DynamicObjects with "on-road" information (relative progress on road wrt ego, road-localization and more).

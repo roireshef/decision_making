@@ -80,8 +80,7 @@ class CostBasedBehavioralPlanner:
         """
         # create a new behavioral state at the action end
         ego = state.ego_state
-        road_id = ego.map_state.road_id
-        road_frenet = MapService.get_instance()._rhs_roads_frenet[road_id]  # TODO: assumes everyone on the same road!
+        road_frenet = ego.map_state.road_fstate  # TODO: assumes everyone on the same road!
 
         # TODO: This is hacky - use predictor!
         terminal_behavioral_states = []
@@ -190,10 +189,9 @@ class CostBasedBehavioralPlanner:
         """
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
-        road_frenet = MapUtils.get_road_rhs_frenet(ego)
 
         # project ego vehicle onto the road
-        ego_init_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
+        ego_init_fstate = ego.map_state.road_fstate
 
         target_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
 
@@ -204,6 +202,8 @@ class CostBasedBehavioralPlanner:
 
         poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
         poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
+
+        road_frenet = MapUtils.get_road_rhs_frenet(ego)
 
         return SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
                                           T_s=action_spec.t,
