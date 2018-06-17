@@ -94,8 +94,8 @@ class FilterBadExpectedTrajectory(RecipeFilter):
         """
         action_type = recipe.action_type
         ego_state = behavioral_state.ego_state
-        v_0 = ego_state.map_state[FS_SV]
-        a_0 = ego_state.map_state[FS_SA]
+        v_0 = ego_state.map_state.road_fstate[FS_SV]
+        a_0 = ego_state.map_state.road_fstate[FS_SA]
         wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
 
         # The predicates currently work for follow-front car,overtake-back car or follow-lane actions.
@@ -116,7 +116,7 @@ class FilterBadExpectedTrajectory(RecipeFilter):
             # compute distance from target vehicle +/- safety margin
             s_T = relative_dynamic_object.longitudinal_distance - (LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
                                                       ego_state.size.length / 2 + dynamic_object.size.length / 2)
-            v_T = dynamic_object.map_state[FS_SV]
+            v_T = dynamic_object.map_state.road_fstate[FS_SV]
 
             predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
 

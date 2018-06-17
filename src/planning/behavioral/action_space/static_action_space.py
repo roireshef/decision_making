@@ -44,7 +44,7 @@ class StaticActionSpace(ActionSpace):
         :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
         ego = behavioral_state.ego_state
-        ego_init_fstate = ego.map_state
+        ego_init_fstate = ego.map_state.road_fstate
 
         # get the relevant desired center lane latitude (from road's RHS)
         road_id = ego.map_state.road_id

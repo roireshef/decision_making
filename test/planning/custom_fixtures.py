@@ -19,7 +19,7 @@ from decision_making.test.planning.behavioral.mock_behavioral_facade import Beha
 from decision_making.test.planning.navigation.mock_navigation_facade import NavigationFacadeMock
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.state.mock_state_module import StateModuleMock
-from gm_lcm import LcmPerceivedDynamicObjectList, LcmDynamicObject, LcmPerceivedDynamicObject, LcmObjectLocation, \
+from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedDynamicObjectList, LcmNewDynamicObject, LcmPerceivedDynamicObject, LcmObjectLocation, \
     LcmObjectBbox, LcmObjectVelocity, LcmObjectTrackingStatus
 
 from rte.python.logger.AV_logger import AV_Logger
