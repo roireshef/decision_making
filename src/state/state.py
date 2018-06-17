@@ -415,10 +415,12 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
                                                           cartesian_state,
                                                           self.size, self.confidence)
 
-    def clone_from_map_state(self, map_state, timestamp=None):
+    def clone_from_map_state(self, map_state, timestamp_in_sec=None):
         # type: (MapState, Optional[float]) -> NewDynamicObject
         """clones self while overriding map_state and optionally timestamp"""
-        return self.create_from_map_state(self.obj_id, timestamp or self.timestamp, map_state,
+        return self.create_from_map_state(self.obj_id,
+                                          NewDynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp),
+                                          map_state,
                                           self.size, self.confidence)
 
     def serialize(self):

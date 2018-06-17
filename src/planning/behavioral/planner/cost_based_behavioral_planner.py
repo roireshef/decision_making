@@ -30,6 +30,7 @@ from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.predictor import Predictor
+from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, ObjectSize, NewEgoState
 from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
@@ -80,7 +81,8 @@ class CostBasedBehavioralPlanner:
         """
         # create a new behavioral state at the action end
         ego = state.ego_state
-        road_frenet = ego.map_state.road_fstate  # TODO: assumes everyone on the same road!
+        # TODO: assumes everyone on the same road!
+        road_id = ego.map_state.road_id
 
         # TODO: This is hacky - use predictor!
         terminal_behavioral_states = []
@@ -91,9 +93,9 @@ class CostBasedBehavioralPlanner:
                 continue
 
             # predict ego (s,d,v_s are according to action_spec)
-            terminal_ego_cstate = road_frenet.fstate_to_cstate(np.array([spec.s, spec.v, 0, spec.d, 0, 0]))
-            terminal_ego_state = ego.clone_from_cartesian_state(cartesian_state=terminal_ego_cstate,
-                                                                timestamp_in_sec=ego.timestamp_in_sec + spec.t)
+            terminal_ego_fstate = np.array([spec.s, spec.v, 0, spec.d, 0, 0])
+            terminal_ego_state = ego.clone_from_map_state(map_state=MapState(terminal_ego_fstate, road_id),
+                                                          timestamp_in_sec=ego.timestamp_in_sec + spec.t)
 
             # predict objects (using road-following prediction logic, including alignment to road)
             predicted_objects = []
