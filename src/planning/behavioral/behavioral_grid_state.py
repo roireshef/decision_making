@@ -90,7 +90,7 @@ class BehavioralGridState(BehavioralState):
         # TODO: Fix after demo and calculate longitudinal difference properly in the general case
         navigation_plan = MapService.get_instance().get_road_based_navigation_plan(current_road_id=road_id)
 
-        road_frenet = MapService.get_instance()._rhs_roads_frenet[road_id]
+        road_frenet = state.ego_state.map_state.road_fstate
         lanes_num = MapService.get_instance().get_road(road_id).lanes_num
 
         # Dict[SemanticGridCell, List[ObjectRelativeToEgo]]
@@ -130,8 +130,7 @@ class BehavioralGridState(BehavioralState):
             # compute the relative longitudinal distance between object and ego (positive means object is in front)
             longitudinal_difference = obj_init_fstate[FS_SX] - ego_init_fstate[FS_SX]
 
-            road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id=obj.map_state.road_id)
-            obj_center_lane_latitude = road_lane_latitudes[obj.map_state.lane_num]
+            obj_center_lane_latitude = obj.map_state.lane_center_lat
 
             dynamic_objects_on_road.append(
                 DynamicObjectWithRoadSemantics(obj, longitudinal_difference, obj_center_lane_latitude, obj_init_fstate))
