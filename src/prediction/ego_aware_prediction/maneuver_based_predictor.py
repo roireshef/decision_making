@@ -54,7 +54,6 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
 
         if action_trajectory is not None:
             extended_sampled_action_trajectory = action_trajectory.sample(time_points=prediction_timestamps)
-            sampled_action_trajectory = extended_sampled_action_trajectory[:, [C_X, C_Y, C_YAW, C_V]]
 
         predicted_objects_states_dict = self.predict_objects(state=state, object_ids=object_ids,
                                                              prediction_timestamps=prediction_timestamps,
@@ -68,9 +67,9 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
                                          predicted_objects_states_dict.values()]
 
             if action_trajectory is not None:
-                predicted_ego_state = state.ego_state.clone_cartesian_state(
+                predicted_ego_state = state.ego_state.clone_from_cartesian_state(
                     timestamp_in_sec=prediction_timestamps[time_idx],
-                    cartesian_state=sampled_action_trajectory[time_idx])
+                    cartesian_state=extended_sampled_action_trajectory[time_idx])
             else:
                 predicted_ego_state = None
 
@@ -103,8 +102,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
             predicted_maneuver_spec = self._maneuver_classifier.classify_maneuver(state=state, object_id=obj_id,
                                                                                   maneuver_horizon=horizon)
 
-            frenet_frame = MapService.get_instance().get_road_center_frenet_frame(
-                road_id=dynamic_object.map_state.road_id)
+            frenet_frame = MapService.get_instance()._rhs_roads_frenet[dynamic_object.map_state.road_id]
 
             init_time = dynamic_object.timestamp_in_sec
 

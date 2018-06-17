@@ -7,7 +7,6 @@ from decision_making.src.planning.types import CartesianTrajectory, CartesianPat
 from decision_making.src.prediction.ego_aware_prediction.ended_maneuver_params import EndedManeuverParams
 from decision_making.src.prediction.ego_aware_prediction.maneuver_spec import ManeuverSpec
 from decision_making.src.state.state import NewDynamicObject
-from decision_making.src.state.state_utils import get_object_fstate
 from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
@@ -16,7 +15,6 @@ class PredictionUtils:
     @staticmethod
     def convert_to_maneuver_spec(object_state: NewDynamicObject,
                                  ended_maneuver_params: EndedManeuverParams) -> ManeuverSpec:
-
         """
         Converts the parameters of the maneuver to a complete maneuver spec
         :param object_state: the dynamic object to predict
@@ -28,11 +26,8 @@ class PredictionUtils:
         map_api = MapService.get_instance()
         road_id = object_state.map_state.road_id
 
-        # Get Object's Frenet frame
-        road_frenet = map_api.get_road_center_frenet_frame(road_id=road_id)
-
         # Object's initial state in Frenet frame
-        obj_init_fstate = get_object_fstate(object_state=object_state, frenet_frame=road_frenet)
+        obj_init_fstate = object_state.map_state.road_fstate
 
         # Calculate object's initial state in Frenet frame according to model
         road_center_lanes_lat = map_api.get_center_lanes_latitudes(road_id=road_id)
@@ -48,7 +43,7 @@ class PredictionUtils:
 
         s_a_final = ended_maneuver_params.s_a_final
         d_x_final = (-road_width / 2.0 + object_center_lane_latitude) + lane_width * (
-            ended_maneuver_params.relative_lane + ended_maneuver_params.lat_normalized)
+                ended_maneuver_params.relative_lane + ended_maneuver_params.lat_normalized)+0.5*road_width
         d_v_final = 0.0
         d_a_final = 0.0
 
@@ -80,8 +75,9 @@ class PredictionUtils:
         return s_x_vec[-1], s_v_vec[-1]
 
     @staticmethod
-    def convert_ctrajectory_to_dynamic_objects(dynamic_object: NewDynamicObject, predictions: CartesianExtendedTrajectory,
-                                               prediction_timestamps: np.ndarray) -> List[DynamicObject]:
+    def convert_ctrajectory_to_dynamic_objects(dynamic_object: NewDynamicObject,
+                                               predictions: CartesianExtendedTrajectory,
+                                               prediction_timestamps: np.ndarray) -> List[NewDynamicObject]:
         """
         Given original dynamic object, its predictions, and their respective time stamps, creates a list of dynamic
          objects corresponding to the predicted object in those timestamps.
@@ -91,8 +87,9 @@ class PredictionUtils:
         :return:creates a list of dynamic objects corresponding to the predicted object ctrajectory in those timestamps.
         """
 
-        predicted_object_states = [dynamic_object.clone_cartesian_state(timestamp_in_sec=prediction_timestamps[t_ind],
-                                                                        cartesian_state=predictions[t_ind]) for t_ind in
-                                   range(len(prediction_timestamps))]
+        predicted_object_states = [
+            dynamic_object.clone_from_cartesian_state(timestamp_in_sec=prediction_timestamps[t_ind],
+                                                      cartesian_state=predictions[t_ind]) for t_ind in
+            range(len(prediction_timestamps))]
 
         return predicted_object_states

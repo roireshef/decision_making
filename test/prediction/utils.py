@@ -15,7 +15,10 @@ class Utils:
         expected_fields = expected_object.__dict__
 
         for field_name in actual_fields.keys():
-            try:
-                assert np.isclose(actual_fields[field_name], expected_fields[field_name], atol=1e-2)
-            except TypeError as e:
-                pass
+            if issubclass(type(actual_fields[field_name]), np.ndarray):
+                assert np.all(np.isclose(actual_fields[field_name], expected_fields[field_name], atol=1e-2))
+            else:
+                try:
+                    assert np.isclose(actual_fields[field_name], expected_fields[field_name], atol=1e-2)
+                except TypeError as e:
+                    pass

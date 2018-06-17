@@ -2,8 +2,9 @@ import numpy as np
 from gm_lcm import LcmMapState
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.planning.types import FrenetState2D
+from decision_making.src.planning.types import FrenetState2D, FS_DX
 from decision_making.src.utils.lcm_utils import LCMUtils
+from mapping.src.service.map_service import MapService
 
 
 class MapState(PUBSUB_MSG_IMPL):
@@ -15,20 +16,28 @@ class MapState(PUBSUB_MSG_IMPL):
         self.road_fstate = road_fstate
         self.road_id = road_id
 
-    #TODO: implement. Consider whether this is a property of map state or a different function in Map Utils.
+    # TODO: implement. Consider whether this is a property of map state or a different function in Map Utils.
     @property
     def lane_center_lat(self):
-        pass
+        lane_width = MapService.get_instance().get_road(self.road_id).lane_width
+        lat = self.road_fstate[FS_DX]
+        lane = np.math.floor(lat / lane_width)
+        return (lane+0.5)*lane_width
 
     # TODO: implement
     @property
     def intra_lane_lat(self) -> int:
-        pass
+        lane_width = MapService.get_instance().get_road(self.road_id).lane_width
+        lat = self.road_fstate[FS_DX]
+        lane = np.math.floor(lat / lane_width)
+        return lat - lane * lane_width
 
-    #TODO: implement lane number computation from map and fstate
+    # TODO: implement lane number computation from map and fstate
     @property
     def lane_num(self) -> int:
-        pass
+        lane_width = MapService.get_instance().get_road(self.road_id).lane_width
+        lat = self.road_fstate[FS_DX]
+        return int(np.math.floor(lat / lane_width))
 
     def serialize(self):
         # type: () -> LcmMapState

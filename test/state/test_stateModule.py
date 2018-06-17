@@ -52,8 +52,8 @@ def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(pubsub: Pub
     v_x = velocity * np.cos(yaw)
     v_y = velocity * np.sin(yaw)
 
-    assert np.isclose(dynamic_objects_in_fov.dynamic_objects[0].velocity.v_x , v_x, rtol=1e-3)
-    assert np.isclose(dynamic_objects_in_fov.dynamic_objects[0].velocity.v_y, v_y, rtol=1e-3)
+    assert np.isclose(dynamic_objects_in_fov.dynamic_objects[0].velocity.v_x , v_x, atol=1e-3)
+    assert np.isclose(dynamic_objects_in_fov.dynamic_objects[0].velocity.v_y, v_y, atol=1e-3)
 
     state_module.stop()
 

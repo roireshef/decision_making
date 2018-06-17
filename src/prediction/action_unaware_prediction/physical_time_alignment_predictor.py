@@ -9,7 +9,6 @@ from decision_making.src.planning.types import FS_SX, FS_SV, FS_DX, FS_DV
 from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State, NewDynamicObject
-from decision_making.src.state.state_utils import get_object_fstate
 from mapping.src.service.map_service import MapService
 
 
@@ -92,7 +91,7 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
         obj_final_cstate = np.array([predicted_x, predicted_y, dynamic_object.yaw, dynamic_object.velocity, 0, DEFAULT_CURVATURE])
 
         predicted_object_states = PredictionUtils.convert_ctrajectory_to_dynamic_objects(dynamic_object,
-                                                                                         obj_final_cstate,
+                                                                                         [obj_final_cstate],
                                                                                          np.array(
                                                                                              [prediction_timestamp]))
         return predicted_object_states

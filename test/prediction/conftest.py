@@ -186,16 +186,16 @@ def predicted_dyn_object_states_road_yaw(predicted_cartesian_state_0: CartesianE
 def predicted_static_ego_states(static_cartesian_state: CartesianExtendedState, prediction_timestamps: np.ndarray) -> \
         List[NewEgoState]:
     ego_states = [
-        NewEgoState.create_from_cartesian_state(obj_id=DYNAMIC_OBJECT_ID,
+        NewEgoState.create_from_cartesian_state(obj_id=EGO_OBJECT_ID,
                                                 timestamp=int(prediction_timestamps[0] * 1e9),
                                                 cartesian_state=static_cartesian_state, size=car_size,
                                                 confidence=0),
-        NewEgoState.create_from_cartesian_state(obj_id=DYNAMIC_OBJECT_ID,
+        NewEgoState.create_from_cartesian_state(obj_id=EGO_OBJECT_ID,
                                                 timestamp=int(prediction_timestamps[1] * 1e9),
                                                 cartesian_state=static_cartesian_state,
                                                 size=car_size, confidence=0),
 
-        NewEgoState.create_from_cartesian_state(obj_id=DYNAMIC_OBJECT_ID,
+        NewEgoState.create_from_cartesian_state(obj_id=EGO_OBJECT_ID,
                                                 timestamp=int(prediction_timestamps[2] * 1e9),
                                                 cartesian_state=static_cartesian_state,
                                                 size=car_size, confidence=0)
@@ -206,11 +206,10 @@ def predicted_static_ego_states(static_cartesian_state: CartesianExtendedState, 
 
 @pytest.fixture(scope='function')
 def ego_samplable_trajectory(static_cartesian_state: CartesianExtendedState) -> SamplableTrajectory:
-    a_k_zero_array = np.array([0, 0])
     cartesian_extended_trajectory = np.array(
-        [np.append(static_cartesian_state, a_k_zero_array),
-         np.append(static_cartesian_state, a_k_zero_array),
-         np.append(static_cartesian_state, a_k_zero_array)])
+        [static_cartesian_state,
+         static_cartesian_state,
+         static_cartesian_state])
     yield MockSamplableTrajectory(cartesian_extended_trajectory)
 
 

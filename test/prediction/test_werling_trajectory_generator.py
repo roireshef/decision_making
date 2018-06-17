@@ -21,7 +21,7 @@ def test_generateTrajectory_sampleParameters_resultPrecise(werling_trajectory_ge
 
     map_api = MapService.get_instance()
 
-    road_id = target_obj.road_localization.road_id
+    road_id = target_obj.map_state.road_id
     road_points = map_api._shift_road_points_to_latitude(road_id, 0.0)  # TODO: use nav_plan
     road_frenet_frame = FrenetSerret2DFrame(road_points)
 
@@ -30,8 +30,8 @@ def test_generateTrajectory_sampleParameters_resultPrecise(werling_trajectory_ge
     obj_init_fstate = road_frenet_frame.cstate_to_fstate(np.array([
         target_obj.x, target_obj.y,
         target_obj.yaw,
-        target_obj.total_speed,
-        target_obj.acceleration_lon,
+        target_obj.velocity,
+        target_obj.acceleration,
         road_curvature_at_obj_location  # We don't care about other agent's curvature, only the road's
     ]))
 
