@@ -46,7 +46,7 @@ class DynamicActionSpace(ActionSpace):
         :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
         ego = behavioral_state.ego_state
-        ego_init_fstate = ego.map_state.road_fstate\
+        ego_init_fstate = ego.map_state.road_fstate
 
         targets = [behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
                    for action_recipe in action_recipes]
