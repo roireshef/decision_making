@@ -1,8 +1,7 @@
-import numpy as np
-from decision_making.src.planning.types import FP_SX, FrenetState2D, FS_SX, C_X, C_Y, CartesianExtendedState
+from decision_making.src.planning.types import FrenetState2D, C_X, C_Y, CartesianExtendedState, FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import DynamicObject, EgoState, NewDynamicObject, NewEgoState
+from decision_making.src.state.state import NewDynamicObject, NewEgoState
 from mapping.src.service.map_service import MapService
 
 
@@ -44,3 +43,17 @@ class MapUtils:
         road_frenet = map_api._rhs_roads_frenet[map_state.road_id]
 
         return road_frenet.fstate_to_cstate(map_state.road_fstate)
+
+    #TODO: Note! This function is only valid when the frenet reference frame is from the right side of the road
+    @staticmethod
+    def is_object_on_road(map_state):
+        # type: (MapState) -> bool
+        """
+        Returns true of the object is on the road. False otherwise.
+        Note! This function is valid only when the frenet reference frame is from the right side of the road
+        :param map_state: the map state to check
+        :return: Returns true of the object is on the road. False otherwise.
+        """
+        road_width = MapService.get_instance().get_road(road_id=map_state.road_id).road_width
+        is_on_road = road_width + ROAD_SHOULDERS_WIDTH > map_state.road_fstate[FS_DX] > -ROAD_SHOULDERS_WIDTH
+        return is_on_road
