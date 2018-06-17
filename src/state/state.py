@@ -366,7 +366,7 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
     @staticmethod
     def sec_to_ticks(time_in_seconds: float):
         # type: (float) -> int
-        return round(time_in_seconds / TIMESTAMP_RESOLUTION_IN_SEC)
+        return int(round(time_in_seconds / TIMESTAMP_RESOLUTION_IN_SEC))
 
     @staticmethod
     def ticks_to_sec(time_in_nanoseconds: int):
