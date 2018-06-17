@@ -28,7 +28,7 @@ from decision_making.test import constants
 from decision_making.test.constants import TP_MOCK_FIXED_TRAJECTORY_FILENAME, BP_MOCK_FIXED_SPECS
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.src.planning.trajectory.fixed_trajectory_planner import FixedTrajectoryPlanner
-from decision_making.test.utils import Utils
+from decision_making.test.utils_for_tests import Utils
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
