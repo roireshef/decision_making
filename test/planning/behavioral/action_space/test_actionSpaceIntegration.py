@@ -5,7 +5,7 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state import ObjectSize, EgoState, State
+from decision_making.src.state.state import ObjectSize, EgoState, State, NewEgoState, NewDynamicObject
 from mapping.src.service.map_service import MapService
 
 
@@ -26,13 +26,17 @@ def test_specifyGoal_slightlyUnsafeState_shouldSucceed():
     ego_vel = 10
     ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon,
                                                                                        road_mid_lat - lane_width)
-    ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, ego_vel, 0, 0, 0)
+    ego = NewEgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
+                                                  cartesian_state=[ego_cpoint[0], ego_cpoint[1], ego_yaw, ego_vel, 0, 0],
+                                                  size=size, confidence=0)
 
     obj_vel = 10
     obj_lon = ego_lon + 20
     obj_cpoint, obj_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, obj_lon,
                                                                                        road_mid_lat - lane_width)
-    obj = EgoState(0, 0, obj_cpoint[0], obj_cpoint[1], obj_cpoint[2], obj_yaw, size, 0, obj_vel, 0, 0, 0)
+    obj = NewDynamicObject.create_from_cartesian_state(obj_id=0, timestamp=0,
+                                                  cartesian_state=[obj_cpoint[0], obj_cpoint[1], obj_yaw, obj_vel, 0.0, 0.0],
+                                                  size=size, confidence=0)
 
     state = State(None, [obj], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, logger)
