@@ -78,7 +78,7 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route[0])
             self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
-            self.logger.debug("input: ego: v_x: ", state.ego_state.velocity)
+            self.logger.debug("input: ego: v_x: %s", state.ego_state.velocity)
             self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", lon_plan_horizon)
             self.logger.debug("state: %d objects detected", len(state.dynamic_objects))
 
