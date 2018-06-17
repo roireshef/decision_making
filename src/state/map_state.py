@@ -1,5 +1,5 @@
 import numpy as np
-from gm_lcm import LcmMapState
+from common_data.lcm.generatedFiles.gm_lcm import LcmMapState
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import FrenetState2D, FS_DX
@@ -49,5 +49,5 @@ class MapState(PUBSUB_MSG_IMPL):
     @classmethod
     def deserialize(cls, lcm_msg):
         # type: (LcmMapState) -> MapState
-        return cls(np.ndarray(shape=tuple(lcm_msg.lane_state.shape)
-                              , buffer=np.array(lcm_msg.lane_state.data), dtype=float), lcm_msg.road_id)
+        return cls(np.ndarray(shape=tuple(lcm_msg.road_fstate.shape)
+                              , buffer=np.array(lcm_msg.road_fstate.data), dtype=float), lcm_msg.road_id)
