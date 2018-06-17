@@ -362,13 +362,23 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
             self._cached_map_state = MapUtils.convert_cartesian_to_map_state(self._cached_cartesian_state)
         return self._cached_map_state
 
+    @staticmethod
+    def sec_to_ticks(time_in_seconds: float):
+        # type: (float) -> int
+        return int(time_in_seconds / TIMESTAMP_RESOLUTION_IN_SEC)
+
+    @staticmethod
+    def ticks_to_sec(time_in_nanoseconds: int):
+        # type: (int) -> float
+        return time_in_nanoseconds * TIMESTAMP_RESOLUTION_IN_SEC
+
     @property
     def timestamp_in_sec(self):
-        return self.timestamp * TIMESTAMP_RESOLUTION_IN_SEC
+        return NewDynamicObject.ticks_to_sec(self.timestamp)
 
     @timestamp_in_sec.setter
     def timestamp_in_sec(self, value):
-        self.timestamp = int(value / TIMESTAMP_RESOLUTION_IN_SEC)
+        self.timestamp = NewDynamicObject.sec_to_ticks(value)
 
     @classmethod
     def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence):
@@ -397,9 +407,11 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
         return cls(obj_id, timestamp, None, map_state, size, confidence)
 
     def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None):
-        # type: (CartesianState, Optional[float]) -> NewDynamicObject
+        # type: (CartesianExtendedState, Optional[float]) -> NewDynamicObject
         """clones self while overriding cartesian_state and optionally timestamp"""
-        return self.__class__.create_from_cartesian_state(self.obj_id, timestamp_in_sec or self.timestamp_in_sec, cartesian_state,
+        return self.__class__.create_from_cartesian_state(self.obj_id,
+                                                          NewDynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp),
+                                                          cartesian_state,
                                                           self.size, self.confidence)
 
     def clone_from_map_state(self, map_state, timestamp=None):
