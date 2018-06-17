@@ -78,7 +78,7 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route[0])
             self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
-            self.logger.debug("input: ego: v_x: %f, v_y: %f", state.ego_state.v_x, state.ego_state.v_y)
+            self.logger.debug("input: ego: v_x: ", state.ego_state.velocity)
             self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", lon_plan_horizon)
             self.logger.debug("state: %d objects detected", len(state.dynamic_objects))
 
@@ -111,7 +111,8 @@ class TrajectoryPlanningFacade(DmModule):
             # TODO: remove ego_state.v_x from the message in version 2.0
             trajectory_msg = TrajectoryPlanMsg(timestamp=state.ego_state.timestamp,
                                                trajectory=vehicle_origin_trajectory_points,
-                                               current_speed=state_aligned.ego_state.v_x)
+                                               current_speed=state_aligned.ego_state.velocity)
+
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
 

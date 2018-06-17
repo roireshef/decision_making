@@ -81,9 +81,8 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
                                   MIN_OVERTAKE_VEL)
 
         ego = behavioral_state.ego_state
-        road_id = ego.road_localization.road_id
-        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
-        road_frenet = FrenetSerret2DFrame(road_points)
+        road_id = ego.map_state.road_id
+        road_frenet = MapService.get_instance()._rhs_roads_frenet[road_id]
         ego_fpoint = road_frenet.cpoint_to_fpoint(np.array([ego.x, ego.y]))
 
         dist_to_backleft, safe_left_dist_behind_ego = RuleBasedActionSpecEvaluator._calc_safe_dist_behind_ego(
@@ -136,12 +135,12 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
             back_object = back_objects[0].dynamic_object
             back_fpoint = road_frenet.cpoint_to_fpoint(np.array([back_object.x, back_object.y]))
             dist_to_back_obj = ego_fpoint[FP_SX] - back_fpoint[FP_SX]
-            if behavioral_state.ego_state.v_x > back_object.v_x:
-                safe_dist_behind_ego = back_object.v_x * SPECIFICATION_MARGIN_TIME_DELAY
+            if behavioral_state.ego_state.velocity > back_object.velocity:
+                safe_dist_behind_ego = back_object.velocity * SPECIFICATION_MARGIN_TIME_DELAY
             else:
-                safe_dist_behind_ego = back_object.v_x * SPECIFICATION_MARGIN_TIME_DELAY + \
-                                       back_object.v_x ** 2 / (2 * abs(LON_ACC_LIMITS[0])) - \
-                                       behavioral_state.ego_state.v_x ** 2 / (2 * abs(LON_ACC_LIMITS[0]))
+                safe_dist_behind_ego = back_object.velocity * SPECIFICATION_MARGIN_TIME_DELAY + \
+                                       back_object.velocity ** 2 / (2 * abs(LON_ACC_LIMITS[0])) - \
+                                       behavioral_state.ego_state.velocity ** 2 / (2 * abs(LON_ACC_LIMITS[0]))
         return dist_to_back_obj, safe_dist_behind_ego
 
     @staticmethod
