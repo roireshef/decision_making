@@ -10,7 +10,7 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 from decision_making.src.prediction.ego_aware_prediction.maneuver_recognition.manuever_classifier import \
     ManeuverClassifier
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
-from decision_making.src.state.state import State, DynamicObject
+from decision_making.src.state.state import State, NewDynamicObject
 from mapping.src.service.map_service import MapService
 from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.trajectory_generator import \
     TrajectoryGenerator
@@ -83,7 +83,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
         return future_states
 
     def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray,
-                        action_trajectory: Optional[SamplableTrajectory]) -> Dict[int, List[DynamicObject]]:
+                        action_trajectory: Optional[SamplableTrajectory]) -> Dict[int, List[NewDynamicObject]]:
         """
         Predicte the future of the specified objects, for the specified timestamps
         :param state: the initial state to begin prediction from. Though predicting a single object, the full state
@@ -95,7 +95,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
         :return: a mapping between object id to the list of future dynamic objects of the matching object
         """
 
-        predicted_objects_states_dict: Dict[int, List[DynamicObject]] = dict()
+        predicted_objects_states_dict: Dict[int, List[NewDynamicObject]] = dict()
 
         for obj_id in object_ids:
             dynamic_object = State.get_object_from_state(state=state, target_obj_id=obj_id)
@@ -104,7 +104,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
                                                                                   maneuver_horizon=horizon)
 
             frenet_frame = MapService.get_instance().get_road_center_frenet_frame(
-                road_id=dynamic_object.road_localization.road_id)
+                road_id=dynamic_object.map_state.road_id)
 
             init_time = dynamic_object.timestamp_in_sec
 
@@ -114,9 +114,8 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
                 predicted_maneuver_spec=predicted_maneuver_spec)
 
             maneuver_trajectory_extended = maneuver_samplable_trajectory.sample(time_points=prediction_timestamps)
-            maneuver_trajectory = maneuver_trajectory_extended[:, [C_X, C_Y, C_YAW, C_V]]
 
-            future_states = PredictionUtils.convert_ctrajectory_to_dynamic_objects(dynamic_object, maneuver_trajectory,
+            future_states = PredictionUtils.convert_ctrajectory_to_dynamic_objects(dynamic_object, maneuver_trajectory_extended,
                                                                                    prediction_timestamps)
 
             predicted_objects_states_dict[obj_id] = future_states

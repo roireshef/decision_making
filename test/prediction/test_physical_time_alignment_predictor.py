@@ -4,7 +4,7 @@ from unittest.mock import patch
 import numpy as np
 
 from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
-from decision_making.src.state.state import DynamicObject, EgoState, State
+from decision_making.src.state.state import NewDynamicObject, NewEgoState, State
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.prediction.utils import Utils
 from mapping.test.model.testable_map_fixtures import map_api_mock
@@ -18,8 +18,8 @@ from decision_making.test.prediction.conftest import physical_time_alignment_pre
 def test_AlignObjects_ExternalTimestamp_AccuratePrediction(physical_time_alignment_predictor: EgoUnawarePredictor,
                                                            init_state: State, prediction_timestamps: np.ndarray,
                                                            predicted_dyn_object_states_constant_yaw: List[
-                                                               DynamicObject],
-                                                           predicted_static_ego_states: List[EgoState]):
+                                                               NewDynamicObject],
+                                                           predicted_static_ego_states: List[NewEgoState]):
 
     predicted_state = physical_time_alignment_predictor.predict_state(state=init_state, prediction_timestamps=np.array([
         prediction_timestamps[0]]))[0]
@@ -39,8 +39,8 @@ def test_AlignObjects_ExternalTimestamp_AccuratePrediction(physical_time_alignme
 def test_AlignObjects_ExternalTimestamp_ConstantYawAccuratePrediction(
         physical_time_alignment_predictor: EgoUnawarePredictor,
         init_state: State, prediction_timestamps: np.ndarray,
-        predicted_dyn_object_states_constant_yaw: List[DynamicObject],
-        predicted_static_ego_states: List[EgoState]):
+        predicted_dyn_object_states_constant_yaw: List[NewDynamicObject],
+        predicted_static_ego_states: List[NewEgoState]):
 
     predicted_state = physical_time_alignment_predictor.predict_state(state=init_state, prediction_timestamps=np.array([
         prediction_timestamps[1]]))[0]
