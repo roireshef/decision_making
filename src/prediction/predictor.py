@@ -64,7 +64,8 @@ class Predictor:
         ego_state = state.ego_state
         dynamic_objects = state.dynamic_objects
 
-        # TODO: temporal bug fix: refrain from prediction of ego state if it has the latest timestamp
+        # TODO: temporal bug fix - hack: refrain from prediction of ego state if it has the latest timestamp
+        # TODO: it solves the bug only for simulation, when prediction_timestamp[0] == ego.timestamp
         if len(prediction_timestamps) == 1 and ego_state.timestamp_in_sec == prediction_timestamps[0]:
             predicted_ego_states = np.array([ego_state])
         else:
