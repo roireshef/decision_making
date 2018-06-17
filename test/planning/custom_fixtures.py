@@ -11,7 +11,7 @@ from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanM
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.state.state import OccupancyState, ObjectSize, EgoState, State, NewDynamicObject, NewEgoState
+from decision_making.src.state.state import OccupancyState, ObjectSize, State, NewDynamicObject, NewEgoState
 from decision_making.test.prediction.mock_predictor import TestPredictorMock
 
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
@@ -210,7 +210,7 @@ def trajectory_params():
     mock_sigmoid = SigmoidFunctionParams(1.0, 2.0, 3.0)
     trajectory_cost_params = TrajectoryCostParams(mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
                                                   mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
-                                                  mock_sigmoid, 3.0, LON_JERK_COST, LAT_JERK_COST,
+                                                  mock_sigmoid, 3.0, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT,
                                                   VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)
     yield TrajectoryParams(reference_route=ref_route, target_state=target_state,
                            cost_params=trajectory_cost_params, time=16,
