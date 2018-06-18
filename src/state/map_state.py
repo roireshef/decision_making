@@ -16,28 +16,27 @@ class MapState(PUBSUB_MSG_IMPL):
         self.road_fstate = road_fstate
         self.road_id = road_id
 
-    # TODO: implement. Consider whether this is a property of map state or a different function in Map Utils.
+    def get_current_lane_params(self):
+        # type: (MapState) -> (float, float, int)
+        lane_width = MapService.get_instance().get_road(self.road_id).lane_width
+        lat = self.road_fstate[FS_DX]
+        lane = int(np.math.floor(lat / lane_width))
+        return lane_width, lat, lane
+
     @property
     def lane_center_lat(self):
-        lane_width = MapService.get_instance().get_road(self.road_id).lane_width
-        lat = self.road_fstate[FS_DX]
-        lane = np.math.floor(lat / lane_width)
+        lane_width, _, lane = self.get_current_lane_params()
         return (lane+0.5)*lane_width
 
-    # TODO: implement
     @property
     def intra_lane_lat(self) -> int:
-        lane_width = MapService.get_instance().get_road(self.road_id).lane_width
-        lat = self.road_fstate[FS_DX]
-        lane = np.math.floor(lat / lane_width)
+        lane_width, lat, lane = self.get_current_lane_params()
         return lat - lane * lane_width
 
-    # TODO: implement lane number computation from map and fstate
     @property
     def lane_num(self) -> int:
-        lane_width = MapService.get_instance().get_road(self.road_id).lane_width
-        lat = self.road_fstate[FS_DX]
-        return int(np.math.floor(lat / lane_width))
+        _, _, lane = self.get_current_lane_params()
+        return lane
 
     def serialize(self):
         # type: () -> LcmMapState
