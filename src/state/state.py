@@ -1,5 +1,5 @@
 import copy
-from gm_lcm import LcmNewEgoState
+from common_data.lcm.generatedFiles.gm_lcm import LcmNewEgoState
 from typing import List, Optional
 
 import numpy as np

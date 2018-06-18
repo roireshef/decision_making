@@ -5,7 +5,7 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state import ObjectSize, EgoState, State, NewEgoState, NewDynamicObject
+from decision_making.src.state.state import ObjectSize, State, NewEgoState, NewDynamicObject
 from mapping.src.service.map_service import MapService
 
 

@@ -78,7 +78,7 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route[0])
             self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
-            self.logger.debug("input: ego: v_x: %s", state.ego_state.velocity)
+            self.logger.debug("input: ego: velocity: %s", state.ego_state.velocity)
             self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", lon_plan_horizon)
             self.logger.debug("state: %d objects detected", len(state.dynamic_objects))
 
@@ -189,13 +189,7 @@ class TrajectoryPlanningFacade(DmModule):
         """
         current_time = state.ego_state.timestamp_in_sec
         expected_state_vec: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
-
-        expected_ego_state = NewEgoState.create_from_cartesian_state(
-            obj_id=state.ego_state.obj_id,
-            timestamp=state.ego_state.timestamp,
-            cartesian_state=expected_state_vec,
-            size=state.ego_state.size,
-            confidence=state.ego_state.confidence)
+        expected_ego_state = NewEgoState.clone_from_cartesian_state(expected_state_vec, state.ego_state.timestamp_in_sec)
 
         updated_state = state.clone_with(ego_state=expected_ego_state)
 

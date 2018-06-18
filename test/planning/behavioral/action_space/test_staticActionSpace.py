@@ -4,7 +4,7 @@ from decision_making.src.planning.behavioral.action_space.static_action_space im
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
-from decision_making.src.state.state import ObjectSize, EgoState, State, NewEgoState
+from decision_making.src.state.state import ObjectSize, State, NewEgoState
 from mapping.src.service.map_service import MapService
 
 

@@ -9,7 +9,7 @@ from decision_making.src.planning.types import CartesianTrajectory, C_YAW, Carte
     FrenetTrajectories2D, FS_DX
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import DynamicObject, State, NewDynamicObject
+from decision_making.src.state.state import State, NewDynamicObject
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 

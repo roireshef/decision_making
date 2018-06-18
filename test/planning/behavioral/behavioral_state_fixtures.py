@@ -8,8 +8,7 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionType, AggressivenessLevel, \
     StaticActionRecipe
-from decision_making.src.state.state import OccupancyState, State, EgoState, DynamicObject, ObjectSize, NewEgoState, \
-    NewDynamicObject
+from decision_making.src.state.state import OccupancyState, State, ObjectSize, NewEgoState, NewDynamicObject
 from mapping.src.model.map_api import MapAPI
 from mapping.src.service.map_service import MapService, MapServiceArgs
 
