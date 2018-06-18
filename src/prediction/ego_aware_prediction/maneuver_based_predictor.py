@@ -111,9 +111,9 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
                 frenet_frame=frenet_frame,
                 predicted_maneuver_spec=predicted_maneuver_spec)
 
-            maneuver_trajectory_extended = maneuver_samplable_trajectory.sample(time_points=prediction_timestamps)
+            maneuver_ftrajectory = maneuver_samplable_trajectory.sample_frenet(time_points=prediction_timestamps)
 
-            future_states = PredictionUtils.convert_ctrajectory_to_dynamic_objects(dynamic_object, maneuver_trajectory_extended,
+            future_states = PredictionUtils.convert_ftrajectory_to_dynamic_objects(dynamic_object, maneuver_ftrajectory,
                                                                                    prediction_timestamps)
 
             predicted_objects_states_dict[obj_id] = future_states

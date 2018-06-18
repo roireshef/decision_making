@@ -3,9 +3,10 @@ import numpy as np
 
 from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, WERLING_TIME_RESOLUTION
 from decision_making.src.planning.types import CartesianTrajectory, CartesianPath2D, FS_SV, FS_SX, \
-    CartesianExtendedTrajectory
+    CartesianExtendedTrajectory, FrenetTrajectory2D
 from decision_making.src.prediction.ego_aware_prediction.ended_maneuver_params import EndedManeuverParams
 from decision_making.src.prediction.ego_aware_prediction.maneuver_spec import ManeuverSpec
+from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import NewDynamicObject
 from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
@@ -43,7 +44,7 @@ class PredictionUtils:
 
         s_a_final = ended_maneuver_params.s_a_final
         d_x_final = (-road_width / 2.0 + object_center_lane_latitude) + lane_width * (
-                ended_maneuver_params.relative_lane + ended_maneuver_params.lat_normalized)+0.5*road_width
+                ended_maneuver_params.relative_lane + ended_maneuver_params.lat_normalized) + 0.5 * road_width
         d_v_final = 0.0
         d_a_final = 0.0
 
@@ -90,6 +91,28 @@ class PredictionUtils:
         predicted_object_states = [
             dynamic_object.clone_from_cartesian_state(timestamp_in_sec=prediction_timestamps[t_ind],
                                                       cartesian_state=predictions[t_ind]) for t_ind in
+            range(len(prediction_timestamps))]
+
+        return predicted_object_states
+
+    @staticmethod
+    def convert_ftrajectory_to_dynamic_objects(dynamic_object: NewDynamicObject,
+                                               predictions: FrenetTrajectory2D,
+                                               prediction_timestamps: np.ndarray) -> List[NewDynamicObject]:
+        """
+        Given original dynamic object, its predictions, and their respective time stamps, creates a list of dynamic
+         objects corresponding to the predicted object in those timestamps.
+        :param dynamic_object: the original dynamic object
+        :param predictions: the ctrajectory prediction of the dynamic object
+        :param prediction_timestamps: the prediction timestamps
+        :return:creates a list of dynamic objects corresponding to the predicted object ctrajectory in those timestamps.
+        """
+
+        predicted_object_states = [
+            dynamic_object.clone_from_map_state(timestamp_in_sec=prediction_timestamps[t_ind],
+                                                map_state=MapState(road_fstate=predictions[t_ind],
+                                                                   road_id=dynamic_object.map_state.road_id)) for t_ind
+            in
             range(len(prediction_timestamps))]
 
         return predicted_object_states

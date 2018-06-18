@@ -26,6 +26,8 @@ EGO_OBJECT_ID = 0
 
 PREDICTION_HORIZON = 6
 
+CARTESIAN_CREATION = 'decision_making.src.state.state.NewDynamicObject.create_from_cartesian_state'
+
 
 @pytest.fixture(scope='function')
 def physical_time_alignment_predictor() -> PhysicalTimeAlignmentPredictor:
