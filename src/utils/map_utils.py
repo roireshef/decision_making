@@ -11,15 +11,6 @@ class MapUtils:
     def get_road_rhs_frenet(obj):
         return MapService.get_instance()._rhs_roads_frenet[obj.map_state.road_id]
 
-    # TODO: replace this call with the road localization once it is updated to be hold a frenet state
-    @staticmethod
-    def get_object_road_localization(obj, road_frenet: FrenetSerret2DFrame) -> FrenetState2D:
-        return obj.map_state.road_fstate
-
-    @staticmethod
-    def get_ego_road_localization(ego, road_frenet: FrenetSerret2DFrame):
-        return ego.map_state.road_fstate
-
     @staticmethod
     def convert_cartesian_to_map_state(cartesian_state: CartesianExtendedState):
         # type: (CartesianExtendedState) -> MapState
@@ -44,7 +35,7 @@ class MapUtils:
 
         return road_frenet.fstate_to_cstate(map_state.road_fstate)
 
-    #TODO: Note! This function is only valid when the frenet reference frame is from the right side of the road
+    # TODO: Note! This function is only valid when the frenet reference frame is from the right side of the road
     @staticmethod
     def is_object_on_road(map_state):
         # type: (MapState) -> bool
