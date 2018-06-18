@@ -1,6 +1,6 @@
 import copy
 from gm_lcm import LcmNewEgoState
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 
@@ -411,7 +411,7 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
         # type: (CartesianExtendedState, Optional[float]) -> NewDynamicObject
         """clones self while overriding cartesian_state and optionally timestamp"""
         return self.__class__.create_from_cartesian_state(self.obj_id,
-                                                          NewDynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp),
+                                                          NewDynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
                                                           cartesian_state,
                                                           self.size, self.confidence)
 
@@ -419,7 +419,7 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
         # type: (MapState, Optional[float]) -> NewDynamicObject
         """clones self while overriding map_state and optionally timestamp"""
         return self.create_from_map_state(self.obj_id,
-                                          NewDynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp),
+                                          NewDynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
                                           map_state,
                                           self.size, self.confidence)
 
