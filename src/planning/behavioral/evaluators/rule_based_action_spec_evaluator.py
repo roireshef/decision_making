@@ -11,7 +11,7 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import \
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
-from decision_making.src.planning.types import FrenetPoint, FP_SX, LAT_CELL
+from decision_making.src.planning.types import FrenetPoint, FP_SX, LAT_CELL, FP_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from mapping.src.service.map_service import MapService
 
@@ -83,7 +83,7 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         ego = behavioral_state.ego_state
         road_id = ego.map_state.road_id
         road_frenet = MapService.get_instance()._rhs_roads_frenet[road_id]
-        ego_fpoint = road_frenet.cpoint_to_fpoint(np.array([ego.x, ego.y]))
+        ego_fpoint = np.array([behavioral_state.ego_state.map_state.road_fstate[FP_SX], behavioral_state.ego_state.map_state.road_fstate[FP_DX]])
 
         dist_to_backleft, safe_left_dist_behind_ego = RuleBasedActionSpecEvaluator._calc_safe_dist_behind_ego(
             behavioral_state, road_frenet, ego_fpoint, RelativeLane.LEFT_LANE)
