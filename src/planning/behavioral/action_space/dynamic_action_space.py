@@ -51,7 +51,7 @@ class DynamicActionSpace(ActionSpace):
         targets = [behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
                    for action_recipe in action_recipes]
 
-        desired_center_lane_latitude = np.array([target.center_lane_latitude for target in targets])
+        desired_center_lane_latitude = np.array([target.dynamic_object.map_state.lane_center_lat for target in targets])
         target_length = np.array([target.dynamic_object.size.length for target in targets])
         target_fstate = np.array([target.dynamic_object.map_state.road_fstate for target in targets])
 

@@ -42,17 +42,13 @@ class DynamicObjectWithRoadSemantics:
     This data object holds together the dynamic_object coupled with the distance from ego, his lane center latitude and
     its frenet state.
     """
-    def __init__(self, dynamic_object: NewDynamicObject, longitudinal_distance: float, center_lane_latitude: float, fstate: FrenetState2D):
+    def __init__(self, dynamic_object: NewDynamicObject, longitudinal_distance: float):
         """
         :param dynamic_object:
         :param longitudinal_distance: Distance relative to ego on the road's longitude
-        :param center_lane_latitude:
-        :param fstate: frenet state of dynamic object relative to road frenet curve
         """
         self.dynamic_object = dynamic_object
         self.longitudinal_distance = longitudinal_distance
-        self.center_lane_latitude = center_lane_latitude
-        self.fstate = fstate
 
 
 # Define semantic cell
@@ -116,24 +112,12 @@ class BehavioralGridState(BehavioralState):
         This is a temporary function that caches relevant metrics for re-use. Should be removed after an efficient
         representation of DynamicObject.
         :param dynamic_objects: list of relevant DynamicObjects to calculate "on-road" metrics for.
-        :param road_frenet: the relevant frenet frame all entities will be projected on (assumes single frame at the moment)
+        :param ego_state:
         :return: list of object of type DynamicObjectWithRoadSemantics
         """
-        dynamic_objects_on_road = []
         ego_init_fstate = ego_state.map_state.road_fstate
-        for obj in dynamic_objects:
-            # Compute relative longitudinal position to ego (on road)
-            obj_init_fstate = obj.map_state.road_fstate
-
-            # compute the relative longitudinal distance between object and ego (positive means object is in front)
-            longitudinal_difference = obj_init_fstate[FS_SX] - ego_init_fstate[FS_SX]
-
-            obj_center_lane_latitude = obj.map_state.lane_center_lat
-
-            dynamic_objects_on_road.append(
-                DynamicObjectWithRoadSemantics(obj, longitudinal_difference, obj_center_lane_latitude, obj_init_fstate))
-
-        return dynamic_objects_on_road
+        # compute the relative longitudinal distance between object and ego (positive means object is in front)
+        return [DynamicObjectWithRoadSemantics(obj, obj.map_state.road_fstate[FS_SX] - ego_init_fstate[FS_SX]) for obj in dynamic_objects]
 
     @staticmethod
     @prof.ProfileFunction()

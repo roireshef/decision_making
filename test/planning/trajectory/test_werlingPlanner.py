@@ -19,7 +19,7 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import Poly1D
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject, NewDynamicObject, NewEgoState
+from decision_making.src.state.state import State, ObjectSize, NewDynamicObject, NewEgoState
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidDynamicBoxObstacle, \
     WerlingVisualizer
@@ -271,10 +271,6 @@ def create_state_for_test_werlingPlanner(frenet: FrenetSerret2DFrame, obs_poses:
                                  np.array([route_lng + route_ext, vT, 0, goal_latitude - reference_route_latitude, 0, 0])])
     ctraj_start_goal = frenet.ftrajectory_to_ctrajectory(ftraj_start_goal)
 
-    ego = EgoState(obj_id=-1, timestamp=0, x=ctraj_start_goal[0][C_X], y=ctraj_start_goal[0][C_Y], z=0,
-                   yaw=ctraj_start_goal[0][C_YAW], size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
-                   confidence=1.0, v_x=ctraj_start_goal[0][C_V], v_y=0, curvature=0.0, acceleration_lon=0.0)
-
     ego = NewEgoState.create_from_cartesian_state(obj_id=-1, timestamp=0, size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
                                                   confidence=1.0,
                                                   cartesian_state=[ctraj_start_goal[0][C_X], ctraj_start_goal[0][C_Y],
@@ -288,9 +284,10 @@ def create_state_for_test_werlingPlanner(frenet: FrenetSerret2DFrame, obs_poses:
     for i, pose in enumerate(obs_poses):
         fobs = np.array([pose[FP_SX], pose[FP_DX]])
         cobs = frenet.fpoint_to_cpoint(fobs)
-        obs.append(DynamicObject(obj_id=i, timestamp=0, x=cobs[C_X], y=cobs[C_Y], z=0,
-                                 yaw=frenet.get_yaw(pose[FP_SX]), size=ObjectSize(4, 1.8, 0), confidence=1.0,
-                                 v_x=0, v_y=0, acceleration_lon=0.0, curvature=0.0))
+        dynamic_object = NewDynamicObject.create_from_cartesian_state(obj_id=i, timestamp=0,
+                                                                      cartesian_state=[cobs[C_X], cobs[C_Y], frenet.get_yaw(pose[FP_SX]), 0.0, 0.0],
+                                                                      size=ObjectSize(4, 1.8, 0), confidence=1.0)
+        obs.append(dynamic_object)
 
     state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
     return state, goal

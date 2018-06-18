@@ -1,16 +1,12 @@
 import numpy as np
 
-from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE
 from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, C_A, C_K
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
-from decision_making.src.state.state import EgoState, ObjectSize, NewEgoState
+from decision_making.src.state.state import ObjectSize, NewEgoState
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.planning.trajectory.utils import RouteFixture
-from decision_making.test.planning.custom_fixtures import state
-import numpy as np
-
 from rte.python.logger.AV_logger import AV_Logger
 
 
