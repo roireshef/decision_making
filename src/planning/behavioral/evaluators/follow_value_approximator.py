@@ -40,7 +40,7 @@ class FollowValueApproximator(ValueApproximator):
         if self.calm_lat_comfort_cost is None:
             spec = ActionSpec(0, 0, 0, lane_width)
             _, self.calm_lat_comfort_cost = BP_CostFunctions.calc_comfort_cost(
-                ego_fstate, spec, BP_CALM_LANE_CHANGE_TIME, BP_CALM_LANE_CHANGE_TIME)
+                ego_fstate, spec, 0, BP_CALM_LANE_CHANGE_TIME)
 
         F = None
         front_cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)

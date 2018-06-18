@@ -130,7 +130,7 @@ BP_EFFICIENCY_COST_WEIGHT = 5.
 BP_EFFICIENCY_COST_CONVEXITY_RATIO = 2
 
 # performance metrics for BP: lane deviation cost weight
-BP_METRICS_LANE_DEVIATION_COST_WEIGHT = 1.0
+BP_METRICS_LANE_DEVIATION_COST_WEIGHT = 1.
 
 # performance metrics for BP: non-right lane cost weight
 BP_RIGHT_LANE_COST_WEIGHT = 0.15              # cost of using non-right lane on one trajectory point
@@ -142,7 +142,7 @@ BP_MISSING_GOAL_COST = 100.
 MINIMAL_STATIC_ACTION_TIME = 8
 
 # [m] default longitudinal distance to the next navigation goal
-DEFAULT_DISTANCE_TO_NAVIGATION_GOAL = 300
+DEFAULT_DISTANCE_TO_NAVIGATION_GOAL = 200
 
 # integer number of samples per second for safety test
 SAFETY_SAMPLING_RESOLUTION = 5

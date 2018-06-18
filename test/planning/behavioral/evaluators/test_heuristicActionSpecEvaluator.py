@@ -258,23 +258,22 @@ def test_evaluate_differentStatesLBandF_laneChangeAccordingToTheLogic():
 
 def test_evaluate_differentVeloctiesF_tradeOffBetweenLatJerkAndEfficiency():
     """
-    Test the trade off between lateral jerk and efficiency for different velocities of F.
+    Test the trade off between lateral jerk and efficiency for different distances from F.
     The lateral jerk is caused both by F and by LB.
-    When F is too slow (6 m/s), the agent overtakes F even on expense of a tangible lateral jerk.
-    When F is not so slow (9 m/s), the agent prefers to follow F.
+    When F is not too close, the agent overtakes F even on expense of a tangible lateral jerk.
+    When F is not close, the agent prefers to follow F, since the lateral jerk is too high.
     """
     logger = Logger("test_BP_costs")
     v_des, ego_lon, lane_width, car_length, size, action_space, spec_evaluator, action_spec_validator, \
     value_approximator, planner, road_frenet = init_test()
 
     ego_vel = 10
-    F_vel_list = [6, 9]
-    F_dist_list = [45, 33]
+    F_vel = 6
+    F_dist_list = [45, 30]
     LB_vel = 25
     LB_dist = 160
 
-    for i, F_vel in enumerate(F_vel_list):
-        F_dist = F_dist_list[i]
+    for F_dist in F_dist_list:
 
         ego = create_canonic_ego(0, ego_lon, lane_width / 2, ego_vel, size, road_frenet)
         F_lon = ego_lon + F_dist
