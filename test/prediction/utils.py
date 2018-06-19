@@ -1,24 +1,23 @@
 import numpy as np
 
+from decision_making.src.state.state import NewDynamicObject
+
 
 class Utils:
 
     @staticmethod
-    def assert_objects_numerical_fields_are_equal(actual_object, expected_object) -> None:
+    def assert_dyn_objects_numerical_fields_are_equal(actual_object: NewDynamicObject, expected_object: NewDynamicObject) -> None:
         """
         Assert that all fields with numerical values are equal between actual and expected object
         :param actual_object:
         :param expected_object:
         :return:
         """
-        actual_fields = actual_object.__dict__
-        expected_fields = expected_object.__dict__
 
-        for field_name in actual_fields.keys():
-            if issubclass(type(actual_fields[field_name]), np.ndarray):
-                assert np.all(np.isclose(actual_fields[field_name], expected_fields[field_name], atol=1e-2))
-            else:
-                try:
-                    assert np.isclose(actual_fields[field_name], expected_fields[field_name], atol=1e-2)
-                except TypeError as e:
-                    pass
+        assert np.all(np.isclose(actual_object.cartesian_state, expected_object.cartesian_state, atol=1e-2))
+        assert np.all(np.isclose(actual_object.map_state.road_fstate, expected_object.map_state.road_fstate, atol=1e-2))
+
+        assert np.isclose(actual_object.map_state.road_id, expected_object.map_state.road_id, atol=1e-2)
+        assert np.isclose(actual_object.obj_id, expected_object.obj_id, atol=1e-2)
+        assert np.isclose(actual_object.timestamp, expected_object.timestamp, atol=1e-2)
+        assert np.isclose(actual_object.confidence, expected_object.confidence, atol=1e-2)
