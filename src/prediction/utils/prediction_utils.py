@@ -50,17 +50,17 @@ class PredictionUtils:
                             T_d=ended_maneuver_params.T_s)
 
     @staticmethod
-    def compute_x_from_average_a(t: float, avg_a: float, init_x: float, init_v: float) -> (float, float):
+    def compute_x_from_average_a(horizon: float, avg_a: float, init_x: float, init_v: float) -> (float, float):
         """
-
-        :param t:
-        :param avg_a:
-        :param init_x:
-        :param init_v:
-        :return:
+        Computes future physical x and velocity, using average acceleration
+        :param horizon: the time horizon for future x computation
+        :param avg_a: the average acceleration
+        :param init_x: the initial x value
+        :param init_v: the initial velocity value
+        :return: future physical x and velocity
         """
         # Motion model (in Frenet frame)
-        t_axis = np.arange(0.0, t + 10 * np.finfo(float).eps, WERLING_TIME_RESOLUTION)
+        t_axis = np.arange(0.0, horizon + 10 * np.finfo(float).eps, WERLING_TIME_RESOLUTION)
         # Calculate velocity according to average acceleration
         s_v_vec = init_v + avg_a * t_axis
         # Clip negative velocities if starting velocity is positive
