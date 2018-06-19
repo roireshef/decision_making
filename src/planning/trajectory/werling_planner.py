@@ -117,8 +117,8 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
         # The vehicle doesn't need to lay parallel to the road.
-        ego_cartesian_state = np.array([state.ego_state.x, state.ego_state.y, state.ego_state.yaw, state.ego_state.v_x,
-                                        state.ego_state.acceleration_lon, state.ego_state.curvature])
+        ego_cartesian_state = np.array([state.ego_state.x, state.ego_state.y, state.ego_state.yaw, state.ego_state.velocity,
+                                        state.ego_state.acceleration, state.ego_state.curvature])
 
         ego_frenet_state: FrenetState2D = frenet.cstate_to_fstate(ego_cartesian_state)
 

@@ -7,6 +7,7 @@ from decision_making.src.state.state import State
 from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedNumpyArray
 from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryVisualizationMsg
 
+
 class TrajectoryVisualizationMsg:
     def __init__(self, reference_route, trajectories, costs, state, predicted_states, plan_time):
         # type: (CartesianPath2D, CartesianExtendedTrajectories, np.ndarray, State, List[State], float) -> None
