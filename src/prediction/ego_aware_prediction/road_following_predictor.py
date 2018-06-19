@@ -33,10 +33,15 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         """
 
         # TODO: debug!
-        objects_fstates = [State.get_object_from_state(state=state, target_obj_id=obj_id).map_state.road_fstate
-                           for obj_id in object_ids]
+        objects = [State.get_object_from_state(state=state, target_obj_id=obj_id)
+                   for obj_id in object_ids]
+        objects_fstates = [obj.map_state.road_fstate for obj in objects]
+
         predictions = self._predict_states(np.array(objects_fstates), prediction_timestamps)
 
+        predicted_objects_states_dict = {obj_id: [objects[obj_idx].clone_from_map_state(predictions[obj_idx, time_idx])
+                                                  for time_idx in range(len(prediction_timestamps))]
+                                         for obj_idx, obj_id in enumerate(object_ids)}
 
         predicted_objects_states_dict: Dict[int, List[NewDynamicObject]] = dict()
 
@@ -139,4 +144,4 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         v = np.tile(objects_fstates[:, np.newaxis, FS_SV], T)
         d = np.tile(objects_fstates[:, np.newaxis, FS_DX], T)
 
-        return np.hstack((s, v, zero_slice, d, zero_slice, zero_slice))
+        return np.dstack((s, v, zero_slice, d, zero_slice, zero_slice))
