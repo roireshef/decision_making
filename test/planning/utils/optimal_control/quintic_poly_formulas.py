@@ -59,15 +59,17 @@ class QuinticMotionSymbolicsCreator:
         package_delta_s_t = (sT + vT * t - x_t.subs(s0, 0).subs(aT, 0)).simplify()
         package_distance_from_target_deriv = sp.diff(package_delta_s_t, t).simplify()
         package_a_t = sp.diff(package_v_t, t).simplify()
+        package_j_t = sp.diff(package_a_t, t).simplify()
 
         cost_desmos = cost.subs(a0, 0).simplify()
         cost_diff_desmos = cost_diff.subs(a0, 0).simplify()
         delta_s_t_desmos = package_delta_s_t.subs(a0, 0).simplify()
         v_t_desmos = package_v_t.subs(a0, 0).simplify()
         a_t_desmos = package_a_t.subs(a0, 0).simplify()
+        j_t_desmos = package_j_t.subs(a0, 0).simplify()
 
-        return package_v_t, package_delta_s_t, package_distance_from_target_deriv, package_a_t, cost_desmos, \
-               cost_diff_desmos, delta_s_t_desmos, v_t_desmos, a_t_desmos
+        return package_v_t, package_delta_s_t, package_distance_from_target_deriv, package_a_t, package_j_t,\
+               cost_desmos, cost_diff_desmos, delta_s_t_desmos, v_t_desmos, a_t_desmos, j_t_desmos
 
 
 class QuinticMotionPredicatesCreator:
