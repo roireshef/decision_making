@@ -1,5 +1,6 @@
 import copy
-from typing import List
+from common_data.lcm.generatedFiles.gm_lcm import LcmNewEgoState
+from typing import List, Optional
 
 import numpy as np
 
@@ -365,7 +366,7 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
     @staticmethod
     def sec_to_ticks(time_in_seconds: float):
         # type: (float) -> int
-        return time_in_seconds / TIMESTAMP_RESOLUTION_IN_SEC
+        return int(round(time_in_seconds / TIMESTAMP_RESOLUTION_IN_SEC))
 
     @staticmethod
     def ticks_to_sec(time_in_nanoseconds: int):
@@ -410,14 +411,16 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
         # type: (CartesianExtendedState, Optional[float]) -> NewDynamicObject
         """clones self while overriding cartesian_state and optionally timestamp"""
         return self.__class__.create_from_cartesian_state(self.obj_id,
-                                                          NewDynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp),
+                                                          NewDynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
                                                           cartesian_state,
                                                           self.size, self.confidence)
 
-    def clone_from_map_state(self, map_state, timestamp=None):
+    def clone_from_map_state(self, map_state, timestamp_in_sec=None):
         # type: (MapState, Optional[float]) -> NewDynamicObject
         """clones self while overriding map_state and optionally timestamp"""
-        return self.create_from_map_state(self.obj_id, timestamp or self.timestamp, map_state,
+        return self.create_from_map_state(self.obj_id,
+                                          NewDynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
+                                          map_state,
                                           self.size, self.confidence)
 
     def serialize(self):
@@ -462,8 +465,8 @@ class NewEgoState(NewDynamicObject):
                                              map_state=map_state, size=size, confidence=confidence)
 
     def serialize(self):
-        # type: () -> LcmEgoState
-        lcm_msg = LcmEgoState()
+        # type: () -> LcmNewEgoState
+        lcm_msg = LcmNewEgoState()
         lcm_msg.dynamic_obj = super(self.__class__, self).serialize()
         return lcm_msg
 

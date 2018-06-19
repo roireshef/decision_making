@@ -52,6 +52,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
     state_module.periodic_action()
     trajectory_planning_module.periodic_action()
 
+    # if this fails, that means BP did not publish a message - debug exceptions in TrajectoryPlanningFacade
     tp_logger.warn.assert_not_called()
     tp_logger.error.assert_not_called()
     tp_logger.critical.assert_not_called()

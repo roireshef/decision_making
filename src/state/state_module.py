@@ -1,27 +1,23 @@
 from logging import Logger
 from threading import Lock
+from traceback import format_exc
 from typing import Optional, List, Dict
 
 import numpy as np
 
-from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID, \
-    UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS, LOG_MSG_STATE_MODULE_PUBLISH_STATE
-from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.planning.types import CartesianPoint3D
-from decision_making.src.planning.utils.transformations import Transformations
-from decision_making.src.state.state import OccupancyState, EgoState, DynamicObject, ObjectSize, State, \
-    NewDynamicObject, NewEgoState
-from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.exceptions import MapCellNotFound, raises
-from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
-
-from mapping.src.service.map_service import MapService
-
-from common_data.src.communication.pubsub.pubsub import PubSub
+import rte.python.profiler as prof
 from common_data.lcm.config import pubsub_topics
 from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedDynamicObjectList
 from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedSelfLocalization
-import rte.python.profiler as prof
+from common_data.src.communication.pubsub.pubsub import PubSub
+from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID, \
+    UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS, LOG_MSG_STATE_MODULE_PUBLISH_STATE
+from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.planning.utils.transformations import Transformations
+from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
+    NewDynamicObject, NewEgoState
+from decision_making.src.utils.map_utils import MapUtils
+from mapping.src.exceptions import MapCellNotFound, raises
 
 
 class StateModule(DmModule):
@@ -85,7 +81,7 @@ class StateModule(DmModule):
 
             self._publish_state_if_full()
         except Exception as e:
-            self.logger.error("StateModule._dynamic_obj_callback failed due to {}".format(e))
+            self.logger.error("StateModule._dynamic_obj_callback failed due to %s", format_exc())
 
     @raises(MapCellNotFound)
     def create_dyn_obj_list(self, dyn_obj_list: LcmPerceivedDynamicObjectList) -> List[NewDynamicObject]:

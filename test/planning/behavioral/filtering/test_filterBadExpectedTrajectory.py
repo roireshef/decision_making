@@ -14,7 +14,7 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state import ObjectSize, EgoState, State
+from decision_making.src.state.state import ObjectSize, State
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_filtering_tracking_mode, \
     behavioral_grid_state_with_objects_for_filtering_negative_sT, \
