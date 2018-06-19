@@ -16,7 +16,7 @@ PUBSUB_MSG_IMPL = StrSerializable
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
-PLANNING_LOOKAHEAD_DIST = 200.0
+PLANNING_LOOKAHEAD_DIST = 90.0
 
 # When retrieving the lookahead path of a given dynamic object, we will multiply the path length
 # by the following ratio in order to avoid extrapolation when resampling the path (due to path sampling
@@ -96,9 +96,6 @@ LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 # Used to compute safe distance from other agents on road
 SPECIFICATION_MARGIN_TIME_DELAY = 2
 SAFETY_MARGIN_TIME_DELAY = 1
-
-# integer number of samples per second for safety test
-SAFETY_SAMPLING_RESOLUTION = 4
 
 
 # [m/sec] Minimal difference of velocities to justify an overtake
