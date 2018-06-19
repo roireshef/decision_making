@@ -11,103 +11,62 @@ from decision_making.src.state.state import EgoState, ObjectSize, DynamicObject,
 from mapping.src.service.map_service import MapService
 
 
-def test_isSafeSpecCalcLaneChangeLastSafeTime_3objects4specs_fastUnsafeLF_slowUnsafeLB():
+def test_calcSafetyForTrajectories_egoAndObjectsOnTwoLanes():
     """
-    This function tests two safety functions together since their results are tightly connected
-    and they share the same code.
-    The function is_safe_spec() is used by a filter and checks safety w.r.t. LF for the whole trajectory, and
-    w.r.t. F & LB only during the first T_d_min (e.g. 3) seconds.
-    The function calc_lane_change_last_safe_time() is used by BP costs and checks last safe time only for lane change
-    actions and only w.r.t. F & LB.
-
-    The state contains 3 objects: F, LF, LB.
-    Test 4 different specs: one of them same_lane, the rest goto_left.
-    When the velocity is too fast, ego is unsafe w.r.t. LF
-    When the velocity is too slow, ego is unsafe w.r.t. LB.
+    Test safety of 3 different ego trajectories w.r.t. 5 different objects moving on two lanes with different velocities
+    and starting from different longitudes.
+    One of ego trajectories changes lane.
+    The test checks safety for whole trajectories.
     """
-    logger = Logger("test_safetyUtils")
-    road_id = 20
-    ego_lon = 400.
-    lane_width = MapService.get_instance().get_road(road_id).lane_width
-    car_length = 4
-    T_d_min = 3.
-    size = ObjectSize(car_length, 2, 1)
-    road_frenet = get_road_rhs_frenet_by_road_id(road_id)
+    ego_size = np.array([4, 2])
+    obj_sizes = np.array([[4, 2], [6, 2], [6, 2], [4, 2], [4, 2]])
+    lane_wid = 3.
 
-    ego_vel = 14
-    ego_init_fstate = np.array([ego_lon, ego_vel, 0, lane_width / 2, 0, 0])
-    cstate = road_frenet.fstate_to_cstate(ego_init_fstate)
-    ego = EgoState(0, 0, cstate[C_X], cstate[C_Y], 0, cstate[C_YAW], size, 0, cstate[C_V], 0, cstate[C_A], cstate[C_K])
+    t = 10.
+    times_step = 1.
+    times_num = int(t/times_step)
+    zeros = np.zeros(times_num)
+    time_range = np.arange(0, t, times_step)
+    ego_sv1 = np.repeat(10., times_num)
+    ego_sv2 = np.repeat(20., times_num)
+    ego_sv3 = np.repeat(30., times_num)
+    ego_sx1 = time_range * ego_sv1[0]
+    ego_sx2 = time_range * ego_sv2[0]
+    ego_sx3 = time_range * ego_sv3[0]
+    ego_dx = np.repeat(2., times_num)
+    ego_dv3 = np.repeat(lane_wid/t, times_num)
+    ego_dx3 = ego_dx[0] + time_range * ego_dv3[0]
 
-    F  = create_canonic_object(1, 0, ego_lon + 110,   lane_width/2, vel=10, size=size, road_frenet=road_frenet)
-    LF = create_canonic_object(2, 0, ego_lon + 30,  3*lane_width/2, vel=16, size=size, road_frenet=road_frenet)
-    LB = create_canonic_object(3, 0, ego_lon - 70,  3*lane_width/2, vel=18, size=size, road_frenet=road_frenet)
+    # ego has 3 trajectories:
+    #   all trajectories start from lon=0 and from the rightest lane
+    #   first trajectory moves with constant velocity 10 m/s
+    #   second trajectory moves with constant velocity 20 m/s
+    #   third trajectory moves with constant velocity 30 m/s and moves laterally from the first lane to the second lane.
+    ego_ftraj = np.array([np.c_[ego_sx1, ego_sv1, zeros, ego_dx, zeros, zeros],
+                          np.c_[ego_sx2, ego_sv2, zeros, ego_dx, zeros, zeros],
+                          np.c_[ego_sx3, ego_sv3, zeros, ego_dx3, ego_dv3, zeros]])
 
-    objects = [F, LF, LB]
-    state = State(None, objects, ego)
-    behavioral_state = BehavioralGridState.create_from_state(state, logger)
-    T = 10
+    # both objects start from lon=16 m ahead of ego
+    #   the first object moves with velocity 10 m/s on the rightest lane
+    #   the second object moves with velocity 20 m/s on the second lane
+    #   the third object moves with velocity 30 m/s on the right lane
+    #   the fourth object moves with velocity 20 m/s on the right lane, and starts from lon=150
+    #   the fifth object moves with velocity 20 m/s on the right lane, and starts from lon=165
+    obj_ftraj = np.array([np.c_[ego_sx1 + ego_sv1[0] + (ego_size[0] + obj_sizes[0, 0])/2 + 1, ego_sv1, zeros, ego_dx, zeros, zeros],
+                          np.c_[ego_sx2, ego_sv2, zeros, ego_dx + lane_wid, zeros, zeros],
+                          np.c_[ego_sx3 + ego_sv3[0] + (ego_size[0] + obj_sizes[2, 0])/2 + 1, ego_sv3, zeros, ego_dx, zeros, zeros],
+                          np.c_[ego_sx2 + 5 * ego_sv3[0], ego_sv2, zeros, ego_dx, zeros, zeros],
+                          np.c_[ego_sx2 + 5.5 * ego_sv3[0], ego_sv2, zeros, ego_dx, zeros, zeros]])
 
-    target_vel = ego_vel+4
-    s = T * (ego_vel + target_vel)/2
-    spec = ActionSpec(T, target_vel, ego_lon + s, lane_width/2)  # same lane
-    is_safe = SafetyUtils.is_safe_spec(behavioral_state, ego_init_fstate, spec)
-    last_safe_time = SafetyUtils.calc_lane_change_last_safe_time(behavioral_state, ego_init_fstate, spec)
-    safe_intervals = SafetyUtils.calc_safe_intervals_for_lane_change(behavioral_state, ego_init_fstate, spec, True)
-    assert is_safe and last_safe_time == np.inf and safe_intervals[0, 0] == 0 and safe_intervals[0, 1] == T
+    safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, obj_ftraj, obj_sizes)
 
-    target_vel = ego_vel+4
-    s = T * (ego_vel + target_vel)/2
-    spec = ActionSpec(T, target_vel, ego_lon + s, 3*lane_width/2)  # goto left
-    is_safe = SafetyUtils.is_safe_spec(behavioral_state, ego_init_fstate, spec)
-    last_safe_time = SafetyUtils.calc_lane_change_last_safe_time(behavioral_state, ego_init_fstate, spec)
-    safe_intervals = SafetyUtils.calc_safe_intervals_for_lane_change(behavioral_state, ego_init_fstate, spec, True)
-    # unsafe w.r.t. LF because of high velocity
-    assert not is_safe and last_safe_time == np.inf and len(safe_intervals) == 0
+    assert safe_times[0][0].all()  # move with the same velocity and start on the safe distance
+    assert safe_times[0][1].all()  # object is ahead and faster, therefore safe
+    assert not safe_times[1][0].all()  # the object ahead is slower, therefore unsafe
+    assert safe_times[1][1].all()  # move on different lanes, then safe
 
-    target_vel = ego_vel+2
-    s = T * (ego_vel + target_vel)/2
-    spec = ActionSpec(T, target_vel, ego_lon + s, 3*lane_width/2)  # goto left
-    is_safe = SafetyUtils.is_safe_spec(behavioral_state, ego_init_fstate, spec)
-    last_safe_time = SafetyUtils.calc_lane_change_last_safe_time(behavioral_state, ego_init_fstate, spec)
-    safe_intervals = SafetyUtils.calc_safe_intervals_for_lane_change(behavioral_state, ego_init_fstate, spec, True)
-    # last_safe_time w.r.t. LB
-    assert is_safe and T_d_min < last_safe_time < np.inf and safe_intervals[0, 0] == 0 and safe_intervals[0, 1] < 5
-
-    target_vel = ego_vel-4
-    s = T * (ego_vel + target_vel)/2
-    spec = ActionSpec(T, target_vel, ego_lon + s, 3*lane_width/2)  # goto left
-    is_safe = SafetyUtils.is_safe_spec(behavioral_state, ego_init_fstate, spec)
-    last_safe_time = SafetyUtils.calc_lane_change_last_safe_time(behavioral_state, ego_init_fstate, spec)
-    safe_intervals = SafetyUtils.calc_safe_intervals_for_lane_change(behavioral_state, ego_init_fstate, spec, True)
-    # unsafe w.r.t. LB because of slow velocity
-    assert not is_safe and last_safe_time < T_d_min and safe_intervals[0, 0] == 0 and safe_intervals[0, 1] < 3
-
-    LB = create_canonic_object(3, 0, ego_lon - 65,  3*lane_width/2, vel=18, size=size, road_frenet=road_frenet)
-    objects = [F, LB]
-    state = State(None, objects, ego)
-    behavioral_state = BehavioralGridState.create_from_state(state, logger)
-    T = 16
-    target_vel = ego_vel+8
-    s = T * (ego_vel + target_vel)/2
-    spec = ActionSpec(T, target_vel, ego_lon + s, 3*lane_width/2)  # goto left
-    safe_intervals = SafetyUtils.calc_safe_intervals_for_lane_change(behavioral_state, ego_init_fstate, spec, True)
-    # two safe intervals w.r.t. LB and bounded by F
-    assert safe_intervals.shape[0] == 2 and \
-           0 <= safe_intervals[0, 0] + 3 <= safe_intervals[0, 1] < 3.5 and \
-           6 <= safe_intervals[1, 0] + 4 <= safe_intervals[1, 1] <= 10
-
-
-def create_canonic_object(obj_id: int, timestamp: int, lon: float, lat: float, vel: float, size: ObjectSize,
-                          road_frenet: FrenetSerret2DFrame) -> DynamicObject:
-    """
-    Create object with zero lateral velocity and zero accelerations
-    """
-    fstate = np.array([lon, vel, 0, lat, 0, 0])
-    cstate = road_frenet.fstate_to_cstate(fstate)
-    return DynamicObject(obj_id, timestamp, cstate[C_X], cstate[C_Y], 0, cstate[C_YAW], size, 0, cstate[C_V], 0,
-                         cstate[C_A], cstate[C_K])
-
-
-def get_road_rhs_frenet_by_road_id(road_id: int):
-    return MapService.get_instance()._rhs_roads_frenet[road_id]
+    assert not safe_times[2][0].all()  # ego is faster
+    assert not safe_times[2][1].all()  # ego is faster
+    assert safe_times[2][2].all()  # move with the same velocity
+    assert not safe_times[2][3].all()  # obj becomes unsafe longitudinally at time 6, before it becomes safe laterally
+    assert safe_times[2][4].all()  # obj becomes unsafe longitudinally at time 7, exactly when it becomes safe laterally
