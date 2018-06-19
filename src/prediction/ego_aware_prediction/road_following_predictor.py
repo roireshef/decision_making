@@ -32,6 +32,12 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         :return: a mapping between object id to the list of future dynamic objects of the matching object
         """
 
+        # TODO: debug!
+        objects_fstates = [State.get_object_from_state(state=state, target_obj_id=obj_id).map_state.road_fstate
+                           for obj_id in object_ids]
+        predictions = self._predict_states(np.array(objects_fstates), prediction_timestamps)
+
+
         predicted_objects_states_dict: Dict[int, List[NewDynamicObject]] = dict()
 
         for obj_id in object_ids:
@@ -42,6 +48,8 @@ class RoadFollowingPredictor(EgoAwarePredictor):
             predicted_objects_states_dict[obj_id] = future_states
 
         return predicted_objects_states_dict
+
+
 
     def predict_state(self, state: State, prediction_timestamps: np.ndarray,
                       action_trajectory: Optional[SamplableTrajectory]) \
@@ -115,3 +123,20 @@ class RoadFollowingPredictor(EgoAwarePredictor):
                                                                                  road_id=dynamic_object.map_state.road_id)))
 
         return predicted_object_states
+
+    def _predict_states(self, objects_fstates: np.ndarray, timestamps: np.ndarray):
+        """
+
+        :param objects_fstates: numpy 2D array [Nx6] where N is the number of objects, each row is an FSTATE
+        :param timestamps: numpy 1D array [T] with T timestamps
+        :return: numpy 3D array [NxTx6]
+        """
+        T = timestamps.shape[0]
+        N = objects_fstates.shape[0]
+        zero_slice = np.zeros([N, T])
+
+        s = objects_fstates[:, FS_SX, np.newaxis] + objects_fstates[:, np.newaxis, FS_SV] * timestamps
+        v = np.tile(objects_fstates[:, np.newaxis, FS_SV], T)
+        d = np.tile(objects_fstates[:, np.newaxis, FS_DX], T)
+
+        return np.hstack((s, v, zero_slice, d, zero_slice, zero_slice))
