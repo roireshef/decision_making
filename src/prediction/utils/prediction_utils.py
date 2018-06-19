@@ -33,10 +33,10 @@ class PredictionUtils:
         object_center_lane_latitude = object_state.map_state.lane_center_lat
         lane_width = map_api.get_road(road_id=road_id).lane_width
 
-        s_x_final, s_v_final = PredictionUtils.compute_x_from_average_a(ended_maneuver_params.T_s,
-                                                                        ended_maneuver_params.avg_s_a,
-                                                                        obj_init_fstate[FS_SX],
-                                                                        obj_init_fstate[FS_SV])
+        s_x_final, s_v_final = PredictionUtils.compute_distance_from_average_acceleration(ended_maneuver_params.T_s,
+                                                                                          ended_maneuver_params.avg_s_a,
+                                                                                          obj_init_fstate[FS_SX],
+                                                                                          obj_init_fstate[FS_SV])
 
         s_a_final = ended_maneuver_params.s_a_final
         d_x_final = object_center_lane_latitude + lane_width * (
@@ -50,7 +50,7 @@ class PredictionUtils:
                             T_d=ended_maneuver_params.T_s)
 
     @staticmethod
-    def compute_x_from_average_a(horizon: float, avg_a: float, init_x: float, init_v: float) -> (float, float):
+    def compute_distance_from_average_acceleration(horizon: float, avg_a: float, init_x: float, init_v: float) -> (float, float):
         """
         Computes future physical x and velocity, using average acceleration
         :param horizon: the time horizon for future x computation
