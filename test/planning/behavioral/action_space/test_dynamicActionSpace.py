@@ -37,13 +37,11 @@ def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCel
 
     # terminal action-spec longitude equals the terminal longitude of target vehicle
     # (according to prediction at the terminal time)
-    expected_longitudes = [target.fstate[FS_SX] + target.fstate[FS_SV] * actions[i].t -
+    expected_longitudes = [target.dynamic_object.map_state.road_fstate[FS_SX] +
+                           target.dynamic_object.map_state.road_fstate[FS_SV] * actions[i].t -
                            actions[i].v * SPECIFICATION_MARGIN_TIME_DELAY -
                            LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT -
                            behavioral_grid_state.ego_state.size.length / 2 - targets[i].dynamic_object.size.length / 2
                            for i, target in enumerate(targets)]
     longitudes = [action.s for action in actions]
     np.testing.assert_array_almost_equal(longitudes, expected_longitudes)
-
-
-

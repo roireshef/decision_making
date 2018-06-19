@@ -1,4 +1,4 @@
-import copy
+import time
 import time
 import traceback
 from logging import Logger
@@ -19,12 +19,11 @@ from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanM
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import C_Y, C_X, C_YAW, CartesianExtendedState, C_V, C_A, \
-    CartesianTrajectories, CartesianPath2D, C_K
+from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, CartesianPath2D
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.planning.utils.transformations import Transformations
 from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import State, EgoState
+from decision_making.src.state.state import State, NewEgoState
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
@@ -79,7 +78,7 @@ class TrajectoryPlanningFacade(DmModule):
             self.logger.debug("input: target_state: %s", params.target_state)
             self.logger.debug("input: reference_route[0]: %s", params.reference_route[0])
             self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
-            self.logger.debug("input: ego: v_x: %f, v_y: %f", state.ego_state.v_x, state.ego_state.v_y)
+            self.logger.debug("input: ego: velocity: %s", state.ego_state.velocity)
             self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", lon_plan_horizon)
             self.logger.debug("state: %d objects detected", len(state.dynamic_objects))
 
@@ -112,7 +111,8 @@ class TrajectoryPlanningFacade(DmModule):
             # TODO: remove ego_state.v_x from the message in version 2.0
             trajectory_msg = TrajectoryPlanMsg(timestamp=state.ego_state.timestamp,
                                                trajectory=vehicle_origin_trajectory_points,
-                                               current_speed=state_aligned.ego_state.v_x)
+                                               current_speed=state_aligned.ego_state.velocity)
+
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
 
@@ -189,18 +189,7 @@ class TrajectoryPlanningFacade(DmModule):
         """
         current_time = state.ego_state.timestamp_in_sec
         expected_state_vec: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
-
-        expected_ego_state = EgoState(
-            obj_id=state.ego_state.obj_id,
-            timestamp=state.ego_state.timestamp,
-            x=expected_state_vec[C_X], y=expected_state_vec[C_Y], z=state.ego_state.z,
-            yaw=expected_state_vec[C_YAW], size=state.ego_state.size,
-            confidence=state.ego_state.confidence,
-            v_x=expected_state_vec[C_V],
-            v_y=0.0,  # this is ok because we don't PLAN for drift velocity
-            acceleration_lon=expected_state_vec[C_A],
-            curvature=expected_state_vec[C_K],
-        )
+        expected_ego_state = state.ego_state.clone_from_cartesian_state(expected_state_vec, state.ego_state.timestamp_in_sec)
 
         updated_state = state.clone_with(ego_state=expected_ego_state)
 
