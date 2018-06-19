@@ -1,15 +1,14 @@
-from typing import List
 import numpy as np
+from typing import List
 
-from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, WERLING_TIME_RESOLUTION
-from decision_making.src.planning.types import CartesianTrajectory, CartesianPath2D, FS_SV, FS_SX, \
+from decision_making.src.global_constants import WERLING_TIME_RESOLUTION
+from decision_making.src.planning.types import FS_SV, FS_SX, \
     CartesianExtendedTrajectory, FrenetTrajectory2D
 from decision_making.src.prediction.ego_aware_prediction.ended_maneuver_params import EndedManeuverParams
 from decision_making.src.prediction.ego_aware_prediction.maneuver_spec import ManeuverSpec
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import NewDynamicObject
 from mapping.src.service.map_service import MapService
-from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
 class PredictionUtils:
