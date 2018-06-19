@@ -30,11 +30,8 @@ class PredictionUtils:
         obj_init_fstate = object_state.map_state.road_fstate
 
         # Calculate object's initial state in Frenet frame according to model
-        road_center_lanes_lat = map_api.get_center_lanes_latitudes(road_id=road_id)
-        object_center_lane_latitude = road_center_lanes_lat[object_state.map_state.lane_num]
+        object_center_lane_latitude = object_state.map_state.lane_center_lat
         lane_width = map_api.get_road(road_id=road_id).lane_width
-        num_lanes = map_api.get_road(road_id=road_id).lanes_num
-        road_width = lane_width * num_lanes
 
         s_x_final, s_v_final = PredictionUtils.compute_x_from_average_a(ended_maneuver_params.T_s,
                                                                         ended_maneuver_params.avg_s_a,
@@ -42,8 +39,8 @@ class PredictionUtils:
                                                                         obj_init_fstate[FS_SV])
 
         s_a_final = ended_maneuver_params.s_a_final
-        d_x_final = (-road_width / 2.0 + object_center_lane_latitude) + lane_width * (
-                ended_maneuver_params.relative_lane + ended_maneuver_params.lat_normalized)+0.5*road_width
+        d_x_final = object_center_lane_latitude + lane_width * (
+                ended_maneuver_params.relative_lane + ended_maneuver_params.lat_normalized)
         d_v_final = 0.0
         d_a_final = 0.0
 
