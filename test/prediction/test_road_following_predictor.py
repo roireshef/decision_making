@@ -31,7 +31,7 @@ def test_PredictObjects_StraightRoad_AccuratePrediction(road_following_predictor
     timestamp_ind = 0
     for actual_predicted_object in predicted_objects[DYNAMIC_OBJECT_ID]:
         assert np.isclose(actual_predicted_object.timestamp_in_sec, prediction_timestamps[timestamp_ind])
-        Utils.assert_objects_numerical_fields_are_equal(actual_predicted_object,
+        Utils.assert_dyn_objects_numerical_fields_are_equal(actual_predicted_object,
                                                         predicted_dyn_object_states_road_yaw[timestamp_ind])
         timestamp_ind += 1
 
@@ -56,11 +56,11 @@ def test_PredictState_StraightRoad_AccuratePrediction(road_following_predictor: 
     for predicted_state in predicted_states:
         actual_predicted_object = predicted_state.get_object_from_state(predicted_state, DYNAMIC_OBJECT_ID)
         assert np.isclose(actual_predicted_object.timestamp_in_sec, prediction_timestamps[timestamp_ind])
-        Utils.assert_objects_numerical_fields_are_equal(actual_predicted_object,
+        Utils.assert_dyn_objects_numerical_fields_are_equal(actual_predicted_object,
                                                         predicted_dyn_object_states_road_yaw[timestamp_ind])
         actual_predicted_ego = predicted_state.ego_state
         assert np.isclose(actual_predicted_ego.timestamp_in_sec, prediction_timestamps[timestamp_ind])
-        Utils.assert_objects_numerical_fields_are_equal(actual_predicted_ego,
+        Utils.assert_dyn_objects_numerical_fields_are_equal(actual_predicted_ego,
                                                         predicted_static_ego_states[timestamp_ind])
         timestamp_ind += 1
 

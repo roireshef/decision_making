@@ -113,7 +113,7 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         obj_fstate = dynamic_object.map_state.road_fstate
         for timestamp in prediction_timestamps:
 
-            horizon = prediction_timestamps[-1] - dynamic_object.timestamp_in_sec
+            horizon = timestamp - dynamic_object.timestamp_in_sec
             obj_terminal_fstate = np.array([obj_fstate[FS_SX] + obj_fstate[FS_SV] * horizon, obj_fstate[FS_SV], 0,
                                             obj_fstate[FS_DX], 0, 0])
 
