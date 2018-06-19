@@ -3,7 +3,6 @@ from typing import List
 
 from decision_making.src.planning.behavioral.behavioral_grid_state import RelativeLane, \
     RelativeLongitudinalPosition
-from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 
 
 class ActionType(Enum):
