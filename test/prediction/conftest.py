@@ -8,9 +8,11 @@ from decision_making.src.planning.trajectory.trajectory_planner import Samplable
 from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, C_V
 from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
     PhysicalTimeAlignmentPredictor
+from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.maneuver_based_predictor import ManeuverBasedPredictor
 from decision_making.src.prediction.ego_aware_prediction.maneuver_recognition.constant_velocity_maneuver_classifier import \
     ConstantVelocityManeuverClassifier
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 
 from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.werling_trajectory_generator import \
     WerlingTrajectoryGenerator
@@ -41,13 +43,18 @@ def werling_trajectory_generator() -> WerlingTrajectoryGenerator:
 
 
 @pytest.fixture(scope='function')
-def constant_velocity_predictor(werling_trajectory_generator: WerlingTrajectoryGenerator) -> ManeuverBasedPredictor:
+def constant_velocity_predictor(werling_trajectory_generator: WerlingTrajectoryGenerator) -> EgoAwarePredictor:
     logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
     maneuver_classifier = ConstantVelocityManeuverClassifier()
     predictor = ManeuverBasedPredictor(logger, maneuver_classifier=maneuver_classifier,
                                        trajectory_generator=werling_trajectory_generator)
     yield predictor
 
+@pytest.fixture(scope='function')
+def road_following_predictor() -> EgoAwarePredictor:
+    logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
+    predictor = RoadFollowingPredictor(logger)
+    yield predictor
 
 @pytest.fixture(scope='function')
 def car_size() -> ObjectSize:

@@ -5,20 +5,16 @@ from typing import List, Dict
 import numpy as np
 
 from decision_making.src.global_constants import DEFAULT_CURVATURE
-from decision_making.src.planning.types import FS_SX, FS_SV, FS_DX, FS_DV
 from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State, NewDynamicObject
-from mapping.src.service.map_service import MapService
 
 
 class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
     """
-    Performs physical prediction for the purpose of short time alignment between ego and dynamic objects.
+    Performs physical prediction (constant velocity in x,y) for the purpose of short time alignment between ego and
+    dynamic objects.
     Logic should be re-considered if the time horizon gets too large.
-    Dynamic objects are predicted as continuing in the same intra road lat and following the road's curve in constant
-    velocity (velocity is assumed to be in the road's direction, meaning no lateral movement)
-    Ego is predicted to continue in constant dv and sv.
     """
 
     def __init__(self, logger: Logger):
