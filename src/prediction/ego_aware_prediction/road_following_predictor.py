@@ -1,3 +1,5 @@
+import time
+
 import copy
 import numpy as np
 from logging import Logger
@@ -22,7 +24,7 @@ class RoadFollowingPredictor(EgoAwarePredictor):
     def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray,
                         action_trajectory: Optional[SamplableTrajectory]) -> Dict[int, List[NewDynamicObject]]:
         """
-        Predicte the future of the specified objects, for the specified timestamps
+        Predict the future of the specified objects, for the specified timestamps
         :param state: the initial state to begin prediction from. Though predicting a single object, the full state
         provided to enable flexibility in prediction given state knowledge
         :param object_ids: a list of ids of the specific objects to predict
@@ -32,29 +34,21 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         :return: a mapping between object id to the list of future dynamic objects of the matching object
         """
 
-        # TODO: debug!
         objects = [State.get_object_from_state(state=state, target_obj_id=obj_id)
                    for obj_id in object_ids]
         objects_fstates = [obj.map_state.road_fstate for obj in objects]
 
-        predictions = self._predict_states(np.array(objects_fstates), prediction_timestamps)
+        first_timestamp = State.get_object_from_state(state=state, target_obj_id=object_ids[0]).timestamp_in_sec
+        predictions = self._predict_states(np.array(objects_fstates), prediction_timestamps - first_timestamp)
 
-        predicted_objects_states_dict = {obj_id: [objects[obj_idx].clone_from_map_state(predictions[obj_idx, time_idx])
-                                                  for time_idx in range(len(prediction_timestamps))]
-                                         for obj_idx, obj_id in enumerate(object_ids)}
-
-        predicted_objects_states_dict: Dict[int, List[NewDynamicObject]] = dict()
-
-        for obj_id in object_ids:
-            dynamic_object = State.get_object_from_state(state=state, target_obj_id=obj_id)
-
-            future_states = self._predict_object(dynamic_object, prediction_timestamps)
-
-            predicted_objects_states_dict[obj_id] = future_states
+        # Create a dictionary from predictions
+        predicted_objects_states_dict = {obj.obj_id: [
+            objects[obj_idx].clone_from_map_state(MapState(predictions[obj_idx, time_idx], obj.map_state.road_id),
+                                                  timestamp_in_sec=timestamp)
+            for time_idx, timestamp in enumerate(prediction_timestamps)]
+                                         for obj_idx, obj in enumerate(objects)}
 
         return predicted_objects_states_dict
-
-
 
     def predict_state(self, state: State, prediction_timestamps: np.ndarray,
                       action_trajectory: Optional[SamplableTrajectory]) \
@@ -81,7 +75,6 @@ class RoadFollowingPredictor(EgoAwarePredictor):
 
         # Aggregate all object together with ego into list of future states
         future_states: List[State] = list()
-
 
         for time_idx in range(len(prediction_timestamps)):
             predicted_dynamic_objects = [future_object_states[time_idx] for future_object_states in
@@ -117,21 +110,21 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         predicted_object_states = []
         obj_fstate = dynamic_object.map_state.road_fstate
         for timestamp in prediction_timestamps:
-
             horizon = timestamp - dynamic_object.timestamp_in_sec
             obj_terminal_fstate = np.array([obj_fstate[FS_SX] + obj_fstate[FS_SV] * horizon, obj_fstate[FS_SV], 0,
                                             obj_fstate[FS_DX], 0, 0])
 
-            #TODO: Note!! This works only when the road id doesn't change during prediction
+            # TODO: Note!! This works only when the road id doesn't change during prediction
             predicted_object_states.append(dynamic_object.clone_from_map_state(timestamp_in_sec=timestamp,
-                                                              map_state=MapState(road_fstate=obj_terminal_fstate,
-                                                                                 road_id=dynamic_object.map_state.road_id)))
+                                                                               map_state=MapState(
+                                                                                   road_fstate=obj_terminal_fstate,
+                                                                                   road_id=dynamic_object.map_state.road_id)))
 
         return predicted_object_states
 
     def _predict_states(self, objects_fstates: np.ndarray, timestamps: np.ndarray):
         """
-
+        Constant velocity prediction for all timestamps and objects in a matrix computation
         :param objects_fstates: numpy 2D array [Nx6] where N is the number of objects, each row is an FSTATE
         :param timestamps: numpy 1D array [T] with T timestamps
         :return: numpy 3D array [NxTx6]
