@@ -11,9 +11,8 @@ from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanM
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, NewDynamicObject, NewEgoState
-from decision_making.test.prediction.mock_predictor import TestPredictorMock
-
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.test.planning.navigation.mock_navigation_facade import NavigationFacadeMock
@@ -313,4 +312,4 @@ def trajectory_planner_facade(pubsub, trajectory, trajectory_visualization_msg):
 @pytest.fixture(scope='function')
 def predictor():
     logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
-    yield TestPredictorMock(logger)
+    yield RoadFollowingPredictor(logger)

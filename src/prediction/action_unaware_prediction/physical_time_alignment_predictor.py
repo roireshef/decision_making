@@ -26,7 +26,7 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
         # Predict to a single horizon
         assert len(prediction_timestamps) == 1
 
-        dynamic_objects = [State.get_object_from_state(state=state, target_obj_id=obj_id) for obj_id in object_ids]
+        dynamic_objects = State.get_objects_from_state(state=state, target_obj_ids=object_ids)
 
         predicted_dynamic_objects: Dict[int, List[NewDynamicObject]] = dict()
 

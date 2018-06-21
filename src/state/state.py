@@ -550,3 +550,17 @@ class State(PUBSUB_MSG_IMPL):
                 'Found %d matching objects for object ID %d' % (len(selected_objects), target_obj_id))
 
         return selected_objects[0]
+
+  # TODO: remove when access to dynamic objects according to dictionary will be available.
+    @classmethod
+    def get_objects_from_state(cls, state, target_obj_ids):
+        # type: (State, List) -> List[NewDynamicObject]
+        """
+        Returns a list of object with the specific obj_ids from state
+        :param state: the state to query
+        :param target_obj_ids: a list of the id of the requested objects
+        :return: the dynamic_objects matching the requested ids
+        """
+
+        selected_objects = [obj for obj in state.dynamic_objects if obj.obj_id in target_obj_ids]
+        return selected_objects

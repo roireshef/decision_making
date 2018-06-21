@@ -30,7 +30,7 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         :param object_ids: a list of ids of the specific objects to predict
         :param prediction_timestamps: np array of timestamps in [sec] to predict the object for. In ascending order.
         Global, not relative
-        :param action_trajectory: the ego's planned action trajectory
+        :param action_trajectory: the ego's planned action trajectory.
         :return: a mapping between object id to the list of future dynamic objects of the matching object
         """
 
@@ -58,7 +58,8 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         :param state: the initial state to begin prediction from
         :param prediction_timestamps: np array of timestamps in [sec] to predict states for. In ascending order.
         Global, not relative
-        :param action_trajectory: the ego's planned action trajectory
+        :param action_trajectory: the ego's planned action trajectory. If given, ego is predicted according to it,
+        otherwise the predicted ego states will be none.
         :return: a list of non markov predicted states for the requested prediction_timestamp, and a full state for the
         terminal predicted state
         """
