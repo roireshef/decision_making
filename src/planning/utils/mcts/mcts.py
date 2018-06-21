@@ -2,11 +2,12 @@ from __future__ import print_function
 
 import random
 
+from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.utils.mcts.tbd import utils
 
 
 class MCTS:
-    def __init__(self, policy_operator, value_operator, backup_operator):
+    def __init__(self, policy_operator, value_operator, backup_operator, action_space: ActionSpace):
         """
         The central MCTS class, which performs the tree search. It gets a
         tree policy, a default policy, and a backup strategy.
@@ -18,6 +19,7 @@ class MCTS:
         self.policy_operator = policy_operator
         self.value_operator = value_operator
         self.backup_operator = backup_operator
+        self.action_space = action_space
 
     def __call__(self, root, n=1500):
         """
