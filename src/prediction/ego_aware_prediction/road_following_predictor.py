@@ -39,7 +39,7 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         objects_fstates = [obj.map_state.road_fstate for obj in objects]
 
         first_timestamp = State.get_object_from_state(state=state, target_obj_id=object_ids[0]).timestamp_in_sec
-        predictions = self._predict_states(np.array(objects_fstates), prediction_timestamps - first_timestamp)
+        predictions = self._vectorized_predict_objects(np.array(objects_fstates), prediction_timestamps - first_timestamp)
 
         # Create a dictionary from predictions
         predicted_objects_states_dict = {obj.obj_id: [
@@ -122,7 +122,7 @@ class RoadFollowingPredictor(EgoAwarePredictor):
 
         return predicted_object_states
 
-    def _predict_states(self, objects_fstates: np.ndarray, timestamps: np.ndarray):
+    def _vectorized_predict_objects(self, objects_fstates: np.ndarray, timestamps: np.ndarray):
         """
         Constant velocity prediction for all timestamps and objects in a matrix computation
         :param objects_fstates: numpy 2D array [Nx6] where N is the number of objects, each row is an FSTATE
