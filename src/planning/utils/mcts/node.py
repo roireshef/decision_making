@@ -19,38 +19,31 @@ class ActionTreeNode(TreeNode):
         self.action = action
         self.n = 0
 
-    def sample_state(self, real_world=False):
+    # TODO: define model class
+    def perform(self, model) -> StateTreeNode:
         """
-        Samples a state from this action and adds it to the tree if the
-        state never occurred before.
-
-        :param real_world: If planning in belief states are used, this can
-        be set to True if a real world action is taken. The belief is than
-        used from the real world action instead from the belief state actions.
-        :return: The state node, which was sampled.
+        Performs the action and samples terminal state from a model. If the terminal state is not in the children
+        already, add it.
+        :param model:
+        :return: the terminal state's StateTreeNode
         """
-        if real_world:
-            state = self.parent.state.real_world_perform(self.action)
-        else:
-            state = self.parent.state.perform(self.action)
+        terminal_state = model.sample(self.parent.state, self.action)
 
-        if state not in self.children:
-            self.children[state] = StateTreeNode(self, state)
+        if terminal_state not in self.children.keys():
+            self.children[terminal_state] = StateTreeNode(self, terminal_state)
 
-        if real_world:
-            self.children[state].state.belief = state.belief
-
-        return self.children[state]
+        return self.children[terminal_state]
 
     def __str__(self):
-        return "Action: {}".format(self.action)
+        return "Action: %s" % self.__dict__
 
 
 class StateTreeNode(TreeNode):
     """
     A node holding a state in the tree.
     """
-    def __init__(self, parent: TreeNode, state: object, actions: List):
+    # TODO: define state class, action class
+    def __init__(self, parent: TreeNode, state, actions: List):
         super(StateTreeNode, self).__init__(parent)
         self.state = state
         self.reward = 0
@@ -65,6 +58,6 @@ class StateTreeNode(TreeNode):
         return [a for a in self.children if self.children[a].n == 0]
 
     def __str__(self):
-        return "State: {}".format(self.state)
+        return "State: %s" % self.__dict__
 
 
