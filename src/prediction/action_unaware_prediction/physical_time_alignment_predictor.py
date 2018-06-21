@@ -22,7 +22,15 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
 
     def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray) \
             -> Dict[int, List[NewDynamicObject]]:
-
+        """
+        Performs physical prediction (constant velocity in x,y) for the purpose of short time alignment
+        between ego and dynamic objects
+        :param state: the initial state to begin prediction from.
+        :param object_ids: a list of ids of the specific objects to predict
+        :param prediction_timestamps: np array of size 1 of timestamp in [sec] to predict states for. In ascending order
+        Global, not relative
+        :return: a mapping between object id to the list of future dynamic objects of the matching object
+       """
         # Predict to a single horizon
         assert len(prediction_timestamps) == 1
 
@@ -74,7 +82,7 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
         continuing in the same intra road lat and following the road's curve in constant
         velocity (velocity is assumed to be in the road's direction, meaning no lateral movement)
         :param dynamic_object: in map coordinates
-        :param prediction_timestamps: np array of timestamps in [sec] to predict_object_trajectories for. In ascending
+        :param prediction_timestamp: a timestamp in [sec] to predict_object_trajectories for. In ascending
         order. Global, not relative
         :return: list of predicted objects of the received dynamic object
         """
