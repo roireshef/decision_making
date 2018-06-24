@@ -102,6 +102,9 @@ SPECIFICATION_MARGIN_TIME_DELAY = 2.
 # [sec] time delay of AV vehicle
 SAFETY_MARGIN_TIME_DELAY = 1.
 
+# [m] minimal lateral safe distance between objects
+LATERAL_SAFETY_MU = 0.5
+
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3
 

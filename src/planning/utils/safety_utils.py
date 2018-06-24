@@ -6,7 +6,7 @@ import numpy as np
 import time
 
 from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY, SPECIFICATION_MARGIN_TIME_DELAY, \
-    LON_ACC_LIMITS, SAFETY_SAMPLING_RESOLUTION, LAT_ACC_LIMITS
+    LON_ACC_LIMITS, SAFETY_SAMPLING_RESOLUTION, LAT_ACC_LIMITS, LATERAL_SAFETY_MU
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
     RelativeLongitudinalPosition, RoadSemanticOccupancyGrid
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
@@ -301,34 +301,35 @@ class SafetyUtils:
         :param both_dimensions_flag: if False then only longitudinal dimension is considered
         :return: [bool] safety per [ego trajectory, object, timestamp]. Tensor of shape: traj_num x objects_num x timestamps_num
         """
-        mu = 0
         ego_traj_num = ego_ftraj.shape[0]
         times_num = ego_ftraj.shape[1]
         fstate_size = ego_ftraj.shape[2]
-        if obj_ftraj.ndim > 2:
+        if obj_ftraj.ndim > 2:  # multiple objects
             objects_num = obj_ftraj.shape[0]
+            # duplicate ego_ftraj to the following dimensions: ego_traj_num, objects_num, timestamps_num, fstate (6)
             ego_ftraj_dup = np.tile(ego_ftraj, objects_num).reshape(ego_traj_num, times_num, objects_num,
                                                                     fstate_size).swapaxes(1, 2)
-            # here ego_ftraj_dup has the following dimensions: ego_traj_num, objects_num, times_num, fstate_size
-        else:
+            obj_lengths = np.repeat(obj_sizes[:, 0], times_num).reshape(objects_num, times_num)
+            obj_widths = np.repeat(obj_sizes[:, 1], times_num).reshape(objects_num, times_num)
+        else:  # a single object, don't duplicate ego_ftraj and obj_sizes
             ego_ftraj_dup = ego_ftraj
-            objects_num = 1
+            obj_lengths = obj_sizes[0]
+            obj_widths = obj_sizes[1]
 
-        obj_lengths = np.repeat(obj_sizes[..., 0], times_num).reshape(objects_num, times_num)
-        obj_widths = np.repeat(obj_sizes[..., 1], times_num).reshape(objects_num, times_num)
-
+        # calculate longitudinal safety
         lon_safe_times = SafetyUtils.get_lon_safety(
             ego_ftraj_dup[..., FS_SX], ego_ftraj_dup[..., FS_SV], SAFETY_MARGIN_TIME_DELAY,
             obj_ftraj[..., FS_SX], obj_ftraj[..., FS_SV], SPECIFICATION_MARGIN_TIME_DELAY,
             0.5 * (ego_size[0] + obj_lengths))
 
-        if not both_dimensions_flag:
+        if not both_dimensions_flag:  # if only longitudinal safety
             return lon_safe_times
 
+        # calculate lateral safety
         lat_safe_times = SafetyUtils.get_lat_safety(
             ego_ftraj_dup[..., FS_DX], ego_ftraj_dup[..., FS_DV], SAFETY_MARGIN_TIME_DELAY,
             obj_ftraj[..., FS_DX], obj_ftraj[..., FS_DV], SPECIFICATION_MARGIN_TIME_DELAY,
-            0.5 * (ego_size[1] + obj_widths + mu))
+            0.5 * (ego_size[1] + obj_widths + LATERAL_SAFETY_MU))
 
         return np.logical_or(lon_safe_times, lat_safe_times)
 
