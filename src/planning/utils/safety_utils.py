@@ -27,10 +27,10 @@ class SafetyUtils:
             # duplicate ego_ftraj to the following dimensions: ego_traj_num, objects_num, timestamps_num, fstate (6)
             ego_ftraj_dup = np.tile(ego_ftraj, objects_num).reshape(ego_traj_num, times_num, objects_num,
                                                                     fstate_size).swapaxes(1, 2)
-            obj_lengths = np.repeat(obj_sizes[..., 0], times_num).reshape(objects_num, times_num)
-            obj_widths = np.repeat(obj_sizes[..., 1], times_num).reshape(objects_num, times_num)
-        else:  # a single object
-            ego_ftraj_dup = ego_ftraj  # don't duplicate ego_ftraj
+            obj_lengths = np.repeat(obj_sizes[:, 0], times_num).reshape(objects_num, times_num)
+            obj_widths = np.repeat(obj_sizes[:, 1], times_num).reshape(objects_num, times_num)
+        else:  # a single object, don't duplicate ego_ftraj and obj_sizes
+            ego_ftraj_dup = ego_ftraj
             obj_lengths = obj_sizes[0]
             obj_widths = obj_sizes[1]
 
