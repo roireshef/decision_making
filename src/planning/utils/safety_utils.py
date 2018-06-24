@@ -1,45 +1,53 @@
-from logging import Logger
 import numpy as np
-import math
 
 from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY, SPECIFICATION_MARGIN_TIME_DELAY, \
-    LON_ACC_LIMITS, LAT_ACC_LIMITS
+    LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU
 from decision_making.src.planning.types import LIMIT_MIN, FS_SV, FS_SX, FS_DX, FS_DV, FrenetTrajectories2D
 
 
 class SafetyUtils:
     @staticmethod
     def calc_safety_for_trajectories(ego_ftraj: FrenetTrajectories2D, ego_size: np.array,
-                                     obj_ftraj: FrenetTrajectories2D, obj_sizes: np.array) -> np.array:
+                                     obj_ftraj: np.array, obj_sizes: np.array,
+                                     both_dimensions_flag: bool=True) -> np.array:
         """
         Calculate safety boolean tensor for different ego Frenet trajectories and objects' Frenet trajectories.
         :param ego_ftraj: ego Frenet trajectories: tensor of shape: traj_num x timestamps_num x Frenet state size
         :param ego_size: array of size 2: ego length, ego width
-        :param obj_ftraj: objects Frenet trajectories: tensor of shape: objects_num x timestamps_num x Frenet state size
-        :param obj_sizes: array of arrays of size 2: i-th row is i-th object's size
+        :param obj_ftraj: one or array of objects Frenet trajectories: tensor of shape: objects_num x timestamps_num x Frenet state size
+        :param obj_sizes: one or array of arrays of size 2: i-th row is i-th object's size
+        :param both_dimensions_flag: if False then only longitudinal dimension is considered
         :return: [bool] safety per [ego trajectory, object, timestamp]. Tensor of shape: traj_num x objects_num x timestamps_num
         """
-        mu = 0
-        objects_num = obj_ftraj.shape[0]
         ego_traj_num = ego_ftraj.shape[0]
         times_num = ego_ftraj.shape[1]
         fstate_size = ego_ftraj.shape[2]
-        ego_ftraj_dup = np.tile(ego_ftraj, objects_num).reshape(ego_traj_num, times_num, objects_num,
-                                                                fstate_size).swapaxes(1, 2)
-        # ego_ftraj_dup has the following dimensions: ego_traj_num, objects_num, times_num, fstate_size
+        if obj_ftraj.ndim > 2:  # multiple objects
+            objects_num = obj_ftraj.shape[0]
+            # duplicate ego_ftraj to the following dimensions: ego_traj_num, objects_num, timestamps_num, fstate (6)
+            ego_ftraj_dup = np.tile(ego_ftraj, objects_num).reshape(ego_traj_num, times_num, objects_num,
+                                                                    fstate_size).swapaxes(1, 2)
+            obj_lengths = np.repeat(obj_sizes[..., 0], times_num).reshape(objects_num, times_num)
+            obj_widths = np.repeat(obj_sizes[..., 1], times_num).reshape(objects_num, times_num)
+        else:  # a single object
+            ego_ftraj_dup = ego_ftraj  # don't duplicate ego_ftraj
+            obj_lengths = obj_sizes[0]
+            obj_widths = obj_sizes[1]
 
-        obj_lengths = np.repeat(obj_sizes[:, 0], times_num).reshape(objects_num, times_num)
-        obj_widths = np.repeat(obj_sizes[:, 1], times_num).reshape(objects_num, times_num)
-
+        # calculate longitudinal safety
         lon_safe_times = SafetyUtils.get_lon_safety(
-            ego_ftraj_dup[:, :, :, FS_SX], ego_ftraj_dup[:, :, :, FS_SV], SAFETY_MARGIN_TIME_DELAY,
-            obj_ftraj[:, :, FS_SX], obj_ftraj[:, :, FS_SV], SPECIFICATION_MARGIN_TIME_DELAY,
+            ego_ftraj_dup[..., FS_SX], ego_ftraj_dup[..., FS_SV], SAFETY_MARGIN_TIME_DELAY,
+            obj_ftraj[..., FS_SX], obj_ftraj[..., FS_SV], SPECIFICATION_MARGIN_TIME_DELAY,
             0.5 * (ego_size[0] + obj_lengths))
 
+        if not both_dimensions_flag:  # if only longitudinal safety
+            return lon_safe_times
+
+        # calculate lateral safety
         lat_safe_times = SafetyUtils.get_lat_safety(
-            ego_ftraj_dup[:, :, :, FS_DX], ego_ftraj_dup[:, :, :, FS_DV], SAFETY_MARGIN_TIME_DELAY,
-            obj_ftraj[:, :, FS_DX], obj_ftraj[:, :, FS_DV], SPECIFICATION_MARGIN_TIME_DELAY,
-            0.5 * (ego_size[1] + obj_widths + mu))
+            ego_ftraj_dup[..., FS_DX], ego_ftraj_dup[..., FS_DV], SAFETY_MARGIN_TIME_DELAY,
+            obj_ftraj[..., FS_DX], obj_ftraj[..., FS_DV], SPECIFICATION_MARGIN_TIME_DELAY,
+            0.5 * (ego_size[1] + obj_widths + LATERAL_SAFETY_MU))
 
         return np.logical_or(lon_safe_times, lat_safe_times)
 
