@@ -2,6 +2,8 @@ from collections import defaultdict
 from enum import Enum
 from logging import Logger
 from typing import Dict, List, Tuple
+import numpy as np
+import time
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO
@@ -140,16 +142,16 @@ class BehavioralGridState(BehavioralState):
 
         # We consider only object on the adjacent lanes
         adjacent_lanes = [x.value for x in RelativeLane]
-        objects_in_adjacent_lanes = [obj for obj in objects
-                                     if obj.dynamic_object.map_state.lane_num - ego_lane in adjacent_lanes]
 
-        for obj in objects_in_adjacent_lanes:
+        # ignore vehicles out of pre-defined range
+        near_objects = [obj for obj in objects if abs(obj.longitudinal_distance) <= PLANNING_LOOKAHEAD_DIST]
+        # ignore vehicles not in adjacent lanes
+        nearby_objects_in_adjacent_lanes = [obj for obj in near_objects
+                                            if obj.dynamic_object.map_state.lane_num - ego_lane in adjacent_lanes]
+
+        for obj in nearby_objects_in_adjacent_lanes:
             # Compute relative lane to ego
             object_relative_lane = RelativeLane(obj.dynamic_object.map_state.lane_num - ego_lane)
-
-            # ignore vehicles out of pre-defined range
-            if abs(obj.longitudinal_distance) > PLANNING_LOOKAHEAD_DIST:
-                continue
 
             # compute longitudinal projection on the grid
             object_relative_long = BehavioralGridState._get_longitudinal_grid_cell(obj, ego_state)
