@@ -2,6 +2,7 @@ from logging import Logger
 from typing import Tuple
 
 import numpy as np
+import rte.python.profiler as prof
 
 from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
@@ -491,6 +492,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return solutions[valid_traj_slice], polynoms[valid_traj_slice], horizons[valid_traj_slice, FP_DX]
 
     @staticmethod
+    @prof.ProfileFunction()
     def filter_frajectories_by_safety(state: State, time_samples: np.ndarray, ego_ftraj: FrenetTrajectories2D) -> np.array:
         """
         Filter frenet trajectories by RSS safety (both longitudinal & lateral).
@@ -515,13 +517,9 @@ class WerlingPlanner(TrajectoryPlanner):
         obj_sizes = np.array(obj_sizes)
         ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])
 
-        # import time
-        # st=time.time()
-
-        safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, obj_ftraj, obj_sizes)
+        # calculate RSS safety for all trajectories, all objects and all timestamps
+        with prof.time_range('calc_safety(ego_traj=%s, objs_num=%d)' % (ego_ftraj.shape, len(state.dynamic_objects))):
+            safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, obj_ftraj, obj_sizes)
         # AND over all objects and all timestamps
         safe_trajectories = safe_times.all(axis=(1, 2))
-
-        # print('calc_safety: ego_traj=%s, objs_num=%d; num_safe_traj=%d; time=%f' %
-        #       (ego_ftraj.shape, len(state.dynamic_objects), np.sum(safe_trajectories), time.time()-st))
         return np.where(safe_trajectories)[0]
