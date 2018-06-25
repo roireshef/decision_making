@@ -8,8 +8,10 @@ from decision_making.src.planning.types import CartesianTrajectory, C_YAW, Carte
     CartesianTrajectories, CartesianPaths2D, CartesianPoint2D, C_A, C_K, C_V, CartesianExtendedTrajectories, \
     FrenetTrajectories2D, FS_DX
 from decision_making.src.planning.utils.math import Math
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State, NewDynamicObject
+from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
@@ -182,6 +184,10 @@ class Costs:
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
         obstacles_costs = Costs.compute_obstacle_costs(ctrajectories, state, params, global_time_samples,
                                                                 predictor)
+
+
+        obstacles_costs2 = Costs.compute_distances_to_objects()
+
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
         deviations_costs = Costs.compute_deviation_costs(ftrajectories, params)
 
@@ -214,6 +220,100 @@ class Costs:
         else:
             obstacles_costs = np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
         return obstacles_costs
+
+    @staticmethod
+    def compute_obstacle_costs(ctrajectories: CartesianExtendedTrajectories, state: State,
+                               params: TrajectoryCostParams, global_time_samples: np.ndarray,
+                               predictor: RoadFollowingPredictor):
+        """
+        :param ctrajectories: numpy tensor of trajectories in cartesian-frame
+        :param state: the state object (that includes obstacles, etc.)
+        :param params: parameters for the cost function (from behavioral layer)
+        :param global_time_samples: [sec] time samples for prediction (global, not relative)
+        :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
+        :return: MxN matrix of obstacle costs per point, where N is trajectories number, M is trajectory length
+        """
+        # Filter close objects
+        close_objects = [obs for obs in state.dynamic_objects
+                   if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < PLANNING_LOOKAHEAD_DIST]
+
+        if len(close_objects) == 0:
+            return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
+
+        # TODO: this assumes everybody on the same road!
+        road_frenet = MapService.get_instance()._rhs_roads_frenet[state.ego_state.map_state.road_id]
+
+        # Predict objects' future movement, then project predicted objects' states to Cartesian frame
+        objects_fstates = np.array([obs.map_state.road_fstate for obs in close_objects])
+        objects_predicted_ftrajectories = predictor._predict_states(objects_fstates, global_time_samples)
+        objects_predicted_ctrajectories = road_frenet.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
+
+        objects_sizes = np.array([[obs.size.length, obs.size.width] for obs in close_objects])
+        ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])
+
+        # Compute the distance to the closest point in every object to ego's boundaries (on the length and width axes)
+        distances = Costs.compute_distances_to_objects(ctrajectories, objects_predicted_ctrajectories, objects_sizes, ego_size)
+
+        # compute a flipped-sigmoid for distances in each dimension [x, y] of each point (in each trajectory)
+        k = np.array([params.obstacle_cost_x.k, params.obstacle_cost_y.k])
+        offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
+        points_offset = distances + offset
+        per_dimension_cost = np.divide(1.0, (1.0+np.exp(np.clip(np.multiply(k, points_offset), -np.inf, EXP_CLIP_TH))))
+
+        # multiply dimensional flipped-logistic costs, so that big values are where the two dimensions have
+        # negative distance, i.e. collision
+        per_point_cost = per_dimension_cost.prod(axis=-1)
+
+        per_trajectory_point_cost = params.obstacle_cost_x.w * np.sum(per_point_cost, axis=1)
+
+        return per_trajectory_point_cost
+
+    @staticmethod
+    def compute_distances_to_objects(ego_ctrajectories: CartesianExtendedTrajectories,
+                                     objects_ctrajectories: CartesianExtendedTrajectories,
+                                     objects_sizes: np.array, ego_size: np.array):
+        """
+        Given M trajectories of ego vehicle of length T timestamps and M objects' predictions of length T timestamps
+        each, this functions computes the longitudinal and lateral distances from ego's boundaries to the closest point
+        in the objects.
+        :param ego_ctrajectories: numpy array of M x CartesianExtendedTrajectory - of M ego's trajectories over time
+        :param objects_ctrajectories: numpy array of N x CartesianExtendedTrajectory - of N objects' predictions over time
+        :param objects_sizes: numpy array of shape [N, 2] - for each object in N objects - the length and width
+        :param ego_size: 1D numpy array of ego's length and width
+        :return: numpy array of shape [M, N, T, 2] for M ego's trajectories, N objects, T timestamps,
+        distance in ego's [longitudinal, lateral] axes
+        """
+        objects_H = CartesianFrame.homo_tensor_2d(objects_ctrajectories[:, :, C_YAW],
+                                                  objects_ctrajectories[:, :, [C_X, C_Y]])
+        objects_H_inv = np.linalg.inv(objects_H)
+
+        ego_points = ego_ctrajectories[:, :, [C_X, C_Y]]
+        ego_points_ext = np.stack((ego_points, np.ones(ego_points.shape[:2])))
+
+        # Ego-center coordinates are projected onto the objects' reference frames [M, N, T, 2]
+        # and difference in yaw is computed [M, N, T] with M ego-trajectories, N objects, T timestamps.
+        ego_centers_in_objs_frame = np.einsum('mti, ntij -> mntj', ego_points_ext, objects_H_inv[..., :3])
+        yaw_diffs = objects_ctrajectories[:, :, C_YAW] - ego_ctrajectories[:, np.newaxis, :, C_YAW]
+
+        # Ego-center coordinates are mirrored onto the 1st quadrant.
+        # if the initial quadrant was 2/4 - we need to fix the rotation angle
+        quadrant_fix = np.sign(ego_centers_in_objs_frame).prod(axis=-1)
+        fixed_yaw_diffs = yaw_diffs * quadrant_fix
+        fixed_ego_centers = np.abs(ego_centers_in_objs_frame)
+
+        # deduct objects' half-sizes on both dimensions (to reflect objects' boundaries and not center-point)
+        translated_ego_centers = fixed_ego_centers - np.divide(objects_sizes[:, np.newaxis], 2.)
+
+        # Now project the objects' center coordinate onto the new ego coordinate frames
+        ego_H = CartesianFrame.homo_tensor_2d(fixed_yaw_diffs,
+                                              translated_ego_centers)
+        ego_H_inv = np.linalg.inv(ego_H)
+        obj_centers_in_ego_new_frame = ego_H_inv[..., :2, 2]
+
+        # deduct ego's half-sizes on both dimensions (to reflect ego's boundaries and not center-point)
+        distances_from_ego_boundaries = np.abs(obj_centers_in_ego_new_frame) - np.divide(ego_size, 2.)
+
+        return distances_from_ego_boundaries
 
     @staticmethod
     def compute_deviation_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams):
