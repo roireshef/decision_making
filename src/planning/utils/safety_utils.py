@@ -73,16 +73,9 @@ class SafetyUtils:
         ext_safe_times = np.c_[np.repeat(False, actions_num), lon_safe_times, np.repeat(False, actions_num)]
         start_points = np.where(np.logical_and(ext_safe_times[:, 1:], np.logical_not(ext_safe_times[:, :-1])))
         end_points = np.where(np.logical_and(ext_safe_times[:, :-1], np.logical_not(ext_safe_times[:, 1:])))
-
-        intervals = []
-        for i, spec_i in enumerate(start_points[0]):
-            (start, end) = (start_points[1][i], end_points[1][i])
-            if end <= 0 or start >= len(time_samples):
-                continue
-            (start_time, end_time) = (time_samples[start], min(specs_t[spec_i], time_samples[end-1]))
-            if start_time <= end_time:
-                intervals.append((spec_orig_idxs[spec_i], start_time, end_time))
-        intervals = np.array(intervals)
+        (start_times, end_times) = (time_samples[start_points[1]], time_samples[end_points[1]-1])
+        intervals = np.array([(spec_orig_idxs[spec_i], start_times[i], min(end_times[i], specs_t[spec_i]))
+                              for i, spec_i in enumerate(start_points[0]) if start_times[i] < specs_t[spec_i]])
 
         time3 = time.time()-st
 
