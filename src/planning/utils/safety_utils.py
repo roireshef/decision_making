@@ -52,46 +52,49 @@ class SafetyUtils:
         return np.logical_or(lon_safe_times, lat_safe_times)
 
     @staticmethod
-    def get_lon_safety(x1: np.array, v1: np.array, td1: float, x2: np.array, v2: np.array, td2: float,
+    def get_lon_safety(ego_lon: np.array, ego_vel: np.array, ego_time_delay: float,
+                       obj_lon: np.array, obj_vel: np.array, obj_time_delay: float,
                        margins: np.array, max_brake: float=-LON_ACC_LIMITS[LIMIT_MIN]) -> np.array:
         """
         Calculate longitudinal safety between two objects for all timestamps
-        :param x1: [m] object1 longitudes: tensor of shape: traj_num x objects_num x timestamps_num
-        :param v1: [m/s] object1 velocities: tensor of shape: traj_num x objects_num x timestamps_num
-        :param td1: [sec] object1 time delay
-        :param x2: [m] object2 longitudes: tensor of any shape that compatible with the shape of object1
-        :param v2: [m/s] object2 velocities: tensor of any shape that compatible with the shape of object1
-        :param td2: [sec] object2 time delay
+        :param ego_lon: [m] object1 longitudes: tensor of shape: traj_num x objects_num x timestamps_num
+        :param ego_vel: [m/s] object1 velocities: tensor of shape: traj_num x objects_num x timestamps_num
+        :param ego_time_delay: [sec] object1 time delay
+        :param obj_lon: [m] object2 longitudes: tensor of any shape that compatible with the shape of object1
+        :param obj_vel: [m/s] object2 velocities: tensor of any shape that compatible with the shape of object1
+        :param obj_time_delay: [sec] object2 time delay
         :param margins: [m] objects' lengths: matrix of size objects_num x timestamps_num
         :param max_brake: [m/s^2] maximal deceleration of both objects
         :return: [bool] longitudinal safety per timestamp. Tensor of the same shape as object1 or object2
         """
-        dist = x1 - x2
+        dist = ego_lon - obj_lon
         sign = np.sign(dist)
         switch = 0.5 * (sign + 1)
         one_over_a = 1. / (2 * max_brake)
-        safe_dist = np.clip(sign * (v2 ** 2 - v1 ** 2) * one_over_a, 0, None) + \
-                    (1 - switch) * v1 * td1 + switch * v2 * td2 + margins
+        safe_dist = np.clip(sign * (obj_vel ** 2 - ego_vel ** 2) * one_over_a, 0, None) + \
+                    (1 - switch) * ego_vel * ego_time_delay + switch * obj_vel * obj_time_delay + margins
         return sign * dist > safe_dist
 
     @staticmethod
-    def get_lat_safety(x1: np.array, v1: np.array, td1: float, x2: np.array, v2: np.array, td2: float,
+    def get_lat_safety(ego_pos: np.array, ego_vel: np.array, ego_time_delay: float,
+                       obj_pos: np.array, obj_vel: np.array, obj_time_delay: float,
                        margins: np.array, max_brake: float=-LAT_ACC_LIMITS[LIMIT_MIN]) -> np.array:
         """
         Calculate lateral safety between two objects for all timestamps
-        :param x1: [m] object1 longitudes: tensor of any shape
-        :param v1: [m/s] object1 velocities: tensor of any shape
-        :param td1: [sec] object1 time delay
-        :param x2: [m] object2 longitudes: tensor of any shape that compatible with the shape of object1
-        :param v2: [m/s] object2 velocities: tensor of any shape that compatible with the shape of object1
-        :param td2: [sec] object2 time delay
+        :param ego_pos: [m] object1 longitudes: tensor of any shape
+        :param ego_vel: [m/s] object1 velocities: tensor of any shape
+        :param ego_time_delay: [sec] object1 time delay
+        :param obj_pos: [m] object2 longitudes: tensor of any shape that compatible with the shape of object1
+        :param obj_vel: [m/s] object2 velocities: tensor of any shape that compatible with the shape of object1
+        :param obj_time_delay: [sec] object2 time delay
         :param margins: [m] objects' widths + mu: matrix of size objects_num x timestamps_num
         :param max_brake: [m/s^2] maximal deceleration of both objects
         :return: [bool] lateral safety per timestamp. Tensor of the same shape as object1 or object2
         """
-        dist = x1 - x2
+        dist = ego_pos - obj_pos
         sign = np.sign(dist)
         one_over_a = 1. / (2 * max_brake)
-        safe_dist = np.clip(sign * (v2 * np.abs(v2) - v1 * np.abs(v2)) * one_over_a, 0, None) + \
-                    np.clip(-sign * v1, 0, None) * td1 + np.clip(sign * v2, 0, None) * td2 + margins
+        safe_dist = np.clip(sign * (obj_vel * np.abs(obj_vel) - ego_vel * np.abs(obj_vel)) * one_over_a, 0, None) + \
+                    np.clip(-sign * ego_vel, 0, None) * ego_time_delay + np.clip(sign * obj_vel, 0, None) * \
+                                                                         obj_time_delay + margins
         return sign * dist > safe_dist
