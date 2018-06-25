@@ -83,7 +83,6 @@ class CostBasedBehavioralPlanner:
         ego = state.ego_state
         road_id = ego.road_localization.road_id
         road_frenet = MapService.get_instance()._rhs_roads_frenet[road_id]   # TODO: assumes everyone on the same road!
-        # lane_width = MapService.get_instance().get_road(road_id).lane_width
 
         # TODO: This is hacky - use predictor!
         terminal_behavioral_states = []
@@ -102,8 +101,6 @@ class CostBasedBehavioralPlanner:
             # predict objects (using road-following prediction logic, including alignment to road)
             predicted_objects = []
             # for obj in state.dynamic_objects:
-            #     if abs(spec.d - obj.road_localization.intra_road_lat) > lane_width/2:
-            #         continue
             #     obj_fstate = MapUtils.get_object_road_localization(obj, road_frenet)
             #     obj_terminal_fstate = np.array([obj_fstate[FS_SX] + obj_fstate[FS_SV] * spec.t, obj_fstate[FS_SV], 0,
             #                                     obj_fstate[FS_DX], 0, 0])
@@ -135,7 +132,6 @@ class CostBasedBehavioralPlanner:
         return [navigation_goal if behavioral_state is not None else None
                 for i, behavioral_state in enumerate(terminal_behavioral_states)]
 
-    @staticmethod
     @prof.ProfileFunction()
     def _generate_trajectory_specs(behavioral_state: BehavioralGridState,
                                    action_spec: ActionSpec,

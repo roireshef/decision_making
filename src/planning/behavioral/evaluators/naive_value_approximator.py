@@ -4,7 +4,7 @@ from logging import Logger
 from decision_making.src.exceptions import MissingNavigationGoal
 from decision_making.src.global_constants import BP_METRICS_LANE_DEVIATION_COST_WEIGHT, BP_MISSING_GOAL_COST, \
     BP_RIGHT_LANE_COST_WEIGHT, BP_EFFICIENCY_COST_WEIGHT, BP_CALM_LANE_CHANGE_TIME
-from decision_making.src.planning.behavioral.evaluators.cost_functions import BP_CostFunctions
+from decision_making.src.planning.behavioral.evaluators.cost_functions import BP_EfficiencyCost, BP_ComfortCost
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.data_objects import NavigationGoal, ActionSpec
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -53,7 +53,7 @@ class NaiveValueApproximator(ValueApproximator):
 
         # calculate lane deviation and comfort cost for reaching the goal
         # in case of missing the goal, there is a missing goal cost
-        comfort_cost = 0
+        lane_deviation_cost = comfort_cost = 0
         if len(goal.lanes_list) > 0 and ego_lane not in goal.lanes_list:  # outside of the lanes range of the goal
             if ego_lon >= goal.lon:  # we missed the goal
                 raise MissingNavigationGoal("Missing a navigation goal on road_id=%d, longitude=%.2f, lanes=%s; "
@@ -61,10 +61,11 @@ class NaiveValueApproximator(ValueApproximator):
                                             (goal.road_id, goal.lon, goal.lanes_list, ego_lon, ego_lane))
             else:  # if still did not arrive to the goal, calculate lateral comfort for reaching the goal
                 lanes_from_goal = np.min(np.abs(np.array(goal.lanes_list) - ego_lane))
+                lane_deviation_cost = NaiveValueApproximator._calc_lane_deviation_cost(lanes_from_goal)
                 comfort_cost = NaiveValueApproximator._calc_comfort_cost(lanes_from_goal, goal.lon, ego_fstate,
                                                                          lane_width)
 
-        cost = efficiency_cost + comfort_cost + right_lane_cost
+        cost = efficiency_cost + comfort_cost + right_lane_cost + lane_deviation_cost
 
         return cost
 
@@ -72,7 +73,7 @@ class NaiveValueApproximator(ValueApproximator):
     def _calc_efficiency_cost(ego_vel: float, time_to_goal: float):
         if time_to_goal <= 0:
             return 0
-        return BP_CostFunctions.calc_efficiency_cost_for_velocities(np.array([ego_vel]))[0] * \
+        return BP_EfficiencyCost.calc_pointwise_cost_for_velocities(np.array([ego_vel]))[0] * \
                BP_EFFICIENCY_COST_WEIGHT * time_to_goal
 
     @staticmethod
@@ -94,5 +95,5 @@ class NaiveValueApproximator(ValueApproximator):
         if T_d_max_per_lane >= BP_CALM_LANE_CHANGE_TIME:
             return 0
         spec = ActionSpec(0, 0, 0, lane_width)
-        _, goal_comfort_cost = lanes_from_goal * BP_CostFunctions.calc_comfort_cost(ego_fstate, spec, 0, T_d_max_per_lane)
+        _, goal_comfort_cost = lanes_from_goal * BP_ComfortCost.calc_cost(ego_fstate, spec, T_d_max_per_lane)
         return min(BP_MISSING_GOAL_COST, goal_comfort_cost)

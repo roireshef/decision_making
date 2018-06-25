@@ -2,9 +2,9 @@ import numpy as np
 from logging import Logger
 
 from decision_making.src.global_constants import BP_MISSING_GOAL_COST, \
-    BP_DEFAULT_DESIRED_SPEED, SPECIFICATION_MARGIN_TIME_DELAY, LON_CALM_ACC, LON_ACC_LIMITS, \
+    BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, SPECIFICATION_MARGIN_TIME_DELAY, AGGRESSIVENESS_TO_LON_ACC, \
     SAFETY_MARGIN_TIME_DELAY, BP_RIGHT_LANE_COST_WEIGHT, BP_CALM_LANE_CHANGE_TIME
-from decision_making.src.planning.behavioral.evaluators.cost_functions import BP_CostFunctions
+from decision_making.src.planning.behavioral.evaluators.cost_functions import BP_EfficiencyCost, BP_ComfortCost
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
 from decision_making.src.planning.behavioral.data_objects import NavigationGoal, RelativeLane, ActionSpec
@@ -24,7 +24,7 @@ class FollowValueApproximator(ValueApproximator):
         self.calm_lat_comfort_cost = None
         self.log = False
 
-    def approximate(self, i: int, behavioral_state: BehavioralGridState, goal: NavigationGoal) -> float:
+    def approximate(self, behavioral_state: BehavioralGridState, goal: NavigationGoal) -> float:
 
         ego = behavioral_state.ego_state
         ego_loc = ego.road_localization
@@ -67,7 +67,7 @@ class FollowValueApproximator(ValueApproximator):
     def _calc_cost_for_lane(self, v_init: float, v_tar: float, cur_dist_from_obj: float, ego_loc: RoadLocalization,
                             cars_size_margin: float, goal: NavigationGoal, dist_to_goal: float, ego_fstate: np.array) -> float:
 
-        v_des = BP_DEFAULT_DESIRED_SPEED
+        v_des = BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
         eff_cost = comf_cost = non_right_lane_cost = goal_cost = 0
 
         if dist_to_goal > 0:
@@ -84,7 +84,7 @@ class FollowValueApproximator(ValueApproximator):
                 comf_cost = 0
             else:  # did not reach the target, first try FOLLOW_LANE if the target is far enough
                 sgn = np.sign(v_des - v_init)
-                acc = sgn * LON_CALM_ACC
+                acc = sgn * AGGRESSIVENESS_TO_LON_ACC[0]
                 time_tar_to_goal = (dist_to_goal - dist_to_tar) / max(0.001, v_tar)  # -inf for static action
                 t1 = (v_des - v_init) / acc
                 dist_acc = 0.5 * (v_init + v_des) * t1
@@ -127,6 +127,6 @@ class FollowValueApproximator(ValueApproximator):
     @staticmethod
     def _get_vel_lon_len(obj: DynamicObject, sgn: int) -> [float, float, float]:
         if obj is None:
-            return BP_DEFAULT_DESIRED_SPEED, sgn * np.inf, 0
+            return BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, sgn * np.inf, 0
         else:
             return obj.v_x, obj.road_localization.road_lon, obj.size.length
