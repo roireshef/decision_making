@@ -22,15 +22,17 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, CartesianPath2D
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.planning.utils.transformations import Transformations
-from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import State, NewEgoState
+from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
+from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
+from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
+from decision_making.src.state.state import State
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
 class TrajectoryPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger,
                  strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner],
-                 short_time_predictor: Predictor,
+                 short_time_predictor: EgoAwarePredictor,
                  last_trajectory: SamplableTrajectory = None):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
@@ -68,7 +70,8 @@ class TrajectoryPlanningFacade(DmModule):
             state = self._get_current_state()
 
             # Update state: align all object to most recent timestamp, based on ego and dynamic objects timestamp
-            state_aligned = self._short_time_predictor.align_objects_to_most_recent_timestamp(state=state)
+            most_recent_timestamp = PredictionUtils.dynamic_objects_and_ego_most_recent_timestamp(state)
+            state_aligned = self._short_time_predictor.predict_state(state, np.array([most_recent_timestamp]))[0]
 
             params = self._get_mission_params()
 
@@ -198,7 +201,7 @@ class TrajectoryPlanningFacade(DmModule):
     @staticmethod
     def _prepare_visualization_msg(state: State, reference_route: CartesianPath2D,
                                    ctrajectories: CartesianTrajectories, costs: np.ndarray,
-                                   planning_horizon: float, predictor: Predictor):
+                                   planning_horizon: float, predictor: EgoUnawarePredictor):
         """
         prepares visualization message for visualization purposes
         :param state: short-term prediction aligned state
@@ -214,7 +217,7 @@ class TrajectoryPlanningFacade(DmModule):
                                           VISUALIZATION_PREDICTION_RESOLUTION, float)
 
         # TODO: move this to visualizer!
-        # Curently we are predicting the state at ego's timestamp and at the end of the traj execution time.
+        # Currently we are predicting the state at ego's timestamp and at the end of the traj execution time.
         # predicted_states[0] is the current state
         # predicted_states[1] is the predicted state in the end of the execution of traj.
         predicted_states = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps)

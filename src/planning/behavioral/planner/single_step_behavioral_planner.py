@@ -16,7 +16,7 @@ from decision_making.src.planning.behavioral.evaluators.value_approximator impor
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
     CostBasedBehavioralPlanner
-from decision_making.src.prediction.predictor import Predictor
+from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 
 
@@ -32,7 +32,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
     """
     def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
                  action_spec_evaluator: Optional[ActionSpecEvaluator], action_spec_validator: Optional[ActionSpecFiltering],
-                 value_approximator: ValueApproximator, predictor: Predictor, logger: Logger):
+                 value_approximator: ValueApproximator, predictor: EgoAwarePredictor, logger: Logger):
         super().__init__(action_space, recipe_evaluator, action_spec_evaluator, action_spec_validator, value_approximator,
                          predictor, logger)
 

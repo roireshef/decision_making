@@ -1,17 +1,17 @@
+import time
 from logging import Logger
 from typing import Tuple
 
 import numpy as np
-import time
 
 from decision_making.src.exceptions import raises
 from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEGLIGIBLE_DISPOSITION_LAT, \
-    TRAJECTORY_NUM_POINTS, WERLING_TIME_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ
+    WERLING_TIME_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
     CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D
-from decision_making.src.prediction.predictor import Predictor
+from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
 from decision_making.src.state.state import State
 from decision_making.test.exceptions import NotTriggeredException
 
@@ -25,7 +25,7 @@ class FixedSamplableTrajectory(SamplableTrajectory):
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
         """
         This function takes an array of time stamps and returns aCartesianExtendedTrajectory.
-        Note: Since the trajectory is not actualy sampleable - the closest time points on the trajectory are returned.
+        Note: Since the trajectory is not actually samplable - the closest time points on the trajectory are returned.
         :param time_points: 1D numpy array of time stamps *in seconds* (global self.timestamp)
         :return: CartesianExtendedTrajectory
         """
@@ -41,7 +41,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
             that advances incrementally on fixed_trajectory by step size
     """
 
-    def __init__(self, logger: Logger, predictor: Predictor, fixed_trajectory: CartesianExtendedTrajectory, step_size: int,
+    def __init__(self, logger: Logger, predictor: EgoUnawarePredictor, fixed_trajectory: CartesianExtendedTrajectory, step_size: int,
                  trigger_pos: CartesianPoint2D, sleep_std: float, sleep_mean: float):
         """
         :param logger:

@@ -8,7 +8,7 @@ from decision_making.src.exceptions import raises, NoValidTrajectoriesFound, Cou
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import CartesianPath2D, CartesianExtendedTrajectory, CartesianTrajectories, \
     CartesianExtendedState
-from decision_making.src.prediction.predictor import Predictor
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State
 
 
@@ -27,7 +27,6 @@ class SamplableTrajectory(metaclass=ABCMeta):
     def max_sample_time(self):
         return self.timestamp_in_sec + self.T
 
-
     @abstractmethod
     def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
         """
@@ -39,11 +38,11 @@ class SamplableTrajectory(metaclass=ABCMeta):
         pass
 
     def __str__(self):
-        return str({k: str(v) for (k,v) in self.__dict__.items()})
+        return str({k: str(v) for (k, v) in self.__dict__.items()})
 
 
 class TrajectoryPlanner(metaclass=ABCMeta):
-    def __init__(self, logger: Logger, predictor: Predictor):
+    def __init__(self, logger: Logger, predictor: RoadFollowingPredictor):
         self._logger = logger
         self._predictor = predictor
 
@@ -66,7 +65,7 @@ class TrajectoryPlanner(metaclass=ABCMeta):
         :param goal: A 1D numpy array of the desired ego-state to plan towards, represented in current
         global-coordinate-frame (see EGO_* in planning.utils.types.py for the fields)
         :param cost_params: Data object with parameters that specify how to build the planning's cost function
-        :return: a tuple of: (samplable represantation of the chosen trajectory, tensor of trajectory alternatives,
+        :return: a tuple of: (samplable representation of the chosen trajectory, tensor of trajectory alternatives,
          trajectories costs correspond to previous output)
         """
         pass

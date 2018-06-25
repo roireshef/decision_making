@@ -69,7 +69,7 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
         predicted_ego_state = self._predict_object(dynamic_object=state.ego_state,
                                                    prediction_timestamp=prediction_timestamps[0])[0]
 
-        predicted_state = State(occupancy_state=copy.deepcopy(state.occupancy_state),
+        predicted_state = State(occupancy_state=state.occupancy_state,
                                 dynamic_objects=predicted_dynamic_objects,
                                 ego_state=predicted_ego_state)
 

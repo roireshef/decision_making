@@ -23,13 +23,14 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
+from decision_making.src.planning.trajectory.fixed_trajectory_planner import FixedSamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
-from decision_making.src.prediction.predictor import Predictor
+from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, ObjectSize, NewEgoState
 from decision_making.src.utils.map_utils import MapUtils
@@ -42,7 +43,7 @@ class CostBasedBehavioralPlanner:
     def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
                  action_spec_evaluator: Optional[ActionSpecEvaluator],
                  action_spec_validator: Optional[ActionSpecFiltering],
-                 value_approximator: ValueApproximator, predictor: Predictor, logger: Logger):
+                 value_approximator: ValueApproximator, predictor: EgoAwarePredictor, logger: Logger):
         self.action_space = action_space
         self.recipe_evaluator = recipe_evaluator
         self.action_spec_evaluator = action_spec_evaluator
@@ -84,7 +85,6 @@ class CostBasedBehavioralPlanner:
         # TODO: assumes everyone on the same road!
         road_id = ego.map_state.road_id
 
-        # TODO: This is hacky - use predictor!
         terminal_behavioral_states = []
         for i, spec in enumerate(action_specs):
             # For invalid actions (masked out), return None
@@ -93,23 +93,13 @@ class CostBasedBehavioralPlanner:
                 continue
 
             # predict ego (s,d,v_s are according to action_spec)
+            terminal_timestamp = ego.timestamp_in_sec + spec.t
             terminal_ego_fstate = np.array([spec.s, spec.v, 0, spec.d, 0, 0])
-            terminal_ego_state = ego.clone_from_map_state(map_state=MapState(terminal_ego_fstate, road_id),
-                                                          timestamp_in_sec=ego.timestamp_in_sec + spec.t)
-
-            # predict objects (using road-following prediction logic, including alignment to road)
-            predicted_objects = []
-            # for obj in state.dynamic_objects:
-            #     obj_fstate = MapUtils.get_object_road_localization(obj, road_frenet)
-            #     obj_terminal_fstate = np.array([obj_fstate[FS_SX] + obj_fstate[FS_SV] * spec.t, obj_fstate[FS_SV], 0,
-            #                                     obj_fstate[FS_DX], 0, 0])
-            #     obj_terminal_cstate = road_frenet.fstate_to_cstate(obj_terminal_fstate)
-            #     predicted_objects.append(obj.clone_cartesian_state(timestamp_in_sec=obj.timestamp_in_sec + spec.t,
-            #                                                        cartesian_state=obj_terminal_cstate))
-
-            # create a BehavioralGridState from State
-            terminal_state = State(None, predicted_objects, terminal_ego_state)
-            new_behavioral_state = BehavioralGridState.create_from_state(terminal_state, self.logger)
+            terminal_ego_cstate = MapUtils.convert_map_to_cartesian_state(MapState(terminal_ego_fstate, road_id))
+            terminal_ego_state_trajectory = FixedSamplableTrajectory(np.array([np.array(terminal_ego_cstate)]), terminal_timestamp)
+            terminal_state = self.predictor.predict_state(state=state, prediction_timestamps=np.array([terminal_timestamp]),
+                                                          action_trajectory=terminal_ego_state_trajectory)
+            new_behavioral_state = BehavioralGridState.create_from_state(terminal_state[0], self.logger)
             terminal_behavioral_states.append(new_behavioral_state)
 
         return terminal_behavioral_states

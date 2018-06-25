@@ -73,7 +73,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
             else:
                 predicted_ego_state = None
 
-            state = State(occupancy_state=copy.deepcopy(state.occupancy_state),
+            state = State(occupancy_state=state.occupancy_state,
                           ego_state=predicted_ego_state,
                           dynamic_objects=predicted_dynamic_objects)
 
