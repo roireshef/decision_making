@@ -34,7 +34,6 @@ from decision_making.src.planning.navigation.navigation_facade import Navigation
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
-from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
 from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
     PhysicalTimeAlignmentPredictor
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
@@ -45,8 +44,6 @@ from mapping.src.service.map_service import MapService
 from mapping.src.service.map_service import MapServiceArgs, MapSourceType
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
-
-from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor as OldRFP
 
 # TODO: move this into config?
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))

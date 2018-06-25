@@ -1,11 +1,8 @@
-import time
-
-import copy
-import numpy as np
 from logging import Logger
-from typing import List, Dict, Optional
+from typing import List, Dict
 
-from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
+import numpy as np
+
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_DX
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
@@ -21,8 +18,8 @@ class RoadFollowingPredictor(EgoAwarePredictor):
     def __init__(self, logger: Logger):
         super().__init__(logger)
 
-    def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray,
-                        action_trajectory: Optional[SamplableTrajectory]) -> Dict[int, List[NewDynamicObject]]:
+    def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray, action_trajectory)\
+            -> Dict[int, List[NewDynamicObject]]:
         """
         Predict the future of the specified objects, for the specified timestamps
         :param state: the initial state to begin prediction from. Though predicting a single object, the full state
@@ -50,9 +47,7 @@ class RoadFollowingPredictor(EgoAwarePredictor):
 
         return predicted_objects_states_dict
 
-    def predict_state(self, state: State, prediction_timestamps: np.ndarray,
-                      action_trajectory: Optional[SamplableTrajectory]) \
-            -> (List[State]):
+    def predict_state(self, state: State, prediction_timestamps: np.ndarray, action_trajectory) -> (List[State]):
         """
         Predicts the future states of the given state, for the specified timestamps
         :param state: the initial state to begin prediction from
@@ -88,7 +83,7 @@ class RoadFollowingPredictor(EgoAwarePredictor):
             else:
                 predicted_ego_state = None
 
-            state = State(occupancy_state=copy.deepcopy(state.occupancy_state),
+            state = State(occupancy_state=state.occupancy_state,
                           ego_state=predicted_ego_state,
                           dynamic_objects=predicted_dynamic_objects)
 
@@ -96,7 +91,7 @@ class RoadFollowingPredictor(EgoAwarePredictor):
 
         return future_states
 
-    def _predict_object(self, dynamic_object: NewDynamicObject, prediction_timestamps: np.ndarray) \
+    def predict_object(self, dynamic_object: NewDynamicObject, prediction_timestamps: np.ndarray) \
             -> List[NewDynamicObject]:
         """
         Method to compute future locations, yaw, and velocities for dynamic objects. Dynamic objects are predicted as
