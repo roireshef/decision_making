@@ -54,8 +54,6 @@ class RoadFollowingPredictor(EgoAwarePredictor):
 
         return predicted_objects_states_dict
 
-
-
     def predict_state(self, state: State, prediction_timestamps: np.ndarray,
                       action_trajectory: Optional[SamplableTrajectory]) \
             -> (List[State]):
@@ -81,7 +79,6 @@ class RoadFollowingPredictor(EgoAwarePredictor):
 
         # Aggregate all object together with ego into list of future states
         future_states: List[State] = list()
-
 
         for time_idx in range(len(prediction_timestamps)):
             predicted_dynamic_objects = [future_object_states[time_idx] for future_object_states in
