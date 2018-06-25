@@ -20,6 +20,7 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
+from decision_making.src.planning.utils.safety_utils import SafetyUtils
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import State
 
@@ -229,6 +230,14 @@ class WerlingPlanner(TrajectoryPlanner):
                                             len(frenet_filtered_indices), len(ftrajectories),
                                             len(cartesian_refiltered_indices), len(ctrajectories),
                                             len(refiltered_indices), len(ftrajectories)))
+
+        # filter trajectories by RSS safety
+        safe_traj_indices = WerlingPlanner.filter_frajectories_by_safety(state, planning_time_points, ftrajectories_refiltered)
+        # TODO: filter by safety only if at least one trajectory is safe
+        if safe_traj_indices.any():
+            ftrajectories_refiltered = ftrajectories_refiltered[safe_traj_indices]
+            ctrajectories_filtered = ctrajectories_filtered[safe_traj_indices]
+            refiltered_indices = refiltered_indices[safe_traj_indices]
 
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
@@ -480,3 +489,39 @@ class WerlingPlanner(TrajectoryPlanner):
         valid_traj_slice = horizons[:, FP_SX] >= horizons[:, FP_DX]
 
         return solutions[valid_traj_slice], polynoms[valid_traj_slice], horizons[valid_traj_slice, FP_DX]
+
+    @staticmethod
+    def filter_frajectories_by_safety(state: State, time_samples: np.ndarray, ego_ftraj: FrenetTrajectories2D) -> np.array:
+        """
+        Filter frenet trajectories by RSS safety (both longitudinal & lateral).
+        The naive objects prediction in Frenet frame is used.
+        :param state: the current state
+        :param time_samples: time samples of
+        :param ego_ftraj: ego Frenet trajectories
+        :return: indices of safe trajectories
+        """
+        samples_num = time_samples.shape[0]
+        # create a matrix of all objects' predictions and a matrix of objects' sizes
+        obj_ftraj = []
+        obj_sizes = []
+        for obj in state.dynamic_objects:
+            # TODO: we use a naive predictions in Frenet frame
+            fstate = np.array([obj.road_localization.road_lon, obj.v_x, 0, obj.road_localization.intra_road_lat, 0, 0])
+            prediction = np.tile(fstate, samples_num).reshape(samples_num, 6)
+            prediction[:, 0] = fstate[FS_SX] + time_samples * fstate[FS_SV]
+            obj_ftraj.append(prediction)
+            obj_sizes.append(np.array([obj.size.length, obj.size.width]))
+        obj_ftraj = np.array(obj_ftraj)
+        obj_sizes = np.array(obj_sizes)
+        ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])
+
+        # import time
+        # st=time.time()
+
+        safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, obj_ftraj, obj_sizes)
+        # AND over all objects and all timestamps
+        safe_trajectories = safe_times.all(axis=(1, 2))
+
+        # print('calc_safety: ego_traj=%s, objs_num=%d; num_safe_traj=%d; time=%f' %
+        #       (ego_ftraj.shape, len(state.dynamic_objects), np.sum(safe_trajectories), time.time()-st))
+        return np.where(safe_trajectories)[0]
