@@ -295,6 +295,9 @@ class EgoState(DynamicObject):
 
 
 class NewDynamicObject(PUBSUB_MSG_IMPL):
+    members_remapping = {'_cached_cartesian_state': 'cartesian_state',
+                         '_cached_map_state': 'map_state'}
+
     obj_id = int
     timestamp = int
     _cached_cartesian_state = CartesianExtendedState
@@ -410,7 +413,8 @@ class NewDynamicObject(PUBSUB_MSG_IMPL):
         # type: (CartesianExtendedState, Optional[float]) -> NewDynamicObject
         """clones self while overriding cartesian_state and optionally timestamp"""
         return self.__class__.create_from_cartesian_state(self.obj_id,
-                                                          NewDynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp),
+                                                          NewDynamicObject.sec_to_ticks(
+                                                              timestamp_in_sec or self.timestamp),
                                                           cartesian_state,
                                                           self.size, self.confidence)
 

@@ -249,3 +249,6 @@ LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME = "BehavioralFacade._periodic_action_impl t
 
 # Resolution of car timestamps in sec
 TIMESTAMP_RESOLUTION_IN_SEC = 1e-9
+
+# The key of static member that determines which fields will be left out when serializing the class
+SERIALIZABLE_LEFT_OUT_FIELDS_KEY = 'left_out_fields'
