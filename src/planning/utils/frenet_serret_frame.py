@@ -36,6 +36,15 @@ class FrenetSerret2DFrame:
     def s_limits(self):
         return np.array([0, self.s_max])
 
+    def get_curvature(self, s: np.ndarray):
+        """
+        Computes curvature for a certain point on the curve given by s (progress from the curve's start)
+        :param s: progress on the curve from its beginning in meters (any tensor shape)
+        :return: curvature in [1/m]
+        """
+        _, _, _, k_r, _ = self._taylor_interp(s)
+        return k_r
+
     def get_yaw(self, s: np.ndarray):
         """
         Computes yaw (in radians, relative to the origin in which the curve points (self.O) are given
