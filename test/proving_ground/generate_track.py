@@ -74,34 +74,52 @@ class OfflineTrajectoryGenerator:
 
 
 def main():
-    MAP_FILE_NAME = 'TestingGroundMap3LanesOld.bin'
+    MAP_FILE_NAME = 'EW_LeftLane_EW_StrAway.bin'
     NORTH_POINT_LAT_LON = [32.218577, 34.835475]
     SOUTH_POINT_LAT_LON = [32.212071, 34.83709]
-    ROAD_ID = 20
+    Hillrun_Point = [42.572939, -83.690785]
+    #EW_LeftLane_WE_StrAway_start_point = [42.581545, -83.696417]
+    EW_LeftLane_EW_StrAway_start_point = [42.584048, -83.671425]
+    Oval_track_start_point = [42.581359, -83.695197]
+    Oval_track_west_start_point = [42.577511, -83.698549]
+    North_course = [42.599243, -83.681072]
+    ROAD_ID = 1
 
     # initial velocity at the initial point
-    INIT_VEL = 20 / 3.6  # [m/s]
+    INIT_VEL = 18 / 3.6  # [m/s]
 
     # list of intermediate goals [time to goal, goal lateral deviation in lanes, goal velocity]
-    CRUISE_IN_LANE_TIME = 7.0
-    LANE_CHANGE_TIME = 7.0
-    CRUISE_VEL = 50 / 3.6  # [m/s]
+    CRUISE_IN_LANE_TIME = 5.0
+    LANE_CHANGE_TIME = 5.0
+    Cruise_vel_kph = 18
+    Cruise_vel_kph_1 = 0.01
+    CRUISE_VEL = Cruise_vel_kph / 3.6  # [m/s]
+    CRUISE_VEL_1 = Cruise_vel_kph_1 / 3.6  # [m/s]
+
     interm_goals = [
-        [15.0, 0, CRUISE_VEL],
-        [LANE_CHANGE_TIME, 1, CRUISE_VEL],
+        [10.0, 0, CRUISE_VEL],
+        # [LANE_CHANGE_TIME, 1, 70/3.6],
+        [CRUISE_IN_LANE_TIME, 0, CRUISE_VEL_1],
+        # [LANE_CHANGE_TIME, -1, 80/3.6],
+        [CRUISE_IN_LANE_TIME, 0, CRUISE_VEL_1],
+        # [LANE_CHANGE_TIME, -1, 50/3.6],
         [CRUISE_IN_LANE_TIME, 0, CRUISE_VEL],
-        [LANE_CHANGE_TIME, -1, CRUISE_VEL],
-        [CRUISE_IN_LANE_TIME, 0, CRUISE_VEL],
-        [LANE_CHANGE_TIME, 1, CRUISE_VEL],
-        [CRUISE_IN_LANE_TIME, 0, CRUISE_VEL],
-        [LANE_CHANGE_TIME, -1, CRUISE_VEL],
-        [CRUISE_IN_LANE_TIME, 0, CRUISE_VEL]
+        # [LANE_CHANGE_TIME, 1, 40/3.6],
+        # [CRUISE_IN_LANE_TIME, 0, INIT_VEL],
+        # [LANE_CHANGE_TIME, 1, 70/3.6],
+        # [CRUISE_IN_LANE_TIME, 0, CRUISE_VEL],
+        # [LANE_CHANGE_TIME, -1, 80/3.6],
+        # [CRUISE_IN_LANE_TIME, 0, INIT_VEL],
+        # [LANE_CHANGE_TIME, -1, 50/3.6],
+        # [CRUISE_IN_LANE_TIME, 0, CRUISE_VEL_1],
+        # [LANE_CHANGE_TIME, 1, 40/3.6],
+        # [CRUISE_IN_LANE_TIME, 0, INIT_VEL]
     ]
 
     generator = OfflineTrajectoryGenerator(ROAD_ID, MAP_FILE_NAME)
 
-    init_geo_coordinate = NORTH_POINT_LAT_LON
-    init_geo_name = 'north'
+    init_geo_coordinate = EW_LeftLane_EW_StrAway_start_point
+    init_geo_name = 'North_course'
 
     trajectory = generator.plan(geo_coordinates=init_geo_coordinate, init_velocity=INIT_VEL, interm_goals=interm_goals)
 
@@ -122,23 +140,24 @@ def main():
     pcurv = fig.add_subplot(236)
     plt.title(r'curvature[$\frac{1}{m}$]')
 
-    WerlingVisualizer.plot_route(pmap, generator.road._points)
-    pmap.plot(init_geo_coordinate[0], init_geo_coordinate[1], '.b')
-
-    WerlingVisualizer.plot_best(pmap, trajectory)
-
-    WerlingVisualizer.plot_route(pvel, np.c_[time_points, trajectory[:, C_V]])
-    WerlingVisualizer.plot_route(pacc, np.c_[time_points, trajectory[:, C_A]])
-    WerlingVisualizer.plot_route(pcurv, np.c_[time_points, trajectory[:, C_K]])
-
-    plt.show()
-    fig.clear()
+    # WerlingVisualizer.plot_route(pmap, generator.road._points)
+    # pmap.plot(init_geo_coordinate[0], init_geo_coordinate[1], '.b')
+    #
+    # WerlingVisualizer.plot_best(pmap, trajectory)
+    #
+    # WerlingVisualizer.plot_route(pvel, np.c_[time_points, trajectory[:, C_V]])
+    # WerlingVisualizer.plot_route(pacc, np.c_[time_points, trajectory[:, C_A]])
+    # WerlingVisualizer.plot_route(pcurv, np.c_[time_points, trajectory[:, C_K]])
+    #
+    # plt.show()
+    # fig.clear()
 
     # assert no consecutive duplicates in positions within a trajectory
     assert np.all(np.greater(np.linalg.norm(np.diff(trajectory[:, :2], axis=0), axis=-1), 0))
 
-    np.savetxt('lane_changes_from_%s_%skmh_change_%ssec_cruise_%ssec.txt' %
-               (init_geo_name, CRUISE_VEL*3.6, LANE_CHANGE_TIME, CRUISE_IN_LANE_TIME),
+    np.savetxt('Floating_18_to_0.txt' ,
+    # np.savetxt('Lane_change_from_%s_full_lap_%skmh_change_%ssec_cruise_%ssec.txt' %
+    #              (init_geo_name, Cruise_vel_kph, LANE_CHANGE_TIME, CRUISE_IN_LANE_TIME),
                trajectory, delimiter=', ', newline='\n', fmt='%1.8f')
 
 

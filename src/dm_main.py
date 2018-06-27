@@ -33,7 +33,7 @@ from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 
 # TODO: move this into config?
-NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))
+NAVIGATION_PLAN = NavigationPlanMsg(np.array([1]))
 
 
 class NavigationFacadeMock(NavigationFacade):
