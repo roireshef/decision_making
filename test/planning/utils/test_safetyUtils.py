@@ -69,5 +69,6 @@ def test_calcSafety():
     specs_mask = action_spec_validator.filter_action_specs(list(specs), behavioral_state)
 
     st = time.time()
-    intervals = SafetyUtils.calc_safety(behavioral_state, ego_fstate, list(specs), specs_mask, predictions, time_samples)
+    intervals = SafetyUtils.calc_safety(behavioral_state, ego_fstate, list(recipes), list(specs), specs_mask,
+                                        predictions, time_samples)
     print('total time=%f' % (time.time()-st))
