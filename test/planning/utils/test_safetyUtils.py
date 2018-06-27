@@ -87,13 +87,13 @@ class SafetyUtilsTrajectoriesFixture:
         sx1 = time_range * sv1[0]
         sx2 = time_range * sv2[0]
         sx3 = time_range * sv3[0]
-        dx = np.repeat(2., times_num)
+        dx = np.repeat(lane_wid/2, times_num)
         dv3 = np.repeat(lane_wid / (T - times_step), times_num)
 
-        obj_sizes = np.array([[4, 2], [6, 2], [6, 2], [4, 2], [4, 2], [4, 2], [4, 2], [4, 2], [4, 2], [4, 2], [4, 2], [4, 2]])
-        obj_ftraj = np.array([np.c_[sx1 + sv1[0] + (ego_size[0] + obj_sizes[0, 0]) / 2 + 1, sv1, zeros, dx, zeros, zeros],
+        obj_size = np.array([4, 2])
+        obj_ftraj = np.array([np.c_[sx1 + sv1[0] + (ego_size[0] + obj_size[0]) / 2 + 1, sv1, zeros, dx, zeros, zeros],
                               np.c_[sx2, sv2, zeros, dx + lane_wid, zeros, zeros],
-                              np.c_[sx3 + sv3[0] + (ego_size[0] + obj_sizes[2, 0]) / 2 + 1, sv3, zeros, dx, zeros, zeros],
+                              np.c_[sx3 + sv3[0] + (ego_size[0] + obj_size[0]) / 2 + 1, sv3, zeros, dx, zeros, zeros],
                               np.c_[sx2 + 4.5 * sv3[0], sv2, zeros, dx, zeros, zeros],
                               np.c_[sx2 + 5.5 * sv3[0], sv2, zeros, dx, zeros, zeros],
                               np.c_[sx3, sv3, zeros, dx + lane_wid * 2 - time_range * dv3[0], -dv3,
@@ -103,8 +103,9 @@ class SafetyUtilsTrajectoriesFixture:
                                     zeros],
                               np.c_[sx2 + 127, sv2, zeros, dx, zeros, zeros],
                               np.c_[sx1 + 165, sv1, zeros, dx, zeros, zeros],
-                              np.c_[sx1 + 193, sv1, zeros, dx, zeros, zeros],
+                              np.c_[sx1 + 192, sv1, zeros, dx, zeros, zeros],
                               np.c_[sx1 + 195, sv1, zeros, dx, zeros, zeros]])
+        obj_sizes = np.tile(obj_size, obj_ftraj.shape[0]).reshape(obj_ftraj.shape[0], 2)
 
         return ego_ftraj, ego_size, obj_ftraj, obj_sizes
 
@@ -138,8 +139,8 @@ def test_calcSafetyForTrajectories_egoAndSomeObjectsMoveLaterally_checkSafetyCor
     assert safe_times[4][8].all()       # ego_v=30 overtake obj_v=20, time_delay = 2   (127 m), T_d = 5     safe
     assert not safe_times[5][9].all()   # ego_v=30 overtake obj_v=10, time_delay = 2   (165 m), T_d = 2.6   unsafe
     assert safe_times[6][9].all()       # ego_v=30 overtake obj_v=10, time_delay = 2   (165 m), T_d = 2.5   safe
-    assert not safe_times[4][10].all()  # ego_v=30 overtake obj_v=10, time_delay = 2.9 (193 m), T_d = 5     unsafe
-    assert safe_times[4][11].all()      # ego_v=30 overtake obj_v=10, time_delay = 3   (195 m), T_d = 5     safe
+    assert not safe_times[4][10].all()  # ego_v=30 overtake obj_v=10, time_delay = 2.9 (192 m), T_d = 5     unsafe
+    assert safe_times[4][11].all()      # ego_v=30 overtake obj_v=10, time_delay = 3.0 (195 m), T_d = 5     safe
 
 
 def test_calcSafetyForTrajectories_egoAndSingleObject_checkSafetyCorrectnessForManyScenarios():

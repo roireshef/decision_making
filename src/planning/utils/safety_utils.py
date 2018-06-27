@@ -45,7 +45,7 @@ class SafetyUtils:
         lat_safe_times = SafetyUtils.get_lat_safety(
             ego_ftraj_dup[..., FS_DX], ego_ftraj_dup[..., FS_DV], SAFETY_MARGIN_TIME_DELAY,
             obj_ftraj[..., FS_DX], obj_ftraj[..., FS_DV], SPECIFICATION_MARGIN_TIME_DELAY,
-            0.5 * (ego_size[1] + obj_widths + LATERAL_SAFETY_MU))
+            0.5 * (ego_size[1] + obj_widths) + LATERAL_SAFETY_MU)
 
         return np.logical_or(lon_safe_times, lat_safe_times)
 
