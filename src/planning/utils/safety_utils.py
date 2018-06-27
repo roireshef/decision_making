@@ -245,18 +245,12 @@ class SafetyUtils:
 
         lon_safe_times_per_obj = np.ones((actions_num, len(obj_set), samples_num)).astype(bool)
         obj_id_to_obj_i = {}
-        lat_safety = np.zeros(len(obj_set))
         for obj_i, obj_id in enumerate(obj_set):
             obj_id_to_obj_i[obj_id] = obj_i
             specs = obj_spec_list[np.where(obj_spec_list[:, 0] == obj_id)][:, 1]
             pred = predictions[obj_id]
             lon_safe_times_per_obj[specs, obj_i] = SafetyUtils.calc_safety_for_trajectories(
                 ego_ftraj[specs], ego_size, pred, obj_sizes[obj_id], False)
-            # calc lateral safety
-            # lat_safety[obj_i] = SafetyUtils.get_lat_safety(
-            #     pred[0, FS_DX], pred[0, FS_DV], SPECIFICATION_MARGIN_TIME_DELAY,
-            #     ego_init_fstate[FS_DX], ego_init_fstate[FS_DV], SAFETY_MARGIN_TIME_DELAY,
-            #     0.5 * (ego_size[1] + obj_sizes[obj_id][1] + mu))
 
         # for each spec pick its follow and front objects, find the unsafe regions:
         # (before the last unsafe time w.r.t. follow object and after the first unsafe time w.r.t. front object)
