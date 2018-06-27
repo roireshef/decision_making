@@ -234,7 +234,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # filter trajectories by RSS safety
         safe_traj_indices = WerlingPlanner.filter_frajectories_by_safety(state, planning_time_points, ftrajectories_refiltered)
-        # TODO: filter by safety only if at least one trajectory is safe
+        # TODO: Throw an error if no safe trajectory is found
         if safe_traj_indices.any():
             ftrajectories_refiltered = ftrajectories_refiltered[safe_traj_indices]
             ctrajectories_filtered = ctrajectories_filtered[safe_traj_indices]
@@ -508,7 +508,8 @@ class WerlingPlanner(TrajectoryPlanner):
         obj_sizes = []
         for obj in state.dynamic_objects:
             # TODO: we use a naive predictions in Frenet frame
-            fstate = np.array([obj.road_localization.road_lon, obj.v_x, 0, obj.road_localization.intra_road_lat, 0, 0])
+            fstate = np.array([obj.road_localization.road_lon, obj.v_x, 0,
+                               obj.road_localization.intra_road_lat, obj.road_lateral_speed, 0])
             prediction = np.tile(fstate, samples_num).reshape(samples_num, 6)
             prediction[:, 0] = fstate[FS_SX] + time_samples * fstate[FS_SV]
             obj_ftraj.append(prediction)

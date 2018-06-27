@@ -19,9 +19,7 @@ class SafetyUtils:
         :param both_dimensions_flag: if False then only longitudinal dimension is considered
         :return: [bool] safety per [ego trajectory, object, timestamp]. Tensor of shape: traj_num x objects_num x timestamps_num
         """
-        ego_traj_num = ego_ftraj.shape[0]
-        times_num = ego_ftraj.shape[1]
-        fstate_size = ego_ftraj.shape[2]
+        (ego_traj_num, times_num, fstate_size) = ego_ftraj.shape
         if obj_ftraj.ndim > 2:  # multiple objects
             objects_num = obj_ftraj.shape[0]
             # duplicate ego_ftraj to the following dimensions: ego_traj_num, objects_num, timestamps_num, fstate (6)
@@ -56,7 +54,7 @@ class SafetyUtils:
                        obj_lon: np.array, obj_vel: np.array, obj_time_delay: float,
                        margins: np.array, max_brake: float=-LON_ACC_LIMITS[LIMIT_MIN]) -> np.array:
         """
-        Calculate longitudinal safety between two objects for all timestamps
+        Calculate longitudinal safety between ego and another object for all timestamps.
         :param ego_lon: [m] object1 longitudes: tensor of shape: traj_num x objects_num x timestamps_num
         :param ego_vel: [m/s] object1 velocities: tensor of shape: traj_num x objects_num x timestamps_num
         :param ego_time_delay: [sec] object1 time delay
@@ -79,7 +77,7 @@ class SafetyUtils:
                        obj_pos: np.array, obj_vel: np.array, obj_time_delay: float,
                        margins: np.array, max_brake: float=-LAT_ACC_LIMITS[LIMIT_MIN]) -> np.array:
         """
-        Calculate lateral safety between two objects for all timestamps
+        Calculate lateral safety between ego and another object for all timestamps.
         :param ego_pos: [m] object1 longitudes: tensor of any shape
         :param ego_vel: [m/s] object1 velocities: tensor of any shape
         :param ego_time_delay: [sec] object1 time delay
