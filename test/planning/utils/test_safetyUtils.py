@@ -1,6 +1,7 @@
 from logging import Logger
 
 import numpy as np
+import time
 
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.planning.utils.math import Math
@@ -33,8 +34,9 @@ class SafetyUtilsTrajectoriesFixture:
         #   traj[1] moves with constant velocity 20 m/s
         #   traj[2] moves with constant velocity 30 m/s and moves laterally to the left from lane 0 to lane 1.
         #   traj[3] moves with constant velocity 30 m/s and moves laterally to the right from lane 2 to lane 1.
-        #   traj[4] is like traj[2], but with T_d = T/2
-        #   traj[5] is like traj[2], but with T_d = T/3
+        #   traj[4] is like traj[2], but with T_d = 5
+        #   traj[5] is like traj[2], but with T_d = 2.6
+        #   traj[6] is like traj[2], but with T_d = 2.5
         v = np.array([10, 20, 30])
         lane = lane_wid/2 + np.arange(0, 2*lane_wid + 0.001, lane_wid)  # 3 lanes
         constraints_s = np.array([[0, v[0], 0, T * v[0], v[0], 0],
@@ -120,6 +122,15 @@ def test_calcSafetyForTrajectories_egoAndSomeObjectsMoveLaterally_checkSafetyCor
     ego_ftraj, ego_size, obj_ftraj, obj_sizes = SafetyUtilsTrajectoriesFixture.create_trajectories_and_sizes()
 
     # test multiple objects
+
+    # dup = 30
+    # ego_ftraj_dup = np.transpose(np.repeat(ego_ftraj, dup).reshape(ego_ftraj.shape[0], ego_ftraj.shape[1],
+    #                                                                ego_ftraj.shape[2], dup), (0, 3, 1, 2)).\
+    #     reshape(ego_ftraj.shape[0]*dup, ego_ftraj.shape[1], ego_ftraj.shape[2])
+    # st = time.time()
+    # safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, obj_ftraj[:4], obj_sizes[:4])
+    # print('time = %f' % (time.time()-st))
+
     safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, obj_ftraj, obj_sizes)
 
     assert safe_times[0][0].all()       # move with the same velocity and start on the safe distance
