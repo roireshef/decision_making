@@ -34,7 +34,7 @@ def test_calcSafety():
     action_spec_validator = ActionSpecFiltering([FilterIfNone()], logger)
 
     t = 20.
-    times_step = 0.2
+    times_step = 0.1
     time_samples = np.arange(0, t + 0.001, times_step)
     samples_num = time_samples.shape[0]
 

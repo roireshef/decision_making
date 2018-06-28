@@ -63,16 +63,21 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         costs = np.full(len(action_recipes), np.inf)
         specs = copy.deepcopy(action_specs)
 
-        # TODO: hack because of naive value function: increase the time of short static actions
-        # since otherwise if ego close to a slow car, a short static action will get an advantage
-        # for i, spec in enumerate(specs):
-        #     if action_specs_mask[i] and action_recipes[i].action_type == ActionType.FOLLOW_LANE and \
-        #                     spec.t < MINIMAL_STATIC_ACTION_TIME:
-        #         dt = MINIMAL_STATIC_ACTION_TIME - spec.t
-        #         spec.t = MINIMAL_STATIC_ACTION_TIME
-        #         spec.s += spec.v * dt
+        times_step = 0.1
+        time_samples = np.arange(0, BP_ACTION_T_LIMITS[LIMIT_MAX], times_step)
+        samples_num = time_samples.shape[0]
 
-        safe_specs, lat_jerks = SafetyUtils.calc_safety_and_jerk(behavioral_state, ego_fstate, specs, action_specs_mask)
+        # TODO: use fast predictor
+        grid = behavioral_state.road_occupancy_grid
+        predictions = {}
+        for cell in grid:
+            obj = grid[cell][0]
+            prediction = np.tile(obj.fstate, samples_num).reshape(samples_num, 6)
+            prediction[:, 0] = obj.fstate[FS_SX] + time_samples * obj.fstate[FS_SV]
+            predictions[obj.dynamic_object.obj_id] = prediction
+
+        all_safe_intervals = SafetyUtils.calc_safety(behavioral_state, ego_fstate, action_recipes, specs, action_specs_mask,
+                                                     predictions, time_samples)
 
         specs_arr = np.array([np.array([i, spec.t, spec.v, spec.s, spec.d])
                               for i, spec in enumerate(specs) if action_specs_mask[i]])
@@ -94,22 +99,27 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
 
             T_d = T_d_array[i]
 
-            if not safe_specs[i]:
-                print('unsafe action %3d(%d): lane %d dist=%.2f [t=%.2f td=%.2f s=%.2f v=%.2f] lat_jerk=%.2f' %
+            safe_intervals = []
+            if len(all_safe_intervals) > 0:
+                safe_intervals = all_safe_intervals[np.where(all_safe_intervals[:, 0] == spec_orig_idxs[i])][:, 1:]
+
+            if len(safe_intervals) == 0 or safe_intervals[0, 0] > 0:
+                print('unsafe action %3d(%d): lane %d dist=%.2f [t=%.2f td=%.2f s=%.2f v=%.2f]' %
                       (spec_orig_idxs[i], recipe.aggressiveness.value, ego_lane + recipe.relative_lane.value,
                        HeuristicActionSpecEvaluator._dist_to_target(behavioral_state, ego_fstate, spec),
-                       spec.t, T_d, spec.s - ego_fstate[0], spec.v, lat_jerks[i]))
+                       spec.t, T_d, spec.s - ego_fstate[0], spec.v))
                 continue
+            T_d_max = safe_intervals[0, 1]
 
             # calculate actions costs
-            sub_costs = HeuristicActionSpecEvaluator._calc_action_costs(ego_fstate, spec, lane_width, lat_jerks[i], T_d)
+            sub_costs = HeuristicActionSpecEvaluator._calc_action_costs(ego_fstate, spec, lane_width, T_d_max, T_d)
             costs[spec_orig_idxs[i]] = np.sum(sub_costs)
 
-            print('action %d(%d %d) lane %d: dist=%.1f [t=%.2f td=%.2f s=%.2f v=%.2f] '
-                  'lat_jerk=%.2f [eff %.3f comf %.2f,%.2f right %.2f dev %.2f]: tot %.2f' %
+            print('action %d(%d %d) lane %d: dist=%.1f [t=%.2f td=%.2f tdmax=%.2f s=%.2f v=%.2f] '
+                  '[eff %.3f comf %.2f,%.2f right %.2f dev %.2f]: tot %.2f' %
                   (spec_orig_idxs[i], recipe.action_type.value, recipe.aggressiveness.value, ego_lane + recipe.relative_lane.value,
                    HeuristicActionSpecEvaluator._dist_to_target(behavioral_state, ego_fstate, spec),
-                   spec.t, T_d, spec.s - ego_fstate[0], spec.v, lat_jerks[i],
+                   spec.t, T_d, T_d_max, spec.s - ego_fstate[0], spec.v,
                    sub_costs[0], sub_costs[1], sub_costs[2], sub_costs[3], sub_costs[4], costs[spec_orig_idxs[i]]))
 
             self.logger.debug("action %d(%d %d) lane %d: dist=%.1f [t=%.2f td=%.2f s=%.2f v=%.2f] "
@@ -310,19 +320,19 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
 
     @staticmethod
     def _calc_action_costs(ego_fstate: np.array, spec: ActionSpec, lane_width: float,
-                           lat_jerk: float, T_d: float) -> [float, np.array]:
+                           T_d_max: float, T_d_approx: float) -> [float, np.array]:
         """
         Calculate the cost of the action
         :param spec: action spec
         :param lane_width: lane width
         :param T_d_max: [sec] the largest possible lateral time imposed by safety. np.inf if it's not imposed
-        :param T_d: [sec] heuristic approximation of lateral time, according to the initial and end constraints
+        :param T_d_approx: [sec] heuristic approximation of lateral time, according to the initial and end constraints
         :return: the action's cost and the cost components array (for debugging)
         """
         # calculate efficiency, comfort and non-right lane costs
         target_lane = int(spec.d / lane_width)
         efficiency_cost = BP_CostFunctions.calc_efficiency_cost(ego_fstate, spec)
-        lon_comf_cost, lat_comf_cost = BP_CostFunctions.calc_comfort_cost(ego_fstate, spec, lat_jerk, T_d)
+        lon_comf_cost, lat_comf_cost = BP_CostFunctions.calc_comfort_cost(ego_fstate, spec, T_d_max, T_d_approx)
         right_lane_cost = BP_CostFunctions.calc_right_lane_cost(spec.t, target_lane)
 
         # calculate maximal deviation from lane center for lane deviation cost
