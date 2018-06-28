@@ -76,8 +76,29 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             prediction[:, 0] = obj.fstate[FS_SX] + time_samples * obj.fstate[FS_SV]
             predictions[obj.dynamic_object.obj_id] = prediction
 
-        all_safe_intervals = SafetyUtils.calc_safety(behavioral_state, ego_fstate, action_recipes, specs, action_specs_mask,
-                                                     predictions, time_samples)
+        specs_arr = np.array([np.array([i, spec.t, spec.v, spec.s, spec.d])
+                              for i, spec in enumerate(specs) if action_specs_mask[i]])
+        (spec_orig_idxs, specs_t, specs_v, specs_s, specs_d) = specs_arr.transpose()
+        spec_orig_idxs = spec_orig_idxs.astype(int)
+
+        T_d = np.arange(3, 7 + np.finfo(np.float16).eps)
+        A_inv = QuinticPoly1D.inv_time_constraints_tensor(T_d)
+        (zeros, ones) = (np.zeros(len(specs_d)), np.ones(len(specs_d)))
+        constraints_d = np.array([ego_fstate[FS_DX] * ones, ego_fstate[FS_DV] * ones, ego_fstate[FS_DA] * ones,
+                                  specs_d, zeros, zeros])  # 6 x len(specs_d)
+        poly_coefs_d = np.einsum('ijk,kl->lij', A_inv, constraints_d).reshape(len(specs_d) * len(T_d), 6)
+        ftraj_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_samples)
+
+        ego_sx, ego_sv = SafetyUtils._calc_longitudinal_ego_trajectories(ego_fstate, specs_t, specs_v, specs_s, time_samples)
+        ego_sx = np.tile(ego_sx, T_d.shape[0]).reshape(specs_t.shape[0] * T_d.shape[0], samples_num)
+        ego_sv = np.tile(ego_sv, T_d.shape[0]).reshape(specs_t.shape[0] * T_d.shape[0], samples_num)
+        zeros = np.zeros(ego_sx.shape)
+
+        ego_ftraj = np.dstack((ego_sx, ego_sv, zeros, ftraj_d[:, :, 0], ftraj_d[:, :, 1], zeros))
+
+
+        all_safe_intervals = SafetyUtils.calc_safety(behavioral_state, ego_fstate, action_recipes, specs,
+                                                     action_specs_mask, predictions, time_samples)
 
         specs_arr = np.array([np.array([i, spec.t, spec.v, spec.s, spec.d])
                               for i, spec in enumerate(specs) if action_specs_mask[i]])
