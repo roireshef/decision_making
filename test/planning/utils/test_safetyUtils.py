@@ -148,7 +148,7 @@ class SafetyUtilsTrajectoriesFixture:
         times_step = 0.1
         times_num = int(T / times_step) + 1
         zeros = np.zeros(times_num)
-        time_range = np.arange(0, T + 0.001, times_step)
+        time_samples = np.arange(0, T + 0.001, times_step)
 
         # all ego trajectories start from the rightest lane (quartic polynomials)
         ego_lon = 200
@@ -159,34 +159,41 @@ class SafetyUtilsTrajectoriesFixture:
                                   [ego_lon, v[0], 0, v[2], 0],  # from 10 to 30 m/s
                                   [ego_lon, v[1], 0, v[2], 0],  # from 20 to 30 m/s
                                   [ego_lon, v[2], 0, v[2], 0],  # from 30 to 30 m/s
-                                  [ego_lon, v[1], 0, v[2], 0]]) # from 20 to 30 m/s
+                                  [ego_lon, v[0], 0, v[1], 0]]) # from 10 to 20 m/s
         poly_s = WerlingPlanner._solve_1d_poly(constraints_s, T, QuarticPoly1D)
-        fstates_s = QuinticPoly1D.polyval_with_derivatives(poly_s, time_range)
+        fstates_s = QuinticPoly1D.polyval_with_derivatives(poly_s, time_samples)
 
         constraints_d = np.array([[lane[0], 0, 0, lane[1], 0, 0]])
 
+        T_d = np.array([6, 3])
         # normal lane change (6 sec)
         poly_d1 = WerlingPlanner._solve_1d_poly(np.tile(constraints_d, constraints_s.shape[0] - 1).
-                                                reshape(constraints_s.shape[0] - 1, 6), T=6, poly_impl=QuinticPoly1D)
+                                                reshape(constraints_s.shape[0] - 1, 6), T=T_d[0], poly_impl=QuinticPoly1D)
         # fast lane change (3 sec)
-        poly_d2 = WerlingPlanner._solve_1d_poly(np.array([constraints_d[-1]]), T=3, poly_impl=QuinticPoly1D)
-        fstates_d1 = QuinticPoly1D.polyval_with_derivatives(poly_d1, time_range)
-        fstates_d2 = QuinticPoly1D.polyval_with_derivatives(poly_d2, time_range)
+        poly_d2 = WerlingPlanner._solve_1d_poly(np.array([constraints_d[-1]]), T=T_d[1], poly_impl=QuinticPoly1D)
+        fstates_d1 = QuinticPoly1D.polyval_with_derivatives(poly_d1, time_samples)
+        fstates_d2 = QuinticPoly1D.polyval_with_derivatives(poly_d2, time_samples)
+
+        # fill all elements of ftraj_d beyond T_d by the values of ftraj_d at T_d
+        last_sample = np.where(time_samples >= T_d[0])[0][0]
+        fstates_d1[:, last_sample+1:, :] = fstates_d1[:, last_sample:last_sample+1, :]
+        last_sample = np.where(time_samples >= T_d[1])[0][0]
+        fstates_d2[:, last_sample+1:, :] = fstates_d2[:, last_sample:last_sample+1, :]
         fstates_d = np.concatenate((fstates_d1, fstates_d2))
 
         ego_ftraj = np.dstack((fstates_s, fstates_d))
 
         # objects start lon=0 m behind ego
-        sv3 = np.repeat(v[2], times_num)
-        sx3 = ego_lon + time_range * sv3
-        dx = np.repeat(3*lane_wid/2, times_num)  # middle lane
+        sv = zeros + v[2]
+        sx = ego_lon + time_samples * sv
+        dx = zeros + 3*lane_wid/2  # middle lane
 
         obj_size = np.array([4, 2])
         # objects start behind and ahead ego and move with velocity 30 m/s
-        obj_ftraj = np.array([np.c_[sx3 - 100, sv3, zeros, dx, zeros, zeros],  # LB
-                              np.c_[sx3 + 20, sv3, zeros, dx, zeros, zeros],  # LF
-                              np.c_[sx3 - 150, sv3, zeros, dx, zeros, zeros],
-                              np.c_[sx3 + 40, sv3, zeros, dx, zeros, zeros]]) # far LB
+        obj_ftraj = np.array([np.c_[sx - 120, sv, zeros, dx, zeros, zeros],       # LB
+                              np.c_[sx + 20, sv, zeros, dx, zeros, zeros],        # close LF
+                              np.c_[sx - 220, sv, zeros, dx, zeros, zeros],       # far LB
+                              np.c_[sx + 40, sv, zeros, dx, zeros, zeros]])       # LF
         obj_sizes = np.tile(obj_size, obj_ftraj.shape[0]).reshape(obj_ftraj.shape[0], 2)
 
         return ego_ftraj, ego_size, obj_ftraj, obj_sizes
@@ -246,10 +253,12 @@ def test_calcSafetyForTrajectories_safetyWrtLBLF_safeOnlyIfObjectLBisFar():
     assert not safe_times[4][1].all()   # fast ego is unsafe w.r.t. close LF with same velocity
     assert safe_times[4][3].all()       # fast ego is safe w.r.t. LF with same velocity
     assert not safe_times[3][0].all()   # accelerating ego is unsafe w.r.t. LB
-    assert safe_times[3][2].all()       # accelerating ego is safe w.r.t. far LB
+    assert safe_times[2][1].all()       # accelerating ego is safe w.r.t. LF
     assert safe_times[3][1].all()       # accelerating ego is safe w.r.t. LF
-    assert safe_times[5][0].all()       #
-    assert safe_times[2][1].all()
+    assert safe_times[3][2].all()       # accelerating ego is safe w.r.t. far LB
+    assert not safe_times[1][2].all()   # slow accelerating ego is unsafe w.r.t. far LB when T_d = 6
+    assert safe_times[5][2].all()       # slow accelerating ego is safe w.r.t. far LB when T_d = 3
+
 
 def test_calcSafetyForTrajectories_egoAndSingleObject_checkSafetyCorrectnessForManyScenarios():
     """
