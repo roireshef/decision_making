@@ -1,7 +1,7 @@
 import numpy as np
 
 from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY, SPECIFICATION_MARGIN_TIME_DELAY, \
-    LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU
+    LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU, ZERO_LAT_VELOCITY
 from decision_making.src.planning.types import LIMIT_MIN, FS_SV, FS_SX, FS_DX, FS_DV, FrenetTrajectories2D
 
 
@@ -33,8 +33,8 @@ class SafetyUtils:
             obj_widths = obj_sizes[1]
 
         # calculate longitudinal safety
-        lon_safe_times = SafetyUtils.get_lon_safety(
-            ego_ftraj_dup[..., FS_SX], ego_ftraj_dup[..., FS_SV], SAFETY_MARGIN_TIME_DELAY,
+        lon_safe_times = SafetyUtils.get_lon_safety_full(
+            ego_ftraj_dup[..., FS_SX], ego_ftraj_dup[..., FS_SV], ego_ftraj_dup[..., FS_DV], SAFETY_MARGIN_TIME_DELAY,
             obj_ftraj[..., FS_SX], obj_ftraj[..., FS_SV], SPECIFICATION_MARGIN_TIME_DELAY,
             0.5 * (ego_size[0] + obj_lengths))
 
@@ -50,18 +50,42 @@ class SafetyUtils:
         return np.logical_or(lon_safe_times, lat_safe_times)
 
     @staticmethod
+    def get_lon_safety_full(ego_lon: np.array, ego_vel: np.array, ego_lat_vel: np.array, ego_time_delay: float,
+                            obj_lon: np.array, obj_vel: np.array, obj_time_delay: float,
+                            margins: np.array, max_brake: float=-LON_ACC_LIMITS[LIMIT_MIN]) -> np.array:
+        """
+        Calculate longitudinal safety between ego and another object for all timestamps.
+        :param ego_lon: [m] ego longitudes: tensor of shape: traj_num x objects_num x timestamps_num
+        :param ego_vel: [m/s] ego velocities: tensor of shape: traj_num x objects_num x timestamps_num
+        :param ego_lat_vel: [m/s] ego lateral velocity: tensor of shape: traj_num x objects_num x timestamps_num
+        :param ego_time_delay: [sec] ego time delay
+        :param obj_lon: [m] object's longitudes: tensor of any shape that compatible with the shape of the object
+        :param obj_vel: [m/s] object's velocities: tensor of any shape that compatible with the shape of the object
+        :param obj_time_delay: [sec] object's time delay
+        :param margins: [m] objects' lengths half sum: matrix of size objects_num x timestamps_num
+        :param max_brake: [m/s^2] maximal deceleration of both objects
+        :return: [bool] longitudinal safety per timestamp. Tensor of the same shape as object1 or object2
+        """
+        lon_safe_times = SafetyUtils.get_lon_safety(ego_lon, ego_vel, ego_time_delay, obj_lon, obj_vel, obj_time_delay,
+                                                    margins, max_brake)
+        # TODO: consider to remove in the future the following logic:
+        # if ego has zero lateral velocity, it's always safe w.r.t. the rear object
+        ego_is_ahead_and_zero_lat_vel = (np.abs(ego_lat_vel) < ZERO_LAT_VELOCITY * sign)
+        return np.logical_or(lon_safe_times, ego_is_ahead_and_zero_lat_vel)
+
+    @staticmethod
     def get_lon_safety(ego_lon: np.array, ego_vel: np.array, ego_time_delay: float,
                        obj_lon: np.array, obj_vel: np.array, obj_time_delay: float,
                        margins: np.array, max_brake: float=-LON_ACC_LIMITS[LIMIT_MIN]) -> np.array:
         """
         Calculate longitudinal safety between ego and another object for all timestamps.
-        :param ego_lon: [m] object1 longitudes: tensor of shape: traj_num x objects_num x timestamps_num
-        :param ego_vel: [m/s] object1 velocities: tensor of shape: traj_num x objects_num x timestamps_num
-        :param ego_time_delay: [sec] object1 time delay
-        :param obj_lon: [m] object2 longitudes: tensor of any shape that compatible with the shape of object1
-        :param obj_vel: [m/s] object2 velocities: tensor of any shape that compatible with the shape of object1
-        :param obj_time_delay: [sec] object2 time delay
-        :param margins: [m] objects' lengths: matrix of size objects_num x timestamps_num
+        :param ego_lon: [m] ego longitudes: tensor of shape: traj_num x objects_num x timestamps_num
+        :param ego_vel: [m/s] ego velocities: tensor of shape: traj_num x objects_num x timestamps_num
+        :param ego_time_delay: [sec] ego time delay
+        :param obj_lon: [m] object's longitudes: tensor of any shape that compatible with the shape of the object
+        :param obj_vel: [m/s] object's velocities: tensor of any shape that compatible with the shape of the object
+        :param obj_time_delay: [sec] object's time delay
+        :param margins: [m] objects' lengths half sum: matrix of size objects_num x timestamps_num
         :param max_brake: [m/s^2] maximal deceleration of both objects
         :return: [bool] longitudinal safety per timestamp. Tensor of the same shape as object1 or object2
         """
@@ -90,7 +114,9 @@ class SafetyUtils:
         """
         dist = ego_pos - obj_pos
         sign = np.sign(dist)
-        safe_dist = np.clip(np.divide(sign * (obj_vel * np.abs(obj_vel) - ego_vel * np.abs(obj_vel)), 2 * max_brake), 0, None) + \
-                    np.clip(-sign * ego_vel, 0, None) * ego_time_delay + np.clip(sign * obj_vel, 0, None) * \
-                                                                         obj_time_delay + margins
+        safe_dist = np.clip(np.divide(sign * (obj_vel * np.abs(obj_vel) - ego_vel * np.abs(obj_vel)), 2 * max_brake),
+                            0, None) + \
+                    np.clip(-sign * ego_vel, 0, None) * ego_time_delay + \
+                    np.clip(sign * obj_vel, 0, None) * obj_time_delay + \
+                    margins
         return sign * dist > safe_dist
