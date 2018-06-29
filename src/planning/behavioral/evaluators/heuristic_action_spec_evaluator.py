@@ -76,8 +76,12 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             prediction[:, 0] = obj.fstate[FS_SX] + time_samples * obj.fstate[FS_SV]
             predictions[obj.dynamic_object.obj_id] = prediction
 
+        st = time.time()
+
         all_safe_intervals = SafetyUtils.calc_safety(behavioral_state, ego_fstate, action_recipes, specs, action_specs_mask,
                                                      predictions, time_samples)
+
+        print('calc_safety time = %f' % (time.time()-st))
 
         specs_arr = np.array([np.array([i, spec.t, spec.v, spec.s, spec.d])
                               for i, spec in enumerate(specs) if action_specs_mask[i]])
