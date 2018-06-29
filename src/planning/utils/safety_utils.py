@@ -68,10 +68,6 @@ class SafetyUtils:
         :param max_brake: [m/s^2] maximal deceleration of both objects
         :return: [bool] longitudinal safety per timestamp. Tensor of the same shape as object1 or object2
         """
-        # (ego_lon, ego_vel, ego_lat, ego_lat_vel) = (ego_ftraj[..., FS_SX], ego_ftraj[..., FS_SV],
-        #                                             ego_ftraj[..., FS_DX], ego_ftraj[..., FS_DV])
-        # (obj_lon, obj_vel, obj_lat) = (obj_ftraj[..., FS_SX], obj_ftraj[..., FS_SV], obj_ftraj[..., FS_DX])
-
         (ego_lon, ego_vel, _, ego_lat, ego_lat_vel, _) = ego
         (obj_lon, obj_vel, _, obj_lat, _, _) = obj
 
