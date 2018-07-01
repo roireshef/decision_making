@@ -1,10 +1,11 @@
 from abc import abstractmethod, ABCMeta
-import rte.python.profiler as prof
 from logging import Logger
+from typing import Optional, List
+
 import numpy as np
 import six
 
-from typing import Optional, List
+import rte.python.profiler as prof
 from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, TRAJECTORY_ARCLEN_RESOLUTION, \
     SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, \
     DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, \
@@ -22,7 +23,6 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
-from decision_making.src.planning.trajectory.fixed_trajectory_planner import FixedSamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
@@ -109,41 +109,6 @@ class CostBasedBehavioralPlanner:
                 cnt += 1
             else:
                 terminal_behavioral_states.append(None)
-        return terminal_behavioral_states
-
-    @prof.ProfileFunction()
-    def _generate_old_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray) -> \
-            List[BehavioralGridState]:
-        """
-        Given current state and action specifications, generate a corresponding list of future states using the
-        predictor. Uses mask over list of action specifications to avoid unnecessary computation
-        :param state: the current world state
-        :param action_specs: list of action specifications
-        :param mask: 1D mask vector (boolean) for filtering valid action specifications
-        :return: a list of terminal states
-        """
-        # create a new behavioral state at the action end
-        ego = state.ego_state
-        # TODO: assumes everyone on the same road!
-        road_id = ego.map_state.road_id
-
-        terminal_behavioral_states = []
-        for i, spec in enumerate(action_specs):
-            # For invalid actions (masked out), return None
-            if not mask[i]:
-                terminal_behavioral_states.append(None)
-                continue
-
-            # predict ego (s,d,v_s are according to action_spec)
-            terminal_timestamp = ego.timestamp_in_sec + spec.t
-            terminal_ego_fstate = np.array([spec.s, spec.v, 0, spec.d, 0, 0])
-            terminal_ego_cstate = [1, 1, 1, 1, 1, 1]  # MapUtils.convert_map_to_cartesian_state(MapState(terminal_ego_fstate, road_id))
-            terminal_ego_state_trajectory = FixedSamplableTrajectory(np.array([np.array(terminal_ego_cstate)]), terminal_timestamp)
-            terminal_state = self.predictor.predict_state(state=state, prediction_timestamps=np.array([terminal_timestamp]),
-                                                          action_trajectory=terminal_ego_state_trajectory)
-            new_behavioral_state = BehavioralGridState.create_from_state(terminal_state[0], self.logger)
-            terminal_behavioral_states.append(new_behavioral_state)
-
         return terminal_behavioral_states
 
     @staticmethod

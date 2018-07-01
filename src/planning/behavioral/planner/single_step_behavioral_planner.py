@@ -71,7 +71,6 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
 
         # approximate cost-to-go per terminal state
-        # terminal_old_behavioral_states = self._generate_old_terminal_states(state, action_specs, action_specs_mask)
         terminal_behavioral_states = self._generate_terminal_states(state, action_specs, action_specs_mask)
         terminal_states_values = np.array([self.value_approximator.approximate(state) if action_specs_mask[i] else np.nan
                                            for i, state in enumerate(terminal_behavioral_states)])
