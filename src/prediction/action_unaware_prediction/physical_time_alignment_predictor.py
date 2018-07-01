@@ -69,9 +69,8 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
         predicted_ego_state = self._predict_object(dynamic_object=state.ego_state,
                                                    prediction_timestamp=prediction_timestamps[0])[0]
 
-        predicted_state = State(occupancy_state=state.occupancy_state,
-                                dynamic_objects=predicted_dynamic_objects,
-                                ego_state=predicted_ego_state)
+        predicted_state = state.clone_with(dynamic_objects=predicted_dynamic_objects,
+                                           ego_state=predicted_ego_state)
 
         return [predicted_state]
 
@@ -92,7 +91,8 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
         predicted_x = dynamic_object.x + dynamic_object.velocity * np.cos(dynamic_object.yaw) * prediction_horizon
         predicted_y = dynamic_object.y + dynamic_object.velocity * np.sin(dynamic_object.yaw) * prediction_horizon
 
-        obj_final_cstate = np.array([predicted_x, predicted_y, dynamic_object.yaw, dynamic_object.velocity, 0, DEFAULT_CURVATURE])
+        obj_final_cstate = np.array(
+            [predicted_x, predicted_y, dynamic_object.yaw, dynamic_object.velocity, 0, DEFAULT_CURVATURE])
 
         predicted_object_states = PredictionUtils.convert_ctrajectory_to_dynamic_objects(dynamic_object,
                                                                                          [obj_final_cstate],

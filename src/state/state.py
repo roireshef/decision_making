@@ -494,9 +494,9 @@ class State(PUBSUB_MSG_IMPL):
         :param dynamic_objects:
         :param ego_state:
         """
-        self.occupancy_state = copy.deepcopy(occupancy_state)
-        self.dynamic_objects = copy.deepcopy(dynamic_objects)
-        self.ego_state = copy.deepcopy(ego_state)
+        self.occupancy_state = occupancy_state
+        self.dynamic_objects = dynamic_objects
+        self.ego_state = ego_state
 
     def clone_with(self, occupancy_state=None, dynamic_objects=None, ego_state=None):
         # type: (OccupancyState, List[NewDynamicObject], NewEgoState) -> State

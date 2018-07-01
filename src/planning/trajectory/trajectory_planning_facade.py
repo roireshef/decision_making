@@ -17,6 +17,7 @@ from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
+from decision_making.src.planning.trajectory.fixed_trajectory_planner import FixedSamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, CartesianPath2D
@@ -32,7 +33,7 @@ from mapping.src.transformations.geometry_utils import CartesianFrame
 class TrajectoryPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger,
                  strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner],
-                 short_time_predictor: EgoAwarePredictor,
+                 short_time_predictor: EgoUnawarePredictor,
                  last_trajectory: SamplableTrajectory = None):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
@@ -121,7 +122,7 @@ class TrajectoryPlanningFacade(DmModule):
 
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
-                state_aligned, params.reference_route, ctrajectories, costs,
+                state_aligned, params.reference_route, self._last_trajectory, ctrajectories, costs,
                 params.time - state.ego_state.timestamp_in_sec, self._strategy_handlers[params.strategy].predictor)
 
             self._publish_debug(debug_results)
@@ -130,12 +131,12 @@ class TrajectoryPlanningFacade(DmModule):
 
         except MsgDeserializationError:
             self.logger.error("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
-                             traceback.format_exc())
+                              traceback.format_exc())
 
         # TODO - we need to handle this as an emergency.
         except NoValidTrajectoriesFound:
             self.logger.error("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s",
-                             traceback.format_exc())
+                              traceback.format_exc())
 
         except Exception:
             self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s",
@@ -192,20 +193,22 @@ class TrajectoryPlanningFacade(DmModule):
         """
         current_time = state.ego_state.timestamp_in_sec
         expected_state_vec: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
-        expected_ego_state = state.ego_state.clone_from_cartesian_state(expected_state_vec, state.ego_state.timestamp_in_sec)
+        expected_ego_state = state.ego_state.clone_from_cartesian_state(expected_state_vec,
+                                                                        state.ego_state.timestamp_in_sec)
 
         updated_state = state.clone_with(ego_state=expected_ego_state)
 
         return updated_state
 
     @staticmethod
-    def _prepare_visualization_msg(state: State, reference_route: CartesianPath2D,
+    def _prepare_visualization_msg(state: State, reference_route: CartesianPath2D, ego_trajectory: SamplableTrajectory,
                                    ctrajectories: CartesianTrajectories, costs: np.ndarray,
-                                   planning_horizon: float, predictor: EgoUnawarePredictor):
+                                   planning_horizon: float, predictor: EgoAwarePredictor):
         """
         prepares visualization message for visualization purposes
         :param state: short-term prediction aligned state
         :param reference_route: the reference route got from BP
+        :param ego_trajectory: the trajectory planned by TP
         :param ctrajectories: alternative trajectories in cartesian-frame
         :param costs: costs computed for each alternative trajectory
         :param planning_horizon: [sec] the (relative) planning-horizon used for planning
@@ -220,7 +223,9 @@ class TrajectoryPlanningFacade(DmModule):
         # Currently we are predicting the state at ego's timestamp and at the end of the traj execution time.
         # predicted_states[0] is the current state
         # predicted_states[1] is the predicted state in the end of the execution of traj.
-        predicted_states = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps)
+        # TODO: Hack! We need a prediction method for this case which: 1. creates states,
+        # TODO: 2.predicts for more than one timestamp, 3. ego can't be None because LCM doesn't like it.
+        predicted_states = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps, action_trajectory=None)
 
         _, downsampled_reference_route, _ = CartesianFrame.resample_curve(reference_route,
                                                                           step_size=DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION)

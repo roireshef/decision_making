@@ -2,15 +2,12 @@ from collections import defaultdict
 from enum import Enum
 from logging import Logger
 from typing import Dict, List, Tuple
-import numpy as np
-import time
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO
 from decision_making.src.global_constants import PLANNING_LOOKAHEAD_DIST
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.types import FS_SX, FrenetState2D
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.types import FS_SX
 from decision_making.src.state.state import NewDynamicObject, NewEgoState
 from decision_making.src.state.state import State
 from mapping.src.service.map_service import MapService
@@ -82,7 +79,8 @@ class BehavioralGridState(BehavioralState):
          ego front).
         :return: road semantic occupancy grid
         """
-        road_id = state.ego_state.map_state.road_id
+        with prof.time_range('create_road_id_%d_cars' % len(state.dynamic_objects)):
+            road_id = state.ego_state.map_state.road_id
 
         # TODO: the relative localization calculated here assumes that all objects are located on the same road.
         # TODO: Fix after demo and calculate longitudinal difference properly in the general case
@@ -90,14 +88,14 @@ class BehavioralGridState(BehavioralState):
 
         # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
         dynamic_objects_with_road_semantics = BehavioralGridState._add_road_semantics(state.dynamic_objects,
-                                                                                      state.ego_state)
+                                                                                          state.ego_state)
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
-                                                                         state.ego_state)
+                                                                             state.ego_state)
 
         # for each grid cell - sort the dynamic objects by proximity to ego
         # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
         grid_sorted_by_distances = {cell: sorted(obj_dist_list, key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
-                                    for cell, obj_dist_list in multi_object_grid.items()}
+                                        for cell, obj_dist_list in multi_object_grid.items()}
 
         ego_lane = state.ego_state.map_state.lane_num
         lanes_num = MapService.get_instance().get_road(road_id).lanes_num

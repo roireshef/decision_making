@@ -118,6 +118,7 @@ class DmInitialization:
         # Init map
         MapService.initialize()
         predictor = RoadFollowingPredictor(logger)
+        short_time_predictor = PhysicalTimeAlignmentPredictor(logger)
 
         planner = WerlingPlanner(logger, predictor)
         strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
@@ -126,7 +127,7 @@ class DmInitialization:
 
         trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
                                                               strategy_handlers=strategy_handlers,
-                                                              short_time_predictor=predictor)
+                                                              short_time_predictor=short_time_predictor)
         return trajectory_planning_module
 
 

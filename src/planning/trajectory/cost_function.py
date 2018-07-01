@@ -8,6 +8,7 @@ from decision_making.src.planning.types import CartesianTrajectory, C_YAW, Carte
     CartesianTrajectories, CartesianPaths2D, CartesianPoint2D, C_A, C_K, C_V, CartesianExtendedTrajectories, \
     FrenetTrajectories2D, FS_DX
 from decision_making.src.planning.utils.math import Math
+from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, NewDynamicObject
 from mapping.src.transformations.geometry_utils import CartesianFrame
@@ -89,7 +90,7 @@ class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
         # TODO: make this more efficient by removing for loop
         self._H_inv = np.zeros((poses.shape[0], 3, 3))
         for pose_ind in range(poses.shape[0]):
-            H = CartesianFrame.homo_matrix_2d(poses[pose_ind, C_YAW], poses[pose_ind, :C_YAW])
+            H = CartesianFrame.homo_matrix_2d(poses[pose_ind].cartesian_state[C_YAW], poses[pose_ind].cartesian_state[:C_YAW])
             self._H_inv[pose_ind] = np.linalg.inv(H).transpose()
 
     def convert_to_obstacle_coordinate_frame(self, points: np.ndarray):
@@ -104,7 +105,7 @@ class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
 
     @classmethod
     def from_object(cls, obj: NewDynamicObject, k: float, offset: CartesianPoint2D, time_samples: np.ndarray,
-                    predictor: RoadFollowingPredictor):
+                    predictor: EgoAwarePredictor):
         """
         Additional constructor that takes a ObjectState from the State object and wraps it
         :param obj: ObjectState object from State object (in global coordinates)

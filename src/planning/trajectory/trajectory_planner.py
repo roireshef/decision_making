@@ -8,7 +8,7 @@ from decision_making.src.exceptions import raises, NoValidTrajectoriesFound, Cou
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import CartesianPath2D, CartesianExtendedTrajectory, CartesianTrajectories, \
     CartesianExtendedState
-from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 
 
@@ -42,7 +42,7 @@ class SamplableTrajectory(metaclass=ABCMeta):
 
 
 class TrajectoryPlanner(metaclass=ABCMeta):
-    def __init__(self, logger: Logger, predictor: RoadFollowingPredictor):
+    def __init__(self, logger: Logger, predictor: EgoAwarePredictor):
         self._logger = logger
         self._predictor = predictor
 

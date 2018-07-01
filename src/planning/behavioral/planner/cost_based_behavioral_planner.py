@@ -1,11 +1,10 @@
 from abc import abstractmethod, ABCMeta
+import rte.python.profiler as prof
 from logging import Logger
-from typing import Optional, List
-
 import numpy as np
 import six
 
-import rte.python.profiler as prof
+from typing import Optional, List
 from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, TRAJECTORY_ARCLEN_RESOLUTION, \
     SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, \
     DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, \
@@ -30,7 +29,7 @@ from decision_making.src.planning.trajectory.werling_planner import SamplableWer
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
-from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, ObjectSize, NewEgoState
 from decision_making.src.utils.map_utils import MapUtils
@@ -43,7 +42,7 @@ class CostBasedBehavioralPlanner:
     def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
                  action_spec_evaluator: Optional[ActionSpecEvaluator],
                  action_spec_validator: Optional[ActionSpecFiltering],
-                 value_approximator: ValueApproximator, predictor: EgoAwarePredictor, logger: Logger):
+                 value_approximator: ValueApproximator, predictor: RoadFollowingPredictor, logger: Logger):
         self.action_space = action_space
         self.recipe_evaluator = recipe_evaluator
         self.action_spec_evaluator = action_spec_evaluator
@@ -71,6 +70,53 @@ class CostBasedBehavioralPlanner:
 
     @prof.ProfileFunction()
     def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray) -> \
+            List[BehavioralGridState]:
+        """
+        Given current state and action specifications, generate a corresponding list of future states using the
+        predictor. Uses mask over list of action specifications to avoid unnecessary computation
+        :param state: the current world state
+        :param action_specs: list of action specifications
+        :param mask: 1D mask vector (boolean) for filtering valid action specifications
+        :return: a list of terminal states
+        """
+        # create a new behavioral state at the action end
+        ego = state.ego_state
+
+        # TODO: assumes everyone on the same road!
+        with prof.time_range('gen_road_id'):
+            road_id = ego.map_state.road_id
+
+        with prof.time_range('gen_init_%d_cars' % len(state.dynamic_objects)):
+            total_action_time = np.array([spec.t for i, spec in enumerate(action_specs) if mask[i]])
+            terminal_timestamps = ego.timestamp_in_sec + total_action_time
+            objects_curr_fstates = np.array([dynamic_object.map_state.road_fstate for dynamic_object in state.dynamic_objects])
+        with prof.time_range('gen_predict_%d_cars' % len(state.dynamic_objects)):
+            objects_terminal_fstates = self.predictor._vectorized_predict_objects(objects_curr_fstates, total_action_time)
+
+        # Create ego states, dynamic objects, states and finally behavioral states
+        with prof.time_range('gen_obj_create_%d_cars' % len(state.dynamic_objects)):
+            terminal_ego_states = [ego.clone_from_map_state(MapState([spec.s, spec.v, 0, spec.d, 0, 0], road_id),
+                                                            ego.timestamp_in_sec + spec.t)
+                                   for i, spec in enumerate(action_specs) if mask[i]]
+            terminal_dynamic_objects = [[dynamic_object.clone_from_map_state(MapState(objects_terminal_fstates[i][j], road_id))
+                                     for i, dynamic_object in enumerate(state.dynamic_objects)]
+                                    for j, terminal_timestamp in enumerate(terminal_timestamps)]
+            terminal_states = [state.clone_with(dynamic_objects=terminal_dynamic_objects[i], ego_state=terminal_ego_states[i])
+                               for i in range(len(terminal_ego_states))]
+            terminal_behavioral_states = []
+        cnt = 0
+        with prof.time_range('gen_final_%d_cars' % len(state.dynamic_objects)):
+            for i, spec in enumerate(action_specs):
+                if mask[i]:
+                    terminal_behavioral_states.append(
+                        BehavioralGridState.create_from_state(terminal_states[cnt], self.logger))
+                    cnt += 1
+                else:
+                    terminal_behavioral_states.append(None)
+        return terminal_behavioral_states
+
+    @prof.ProfileFunction()
+    def _generate_old_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray) -> \
             List[BehavioralGridState]:
         """
         Given current state and action specifications, generate a corresponding list of future states using the

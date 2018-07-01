@@ -81,10 +81,11 @@ class RoadFollowingPredictor(EgoAwarePredictor):
                     timestamp_in_sec=prediction_timestamps[time_idx],
                     cartesian_state=extended_sampled_action_trajectory[time_idx])
             else:
-                predicted_ego_state = None
+                # Note! This uses the same ego object without deep copying it. Since EgoState should be immutable this
+                # should be OK.
+                predicted_ego_state = state.ego_state
 
-            state = State(occupancy_state=state.occupancy_state,
-                          ego_state=predicted_ego_state,
+            state = state.clone_with(ego_state=predicted_ego_state,
                           dynamic_objects=predicted_dynamic_objects)
 
             future_states.append(state)

@@ -11,7 +11,7 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryCostPar
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
     CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D
-from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
+from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 from decision_making.test.exceptions import NotTriggeredException
 
@@ -41,7 +41,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
             that advances incrementally on fixed_trajectory by step size
     """
 
-    def __init__(self, logger: Logger, predictor: EgoUnawarePredictor, fixed_trajectory: CartesianExtendedTrajectory, step_size: int,
+    def __init__(self, logger: Logger, predictor: EgoAwarePredictor, fixed_trajectory: CartesianExtendedTrajectory, step_size: int,
                  trigger_pos: CartesianPoint2D, sleep_std: float, sleep_mean: float):
         """
         :param logger:
@@ -82,7 +82,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
             self._triggered = True
 
         if self._triggered:
-            #a trajectory snippet in the size required for the visualization message is outputted.
+            # A trajectory snippet in the size required for the visualization message is outputted.
             current_trajectory = self._fixed_trajectory[
                                  self._trajectory_advancing:(self._trajectory_advancing + MAX_NUM_POINTS_FOR_VIZ)]
 
