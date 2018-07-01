@@ -122,7 +122,7 @@ class TrajectoryPlanningFacade(DmModule):
 
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
-                state_aligned, params.reference_route, self._last_trajectory, ctrajectories, costs,
+                state_aligned, params.reference_route, ctrajectories, costs,
                 params.time - state.ego_state.timestamp_in_sec, self._strategy_handlers[params.strategy].predictor)
 
             self._publish_debug(debug_results)
@@ -201,14 +201,13 @@ class TrajectoryPlanningFacade(DmModule):
         return updated_state
 
     @staticmethod
-    def _prepare_visualization_msg(state: State, reference_route: CartesianPath2D, ego_trajectory: SamplableTrajectory,
+    def _prepare_visualization_msg(state: State, reference_route: CartesianPath2D,
                                    ctrajectories: CartesianTrajectories, costs: np.ndarray,
                                    planning_horizon: float, predictor: EgoAwarePredictor):
         """
         prepares visualization message for visualization purposes
         :param state: short-term prediction aligned state
         :param reference_route: the reference route got from BP
-        :param ego_trajectory: the trajectory planned by TP
         :param ctrajectories: alternative trajectories in cartesian-frame
         :param costs: costs computed for each alternative trajectory
         :param planning_horizon: [sec] the (relative) planning-horizon used for planning
