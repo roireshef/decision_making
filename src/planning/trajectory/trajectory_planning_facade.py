@@ -225,7 +225,10 @@ class TrajectoryPlanningFacade(DmModule):
         # predicted_states[1] is the predicted state in the end of the execution of traj.
         # TODO: Hack! We need a prediction method for this case which: 1. creates states,
         # TODO: 2.predicts for more than one timestamp, 3. ego can't be None because LCM doesn't like it.
-        predicted_states = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps, action_trajectory=None)
+        predicted_states_without_ego = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps, action_trajectory=None)
+        predicted_states = [State(occupancy_state=predicted_state.occupancy_state,
+                                      dynamic_objects=predicted_state.dynamic_objects,
+                                      ego_state=state.ego_state) for predicted_state in predicted_states_without_ego]
 
         _, downsampled_reference_route, _ = CartesianFrame.resample_curve(reference_route,
                                                                           step_size=DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION)
