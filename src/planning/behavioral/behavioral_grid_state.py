@@ -41,6 +41,7 @@ class DynamicObjectWithRoadSemantics:
     This data object holds together the dynamic_object coupled with the distance from ego, his lane center latitude and
     its frenet state.
     """
+
     def __init__(self, dynamic_object: DynamicObject, longitudinal_distance: float):
         """
         :param dynamic_object:
@@ -87,20 +88,20 @@ class BehavioralGridState(BehavioralState):
 
         # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
         dynamic_objects_with_road_semantics = BehavioralGridState._add_road_semantics(state.dynamic_objects,
-                                                                                          state.ego_state)
+                                                                                      state.ego_state)
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
-                                                                             state.ego_state)
+                                                                         state.ego_state)
 
         # for each grid cell - sort the dynamic objects by proximity to ego
         # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
         grid_sorted_by_distances = {cell: sorted(obj_dist_list, key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
-                                        for cell, obj_dist_list in multi_object_grid.items()}
+                                    for cell, obj_dist_list in multi_object_grid.items()}
 
         ego_lane = state.ego_state.map_state.lane_num
         lanes_num = MapService.get_instance().get_road(road_id).lanes_num
 
         return cls(grid_sorted_by_distances, state.ego_state,
-                   right_lane_exists=ego_lane > 0, left_lane_exists=ego_lane < lanes_num-1)
+                   right_lane_exists=ego_lane > 0, left_lane_exists=ego_lane < lanes_num - 1)
 
     @staticmethod
     @prof.ProfileFunction()
@@ -116,7 +117,8 @@ class BehavioralGridState(BehavioralState):
         """
         ego_init_fstate = ego_state.map_state.road_fstate
         # compute the relative longitudinal distance between object and ego (positive means object is in front)
-        return [DynamicObjectWithRoadSemantics(obj, obj.map_state.road_fstate[FS_SX] - ego_init_fstate[FS_SX]) for obj in dynamic_objects]
+        return [DynamicObjectWithRoadSemantics(obj, obj.map_state.road_fstate[FS_SX] - ego_init_fstate[FS_SX]) for obj
+                in dynamic_objects]
 
     @staticmethod
     @prof.ProfileFunction()
