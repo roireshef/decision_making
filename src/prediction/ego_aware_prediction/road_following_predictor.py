@@ -33,6 +33,8 @@ class RoadFollowingPredictor(EgoAwarePredictor):
 
         objects = [State.get_object_from_state(state=state, target_obj_id=obj_id)
                    for obj_id in object_ids]
+        if len(objects) == 0:
+            return {}
         objects_fstates = [obj.map_state.road_fstate for obj in objects]
 
         first_timestamp = State.get_object_from_state(state=state, target_obj_id=object_ids[0]).timestamp_in_sec
@@ -128,6 +130,8 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         """
         T = timestamps.shape[0]
         N = objects_fstates.shape[0]
+        if N == 0:
+            return []
         zero_slice = np.zeros([N, T])
 
         s = objects_fstates[:, FS_SX, np.newaxis] + objects_fstates[:, np.newaxis, FS_SV] * timestamps

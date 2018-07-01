@@ -83,36 +83,32 @@ class CostBasedBehavioralPlanner:
         ego = state.ego_state
 
         # TODO: assumes everyone on the same road!
-        with prof.time_range('gen_road_id'):
-            road_id = ego.map_state.road_id
+        road_id = ego.map_state.road_id
+        total_action_time = np.array([spec.t for i, spec in enumerate(action_specs) if mask[i]])
+        terminal_timestamps = ego.timestamp_in_sec + total_action_time
 
-        with prof.time_range('gen_init_%d_cars' % len(state.dynamic_objects)):
-            total_action_time = np.array([spec.t for i, spec in enumerate(action_specs) if mask[i]])
-            terminal_timestamps = ego.timestamp_in_sec + total_action_time
-            objects_curr_fstates = np.array([dynamic_object.map_state.road_fstate for dynamic_object in state.dynamic_objects])
-        with prof.time_range('gen_predict_%d_cars' % len(state.dynamic_objects)):
-            objects_terminal_fstates = self.predictor._vectorized_predict_objects(objects_curr_fstates, total_action_time)
+        objects_curr_fstates = np.array([dynamic_object.map_state.road_fstate for dynamic_object in state.dynamic_objects])
+        objects_terminal_fstates = self.predictor._vectorized_predict_objects(objects_curr_fstates, total_action_time)
 
         # Create ego states, dynamic objects, states and finally behavioral states
-        with prof.time_range('gen_obj_create_%d_cars' % len(state.dynamic_objects)):
-            terminal_ego_states = [ego.clone_from_map_state(MapState([spec.s, spec.v, 0, spec.d, 0, 0], road_id),
-                                                            ego.timestamp_in_sec + spec.t)
-                                   for i, spec in enumerate(action_specs) if mask[i]]
-            terminal_dynamic_objects = [[dynamic_object.clone_from_map_state(MapState(objects_terminal_fstates[i][j], road_id))
-                                     for i, dynamic_object in enumerate(state.dynamic_objects)]
-                                    for j, terminal_timestamp in enumerate(terminal_timestamps)]
-            terminal_states = [state.clone_with(dynamic_objects=terminal_dynamic_objects[i], ego_state=terminal_ego_states[i])
-                               for i in range(len(terminal_ego_states))]
-            terminal_behavioral_states = []
+        terminal_ego_states = [ego.clone_from_map_state(MapState([spec.s, spec.v, 0, spec.d, 0, 0], road_id),
+                                                        ego.timestamp_in_sec + spec.t)
+                                                        for i, spec in enumerate(action_specs) if mask[i]]
+        terminal_dynamic_objects = [[dynamic_object.clone_from_map_state(MapState(objects_terminal_fstates[i][j], road_id))
+                                 for i, dynamic_object in enumerate(state.dynamic_objects)]
+                                for j, terminal_timestamp in enumerate(terminal_timestamps)]
+        terminal_states = [state.clone_with(dynamic_objects=terminal_dynamic_objects[i], ego_state=terminal_ego_states[i])
+                           for i in range(len(terminal_ego_states))]
+
+        terminal_behavioral_states = []
         cnt = 0
-        with prof.time_range('gen_final_%d_cars' % len(state.dynamic_objects)):
-            for i, spec in enumerate(action_specs):
-                if mask[i]:
-                    terminal_behavioral_states.append(
-                        BehavioralGridState.create_from_state(terminal_states[cnt], self.logger))
-                    cnt += 1
-                else:
-                    terminal_behavioral_states.append(None)
+        for i, spec in enumerate(action_specs):
+            if mask[i]:
+                terminal_behavioral_states.append(
+                    BehavioralGridState.create_from_state(terminal_states[cnt], self.logger))
+                cnt += 1
+            else:
+                terminal_behavioral_states.append(None)
         return terminal_behavioral_states
 
     @prof.ProfileFunction()
@@ -141,7 +137,7 @@ class CostBasedBehavioralPlanner:
             # predict ego (s,d,v_s are according to action_spec)
             terminal_timestamp = ego.timestamp_in_sec + spec.t
             terminal_ego_fstate = np.array([spec.s, spec.v, 0, spec.d, 0, 0])
-            terminal_ego_cstate = MapUtils.convert_map_to_cartesian_state(MapState(terminal_ego_fstate, road_id))
+            terminal_ego_cstate = [1, 1, 1, 1, 1, 1]  # MapUtils.convert_map_to_cartesian_state(MapState(terminal_ego_fstate, road_id))
             terminal_ego_state_trajectory = FixedSamplableTrajectory(np.array([np.array(terminal_ego_cstate)]), terminal_timestamp)
             terminal_state = self.predictor.predict_state(state=state, prediction_timestamps=np.array([terminal_timestamp]),
                                                           action_trajectory=terminal_ego_state_trajectory)
