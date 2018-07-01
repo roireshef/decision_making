@@ -79,8 +79,7 @@ class BehavioralGridState(BehavioralState):
          ego front).
         :return: road semantic occupancy grid
         """
-        with prof.time_range('create_road_id_%d_cars' % len(state.dynamic_objects)):
-            road_id = state.ego_state.map_state.road_id
+        road_id = state.ego_state.map_state.road_id
 
         # TODO: the relative localization calculated here assumes that all objects are located on the same road.
         # TODO: Fix after demo and calculate longitudinal difference properly in the general case

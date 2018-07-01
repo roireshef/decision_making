@@ -70,7 +70,7 @@ class CostBasedBehavioralPlanner:
 
     @prof.ProfileFunction()
     def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray) -> \
-            List[BehavioralGridState]:
+            np.array([BehavioralGridState]):
         """
         Given current state and action specifications, generate a corresponding list of future states using the
         predictor. Uses mask over list of action specifications to avoid unnecessary computation
@@ -87,28 +87,37 @@ class CostBasedBehavioralPlanner:
         total_action_time = np.array([spec.t for i, spec in enumerate(action_specs) if mask[i]])
         terminal_timestamps = ego.timestamp_in_sec + total_action_time
 
-        objects_curr_fstates = np.array([dynamic_object.map_state.road_fstate for dynamic_object in state.dynamic_objects])
+        objects_curr_fstates = np.array(
+            [dynamic_object.map_state.road_fstate for dynamic_object in state.dynamic_objects])
         objects_terminal_fstates = self.predictor._vectorized_predict_objects(objects_curr_fstates, total_action_time)
 
         # Create ego states, dynamic objects, states and finally behavioral states
         terminal_ego_states = [ego.clone_from_map_state(MapState([spec.s, spec.v, 0, spec.d, 0, 0], road_id),
                                                         ego.timestamp_in_sec + spec.t)
-                                                        for i, spec in enumerate(action_specs) if mask[i]]
-        terminal_dynamic_objects = [[dynamic_object.clone_from_map_state(MapState(objects_terminal_fstates[i][j], road_id))
-                                 for i, dynamic_object in enumerate(state.dynamic_objects)]
-                                for j, terminal_timestamp in enumerate(terminal_timestamps)]
-        terminal_states = [state.clone_with(dynamic_objects=terminal_dynamic_objects[i], ego_state=terminal_ego_states[i])
-                           for i in range(len(terminal_ego_states))]
+                               for i, spec in enumerate(action_specs) if mask[i]]
+        terminal_dynamic_objects = [
+            [dynamic_object.clone_from_map_state(MapState(objects_terminal_fstates[i][j], road_id))
+             for i, dynamic_object in enumerate(state.dynamic_objects)]
+            for j, terminal_timestamp in enumerate(terminal_timestamps)]
+        terminal_states = [
+            state.clone_with(dynamic_objects=terminal_dynamic_objects[i], ego_state=terminal_ego_states[i])
+            for i in range(len(terminal_ego_states))]
 
-        terminal_behavioral_states = []
-        cnt = 0
-        for i, spec in enumerate(action_specs):
-            if mask[i]:
-                terminal_behavioral_states.append(
-                    BehavioralGridState.create_from_state(terminal_states[cnt], self.logger))
-                cnt += 1
-            else:
-                terminal_behavioral_states.append(None)
+        terminal_behavioral_states = np.array([None] * len(action_specs))
+        valid_behavioral_grid_states = np.array([BehavioralGridState.create_from_state(terminal_state, self.logger) for terminal_state in
+                         terminal_states])
+        terminal_behavioral_states[np.argwhere(mask)] = valid_behavioral_grid_states
+
+        # # Alternative impl which surprisingly takes less time:
+        # terminal_behavioral_states = []
+        # cnt = 0
+        # for i, spec in enumerate(action_specs):
+        #     if mask[i]:
+        #         terminal_behavioral_states.append(
+        #             BehavioralGridState.create_from_state(terminal_states[cnt], self.logger))
+        #         cnt += 1
+        #     else:
+        #         terminal_behavioral_states.append(None)
         return terminal_behavioral_states
 
     @staticmethod
