@@ -85,6 +85,8 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         predictions = np.array(predictions)
         obj_sizes = np.array(obj_sizes)
 
+        # calculate maximal safe T_d for all specs
+
         st_tot = time.time()
         st = time.time()
 
