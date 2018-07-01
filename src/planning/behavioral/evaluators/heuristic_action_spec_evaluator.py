@@ -85,6 +85,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         predictions = np.array(predictions)
         obj_sizes = np.array(obj_sizes)
 
+        st_tot = time.time()
         st = time.time()
 
         T_d = np.arange(3, 7 + np.finfo(np.float16).eps)
@@ -93,14 +94,33 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         (zeros, ones) = (np.zeros(len(specs_d)), np.ones(len(specs_d)))
         constraints_d = np.array([ego_fstate[FS_DX] * ones, ego_fstate[FS_DV] * ones, ego_fstate[FS_DA] * ones,
                                   specs_d, zeros, zeros])  # 6 x len(specs_d)
+
+        time1 = time.time()-st
+        st = time.time()
+
         poly_coefs_d = np.fliplr(np.einsum('ijk,kl->lij', A_inv, constraints_d).reshape(len(specs_d) * T_d_num, 6))
+
+        time2 = time.time()-st
+        st = time.time()
+
         ftraj_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_samples)
+
+        time3 = time.time()-st
+        st = time.time()
+
         # fill all elements of ftraj_d beyond T_d by the values of ftraj_d at T_d
         for i, td in enumerate(T_d):
             last_sample = np.where(time_samples >= td)[0][0]
             ftraj_d[i::T_d_num, last_sample+1:, :] = ftraj_d[i::T_d_num, last_sample:last_sample+1, :]
 
+        time4 = time.time()-st
+        st = time.time()
+
         ego_sx, ego_sv = SafetyUtils._calc_longitudinal_ego_trajectories(ego_fstate, specs_t, specs_v, specs_s, time_samples)
+
+        time5 = time.time()-st
+        st = time.time()
+
         ego_sx = np.tile(ego_sx, T_d.shape[0]).reshape(specs_t.shape[0] * T_d.shape[0], samples_num)
         ego_sv = np.tile(ego_sv, T_d.shape[0]).reshape(specs_t.shape[0] * T_d.shape[0], samples_num)
         zeros = np.zeros(ego_sx.shape)
@@ -109,12 +129,19 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
 
         ego_size = np.array([ego.size.length, ego.size.width])
 
+        time6 = time.time()-st
+        st = time.time()
+
         safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, predictions, obj_sizes)
         safe_specs_T_d = safe_times.all(axis=(1, 2)).reshape(specs_t.shape[0], T_d.shape[0])
         safe_specs = safe_specs_T_d.any(axis=1)
         max_safe_T_d = T_d[T_d.shape[0] - 1 - np.argmax(np.fliplr(safe_specs_T_d), axis=1)]  # for each spec find max T_d
 
-        print('safety time=%f' % (time.time()-st))
+        time7 = time.time()-st
+        time_tot = time.time() - st_tot
+
+        print('safety time=%f: time1=%f time2=%f time3=%f time4=%f time5=%f time6=%f time7=%f' %
+              (time_tot, time1, time2, time3, time4, time5, time6, time7))
 
         # calculate approximated lateral time according to the CALM aggressiveness level
         T_d_array = HeuristicActionSpecEvaluator._calc_lateral_times(ego_fstate, specs_t, specs_d)
