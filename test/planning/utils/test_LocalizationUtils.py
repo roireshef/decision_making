@@ -3,7 +3,7 @@ import pytest
 
 from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_CENTER
 from decision_making.src.planning.utils.transformations import Transformations
-from decision_making.src.state.state import ObjectSize, NewEgoState
+from decision_making.src.state.state import ObjectSize, EgoState
 
 
 def test_localizationUtils_transformEgoFromOriginToCenter():
@@ -11,8 +11,8 @@ def test_localizationUtils_transformEgoFromOriginToCenter():
     ego_pos = np.array([3, 4, 0])
     ego_yaw = np.pi/2
     ego_size = ObjectSize(5, 2, 2)
-    ego_state = NewEgoState.create_from_cartesian_state(obj_id=0, timestamp=0, size=ego_size, confidence=1.0,
-                                                        cartesian_state=[ego_pos[0], ego_pos[1], ego_yaw, 0.0, 0.0, 0.0])
+    ego_state = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0, size=ego_size, confidence=1.0,
+                                                     cartesian_state=[ego_pos[0], ego_pos[1], ego_yaw, 0.0, 0.0, 0.0])
     transformed_ego = Transformations.transform_ego_from_origin_to_center(ego_state)
     assert transformed_ego.x == ego_pos[0] and \
            transformed_ego.y == ego_pos[1] - EGO_ORIGIN_LON_FROM_CENTER

@@ -7,7 +7,7 @@ from decision_making.src.planning.trajectory.cost_function import SigmoidDynamic
     SigmoidBoxObstacle
 from decision_making.src.planning.types import CURVE_YAW, CartesianPoint2D, CartesianExtendedState, C_X, C_Y
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state import NewDynamicObject
+from decision_making.src.state.state import DynamicObject
 
 
 class RouteFixture:
@@ -82,7 +82,7 @@ class PlottableSigmoidBoxObstacle(SigmoidBoxObstacle):
 
 
 class PlottableSigmoidStaticBoxObstacle(SigmoidStaticBoxObstacle, PlottableSigmoidBoxObstacle):
-    def __init__(self, obj: NewDynamicObject, k: float, margin: CartesianPoint2D):
+    def __init__(self, obj: DynamicObject, k: float, margin: CartesianPoint2D):
         pose = np.array([obj.x, obj.y, obj.yaw, 0])
         super().__init__(pose, obj.size.length, obj.size.width, k, margin)
         self.pose = pose
@@ -104,7 +104,7 @@ class PlottableSigmoidStaticBoxObstacle(SigmoidStaticBoxObstacle, PlottableSigmo
 
 
 class PlottableSigmoidDynamicBoxObstacle(SigmoidDynamicBoxObstacle, PlottableSigmoidBoxObstacle):
-    def __init__(self, obj: NewDynamicObject, k: float, margin: CartesianPoint2D,
+    def __init__(self, obj: DynamicObject, k: float, margin: CartesianPoint2D,
                  time_samples: np.ndarray, predictor: RoadFollowingPredictor):
         # get predictions of the dynamic object in global coordinates
         poses = predictor.predict_object(obj, time_samples)

@@ -8,7 +8,7 @@ from decision_making.src.global_constants import LON_MARGIN_FROM_EGO
 from decision_making.src.global_constants import PLANNING_LOOKAHEAD_DIST
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.types import FS_SX
-from decision_making.src.state.state import NewDynamicObject, NewEgoState
+from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
 from mapping.src.service.map_service import MapService
 
@@ -41,7 +41,7 @@ class DynamicObjectWithRoadSemantics:
     This data object holds together the dynamic_object coupled with the distance from ego, his lane center latitude and
     its frenet state.
     """
-    def __init__(self, dynamic_object: NewDynamicObject, longitudinal_distance: float):
+    def __init__(self, dynamic_object: DynamicObject, longitudinal_distance: float):
         """
         :param dynamic_object:
         :param longitudinal_distance: Distance relative to ego on the road's longitude
@@ -58,7 +58,7 @@ RoadSemanticOccupancyGrid = Dict[SemanticGridCell, List[DynamicObjectWithRoadSem
 
 
 class BehavioralGridState(BehavioralState):
-    def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: NewEgoState,
+    def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState,
                  right_lane_exists: bool, left_lane_exists: bool):
         self.road_occupancy_grid = road_occupancy_grid
         self.ego_state = ego_state
@@ -105,7 +105,7 @@ class BehavioralGridState(BehavioralState):
 
     @staticmethod
     @prof.ProfileFunction()
-    def _add_road_semantics(dynamic_objects: List[NewDynamicObject], ego_state: NewEgoState) -> \
+    def _add_road_semantics(dynamic_objects: List[DynamicObject], ego_state: EgoState) -> \
             List[DynamicObjectWithRoadSemantics]:
         """
         Wraps DynamicObjects with "on-road" information (relative progress on road wrt ego, road-localization and more).
@@ -121,7 +121,7 @@ class BehavioralGridState(BehavioralState):
 
     @staticmethod
     @prof.ProfileFunction()
-    def _project_objects_on_grid(objects: List[DynamicObjectWithRoadSemantics], ego_state: NewEgoState) -> \
+    def _project_objects_on_grid(objects: List[DynamicObjectWithRoadSemantics], ego_state: EgoState) -> \
             Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]:
         """
         Takes a list of objects and projects them unto a semantic grid relative to ego vehicle.
@@ -160,7 +160,7 @@ class BehavioralGridState(BehavioralState):
 
     @staticmethod
     @prof.ProfileFunction()
-    def _get_longitudinal_grid_cell(object: DynamicObjectWithRoadSemantics, ego_state: NewEgoState):
+    def _get_longitudinal_grid_cell(object: DynamicObjectWithRoadSemantics, ego_state: EgoState):
         """
         Given a dynamic object representation and ego state, calculate what is the proper longitudinal
         relative-grid-cell to project it on. An object is set to be in FRONT cell if the distance from its rear to ego's

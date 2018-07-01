@@ -1,6 +1,6 @@
 import numpy as np
 
-from decision_making.src.state.state import ObjectSize, NewDynamicObject
+from decision_making.src.state.state import ObjectSize, DynamicObject
 from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidStaticBoxObstacle
 
 
@@ -11,8 +11,8 @@ def test_computeCost_threeSRoutesOneObstacle_validScore():
 
     pose = np.array([200, -40, np.pi / 8])
 
-    obj = NewDynamicObject.create_from_cartesian_state(None, None, [pose[0], pose[1], pose[2], 1, 0, 0],
-                                                       ObjectSize(length=40, width=20, height=20), 0)
+    obj = DynamicObject.create_from_cartesian_state(None, None, [pose[0], pose[1], pose[2], 1, 0, 0],
+                                                    ObjectSize(length=40, width=20, height=20), 0)
 
     obs = PlottableSigmoidStaticBoxObstacle(obj, k=100, margin=np.array([10, 10]))
 

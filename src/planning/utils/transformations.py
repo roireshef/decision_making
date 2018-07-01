@@ -2,7 +2,7 @@ from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_CENTER
 from decision_making.src.planning.types import C_YAW
 import numpy as np
 
-from decision_making.src.state.state import NewEgoState
+from decision_making.src.state.state import EgoState
 
 
 class Transformations:
@@ -24,7 +24,7 @@ class Transformations:
 
     @staticmethod
     def transform_ego_from_origin_to_center(ego_state):
-        # type: (NewEgoState) -> NewEgoState
+        # type: (EgoState) -> EgoState
         """
         Transform ego state from ego origin to ego center
         :param ego_state: original ego state

@@ -10,7 +10,7 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 from decision_making.src.prediction.ego_aware_prediction.maneuver_recognition.manuever_classifier import \
     ManeuverClassifier
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
-from decision_making.src.state.state import State, NewDynamicObject
+from decision_making.src.state.state import State, DynamicObject
 from mapping.src.service.map_service import MapService
 from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.trajectory_generator import \
     TrajectoryGenerator
@@ -82,7 +82,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
         return future_states
 
     def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray,
-                        action_trajectory: Optional[SamplableTrajectory]) -> Dict[int, List[NewDynamicObject]]:
+                        action_trajectory: Optional[SamplableTrajectory]) -> Dict[int, List[DynamicObject]]:
         """
         Predicte the future of the specified objects, for the specified timestamps
         :param state: the initial state to begin prediction from. Though predicting a single object, the full state
@@ -94,7 +94,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
         :return: a mapping between object id to the list of future dynamic objects of the matching object
         """
 
-        predicted_objects_states_dict: Dict[int, List[NewDynamicObject]] = dict()
+        predicted_objects_states_dict: Dict[int, List[DynamicObject]] = dict()
 
         for obj_id in object_ids:
             dynamic_object = State.get_object_from_state(state=state, target_obj_id=obj_id)

@@ -4,7 +4,7 @@ from decision_making.src.planning.trajectory.werling_planner import SamplableWer
 from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, C_A, C_K
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
-from decision_making.src.state.state import ObjectSize, NewEgoState
+from decision_making.src.state.state import ObjectSize, EgoState
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.planning.trajectory.utils import RouteFixture
 from rte.python.logger.AV_logger import AV_Logger
@@ -27,8 +27,8 @@ def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTr
     facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 
     exact_desired_state = samplable_trajectory.sample(np.array([1001]))[0]
-    close_state = NewEgoState.create_from_cartesian_state(-1, 1001e9, np.array([exact_desired_state[C_X] + 0.1, exact_desired_state[C_Y] + 0.1,
-                           exact_desired_state[C_YAW],exact_desired_state[C_V], exact_desired_state[C_A], 0.0]), ObjectSize(0, 0, 0), 1.0)
+    close_state = EgoState.create_from_cartesian_state(-1, 1001e9, np.array([exact_desired_state[C_X] + 0.1, exact_desired_state[C_Y] + 0.1,
+                                                                             exact_desired_state[C_YAW], exact_desired_state[C_V], exact_desired_state[C_A], 0.0]), ObjectSize(0, 0, 0), 1.0)
 
     assert LocalizationUtils.is_actual_state_close_to_expected_state(close_state, facade._last_trajectory,
                                                                      facade.logger,
@@ -50,9 +50,9 @@ def test_isActualStateCloseToExpectedState_nonCloseTranslatedOnlyEgoState_return
     facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 
     exact_desired_state = samplable_trajectory.sample(np.array([1001]))[0]
-    close_state = NewEgoState.create_from_cartesian_state(-1, 1001e9, np.array([exact_desired_state[C_X] + 200, exact_desired_state[C_Y] + 200,
-                           exact_desired_state[C_YAW],
-                           exact_desired_state[C_V], exact_desired_state[C_A], 0.0]), ObjectSize(0, 0, 0), 1.0)
+    close_state = EgoState.create_from_cartesian_state(-1, 1001e9, np.array([exact_desired_state[C_X] + 200, exact_desired_state[C_Y] + 200,
+                                                                             exact_desired_state[C_YAW],
+                                                                             exact_desired_state[C_V], exact_desired_state[C_A], 0.0]), ObjectSize(0, 0, 0), 1.0)
 
     assert not LocalizationUtils.is_actual_state_close_to_expected_state(close_state, facade._last_trajectory,
                                                                          facade.logger,

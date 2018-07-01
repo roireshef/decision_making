@@ -10,7 +10,7 @@ from decision_making.src.planning.types import CartesianTrajectory, C_YAW, Carte
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state import State, NewDynamicObject
+from decision_making.src.state.state import State, DynamicObject
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
@@ -104,7 +104,7 @@ class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
         return np.abs(np.einsum('ijk, jkl -> ijl', points_ext, self._H_inv)[:, :, :(C_Y+1)])
 
     @classmethod
-    def from_object(cls, obj: NewDynamicObject, k: float, offset: CartesianPoint2D, time_samples: np.ndarray,
+    def from_object(cls, obj: DynamicObject, k: float, offset: CartesianPoint2D, time_samples: np.ndarray,
                     predictor: EgoAwarePredictor):
         """
         Additional constructor that takes a ObjectState from the State object and wraps it
@@ -149,7 +149,7 @@ class SigmoidStaticBoxObstacle(SigmoidBoxObstacle):
         return np.abs(np.einsum('ijk, kl -> ijl', points_ext, self._H_inv)[:, :, :(C_Y+1)])
 
     @classmethod
-    def from_object(cls, obj: NewDynamicObject, k: float, offset: CartesianPoint2D):
+    def from_object(cls, obj: DynamicObject, k: float, offset: CartesianPoint2D):
         """
         Additional constructor that takes a ObjectState from the State object and wraps it
         :param obj: ObjectState object from State object (in global coordinates)

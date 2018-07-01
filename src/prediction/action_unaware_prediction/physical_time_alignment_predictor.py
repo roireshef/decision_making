@@ -7,7 +7,7 @@ import numpy as np
 from decision_making.src.global_constants import DEFAULT_CURVATURE
 from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
-from decision_making.src.state.state import State, NewDynamicObject
+from decision_making.src.state.state import State, DynamicObject
 
 
 class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
@@ -21,7 +21,7 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
         super().__init__(logger)
 
     def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray) \
-            -> Dict[int, List[NewDynamicObject]]:
+            -> Dict[int, List[DynamicObject]]:
         """
         Performs physical prediction (constant velocity in x,y) for the purpose of short time alignment
         between ego and dynamic objects
@@ -36,7 +36,7 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
 
         dynamic_objects = State.get_objects_from_state(state=state, target_obj_ids=object_ids)
 
-        predicted_dynamic_objects: Dict[int, List[NewDynamicObject]] = dict()
+        predicted_dynamic_objects: Dict[int, List[DynamicObject]] = dict()
 
         for dynamic_object in dynamic_objects:
             predicted_dynamic_object_states = self._predict_object(dynamic_object=dynamic_object,
@@ -74,8 +74,8 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
 
         return [predicted_state]
 
-    def _predict_object(self, dynamic_object: NewDynamicObject, prediction_timestamp: float) \
-            -> List[NewDynamicObject]:
+    def _predict_object(self, dynamic_object: DynamicObject, prediction_timestamp: float) \
+            -> List[DynamicObject]:
         """
         Method to compute future locations, yaw, and velocities for dynamic objects. Dynamic objects are predicted as
         continuing in the same intra road lat and following the road's curve in constant

@@ -6,7 +6,7 @@ import numpy as np
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_DX
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import State, NewDynamicObject
+from decision_making.src.state.state import State, DynamicObject
 
 
 class RoadFollowingPredictor(EgoAwarePredictor):
@@ -19,7 +19,7 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         super().__init__(logger)
 
     def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray, action_trajectory)\
-            -> Dict[int, List[NewDynamicObject]]:
+            -> Dict[int, List[DynamicObject]]:
         """
         Predict the future of the specified objects, for the specified timestamps
         :param state: the initial state to begin prediction from. Though predicting a single object, the full state
@@ -94,8 +94,8 @@ class RoadFollowingPredictor(EgoAwarePredictor):
 
         return future_states
 
-    def predict_object(self, dynamic_object: NewDynamicObject, prediction_timestamps: np.ndarray) \
-            -> List[NewDynamicObject]:
+    def predict_object(self, dynamic_object: DynamicObject, prediction_timestamps: np.ndarray) \
+            -> List[DynamicObject]:
         """
         Method to compute future locations, yaw, and velocities for dynamic objects. Dynamic objects are predicted as
         continuing in the same intra road lat and following the road's curve in constant

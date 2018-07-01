@@ -6,7 +6,7 @@ from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, NEGLIGI
     NEGLIGIBLE_DISPOSITION_LON
 from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, FrenetPoint, FP_SX, FP_DX, C_V
-from decision_making.src.state.state import NewEgoState
+from decision_making.src.state.state import EgoState
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
@@ -16,7 +16,7 @@ class LocalizationUtils:
     def is_actual_state_close_to_expected_state(current_ego_state,
                                                 last_trajectory,
                                                 logger, calling_class_name):
-        # type: (NewEgoState, SamplableTrajectory, Logger, str) -> bool
+        # type: (EgoState, SamplableTrajectory, Logger, str) -> bool
         """
         checks if the actual ego state at time t[current] is close (currently in terms of Euclidean distance of position
         [x,y] only) to the desired state at t[current] according to the plan of the last trajectory.
