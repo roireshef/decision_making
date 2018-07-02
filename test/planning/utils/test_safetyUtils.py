@@ -260,7 +260,9 @@ def test_calcSafetyForTrajectories_safetyWrtLBLF_safeOnlyIfObjectLBisFar():
     assert safe_times[3][1].all()       # accelerating ego (20->30 m/s) is safe w.r.t. close LF (30 m/s)
     assert safe_times[3][2].all()       # accelerating ego (20->30 m/s) is safe w.r.t. far LB (220 m behind ego)
     assert not safe_times[1][2].all()   # slow accelerating ego (10->20 m/s, T_d = 6) is unsafe w.r.t. far LB
-    assert safe_times[5][2].all()       # slow accelerating ego (10->20 m/s, T_d = 3) is safe w.r.t. far LB
+    # In this version if ego becomes unsafe w.r.t. B/LB, without lateral movement of ego or after completing the lane
+    # change, it's considered unsafe. TODO: insert considering of lateral movement
+    assert not safe_times[5][2].all()   # slowly accelerating ego (10->20 m/s, T_d = 3) is unsafe safe w.r.t. far LB
     # in the following test ego starts longitudinally unsafe and becomes safe before it becomes unsafe laterally
     assert safe_times[2][4].all()       # ego (10->30 m/s, T_d = 6) is safe wrt close slow LB (9 m/s, 20 m behind ego)
 

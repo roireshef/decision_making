@@ -1,9 +1,8 @@
 import numpy as np
 
 from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY, SPECIFICATION_MARGIN_TIME_DELAY, \
-    LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU, TINY_LAT_VELOCITY, VELOCITY_LIMITS
-from decision_making.src.planning.types import LIMIT_MIN, FS_SV, FS_SX, FS_DX, FS_DV, FrenetTrajectories2D, \
-    FrenetState2D
+    LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU
+from decision_making.src.planning.types import LIMIT_MIN, FrenetTrajectories2D
 
 
 class SafetyUtils:
@@ -38,7 +37,7 @@ class SafetyUtils:
         obj = np.array(np.split(obj_ftraj, 6, axis=-1))[..., 0]
 
         # calculate longitudinal safety
-        lon_safe_times = SafetyUtils.get_lon_safety_full(ego, SAFETY_MARGIN_TIME_DELAY,
+        lon_safe_times = SafetyUtils.get_lon_safety(ego, SAFETY_MARGIN_TIME_DELAY,
                                                          obj, SPECIFICATION_MARGIN_TIME_DELAY,
                                                          0.5 * (ego_size[0] + obj_lengths))
 
@@ -51,35 +50,6 @@ class SafetyUtils:
                                                     0.5 * (ego_size[1] + obj_widths) + LATERAL_SAFETY_MU)
 
         return np.logical_or(lon_safe_times, lat_safe_times)
-
-    @staticmethod
-    def get_lon_safety_full(ego: np.array, ego_time_delay: float, obj: np.array, obj_time_delay: float,
-                            margins: np.array, max_brake: float=-LON_ACC_LIMITS[LIMIT_MIN]) -> np.array:
-        # TODO: consider to remove in the future this function, which has the following logic:
-        # if ego does not move laterally toward the REAR object, it's safe w.r.t. to it
-        """
-        Calculate longitudinal safety between ego and another object for all timestamps.
-        This function considers also lateral movement of ego w.r.t. to the REAR object.
-        :param ego: ego fstate components: tensor of shape: 6 x traj_num x objects_num x timestamps_num
-        :param ego_time_delay: [sec] ego time delay
-        :param obj: object's fstate components: tensor of any shape that compatible with the shape of ego
-        :param obj_time_delay: [sec] object's time delay
-        :param margins: [m] lengths half sum: matrix of size objects_num x timestamps_num
-        :param max_brake: [m/s^2] maximal deceleration of both objects
-        :return: [bool] longitudinal safety per timestamp. Tensor of the same shape as object1 or object2
-        """
-        (ego_lon, ego_vel, _, ego_lat, ego_lat_vel, _) = ego
-        (obj_lon, obj_vel, _, obj_lat, _, _) = obj
-
-        lon_safe_times = SafetyUtils.get_lon_safety(ego, ego_time_delay, obj, obj_time_delay, margins, max_brake)
-        # if ego does not move laterally to the REAR object, it's always safe
-        lon_sign = np.sign(ego_lon - obj_lon - margins)
-        lat_sign = np.sign(ego_lat - obj_lat)
-        lat_vel_from_obj = ego_lat_vel * lat_sign
-        ego_is_ahead_and_zero_lat_vel = np.logical_and(-TINY_LAT_VELOCITY < lat_vel_from_obj,
-                                                       lat_vel_from_obj < VELOCITY_LIMITS[1] * lon_sign)
-
-        return np.logical_or(lon_safe_times, ego_is_ahead_and_zero_lat_vel)
 
     @staticmethod
     def get_lon_safety(ego: np.array, ego_time_delay: float, obj: np.array, obj_time_delay: float,
