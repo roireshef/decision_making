@@ -31,14 +31,16 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         :return: a mapping between object id to the list of future dynamic objects of the matching object
         """
 
+        if len(object_ids) == 0:
+            return {}
+
         objects = [State.get_object_from_state(state=state, target_obj_id=obj_id)
                    for obj_id in object_ids]
-        if len(objects) == 0:
-            return {}
+
         objects_fstates = [obj.map_state.road_fstate for obj in objects]
 
         first_timestamp = State.get_object_from_state(state=state, target_obj_id=object_ids[0]).timestamp_in_sec
-        predictions = self._vectorized_predict_objects(np.array(objects_fstates), prediction_timestamps - first_timestamp)
+        predictions = self.predict_frenet_states(np.array(objects_fstates), prediction_timestamps - first_timestamp)
 
         # Create a dictionary from predictions
         predicted_objects_states_dict = {obj.obj_id: [
@@ -121,20 +123,20 @@ class RoadFollowingPredictor(EgoAwarePredictor):
 
         return predicted_object_states
 
-    def _vectorized_predict_objects(self, objects_fstates: np.ndarray, timestamps: np.ndarray):
+    def predict_frenet_states(self, objects_fstates: np.ndarray, horizons: np.ndarray):
         """
         Constant velocity prediction for all timestamps and objects in a matrix computation
         :param objects_fstates: numpy 2D array [Nx6] where N is the number of objects, each row is an FSTATE
-        :param timestamps: numpy 1D array [T] with T timestamps
+        :param horizons: numpy 1D array [T] with T horizons (relative time for prediction into the future)
         :return: numpy 3D array [NxTx6]
         """
-        T = timestamps.shape[0]
+        T = horizons.shape[0]
         N = objects_fstates.shape[0]
         if N == 0:
             return []
         zero_slice = np.zeros([N, T])
 
-        s = objects_fstates[:, FS_SX, np.newaxis] + objects_fstates[:, np.newaxis, FS_SV] * timestamps
+        s = objects_fstates[:, FS_SX, np.newaxis] + objects_fstates[:, np.newaxis, FS_SV] * horizons
         v = np.tile(objects_fstates[:, np.newaxis, FS_SV], T)
         d = np.tile(objects_fstates[:, np.newaxis, FS_DX], T)
 

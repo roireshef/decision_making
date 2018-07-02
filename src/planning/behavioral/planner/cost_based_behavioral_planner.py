@@ -89,7 +89,7 @@ class CostBasedBehavioralPlanner:
 
         objects_curr_fstates = np.array(
             [dynamic_object.map_state.road_fstate for dynamic_object in state.dynamic_objects])
-        objects_terminal_fstates = self.predictor._vectorized_predict_objects(objects_curr_fstates, total_action_time)
+        objects_terminal_fstates = self.predictor.predict_frenet_states(objects_curr_fstates, total_action_time)
 
         # Create ego states, dynamic objects, states and finally behavioral states
         terminal_ego_states = [ego.clone_from_map_state(MapState([spec.s, spec.v, 0, spec.d, 0, 0], road_id),
@@ -103,9 +103,10 @@ class CostBasedBehavioralPlanner:
             state.clone_with(dynamic_objects=terminal_dynamic_objects[i], ego_state=terminal_ego_states[i])
             for i in range(len(terminal_ego_states))]
 
-        terminal_behavioral_states = np.array([None] * len(action_specs))
-        valid_behavioral_grid_states = np.array([BehavioralGridState.create_from_state(terminal_state, self.logger) for terminal_state in
-                         terminal_states])
+        terminal_behavioral_states = np.array([None]*len(action_specs))
+        valid_behavioral_grid_states = np.array(
+            [BehavioralGridState.create_from_state(terminal_state, self.logger) for terminal_state in
+             terminal_states])
         terminal_behavioral_states[np.argwhere(mask)] = valid_behavioral_grid_states
 
         # # Alternative impl which surprisingly takes less time:
