@@ -295,8 +295,24 @@ class QuarticPoly1D(Poly1D):
         :param T: [sec] horizon
         :return: lambda function(s) that takes relative time in seconds and returns the velocity
         """
-        return lambda t: (T ** 3 * (a_0 * t + v_0) - T * t ** 2 * (2 * T * a_0 + 3 * v_0 - 3 * v_T) + t ** 3 * (
-            T * a_0 + 2 * v_0 - 2 * v_T)) / T ** 3
+        return lambda t: (T ** 3 * (a_0 * t + v_0)
+                          - T * t ** 2 * (2 * T * a_0 + 3 * v_0 - 3 * v_T)
+                          + t ** 3 * (T * a_0 + 2 * v_0 - 2 * v_T)) / T ** 3
+
+    @staticmethod
+    def velocity_profile_derivative_coefs(a_0: float, v_0: float, v_T: float, T: float):
+        """
+        coefficients of the derivative of the velocity profile
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param T: [sec] horizon
+        :return: coefficients of the derivative of the velocity profile polynomial
+        """
+        coefs = np.array([3 * (T * a_0 + 2 * v_0 - 2 * v_T),
+                          - 2 * T * (2 * T * a_0 + 3 * v_0 - 3 * v_T),
+                          T ** 3 * a_0]) / T ** 3
+        return coefs
 
     @staticmethod
     def acceleration_profile_function(a_0: float, v_0: float, v_T: float, T: float):
@@ -306,10 +322,25 @@ class QuarticPoly1D(Poly1D):
         :param v_0: [m/sec] velocity at time 0
         :param v_T: [m/sec] terminal velocity (at time T)
         :param T: [sec] horizon
-        :return: lambda function(s) that takes relative time in seconds and returns the velocity
+        :return: lambda function(s) that takes relative time in seconds and returns the acceleration
         """
-        return lambda t: (T ** 3 * a_0 - 2 * T * t * (2 * T * a_0 + 3 * v_0 - 3 * v_T) + 3 * t ** 2 * (
-            T * a_0 + 2 * v_0 - 2 * v_T)) / T ** 3
+        return lambda t: np.inner(
+            QuarticPoly1D.velocity_profile_derivative_coefs(a_0, v_0, v_T, T),
+            np.array([t ** 2, t, 1]))
+
+    @staticmethod
+    def acceleration_profile_derivative_coefs(a_0: float, v_0: float, v_T: float, T: float):
+        """
+        coefficients of the derivative of the acceleration profile
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param T: [sec] horizon
+        :return: coefficients of the derivative of the acceleration profile polynomial
+        """
+        coefs = np.array([6*(T * a_0 + 2 * v_0 - 2 * v_T),
+                          - 2*T * (2 * T * a_0 + 3 * v_0 - 3 * v_T)]) / T ** 3
+        return coefs
 
 
 class QuinticPoly1D(Poly1D):
@@ -457,26 +488,30 @@ class QuinticPoly1D(Poly1D):
         travelled since time 0
         """
         return lambda t: t * (T ** 5 * (a_0 * t + 2 * v_0) + T ** 2 * t ** 2 * (
-            -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * dx + 20 * v_T * (T - T_m)) + T * t ** 3 * (
-                                  3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (
+                -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * dx + 20 * v_T * (T - T_m)) + T * t ** 3 * (
+                                      3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (
                                       T - T_m)) + t ** 4 * (
-                                  -T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx + 12 * v_T * (T - T_m))) / (2 * T ** 5)
+                                      -T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx + 12 * v_T * (T - T_m))) / (
+                                     2 * T ** 5)
 
     @staticmethod
-    def distance_from_target(a_0: float, v_0: float, v_T: float, ds0: float, T: float, T_m: float):
+    def distance_from_target(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
         """
         relative distance travelled by ego at time t, given a solution to the conditions in the parameters
         :param a_0: [m/sec^2] acceleration at time 0
         :param v_0: [m/sec] velocity at time 0
         :param v_T: [m/sec] terminal velocity (at time T)
-        :param ds0: [m] initial distance to target in time 0
+        :param dx: [m] initial distance to target in time 0
         :param T: [sec] horizon
         :return: lambda function(s) that takes relative time in seconds and returns the relative distance
         travelled since time 0
         """
-        return lambda t: (-T**5*t*(a_0*t + 2*v_0) + 2*T**5*(ds0 + t*v_T) + T**2*t**3*(3*T**2*a_0 + 4*T*(3*v_0 + 2*v_T)
-                        - 20*ds0 - 20*v_T*(T - T_m)) - T*t**4*(3*T**2*a_0 + 2*T*(8*v_0 + 7*v_T) - 30*ds0 - 30*v_T*(T - T_m))
-                          + t**5*(T**2*a_0 + 6*T*(v_0 + v_T) - 12*ds0 - 12*v_T*(T - T_m)))/(2*T**5)
+        return lambda t: (-T ** 5 * t * (a_0 * t + 2 * v_0) + 2 * T ** 5 * (dx + t * v_T) + T ** 2 * t ** 3 * (
+            3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T)
+            - 20 * dx - 20 * v_T * (T - T_m)) - T * t ** 4 * (
+                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m))
+                          + t ** 5 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * dx - 12 * v_T * (T - T_m))) / (
+                                     2 * T ** 5)
 
     @staticmethod
     def distance_by_constraints(a_0: float, v_0: float, v_T: float, ds: float, T: float):
@@ -512,7 +547,7 @@ class QuinticPoly1D(Poly1D):
     @staticmethod
     def distance_from_target_derivative_coefs(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
         """
-        velocity of ego at time t, given a solution to the conditions in the parameters
+        coefficients of the derivative of the distance profile to a target vehicle
         :param a_0: [m/sec^2] acceleration at time 0
         :param v_0: [m/sec] velocity at time 0
         :param v_T: [m/sec] terminal velocity (at time T)
@@ -524,7 +559,7 @@ class QuinticPoly1D(Poly1D):
         coefs = np.array([5 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * dx - 12 * v_T * (T - T_m)),
                           -4 * T * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m)),
                           +3 * T ** 2 * (
-                              3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * dx - 20 * v_T * (T - T_m)),
+                                  3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * dx - 20 * v_T * (T - T_m)),
                           -2 * T ** 5 * a_0,
                           2 * T ** 5 * (v_T - v_0)])
         return coefs
@@ -542,14 +577,33 @@ class QuinticPoly1D(Poly1D):
         :return: lambda function(s) that takes relative time in seconds and returns the velocity
         """
         return lambda t: (2 * T ** 5 * (a_0 * t + v_0) + 3 * T ** 2 * t ** 2 * (
-            -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * dx +
-            20 * v_T * (T - T_m)) + 4 * T * t ** 3 * (
-                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m))
+                -3 * T ** 2 * a_0 - 4 * T * (3 * v_0 + 2 * v_T) + 20 * dx +
+                20 * v_T * (T - T_m)) + 4 * T * t ** 3 * (
+                                  3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m))
                           + 5 * t ** 4 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx + 12 * v_T * (T - T_m))) / (
-                             2 * T ** 5)
+                                 2 * T ** 5)
 
     @staticmethod
-    def acceleration_profile_function(a_0: float, v_0: float, v_T: float, ds: float, T: float, T_m: float):
+    def velocity_profile_derivative_coefs(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
+        """
+        coefficients of the derivative of the velocity profile to a target vehicle
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param dx: [m] distance to travel between time 0 and time T
+        :param T: [sec] horizon
+        :param T_m: [sec] T_m * v_T is added to dx
+        :return: lambda function(s) that takes relative time in seconds and returns the velocity
+        """
+        coefs = np.array([10 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx + 12 * v_T * (T - T_m)),
+                          + 6 * T * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m)),
+                          - 3 * T ** 2 * (
+                              3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * dx - 20 * v_T * (T - T_m)),
+                          T ** 5 * a_0]) / T ** 5
+        return coefs
+
+    @staticmethod
+    def acceleration_profile_function(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
         """
         acceleration of ego at time t, given a solution to the conditions in the parameters
         :param a_0: [m/sec^2] acceleration at time 0
@@ -557,12 +611,25 @@ class QuinticPoly1D(Poly1D):
         :param v_T: [m/sec] terminal velocity (at time T)
         :param dx: [m] distance to travel between time 0 and time T
         :param T: [sec] horizon
+        :param T_m: [sec] T_m * v_T is added to dx
         :return: lambda function(s) that takes relative time in seconds and returns the velocity
         """
-        return lambda t: (T ** 5 * a_0 - 3 * T ** 2 * t * (
-            3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * ds - 20 * v_T * (T - T_m))
-                          + 6 * T * t ** 2 * (
-                              3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * ds - 30 * v_T * (T - T_m))
-                          + 10 * t ** 3 * (
-                              -T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * ds + 12 * v_T * (T - T_m))) / T ** 5
+        return lambda t: np.inner(
+            QuinticPoly1D.velocity_profile_derivative_coefs(a_0, v_0, v_T, dx, T, T_m),
+            np.array([t ** 3, t ** 2, t, 1]))
 
+    @staticmethod
+    def acceleration_profile_derivative_coefs(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
+        """
+        coefficients of the derivative of the acceleration profile
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param dx: [m] distance to travel between time 0 and time T
+        :param T: [sec] horizon
+        :return: lambda function(s) that takes relative time in seconds and returns the velocity
+        """
+        coefs = np.array([30 * (-T ** 2 * a_0 - 6 * T * (v_0 + v_T) + 12 * dx + 12 * v_T * (T - T_m)),
+                          + 12 * T * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m)),
+                          - 3 * T ** 2 * (3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * dx - 20 * v_T * (T - T_m))]) / T ** 5
+        return coefs
