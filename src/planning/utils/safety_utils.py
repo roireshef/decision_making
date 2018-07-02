@@ -53,8 +53,8 @@ class SafetyUtils:
 
         st = time.time()
         # calculate ego trajectories for all actions and time samples
-        ego_sx, ego_sv = SafetyUtils._calc_longitudinal_ego_trajectories(ego_init_fstate, specs_t, specs_v, specs_s,
-                                                                         time_samples)
+        ego_sx, ego_sv = SafetyUtils._create_longitudinal_ego_trajectories(ego_init_fstate, specs_t, specs_v, specs_s,
+                                                                           time_samples)
         time1 = time.time()-st
         st = time.time()
 
@@ -82,32 +82,6 @@ class SafetyUtils:
 
         time3 = time.time()-st
 
-        # time2 = time.time()-st
-        # st = time.time()
-        # # find the first time interval in lon_safe_times for each spec
-        # # the first safe time
-        # lon_safe_from = np.c_[lon_safe_times.astype(int), np.ones(actions_num)].argmax(axis=1)
-        # # the first unsafe time, after lon_safe_from
-        # lon_safe_till = [lon_safe_from[i] + np.append(row[lon_safe_from[i]:], 0).argmin()
-        #                  for i, row in enumerate(lon_safe_times)]
-        # T_d = np.minimum(specs_t, time_samples[np.clip(lon_safe_till, 0, samples_num - 1)])
-        #
-        # ego_dx, ego_dv = SafetyUtils._calc_lateral_ego_trajectories(ego_init_fstate, specs_t, specs_d,
-        #                                                             T_d, time_samples)
-        # ego_ftraj = np.dstack((ego_sx, ego_sv, zeros, ego_dx, ego_dv, zeros))
-        # time4 = time.time()-st
-        #
-        # predictions_mat = np.array([pred for i, pred in predictions.items()])
-        #
-        # st = time.time()
-        # safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, predictions_mat,
-        #                                                       np.array(list(obj_sizes.values())))
-        # safe_specs = np.repeat(None, len(specs))
-        # T_d_full = np.zeros(len(specs))
-        # T_d_full[spec_orig_idxs] = T_d
-        #
-        # safe_specs[spec_orig_idxs] = safe_times.all(axis=(1, 2))
-        # time5 = time.time()-st
         print('time1=%f time2=%f time3=%f' % (time1, time2, time3))
 
         return intervals
@@ -140,9 +114,9 @@ class SafetyUtils:
         return list(origin_lanes), list(target_lanes)
 
     @staticmethod
-    def _calc_longitudinal_ego_trajectories(ego_init_fstate: FrenetState2D,
-                                            specs_t: np.array, specs_v: np.array, specs_s: np.array,
-                                            time_samples: np.array) -> [np.array, np.array]:
+    def _create_longitudinal_ego_trajectories(ego_init_fstate: FrenetState2D,
+                                              specs_t: np.array, specs_v: np.array, specs_s: np.array,
+                                              time_samples: np.array) -> [np.array, np.array]:
         """
         Calculate longitudinal ego trajectory for the given time samples.
         :param ego_init_fstate:
@@ -153,22 +127,29 @@ class SafetyUtils:
         # TODO: Acceleration is not calculated.
 
         # duplicate time_samples array actions_num times
+
         actions_num = specs_t.shape[0]
         dup_time_samples = np.repeat(time_samples, actions_num).reshape(len(time_samples), actions_num)
 
         ds = specs_s - ego_init_fstate[FS_SX]
+        st = time.time()
         # profiles for the cases, when dynamic object is in front of ego
-        x_t = QuinticPoly1D.distance_by_constraints(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
-                                                    v_T=specs_v, ds=ds, T=specs_t)
-        sx = x_t(dup_time_samples)
+        sx = QuinticPoly1D.distance_by_constraints(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
+                                                   v_T=specs_v, ds=ds, T=specs_t, t=time_samples)
+        time3 = time.time()-st
+
         # set inf to samples outside specs_t
         outside_samples = np.where(dup_time_samples > specs_t)
-        sx[outside_samples[0], outside_samples[1]] = np.inf
-        sx = sx.transpose()
+        sx[outside_samples[1], outside_samples[0]] = np.inf
 
-        v_t = QuinticPoly1D.velocity_by_constraints(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
-                                                    v_T=specs_v, ds=ds, T=specs_t)
-        sv = np.transpose(v_t(dup_time_samples))
+        st = time.time()
+        sv = QuinticPoly1D.velocity_by_constraints(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
+                                                   v_T=specs_v, ds=ds, T=specs_t, t=time_samples)
+        time4 = time.time()-st
+
+        print('_create_longitudinal_ego_trajectories: time3=%f time4=%f specs=%d times=%d' %
+              (time3, time4, actions_num, len(time_samples)))
+
         return ego_init_fstate[FS_SX] + sx, sv
 
     @staticmethod
@@ -188,20 +169,23 @@ class SafetyUtils:
         actions_num = specs_t.shape[0]
         dup_time_samples = np.repeat(time_samples, actions_num).reshape(len(time_samples), actions_num)
 
-        trans_times = np.transpose(dup_time_samples)
         dd = specs_d - ego_init_fstate[FS_DX]
         # profiles for the cases, when dynamic object is in front of ego
-        d_t = QuinticPoly1D.distance_by_constraints(a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV],
-                                                    v_T=0, ds=dd, T=T_d)
-        dx = d_t(dup_time_samples)
+        dx = QuinticPoly1D.distance_by_constraints(a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV],
+                                                   v_T=0, ds=dd, T=T_d, t=time_samples)
+
+        dv = QuinticPoly1D.velocity_by_constraints(a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV],
+                                                   v_T=0, ds=dd, T=T_d, t=time_samples)
+
+        # fill all elements of dx & dv beyond T_d by the values of dx & dv at T_d
+        for i, td in enumerate(T_d):
+            last_sample = np.where(time_samples >= td)[0][0]
+            dx[:, last_sample+1:] = dx[:, last_sample:last_sample+1]
+            dv[:, last_sample+1:] = dv[:, last_sample:last_sample+1]
         # set inf to samples outside specs_t
         outside_samples = np.where(dup_time_samples > specs_t)
-        dx[outside_samples[0], outside_samples[1]] = np.inf
-        dx = dx.transpose()
+        dx[outside_samples[1], outside_samples[0]] = np.inf
 
-        v_t = QuinticPoly1D.velocity_by_constraints(a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV],
-                                                    v_T=0, ds=dd, T=T_d)
-        dv = np.transpose(v_t(dup_time_samples))
         return ego_init_fstate[FS_DX] + dx, dv
 
     @staticmethod
