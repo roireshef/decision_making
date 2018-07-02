@@ -132,24 +132,16 @@ class SafetyUtils:
         dup_time_samples = np.repeat(time_samples, actions_num).reshape(len(time_samples), actions_num)
 
         ds = specs_s - ego_init_fstate[FS_SX]
-        st = time.time()
         # profiles for the cases, when dynamic object is in front of ego
         sx = QuinticPoly1D.distance_by_constraints(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
                                                    v_T=specs_v, ds=ds, T=specs_t, t=time_samples)
-        time3 = time.time()-st
 
         # set inf to samples outside specs_t
         outside_samples = np.where(dup_time_samples > specs_t)
         sx[outside_samples[1], outside_samples[0]] = np.inf
 
-        st = time.time()
         sv = QuinticPoly1D.velocity_by_constraints(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
                                                    v_T=specs_v, ds=ds, T=specs_t, t=time_samples)
-        time4 = time.time()-st
-
-        print('_create_longitudinal_ego_trajectories: time3=%f time4=%f specs=%d times=%d' %
-              (time3, time4, actions_num, len(time_samples)))
-
         return ego_init_fstate[FS_SX] + sx, sv
 
     @staticmethod
