@@ -114,7 +114,7 @@ class PredictionUtils:
         return predicted_object_states
 
     @staticmethod
-    def dynamic_objects_and_ego_most_recent_timestamp(state: State) -> float:
+    def extract_most_recent_timestamp(state: State) -> float:
         """
         Returns state with all objects aligned to the most recent timestamp.
         Most recent timestamp is taken as the max between the current_timestamp, and the most recent
