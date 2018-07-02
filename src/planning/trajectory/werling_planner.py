@@ -380,8 +380,7 @@ class WerlingPlanner(TrajectoryPlanner):
         :param poly_impl: OptimalControlUtils 1d polynomial implementation class
         :return: a poly-coefficients-matrix of rows in the form [c0_s, c1_s, ... c5_s, c0_d, ..., c5_d]
         """
-        A = poly_impl.time_constraints_matrix(T)
-        A_inv = np.linalg.inv(A)
+        A_inv = poly_impl.inv_time_constraints_matrix(T)
         poly_coefs = poly_impl.solve(A_inv, constraints)
         return poly_coefs
 
