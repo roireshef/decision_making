@@ -21,7 +21,7 @@ class MapState(PUBSUB_MSG_IMPL):
         :return: A tuple consisting of: (the lane width,lateral position in frenet from right hand side of road,lane number between 0 and num_lanes-1)
         """
         # type: MapState -> (float, float, int)
-        lane_width = MapService.get_instance().get_road(self.road_id).lane_width
+        lane_width = MapService.get_instance().get_lane_width(self.road_id)
         lat_pos_from_right = self.road_fstate[FS_DX]
         lane = int(np.math.floor(lat_pos_from_right / lane_width))
         return lane_width, lat_pos_from_right, lane

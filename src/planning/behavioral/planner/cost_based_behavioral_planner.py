@@ -103,23 +103,9 @@ class CostBasedBehavioralPlanner:
             state.clone_with(dynamic_objects=terminal_dynamic_objects[i], ego_state=terminal_ego_states[i])
             for i in range(len(terminal_ego_states))]
 
-        terminal_behavioral_states = np.array([None]*len(action_specs))
-        valid_behavioral_grid_states = np.array(
-            [BehavioralGridState.create_from_state(terminal_state, self.logger) for terminal_state in
-             terminal_states])
-        terminal_behavioral_states[np.argwhere(mask)] = valid_behavioral_grid_states
-
-        # # Alternative impl which surprisingly takes less time:
-        # terminal_behavioral_states = []
-        # cnt = 0
-        # for i, spec in enumerate(action_specs):
-        #     if mask[i]:
-        #         terminal_behavioral_states.append(
-        #             BehavioralGridState.create_from_state(terminal_states[cnt], self.logger))
-        #         cnt += 1
-        #     else:
-        #         terminal_behavioral_states.append(None)
-        return terminal_behavioral_states
+        valid_behavioral_grid_states = (BehavioralGridState.create_from_state(terminal_state, self.logger)
+                                        for terminal_state in terminal_states)
+        return [valid_behavioral_grid_states.__next__() if m else None for m in mask]
 
     @staticmethod
     @prof.ProfileFunction()
