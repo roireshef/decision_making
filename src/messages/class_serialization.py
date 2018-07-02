@@ -15,7 +15,6 @@ MEMBERS_REMAPPING_KEY = 'members_remapping'
 
 
 class ClassSerializer(object):
-
     @staticmethod
     def get_annotations(class_type: Type) -> List[Tuple[str, Type]]:
         """
@@ -88,7 +87,7 @@ class ClassSerializer(object):
 
                 if allow_none_objects:
                     if message[name] is None:
-                        deser_dict[name] = None
+                        deser_dict[target_name] = None
                         continue
 
                 if issubclass(tpe, np.ndarray):
@@ -97,10 +96,12 @@ class ClassSerializer(object):
                     deser_dict[target_name] = tpe[message[name]['name']]
                 elif issubclass(tpe, List):
                     deser_dict[target_name] = list(
-                        map(lambda d: ClassSerializer.deserialize(class_type=tpe.__args__[0], message=d),
+                        map(lambda d: ClassSerializer.deserialize(class_type=tpe.__args__[0], message=d,
+                                                                  allow_none_objects=allow_none_objects),
                             message[name]['iterable']))
                 elif issubclass(tpe, PUBSUB_MSG_IMPL):
-                    deser_dict[target_name] = ClassSerializer.deserialize(class_type=tpe, message=message[name])
+                    deser_dict[target_name] = ClassSerializer.deserialize(class_type=tpe, message=message[name],
+                                                                          allow_none_objects=allow_none_objects)
                 else:
                     deser_dict[target_name] = message[name]
             return class_type(**deser_dict)
