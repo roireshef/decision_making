@@ -158,17 +158,14 @@ class SafetyUtils:
 
         ds = specs_s - ego_init_fstate[FS_SX]
         # profiles for the cases, when dynamic object is in front of ego
-        x_t = QuinticPoly1D.distance_by_constraints(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
-                                                    v_T=specs_v, ds=ds, T=specs_t)
-        sx = x_t(dup_time_samples)
+        sx = QuinticPoly1D.distance_by_constraints(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
+                                                   v_T=specs_v, ds=ds, T=specs_t, t=time_samples)
         # set inf to samples outside specs_t
         outside_samples = np.where(dup_time_samples > specs_t)
-        sx[outside_samples[0], outside_samples[1]] = np.inf
-        sx = sx.transpose()
+        sx[outside_samples[1], outside_samples[0]] = np.inf
 
-        v_t = QuinticPoly1D.velocity_by_constraints(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
-                                                    v_T=specs_v, ds=ds, T=specs_t)
-        sv = np.transpose(v_t(dup_time_samples))
+        sv = QuinticPoly1D.velocity_by_constraints(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
+                                                   v_T=specs_v, ds=ds, T=specs_t, t=time_samples)
         return ego_init_fstate[FS_SX] + sx, sv
 
     @staticmethod
@@ -188,20 +185,22 @@ class SafetyUtils:
         actions_num = specs_t.shape[0]
         dup_time_samples = np.repeat(time_samples, actions_num).reshape(len(time_samples), actions_num)
 
-        trans_times = np.transpose(dup_time_samples)
         dd = specs_d - ego_init_fstate[FS_DX]
         # profiles for the cases, when dynamic object is in front of ego
-        d_t = QuinticPoly1D.distance_by_constraints(a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV],
-                                                    v_T=0, ds=dd, T=T_d)
-        dx = d_t(dup_time_samples)
+        dx = QuinticPoly1D.distance_by_constraints(a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV],
+                                                   v_T=0, ds=dd, T=T_d, t=time_samples)
+
+        dv = QuinticPoly1D.velocity_by_constraints(a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV],
+                                                   v_T=0, ds=dd, T=T_d, t=time_samples)
+
+        # fill all elements of dx & dv beyond T_d by the values of dx & dv at T_d
+        for i, td in enumerate(T_d):
+            last_sample = np.where(time_samples >= td)[0][0]
+            dx[:, last_sample+1:] = dx[:, last_sample:last_sample+1]
+            dv[:, last_sample+1:] = dv[:, last_sample:last_sample+1]
         # set inf to samples outside specs_t
         outside_samples = np.where(dup_time_samples > specs_t)
-        dx[outside_samples[0], outside_samples[1]] = np.inf
-        dx = dx.transpose()
-
-        v_t = QuinticPoly1D.velocity_by_constraints(a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV],
-                                                    v_T=0, ds=dd, T=T_d)
-        dv = np.transpose(v_t(dup_time_samples))
+        dx[outside_samples[1], outside_samples[0]] = np.inf
         return ego_init_fstate[FS_DX] + dx, dv
 
     @staticmethod
