@@ -1,13 +1,13 @@
 from unittest.mock import patch
 
-from decision_making.src.state.state import NewDynamicObject
+from decision_making.src.state.state import DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from decision_making.test.planning.custom_fixtures import dyn_obj_outside_road, dyn_obj_on_road
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-def test_isObjectOnRoad_objectOffOfRoad_False(dyn_obj_outside_road: NewDynamicObject):
+def test_isObjectOnRoad_objectOffOfRoad_False(dyn_obj_outside_road: DynamicObject):
     """
     :param ego_state_fix: Fixture of an ego state.
 
@@ -20,7 +20,7 @@ def test_isObjectOnRoad_objectOffOfRoad_False(dyn_obj_outside_road: NewDynamicOb
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-def test_isObjectOnRoad_objectOnRoad_True(dyn_obj_on_road: NewDynamicObject):
+def test_isObjectOnRoad_objectOnRoad_True(dyn_obj_on_road: DynamicObject):
     """
     :param pubsub: Inter-process communication interface.
     :param ego_state_fix: Fixture of an ego state.

@@ -8,8 +8,9 @@ from decision_making.src.planning.types import CartesianTrajectory, C_YAW, Carte
     CartesianTrajectories, CartesianPaths2D, CartesianPoint2D, C_A, C_K, C_V, CartesianExtendedTrajectories, \
     FrenetTrajectories2D, FS_DX
 from decision_making.src.planning.utils.math import Math
-from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import DynamicObject, State
+from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.state.state import State, DynamicObject
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
@@ -89,7 +90,7 @@ class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
         # TODO: make this more efficient by removing for loop
         self._H_inv = np.zeros((poses.shape[0], 3, 3))
         for pose_ind in range(poses.shape[0]):
-            H = CartesianFrame.homo_matrix_2d(poses[pose_ind, C_YAW], poses[pose_ind, :C_YAW])
+            H = CartesianFrame.homo_matrix_2d(poses[pose_ind].cartesian_state[C_YAW], poses[pose_ind].cartesian_state[:C_YAW])
             self._H_inv[pose_ind] = np.linalg.inv(H).transpose()
 
     def convert_to_obstacle_coordinate_frame(self, points: np.ndarray):
@@ -104,7 +105,7 @@ class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
 
     @classmethod
     def from_object(cls, obj: DynamicObject, k: float, offset: CartesianPoint2D, time_samples: np.ndarray,
-                    predictor: Predictor):
+                    predictor: EgoAwarePredictor):
         """
         Additional constructor that takes a ObjectState from the State object and wraps it
         :param obj: ObjectState object from State object (in global coordinates)
@@ -115,7 +116,7 @@ class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
         :return: new instance
         """
         # get predictions of the dynamic object in global coordinates
-        predictions = predictor.predict_object(obj, time_samples)
+        predictions = np.array(predictor.predict_object(obj, time_samples))
         return cls(predictions, obj.size.length, obj.size.width, k, offset)
 
 
@@ -164,7 +165,7 @@ class Costs:
     @staticmethod
     def compute_pointwise_costs(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D,
                                 state: State, params: TrajectoryCostParams,
-                                global_time_samples: np.ndarray, predictor: Predictor, dt: float) -> \
+                                global_time_samples: np.ndarray, predictor: RoadFollowingPredictor, dt: float) -> \
             [np.ndarray, np.ndarray, np.ndarray]:
         """
         Compute obstacle, deviation and jerk costs for every trajectory point separately.
@@ -192,13 +193,13 @@ class Costs:
 
     @staticmethod
     def compute_obstacle_costs(ctrajectories: CartesianExtendedTrajectories, state: State, params: TrajectoryCostParams,
-                               global_time_samples: np.ndarray, predictor: Predictor):
+                               global_time_samples: np.ndarray, predictor: RoadFollowingPredictor):
         """
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
         :param state: the state object (that includes obstacles, etc.)
         :param params: parameters for the cost function (from behavioral layer)
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
-        :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
+        :param predictor: predictor instance to use to compute future localizations for DynamicObjects
         :return: MxN matrix of obstacle costs per point, where N is trajectories number, M is trajectory length
         """
         offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])

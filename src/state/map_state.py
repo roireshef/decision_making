@@ -1,5 +1,5 @@
 import numpy as np
-from gm_lcm import LcmMapState
+from common_data.lcm.generatedFiles.gm_lcm import LcmMapState
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import FrenetState2D, FS_DX
@@ -16,28 +16,30 @@ class MapState(PUBSUB_MSG_IMPL):
         self.road_fstate = road_fstate
         self.road_id = road_id
 
-    # TODO: implement. Consider whether this is a property of map state or a different function in Map Utils.
+    def get_current_lane_params(self):
+        """
+        :return: A tuple consisting of: (the lane width,lateral position in frenet from right hand side of road,lane number between 0 and num_lanes-1)
+        """
+        # type: MapState -> (float, float, int)
+        lane_width = MapService.get_instance().get_road(self.road_id).lane_width
+        lat_pos_from_right = self.road_fstate[FS_DX]
+        lane = int(np.math.floor(lat_pos_from_right / lane_width))
+        return lane_width, lat_pos_from_right, lane
+
     @property
     def lane_center_lat(self):
-        lane_width = MapService.get_instance().get_road(self.road_id).lane_width
-        lat = self.road_fstate[FS_DX]
-        lane = np.math.floor(lat / lane_width)
-        return (lane+0.5)*lane_width
+        lane_width, _, lane_num = self.get_current_lane_params()
+        return (lane_num+0.5)*lane_width
 
-    # TODO: implement
     @property
     def intra_lane_lat(self) -> int:
-        lane_width = MapService.get_instance().get_road(self.road_id).lane_width
-        lat = self.road_fstate[FS_DX]
-        lane = np.math.floor(lat / lane_width)
-        return lat - lane * lane_width
+        lane_width, lat_pos_from_right, lane_num = self.get_current_lane_params()
+        return lat_pos_from_right - lane_num * lane_width
 
-    # TODO: implement lane number computation from map and fstate
     @property
     def lane_num(self) -> int:
-        lane_width = MapService.get_instance().get_road(self.road_id).lane_width
-        lat = self.road_fstate[FS_DX]
-        return int(np.math.floor(lat / lane_width))
+        _, _, lane = self.get_current_lane_params()
+        return lane
 
     def serialize(self):
         # type: () -> LcmMapState
@@ -49,8 +51,5 @@ class MapState(PUBSUB_MSG_IMPL):
     @classmethod
     def deserialize(cls, lcm_msg):
         # type: (LcmMapState) -> MapState
-        return cls(np.ndarray(shape=tuple(lcm_msg.lane_state.shape)
-                              , buffer=np.array(lcm_msg.lane_state.data)
-                              , dtype=float)
-        ,lcm_msg.road_id)
-
+        return cls(np.ndarray(shape=tuple(lcm_msg.road_fstate.shape)
+                              , buffer=np.array(lcm_msg.road_fstate.data), dtype=float), lcm_msg.road_id)

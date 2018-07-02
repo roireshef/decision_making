@@ -1,5 +1,4 @@
-import numpy as np
-from decision_making.src.planning.types import FP_SX, FrenetState2D, FS_SX, C_X, C_Y, CartesianExtendedState, FS_DX
+from decision_making.src.planning.types import FrenetState2D, C_X, C_Y, CartesianExtendedState, FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.state.map_state import MapState
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
@@ -10,25 +9,7 @@ class MapUtils:
     # TODO: replace with navigation plan aware function from map API
     @staticmethod
     def get_road_rhs_frenet(obj):
-        return MapService.get_instance()._rhs_roads_frenet[obj.road_localization.road_id]
-
-    # TODO: replace this call with the road localization once it is updated to be hold a frenet state
-    @staticmethod
-    def get_object_road_localization(obj, road_frenet: FrenetSerret2DFrame) -> FrenetState2D:
-        target_obj_fpoint = road_frenet.cpoint_to_fpoint(np.array([obj.x, obj.y]))
-        obj_init_fstate = road_frenet.cstate_to_fstate(np.array([
-            obj.x, obj.y,
-            obj.yaw,
-            obj.total_speed,
-            obj.acceleration_lon,
-            road_frenet.get_curvature(target_obj_fpoint[FP_SX])  # We zero the object's curvature relative to the road
-        ]))
-        return obj_init_fstate
-
-    @staticmethod
-    def get_ego_road_localization(ego, road_frenet: FrenetSerret2DFrame):
-        ego_init_cstate = np.array([ego.x, ego.y, ego.yaw, ego.v_x, ego.acceleration_lon, ego.curvature])
-        return road_frenet.cstate_to_fstate(ego_init_cstate)
+        return MapService.get_instance()._rhs_roads_frenet[obj.map_state.road_id]
 
     @staticmethod
     def convert_cartesian_to_map_state(cartesian_state: CartesianExtendedState):
@@ -54,7 +35,7 @@ class MapUtils:
 
         return road_frenet.fstate_to_cstate(map_state.road_fstate)
 
-    #TODO: Note! This function is only valid when the frenet reference frame is from the right side of the road
+    # TODO: Note! This function is only valid when the frenet reference frame is from the right side of the road
     @staticmethod
     def is_object_on_road(map_state):
         # type: (MapState) -> bool

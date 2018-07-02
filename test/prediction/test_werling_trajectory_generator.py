@@ -6,7 +6,6 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from decision_making.src.prediction.ego_aware_prediction.maneuver_spec import ManeuverSpec
 from decision_making.src.state.state import State
 from mapping.src.service.map_service import MapService
-from prediction_research.data.ngsim.analysis.map_tools import draw_map
 from decision_making.test.prediction.conftest import PREDICTION_HORIZON
 from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.werling_trajectory_generator import \
     WerlingTrajectoryGenerator
@@ -22,18 +21,9 @@ def test_generateTrajectory_sampleParameters_resultPrecise(werling_trajectory_ge
     map_api = MapService.get_instance()
 
     road_id = target_obj.map_state.road_id
-    road_points = map_api._shift_road_points_to_latitude(road_id, 0.0)  # TODO: use nav_plan
-    road_frenet_frame = FrenetSerret2DFrame(road_points)
+    road_frenet_frame = MapService.get_instance()._rhs_roads_frenet[road_id]
 
-    target_obj_fpoint = road_frenet_frame.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))
-    _, _, _, road_curvature_at_obj_location, _ = road_frenet_frame._taylor_interp(target_obj_fpoint[FP_SX])
-    obj_init_fstate = road_frenet_frame.cstate_to_fstate(np.array([
-        target_obj.x, target_obj.y,
-        target_obj.yaw,
-        target_obj.velocity,
-        target_obj.acceleration,
-        road_curvature_at_obj_location  # We don't care about other agent's curvature, only the road's
-    ]))
+    obj_init_fstate = target_obj.map_state.road_fstate
 
     # Set final state to advance 20[m] in lon and the width of a road lane in lat
     obj_final_fstate = np.array(obj_init_fstate)
@@ -62,7 +52,6 @@ def test_generateTrajectory_sampleParameters_resultPrecise(werling_trajectory_ge
         plt.title('Trajectory in Frenet coordinates')
 
         plt.subplot(212)
-        draw_map()
         plt.plot(generated_ctrajectory[:, C_X], generated_ctrajectory[:, C_Y], '-r')
         plt.title('Trajectory in Map coordinates')
 

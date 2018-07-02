@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING
-from decision_making.src.state.state import OccupancyState, EgoState, NewEgoState
+from decision_making.src.state.state import OccupancyState, EgoState
 from decision_making.src.state.state_module import StateModule
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH, FILTER_OBJECT_OFF_ROAD_PATH
 from gm_lcm import LcmPerceivedDynamicObjectList
@@ -16,7 +16,7 @@ import numpy as np
 def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(pubsub: PubSub,
                                                                      dynamic_objects_in_fov: LcmPerceivedDynamicObjectList,
                                                                      dynamic_objects_not_in_fov: LcmPerceivedDynamicObjectList,
-                                                                     ego_state_fix: NewEgoState):
+                                                                     ego_state_fix: EgoState):
     """
     :param pubsub: Inter-process communication interface.
     :param dynamic_objects_in_fov: Fixture of a serialized dynamic object data located within the field of view
@@ -62,8 +62,8 @@ def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(pubsub: Pub
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 @patch(FILTER_OBJECT_OFF_ROAD_PATH, False)
 def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: PubSub,
-                                                                                   dynamic_objects_not_on_road: LcmPerceivedDynamicObjectList,
-                                                                                   ego_state_fix: NewEgoState):
+                                                                       dynamic_objects_not_on_road: LcmPerceivedDynamicObjectList,
+                                                                       ego_state_fix: EgoState):
     """
     :param pubsub: Inter-process communication interface.
     :param ego_state_fix: Fixture of an ego state.
@@ -83,8 +83,8 @@ def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: P
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_dynamicObjCallbackWithFilter_objectOffRoad_stateWithoutObject(pubsub: PubSub,
-                                                                                   dynamic_objects_not_on_road: LcmPerceivedDynamicObjectList,
-                                                                                   ego_state_fix: NewEgoState):
+                                                                       dynamic_objects_not_on_road: LcmPerceivedDynamicObjectList,
+                                                                       ego_state_fix: EgoState):
     """
     :param pubsub: Inter-process communication interface.
     :param ego_state_fix: Fixture of an ego state.

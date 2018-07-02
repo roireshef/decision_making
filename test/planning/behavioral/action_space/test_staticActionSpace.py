@@ -4,7 +4,7 @@ from decision_making.src.planning.behavioral.action_space.static_action_space im
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
-from decision_making.src.state.state import ObjectSize, EgoState, State
+from decision_making.src.state.state import ObjectSize, State, EgoState
 from mapping.src.service.map_service import MapService
 
 
@@ -23,7 +23,9 @@ def test_specifyGoals_closeToTargetVelocity_specifyNotFail():
     ego_vel = target_vel + 0.01
     ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon,
                                                                                        road_mid_lat - lane_width)
-    ego = EgoState(0, 0, ego_cpoint[0], ego_cpoint[1], ego_cpoint[2], ego_yaw, size, 0, ego_vel, 0, 0, 0)
+    ego = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
+                                               cartesian_state=[ego_cpoint[0], ego_cpoint[1], ego_yaw, ego_vel, 0, 0],
+                                               size=size, confidence=0)
 
     state = State(None, [], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, logger)
