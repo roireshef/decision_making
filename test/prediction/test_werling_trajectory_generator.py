@@ -6,7 +6,6 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from decision_making.src.prediction.ego_aware_prediction.maneuver_spec import ManeuverSpec
 from decision_making.src.state.state import State
 from mapping.src.service.map_service import MapService
-from prediction_research.data.ngsim.analysis.map_tools import draw_map
 from decision_making.test.prediction.conftest import PREDICTION_HORIZON
 from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.werling_trajectory_generator import \
     WerlingTrajectoryGenerator
@@ -62,7 +61,6 @@ def test_generateTrajectory_sampleParameters_resultPrecise(werling_trajectory_ge
         plt.title('Trajectory in Frenet coordinates')
 
         plt.subplot(212)
-        draw_map()
         plt.plot(generated_ctrajectory[:, C_X], generated_ctrajectory[:, C_Y], '-r')
         plt.title('Trajectory in Map coordinates')
 

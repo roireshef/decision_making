@@ -10,11 +10,11 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
     StaticActionRecipe
 from decision_making.src.state.state import OccupancyState, State, EgoState, DynamicObject, ObjectSize
 from mapping.src.model.map_api import MapAPI
-from mapping.src.service.map_service import MapService, MapServiceArgs
+from mapping.src.service.map_service import MapService
 
 @pytest.fixture(scope='function')
 def pg_map_api():
-    MapService.initialize(MapServiceArgs(map_source='TestingGroundMap3Lanes.bin'))
+    MapService.initialize(map_file='TestingGroundMap3Lanes.bin')
     yield MapService.get_instance()
 
 
