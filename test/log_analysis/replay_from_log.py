@@ -5,6 +5,7 @@ import numpy as np
 
 from common_data.lcm.config import pubsub_topics
 from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING
+from decision_making.src.messages.class_serialization import ClassSerializer
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -12,7 +13,6 @@ from decision_making.src.planning.trajectory.werling_planner import WerlingPlann
 from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
-from decision_making.test.log_analysis.log_messages import LogMsg
 from decision_making.test.log_analysis.parse_log_messages import STATE_IDENTIFIER_STRING_BP, \
     STATE_IDENTIFIER_STRING_TP, STATE_IDENTIFIER_STRING_STATE_MODULE, DmLogParser
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
@@ -33,7 +33,7 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         :return: deserialized State
         """
         input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
-        object_state = LogMsg.deserialize(class_type=State, message=input_state)
+        object_state = ClassSerializer.deserialize(class_type=State, message=input_state)
         return object_state
 
     def _get_mission_params(self) -> TrajectoryParams:
@@ -44,7 +44,7 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         :return: deserialized trajectory parameters
         """
         input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_TOPIC, timeout=1)
-        object_params = LogMsg.deserialize(class_type=TrajectoryParams, message=input_params)
+        object_params = ClassSerializer.deserialize(class_type=TrajectoryParams, message=input_params)
         return object_params
 
 
@@ -119,12 +119,12 @@ def main():
     ###########################
 
     # Convert log messages to dict
-    tp_params_msg = LogMsg.convert_message_to_dict(tp_module_states[tp_params_message_index])
-    tp_state_msg = LogMsg.convert_message_to_dict(tp_states[tp_state_message_index])
+    tp_params_msg = ClassSerializer.convert_message_to_dict(tp_module_states[tp_params_message_index])
+    tp_state_msg = ClassSerializer.convert_message_to_dict(tp_states[tp_state_message_index])
 
     # Deserialize from dict to object
-    tp_params = LogMsg.deserialize(class_type=TrajectoryParams, message=tp_params_msg)
-    tp_state = LogMsg.deserialize(class_type=State, message=tp_state_msg)
+    tp_params = ClassSerializer.deserialize(class_type=TrajectoryParams, message=tp_params_msg)
+    tp_state = ClassSerializer.deserialize(class_type=State, message=tp_state_msg)
 
     # Serialize object to PubSub dict
     tp_state_serialized = tp_state.to_dict()
