@@ -12,27 +12,40 @@ class SafetyUtils:
     @staticmethod
     def calc_safe_T_d(ego_fstate: FrenetState2D, ego_size: np.array, specs: np.array, specs_mask: np.array,
                       time_samples: np.array, predictions: np.array, obj_sizes: np.array) -> np.array:
-
+        """
+        Calculate maximal safe T_d for each given action spec.
+        If an action is not safe, the appropriate T_d is 0.
+        :param ego_fstate: initial ego frenet state
+        :param ego_size: array of size 2
+        :param specs: array of ActionSpec
+        :param specs_mask: boolean array of size specs.shape[0]
+        :param time_samples: array of time samples for the given predictions; samples_num = predictions.shape[1]
+        :param predictions: 2D array of objects predictions; shape: objects_num x samples_num
+        :param obj_sizes: 2D array of objects' sizes; shape: objects_num x 2
+        :return: 1D array of T_d per spec.
+        """
         samples_num = time_samples.shape[0]
-
+        # collect non-filtered specs details: t,v,s,d, and mapping between valid specs and all specs.
         specs_arr = np.array([np.array([i, spec.t, spec.v, spec.s, spec.d])
                               for i, spec in enumerate(specs) if specs_mask[i]])
         (spec_orig_idxs, specs_t, specs_v, specs_s, specs_d) = specs_arr.transpose()
         spec_orig_idxs = spec_orig_idxs.astype(int)
 
-        # calculate maximal safe T_d for all specs
-
         st_tot = time.time()
         st = time.time()
-        actions_num = specs_t.shape[0]  # after filtering!
+        valid_specs_num = specs_t.shape[0]  # after filtering
 
-        T_d = np.arange(7, 3 - np.finfo(np.float16).eps, -1)
+        # choose a grid of T_d between reasonable bounds
+        grid_resolution = 1  # seconds between two adjacent T_d samples
+        T_d = np.arange(7, 3 - np.finfo(np.float16).eps, -grid_resolution)
         T_d_num = T_d.shape[0]
 
+        # calculate ego lateral trajectories (only location and velocity) for all specs and all T_d values
         ego_dx, ego_dv = TrajectoriesGenerator.calc_lateral_trajectories(ego_fstate, specs_d, T_d, time_samples)
         lat_time = time.time()-st
         st = time.time()
 
+        # calculate ego longitudinal trajectories (only location and velocity) for all specs
         ego_sx, ego_sv = TrajectoriesGenerator.calc_longitudinal_trajectories(ego_fstate, specs_t, specs_v, specs_s,
                                                                               time_samples)
         lon_time = time.time()-st
@@ -41,31 +54,32 @@ class SafetyUtils:
         dup_ego_sx = np.tile(ego_sx, T_d_num).reshape(specs_t.shape[0] * T_d_num, samples_num)
         dup_ego_sv = np.tile(ego_sv, T_d_num).reshape(specs_t.shape[0] * T_d_num, samples_num)
         zeros = np.zeros(dup_ego_sx.shape)
-
+        # ego Frenet trajectories
         ego_ftraj = np.dstack((dup_ego_sx, dup_ego_sv, zeros, ego_dx, ego_dv, zeros))
 
         dup_time = time.time()-st
         st = time.time()
 
-        # 3D array; safe times for all actions, T_d's, objects, time samples;
-        # shape: actions_num*T_d_num x objects_num x samples_num
+        # calculate RSS for all trajectories and all time samples
+        # returns 3D array; safe times for all valid specs, T_d's, objects, time samples;
+        # shape: valid_specs_num*T_d_num x objects_num x samples_num
         safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, predictions, obj_sizes)
 
         RSS_time = time.time()-st
 
-        # 2D array; safe times for all actions and T_d's; shape: actions_num x T_d_num
-        safe_specs_T_d = safe_times.all(axis=(1, 2)).reshape(actions_num, T_d_num)
+        # 2D array; safe times for all actions and T_d's; shape: valid_specs x T_d_num
+        safe_specs_T_d = safe_times.all(axis=(1, 2)).reshape(valid_specs_num, T_d_num)
 
         # 1D array; unsafe actions; shape: actions_num
         unsafe_specs = np.logical_not(safe_specs_T_d).all(axis=1)
 
-        # 1D array; maximal safe T_d for each action; shape: actions_num
+        # 1D array; maximal safe T_d for each valid spec; shape: valid_specs
         max_safe_T_d = T_d[np.argmax(safe_specs_T_d, axis=1)]  # for each spec find max T_d
         max_safe_T_d[unsafe_specs] = 0
 
         # 1D array; maximal safe T_d for each spec; shape: specs.shape[0]
         safe_T_d = np.zeros(len(specs))
-        safe_T_d[spec_orig_idxs[np.arange(0, actions_num)]] = max_safe_T_d
+        safe_T_d[spec_orig_idxs[np.arange(0, valid_specs_num)]] = max_safe_T_d
 
         time_tot = time.time() - st_tot
 
