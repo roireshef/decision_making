@@ -34,7 +34,5 @@ class Transformations:
         transformed_ego_cstate = Transformations.transform_trajectory_between_ego_center_and_ego_origin(
             trajectory=np.array([ego_cstate]), direction=-1)[0]
         # return cloned ego state with transformed position (since road_localization should be recomputed)
-        # cartesian_state = np.array([transformed_ego_cstate[0], transformed_ego_cstate[1], ego_state.yaw, ego_state.velocity,
-        #                             ego_state.acceleration, 0])
         cartesian_state = np.concatenate((transformed_ego_cstate, ego_cstate[C_YAW:]))
         return ego_state.clone_from_cartesian_state(cartesian_state)
