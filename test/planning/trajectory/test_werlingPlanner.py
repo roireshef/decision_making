@@ -56,7 +56,7 @@ def test_werlingPlanner_toyScenario_noException():
     obs = list([
         DynamicObject.create_from_cartesian_state(obj_id=0, timestamp=950 * 10e6, cartesian_state=[pos1[0], pos1[1], yaw1, 0, 0, 0],
                                                   size=ObjectSize(1.5, 0.5, 0), confidence=1.0),
-        DynamicObject.create_from_cartesian_state(obj_id=0, timestamp=950 * 10e6,
+        DynamicObject.create_from_cartesian_state(obj_id=1, timestamp=950 * 10e6,
                                                   cartesian_state=[pos2[0], pos2[1], yaw2, 0, 0, 0],
                                                   size=ObjectSize(1.5, 0.5, 0), confidence=1.0)
     ])
@@ -205,7 +205,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             assert time_samples.shape[0] == ctrajectories.shape[1]
 
             offsets = np.array([cost_params.obstacle_cost_x.offset, cost_params.obstacle_cost_y.offset])
-            plottable_obs = [PlottableSigmoidDynamicBoxObstacle(o, cost_params.obstacle_cost_x.k, offsets, time_samples,
+            plottable_obs = [PlottableSigmoidDynamicBoxObstacle(state,o, cost_params.obstacle_cost_x.k, offsets, time_samples,
                                                                 planner.predictor)
                              for o in state.dynamic_objects]
 

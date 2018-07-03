@@ -29,7 +29,7 @@ from decision_making.src.planning.trajectory.werling_planner import SamplableWer
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
-from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, ObjectSize, EgoState
 from decision_making.src.utils.map_utils import MapUtils
@@ -42,7 +42,7 @@ class CostBasedBehavioralPlanner:
     def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
                  action_spec_evaluator: Optional[ActionSpecEvaluator],
                  action_spec_validator: Optional[ActionSpecFiltering],
-                 value_approximator: ValueApproximator, predictor: RoadFollowingPredictor, logger: Logger):
+                 value_approximator: ValueApproximator, predictor: EgoAwarePredictor, logger: Logger):
         self.action_space = action_space
         self.recipe_evaluator = recipe_evaluator
         self.action_spec_evaluator = action_spec_evaluator

@@ -1,5 +1,4 @@
 import copy
-from common_data.lcm.generatedFiles.gm_lcm import LcmEgoState
 from typing import List, Optional
 
 import numpy as np
@@ -11,14 +10,12 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmObjectSize
 from common_data.lcm.generatedFiles.gm_lcm import LcmOccupancyState
 from common_data.lcm.generatedFiles.gm_lcm import LcmState
 
-from decision_making.src.exceptions import NoUniqueObjectStateForEvaluation
+from decision_making.src.exceptions import MultipleObjectsWithRequestedID
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
-from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K
+from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K
 from decision_making.src.state.map_state import MapState
-from decision_making.src.utils.lcm_utils import LCMUtils
+from common_data.lcm.python.utils.lcm_utils import LCMUtils
 from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.model.localization import RoadLocalization
-from mapping.src.service.map_service import MapService
 
 
 class OccupancyState(PUBSUB_MSG_IMPL):
@@ -188,10 +185,6 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def timestamp_in_sec(self):
         return DynamicObject.ticks_to_sec(self.timestamp)
 
-    @timestamp_in_sec.setter
-    def timestamp_in_sec(self, value):
-        self.timestamp = DynamicObject.sec_to_ticks(value)
-
     @classmethod
     def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence):
         # type: (int, int, CartesianExtendedState, ObjectSize, float) -> DynamicObject
@@ -356,7 +349,7 @@ class State(PUBSUB_MSG_IMPL):
 
         # Verify that object exists in state exactly once
         if len(selected_objects) != 1:
-            raise NoUniqueObjectStateForEvaluation(
+            raise MultipleObjectsWithRequestedID(
                 'Found %d matching objects for object ID %d' % (len(selected_objects), target_obj_id))
 
         return selected_objects[0]

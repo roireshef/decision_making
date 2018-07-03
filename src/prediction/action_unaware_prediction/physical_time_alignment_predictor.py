@@ -77,9 +77,8 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
     def _predict_object(self, dynamic_object: DynamicObject, prediction_timestamp: float) \
             -> List[DynamicObject]:
         """
-        Method to compute future locations, yaw, and velocities for dynamic objects. Dynamic objects are predicted as
-        continuing in the same intra road lat and following the road's curve in constant
-        velocity (velocity is assumed to be in the road's direction, meaning no lateral movement)
+         Performs physical prediction (constant velocity in x,y) for the purpose of short time alignment
+        between ego and dynamic objects, for a single object.
         :param dynamic_object: in map coordinates
         :param prediction_timestamp: a timestamp in [sec] to predict_object_trajectories for. In ascending
         order. Global, not relative
@@ -95,7 +94,7 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
             [predicted_x, predicted_y, dynamic_object.yaw, dynamic_object.velocity, 0, DEFAULT_CURVATURE])
 
         predicted_object_states = PredictionUtils.convert_ctrajectory_to_dynamic_objects(dynamic_object,
-                                                                                         [obj_final_cstate],
+                                                                                         obj_final_cstate[np.newaxis, :],
                                                                                          np.array(
                                                                                              [prediction_timestamp]))
         return predicted_object_states

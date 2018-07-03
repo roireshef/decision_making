@@ -3,7 +3,7 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmMapState
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import FrenetState2D, FS_DX
-from decision_making.src.utils.lcm_utils import LCMUtils
+from common_data.lcm.python.utils.lcm_utils import LCMUtils
 from mapping.src.service.map_service import MapService
 
 

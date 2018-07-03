@@ -104,10 +104,11 @@ class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
         return np.abs(np.einsum('ijk, jkl -> ijl', points_ext, self._H_inv)[:, :, :(C_Y+1)])
 
     @classmethod
-    def from_object(cls, obj: DynamicObject, k: float, offset: CartesianPoint2D, time_samples: np.ndarray,
+    def from_object(cls, state: State, obj: DynamicObject, k: float, offset: CartesianPoint2D, time_samples: np.ndarray,
                     predictor: EgoAwarePredictor):
         """
         Additional constructor that takes a ObjectState from the State object and wraps it
+        :param state:
         :param obj: ObjectState object from State object (in global coordinates)
         :param k:
         :param offset: longitudinal & lateral margins (half size of ego)
@@ -116,7 +117,7 @@ class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
         :return: new instance
         """
         # get predictions of the dynamic object in global coordinates
-        predictions = predictor.predict_object(obj, time_samples)
+        predictions = predictor.predict_objects(state, [obj.obj_id], time_samples, None)[obj.obj_id]
         return cls(predictions, obj.size.length, obj.size.width, k, offset)
 
 
@@ -204,7 +205,7 @@ class Costs:
         """
         offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
         close_obstacles = \
-            [SigmoidDynamicBoxObstacle.from_object(obj=obs, k=params.obstacle_cost_x.k, offset=offset,
+            [SigmoidDynamicBoxObstacle.from_object(state= state, obj=obs, k=params.obstacle_cost_x.k, offset=offset,
                                                    time_samples=global_time_samples, predictor=predictor)
              for obs in state.dynamic_objects
              if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < PLANNING_LOOKAHEAD_DIST]
