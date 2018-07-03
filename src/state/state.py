@@ -22,7 +22,7 @@ from mapping.src.service.map_service import MapService
 
 
 class OccupancyState(PUBSUB_MSG_IMPL):
-    ''' Members annotations for python 2 compliant classes '''
+    """ Members annotations for python 2 compliant classes """
     timestamp = int
     free_space = np.ndarray
     confidence = np.ndarray
@@ -68,7 +68,7 @@ class OccupancyState(PUBSUB_MSG_IMPL):
 
 
 class ObjectSize(PUBSUB_MSG_IMPL):
-    ''' Members annotations for python 2 compliant classes '''
+    """ Members annotations for python 2 compliant classes """
     length = float
     width = float
     height = float
@@ -163,12 +163,22 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
     @staticmethod
     def sec_to_ticks(time_in_seconds: float):
-        # type: (float) -> int
+        """
+        Convert seconds to ticks (nanoseconds)
+        :param time_in_seconds:
+        :return: time in ticks (nanoseconds)
+        """
+        # type: float -> int
         return int(round(time_in_seconds / TIMESTAMP_RESOLUTION_IN_SEC))
 
     @staticmethod
     def ticks_to_sec(time_in_nanoseconds: int):
-        # type: (int) -> float
+        """
+        Convert ticks (nanoseconds) to seconds
+        :param time_in_nanoseconds:
+        :return: time in seconds
+        """
+        # type: int -> float
         return time_in_nanoseconds * TIMESTAMP_RESOLUTION_IN_SEC
 
     @property
@@ -247,7 +257,6 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 class EgoState(DynamicObject):
     def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
         # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float) -> EgoState
-
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
 
@@ -279,7 +288,7 @@ class EgoState(DynamicObject):
 
 
 class State(PUBSUB_MSG_IMPL):
-    ''' Members annotations for python 2 compliant classes '''
+    """ Members annotations for python 2 compliant classes """
     occupancy_state = OccupancyState
     dynamic_objects = List[DynamicObject]
     ego_state = EgoState
@@ -349,7 +358,7 @@ class State(PUBSUB_MSG_IMPL):
 
         return selected_objects[0]
 
-  # TODO: remove when access to dynamic objects according to dictionary will be available.
+    # TODO: remove when access to dynamic objects according to dictionary will be available.
     @classmethod
     def get_objects_from_state(cls, state, target_obj_ids):
         # type: (State, List) -> List[DynamicObject]
