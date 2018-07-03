@@ -139,12 +139,10 @@ class BehavioralGridState(BehavioralState):
         adjacent_lanes = [x.value for x in RelativeLane]
 
         for obj in objects:
-            relative_lane = obj.dynamic_object.map_state.lane_num - ego_lane
+            # Compute relative lane to ego
+            object_relative_lane = RelativeLane(obj.dynamic_object.map_state.lane_num - ego_lane)
             # ignore vehicles out of pre-defined range and vehicles not in adjacent lanes
-            if abs(obj.longitudinal_distance) <= PLANNING_LOOKAHEAD_DIST and relative_lane in adjacent_lanes:
-                # Compute relative lane to ego
-                object_relative_lane = RelativeLane(obj.dynamic_object.map_state.lane_num - ego_lane)
-
+            if abs(obj.longitudinal_distance) <= PLANNING_LOOKAHEAD_DIST and object_relative_lane.value in adjacent_lanes:
                 # compute longitudinal projection on the grid
                 object_relative_long = BehavioralGridState._get_longitudinal_grid_cell(obj, ego_state)
 
