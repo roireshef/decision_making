@@ -325,7 +325,6 @@ def test_calcSafeTd():
 
     F = create_canonic_object(1, 0, ego_lon + 25, ego_lat, ego_vel, obj_sizes[0], road_frenet)
     LF = create_canonic_object(2, 0, ego_lon + 20, ego_lat + lane_width, ego_vel + 6, obj_sizes[1], road_frenet)
-    # L = create_canonic_object(3, 0, ego_lon - 3, ego_lat + lane_width, ego_vel, obj_sizes[2], road_frenet)
     LB = create_canonic_object(4, 0, ego_lon - 40, ego_lat + lane_width, ego_vel + 2, obj_sizes[3], road_frenet)
     objects = [F, LF, LB]
 
