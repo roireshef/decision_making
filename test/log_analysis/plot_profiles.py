@@ -8,7 +8,8 @@ from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanM
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticActionType
 from decision_making.src.planning.types import C_V
 from decision_making.src.state.state import State
-from decision_making.test.log_analysis.log_messages import LogMsg
+# from decision_making.test.log_analysis.log_messages import LogMsg
+from decision_making.src.messages.class_serialization import ClassSerializer
 from decision_making.test.log_analysis.parse_log_messages import DmLogParser, \
     STATE_IDENTIFIER_STRING_BP, STATE_IDENTIFIER_STRING_TP, STATE_IDENTIFIER_STRING_STATE_MODULE, \
     STATE_IDENTIFIER_STRING_STATE_MODULE_SIMULATION
@@ -59,9 +60,9 @@ def main():
     colors = np.random.random([64, 3])
     for state_message_index in range(len(state_module_states)):
         # Convert log messages to dict
-        state_msg = LogMsg.convert_message_to_dict(state_module_states[state_message_index])
+        state_msg = ClassSerializer.convert_message_to_dict(state_module_states[state_message_index])
         # Deserialize from dict to object
-        state = LogMsg.deserialize(class_type=State, message=state_msg)  # type: State
+        state = ClassSerializer.deserialize(class_type=State, message=state_msg)  # type: State
         if state_message_index == 0:
             baseline_timestamp = state.ego_state.timestamp_in_sec
         actual_v.append(state.ego_state.v_x)
@@ -121,8 +122,8 @@ def main():
     bp_semantic_action_type = []
     bp_ego_timestamps = []
     for bp_message_index in range(len(action_specs)):
-        bp_action_dict = LogMsg.convert_message_to_dict(semnatic_actions[bp_message_index])
-        bp_action_specs_dict = LogMsg.convert_message_to_dict(action_specs[bp_message_index])
+        bp_action_dict = ClassSerializer.convert_message_to_dict(semnatic_actions[bp_message_index])
+        bp_action_specs_dict = ClassSerializer.convert_message_to_dict(action_specs[bp_message_index])
 
         planning_t = BEHAVIORAL_PLANNING_MODULE_PERIOD * bp_message_index
         bp_ego_timestamps.append(planning_t)
