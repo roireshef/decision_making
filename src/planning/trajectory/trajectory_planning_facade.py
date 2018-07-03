@@ -71,7 +71,7 @@ class TrajectoryPlanningFacade(DmModule):
             state = self._get_current_state()
 
             # Update state: align all object to most recent timestamp, based on ego and dynamic objects timestamp
-            most_recent_timestamp = PredictionUtils.dynamic_objects_and_ego_most_recent_timestamp(state)
+            most_recent_timestamp = PredictionUtils.extract_most_recent_timestamp(state)
             state_aligned = self._short_time_predictor.predict_state(state, np.array([most_recent_timestamp]))[0]
 
             params = self._get_mission_params()
