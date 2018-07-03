@@ -28,11 +28,6 @@ class Poly1D:
 
     @staticmethod
     @abstractmethod
-    def inv_time_constraints_matrix(T: float) -> np.ndarray:
-        pass
-
-    @staticmethod
-    @abstractmethod
     def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
         """
         Computes cumulative jerk from time 0 to time T for the x(t) whose coefficients are given in <poly_coefs>
@@ -243,14 +238,6 @@ class QuarticPoly1D(Poly1D):
               [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2]]  # x_dotdot(T)
              for T in terminal_times], dtype=np.float)
 
-    @staticmethod
-    def inv_time_constraints_matrix(T: float) -> np.array:
-        return np.array([[1.0, 0, 0, 0, 0],
-                         [0, 1.0, 0, 0, 0],
-                         [0, 0, 0.5, 0, 0],
-                         [0, -1.0 / T ** 2, -2 / (3 * T), 1.0 / T ** 2, -1 / (3 * T)],
-                         [0, 0.5 / T ** 3, 0.25 / T ** 2, -0.5 / T ** 3, 0.25 / T ** 2]])
-
     @classmethod
     def are_velocities_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, vel_limits: Limits) -> np.ndarray:
         """
@@ -385,20 +372,6 @@ class QuinticPoly1D(Poly1D):
               [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],  # x_dot(T)
               [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]]  # x_dotdot(T)
              for T in terminal_times], dtype=np.float)
-
-    @staticmethod
-    def inv_time_constraints_matrix(T: float) -> np.ndarray:
-        """
-        Create inverted constraints tensor
-        :param terminal_times: array of values of T (time-horizon)
-        :return: 3D numpy array of shape: (len(terminal_times), 6, 6)
-        """
-        return np.array([[1.0, 0, 0, 0, 0, 0],
-                          [0, 1.0, 0, 0, 0, 0],
-                          [0, 0, 0.5, 0, 0, 0],
-                          [-10.0 / T ** 3, -6.0 / T ** 2, -1.5 / T, 10.0 / T ** 3, -4.0 / T ** 2, 0.5 / T],
-                          [15.0 / T ** 4, 8.0 / T ** 3, 1.5 / T ** 2, -15.0 / T ** 4, 7.0 / T ** 3, -1.0 / T ** 2],
-                          [-6.0 / T ** 5, -3.0 / T ** 4, -0.5 / T ** 3, 6.0 / T ** 5, -3.0 / T ** 4, 0.5 / T ** 3]])
 
     @classmethod
     def are_velocities_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, vel_limits: Limits) -> np.ndarray:
