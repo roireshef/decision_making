@@ -103,10 +103,9 @@ class CostBasedBehavioralPlanner:
             state.clone_with(dynamic_objects=terminal_dynamic_objects[i], ego_state=terminal_ego_states[i])
             for i in range(len(terminal_ego_states))]
 
-        valid_behavioral_grid_states = [BehavioralGridState.create_from_state(terminal_state, self.logger)
-                                        for terminal_state in terminal_states].__iter__()
+        valid_behavioral_grid_states = (BehavioralGridState.create_from_state(terminal_state, self.logger)
+                                        for terminal_state in terminal_states)
         terminal_behavioral_states = [valid_behavioral_grid_states.__next__() if m else None for m in mask]
-
         return terminal_behavioral_states
 
     @staticmethod
