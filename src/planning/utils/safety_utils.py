@@ -1,11 +1,77 @@
 import numpy as np
+import time
 
 from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY, SPECIFICATION_MARGIN_TIME_DELAY, \
     LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU
-from decision_making.src.planning.types import LIMIT_MIN, FrenetTrajectories2D
+from decision_making.src.planning.types import LIMIT_MIN, FrenetTrajectories2D, FrenetState2D, FS_DX, FS_DV, FS_DA
+from decision_making.src.planning.utils.optimal_control.generate_traj import TrajectoriesGenerator
 
 
 class SafetyUtils:
+
+    @staticmethod
+    def calc_safe_T_d(ego_fstate: FrenetState2D, ego_size: np.array, specs: np.array, specs_mask: np.array,
+                      time_samples: np.array, predictions: np.array, obj_sizes: np.array) -> np.array:
+
+        samples_num = time_samples.shape[0]
+
+        specs_arr = np.array([np.array([i, spec.t, spec.v, spec.s, spec.d])
+                              for i, spec in enumerate(specs) if specs_mask[i]])
+        (spec_orig_idxs, specs_t, specs_v, specs_s, specs_d) = specs_arr.transpose()
+        spec_orig_idxs = spec_orig_idxs.astype(int)
+
+        # calculate maximal safe T_d for all specs
+
+        st_tot = time.time()
+        st = time.time()
+        actions_num = specs_t.shape[0]  # after filtering!
+
+        T_d = np.arange(7, 3 - np.finfo(np.float16).eps, -1)
+        T_d_num = T_d.shape[0]
+
+        ego_dx, ego_dv = TrajectoriesGenerator.calc_lateral_trajectories(ego_fstate, specs_d, T_d, time_samples)
+        lat_time = time.time()-st
+        st = time.time()
+
+        ego_sx, ego_sv = TrajectoriesGenerator.calc_longitudinal_trajectories(ego_fstate, specs_t, specs_v, specs_s,
+                                                                              time_samples)
+        lon_time = time.time()-st
+        st = time.time()
+        # duplicate longitudinal trajectories to be aligned with lateral trajectories
+        dup_ego_sx = np.tile(ego_sx, T_d_num).reshape(specs_t.shape[0] * T_d_num, samples_num)
+        dup_ego_sv = np.tile(ego_sv, T_d_num).reshape(specs_t.shape[0] * T_d_num, samples_num)
+        zeros = np.zeros(dup_ego_sx.shape)
+
+        ego_ftraj = np.dstack((dup_ego_sx, dup_ego_sv, zeros, ego_dx, ego_dv, zeros))
+
+        dup_time = time.time()-st
+        st = time.time()
+
+        # 3D array; safe times for all actions, T_d's, objects, time samples;
+        # shape: actions_num*T_d_num x objects_num x samples_num
+        safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, predictions, obj_sizes)
+
+        RSS_time = time.time()-st
+
+        # 2D array; safe times for all actions and T_d's; shape: actions_num x T_d_num
+        safe_specs_T_d = safe_times.all(axis=(1, 2)).reshape(actions_num, T_d_num)
+
+        # 1D array; unsafe actions; shape: actions_num
+        unsafe_specs = np.logical_not(safe_specs_T_d).all(axis=1)
+
+        # 1D array; maximal safe T_d for each action; shape: actions_num
+        max_safe_T_d = T_d[np.argmax(safe_specs_T_d, axis=1)]  # for each spec find max T_d
+        max_safe_T_d[unsafe_specs] = 0
+
+        # 1D array; maximal safe T_d for each spec; shape: specs.shape[0]
+        safe_T_d = np.zeros(len(specs))
+        safe_T_d[spec_orig_idxs[np.arange(0, actions_num)]] = max_safe_T_d
+
+        time_tot = time.time() - st_tot
+
+        print('calc_safe_T_d time=%f: lat=%f lon=%f dup=%f RSS=%f' % (time_tot, lat_time, lon_time, dup_time, RSS_time))
+        return safe_T_d
+
     @staticmethod
     def calc_safety_for_trajectories(ego_ftraj: FrenetTrajectories2D, ego_size: np.array,
                                      obj_ftraj: np.array, obj_sizes: np.array,

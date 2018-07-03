@@ -3,10 +3,23 @@ from logging import Logger
 import numpy as np
 import time
 
+from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
+from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
+from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
+    DEFAULT_DYNAMIC_RECIPE_FILTERING
+from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
+from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
+from decision_making.src.planning.types import FS_SX, FS_SV, C_A, C_K, C_X, C_Y, C_YAW, C_V
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
+from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.state.state import ObjectSize, State, DynamicObject, EgoState
+from mapping.src.service.map_service import MapService
 
 
 class SafetyUtilsTrajectoriesFixture:
@@ -282,3 +295,89 @@ def test_calcSafetyForTrajectories_egoAndSingleObject_checkSafetyCorrectnessForM
     assert not safe_times[1].all()  # the object ahead is slower, therefore unsafe
     assert not safe_times[2].all()  # ego is faster
     assert safe_times[3].all()      # ego moves from lane 2 to lane 1, and the object on lane 0
+
+
+def test_calcSafeTd():
+
+    logger = Logger("test_calc_safe_T_d")
+    lane_width = 3.6
+    ego_size = ObjectSize(4, 2, 0)
+    ego_lon = 400
+    ego_lat = lane_width / 2
+    ego_vel = 10
+    road_id = 20
+    road_frenet = get_road_rhs_frenet_by_road_id(road_id)
+
+    predictor = RoadFollowingPredictor(logger)
+    action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
+                                                 DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
+    action_spec_validator = ActionSpecFiltering([FilterIfNone()], logger)
+
+    t = 20.
+    times_step = 0.1
+    time_samples = np.arange(0, t + 0.001, times_step)
+    samples_num = time_samples.shape[0]
+
+    ego = create_canonic_ego(0, ego_lon, ego_lat, ego_vel, ego_size, road_frenet)
+    ego_fstate = np.array([ego.road_localization.road_lon, ego.v_x, 0, ego.road_localization.intra_road_lat, 0, 0])
+
+    obj_sizes = np.array([ObjectSize(4, 2, 0), ObjectSize(6, 2, 0), ObjectSize(6, 2, 0), ObjectSize(4, 2, 0)])
+
+    F = create_canonic_object(1, 0, ego_lon + 25, ego_lat, ego_vel, obj_sizes[0], road_frenet)
+    LF = create_canonic_object(2, 0, ego_lon + 20, ego_lat + lane_width, ego_vel + 6, obj_sizes[1], road_frenet)
+    # L = create_canonic_object(3, 0, ego_lon - 3, ego_lat + lane_width, ego_vel, obj_sizes[2], road_frenet)
+    LB = create_canonic_object(4, 0, ego_lon - 40, ego_lat + lane_width, ego_vel + 2, obj_sizes[3], road_frenet)
+    objects = [F, LF, LB]
+
+    predictions = []
+    obj_sizes_mat = []
+    for i, obj in enumerate(objects):
+        fstate = np.array([obj.road_localization.road_lon, obj.v_x, 0, obj.road_localization.intra_road_lat, 0, 0])
+        prediction = np.tile(fstate, samples_num).reshape(samples_num, 6)
+        prediction[:, 0] = fstate[FS_SX] + time_samples * fstate[FS_SV]
+        predictions.append(prediction)
+        obj_sizes_mat.append(np.array([obj.size.length, obj.size.width]))
+    predictions = np.array(predictions)
+    obj_sizes_mat = np.array(obj_sizes_mat)
+
+    state = State(None, objects, ego)
+    behavioral_state = BehavioralGridState.create_from_state(state, logger)
+    recipes = action_space.recipes
+    recipes_mask = action_space.filter_recipes(recipes, behavioral_state)
+
+    # Action specification
+    specs = np.full(recipes.__len__(), None)
+    valid_action_recipes = [recipe for i, recipe in enumerate(recipes) if recipes_mask[i]]
+    specs[recipes_mask] = action_space.specify_goals(valid_action_recipes, behavioral_state)
+
+    specs_mask = action_spec_validator.filter_action_specs(list(specs), behavioral_state)
+
+    T_d = SafetyUtils.calc_safe_T_d(ego_fstate, np.array([ego_size.length, ego_size.width]), specs, specs_mask,
+                                    time_samples, predictions, obj_sizes_mat)
+    a=0
+
+
+def create_canonic_ego(timestamp: int, lon: float, lat: float, vel: float, size: ObjectSize,
+                       road_frenet: FrenetSerret2DFrame) -> EgoState:
+    """
+    Create ego with zero lateral velocity and zero accelerations
+    """
+    fstate = np.array([lon, vel, 0, lat, 0, 0])
+    cstate = road_frenet.fstate_to_cstate(fstate)
+    return EgoState(0, timestamp, cstate[C_X], cstate[C_Y], 0, cstate[C_YAW], size, 0, cstate[C_V], 0,
+                    cstate[C_A], cstate[C_K])
+
+
+def create_canonic_object(obj_id: int, timestamp: int, lon: float, lat: float, vel: float, size: ObjectSize,
+                          road_frenet: FrenetSerret2DFrame) -> DynamicObject:
+    """
+    Create object with zero lateral velocity and zero accelerations
+    """
+    fstate = np.array([lon, vel, 0, lat, 0, 0])
+    cstate = road_frenet.fstate_to_cstate(fstate)
+    return DynamicObject(obj_id, timestamp, cstate[C_X], cstate[C_Y], 0, cstate[C_YAW], size, 0, cstate[C_V], 0,
+                         cstate[C_A], cstate[C_K])
+
+
+def get_road_rhs_frenet_by_road_id(road_id: int):
+    return MapService.get_instance()._rhs_roads_frenet[road_id]

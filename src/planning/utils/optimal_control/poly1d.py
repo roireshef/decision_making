@@ -74,15 +74,15 @@ class Poly1D:
         :param poly_coefs: 2d numpy array [MxL] of the quartic (position) polynomials coefficients, where
          each row out of the M is a different polynomial and contains L coefficients
         :param time_samples: 1d numpy array [K] of the time stamps for the evaluation of the polynomials
-        :return: 3d numpy array [M,K,3] with the following dimnesions:
+        :return: 3d numpy array [M,K,3] with the following dimensions:
             1. solution (corresponds to a given polynomial coefficients  vector in <poly_coefs>)
             2. time stamp
             3. [position value, velocity value, acceleration value]
         """
         # compute the coefficients of the polynom's 1st derivative (m=1)
-        poly_dot_coefs = np.apply_along_axis(func1d=np.polyder, axis=1, arr=poly_coefs, m=1)
+        poly_dot_coefs = Math.polyder2d(poly_coefs, m=1)
         # compute the coefficients of the polynom's 2nd derivative (m=2)
-        poly_dotdot_coefs = np.apply_along_axis(func1d=np.polyder, axis=1, arr=poly_coefs, m=2)
+        poly_dotdot_coefs = Math.polyder2d(poly_coefs, m=2)
 
         x_vals = Math.polyval2d(poly_coefs, time_samples)
         x_dot_vals = Math.polyval2d(poly_dot_coefs, time_samples)
@@ -373,6 +373,24 @@ class QuinticPoly1D(Poly1D):
               [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]]  # x_dotdot(T)
              for T in terminal_times], dtype=np.float)
 
+    @staticmethod
+    def inv_time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
+        """
+        Create inverted constraints tensor
+        :param terminal_times: array of values of T (time-horizon)
+        :return: 3D numpy array of shape: (len(terminal_times), 6, 6)
+        """
+        T = terminal_times
+        ones = np.ones(T.shape[0])
+        zeros = np.zeros(T.shape[0])
+        A_inv = np.array([[1.0 * ones, zeros, zeros, zeros, zeros, zeros],
+                          [zeros, 1.0 * ones, zeros, zeros, zeros, zeros],
+                          [zeros, zeros, 0.5 * ones, zeros, zeros, zeros],
+                          [-10.0 / T ** 3, -6.0 / T ** 2, -1.5 / T, 10.0 / T ** 3, -4.0 / T ** 2, 0.5 / T],
+                          [15.0 / T ** 4, 8.0 / T ** 3, 1.5 / T ** 2, -15.0 / T ** 4, 7.0 / T ** 3, -1.0 / T ** 2],
+                          [-6.0 / T ** 5, -3.0 / T ** 4, -0.5 / T ** 3, 6.0 / T ** 5, -3.0 / T ** 4, 0.5 / T ** 3]])
+        return np.transpose(A_inv, (2, 0, 1))
+
     @classmethod
     def are_velocities_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, vel_limits: Limits) -> np.ndarray:
         """
@@ -479,6 +497,47 @@ class QuinticPoly1D(Poly1D):
                               3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m))
                           + t ** 5 * (T ** 2 * a_0 + 6 * T * (v_0 + v_T) - 12 * dx - 12 * v_T * (T - T_m))) / (
                                      2 * T ** 5)
+
+    @staticmethod
+    def distance_by_constraints(a_0: float, v_0: float, v_T: np.array, ds: np.array, T: np.array, t: np.array) -> \
+            np.array:
+        """
+        distance travelled by ego at time t, given by solution for the constraints in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param ds: [m] initial distance to target in time 0
+        :param T: [sec] horizon
+        :return: lambda function(s) that takes relative time in seconds and returns the distance
+        travelled since time 0
+        """
+        coefs = np.array([np.full(T.shape, v_0),
+                          np.full(T.shape, a_0 / 2),
+                          -1.5*a_0/T - 6*v_0/T**2 - 4*v_T/T**2 + 10*ds/T**3,
+                          1.5*a_0/T**2 + 8*v_0/T**3 + 7*v_T/T**3 - 15*ds/T**4,
+                          -a_0/(2*T**3) - 3*v_0/T**4 - 3*v_T/T**4 + 6*ds/T**5]).transpose()
+
+        return np.tensordot(coefs, np.array([t, t**2, t**3, t**4, t**5]), axes=1)
+
+    @staticmethod
+    def velocity_by_constraints(a_0: float, v_0: float, v_T: np.array, ds: np.array, T: np.array, t: np.array) -> \
+            np.array:
+        """
+        velocity of ego at time t, given by solution for the constraints in the parameters
+        :param a_0: [m/sec^2] acceleration at time 0
+        :param v_0: [m/sec] velocity at time 0
+        :param v_T: [m/sec] terminal velocity (at time T)
+        :param ds: [m] initial distance to target in time 0
+        :param T: [sec] horizon
+        :return: lambda function(s) that takes relative time in seconds and returns ego velocity since time 0
+        """
+        coefs = np.array([np.full(T.shape, v_0),
+                          np.full(T.shape, a_0),
+                          -9*a_0/(2*T) - 18*v_0/T**2 - 12*v_T/T**2 + 30*ds/T**3,
+                          6*a_0/T**2 + 32*v_0/T**3 + 28*v_T/T**3 - 60*ds/T**4,
+                          -5*a_0/(2*T**3) - 15*(v_0+v_T)/T**4 + 30*ds/T**5]).transpose()
+
+        return np.tensordot(coefs, np.array([np.full(t.shape, 1.), t, t**2, t**3, t**4]), axes=1)
 
     @staticmethod
     def distance_from_target_derivative_coefs(a_0: float, v_0: float, v_T: float, dx: float, T: float, T_m: float):
