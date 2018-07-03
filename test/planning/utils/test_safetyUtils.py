@@ -141,6 +141,11 @@ class SafetyUtilsTrajectoriesFixture:
 
     @staticmethod
     def create_trajectories_for_LB_LF():
+        """
+        Create ego trajectories with different longitudinal accelerations and lane change with different T_d.
+        Create Frenet trajectories for two objects: LB & LF.
+        :return: ego ftrajectories, ego size, objects ftrajectories, objects sizes
+        """
         ego_size = np.array([4, 2])
         lane_wid = 3.5
 
@@ -230,7 +235,10 @@ def test_calcSafetyForTrajectories_egoAndSomeObjectsMoveLaterally_checkSafetyCor
 
 
 def test_calcSafetyForTrajectories_overtakeOfSlowF_safeOnlyIfObjectFisFar():
-
+    """
+    Test safety of 3 different lane change trajectories w.r.t. one of 4 different locations of slower object F.
+    Try different T_d for closer F.
+    """
     ego_ftraj, ego_size, obj_ftraj, obj_sizes = SafetyUtilsTrajectoriesFixture.create_trajectories_for_F()
 
     safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, obj_ftraj, obj_sizes)
@@ -243,7 +251,10 @@ def test_calcSafetyForTrajectories_overtakeOfSlowF_safeOnlyIfObjectFisFar():
 
 
 def test_calcSafetyForTrajectories_safetyWrtLBLF_safeOnlyIfObjectLBisFar():
-
+    """
+    Test safety of 6 different lane change trajectories w.r.t. one of 5 objects (either LB or LF).
+    Try different longitudinal accelerations, different T_d and different objects' locations.
+    """
     ego_ftraj, ego_size, obj_ftraj, obj_sizes = SafetyUtilsTrajectoriesFixture.create_trajectories_for_LB_LF()
 
     safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, obj_ftraj, obj_sizes)

@@ -103,9 +103,6 @@ LATERAL_SAFETY_MU = 0.5
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
 
-# [m/sec] negligible lateral velocity, that is not considered as lane change
-TINY_LAT_VELOCITY = 0.1
-
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
 
