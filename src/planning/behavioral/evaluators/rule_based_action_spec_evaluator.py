@@ -83,7 +83,7 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         ego = behavioral_state.ego_state
         road_id = ego.map_state.road_id
         road_frenet = MapService.get_instance()._rhs_roads_frenet[road_id]
-        ego_fpoint = np.array([behavioral_state.ego_state.map_state.road_fstate[FP_SX], behavioral_state.ego_state.map_state.road_fstate[FP_DX]])
+        ego_fpoint = behavioral_state.ego_state.map_state.road_fstate[[FP_SX, FP_DX]]
 
         dist_to_backleft, safe_left_dist_behind_ego = RuleBasedActionSpecEvaluator._calc_safe_dist_behind_ego(
             behavioral_state, road_frenet, ego_fpoint, RelativeLane.LEFT_LANE)
@@ -127,7 +127,7 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         :return: longitudinal distance between ego and rear object, safe distance between ego and the rear object
         """
         dist_to_back_obj = np.inf
-        safe_dist_behind_ego = 0
+        safe_dist_behind_ego = 0.0
         back_objects = []
         if (relative_lane, RelativeLongitudinalPosition.REAR) in behavioral_state.road_occupancy_grid:
             back_objects = behavioral_state.road_occupancy_grid[(relative_lane, RelativeLongitudinalPosition.REAR)]

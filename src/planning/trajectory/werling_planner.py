@@ -20,7 +20,7 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
-from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 
 
@@ -98,7 +98,7 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
 
 
 class WerlingPlanner(TrajectoryPlanner):
-    def __init__(self, logger: Logger, predictor: RoadFollowingPredictor, dt=WERLING_TIME_RESOLUTION):
+    def __init__(self, logger: Logger, predictor: EgoAwarePredictor, dt=WERLING_TIME_RESOLUTION):
         super().__init__(logger, predictor)
         self._dt = dt
 
@@ -307,7 +307,7 @@ class WerlingPlanner(TrajectoryPlanner):
     @staticmethod
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,
                       goal_in_frenet: FrenetState2D, params: TrajectoryCostParams, global_time_samples: np.ndarray,
-                      predictor: RoadFollowingPredictor, dt: float) -> np.ndarray:
+                      predictor: EgoAwarePredictor, dt: float) -> np.ndarray:
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame

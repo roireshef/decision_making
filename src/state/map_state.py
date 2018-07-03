@@ -16,30 +16,30 @@ class MapState(PUBSUB_MSG_IMPL):
         self.road_fstate = road_fstate
         self.road_id = road_id
 
-    def get_current_lane_params(self):
-        """
-        :return: A tuple consisting of: (the lane width,lateral position in frenet from right hand side of road,lane number between 0 and num_lanes-1)
-        """
-        # type: MapState -> (float, float, int)
-        lane_width = MapService.get_instance().get_lane_width(self.road_id, 0, 0)  # TODO: need to change in new map api
-        lat_pos_from_right = self.road_fstate[FS_DX]
-        lane = int(np.math.floor(lat_pos_from_right / lane_width))
-        return lane_width, lat_pos_from_right, lane
-
     @property
     def lane_center_lat(self):
-        lane_width, _, lane_num = self.get_current_lane_params()
+        lane_width, _, lane_num = self._get_current_lane_params()
         return (lane_num+0.5)*lane_width
 
     @property
     def intra_lane_lat(self) -> int:
-        lane_width, lat_pos_from_right, lane_num = self.get_current_lane_params()
+        lane_width, lat_pos_from_right, lane_num = self._get_current_lane_params()
         return lat_pos_from_right - lane_num * lane_width
 
     @property
     def lane_num(self) -> int:
-        _, _, lane = self.get_current_lane_params()
+        _, _, lane = self._get_current_lane_params()
         return lane
+
+    def _get_current_lane_params(self):
+        """
+        :return: A tuple consisting of: (the lane width,lateral position in frenet from right hand side of road,lane number between 0 and num_lanes-1)
+        """
+        # type: MapState -> (float, float, int)
+        lane_width = MapService.get_instance().get_road(self.road_id).lane_width
+        lat_pos_from_right = self.road_fstate[FS_DX]
+        lane = int(np.math.floor(lat_pos_from_right / lane_width))
+        return lane_width, lat_pos_from_right, lane
 
     def serialize(self):
         # type: () -> LcmMapState

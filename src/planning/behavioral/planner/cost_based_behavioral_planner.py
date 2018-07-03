@@ -70,7 +70,7 @@ class CostBasedBehavioralPlanner:
 
     @prof.ProfileFunction()
     def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray) -> \
-            np.array([BehavioralGridState]):
+            [BehavioralGridState]:
         """
         Given current state and action specifications, generate a corresponding list of future states using the
         predictor. Uses mask over list of action specifications to avoid unnecessary computation
@@ -84,12 +84,12 @@ class CostBasedBehavioralPlanner:
 
         # TODO: assumes everyone on the same road!
         road_id = ego.map_state.road_id
-        total_action_time = np.array([spec.t for i, spec in enumerate(action_specs) if mask[i]])
-        terminal_timestamps = ego.timestamp_in_sec + total_action_time
+        actions_horizons = np.array([spec.t for i, spec in enumerate(action_specs) if mask[i]])
+        terminal_timestamps = ego.timestamp_in_sec + actions_horizons
 
         objects_curr_fstates = np.array(
             [dynamic_object.map_state.road_fstate for dynamic_object in state.dynamic_objects])
-        objects_terminal_fstates = self.predictor.predict_frenet_states(objects_curr_fstates, total_action_time)
+        objects_terminal_fstates = self.predictor.predict_frenet_states(objects_curr_fstates, actions_horizons)
 
         # Create ego states, dynamic objects, states and finally behavioral states
         terminal_ego_states = [ego.clone_from_map_state(MapState([spec.s, spec.v, 0, spec.d, 0, 0], road_id),
@@ -105,7 +105,8 @@ class CostBasedBehavioralPlanner:
 
         valid_behavioral_grid_states = (BehavioralGridState.create_from_state(terminal_state, self.logger)
                                         for terminal_state in terminal_states)
-        return [valid_behavioral_grid_states.__next__() if m else None for m in mask]
+        terminal_behavioral_states = [valid_behavioral_grid_states.__next__() if m else None for m in mask]
+        return terminal_behavioral_states
 
     @staticmethod
     @prof.ProfileFunction()
@@ -124,6 +125,9 @@ class CostBasedBehavioralPlanner:
         """
         ego = behavioral_state.ego_state
 
+        # Get road details
+        road_id = ego.map_state.road_id
+
         # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
         # caused by the curve linearization approximation in the resampling process
         # The compensation here is multiplicative because of the different curve-fittings we use:
@@ -136,7 +140,7 @@ class CostBasedBehavioralPlanner:
         # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
         # TODO: better than sending the whole road. Fix when map service is redesigned!
         center_lane_reference_route = MapService.get_instance().get_uniform_path_lookahead(
-            road_id=ego.map_state.road_id,
+            road_id=road_id,
             lat_shift=action_spec.d,  # THIS ASSUMES THE GOAL ALWAYS FALLS ON THE REFERENCE ROUTE
             starting_lon=0,
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
@@ -152,9 +156,6 @@ class CostBasedBehavioralPlanner:
             steps_num=int(np.ceil(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
             navigation_plan=navigation_plan)
         rhs_frenet = FrenetSerret2DFrame(rhs_reference_route)
-
-        # Get road details
-        road_id = ego.map_state.road_id
 
         # Convert goal state from rhs-frenet-frame to center-lane-frenet-frame
         goal_cstate = rhs_frenet.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0]))
