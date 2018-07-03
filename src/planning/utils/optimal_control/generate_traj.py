@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from decision_making.src.planning.types import FrenetState2D, FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
@@ -54,15 +55,16 @@ class TrajectoriesGenerator:
 
         actions_num = target_d.shape[0]
         T_d_num = T_d.shape[0]
-        A_inv = QuinticPoly1D.inv_time_constraints_tensor(T_d)
-        (zeros, ones) = (np.zeros(len(target_d)), np.ones(len(target_d)))
-        constraints_d = np.array([ego_init_fstate[FS_DX] * ones, ego_init_fstate[FS_DV] * ones,
-                                  ego_init_fstate[FS_DA] * ones, target_d, zeros, zeros])  # 6 x len(specs_d)
 
-        # shape: Actions * T_d_num  x  6
-        poly_coefs_d = np.fliplr(np.einsum('ijk,kl->lij', A_inv, constraints_d).reshape(actions_num * T_d_num, 6))
-
-        ftraj_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_samples)[:, :, :2]
+        dup_target_d = np.repeat(target_d, T_d_num)
+        dup_T_d = np.tile(T_d, actions_num)
+        dx = QuinticPoly1D.distance_by_constraints(a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV],
+                                                   v_T=0, ds=dup_target_d - ego_init_fstate[FS_DX],
+                                                   T=dup_T_d, t=time_samples) + ego_init_fstate[FS_DX]
+        dv = QuinticPoly1D.velocity_by_constraints(a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV],
+                                                   v_T=0, ds=dup_target_d - ego_init_fstate[FS_DX],
+                                                   T=dup_T_d, t=time_samples)
+        ftraj_d = np.dstack((dx, dv))
 
         # fill all elements of ftraj_d beyond T_d by the values of ftraj_d at T_d
         for i, td in enumerate(T_d):
