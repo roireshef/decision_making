@@ -146,7 +146,7 @@ class BehavioralGridState(BehavioralState):
                 # compute longitudinal projection on the grid
                 object_relative_long = BehavioralGridState._get_longitudinal_grid_cell(obj, ego_state)
 
-                grid[(object_relative_lane, object_relative_long)].append(obj)
+                grid[(RelativeLane(object_relative_lane), object_relative_long)].append(obj)
 
         return grid
 
