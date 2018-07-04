@@ -4,7 +4,7 @@ import numpy as np
 
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, NEGLIGIBLE_DISPOSITION_LAT, \
     NEGLIGIBLE_DISPOSITION_LON
-from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
+from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, FrenetPoint, FP_SX, FP_DX, C_V
 from decision_making.src.state.state import EgoState
 from mapping.src.transformations.geometry_utils import CartesianFrame

@@ -4,7 +4,7 @@ from typing import List, Dict, Optional
 import copy
 import numpy as np
 
-from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
+from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import C_X, C_V, C_YAW, C_Y
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.maneuver_recognition.manuever_classifier import \

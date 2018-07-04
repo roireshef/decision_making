@@ -1,7 +1,6 @@
+import numpy as np
 from logging import Logger
 from typing import Tuple
-
-import numpy as np
 
 from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
@@ -10,11 +9,12 @@ from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STE
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import Costs
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
+from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
+from decision_making.src.planning.trajectory.werling_utils import WerlingUtils
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
-    FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianExtendedTrajectory, \
-    CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, FrenetState2D, C_A, C_K, FrenetState1D, \
-    FrenetTrajectory1D, D5, Limits, FrenetTrajectory2D
+    FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, \
+    FrenetState2D, C_A, C_K, D5, Limits
 from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
@@ -22,79 +22,6 @@ from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State
-
-
-class SamplableWerlingTrajectory(SamplableTrajectory):
-    def __init__(self, timestamp_in_sec: float, T_s: float, T_d: float, frenet_frame: FrenetSerret2DFrame,
-                 poly_s_coefs: np.ndarray, poly_d_coefs: np.ndarray):
-        """To represent a trajectory that is a result of Werling planner, we store the frenet frame used and
-        two polynomial coefficients vectors (for dimensions s and d)"""
-        super().__init__(timestamp_in_sec, T_s)
-        self.T_d = T_d
-        self.frenet_frame = frenet_frame
-        self.poly_s_coefs = poly_s_coefs
-        self.poly_d_coefs = poly_d_coefs
-
-    @property
-    def T_s(self):
-        return self.T
-
-    def sample(self, time_points: np.ndarray) -> CartesianExtendedTrajectory:
-        """See base method for API. In this specific representation of the trajectory, we sample from s-axis polynomial
-        (longitudinal) and partially (up to some time-horizon cached in self.lon_plan_horizon) from d-axis polynomial
-        (lateral) and extrapolate the rest of the states in d-axis to conform to the trajectory's total duration"""
-
-        # Sample the trajectory in the desired points in time in Frenet coordinates
-        fstates = self.sample_frenet(time_points=time_points)
-
-        # project from road coordinates to cartesian coordinate frame
-        cstates = self.frenet_frame.ftrajectory_to_ctrajectory(fstates)
-
-        return cstates
-
-    def sample_frenet(self, time_points: np.ndarray) -> FrenetTrajectory2D:
-        """
-        This function takes an array of time stamps and returns an array of Frenet states along the trajectory.
-        We sample from s-axis polynomial (longitudinal) and partially (up to some time-horizon cached in
-        self.lon_plan_horizon) from d-axis polynomial (lateral) and extrapolate the rest of the states in d-axis
-        to conform to the trajectory's total duration.
-        :param time_points: 1D numpy array of time stamps *in seconds* (global self.timestamp)
-        :return: Frenet Trajectory
-        """
-
-        relative_time_points = time_points - self.timestamp_in_sec
-
-        # Make sure no unplanned extrapolation will occur due to overreaching time points
-        # This check is done in relative-to-ego units
-        assert max(relative_time_points) <= self.T_s
-
-        # assign values from <time_points> in s-axis polynomial
-        fstates_s = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_s_coefs]), relative_time_points)[0]
-
-        fstates_d = np.empty(shape=np.append(time_points.shape, 3))
-
-        is_within_horizon_d = relative_time_points <= self.T_d
-
-        fstates_d[is_within_horizon_d] = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]),
-                                                                                relative_time_points[
-                                                                                    is_within_horizon_d])
-
-        # Expand lateral solution to the size of the longitudinal solution with its final positions replicated
-        # NOTE: we assume that velocity and accelerations = 0 !!
-        end_of_horizon_state_d = QuinticPoly1D.polyval_with_derivatives(np.array([self.poly_d_coefs]),
-                                                                        np.array([self.T_d]))[0]
-        extrapolation_state_d = WerlingPlanner.repeat_1d_state(
-            fstate=end_of_horizon_state_d,
-            repeats=1,
-            override_values=np.zeros(3),
-            override_mask=np.array([0, 1, 1]))
-
-        fstates_d[np.logical_not(is_within_horizon_d)] = extrapolation_state_d
-
-        # Return trajectory in Frenet coordinates
-        fstates = np.hstack((fstates_s, fstates_d))
-
-        return fstates
 
 
 class WerlingPlanner(TrajectoryPlanner):
@@ -385,30 +312,6 @@ class WerlingPlanner(TrajectoryPlanner):
         return poly_coefs
 
     @staticmethod
-    def repeat_1d_state(fstate: FrenetState1D, repeats: int,
-                        override_values: FrenetState1D, override_mask: FrenetState1D):
-        """please see documentation in used method"""
-        return WerlingPlanner.repeat_1d_states(fstate[np.newaxis, :], repeats, override_values, override_mask)[0]
-
-    @staticmethod
-    def repeat_1d_states(fstates: FrenetTrajectory1D, repeats: int,
-                         override_values: FrenetState1D, override_mask: FrenetState1D):
-        """
-        Given an array of 1D-frenet-states [x, x_dot, x_dotdot], this function builds a block of replicates of each one
-        of them <repeats> times while giving the option for overriding values (part or all) their values.
-        :param fstates: the set of 1D-frenet-states to repeat
-        :param repeats: length of repeated block (number of replicates for each state)
-        :param override_values: 1D-frenet-state vector of values to override while repeating every state in <fstates>
-        :param override_mask: mask vector for <override_values>. Where mask values == 1, override will apply, whereas
-        mask value of 0 will incur no value override
-        :return:
-        """
-        repeating_slice = np.logical_not(override_mask) * fstates + \
-                          override_mask * np.repeat(override_values[np.newaxis, :], repeats=fstates.shape[0], axis=0)
-        repeated_block = np.repeat(repeating_slice[:, np.newaxis, :], repeats=repeats, axis=1)
-        return repeated_block
-
-    @staticmethod
     def _solve_optimization(fconst_0: FrenetConstraints, fconst_t: FrenetConstraints, T_s: float, T_d_vals: np.ndarray,
                             dt: float) -> Tuple[FrenetTrajectories2D, np.ndarray, np.ndarray]:
         """
@@ -456,7 +359,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
             # Expand lateral solutions (dimension d) to the size of the longitudinal solutions (dimension s)
             # with its final positions replicated. NOTE: we assume that final (dim d) velocities and accelerations = 0 !
-            solutions_extrapolation_d = WerlingPlanner.repeat_1d_states(
+            solutions_extrapolation_d = WerlingUtils.repeat_1d_states(
                 fstates=partial_solutions_d[:, -1, :],
                 repeats=time_samples_s.size - time_samples_d.size,
                 override_values=np.zeros(3),

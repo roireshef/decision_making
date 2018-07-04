@@ -3,7 +3,7 @@ from logging import Logger
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
-from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
+from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 
 

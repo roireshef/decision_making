@@ -2,7 +2,7 @@ from typing import List
 from unittest.mock import patch, MagicMock
 import numpy as np
 
-from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
+from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import DynamicObject, State, EgoState
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
