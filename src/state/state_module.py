@@ -128,6 +128,7 @@ class StateModule(DmModule):
                 curvature = UNKNOWN_DEFAULT_VAL
 
                 global_coordinates = np.array([x, y, z])
+                # TODO: we might consider using velocity_yaw = np.arctan2(object_state.v_y, object_state.v_x)
                 global_yaw = yaw
 
                 try:
