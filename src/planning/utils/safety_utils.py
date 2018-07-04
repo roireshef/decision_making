@@ -281,6 +281,7 @@ class SafetyUtils:
         # 1D array; maximal safe T_d for each valid spec; shape: valid_specs
         max_safe_T_d = T_d[np.argmax(safe_specs_T_d, axis=1)]  # for each spec find max T_d
         max_safe_T_d[unsafe_specs] = 0
+        max_safe_T_d = np.minimum(max_safe_T_d, specs_t)
 
         # 1D array; maximal safe T_d for each spec; shape: specs.shape[0]
         safe_T_d = np.zeros(len(specs))
