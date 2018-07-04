@@ -1,4 +1,3 @@
-import copy
 from logging import Logger
 from typing import List, Dict
 
@@ -12,7 +11,7 @@ from decision_making.src.state.state import State, DynamicObject
 
 class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
     """
-    Performs physical prediction (constant velocity in x,y) for the purpose of short time alignment between ego and
+    Performs physical prediction (constant velocity in cartesian frame) for the purpose of short time alignment between ego and
     dynamic objects.
     Logic should be re-considered if the time horizon gets too large.
     """
@@ -23,7 +22,7 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
     def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray) \
             -> Dict[int, List[DynamicObject]]:
         """
-        Performs physical prediction (constant velocity in x,y) for the purpose of short time alignment
+        Performs physical prediction (constant velocity in cartesian frame) for the purpose of short time alignment
         between ego and dynamic objects
         :param state: the initial state to begin prediction from.
         :param object_ids: a list of ids of the specific objects to predict
@@ -77,7 +76,7 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
     def _predict_object(self, dynamic_object: DynamicObject, prediction_timestamp: float) \
             -> List[DynamicObject]:
         """
-         Performs physical prediction (constant velocity in x,y) for the purpose of short time alignment
+         Performs physical prediction (constant velocity in cartesian frame) for the purpose of short time alignment
         between ego and dynamic objects, for a single object.
         :param dynamic_object: in map coordinates
         :param prediction_timestamp: a timestamp in [sec] to predict_object_trajectories for. In ascending
