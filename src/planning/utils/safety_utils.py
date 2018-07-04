@@ -1,13 +1,218 @@
+from typing import List, Dict
+
 import numpy as np
 import time
 
 from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY, SPECIFICATION_MARGIN_TIME_DELAY, \
     LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU
-from decision_making.src.planning.types import LIMIT_MIN, FrenetTrajectories2D, FrenetState2D, FS_DX, FS_DV, FS_DA
+from decision_making.src.planning.behavioral.behavioral_grid_state import RelativeLongitudinalPosition, RelativeLane, \
+    RoadSemanticOccupancyGrid, BehavioralGridState
+from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionType, ActionSpec
+from decision_making.src.planning.types import LIMIT_MIN, FrenetTrajectories2D, FrenetState2D, FS_DX, FS_DV, FS_DA, \
+    FS_SX, FrenetTrajectory2D
 from decision_making.src.planning.utils.optimal_control.generate_traj import TrajectoriesGenerator
+from mapping.src.service.map_service import MapService
 
 
 class SafetyUtils:
+
+    @staticmethod
+    def calc_safe_intervals(behavioral_state: BehavioralGridState, ego_fstate: FrenetState2D,
+                            recipes: List[ActionRecipe], specs: List[ActionSpec], specs_mask: List[bool],
+                            predictions: Dict[int, FrenetTrajectory2D], time_samples: np.array) -> np.array:
+        """
+        Calculate longitudinally safe intervals w.r.t. F, LF/RF, LB/RB, that are permitted for for lateral motion
+        for all action specifications.
+        If an action does not perform lateral motion, it should be safe in the whole interval [0, spec.t].
+        :return: for each action, array of time intervals inside [0, spec.t], where ego is safe
+        """
+        ego = behavioral_state.ego_state
+        (ego_length, ego_width) = (ego.size.length, ego.size.width)
+        ego_size = np.array([ego_length, ego_width])
+        lane_width = MapService.get_instance().get_road(ego.road_localization.road_id).lane_width
+
+        # collect non-filtered specs details: t,v,s,d, and mapping between valid specs and all specs.
+        specs_arr = np.array([np.array([i, spec.t, spec.v, spec.s, spec.d])
+                              for i, spec in enumerate(specs) if specs_mask[i]])
+        (spec_orig_idxs, specs_t, specs_v, specs_s, specs_d) = specs_arr.transpose()
+        spec_orig_idxs = spec_orig_idxs.astype(int)
+        filtered_recipes = np.array([recipes[i] for i, spec in enumerate(specs) if specs_mask[i]])
+
+        # for each spec calculate the samples number until the real spec length: spec.t
+        actions_num = specs_t.shape[0]
+        samples_num = time_samples.shape[0]
+        occupancy_grid = behavioral_state.road_occupancy_grid
+        dynamic_objects = [occupancy_grid[cell][0].dynamic_object for cell in occupancy_grid]
+
+        st_tot = time.time()
+        st = time.time()
+        # calculate ego trajectories for all actions and time samples
+        ego_sx, ego_sv = TrajectoriesGenerator.calc_longitudinal_trajectories(ego_fstate, specs_t, specs_v, specs_s,
+                                                                              time_samples)
+        time1 = time.time()-st
+        st = time.time()
+
+        zeros = np.zeros(ego_sx.shape)
+        ego_ftraj = np.dstack((ego_sx, ego_sv, zeros, zeros, zeros, zeros))
+
+        obj_sizes = dict([(obj.obj_id, np.array([obj.size.length, obj.size.width]))
+                          for obj in dynamic_objects if obj.obj_id in predictions])
+        # find all pairs obj_spec_list = [(obj_id, spec_id)], for which the object is relevant to spec's safety
+        # only for lane change actions
+        lon_safe_times = SafetyUtils._calc_lon_safe_times(occupancy_grid, ego_fstate, ego_ftraj, ego_size,
+                                                          obj_sizes, filtered_recipes, specs_d, predictions,
+                                                          samples_num, lane_width)
+        time2 = time.time()-st
+        st = time.time()
+
+        # find safe intervals in lon_safe_times
+        ext_safe_times = np.c_[np.repeat(False, actions_num), lon_safe_times, np.repeat(False, actions_num)]
+        start_points = np.where(np.logical_and(ext_safe_times[:, 1:], np.logical_not(ext_safe_times[:, :-1])))
+        end_points = np.where(np.logical_and(ext_safe_times[:, :-1], np.logical_not(ext_safe_times[:, 1:])))
+        (start_times, end_times) = (time_samples[start_points[1]], time_samples[end_points[1]-1])
+        intervals = np.array([(spec_orig_idxs[spec_i], start_times[i], min(end_times[i], specs_t[spec_i]))
+                              for i, spec_i in enumerate(start_points[0]) if start_times[i] < specs_t[spec_i]])
+
+        time3 = time.time()-st
+        time_tot = time.time() - st_tot
+
+        print('time_tot=%f: time1=%f time2=%f time3=%f' % (time_tot, time1, time2, time3))
+
+        return intervals
+
+    @staticmethod
+    def _calc_lon_safe_times(occupancy_grid: RoadSemanticOccupancyGrid, ego_init_fstate: np.array,
+                             ego_ftraj: FrenetTrajectories2D, ego_size: np.array, obj_sizes: np.array,
+                             recipes: np.array, specs_d: np.array, predictions: Dict[int, FrenetTrajectory2D],
+                             samples_num, lane_width: float) -> np.array:
+        """
+        :param occupancy_grid:
+        :param ego_init_fstate:
+        :param ego_ftraj:
+        :param ego_size:
+        :param specs_d:
+        :param lane_width:
+        :return:
+        """
+        # get origin & target relative lane for all actions, based on the current and target latitudes
+        # origin_lane may be different from the current ego lane, if ego elapsed > half lateral distance to target
+        origin_lanes, target_lanes = SafetyUtils._get_rel_lane_from_specs(lane_width, ego_init_fstate, specs_d)
+        ego_lon = ego_init_fstate[FS_SX]
+        actions_num = specs_d.shape[0]
+
+        (lon_front, lon_same, lon_rear) = (RelativeLongitudinalPosition.FRONT, RelativeLongitudinalPosition.PARALLEL,
+                                           RelativeLongitudinalPosition.REAR)
+        # find all pairs obj_spec_list = [(obj_id, spec_id)], for which the object is relevant to spec's safety
+        # only for lane change actions
+        obj_spec_list = []
+        # target_lane is is per spec (array of size actions_num)
+        for spec_i, tar_lane in enumerate(target_lanes):
+            recipe: ActionRecipe = recipes[spec_i]
+            rel_lon = lon_front.value
+            if recipe.action_type == ActionType.FOLLOW_VEHICLE:
+                rel_lon = recipe.relative_lon.value
+            elif recipe.action_type == ActionType.OVERTAKE_VEHICLE:
+                rel_lon = recipe.relative_lon.value + 1
+
+            # add followed object to obj_spec_list
+            if rel_lon == lon_front.value:
+                if (tar_lane, lon_front) in occupancy_grid:
+                    obj_spec_list.append((occupancy_grid[(tar_lane, lon_front)][0].dynamic_object.obj_id, spec_i, 0))
+            elif rel_lon == lon_same.value:
+                if (tar_lane, lon_same) in occupancy_grid:
+                    obj_spec_list.append((occupancy_grid[(tar_lane, lon_same)][0].dynamic_object.obj_id, spec_i, 0))
+            elif rel_lon == lon_rear.value:
+                if (tar_lane, lon_rear) in occupancy_grid:
+                    obj_spec_list.append((occupancy_grid[(tar_lane, lon_rear)][0].dynamic_object.obj_id, spec_i, 0))
+            elif rel_lon > lon_front.value:  # the followed object is ahead of lon_front
+                if (tar_lane, lon_front) in occupancy_grid and len(occupancy_grid[(tar_lane, lon_front)]) > 1:
+                    obj_spec_list.append((occupancy_grid[(tar_lane, lon_front)][1].dynamic_object.obj_id, spec_i, 0))
+
+            if tar_lane != origin_lanes[spec_i]:  # lane change
+                # add back object to obj_spec_list
+                if rel_lon == lon_front.value:
+                    if (tar_lane, lon_same) in occupancy_grid:
+                        obj_spec_list.append((occupancy_grid[(tar_lane, lon_same)][0].dynamic_object.obj_id, spec_i, 2))
+                    elif (tar_lane, lon_rear) in occupancy_grid:
+                        obj_spec_list.append((occupancy_grid[(tar_lane, lon_rear)][0].dynamic_object.obj_id, spec_i, 2))
+                elif rel_lon == lon_same.value:
+                    if (tar_lane, lon_rear) in occupancy_grid:
+                        obj_spec_list.append((occupancy_grid[(tar_lane, lon_rear)][0].dynamic_object.obj_id, spec_i, 2))
+                elif rel_lon == lon_rear.value:  # the back object is the object behind lon_rear
+                    if (tar_lane, lon_rear) in occupancy_grid and len(occupancy_grid[(tar_lane, lon_rear)]) > 1:
+                        obj_spec_list.append((occupancy_grid[(tar_lane, lon_rear)][1].dynamic_object.obj_id, spec_i, 2))
+
+                # add front object to obj_spec_list
+                # the front object is in the original lane; it may be in lon_same or in lon_front
+                if (origin_lanes[spec_i], lon_same) in occupancy_grid and \
+                                occupancy_grid[(origin_lanes[spec_i], lon_same)][0].fstate[FS_SX] > ego_lon:
+                    obj_spec_list.append((occupancy_grid[(origin_lanes[spec_i], lon_same)][0].dynamic_object.obj_id,
+                                          spec_i, 1))
+                elif (origin_lanes[spec_i], lon_front) in occupancy_grid:
+                    obj_spec_list.append((occupancy_grid[(origin_lanes[spec_i], lon_front)][0].dynamic_object.obj_id,
+                                          spec_i, 1))
+
+        obj_spec_list = np.array(obj_spec_list)
+        obj_set = set(obj_spec_list[:, 0])
+
+        lon_safe_times_per_obj = np.ones((actions_num, len(obj_set), samples_num)).astype(bool)
+        obj_id_to_obj_i = {}
+        for obj_i, obj_id in enumerate(obj_set):
+            obj_id_to_obj_i[obj_id] = obj_i
+            specs = obj_spec_list[np.where(obj_spec_list[:, 0] == obj_id)][:, 1]
+            pred = predictions[obj_id]
+            lon_safe_times_per_obj[specs, obj_i] = SafetyUtils.calc_safety_for_trajectories(
+                ego_ftraj[specs], ego_size, pred, obj_sizes[obj_id], False)
+
+        # for each spec pick its follow and front objects, find the unsafe regions:
+        # (before the last unsafe time w.r.t. follow object and after the first unsafe time w.r.t. front object)
+        # and fill them by False
+        for spec_i, spec_safe_times in enumerate(lon_safe_times_per_obj):
+            follow_objects = obj_spec_list[np.where(np.logical_and(obj_spec_list[:, 1] == spec_i,
+                                                                   obj_spec_list[:, 2] == 0))][:, 0]
+            if follow_objects.shape[0] > 0:
+                obj_i = obj_id_to_obj_i[follow_objects[0]]
+                safe_times = lon_safe_times_per_obj[spec_i, obj_i]
+                safe_from = samples_num - np.append(safe_times[::-1], False).argmin()  # last unsafe index w.r.t. LF
+                safe_times[:safe_from] = False  # fill False before safe_from
+
+            front_objects = obj_spec_list[np.where(np.logical_and(obj_spec_list[:, 1] == spec_i,
+                                                                  obj_spec_list[:, 2] == 1))][:, 0]
+            if front_objects.shape[0] > 0:
+                obj_i = obj_id_to_obj_i[front_objects[0]]
+                safe_times = lon_safe_times_per_obj[spec_i, obj_i]
+                safe_till = np.append(safe_times, False).argmin()  # first unsafe index w.r.t. F
+                safe_times[safe_till:] = False  # fill False after safe_till
+
+        lon_safe_times = lon_safe_times_per_obj.all(axis=1)
+        return lon_safe_times
+
+    @staticmethod
+    def _get_rel_lane_from_specs(lane_width: float, ego_fstate: FrenetState2D, specs_d: np.array) -> \
+            [List[RelativeLane], List[RelativeLane]]:
+        """
+        Return origin and target relative lanes
+        :param lane_width:
+        :param ego_fstate:
+        :param specs_d:
+        :return: origin & target relative lanes
+        """
+        specs_num = specs_d.shape[0]
+        d_dist = specs_d - ego_fstate[FS_DX]
+
+        # same_same_idxs = np.where(-lane_width/4 <= d_dist <= lane_width/4)[0]
+        # right_same_idxs = np.where(np.logical_and(lane_width / 4 < d_dist, d_dist <= lane_width / 2))
+        # left_same_idxs = np.where(np.logical_and(-lane_width / 2 <= d_dist, d_dist < -lane_width / 4))
+        same_left_idxs = np.where(d_dist > lane_width / 2)
+        same_right_idxs = np.where(d_dist < -lane_width / 2)
+
+        origin_lanes = np.array([RelativeLane.SAME_LANE] * specs_num)
+        target_lanes = np.array([RelativeLane.SAME_LANE] * specs_num)
+        # origin_lanes[right_same_idxs] = RelativeLane.RIGHT_LANE
+        # origin_lanes[left_same_idxs] = RelativeLane.LEFT_LANE
+        target_lanes[same_left_idxs] = RelativeLane.LEFT_LANE
+        target_lanes[same_right_idxs] = RelativeLane.RIGHT_LANE
+        return list(origin_lanes), list(target_lanes)
 
     @staticmethod
     def calc_safe_T_d(ego_fstate: FrenetState2D, ego_size: np.array, specs: np.array, specs_mask: np.array,

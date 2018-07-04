@@ -344,6 +344,14 @@ def test_calcSafeTd():
     recipes = action_space.recipes
     recipes_mask = action_space.filter_recipes(recipes, behavioral_state)
 
+    grid = behavioral_state.road_occupancy_grid
+    predictions_dict = {}
+    for cell in grid:
+        obj = grid[cell][0]
+        prediction = np.tile(obj.fstate, samples_num).reshape(samples_num, 6)
+        prediction[:, 0] = obj.fstate[FS_SX] + time_samples * obj.fstate[FS_SV]
+        predictions_dict[obj.dynamic_object.obj_id] = prediction
+
     # Action specification
     specs = np.full(recipes.__len__(), None)
     valid_action_recipes = [recipe for i, recipe in enumerate(recipes) if recipes_mask[i]]
@@ -359,6 +367,9 @@ def test_calcSafeTd():
     assert T_d[68] == 4     # static action T_s=6.4 v_T=16.7 with lane change: T_d is short because of close F
     assert T_d[120] == 4    # dynamic action T_s=7.6 with lane change: T_d is short because of close F
 
+    intervals = SafetyUtils.calc_safe_intervals(behavioral_state, ego_fstate, recipes, list(specs), specs_mask,
+                                                predictions_dict, time_samples)
+    a=0
 
 def create_canonic_ego(timestamp: int, lon: float, lat: float, vel: float, size: ObjectSize,
                        road_frenet: FrenetSerret2DFrame) -> EgoState:
