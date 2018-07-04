@@ -12,7 +12,7 @@ class ActionType(Enum):
     """
     FOLLOW_LANE = 1
     FOLLOW_VEHICLE = 2
-    TAKE_OVER_VEHICLE = 3
+    OVERTAKE_VEHICLE = 3
 
 
 class AggressivenessLevel(Enum):
@@ -43,35 +43,41 @@ class StaticActionRecipe(ActionRecipe):
         super().__init__(relative_lane, ActionType.FOLLOW_LANE, aggressiveness)
         self.velocity = velocity
 
+    def __str__(self):
+        return 'StaticActionRecipe(type: %s, lane: %s, velocity: %.2f [KM/h], agg: %s)' % \
+               (self.action_type.name, self.relative_lane.name, self.velocity * 3.6, self.aggressiveness.name)
+
 
 class DynamicActionRecipe(ActionRecipe):
     """"
     Data object containing the fields needed for specifying a certain dynamic action, together with the state.
     """
-    def __init__(self, relative_lane: RelativeLane, relative_lon: RelativeLongitudinalPosition,  action_type: ActionType, aggressiveness: AggressivenessLevel):
+    def __init__(self, relative_lane: RelativeLane, relative_lon: RelativeLongitudinalPosition, action_type: ActionType,
+                 aggressiveness: AggressivenessLevel):
         super().__init__(relative_lane, action_type, aggressiveness)
         self.relative_lon = relative_lon
+
+    def __str__(self):
+        return 'DynamicActionRecipe(type: %s, towards: (%s, %s), agg: %s)' % \
+               (self.action_type.name, self.relative_lane.name, self.relative_lon.name, self.aggressiveness.name)
 
 
 class ActionSpec:
     """
     Holds the actual translation of the semantic action in terms of trajectory specifications.
     """
-
-    def __init__(self, t: float, v: float, s: float, d: float, samplable_trajectory: SamplableTrajectory = None):
+    def __init__(self, t: float, v: float, s: float, d: float):
         """
         The trajectory specifications are defined by the target ego state
         :param t: time [sec]
         :param v: velocity [m/s]
-        :param s: relative longitudinal distance to ego in Frenet frame [m]
-        :param d: relative lateral distance to ego in Frenet frame [m]
-        :param samplable_trajectory: samplable reference trajectory.
+        :param s: global longitudinal position in Frenet frame [m]
+        :param d: global lateral position in Frenet frame [m]
         """
         self.t = t
         self.v = v
         self.s = s
         self.d = d
-        self.samplable_trajectory = samplable_trajectory
 
     def __str__(self):
         return str({k: str(v) for (k, v) in self.__dict__.items()})

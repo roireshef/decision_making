@@ -5,10 +5,10 @@ import numpy as np
 
 from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MIN_OVERTAKE_VEL, \
-    SAFE_DIST_TIME_DELAY, LON_ACC_LIMITS
+    SPECIFICATION_MARGIN_TIME_DELAY, LON_ACC_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import \
     BehavioralGridState, SemanticGridCell, RelativeLane, RelativeLongitudinalPosition
-from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec
+from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
 from decision_making.src.planning.types import FrenetPoint, FP_SX, LAT_CELL
@@ -133,13 +133,14 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         if (relative_lane, RelativeLongitudinalPosition.REAR) in behavioral_state.road_occupancy_grid:
             back_objects = behavioral_state.road_occupancy_grid[(relative_lane, RelativeLongitudinalPosition.REAR)]
         if len(back_objects) > 0:
-            back_fpoint = road_frenet.cpoint_to_fpoint(np.array([back_objects[0].x, back_objects[0].y]))
+            back_object = back_objects[0].dynamic_object
+            back_fpoint = road_frenet.cpoint_to_fpoint(np.array([back_object.x, back_object.y]))
             dist_to_back_obj = ego_fpoint[FP_SX] - back_fpoint[FP_SX]
-            if behavioral_state.ego_state.v_x > back_objects[0].v_x:
-                safe_dist_behind_ego = back_objects[0].v_x * SAFE_DIST_TIME_DELAY
+            if behavioral_state.ego_state.v_x > back_object.v_x:
+                safe_dist_behind_ego = back_object.v_x * SPECIFICATION_MARGIN_TIME_DELAY
             else:
-                safe_dist_behind_ego = back_objects[0].v_x * SAFE_DIST_TIME_DELAY + \
-                                       back_objects[0].v_x ** 2 / (2 * abs(LON_ACC_LIMITS[0])) - \
+                safe_dist_behind_ego = back_object.v_x * SPECIFICATION_MARGIN_TIME_DELAY + \
+                                       back_object.v_x ** 2 / (2 * abs(LON_ACC_LIMITS[0])) - \
                                        behavioral_state.ego_state.v_x ** 2 / (2 * abs(LON_ACC_LIMITS[0]))
         return dist_to_back_obj, safe_dist_behind_ego
 
@@ -151,6 +152,8 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         :param cell:
         :return: the action index or None if the action does not exist
         """
-        action_ind = [i for i, recipe in enumerate(action_recipes) if
-                      recipe.relative_lane == cell[LAT_CELL] and recipes_mask[i]]
-        return action_ind[0] if len(action_ind) > 0 else None
+        action_ind = [i for i, recipe in enumerate(action_recipes)
+                      if recipe.relative_lane == cell[LAT_CELL]
+                      and recipe.action_type==ActionType.FOLLOW_LANE
+                      and recipes_mask[i]]
+        return action_ind[-1] if len(action_ind) > 0 else None

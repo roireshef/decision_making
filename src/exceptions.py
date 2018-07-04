@@ -14,6 +14,10 @@ class PredictedObjectHasNegativeVelocity(Exception):
     pass
 
 
+class ResourcesNotUpToDateException(Exception):
+    pass
+
+
 class PredictObjectInPastTimes(Exception):
     pass
 

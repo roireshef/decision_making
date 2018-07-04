@@ -1,5 +1,7 @@
+import numpy as np
+
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE
-from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory
+from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
 from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, C_A, C_K
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
@@ -29,7 +31,7 @@ def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTr
     exact_desired_state = samplable_trajectory.sample(np.array([1001]))[0]
     close_state = EgoState(-1, 1001e9, exact_desired_state[C_X] + 0.1, exact_desired_state[C_Y] + 0.1,
                            DEFAULT_OBJECT_Z_VALUE, exact_desired_state[C_YAW], ObjectSize(0, 0, 0), 1.0,
-                           exact_desired_state[C_V], 0.0, exact_desired_state[C_A], 0.0, 0.0)
+                           exact_desired_state[C_V], 0.0, exact_desired_state[C_A], 0.0)
 
     assert LocalizationUtils.is_actual_state_close_to_expected_state(close_state, facade._last_trajectory,
                                                                      facade.logger,
@@ -53,7 +55,7 @@ def test_isActualStateCloseToExpectedState_nonCloseTranslatedOnlyEgoState_return
     exact_desired_state = samplable_trajectory.sample(np.array([1001]))[0]
     close_state = EgoState(-1, 1001e9, exact_desired_state[C_X] + 200, exact_desired_state[C_Y] + 200,
                            DEFAULT_OBJECT_Z_VALUE, exact_desired_state[C_YAW], ObjectSize(0, 0, 0), 1.0,
-                           exact_desired_state[C_V], 0.0, exact_desired_state[C_A], 0.0, 0.0)
+                           exact_desired_state[C_V], 0.0, exact_desired_state[C_A], 0.0)
 
     assert not LocalizationUtils.is_actual_state_close_to_expected_state(close_state, facade._last_trajectory,
                                                                          facade.logger,

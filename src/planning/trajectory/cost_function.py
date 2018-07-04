@@ -2,15 +2,15 @@ from abc import abstractmethod
 
 import numpy as np
 
-from decision_making.src.global_constants import EXP_CLIP_TH, TRAJECTORY_OBSTACLE_LOOKAHEAD
+from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD_DIST
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import CartesianTrajectory, C_YAW, CartesianState, C_Y, C_X, \
     CartesianTrajectories, CartesianPaths2D, CartesianPoint2D, C_A, C_K, C_V, CartesianExtendedTrajectories, \
     FrenetTrajectories2D, FS_DX
+from decision_making.src.planning.utils.math import Math
 from decision_making.src.prediction.predictor import Predictor
 from decision_making.src.state.state import DynamicObject, State
 from mapping.src.transformations.geometry_utils import CartesianFrame
-from decision_making.src.planning.utils.math import Math
 
 
 class SigmoidBoxObstacle:
@@ -206,7 +206,7 @@ class Costs:
             [SigmoidDynamicBoxObstacle.from_object(obj=obs, k=params.obstacle_cost_x.k, offset=offset,
                                                    time_samples=global_time_samples, predictor=predictor)
              for obs in state.dynamic_objects
-             if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < TRAJECTORY_OBSTACLE_LOOKAHEAD]
+             if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < PLANNING_LOOKAHEAD_DIST]
 
         if len(close_obstacles) > 0:
             cost_per_obstacle = [obs.compute_cost_per_point(ctrajectories[:, :, 0:(C_Y+1)]) for obs in close_obstacles]
