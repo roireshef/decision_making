@@ -3,6 +3,7 @@ from typing import List, Dict
 
 import numpy as np
 
+from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_DX
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
@@ -18,7 +19,8 @@ class RoadFollowingPredictor(EgoAwarePredictor):
     def __init__(self, logger: Logger):
         super().__init__(logger)
 
-    def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray, action_trajectory)\
+    def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray,
+                        action_trajectory: SamplableTrajectory) \
             -> Dict[int, List[DynamicObject]]:
         """
         Predict the future of the specified objects, for the specified timestamps
@@ -47,11 +49,12 @@ class RoadFollowingPredictor(EgoAwarePredictor):
             objects[obj_idx].clone_from_map_state(MapState(predictions[obj_idx, time_idx], obj.map_state.road_id),
                                                   timestamp_in_sec=timestamp)
             for time_idx, timestamp in enumerate(prediction_timestamps)]
-                                         for obj_idx, obj in enumerate(objects)}
+            for obj_idx, obj in enumerate(objects)}
 
         return predicted_objects_states_dict
 
-    def predict_state(self, state: State, prediction_timestamps: np.ndarray, action_trajectory) -> (List[State]):
+    def predict_state(self, state: State, prediction_timestamps: np.ndarray,
+                      action_trajectory: SamplableTrajectory) -> (List[State]):
         """
         Predicts the future states of the given state, for the specified timestamps
         :param state: the initial state to begin prediction from
@@ -90,7 +93,7 @@ class RoadFollowingPredictor(EgoAwarePredictor):
                 predicted_ego_state = state.ego_state
 
             state = state.clone_with(ego_state=predicted_ego_state,
-                          dynamic_objects=predicted_dynamic_objects)
+                                     dynamic_objects=predicted_dynamic_objects)
 
             future_states.append(state)
 
