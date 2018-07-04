@@ -356,8 +356,8 @@ def test_calcSafeTd():
     # TODO: after considering the rear object in RSS, verify the action 63 is safe for T_d = 3
     assert T_d[63] == 0     # static action T_s=16 v_T=13.9 with lane change: unsafe wrt faster LB since T_s is long
     assert T_d[65] == 5     # static action T_s=6.4 v_T=13.9 with lane change: T_d is affected by close F
-    assert T_d[68] == 4     # static action T_s=6.4 v_T=16.7 with lane change: T_d is short because of close F
-    assert T_d[120] == 4    # dynamic action T_s=7.6 with lane change: T_d is short because of close F
+    assert T_d[68] == 3     # static action T_s=6.4 v_T=16.7 with lane change: T_d is short because of close F
+    assert T_d[120] == 3    # dynamic action T_s=7.6 with lane change: T_d is short because of close F
 
 
 def create_canonic_ego(timestamp: int, lon: float, lat: float, vel: float, size: ObjectSize,
