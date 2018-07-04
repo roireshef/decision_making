@@ -4,7 +4,7 @@ from logging import Logger
 import six
 
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import NavigationGoal
+from decision_making.src.planning.navigation.navigation_goal import NavigationGoal
 
 
 @six.add_metaclass(ABCMeta)
