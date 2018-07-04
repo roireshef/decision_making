@@ -241,7 +241,7 @@ class SafetyUtils:
         valid_specs_num = specs_t.shape[0]  # after filtering
 
         # choose a grid of T_d between reasonable bounds
-        grid_resolution = 1  # seconds between two adjacent T_d samples
+        grid_resolution = 2  # seconds between two adjacent T_d samples
         T_d = np.arange(7, 3 - np.finfo(np.float16).eps, -grid_resolution)
         T_d_num = T_d.shape[0]
 
