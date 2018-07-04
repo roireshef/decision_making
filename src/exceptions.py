@@ -2,7 +2,7 @@ import six
 from abc import ABCMeta
 
 
-class NoUniqueObjectStateForEvaluation(Exception):
+class MultipleObjectsWithRequestedID(Exception):
     pass
 
 

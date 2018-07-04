@@ -127,13 +127,11 @@ class StateModule(DmModule):
                 acceleration_lon = UNKNOWN_DEFAULT_VAL
                 curvature = UNKNOWN_DEFAULT_VAL
 
-                is_predicted = lcm_dyn_obj.tracking_status.is_predicted
-
                 global_coordinates = np.array([x, y, z])
+                # TODO: we might consider using velocity_yaw = np.arctan2(object_state.v_y, object_state.v_x)
                 global_yaw = yaw
 
                 try:
-
                     dyn_obj = DynamicObject.create_from_cartesian_state(
                         obj_id=id, timestamp=timestamp, size=size, confidence=confidence,
                         cartesian_state=np.array([x, y, global_yaw, total_v, acceleration_lon, curvature]))

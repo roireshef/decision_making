@@ -96,33 +96,6 @@ class RoadFollowingPredictor(EgoAwarePredictor):
 
         return future_states
 
-    def predict_object(self, dynamic_object: DynamicObject, prediction_timestamps: np.ndarray) \
-            -> List[DynamicObject]:
-        """
-        Method to compute future locations, yaw, and velocities for dynamic objects. Dynamic objects are predicted as
-        continuing in the same intra road lat and following the road's curve in constant
-        velocity (velocity is assumed to be in the road's direction, meaning no lateral movement)
-        :param dynamic_object: in map coordinates
-        :param prediction_timestamps: np array of timestamps in [sec] to predict_object_trajectories for. In ascending
-        order. Global, not relative
-        :return: list of predicted objects of the received dynamic object
-        """
-
-        predicted_object_states = []
-        obj_fstate = dynamic_object.map_state.road_fstate
-        for timestamp in prediction_timestamps:
-            horizon = timestamp - dynamic_object.timestamp_in_sec
-            obj_terminal_fstate = np.array([obj_fstate[FS_SX] + obj_fstate[FS_SV] * horizon, obj_fstate[FS_SV], 0,
-                                            obj_fstate[FS_DX], 0, 0])
-
-            # TODO: Note!! This works only when the road id doesn't change during prediction
-            predicted_object_states.append(dynamic_object.clone_from_map_state(timestamp_in_sec=timestamp,
-                                                                               map_state=MapState(
-                                                                                   road_fstate=obj_terminal_fstate,
-                                                                                   road_id=dynamic_object.map_state.road_id)))
-
-        return predicted_object_states
-
     def predict_frenet_states(self, objects_fstates: np.ndarray, horizons: np.ndarray):
         """
         Constant velocity prediction for all timestamps and objects in a matrix computation

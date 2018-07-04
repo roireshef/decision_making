@@ -43,3 +43,13 @@ class EgoAwarePredictor(metaclass=ABCMeta):
         :return: a mapping between object id to the list of future dynamic objects of the matching object
         """
         pass
+
+    @abstractmethod
+    def predict_frenet_states(self, objects_fstates: np.ndarray, horizons: np.ndarray):
+        """
+        Constant velocity prediction for all timestamps and objects in a matrix computation
+        :param objects_fstates: numpy 2D array [Nx6] where N is the number of objects, each row is an FSTATE
+        :param horizons: numpy 1D array [T] with T horizons (relative time for prediction into the future)
+        :return: numpy 3D array [NxTx6]
+        """
+        pass

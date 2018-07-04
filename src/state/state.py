@@ -1,5 +1,4 @@
 import copy
-from common_data.lcm.generatedFiles.gm_lcm import LcmEgoState
 from typing import List, Optional
 
 import numpy as np
@@ -11,18 +10,16 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmObjectSize
 from common_data.lcm.generatedFiles.gm_lcm import LcmOccupancyState
 from common_data.lcm.generatedFiles.gm_lcm import LcmState
 
-from decision_making.src.exceptions import NoUniqueObjectStateForEvaluation
+from decision_making.src.exceptions import MultipleObjectsWithRequestedID
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
-from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K
+from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K
 from decision_making.src.state.map_state import MapState
-from decision_making.src.utils.lcm_utils import LCMUtils
+from common_data.lcm.python.utils.lcm_utils import LCMUtils
 from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.model.localization import RoadLocalization
-from mapping.src.service.map_service import MapService
 
 
 class OccupancyState(PUBSUB_MSG_IMPL):
-    ''' Members annotations for python 2 compliant classes '''
+    """ Members annotations for python 2 compliant classes """
     timestamp = int
     free_space = np.ndarray
     confidence = np.ndarray
@@ -68,7 +65,7 @@ class OccupancyState(PUBSUB_MSG_IMPL):
 
 
 class ObjectSize(PUBSUB_MSG_IMPL):
-    ''' Members annotations for python 2 compliant classes '''
+    """ Members annotations for python 2 compliant classes """
     length = float
     width = float
     height = float
@@ -166,21 +163,27 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
     @staticmethod
     def sec_to_ticks(time_in_seconds: float):
-        # type: (float) -> int
+        """
+        Convert seconds to ticks (nanoseconds)
+        :param time_in_seconds:
+        :return: time in ticks (nanoseconds)
+        """
+        # type: float -> int
         return int(round(time_in_seconds / TIMESTAMP_RESOLUTION_IN_SEC))
 
     @staticmethod
     def ticks_to_sec(time_in_nanoseconds: int):
-        # type: (int) -> float
+        """
+        Convert ticks (nanoseconds) to seconds
+        :param time_in_nanoseconds:
+        :return: time in seconds
+        """
+        # type: int -> float
         return time_in_nanoseconds * TIMESTAMP_RESOLUTION_IN_SEC
 
     @property
     def timestamp_in_sec(self):
         return DynamicObject.ticks_to_sec(self.timestamp)
-
-    @timestamp_in_sec.setter
-    def timestamp_in_sec(self, value):
-        self.timestamp = DynamicObject.sec_to_ticks(value)
 
     @classmethod
     def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence):
@@ -250,7 +253,6 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 class EgoState(DynamicObject):
     def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
         # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float) -> EgoState
-
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
 
@@ -282,7 +284,7 @@ class EgoState(DynamicObject):
 
 
 class State(PUBSUB_MSG_IMPL):
-    ''' Members annotations for python 2 compliant classes '''
+    """ Members annotations for python 2 compliant classes """
     occupancy_state = OccupancyState
     dynamic_objects = List[DynamicObject]
     ego_state = EgoState
@@ -347,12 +349,12 @@ class State(PUBSUB_MSG_IMPL):
 
         # Verify that object exists in state exactly once
         if len(selected_objects) != 1:
-            raise NoUniqueObjectStateForEvaluation(
+            raise MultipleObjectsWithRequestedID(
                 'Found %d matching objects for object ID %d' % (len(selected_objects), target_obj_id))
 
         return selected_objects[0]
 
-  # TODO: remove when access to dynamic objects according to dictionary will be available.
+    # TODO: remove when access to dynamic objects according to dictionary will be available.
     @classmethod
     def get_objects_from_state(cls, state, target_obj_ids):
         # type: (State, List) -> List[DynamicObject]
