@@ -67,7 +67,7 @@ class SafetyUtils:
         dist = ego_lon - obj_lon
         sign = np.sign(dist)
         ego_ahead = 0.5 * (sign + 1)
-        safe_dist = np.clip(np.divide(sign * (obj_vel ** 2 - ego_vel ** 2), 2 * max_brake), 0, None) + \
+        safe_dist = np.maximum(np.divide(sign * (obj_vel ** 2 - ego_vel ** 2), 2 * max_brake), 0) + \
                     (1 - ego_ahead) * ego_vel * ego_time_delay + ego_ahead * obj_vel * obj_time_delay + margins
         return sign * dist > safe_dist
 
@@ -89,10 +89,10 @@ class SafetyUtils:
 
         dist = ego_lat - obj_lat
         sign = np.sign(dist)
-        safe_dist = np.clip(np.divide(sign * (obj_lat_vel * np.abs(obj_lat_vel) - ego_lat_vel * np.abs(ego_lat_vel)),
-                                      2 * max_brake),
-                            0, None) + \
-                    np.clip(-sign * ego_lat_vel, 0, None) * ego_time_delay + \
-                    np.clip( sign * obj_lat_vel, 0, None) * obj_time_delay + \
+        safe_dist = np.maximum(np.divide(sign * (obj_lat_vel * np.abs(obj_lat_vel) - ego_lat_vel * np.abs(ego_lat_vel)),
+                                         2 * max_brake),
+                               0) + \
+                    np.maximum(-sign * ego_lat_vel, 0) * ego_time_delay + \
+                    np.maximum( sign * obj_lat_vel, 0) * obj_time_delay + \
                     margins
         return sign * dist > safe_dist
