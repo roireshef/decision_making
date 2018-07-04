@@ -201,7 +201,8 @@ class SafetyUtilsTrajectoriesFixture:
                               np.c_[sx2 + 20, sv2, zeros, dx, zeros, zeros],      # close LF
                               np.c_[sx2 - 220, sv2, zeros, dx, zeros, zeros],     # far LB
                               np.c_[sx2 + 40, sv2, zeros, dx, zeros, zeros],      # LF
-                              np.c_[sx0 - 20, sv0, zeros, dx, zeros, zeros]])     # close slow LB (vel=9)
+                              np.c_[sx0 - 20, sv0, zeros, dx, zeros, zeros],      # close slow LB (vel=9)
+                              np.c_[sx2 - 20, sv2, zeros, dx-lane_wid, zeros, zeros]])  # unsafe B
         obj_sizes = np.tile(obj_size, obj_ftraj.shape[0]).reshape(obj_ftraj.shape[0], 2)
 
         return ego_ftraj, ego_size, obj_ftraj, obj_sizes
@@ -276,6 +277,7 @@ def test_calcSafetyForTrajectories_safetyWrtLBLF_safeOnlyIfObjectLBisFar():
     assert not safe_times[5][2].all()   # slowly accelerating ego (10->20 m/s, T_d = 3) is unsafe safe w.r.t. far LB
     # in the following test ego starts longitudinally unsafe and becomes safe before it becomes unsafe laterally
     assert safe_times[2][4].all()       # ego (10->30 m/s, T_d = 6) is safe wrt close slow LB (9 m/s, 20 m behind ego)
+    # assert safe_times[0][5].all()       # ego is safe wrt to rear object B, although according to RSS B is unsafe
 
 
 def test_calcSafetyForTrajectories_egoAndSingleObject_checkSafetyCorrectnessForManyScenarios():
@@ -293,3 +295,8 @@ def test_calcSafetyForTrajectories_egoAndSingleObject_checkSafetyCorrectnessForM
     assert not safe_times[1].all()  # the object ahead is slower, therefore unsafe
     assert not safe_times[2].all()  # ego is faster
     assert safe_times[3].all()      # ego moves from lane 2 to lane 1, and the object on lane 0
+
+    # test for a single REAR object
+    # ego_ftraj, ego_size, obj_ftraj, obj_sizes = SafetyUtilsTrajectoriesFixture.create_trajectories_for_LB_LF()
+    # safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, obj_ftraj[5], obj_sizes[5])
+    # assert safe_times[0].all()      # ego is safe wrt to rear object B, although according to RSS B is unsafe

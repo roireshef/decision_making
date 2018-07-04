@@ -2,7 +2,7 @@ import numpy as np
 
 from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY, SPECIFICATION_MARGIN_TIME_DELAY, \
     LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU
-from decision_making.src.planning.types import LIMIT_MIN, FrenetTrajectories2D
+from decision_making.src.planning.types import LIMIT_MIN, FrenetTrajectories2D, FS_SX
 
 
 class SafetyUtils:
@@ -14,7 +14,8 @@ class SafetyUtils:
         Calculate safety boolean tensor for different ego Frenet trajectories and objects' Frenet trajectories.
         :param ego_ftraj: ego Frenet trajectories: tensor of shape: traj_num x timestamps_num x Frenet state size
         :param ego_size: array of size 2: ego length, ego width
-        :param obj_ftraj: one or array of objects Frenet trajectories: tensor of shape: objects_num x timestamps_num x Frenet state size
+        :param obj_ftraj: single ftrajectory (2D array) or array of ftrajectories of objects (3D array):
+                shape: objects_num x timestamps_num x 6 (Frenet state size)
         :param obj_sizes: one or array of arrays of size 2: i-th row is i-th object's size
         :param both_dimensions_flag: if False then only longitudinal dimension is considered
         :return: [bool] safety per [ego trajectory, object, timestamp]. Tensor of shape: traj_num x objects_num x timestamps_num
@@ -25,29 +26,25 @@ class SafetyUtils:
             # duplicate ego_ftraj to the following dimensions: ego_traj_num, objects_num, timestamps_num, fstate (6)
             ego_ftraj_dup = np.tile(ego_ftraj, objects_num).reshape(ego_traj_num, times_num, objects_num,
                                                                     fstate_size).swapaxes(1, 2)
-            obj_lengths = np.repeat(obj_sizes[:, 0], times_num).reshape(objects_num, times_num)
-            obj_widths = np.repeat(obj_sizes[:, 1], times_num).reshape(objects_num, times_num)
         else:  # a single object, don't duplicate ego_ftraj and obj_sizes
             ego_ftraj_dup = ego_ftraj
-            obj_lengths = obj_sizes[0]
-            obj_widths = obj_sizes[1]
 
         # split the trajectories to 6 fstate components for the duplicated ego and the object
         ego = np.array(np.split(ego_ftraj_dup, 6, axis=-1))[..., 0]
         obj = np.array(np.split(obj_ftraj, 6, axis=-1))[..., 0]
+        lon_margins = 0.5 * (ego_size[0] + obj_sizes[..., 0])[..., np.newaxis]
+        lat_margins = 0.5 * (ego_size[1] + obj_sizes[..., 1])[..., np.newaxis] + LATERAL_SAFETY_MU
 
         # calculate longitudinal safety
-        lon_safe_times = SafetyUtils.get_lon_safety(ego, SAFETY_MARGIN_TIME_DELAY,
-                                                         obj, SPECIFICATION_MARGIN_TIME_DELAY,
-                                                         0.5 * (ego_size[0] + obj_lengths))
+        lon_safe_times = SafetyUtils.get_lon_safety(ego, SAFETY_MARGIN_TIME_DELAY, obj, SPECIFICATION_MARGIN_TIME_DELAY,
+                                                    lon_margins)
 
         if not both_dimensions_flag:  # if only longitudinal safety
             return lon_safe_times
 
         # calculate lateral safety
-        lat_safe_times = SafetyUtils.get_lat_safety(ego, SAFETY_MARGIN_TIME_DELAY,
-                                                    obj, SPECIFICATION_MARGIN_TIME_DELAY,
-                                                    0.5 * (ego_size[1] + obj_widths) + LATERAL_SAFETY_MU)
+        lat_safe_times = SafetyUtils.get_lat_safety(ego, SAFETY_MARGIN_TIME_DELAY, obj, SPECIFICATION_MARGIN_TIME_DELAY,
+                                                    lat_margins)
 
         return np.logical_or(lon_safe_times, lat_safe_times)
 
@@ -60,7 +57,7 @@ class SafetyUtils:
         :param ego_time_delay: [sec] ego time delay
         :param obj: object's fstate components: tensor of any shape that compatible with the shape of ego
         :param obj_time_delay: [sec] object's time delay
-        :param margins: [m] lengths half sum: matrix of size objects_num x timestamps_num
+        :param margins: [m] lengths half sum: matrix of size objects_num x 1
         :param max_brake: [m/s^2] maximal deceleration of both objects
         :return: [bool] longitudinal safety per timestamp. Tensor of the same shape as object1 or object2
         """
@@ -83,7 +80,7 @@ class SafetyUtils:
         :param ego_time_delay: [sec] object1 time delay
         :param obj: object's fstate components: tensor of any shape that compatible with the shape of ego
         :param obj_time_delay: [sec] object2 time delay
-        :param margins: [m] objects' widths + mu: matrix of size objects_num x timestamps_num
+        :param margins: [m] objects' widths + mu: matrix of size objects_num x 1
         :param max_brake: [m/s^2] maximal deceleration of both objects
         :return: [bool] lateral safety per timestamp. Tensor of the same shape as object1 or object2
         """
