@@ -520,7 +520,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # calculate RSS safety for all trajectories, all objects and all timestamps
         with prof.time_range('calc_safety(ego_traj=%s, objs_num=%d)' % (ego_ftraj.shape, len(state.dynamic_objects))):
-            safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, obj_ftraj, obj_sizes)
+            blame_times = SafetyUtils.calc_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_sizes)
         # AND over all objects and all timestamps
-        safe_trajectories = safe_times.all(axis=(1, 2))
+        safe_trajectories = np.logical_not(blame_times.any(axis=(1, 2)))
         return np.where(safe_trajectories)[0]

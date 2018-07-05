@@ -1,15 +1,15 @@
 import numpy as np
 
 from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY, SPECIFICATION_MARGIN_TIME_DELAY, \
-    LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU
+    LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU, LAT_VEL_BLAME_THRESH
 from decision_making.src.planning.types import LIMIT_MIN, FrenetTrajectories2D, FS_SX
 
 
 class SafetyUtils:
     @staticmethod
-    def calc_safety_for_trajectories(ego_ftraj: FrenetTrajectories2D, ego_size: np.array,
-                                     obj_ftraj: np.array, obj_sizes: np.array,
-                                     both_dimensions_flag: bool=True) -> np.array:
+    def calc_blame_times(ego_ftraj: FrenetTrajectories2D, ego_size: np.array,
+                         obj_ftraj: np.array, obj_sizes: np.array,
+                         both_dimensions_flag: bool=True) -> np.array:
         """
         Calculate safety boolean tensor for different ego Frenet trajectories and objects' Frenet trajectories.
         :param ego_ftraj: ego Frenet trajectories: tensor of shape: traj_num x timestamps_num x Frenet state size
@@ -43,10 +43,10 @@ class SafetyUtils:
             return lon_safe_times
 
         # calculate lateral safety
-        lat_safe_times = SafetyUtils.get_lat_safety(ego, SAFETY_MARGIN_TIME_DELAY, obj, SPECIFICATION_MARGIN_TIME_DELAY,
-                                                    lat_margins)
-
-        return np.logical_or(lon_safe_times, lat_safe_times)
+        lat_safe_times, lat_vel_blame = SafetyUtils.get_lat_safety(ego, SAFETY_MARGIN_TIME_DELAY, obj,
+                                                                   SPECIFICATION_MARGIN_TIME_DELAY, lat_margins)
+        # calculate and return blame times
+        return SafetyUtils._get_blame_times(ego[FS_SX], obj[FS_SX], lon_safe_times, lat_safe_times, lat_vel_blame)
 
     @staticmethod
     def get_lon_safety(ego: np.array, ego_time_delay: float, obj: np.array, obj_time_delay: float,
@@ -89,10 +89,42 @@ class SafetyUtils:
 
         dist = ego_lat - obj_lat
         sign = np.sign(dist)
+        blame_ego_lat_vel = np.maximum(-sign * ego_lat_vel, 0)
+        blame_obj_lat_vel = np.maximum( sign * obj_lat_vel, 0)
         safe_dist = np.maximum(np.divide(sign * (obj_lat_vel * np.abs(obj_lat_vel) - ego_lat_vel * np.abs(ego_lat_vel)),
                                          2 * max_brake),
                                0) + \
-                    np.maximum(-sign * ego_lat_vel, 0) * ego_time_delay + \
-                    np.maximum( sign * obj_lat_vel, 0) * obj_time_delay + \
+                    blame_ego_lat_vel * ego_time_delay + \
+                    blame_obj_lat_vel * obj_time_delay + \
                     margins
-        return sign * dist > safe_dist
+        return sign * dist > safe_dist, blame_ego_lat_vel > np.minimum(blame_obj_lat_vel, LAT_VEL_BLAME_THRESH)
+
+    @staticmethod
+    def _get_blame_times(ego_lon: np.array, obj_lon: np.array, lon_safe_times: np.array, lat_safe_times: np.array,
+                         lat_vel_blame: np.array) -> np.array:
+        """
+        Calculate all times, for which ego becomes unsafe on its blame.
+        :param ego_lon: ego longitudes: tensor of shape: 3D traj_num x objects_num x timestamps_num or 2D
+                        traj_num x timestamps_num
+        :param obj_lon: object longitudes: tensor of shape: 2D objects_num x timestamps_num or just 1D timestamps_num
+        :param lon_safe_times: longitudinally safe times; tensor of shape like ego_lon
+        :param lat_safe_times: laterally safe times; tensor of shape like ego_lon
+        :param lat_vel_blame: times for which ego lat_vel towards object is larger than object's lat_vel
+        :return:
+        """
+        # find points, for which longitudinal safety changes from true to false, while unsafe laterally,
+        # and the object is not behind ego
+        lon_blame = np.logical_and(lon_safe_times[:, ..., :-1], np.logical_not(lon_safe_times[:, ..., 1:]))  # become unsafe
+        lon_blame = np.insert(lon_blame, 0, np.logical_not(lon_safe_times[:, ..., 0]), axis=-1)  # dup first column
+        lon_blame = np.logical_and(lon_blame, np.logical_not(lat_safe_times))  # becomes fully unsafe
+        lon_blame = np.logical_and(lon_blame, (ego_lon < obj_lon))  # don't blame for unsafe rear object
+
+        # find points, for which lateral safety changes from true to false, while the unsafe longitudinally,
+        # and lateral velocity of ego towards the object is larger than of the object towards ego
+        lat_blame = np.logical_and(lat_safe_times[:, ..., :-1], np.logical_not(lat_safe_times[:, ..., 1:]))  # become unsafe
+        # blame in time=0: laterally and longitudinally unsafe at time=0 AND ego is behind object
+        init_blame = np.logical_and(np.logical_not(lat_safe_times[:, ..., 0]), lon_blame[:, ..., 0])
+        lat_blame = np.insert(lat_blame, 0, init_blame, axis=-1)  # dup first column
+        lat_blame = np.logical_and(lat_blame, np.logical_not(lon_safe_times))  # becomes fully unsafe
+        lat_blame = np.logical_and(lat_blame, lat_vel_blame)  # blame according to lateral velocity
+        return np.logical_or(lon_blame, lat_blame)

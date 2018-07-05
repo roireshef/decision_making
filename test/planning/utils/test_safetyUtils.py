@@ -164,7 +164,7 @@ class SafetyUtilsTrajectoriesFixture:
                                   [ego_lon, v[0], 0, v[2], 0],  # from 10 to 30 m/s
                                   [ego_lon, v[1], 0, v[2], 0],  # from 20 to 30 m/s
                                   [ego_lon, v[2], 0, v[2], 0],  # from 30 to 30 m/s
-                                  [ego_lon, v[0], 0, v[1], 0]]) # from 10 to 20 m/s
+                                  [ego_lon, v[0], 0, v[1], 0]]) # from 10 to 20 m/s, T_d = 3
         poly_s = WerlingPlanner._solve_1d_poly(constraints_s, T, QuarticPoly1D)
         fstates_s = QuinticPoly1D.polyval_with_derivatives(poly_s, time_samples)
 
@@ -199,7 +199,7 @@ class SafetyUtilsTrajectoriesFixture:
         # objects start behind and ahead ego and move with velocity 30 m/s
         obj_ftraj = np.array([np.c_[sx2 - 120, sv2, zeros, dx, zeros, zeros],     # LB
                               np.c_[sx2 + 20, sv2, zeros, dx, zeros, zeros],      # close LF
-                              np.c_[sx2 - 220, sv2, zeros, dx, zeros, zeros],     # far LB
+                              np.c_[sx2 - 190, sv2, zeros, dx, zeros, zeros],     # far LB
                               np.c_[sx2 + 40, sv2, zeros, dx, zeros, zeros],      # LF
                               np.c_[sx0 - 20, sv0, zeros, dx, zeros, zeros],      # close slow LB (vel=9)
                               np.c_[sx2 - 20, sv2, zeros, dx-lane_wid, zeros, zeros]])  # unsafe B
@@ -217,22 +217,22 @@ def test_calcSafetyForTrajectories_egoAndSomeObjectsMoveLaterally_checkSafetyCor
     """
     ego_ftraj, ego_size, obj_ftraj, obj_sizes = SafetyUtilsTrajectoriesFixture.create_simple_trajectories()
 
-    safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, obj_ftraj, obj_sizes)
+    safe_times = np.logical_not(SafetyUtils.calc_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_sizes)).all(axis=-1)
 
-    assert safe_times[0][0].all()       # move with the same velocity and start on the safe distance
-    assert safe_times[0][1].all()       # object is ahead and faster, therefore safe
-    assert not safe_times[1][0].all()   # the object ahead is slower, therefore unsafe
-    assert safe_times[1][1].all()       # move on different lanes, then safe
+    assert safe_times[0][0]       # move with the same velocity and start on the safe distance
+    assert safe_times[0][1]       # object is ahead and faster, therefore safe
+    assert not safe_times[1][0]   # the object ahead is slower, therefore unsafe
+    assert safe_times[1][1]       # move on different lanes, then safe
 
-    assert not safe_times[2][0].all()   # ego is faster
-    assert not safe_times[2][1].all()   # ego is faster
-    assert safe_times[2][2].all()       # move with the same velocity
-    assert not safe_times[2][3].all()   # obj becomes unsafe longitudinally at time 4, before it becomes safe laterally
-    assert safe_times[2][4].all()       # obj becomes unsafe longitudinally at time 7, exactly when it becomes safe laterally
-    assert not safe_times[2][5].all()   # obj & ego move laterally one to another, becomes unsafe laterally at the end
-    assert safe_times[2][6].all()       # obj & ego move laterally to the left, keeping lateral distance, and always safe
-    assert not safe_times[2][7].all()   # obj & ego move laterally in opposite directions and don't keep safe distance
-    assert safe_times[3][7].all()       # obj & ego move laterally to the right, keeping lateral distance, and always safe
+    assert not safe_times[2][0]   # ego is faster
+    assert not safe_times[2][1]   # ego is faster
+    assert safe_times[2][2]       # move with the same velocity
+    assert not safe_times[2][3]   # obj becomes unsafe longitudinally at time 4, before it becomes safe laterally
+    assert safe_times[2][4]       # obj becomes unsafe longitudinally at time 7, exactly when it becomes safe laterally
+    assert not safe_times[2][5]   # obj & ego move laterally one to another, becomes unsafe laterally at the end
+    assert safe_times[2][6]       # obj & ego move laterally to the left, keeping lateral distance, and always safe
+    assert safe_times[2][7]       # obj & ego move laterally one toward another, but the object moves much faster
+    assert safe_times[3][7]       # obj & ego move laterally to the right, keeping lateral distance, and always safe
 
 
 def test_calcSafetyForTrajectories_overtakeOfSlowF_safeOnlyIfObjectFisFar():
@@ -242,13 +242,13 @@ def test_calcSafetyForTrajectories_overtakeOfSlowF_safeOnlyIfObjectFisFar():
     """
     ego_ftraj, ego_size, obj_ftraj, obj_sizes = SafetyUtilsTrajectoriesFixture.create_trajectories_for_F()
 
-    safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, obj_ftraj, obj_sizes)
+    safe_times = np.logical_not(SafetyUtils.calc_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_sizes)).all(axis=-1)
 
-    assert safe_times[0][0].all()       # ego_v=30 overtake obj_v=20, time_delay = 2   (127 m), T_d = 5     safe
-    assert not safe_times[1][1].all()   # ego_v=30 overtake obj_v=10, time_delay = 2   (165 m), T_d = 2.6   unsafe
-    assert safe_times[2][1].all()       # ego_v=30 overtake obj_v=10, time_delay = 2   (165 m), T_d = 2.5   safe
-    assert not safe_times[0][2].all()   # ego_v=30 overtake obj_v=10, time_delay = 2.9 (192 m), T_d = 5     unsafe
-    assert safe_times[0][3].all()       # ego_v=30 overtake obj_v=10, time_delay = 3.0 (195 m), T_d = 5     safe
+    assert safe_times[0][0]       # ego_v=30 overtake obj_v=20, time_delay = 2   (127 m), T_d = 5     safe
+    assert not safe_times[1][1]   # ego_v=30 overtake obj_v=10, time_delay = 2   (165 m), T_d = 2.6   unsafe
+    assert safe_times[2][1]       # ego_v=30 overtake obj_v=10, time_delay = 2   (165 m), T_d = 2.5   safe
+    assert not safe_times[0][2]   # ego_v=30 overtake obj_v=10, time_delay = 2.9 (192 m), T_d = 5     unsafe
+    assert safe_times[0][3]       # ego_v=30 overtake obj_v=10, time_delay = 3.0 (195 m), T_d = 5     safe
 
 
 def test_calcSafetyForTrajectories_safetyWrtLBLF_safeOnlyIfObjectLBisFar():
@@ -258,26 +258,24 @@ def test_calcSafetyForTrajectories_safetyWrtLBLF_safeOnlyIfObjectLBisFar():
     """
     ego_ftraj, ego_size, obj_ftraj, obj_sizes = SafetyUtilsTrajectoriesFixture.create_trajectories_for_LB_LF()
 
-    safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, obj_ftraj, obj_sizes)
+    safe_times = np.logical_not(SafetyUtils.calc_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_sizes)).all(axis=-1)
 
-    assert not safe_times[0][0].all()   # slow ego (10 m/s) is unsafe w.r.t. fast LB (30 m/s, 120 m behind ego)
-    assert safe_times[0][1].all()       # slow ego (10 m/s) is safe w.r.t. close and fast LF (30 m/s)
-    assert not safe_times[1][0].all()   # slowly accelerating ego (10-20 m/s) is unsafe w.r.t. LB (30 m/s, 120 m behind ego)
-    assert safe_times[1][1].all()       # mid-vel ego (10-20 m/s) is safe w.r.t. close and fast LF (30 m/s)
-    assert safe_times[4][0].all()       # fast ego (30 m/s) is safe w.r.t. fast LB (30 m/s, 120 m behind ego)
-    assert not safe_times[4][1].all()   # fast ego (30 m/s) is unsafe w.r.t. close LF with same velocity
-    assert safe_times[4][3].all()       # fast ego (30 m/s) is safe w.r.t. LF with same velocity
-    assert not safe_times[3][0].all()   # accelerating ego (20->30 m/s) is unsafe w.r.t. LB (30 m/s, 120 m behind ego)
-    assert safe_times[2][1].all()       # accelerating ego (10->30 m/s) is safe w.r.t. close LF (30 m/s)
-    assert safe_times[3][1].all()       # accelerating ego (20->30 m/s) is safe w.r.t. close LF (30 m/s)
-    assert safe_times[3][2].all()       # accelerating ego (20->30 m/s) is safe w.r.t. far LB (220 m behind ego)
-    assert not safe_times[1][2].all()   # slow accelerating ego (10->20 m/s, T_d = 6) is unsafe w.r.t. far LB
-    # In this version if ego becomes unsafe w.r.t. B/LB, without lateral movement of ego or after completing the lane
-    # change, it's considered unsafe. TODO: insert considering of lateral movement
-    assert not safe_times[5][2].all()   # slowly accelerating ego (10->20 m/s, T_d = 3) is unsafe safe w.r.t. far LB
+    assert not safe_times[0][0]   # slow ego (10 m/s) is unsafe w.r.t. fast LB (30 m/s, 120 m behind ego)
+    assert safe_times[0][1]       # slow ego (10 m/s) is safe w.r.t. close and fast LF (30 m/s)
+    assert not safe_times[1][0]   # slowly accelerating ego (10-20 m/s) is unsafe w.r.t. LB (30 m/s, 120 m behind ego)
+    assert safe_times[1][1]       # mid-vel ego (10-20 m/s) is safe w.r.t. close and fast LF (30 m/s)
+    assert safe_times[4][0]       # fast ego (30 m/s) is safe w.r.t. fast LB (30 m/s, 120 m behind ego)
+    assert not safe_times[4][1]   # fast ego (30 m/s) is unsafe w.r.t. close LF with same velocity
+    assert safe_times[4][3]       # fast ego (30 m/s) is safe w.r.t. LF with same velocity
+    assert not safe_times[3][0]   # accelerating ego (20->30 m/s) is unsafe w.r.t. LB (30 m/s, 120 m behind ego)
+    assert safe_times[2][1]       # accelerating ego (10->30 m/s) is safe w.r.t. close LF (30 m/s)
+    assert safe_times[3][1]       # accelerating ego (20->30 m/s) is safe w.r.t. close LF (30 m/s)
+    assert safe_times[3][2]       # accelerating ego (20->30 m/s) is safe w.r.t. far LB (220 m behind ego)
+    assert not safe_times[1][2]   # slow accelerating ego (10->20 m/s, T_d = 6) is unsafe w.r.t. far LB, since ego enters to corridor while lon_unsafe
+    assert safe_times[5][2]       # slow accelerating ego (10->20 m/s, T_d = 3) is safe w.r.t. far LB, since ego enters to corridor while lon_safe
     # in the following test ego starts longitudinally unsafe and becomes safe before it becomes unsafe laterally
-    assert safe_times[2][4].all()       # ego (10->30 m/s, T_d = 6) is safe wrt close slow LB (9 m/s, 20 m behind ego)
-    # assert safe_times[0][5].all()       # ego is safe wrt to rear object B, although according to RSS B is unsafe
+    assert safe_times[2][4]       # ego (10->30 m/s, T_d = 6) is safe wrt close slow LB (9 m/s, 20 m behind ego)
+    assert safe_times[0][5]       # safe wrt to rear object B, because its the blame of B
 
 
 def test_calcSafetyForTrajectories_egoAndSingleObject_checkSafetyCorrectnessForManyScenarios():
@@ -290,13 +288,13 @@ def test_calcSafetyForTrajectories_egoAndSingleObject_checkSafetyCorrectnessForM
     ego_ftraj, ego_size, obj_ftraj, obj_sizes = SafetyUtilsTrajectoriesFixture.create_simple_trajectories()
 
     # test with a single object
-    safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, obj_ftraj[0], obj_sizes[0])
-    assert safe_times[0].all()      # move with the same velocity and start on the safe distance
-    assert not safe_times[1].all()  # the object ahead is slower, therefore unsafe
-    assert not safe_times[2].all()  # ego is faster
-    assert safe_times[3].all()      # ego moves from lane 2 to lane 1, and the object on lane 0
+    safe_times = np.logical_not(SafetyUtils.calc_blame_times(ego_ftraj, ego_size, obj_ftraj[0], obj_sizes[0])).all(axis=-1)
+    assert safe_times[0]      # move with the same velocity and start on the safe distance
+    assert not safe_times[1]  # the object ahead is slower, therefore unsafe
+    assert not safe_times[2]  # ego is faster
+    assert safe_times[3]      # ego moves from lane 2 to lane 1, and the object on lane 0
 
     # test for a single REAR object
-    # ego_ftraj, ego_size, obj_ftraj, obj_sizes = SafetyUtilsTrajectoriesFixture.create_trajectories_for_LB_LF()
-    # safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, obj_ftraj[5], obj_sizes[5])
-    # assert safe_times[0].all()      # ego is safe wrt to rear object B, although according to RSS B is unsafe
+    ego_ftraj, ego_size, obj_ftraj, obj_sizes = SafetyUtilsTrajectoriesFixture.create_trajectories_for_LB_LF()
+    safe_times = np.logical_not(SafetyUtils.calc_blame_times(ego_ftraj, ego_size, obj_ftraj[5], obj_sizes[5])).all(axis=-1)
+    assert safe_times[0]      # ego is safe wrt to rear object B, although according to RSS B is unsafe

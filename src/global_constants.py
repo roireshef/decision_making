@@ -100,6 +100,10 @@ SAFETY_MARGIN_TIME_DELAY = 1
 # [m] minimal lateral safe distance between objects
 LATERAL_SAFETY_MU = 0.5
 
+# [m/sec] lateral velocity blame threshold: in case of lateral danger,
+# if ego_lat_vel >= min(obj_lat_vel, LAT_VEL_BLAME_THRESH), then ego is blamed
+LAT_VEL_BLAME_THRESH = 0.2
+
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
 
