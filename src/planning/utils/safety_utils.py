@@ -1,8 +1,12 @@
 import numpy as np
 
 from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY, SPECIFICATION_MARGIN_TIME_DELAY, \
-    LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU, LAT_VEL_BLAME_THRESH
+    LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU, LAT_VEL_BLAME_THRESH, LON_SAFETY_ACCEL_DURING_DELAY, \
+    LAT_SAFETY_ACCEL_DURING_DELAY
 from decision_making.src.planning.types import LIMIT_MIN, FrenetTrajectories2D, FS_SX
+
+EGO_ACCEL_DIST = 0.5 * LON_SAFETY_ACCEL_DURING_DELAY * SAFETY_MARGIN_TIME_DELAY * SAFETY_MARGIN_TIME_DELAY
+OBJ_ACCEL_DIST = 0.5 * LON_SAFETY_ACCEL_DURING_DELAY * SPECIFICATION_MARGIN_TIME_DELAY * SPECIFICATION_MARGIN_TIME_DELAY
 
 
 class SafetyUtils:
@@ -67,8 +71,12 @@ class SafetyUtils:
         dist = ego_lon - obj_lon
         sign = np.sign(dist)
         ego_ahead = 0.5 * (sign + 1)
-        safe_dist = np.maximum(np.divide(sign * (obj_vel ** 2 - ego_vel ** 2), 2 * max_brake), 0) + \
-                    (1 - ego_ahead) * ego_vel * ego_time_delay + ego_ahead * obj_vel * obj_time_delay + margins
+        delayed_ego_vel = ego_vel + (1-ego_ahead) * ego_time_delay * LON_SAFETY_ACCEL_DURING_DELAY
+        delayed_obj_vel = obj_vel + ego_ahead * obj_time_delay * LON_SAFETY_ACCEL_DURING_DELAY
+
+        safe_dist = np.maximum(np.divide(sign * (delayed_obj_vel ** 2 - delayed_ego_vel ** 2), 2 * max_brake), 0) + \
+                    (1 - ego_ahead) * (ego_vel * ego_time_delay + EGO_ACCEL_DIST) + \
+                    ego_ahead * (obj_vel * obj_time_delay + OBJ_ACCEL_DIST) + margins
         return sign * dist > safe_dist
 
     @staticmethod
@@ -82,35 +90,42 @@ class SafetyUtils:
         :param obj_time_delay: [sec] object2 time delay
         :param margins: [m] objects' widths + mu: matrix of size objects_num x 1
         :param max_brake: [m/s^2] maximal deceleration of both objects
-        :return: [bool] lateral safety per timestamp. Tensor of the same shape as object1 or object2
+        :return: [bool] 1. lateral safety per timestamp. Shape: 3D or 2D traj_num x (objects_num x) timestamps_num
+                        2. lateral velocity blame: True if ego moves laterally towards object. The same shape.
         """
         (_, _, _, ego_lat, ego_lat_vel, _) = ego
         (_, _, _, obj_lat, obj_lat_vel, _) = obj
 
         dist = ego_lat - obj_lat
         sign = np.sign(dist)
-        blame_ego_lat_vel = np.maximum(-sign * ego_lat_vel, 0)
-        blame_obj_lat_vel = np.maximum( sign * obj_lat_vel, 0)
-        safe_dist = np.maximum(np.divide(sign * (obj_lat_vel * np.abs(obj_lat_vel) - ego_lat_vel * np.abs(ego_lat_vel)),
-                                         2 * max_brake),
+
+        delayed_ego_vel = ego_lat_vel - sign * ego_time_delay * LAT_SAFETY_ACCEL_DURING_DELAY
+        delayed_obj_vel = obj_lat_vel + sign * obj_time_delay * LAT_SAFETY_ACCEL_DURING_DELAY
+        avg_ego_vel = 0.5 * (ego_lat_vel + delayed_ego_vel)
+        avg_obj_vel = 0.5 * (obj_lat_vel + delayed_obj_vel)
+
+        delay_dist = sign * (avg_obj_vel * obj_time_delay - avg_ego_vel * ego_time_delay)
+
+        safe_dist = np.maximum(np.divide(sign * (delayed_obj_vel * np.abs(delayed_obj_vel) -
+                                                 delayed_ego_vel * np.abs(delayed_ego_vel)),
+                                         2 * max_brake) + delay_dist,
                                0) + \
-                    blame_ego_lat_vel * ego_time_delay + \
-                    blame_obj_lat_vel * obj_time_delay + \
                     margins
-        return sign * dist > safe_dist, blame_ego_lat_vel > np.minimum(blame_obj_lat_vel, LAT_VEL_BLAME_THRESH)
+
+        return sign * dist > safe_dist, -sign * ego_lat_vel > np.clip(sign * obj_lat_vel, 0, LAT_VEL_BLAME_THRESH)
 
     @staticmethod
     def _get_blame_times(ego_lon: np.array, obj_lon: np.array, lon_safe_times: np.array, lat_safe_times: np.array,
                          lat_vel_blame: np.array) -> np.array:
         """
         Calculate all times, for which ego becomes unsafe on its blame.
-        :param ego_lon: ego longitudes: tensor of shape: 3D traj_num x objects_num x timestamps_num or 2D
-                        traj_num x timestamps_num
+        :param ego_lon: ego longitudes: tensor of shape: 3D traj_num x objects_num x timestamps_num or
+                        2D traj_num x timestamps_num
         :param obj_lon: object longitudes: tensor of shape: 2D objects_num x timestamps_num or just 1D timestamps_num
         :param lon_safe_times: longitudinally safe times; tensor of shape like ego_lon
         :param lat_safe_times: laterally safe times; tensor of shape like ego_lon
         :param lat_vel_blame: times for which ego lat_vel towards object is larger than object's lat_vel
-        :return:
+        :return: 3D or 2D boolean tensor (shape as ego_lon) of times, when ego is accountable for unsafe situation.
         """
         # find points, for which longitudinal safety changes from true to false, while unsafe laterally,
         # and the object is not behind ego

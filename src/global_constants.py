@@ -104,6 +104,13 @@ LATERAL_SAFETY_MU = 0.5
 # if ego_lat_vel >= min(obj_lat_vel, LAT_VEL_BLAME_THRESH), then ego is blamed
 LAT_VEL_BLAME_THRESH = 0.2
 
+# [m/s^2] longitudinal acceleration of object during time delay in RSS
+LON_SAFETY_ACCEL_DURING_DELAY = 0
+
+# [m/s^2] lateral acceleration of object during time delay in RSS
+LAT_SAFETY_ACCEL_DURING_DELAY = 0
+
+
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
 
