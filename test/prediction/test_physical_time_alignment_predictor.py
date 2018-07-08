@@ -10,8 +10,8 @@ from decision_making.test.prediction.utils import Utils
 from mapping.test.model.testable_map_fixtures import map_api_mock
 
 from decision_making.test.prediction.conftest import physical_time_alignment_predictor, init_state, \
-    prediction_timestamps, \
-    predicted_dyn_object_states_road_yaw, DYNAMIC_OBJECT_ID
+    prediction_timestamps, static_cartesian_state, \
+    predicted_dyn_object_states_road_yaw, predicted_static_ego_states, DYNAMIC_OBJECT_ID
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
