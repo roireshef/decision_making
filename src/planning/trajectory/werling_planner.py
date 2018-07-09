@@ -1,5 +1,6 @@
 from logging import Logger
 from typing import Tuple
+import time
 
 import numpy as np
 import rte.python.profiler as prof
@@ -507,7 +508,7 @@ class WerlingPlanner(TrajectoryPlanner):
         obj_ftraj = []
         obj_sizes = []
         for obj in state.dynamic_objects:
-            # TODO: we use a naive predictions in Frenet frame
+            # TODO: use predictor
             fstate = np.array([obj.road_localization.road_lon, obj.v_x, 0,
                                obj.road_localization.intra_road_lat, obj.road_lateral_speed, 0])
             prediction = np.tile(fstate, samples_num).reshape(samples_num, 6)
@@ -518,9 +519,12 @@ class WerlingPlanner(TrajectoryPlanner):
         obj_sizes = np.array(obj_sizes)
         ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])
 
+        # st = time.time()
         # calculate RSS safety for all trajectories, all objects and all timestamps
         with prof.time_range('calc_safety(ego_traj=%s, objs_num=%d)' % (ego_ftraj.shape, len(state.dynamic_objects))):
-            blame_times = SafetyUtils.calc_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_sizes)
+            blame_times = SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_sizes)
         # AND over all objects and all timestamps
         safe_trajectories = np.logical_not(blame_times.any(axis=(1, 2)))
+
+        # print('safety in TP time: %f (traj_num=%d, obj_num=%d)' % (time.time()-st, ego_ftraj.shape[0], obj_ftraj.shape[0]))
         return np.where(safe_trajectories)[0]
