@@ -1,10 +1,10 @@
+import numpy as np
 from logging import Logger
 from typing import List, Dict
 
-import numpy as np
-
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.types import FS_SX, FS_SV, FS_DX
+from decision_making.src.planning.types import FS_SX, FS_SV, FS_DX, FrenetTrajectories2D, \
+    FrenetStates2D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, DynamicObject
@@ -99,7 +99,7 @@ class RoadFollowingPredictor(EgoAwarePredictor):
 
         return future_states
 
-    def predict_frenet_states(self, objects_fstates: np.ndarray, horizons: np.ndarray):
+    def predict_frenet_states(self, objects_fstates: FrenetStates2D, horizons: np.ndarray) -> FrenetTrajectories2D:
         """
         Constant velocity prediction for all timestamps and objects in a matrix computation
         :param objects_fstates: numpy 2D array [Nx6] where N is the number of objects, each row is an FSTATE
