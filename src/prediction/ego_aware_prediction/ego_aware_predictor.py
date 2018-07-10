@@ -1,10 +1,10 @@
+import numpy as np
 from abc import ABCMeta, abstractmethod
 from logging import Logger
 from typing import List, Dict
 
-import numpy as np
-
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
+from decision_making.src.planning.types import FrenetTrajectories2D, FrenetStates2D
 from decision_making.src.state.state import State, DynamicObject
 
 
@@ -46,7 +46,7 @@ class EgoAwarePredictor(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def predict_frenet_states(self, objects_fstates: np.ndarray, horizons: np.ndarray):
+    def predict_frenet_states(self, objects_fstates: FrenetStates2D, horizons: np.ndarray) -> FrenetTrajectories2D:
         """
         Constant velocity prediction for all timestamps and objects in a matrix computation
         :param objects_fstates: numpy 2D array [Nx6] where N is the number of objects, each row is an FSTATE
