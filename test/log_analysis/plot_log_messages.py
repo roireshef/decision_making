@@ -2,10 +2,10 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
+from decision_making.src.messages.class_serialization import ClassSerializer
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.planning.types import C_V
 from decision_making.src.state.state import State
-from decision_making.test.log_analysis.log_messages import LogMsg
 from decision_making.test.log_analysis.parse_log_messages import DmLogParser, \
     STATE_IDENTIFIER_STRING_BP, STATE_IDENTIFIER_STRING_TP, STATE_IDENTIFIER_STRING_STATE_MODULE
 
@@ -110,8 +110,8 @@ def main():
     desired_v = []
     for tp_plan_message_index in range(len(tp_plans)):
         # Convert log messages to dict
-        plan_msg = LogMsg.convert_message_to_dict(tp_plans[tp_plan_message_index])
-        plan = LogMsg.deserialize(class_type=TrajectoryPlanMsg, message=plan_msg)  # type: TrajectoryPlanMsg
+        plan_msg = ClassSerializer.convert_message_to_dict(tp_plans[tp_plan_message_index])
+        plan = ClassSerializer.deserialize(class_type=TrajectoryPlanMsg, message=plan_msg)  # type: TrajectoryPlanMsg
         timestamps.append(plan.timestamp)
         desired_v.append(plan.trajectory[0, C_V])
 
@@ -122,9 +122,9 @@ def main():
     ego_timestamps = []
     for state_message_index in range(len(state_module_states)):
         # Convert log messages to dict
-        state_msg = LogMsg.convert_message_to_dict(state_module_states[state_message_index])
+        state_msg = ClassSerializer.convert_message_to_dict(state_module_states[state_message_index])
         # Deserialize from dict to object
-        state = LogMsg.deserialize(class_type=State, message=state_msg)  # type: State
+        state = ClassSerializer.deserialize(class_type=State, message=state_msg)  # type: State
         actual_v.append(state.ego_state.v_x)
         ego_timestamps.append(state.ego_state.timestamp)
 
