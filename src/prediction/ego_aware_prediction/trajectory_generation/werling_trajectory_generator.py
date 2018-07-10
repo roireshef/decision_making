@@ -1,5 +1,4 @@
 import numpy as np
-from decision_making.src.global_constants import WERLING_TIME_RESOLUTION
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner, \
     SamplableWerlingTrajectory
@@ -16,11 +15,11 @@ class WerlingTrajectoryGenerator(TrajectoryGenerator):
                             predicted_maneuver_spec: ManeuverSpec) -> SamplableWerlingTrajectory:
         """
         Generate a trajectory in Frenet coordiantes, according to object's Frenet frame
-        :param frenet_frame: Frenet reference frame of object
-        :param object_state: used for object localization and creation of the Frenet reference frame
-        :param predicted_maneuver_spec: specification of the trajectory in Frenet frame.
         :param timestamp_in_sec: [sec] global timestamp *in seconds* to use as a reference
                 (other timestamps will be given relative to it)
+        :param frenet_frame: Frenet reference frame of object
+        :param predicted_maneuver_spec: specification of the trajectory in Frenet frame.
+
         :return: Trajectory in Frenet frame.
         """
 
@@ -39,7 +38,6 @@ class WerlingTrajectoryGenerator(TrajectoryGenerator):
                                                da=predicted_maneuver_spec.final_state[FS_DA])
 
         # solve problem in Frenet-frame
-        time_resolution = WERLING_TIME_RESOLUTION
         ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconst_0=fconstraints_init,
                                                                                  fconst_t=fconstraints_final,
                                                                                  T_s=predicted_maneuver_spec.T_s,
