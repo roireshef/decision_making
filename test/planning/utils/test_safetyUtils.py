@@ -3,6 +3,7 @@ from logging import Logger
 import numpy as np
 import time
 
+from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
@@ -12,7 +13,7 @@ from decision_making.src.planning.utils.safety_utils import SafetyUtils
 class SafetyUtilsTrajectoriesFixture:
 
     @staticmethod
-    def create_simple_trajectories():
+    def create_basic_scenarios():
         ego_size = np.array([4, 2])
         lane_wid = 3.5
 
@@ -47,7 +48,7 @@ class SafetyUtilsTrajectoriesFixture:
 
         ego_ftraj = np.dstack((fstates_s, fstates_d))
 
-        # object[0] moves with velocity 10 m/s on the rightest lane
+        # object[0] moves with velocity 10 m/s on the rightest lane, and starts from 15 m ahead of ego
         # object[1] object moves with velocity 20 m/s on the second lane
         # object[2] moves with velocity 30 m/s on the right lane
         # object[3] moves with velocity 20 m/s on the right lane, and starts from lon=135
@@ -55,6 +56,7 @@ class SafetyUtilsTrajectoriesFixture:
         # object[5] moves longitudinally as ego_traj[2], and moves laterally from lane 2 to lane 1
         # object[6] moves longitudinally as ego_traj[2], and moves laterally from lane 1 to lane 2
         # object[7] moves longitudinally as ego_traj[2], and moves laterally from lane 1 to lane 0
+        obj_size = np.array([4, 2])
         sv1 = np.repeat(v[0], times_num)
         sv2 = np.repeat(v[1], times_num)
         sv3 = np.repeat(v[2], times_num)
@@ -64,10 +66,11 @@ class SafetyUtilsTrajectoriesFixture:
         dx = np.repeat(lane_wid/2, times_num)
         dv3 = np.repeat(lane_wid / (T - times_step), times_num)
 
-        obj_size = np.array([4, 2])
-        obj_ftraj = np.array([np.c_[sx1 + sv1[0] + (ego_size[0] + obj_size[0]) / 2 + 1, sv1, zeros, dx, zeros, zeros],
+        obj_ftraj = np.array([np.c_[sx1 + SAFETY_MARGIN_TIME_DELAY*sv1[0] + (ego_size[0] + obj_size[0]) / 2 + 1,
+                                    sv1, zeros, dx, zeros, zeros],
                               np.c_[sx2, sv2, zeros, dx + lane_wid, zeros, zeros],
-                              np.c_[sx3 + sv3[0] + (ego_size[0] + obj_size[0]) / 2 + 1, sv3, zeros, dx, zeros, zeros],
+                              np.c_[sx3 + SAFETY_MARGIN_TIME_DELAY*sv3[0] + (ego_size[0] + obj_size[0]) / 2 + 1,
+                                    sv3, zeros, dx, zeros, zeros],
                               np.c_[sx2 + 4.5 * sv3[0], sv2, zeros, dx, zeros, zeros],
                               np.c_[sx2 + 5.5 * sv3[0], sv2, zeros, dx, zeros, zeros],
                               np.c_[sx3, sv3, zeros, dx + lane_wid * 2 - time_range * dv3[0], -dv3,
@@ -208,28 +211,28 @@ class SafetyUtilsTrajectoriesFixture:
         return ego_ftraj, ego_size, obj_ftraj, obj_sizes
 
 
-def test_calcSafetyForTrajectories_egoAndSomeObjectsMoveLaterally_checkSafetyCorrectnessForManyScenarios():
+def test_calcSafetyForTrajectories_basicScenarios_checkSafetyCorrectnessForBasicScenarios():
     """
     Test safety of 4 different ego trajectories w.r.t. 8 different objects moving on three lanes with different
     velocities and starting from different latitudes and longitudes. All velocities are constant along trajectories.
     In two trajectories ego changes lane. 3 last objects change lane.
     The test checks safety for whole trajectories.
     """
-    ego_ftraj, ego_size, obj_ftraj, obj_sizes = SafetyUtilsTrajectoriesFixture.create_simple_trajectories()
+    ego_ftraj, ego_size, obj_ftraj, obj_sizes = SafetyUtilsTrajectoriesFixture.create_basic_scenarios()
 
     safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_sizes)).all(axis=-1)
 
-    assert safe_times[0][0]       # move with the same velocity and start on the safe distance
+    assert safe_times[0][0]       # move with the same velocity 10 and start on the safe distance
     assert safe_times[0][1]       # object is ahead and faster, therefore safe
     assert not safe_times[1][0]   # the object ahead is slower, therefore unsafe
     assert safe_times[1][1]       # move on different lanes, then safe
 
-    assert not safe_times[2][0]   # ego is faster
-    assert not safe_times[2][1]   # ego is faster
-    assert safe_times[2][2]       # move with the same velocity
-    assert not safe_times[2][3]   # obj becomes unsafe longitudinally at time 4, before it becomes safe laterally
-    assert safe_times[2][4]       # obj becomes unsafe longitudinally at time 7, exactly when it becomes safe laterally
-    assert not safe_times[2][5]   # obj & ego move laterally one to another, becomes unsafe laterally at the end
+    assert not safe_times[2][0]   # ego 30 m/s changes lane from 0 to 1, unsafe w.r.t. F 10 m/s, 15 ahead of ego
+    assert not safe_times[2][1]   # the same ego unsafe wrt LB moves 20 m/s on the lane 1 from same lon as ego
+    assert safe_times[2][2]       # F moves with the same velocity as ego, then safe
+    assert not safe_times[2][3]   # obj 20 m/s 135 m ahead becomes unsafe longitudinally at time 4, before it becomes safe laterally
+    assert safe_times[2][4]       # obj 20 m/s 165 m ahead becomes unsafe longitudinally at time 7, exactly when it becomes safe laterally
+    assert not safe_times[2][5]   # obj & ego move laterally one to another to lane 1, becomes unsafe laterally at the end
     assert safe_times[2][6]       # obj & ego move laterally to the left, keeping lateral distance, and always safe
     assert safe_times[2][7]       # obj & ego move laterally one toward another, but the object moves much faster
     assert safe_times[3][7]       # obj & ego move laterally to the right, keeping lateral distance, and always safe
@@ -285,7 +288,7 @@ def test_calcSafetyForTrajectories_egoAndSingleObject_checkSafetyCorrectnessForM
     In two trajectories ego changes lane.
     The test checks safety for whole trajectories.
     """
-    ego_ftraj, ego_size, obj_ftraj, obj_sizes = SafetyUtilsTrajectoriesFixture.create_simple_trajectories()
+    ego_ftraj, ego_size, obj_ftraj, obj_sizes = SafetyUtilsTrajectoriesFixture.create_basic_trajectories()
 
     # test with a single object
     safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj[0], obj_sizes[0])).all(axis=-1)
