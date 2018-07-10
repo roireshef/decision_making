@@ -159,7 +159,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                             len(refiltered_indices), len(ftrajectories)))
 
         # filter trajectories by RSS safety
-        safe_traj_indices = WerlingPlanner.filter_frajectories_by_safety(state, planning_time_points, ftrajectories_refiltered)
+        safe_traj_indices = self.filter_frajectories_by_safety(state, planning_time_points, ftrajectories_refiltered)
         # TODO: Throw an error if no safe trajectory is found
         if safe_traj_indices.any():
             ftrajectories_refiltered = ftrajectories_refiltered[safe_traj_indices]
@@ -393,9 +393,9 @@ class WerlingPlanner(TrajectoryPlanner):
 
         return solutions[valid_traj_slice], polynoms[valid_traj_slice], horizons[valid_traj_slice, FP_DX]
 
-    @staticmethod
     @prof.ProfileFunction()
-    def filter_frajectories_by_safety(state: State, time_samples: np.ndarray, ego_ftraj: FrenetTrajectories2D) -> np.array:
+    def filter_frajectories_by_safety(self, state: State, time_samples: np.ndarray, ego_ftraj: FrenetTrajectories2D) \
+            -> np.array:
         """
         Filter frenet trajectories by RSS safety (both longitudinal & lateral).
         The naive objects prediction in Frenet frame is used.
@@ -404,20 +404,12 @@ class WerlingPlanner(TrajectoryPlanner):
         :param ego_ftraj: ego Frenet trajectories
         :return: indices of safe trajectories
         """
-        samples_num = time_samples.shape[0]
         # create a matrix of all objects' predictions and a matrix of objects' sizes
-        obj_ftraj = []
-        obj_sizes = []
-        for obj in state.dynamic_objects:
-            # TODO: use predictor
-            fstate = np.array([obj.road_localization.road_lon, obj.v_x, 0,
-                               obj.road_localization.intra_road_lat, obj.road_lateral_speed, 0])
-            prediction = np.tile(fstate, samples_num).reshape(samples_num, 6)
-            prediction[:, 0] = fstate[FS_SX] + time_samples * fstate[FS_SV]
-            obj_ftraj.append(prediction)
-            obj_sizes.append(np.array([obj.size.length, obj.size.width]))
-        obj_ftraj = np.array(obj_ftraj)
-        obj_sizes = np.array(obj_sizes)
+        objects_curr_fstates = np.array([dynamic_object.map_state.road_fstate
+                                         for dynamic_object in state.dynamic_objects])
+        obj_ftraj = self.predictor.predict_frenet_states(objects_curr_fstates, time_samples)
+        obj_sizes = np.array([np.array([dynamic_object.size.length, dynamic_object.size.width])
+                              for dynamic_object in state.dynamic_objects])
         ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])
 
         # st = time.time()

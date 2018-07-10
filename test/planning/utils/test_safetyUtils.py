@@ -288,7 +288,7 @@ def test_calcSafetyForTrajectories_egoAndSingleObject_checkSafetyCorrectnessForM
     In two trajectories ego changes lane.
     The test checks safety for whole trajectories.
     """
-    ego_ftraj, ego_size, obj_ftraj, obj_sizes = SafetyUtilsTrajectoriesFixture.create_basic_trajectories()
+    ego_ftraj, ego_size, obj_ftraj, obj_sizes = SafetyUtilsTrajectoriesFixture.create_basic_scenarios()
 
     # test with a single object
     safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj[0], obj_sizes[0])).all(axis=-1)
