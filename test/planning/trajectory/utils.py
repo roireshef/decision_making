@@ -3,11 +3,11 @@ from typing import List
 import matplotlib.patches as patches
 import numpy as np
 
-from decision_making.src.planning.types import CURVE_YAW, CartesianPoint2D, CartesianExtendedState, C_X, C_Y
 from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle, SigmoidStaticBoxObstacle, \
     SigmoidBoxObstacle
-from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import DynamicObject
+from decision_making.src.planning.types import CURVE_YAW, CartesianPoint2D, CartesianExtendedState, C_X, C_Y
+from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
+from decision_making.src.state.state import DynamicObject, State
 
 
 class RouteFixture:
@@ -75,6 +75,7 @@ class RouteFixture:
     def create_cubic_route(lng: float = 100, lat: float = 0, ext: float = 10, step: float = 1, curvature: float = 0.1):
         return np.array([[x, lat + curvature*lng*((x/lng)**3)] for x in np.arange(-ext, lng+ext, step)])
 
+
 class PlottableSigmoidBoxObstacle(SigmoidBoxObstacle):
     def plot(self, plt):
         pass
@@ -103,10 +104,10 @@ class PlottableSigmoidStaticBoxObstacle(SigmoidStaticBoxObstacle, PlottableSigmo
 
 
 class PlottableSigmoidDynamicBoxObstacle(SigmoidDynamicBoxObstacle, PlottableSigmoidBoxObstacle):
-    def __init__(self, obj: DynamicObject, k: float, margin: CartesianPoint2D,
-                 time_samples: np.ndarray, predictor: Predictor):
+    def __init__(self, state: State, obj: DynamicObject, k: float, margin: CartesianPoint2D,
+                 time_samples: np.ndarray, predictor: EgoAwarePredictor):
         # get predictions of the dynamic object in global coordinates
-        poses = predictor.predict_object(obj, time_samples)
+        poses = predictor.predict_objects(state, [obj.obj_id], time_samples)[obj.obj_id]
         poses[0][CURVE_YAW] = obj.yaw
         super().__init__(poses, obj.size.length, obj.size.width, k, margin)
         self.poses = poses

@@ -80,9 +80,9 @@ class Poly1D:
             3. [position value, velocity value, acceleration value]
         """
         # compute the coefficients of the polynom's 1st derivative (m=1)
-        poly_dot_coefs = np.apply_along_axis(func1d=np.polyder, axis=1, arr=poly_coefs, m=1)
+        poly_dot_coefs = Math.polyder2d(poly_coefs, m=1)
         # compute the coefficients of the polynom's 2nd derivative (m=2)
-        poly_dotdot_coefs = np.apply_along_axis(func1d=np.polyder, axis=1, arr=poly_coefs, m=2)
+        poly_dotdot_coefs = Math.polyder2d(poly_coefs, m=2)
 
         x_vals = Math.polyval2d(poly_coefs, time_samples)
         x_dot_vals = Math.polyval2d(poly_dot_coefs, time_samples)
