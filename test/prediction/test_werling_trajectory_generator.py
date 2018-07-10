@@ -20,19 +20,10 @@ def test_generateTrajectory_sampleParameters_resultPrecise(werling_trajectory_ge
 
     map_api = MapService.get_instance()
 
-    road_id = target_obj.road_localization.road_id
-    road_points = map_api._shift_road_points_to_latitude(road_id, 0.0)  # TODO: use nav_plan
-    road_frenet_frame = FrenetSerret2DFrame(road_points)
+    road_id = target_obj.map_state.road_id
+    road_frenet_frame = MapService.get_instance()._rhs_roads_frenet[road_id]
 
-    target_obj_fpoint = road_frenet_frame.cpoint_to_fpoint(np.array([target_obj.x, target_obj.y]))
-    _, _, _, road_curvature_at_obj_location, _ = road_frenet_frame._taylor_interp(target_obj_fpoint[FP_SX])
-    obj_init_fstate = road_frenet_frame.cstate_to_fstate(np.array([
-        target_obj.x, target_obj.y,
-        target_obj.yaw,
-        target_obj.total_speed,
-        target_obj.acceleration_lon,
-        road_curvature_at_obj_location  # We don't care about other agent's curvature, only the road's
-    ]))
+    obj_init_fstate = target_obj.map_state.road_fstate
 
     # Set final state to advance 20[m] in lon and the width of a road lane in lat
     obj_final_fstate = np.array(obj_init_fstate)

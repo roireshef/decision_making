@@ -15,7 +15,10 @@ from decision_making.src.planning.behavioral.planner.single_step_behavioral_plan
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
-from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+
+from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
+    PhysicalTimeAlignmentPredictor
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from mapping.test.model.testable_map_fixtures import map_api_mock
 
@@ -34,6 +37,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
 
     trajectory_publish_mock = MagicMock()
     predictor = RoadFollowingPredictor(predictor_logger)
+    short_time_predictor = PhysicalTimeAlignmentPredictor(predictor_logger)
 
     planner = WerlingPlanner(tp_logger, predictor)
     strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
@@ -42,7 +46,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
 
     trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=tp_logger,
                                                           strategy_handlers=strategy_handlers,
-                                                          short_time_predictor=predictor)
+                                                          short_time_predictor=short_time_predictor)
 
     pubsub.subscribe(pubsub_topics.TRAJECTORY_TOPIC, trajectory_publish_mock)
 
@@ -52,6 +56,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
     state_module.periodic_action()
     trajectory_planning_module.periodic_action()
 
+    # if this fails, that means BP did not publish a message - debug exceptions in TrajectoryPlanningFacade
     tp_logger.warn.assert_not_called()
     tp_logger.error.assert_not_called()
     tp_logger.critical.assert_not_called()
@@ -71,6 +76,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
 
     behavioral_publish_mock = MagicMock()
     predictor = RoadFollowingPredictor(predictor_logger)
+    short_time_predictor = PhysicalTimeAlignmentPredictor(predictor_logger)
     action_space = ActionSpaceContainer(bp_logger,
                                         [StaticActionSpace(bp_logger, filtering=DEFAULT_STATIC_RECIPE_FILTERING),
                                          DynamicActionSpace(bp_logger, predictor, filtering=DEFAULT_DYNAMIC_RECIPE_FILTERING)])
@@ -85,7 +91,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
     state_module.periodic_action()
     navigation_facade.periodic_action()
     behavioral_planner_module = BehavioralPlanningFacade(pubsub=pubsub, logger=bp_logger, behavioral_planner=planner,
-                                                         short_time_predictor=predictor)
+                                                         short_time_predictor=short_time_predictor)
 
     pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, behavioral_publish_mock)
 
