@@ -19,7 +19,7 @@ class SafetyUtils:
         """
         Calculate safety boolean tensor for different ego Frenet trajectories and objects' Frenet trajectories.
         :param ego_ftraj: ego Frenet trajectories: 3D tensor of shape: traj_num x timestamps_num x Frenet state size
-        :param ego_size: array of size 2: ego length, ego width
+        :param ego_size: ego size
         :param obj_ftraj: 3D array of ftrajectories of objects: shape: objects_num x timestamps_num x 6 (Frenet state size)
         :param obj_sizes: list of objects' sizes
         :return: [bool] safety per [ego trajectory, object, timestamp]. Tensor of shape: traj_num x objects_num x timestamps_num
