@@ -48,20 +48,19 @@ class QuarticMotionSymbolicsCreator:
 
         cost = (wJ * J + wT * T).simplify()
 
-        cost = cost.subs(s0, 0).subs(aT, 0).simplify()
-        cost_diff = sp.diff(cost, T).simplify()
-
+        package_cost = cost.subs(s0, 0).subs(aT, 0).simplify()
+        package_cost_diff = sp.diff(package_cost, T).simplify()
         package_x_t = x_t.subs(s0, 0).subs(aT, 0).simplify()
         package_v_t = v_t.subs(s0, 0).subs(aT, 0).simplify()
         package_a_t = sp.diff(package_v_t, t).simplify()
 
-        cost_desmos = cost.subs(a0, 0).simplify()
-        cost_diff_desmos = cost_diff.subs(a0, 0).simplify()
-        x_t_desmos = package_x_t.subs(a0, 0).simplify()
-        v_t_desmos = package_v_t.subs(a0, 0).simplify()
-        a_t_desmos = package_a_t.subs(a0, 0).simplify()
+        desmos_cost = package_cost.subs(a0, 0).simplify()
+        desmos_cost_diff = package_cost_diff.subs(a0, 0).simplify()
+        desmos_x_t = package_x_t.subs(a0, 0).simplify()
+        desmos_v_t = package_v_t.subs(a0, 0).simplify()
+        desmos_a_t = package_a_t.subs(a0, 0).simplify()
 
-        return package_x_t, package_v_t, package_a_t, cost_desmos, cost_diff_desmos, x_t_desmos, v_t_desmos, a_t_desmos
+        return package_x_t, package_v_t, package_a_t, desmos_cost, desmos_cost_diff, desmos_x_t, desmos_v_t, desmos_a_t
 
 
 class QuarticMotionPredicatesCreator:
@@ -112,9 +111,9 @@ class QuarticMotionPredicatesCreator:
             QuarticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
                                                               np.array([a_0]), np.array([v_0]),
                                                               np.array([v_T]))[0]
-        cost_roots_reals = Math.find_real_roots_in_limits(time_cost_poly_coefs,
+        cost_real_roots = Math.find_real_roots_in_limits(time_cost_poly_coefs,
                                                           np.array([0, BP_ACTION_T_LIMITS[1]]))
-        extremum_T = cost_roots_reals[np.isfinite(cost_roots_reals)]
+        extremum_T = cost_real_roots[np.isfinite(cost_real_roots)]
 
         if len(extremum_T) == 0:
             return False
