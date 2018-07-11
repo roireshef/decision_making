@@ -65,13 +65,13 @@ class SafetyUtils:
                         margins: float, max_brake: float=-LON_ACC_LIMITS[LIMIT_MIN]) -> np.array:
         """
         Calculate longitudinal safety between ego and another object for all timestamps.
-        :param ego: ego fstate components: tensor of shape: 6 x traj_num x objects_num x timestamps_num
+        :param ego: ego fstate components: 3D tensor of shape: 6 x traj_num x timestamps_num
         :param ego_time_delay: [sec] ego time delay
-        :param obj: object's fstate components: tensor of any shape that compatible with the shape of ego
+        :param obj: object's fstate components: 2D matrix: 6 x timestamps_num
         :param obj_time_delay: [sec] object's time delay
         :param margins: [m] cars' lengths half sum
         :param max_brake: [m/s^2] maximal deceleration of both objects
-        :return: [bool] longitudinal safety per timestamp. Tensor of the same shape as object1 or object2
+        :return: [bool] longitudinal safety per timestamp. 2D matrix shape: traj_num x timestamps_num
         """
         (ego_lon, ego_vel, _, _, _, _) = ego
         (obj_lon, obj_vel, _, _, _, _) = obj
@@ -92,13 +92,13 @@ class SafetyUtils:
                         margins: float, max_brake: float=-LAT_ACC_LIMITS[LIMIT_MIN]) -> np.array:
         """
         Calculate lateral safety between ego and another object for all timestamps.
-        :param ego: ego fstate components: tensor of shape: 6 x traj_num x objects_num x timestamps_num
+        :param ego: ego fstate components: 3D tensor of shape: 6 x traj_num x timestamps_num
         :param ego_time_delay: [sec] object1 time delay
-        :param obj: object's fstate components: tensor of any shape that compatible with the shape of ego
+        :param obj: object's fstate components: 2D matrix: 6 x timestamps_num
         :param obj_time_delay: [sec] object2 time delay
         :param margins: [m] half sum of objects' widths + mu (mu is from Mobileye's paper)
         :param max_brake: [m/s^2] maximal deceleration of both objects
-        :return: [bool] 1. lateral safety per timestamp. Shape: 3D or 2D traj_num x (objects_num x) timestamps_num
+        :return: [bool] 1. lateral safety per timestamp. 2D matrix shape: traj_num x timestamps_num
                         2. lateral velocity blame: True if ego moves laterally towards object. The same shape.
         """
         (_, _, _, ego_lat, ego_lat_vel, _) = ego
