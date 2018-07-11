@@ -408,16 +408,14 @@ class WerlingPlanner(TrajectoryPlanner):
         objects_curr_fstates = np.array([dynamic_object.map_state.road_fstate
                                          for dynamic_object in state.dynamic_objects])
         obj_ftraj = self.predictor.predict_frenet_states(objects_curr_fstates, time_samples)
-        obj_sizes = np.array([np.array([dynamic_object.size.length, dynamic_object.size.width])
-                              for dynamic_object in state.dynamic_objects])
-        ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])
+        obj_sizes = [dynamic_object.size for dynamic_object in state.dynamic_objects]
 
         # st = time.time()
         # calculate RSS safety for all trajectories, all objects and all timestamps
         with prof.time_range('calc_safety(ego_traj=%s, objs_num=%d)' % (ego_ftraj.shape, len(state.dynamic_objects))):
-            blame_times = SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_sizes)
+            safe_times = SafetyUtils.get_safe_times(ego_ftraj, state.ego_state.size, obj_ftraj, obj_sizes)
         # AND over all objects and all timestamps
-        safe_trajectories = np.logical_not(blame_times.any(axis=(1, 2)))
+        safe_trajectories = safe_times.all(axis=(1, 2))
 
         # print('safety in TP time: %f (traj_num=%d, obj_num=%d)' % (time.time()-st, ego_ftraj.shape[0], obj_ftraj.shape[0]))
         return np.where(safe_trajectories)[0]
