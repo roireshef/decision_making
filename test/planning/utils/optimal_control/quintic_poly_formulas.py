@@ -145,8 +145,8 @@ class QuinticMotionPredicatesCreator:
 
         T = extremum_T.min()  # First extrema is our local (and sometimes global) minimum
 
-        # Handling the case of an action where we'd like to continue doing what we're doing, so action time is zero
-        # or very small and gets quantized to zero.
+        # Handling the case of an action where we'd like to continue doing exactly what we're doing,
+        # so action time might be zero or very small and gets quantized to zero.
         if T == 0:
             return True
 
@@ -156,9 +156,9 @@ class QuinticMotionPredicatesCreator:
             T,
             T_m=T_m)
         time_res_for_extremum_query = 0.01
-        s_roots_reals = Math.find_real_roots_in_limits(coefs_s_der, np.array(
+        s_der_real_roots = Math.find_real_roots_in_limits(coefs_s_der, np.array(
             [time_res_for_extremum_query, T - time_res_for_extremum_query]))
-        extremum_delta_s_val = delta_s_t_func(s_roots_reals[np.isfinite(s_roots_reals)])
+        extremum_delta_s_val = delta_s_t_func(s_der_real_roots[np.isfinite(s_der_real_roots)])
 
         t = np.arange(0, T + EPS, time_res_for_extremum_query)
         min_v, max_v = min(v_t_func(t)), max(v_t_func(t))

@@ -120,8 +120,8 @@ class QuarticMotionPredicatesCreator:
 
         T = extremum_T.min()  # First extrema is our local (and sometimes global) minimum
 
-        # Handling the case of an action where we'd like to continue doing what we're doing, so action time is zero
-        # or very small and gets quantized to zero.
+        # Handling the case of an action where we'd like to continue doing exactly what we're doing,
+        # so action time might be zero or very small and gets quantized to zero.
         if T == 0:
             return True
 
