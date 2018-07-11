@@ -221,190 +221,23 @@ ego_lon = 200
 center_lane_lats = lane_wid / 2 + np.arange(0, 2 * lane_wid + 0.001, lane_wid)  # 3 lanes
 
 
-def create_ego_trajectory_vel10_lane0():
+def create_trajectory(v0: float, vT: float, lane0: int, laneT: int, lon0: float=0, T_d: float=T):
     """
-    ego trajectory: moves with constant velocity 10 m/s on lane 0
+    create trajectory for given start/end velocities, start/end lane centers, relative longitude, T_d
     """
-    v = 10
-    constraints_s = np.array([[ego_lon, v, 0, ego_lon + T * v, v, 0]])
-    constraints_d = np.array([[center_lane_lats[0], 0, 0, center_lane_lats[0], 0, 0]])
-    poly_s = WerlingPlanner._solve_1d_poly(constraints_s, T, QuinticPoly1D)
-    fstates_s = QuinticPoly1D.polyval_with_derivatives(poly_s, time_range)
-    poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T, QuinticPoly1D)
+    constraints_s = np.array([[ego_lon + lon0, v0, 0, vT, 0]])
+    constraints_d = np.array([[center_lane_lats[lane0], 0, 0, center_lane_lats[laneT], 0, 0]])
+    poly_s = WerlingPlanner._solve_1d_poly(constraints_s, T, QuarticPoly1D)
+    fstates_s = QuarticPoly1D.polyval_with_derivatives(poly_s, time_range)
+    poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T_d, QuinticPoly1D)
     fstates_d = QuinticPoly1D.polyval_with_derivatives(poly_d, time_range)
     ego_ftraj = np.dstack((fstates_s, fstates_d))
     return ego_ftraj
-
-
-def create_ego_trajectory_vel20_lane0():
-    """
-    ego trajectory: moves with constant velocity 20 m/s on lane 0
-    """
-    v = 20
-    constraints_s = np.array([[ego_lon, v, 0, ego_lon + T * v, v, 0]])
-    constraints_d = np.array([[center_lane_lats[0], 0, 0, center_lane_lats[0], 0, 0]])
-    poly_s = WerlingPlanner._solve_1d_poly(constraints_s, T, QuinticPoly1D)
-    fstates_s = QuinticPoly1D.polyval_with_derivatives(poly_s, time_range)
-    poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T, QuinticPoly1D)
-    fstates_d = QuinticPoly1D.polyval_with_derivatives(poly_d, time_range)
-    ego_ftraj = np.dstack((fstates_s, fstates_d))
-    return ego_ftraj
-
-
-def create_ego_trajectory_vel30_lanes_0_1():
-    """
-    ego trajectory: moves with constant velocity 30 m/s from lane 0 to lane 1
-    """
-    v = 30
-    constraints_s = np.array([[ego_lon, v, 0, ego_lon + T * v, v, 0]])
-    constraints_d = np.array([[center_lane_lats[0], 0, 0, center_lane_lats[1], 0, 0]])
-    poly_s = WerlingPlanner._solve_1d_poly(constraints_s, T, QuinticPoly1D)
-    fstates_s = QuinticPoly1D.polyval_with_derivatives(poly_s, time_range)
-    poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T, QuinticPoly1D)
-    fstates_d = QuinticPoly1D.polyval_with_derivatives(poly_d, time_range)
-    ego_ftraj = np.dstack((fstates_s, fstates_d))
-    return ego_ftraj
-
-
-def create_ego_trajectory_vel30_lanes_2_1():
-    """
-    ego trajectory: moves with constant velocity 30 m/s from lane 2 to lane 1
-    """
-    v = 30
-    constraints_s = np.array([[ego_lon, v, 0, ego_lon + T * v, v, 0]])
-    constraints_d = np.array([[center_lane_lats[2], 0, 0, center_lane_lats[1], 0, 0]])
-    poly_s = WerlingPlanner._solve_1d_poly(constraints_s, T, QuinticPoly1D)
-    fstates_s = QuinticPoly1D.polyval_with_derivatives(poly_s, time_range)
-    poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T, QuinticPoly1D)
-    fstates_d = QuinticPoly1D.polyval_with_derivatives(poly_d, time_range)
-    ego_ftraj = np.dstack((fstates_s, fstates_d))
-    return ego_ftraj
-
-
-def create_ego_trajectory_vel30_lane0():
-    """
-    ego trajectory: moves with constant velocity 30 m/s on lane 0
-    """
-    v = 30
-    constraints_s = np.array([[ego_lon, v, 0, ego_lon + T * v, v, 0]])
-    constraints_d = np.array([[center_lane_lats[0], 0, 0, center_lane_lats[0], 0, 0]])
-    poly_s = WerlingPlanner._solve_1d_poly(constraints_s, T, QuinticPoly1D)
-    fstates_s = QuinticPoly1D.polyval_with_derivatives(poly_s, time_range)
-    poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T, QuinticPoly1D)
-    fstates_d = QuinticPoly1D.polyval_with_derivatives(poly_d, time_range)
-    ego_ftraj = np.dstack((fstates_s, fstates_d))
-    return ego_ftraj
-
-
-def create_obj_trajectory_vel10_lane0_lon15():
-    """
-    object moves with velocity 10 m/s on lane 0, starting from ego_lon + 15
-    """
-    zeros = np.zeros(times_num)
-    v = 10
-    sx = ego_lon + time_range * v
-    sv = np.repeat(v, times_num)
-    dx = np.repeat(center_lane_lats[0], times_num)
-    obj_ftraj = np.array([np.c_[sx + SAFETY_MARGIN_TIME_DELAY * v + (ego_size[0] + obj_size[0]) / 2 + 1,
-                                sv, zeros, dx, zeros, zeros]])
-    return obj_ftraj
-
-
-def create_obj_trajectory_vel20_lane1_lon0():
-    """
-    object moves with velocity 20 m/s on lane 1, with starting lon = ego_lon
-    """
-    zeros = np.zeros(times_num)
-    v = 20
-    sx = ego_lon + time_range * v
-    sv = np.repeat(v, times_num)
-    dx = np.repeat(center_lane_lats[1], times_num)
-    obj_ftraj = np.array([np.c_[sx, sv, zeros, dx, zeros, zeros]])
-    return obj_ftraj
-
-
-def create_obj_trajectory_vel30_lane0_lon25():
-    """
-    object moves with velocity 30 m/s on lane 0, starting ego_lon + 25
-    """
-    zeros = np.zeros(times_num)
-    v = 30
-    sx = ego_lon + time_range * v
-    sv = np.repeat(v, times_num)
-    dx = np.repeat(center_lane_lats[0], times_num)
-    obj_ftraj = np.array([np.c_[sx + SAFETY_MARGIN_TIME_DELAY * v + (ego_size[0] + obj_size[0]) / 2 + 1,
-                                sv, zeros, dx, zeros, zeros]])
-    return obj_ftraj
-
-
-def create_obj_trajectory_vel20_lane0_lon135():
-    """
-    object moves with velocity 20 m/s on the lane 0, starting from ego_lon + 135
-    """
-    zeros = np.zeros(times_num)
-    v = 20
-    sx = ego_lon + time_range * v
-    sv = np.repeat(v, times_num)
-    dx = np.repeat(center_lane_lats[0], times_num)
-    obj_ftraj = np.array([np.c_[sx + 135, sv, zeros, dx, zeros, zeros]])
-    return obj_ftraj
-
-
-def create_obj_trajectory_vel20_lane0_lon165():
-    """
-    object moves with velocity 20 m/s on the lane 0, starting from ego_lon + 165
-    """
-    zeros = np.zeros(times_num)
-    v = 20
-    sx = ego_lon + time_range * v
-    sv = np.repeat(v, times_num)
-    dx = np.repeat(center_lane_lats[0], times_num)
-    obj_ftraj = np.array([np.c_[sx + 165, sv, zeros, dx, zeros, zeros]])
-    return obj_ftraj
-
-
-def create_obj_trajectory_vel30_lanes_2_1_lon0():
-    """
-    object moves with velocity 30 m/s from lane 2 to lane 1 (const lat vel), with starting lon = ego_lon
-    """
-    zeros = np.zeros(times_num)
-    v = 30
-    sx = ego_lon + time_range * v
-    sv = np.repeat(v, times_num)
-    dv = -np.repeat(lane_wid / (T - times_step), times_num)  # moves one lane to the right
-    obj_ftraj = np.array([np.c_[sx, sv, zeros, center_lane_lats[2] + time_range * dv, dv, zeros]])
-    return obj_ftraj
-
-
-def create_obj_trajectory_vel30_lanes_1_2_lon0():
-    """
-    object moves with velocity 30 m/s from lane 1 to lane 2 (const lat vel), with starting lon = ego_lon
-    """
-    zeros = np.zeros(times_num)
-    v = 30
-    sx = ego_lon + time_range * v
-    sv = np.repeat(v, times_num)
-    dv = np.repeat(lane_wid / (T - times_step), times_num)  # moves one lane to the left
-    obj_ftraj = np.array([np.c_[sx, sv, zeros, center_lane_lats[1] + time_range * dv, dv, zeros]])
-    return obj_ftraj
-
-
-def create_obj_trajectory_vel30_lanes_1_0_lon0():
-    """
-    object moves with velocity 30 m/s from lane 1 to lane 0 (const lat vel), with starting lon = ego_lon
-    """
-    zeros = np.zeros(times_num)
-    v = 30
-    sx = ego_lon + time_range * v
-    sv = np.repeat(v, times_num)
-    dv = -np.repeat(lane_wid / (T - times_step), times_num)  # moves one lane to the right
-    obj_ftraj = np.array([np.c_[sx, sv, zeros, center_lane_lats[1] + time_range * dv, dv, zeros]])
-    return obj_ftraj
 
 
 def test_calcSafetyForTrajectories_basicScenarios_checkSafetyCorrectnessForBasicScenarios():
     """
-    Test safety of 4 different ego trajectories w.r.t. 8 different objects moving on three lanes with different
+    Test safety of 5 different ego trajectories w.r.t. 8 different objects moving on three lanes with different
     velocities and starting from different latitudes and longitudes. All velocities are constant along trajectories.
     In two trajectories ego changes lane. 3 last objects change lane.
     The test checks safety for whole trajectories.
@@ -412,87 +245,91 @@ def test_calcSafetyForTrajectories_basicScenarios_checkSafetyCorrectnessForBasic
     obj_size = np.array([4, 2])[np.newaxis]
     ego_size = np.array([4, 2])
 
-    ego_ftraj = create_ego_trajectory_vel10_lane0()
-    obj_ftraj = create_obj_trajectory_vel10_lane0_lon15()
+    ego_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0)
+    obj_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0, lon0=15)
     safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_size)).all(axis=-1)
     assert safe_times  # move with the same velocity 10 and start on the safe distance
 
-    ego_ftraj = create_ego_trajectory_vel10_lane0()
-    obj_ftraj = create_obj_trajectory_vel20_lane1_lon0()
+    ego_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0)
+    obj_ftraj = create_trajectory(v0=20, vT=20, lane0=1, laneT=1, lon0=0)
     safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_size)).all(axis=-1)
     assert safe_times  # object is ahead and faster, therefore safe
 
-    ego_ftraj = create_ego_trajectory_vel20_lane0()
-    obj_ftraj = create_obj_trajectory_vel10_lane0_lon15()
+    ego_ftraj = create_trajectory(v0=20, vT=20, lane0=0, laneT=0)
+    obj_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0, lon0=15)
     safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_size)).all(axis=-1)
     assert not safe_times  # the object ahead is slower, therefore unsafe
 
-    ego_ftraj = create_ego_trajectory_vel10_lane0()
-    obj_ftraj = create_obj_trajectory_vel20_lane1_lon0()
+    ego_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0)
+    obj_ftraj = create_trajectory(v0=20, vT=20, lane0=1, laneT=1, lon0=0)
     safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_size)).all(axis=-1)
     assert safe_times  # move on different lanes, then safe
 
-    ego_ftraj = create_ego_trajectory_vel30_lanes_0_1()
-    obj_ftraj = create_obj_trajectory_vel10_lane0_lon15()
+    ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
+    obj_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0, lon0=15)
     safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_size)).all(axis=-1)
     assert not safe_times  # ego 30 m/s changes lane from 0 to 1, unsafe w.r.t. F 10 m/s, 15 ahead of ego
 
-    ego_ftraj = create_ego_trajectory_vel30_lanes_0_1()
-    obj_ftraj = create_obj_trajectory_vel20_lane1_lon0()
+    ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
+    obj_ftraj = create_trajectory(v0=20, vT=20, lane0=1, laneT=1, lon0=0)
     safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_size)).all(axis=-1)
     assert not safe_times  # ego 30 m/s changes lane from 0 to 1, unsafe wrt LB 20 m/s on lane 1 from same lon as ego
 
-    ego_ftraj = create_ego_trajectory_vel30_lanes_0_1()
-    obj_ftraj = create_obj_trajectory_vel30_lane0_lon25()
+    ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=0, lon0=35)
     safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_size)).all(axis=-1)
     assert safe_times  # F moves with the same velocity as ego, then safe
 
-    ego_ftraj = create_ego_trajectory_vel30_lanes_0_1()
-    obj_ftraj = create_obj_trajectory_vel20_lane0_lon135()
+    ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
+    obj_ftraj = create_trajectory(v0=20, vT=20, lane0=0, laneT=0, lon0=135)
     safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_size)).all(axis=-1)
     # ego 30 m/s changes lane from 0 to 1, obj 20 m/s 135 m ahead;
     # becomes unsafe longitudinally at time 4, before it becomes safe laterally
     assert not safe_times
 
-    ego_ftraj = create_ego_trajectory_vel30_lanes_0_1()
-    obj_ftraj = create_obj_trajectory_vel20_lane0_lon165()
+    ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
+    obj_ftraj = create_trajectory(v0=20, vT=20, lane0=0, laneT=0, lon0=165)
     safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_size)).all(axis=-1)
     # ego 30 m/s changes lane from 0 to 1, obj 20 m/s 165 m ahead;
     # becomes unsafe longitudinally at time 7, exactly when it becomes safe laterally
     assert safe_times
 
-    ego_ftraj = create_ego_trajectory_vel30_lanes_0_1()
-    obj_ftraj = create_obj_trajectory_vel30_lanes_2_1_lon0()
+    ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=2, laneT=1, lon0=0)
     safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_size)).all(axis=-1)
     assert not safe_times  # obj & ego move laterally one to another to lane 1, becomes unsafe laterally at the end
 
-    ego_ftraj = create_ego_trajectory_vel30_lanes_0_1()
-    obj_ftraj = create_obj_trajectory_vel30_lanes_1_2_lon0()
+    ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=2, lon0=0)
     safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_size)).all(axis=-1)
     assert safe_times  # obj & ego move laterally to the left, keeping lateral distance, and always safe
 
-    ego_ftraj = create_ego_trajectory_vel30_lane0()
-    obj_ftraj = create_obj_trajectory_vel30_lanes_1_0_lon0()
+    ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=0)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=0, lon0=0)
     safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_size)).all(axis=-1)
     assert safe_times  # obj moves laterally to ego, but ego keeps its lane and the current state is safe
 
-    ego_ftraj = create_ego_trajectory_vel30_lanes_0_1()
-    obj_ftraj = create_obj_trajectory_vel30_lanes_1_0_lon0()
+    ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=0, lon0=0)
+    safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_size)).all(axis=-1)
+    # Although at blame time ego and object move laterally one towards another, then unsafe
+    assert not safe_times  # obj & ego move laterally one toward another
+
+    ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=0, lon0=0, T_d=4)
     safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_size)).all(axis=-1)
     # Although at blame time ego moves laterally very slow and the object moves much faster, but the action is
     # towards the object, then unsafe
     assert not safe_times  # obj & ego move laterally one toward another
 
-    ego_ftraj = create_ego_trajectory_vel30_lanes_2_1()
-    obj_ftraj = create_obj_trajectory_vel30_lanes_1_0_lon0()
+    ego_ftraj = create_trajectory(v0=30, vT=30, lane0=2, laneT=1)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=0, lon0=0)
     safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_size)).all(axis=-1)
     assert safe_times  # obj & ego move laterally to the right, keeping lateral distance, and always safe
 
-    ego_ftraj = create_ego_trajectory_vel30_lanes_2_1()
-    obj_ftraj = create_obj_trajectory_vel30_lanes_1_0_lon0()
-    safe_times = np.logical_not(SafetyUtils.get_blame_times(ego_ftraj, ego_size, obj_ftraj, obj_size)).all(axis=-1)
-    assert safe_times  # obj & ego move laterally to the right, keeping lateral distance, and always safe
 
+# traj[1] is like traj[0], but with T_d = 2.6
+# traj[2] is like traj[0], but with T_d = 2.5
 
 def test_calcSafetyForTrajectories_overtakeOfSlowF_safeOnlyIfObjectFisFar():
     """

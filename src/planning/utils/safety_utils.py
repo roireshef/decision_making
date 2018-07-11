@@ -124,7 +124,7 @@ class SafetyUtils:
         #   ego moves laterally towards object faster than small thresh or
         #   ego moves laterally towards object faster than the object moves laterally towards ego or
         #   the action is towards the object
-        action_lat_dir = ego_lat[:, -1] - ego_lat[:, 0]  # last lat - initial lat
+        action_lat_dir = (ego_lat[:, -1] - ego_lat[:, 0])[:, np.newaxis]  # last lat - initial lat
         lat_vel_blame = np.logical_or(-sign * ego_lat_vel > np.clip(sign * obj_lat_vel, 0, LAT_VEL_BLAME_THRESH),
                                       -sign * action_lat_dir > 0)
         return sign * dist > safe_dist, lat_vel_blame
