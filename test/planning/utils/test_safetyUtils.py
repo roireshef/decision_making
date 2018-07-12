@@ -329,15 +329,14 @@ def test_calcSafeTd():
     objects = [F, LF, LB]
 
     predictions = []
-    obj_sizes_mat = []
+    obj_sizes = []
     for i, obj in enumerate(objects):
         fstate = np.array([obj.map_state.road_fstate[FS_SX], obj.velocity, 0, obj.map_state.road_fstate[FS_DX], 0, 0])
         prediction = np.tile(fstate, samples_num).reshape(samples_num, 6)
         prediction[:, 0] = fstate[FS_SX] + time_samples * fstate[FS_SV]
         predictions.append(prediction)
-        obj_sizes_mat.append(np.array([obj.size.length, obj.size.width]))
+        obj_sizes.append(obj.size)
     predictions = np.array(predictions)
-    obj_sizes_mat = np.array(obj_sizes_mat)
 
     state = State(None, objects, ego)
     behavioral_state = BehavioralGridState.create_from_state(state, logger)
@@ -360,10 +359,9 @@ def test_calcSafeTd():
 
     specs_mask = action_spec_validator.filter_action_specs(list(specs), behavioral_state)
 
-    T_d = SafetyUtils.calc_safe_T_d(ego_fstate, np.array([ego_size.length, ego_size.width]), specs, specs_mask,
-                                    time_samples, predictions, obj_sizes_mat)
-    # TODO: after considering the rear object in RSS, verify the action 63 is safe for T_d = 3
-    assert T_d[63] == 0     # static action T_s=16 v_T=13.9 with lane change: unsafe wrt faster LB since T_s is long
+    T_d = SafetyUtils.calc_safe_T_d(ego_fstate, ego_size, specs, specs_mask,
+                                    time_samples, predictions, obj_sizes)
+    assert T_d[63] == 7     # static action T_s=16 v_T=13.9 with lane change: unsafe wrt faster LB since T_s is long
     assert T_d[65] == 5     # static action T_s=6.4 v_T=13.9 with lane change: T_d is affected by close F
     assert T_d[68] == 3     # static action T_s=6.4 v_T=16.7 with lane change: T_d is short because of close F
     assert T_d[120] == 3    # dynamic action T_s=7.6 with lane change: T_d is short because of close F

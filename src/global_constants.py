@@ -100,11 +100,19 @@ SAFETY_MARGIN_TIME_DELAY = 1
 # [m] minimal lateral safe distance between objects
 LATERAL_SAFETY_MU = 0.5
 
+# [m/sec] lateral velocity blame threshold: in case of lateral danger,
+# if ego_lat_vel >= min(obj_lat_vel, LAT_VEL_BLAME_THRESH), then ego is blamed
+LAT_VEL_BLAME_THRESH = 0.1
+
+# [m/s^2] longitudinal acceleration of object during time delay in RSS
+LON_SAFETY_ACCEL_DURING_DELAY = 0
+
+# [m/s^2] lateral acceleration of object during time delay in RSS
+LAT_SAFETY_ACCEL_DURING_DELAY = 0
+
+
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
-
-# [m/sec] negligible lateral velocity, that is not considered as lane change
-TINY_LAT_VELOCITY = 0.1
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
