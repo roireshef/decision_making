@@ -44,84 +44,128 @@ def create_trajectory(v0: float, vT: float, lane0: int, laneT: int, lon0: float=
     return ftraj
 
 
-def test_calcSafetyForTrajectories_safetyWrtLandLF_allCasesShouldComplyRSS():
+def test_calcSafetyForTrajectories_safetyWrtL_allCasesShouldComplyRSS():
     """
-    Test safety of ego trajectories w.r.t. objects L, LF moving on three lanes with different
-    velocities and starting from different latitudes and longitudes. All velocities are constant along trajectories.
+    Test safety of ego trajectories w.r.t. object L moving on three lanes with different
+    velocities. All velocities are constant along trajectories.
     The test checks safety for whole trajectories.
     """
     ego_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0)
-    obj_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0, lon0=15)
-    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
-    assert safe_times  # move with the same velocity 10 and start on the safe distance
-
-    ego_ftraj = create_trajectory(v0=20, vT=20, lane0=0, laneT=0)
-    obj_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0, lon0=15)  # slow LF
-    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
-    assert not safe_times  # the object ahead is slower, therefore unsafe
-
-    ego_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0)
-    obj_ftraj = create_trajectory(v0=20, vT=20, lane0=1, laneT=1, lon0=0)
+    obj_ftraj = create_trajectory(v0=20, vT=20, lane0=1, laneT=1)  # faster L
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     assert safe_times  # move on different lanes, then safe
 
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
-    obj_ftraj = create_trajectory(v0=20, vT=20, lane0=1, laneT=1, lon0=0)  # slower L
+    obj_ftraj = create_trajectory(v0=20, vT=20, lane0=1, laneT=1)  # slower L
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     assert not safe_times  # ego 30 m/s changes lane from 0 to 1, unsafe wrt L 20 m/s on lane 1 from same lon as ego
 
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
-    obj_ftraj = create_trajectory(v0=10, vT=10, lane0=1, laneT=1, lon0=0)  # much slower L
+    obj_ftraj = create_trajectory(v0=10, vT=10, lane0=1, laneT=1)  # much slower L
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     assert safe_times  # ego 30 m/s changes lane from 0 to 1, safe wrt L 10 m/s on lane 1 from same lon as ego
 
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
-    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=2, laneT=1, lon0=0)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=2, laneT=1)  # L
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
-    assert not safe_times  # obj & ego move laterally one to another to lane 1, becomes unsafe laterally at the end
+    assert not safe_times  # obj & ego move laterally one towards the other to lane 1, becomes unsafe laterally
 
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
-    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=2, lon0=0)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=2)
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     assert safe_times  # obj & ego move laterally to the left, keeping lateral distance, and always safe
 
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1, T_d=5)
-    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=2, lon0=0)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=2)  # L
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     assert not safe_times  # ego moves laterally to the left faster than obj, then unsafe
 
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=0)
-    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=0, lon0=0)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=0)
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
-    assert not safe_times  # obj moves laterally to ego (obj's blame), an accident is predicted
+    assert not safe_times  # obj moves laterally to ego (obj's blame)
 
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
-    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=0, lon0=0)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=0)
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     assert not safe_times  # obj & ego move laterally one toward another, then unsafe
 
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
-    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=0, lon0=0, T_d=4)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=0, T_d=4)
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     # at blame time ego moves laterally very slow and the object moves much faster, but the action is
     # towards the object
     assert not safe_times  # obj & ego move laterally one toward another, then unsafe
 
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=2, laneT=1)
-    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=0, lon0=0)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=0)
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     assert safe_times  # obj & ego move laterally to the right, keeping lateral distance, and always safe
 
+    ego_ftraj = create_trajectory(v0=10, vT=20, lane0=0, laneT=1)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=1)  # fast L becomes LF
+    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
+    assert safe_times  # mid-vel ego (10-20 m/s) is safe w.r.t. close and fast LF (30 m/s)
 
-def test_calcSafetyForTrajectories_overtakeOfSlowF_sallCasesShouldComplyRSS():
+    # ego moves on its lane, L performs unsafe cut-in
+    ego_ftraj = create_trajectory(v0=20, vT=30, lane0=0, laneT=0)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=0)  # close fast L
+    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
+    assert not safe_times  # accelerating ego (20->30 m/s) is safe w.r.t. close LF (30 m/s)
+
+
+def test_calcSafetyForTrajectories_safetyWrtLF_allCasesShouldComplyRSS():
     """
-    Test safety of lane change trajectories w.r.t. slower object F.
-    Try different T_d for closer F.
+    Test safety of ego trajectories w.r.t. object LF with different velocities and starting from different longitudes.
+    The test checks safety for whole trajectories.
     """
+    ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=1, lon0=20)  # close and fast LF
+    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
+    assert not safe_times  # fast ego (30 m/s) is unsafe w.r.t. close LF with same velocity
+
+    ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=1, lon0=40)  # not close fast LF
+    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
+    assert safe_times  # fast ego (30 m/s) is safe w.r.t. not close LF with same velocity
+
+    ego_ftraj = create_trajectory(v0=20, vT=30, lane0=0, laneT=1)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=1, lon0=20)  # close fast LF
+    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
+    assert safe_times  # accelerating ego (20->30 m/s) is safe w.r.t. close LF (30 m/s)
+
+    # ego moves on its lane, LF performs safe cut-in
+    ego_ftraj = create_trajectory(v0=20, vT=30, lane0=0, laneT=0)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=0, lon0=10)  # close fast LF
+    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
+    assert safe_times  # accelerating ego (20->30 m/s) is safe w.r.t. close LF (30 m/s)
+
+
+def test_calcSafetyForTrajectories_safetyWrtF_allCasesShouldComplyRSS():
+    """
+    Test safety of lane change trajectories w.r.t. object F. Try different T_d for slow F.
+    The test checks safety for whole trajectories.
+    """
+    ego_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0)
+    obj_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0, lon0=15)  # F
+    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
+    assert safe_times  # move with the same velocity 10 and start on the safe distance
+
+    ego_ftraj = create_trajectory(v0=20, vT=20, lane0=0, laneT=0)
+    obj_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0, lon0=15)  # slow F
+    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
+    assert not safe_times  # the object ahead is slower, therefore unsafe
+
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
     obj_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=0, lon0=35)
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     assert safe_times  # F moves with the same velocity as ego, then safe
+
+    ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
+    obj_ftraj = create_trajectory(v0=20, vT=20, lane0=0, laneT=0, lon0=130)
+    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
+    # becomes unsafe longitudinally, before it becomes safe laterally
+    assert not safe_times  # ego_v=30 overtake obj_v=20, lon=135 m, T_d = 10     unsafe
 
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1, T_d=5)
     obj_ftraj = create_trajectory(v0=20, vT=20, lane0=0, laneT=0, lon0=130)
@@ -156,61 +200,21 @@ def test_calcSafetyForTrajectories_overtakeOfSlowF_sallCasesShouldComplyRSS():
     assert safe_times  # ego_v=30 overtake obj_v=10, 215 m, T_d = 5     safe
 
 
-def test_calcSafetyForTrajectories_safetyWrtLBLF_allCasesShouldComplyRSS():
+def test_calcSafetyForTrajectories_safetyWrtLB_allCasesShouldComplyRSS():
     """
-    Test safety of 6 different lane change trajectories w.r.t. one of 5 objects (either LB or LF).
-    Try different longitudinal accelerations, different T_d and different objects' locations.
+    Test safety of lane change trajectories w.r.t. object LB.
+    Try different longitudinal accelerations, different T_d and different initial longitudes of LB.
+    The test checks safety for whole trajectories.
     """
-    ego_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=1)
-    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=1, lon0=-120)  # fast LB
-    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
-    assert not safe_times  # slow ego (10 m/s) is unsafe w.r.t. fast LB (30 m/s, 120 m behind ego)
-
-    ego_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=1)
-    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=1, lon0=20)  # close and fast LF
-    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
-    assert safe_times  # slow ego (10 m/s) is safe w.r.t. close and fast LF (30 m/s)
-
-    ego_ftraj = create_trajectory(v0=10, vT=20, lane0=0, laneT=1)
-    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=1, lon0=-120)  # fast LB
-    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
-    assert not safe_times  # slowly accelerating ego (10-20 m/s) is unsafe w.r.t. LB (30 m/s, 120 m behind ego)
-
-    ego_ftraj = create_trajectory(v0=10, vT=20, lane0=0, laneT=1)
-    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=1, lon0=20)  # close and fast LF
-    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
-    assert safe_times  # mid-vel ego (10-20 m/s) is safe w.r.t. close and fast LF (30 m/s)
-
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
     obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=1, lon0=-120)  # fast LB
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     assert safe_times  # fast ego (30 m/s) is safe w.r.t. fast LB (30 m/s, 120 m behind ego)
 
-    ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
-    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=1, lon0=20)  # close and fast LF
-    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
-    assert not safe_times  # fast ego (30 m/s) is unsafe w.r.t. close LF with same velocity
-
-    ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1)
-    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=1, lon0=40)  # not close fast LF
-    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
-    assert safe_times  # fast ego (30 m/s) is safe w.r.t. not close LF with same velocity
-
     ego_ftraj = create_trajectory(v0=20, vT=30, lane0=0, laneT=1)
     obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=1, lon0=-120)  # fast LB
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     assert not safe_times  # accelerating ego (20->30 m/s) is unsafe w.r.t. LB (30 m/s, 120 m behind ego)
-
-    ego_ftraj = create_trajectory(v0=20, vT=30, lane0=0, laneT=1)
-    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=1, lon0=20)  # close fast LF
-    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
-    assert safe_times  # accelerating ego (20->30 m/s) is safe w.r.t. close LF (30 m/s)
-
-    # ego moves on its lane, LF performs unsafe cut-in. Since it's LF blame and the current state is safe, ego is safe
-    ego_ftraj = create_trajectory(v0=20, vT=30, lane0=0, laneT=0)
-    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=1, laneT=0, lon0=20)  # close fast LF
-    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
-    assert safe_times  # accelerating ego (20->30 m/s) is safe w.r.t. close LF (30 m/s)
 
     # ego performs dangerous cut-in of LB
     ego_ftraj = create_trajectory(v0=10, vT=20, lane0=0, laneT=1, T_d=6)
@@ -258,12 +262,21 @@ def test_calcSafetyForTrajectories_safetyWrtLBLF_allCasesShouldComplyRSS():
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     assert not safe_times  # ego & LB move one towards another laterally: unsafe since ego has a blame
 
-    ego_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=1)
-    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=0, lon0=-45)  # B
-    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
-    assert not safe_times  # unsafe wrt to rear object B, because B becomes in front of ego (accident)
 
+def test_calcSafetyForTrajectories_safetyWrtB_allCasesShouldComplyRSS():
+    """
+    Test safety of lane change trajectories w.r.t. rear object B.
+    Try different longitudinal accelerations, different T_d and different initial longitudes of LB.
+    The test checks safety for whole trajectories.
+    """
+    # B is unsafe wrt ego, but accident may occur only in the worst case. Then ego is considered safe
     ego_ftraj = create_trajectory(v0=20, vT=20, lane0=0, laneT=1, T_d=5)
     obj_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=0, lon0=-45)  # B
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     assert safe_times  # unsafe wrt to rear object B, because B is blamed for danger
+
+    # accident will occur according to the trajectories, then unsafe
+    ego_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=1, T_d=5)
+    obj_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=0, lon0=-45)  # B
+    safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
+    assert not safe_times  # unsafe wrt to rear object B, because B becomes in front of ego (accident)
