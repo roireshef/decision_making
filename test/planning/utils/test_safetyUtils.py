@@ -3,7 +3,6 @@ from logging import Logger
 import numpy as np
 import time
 
-from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
@@ -262,9 +261,9 @@ def test_calcSafetyForTrajectories_safetyWrtLBLF_allCasesShouldComplyRSS():
     ego_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=1)
     obj_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=0, lon0=-45)  # B
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
-    assert not safe_times  # unsafe wrt to rear object B, because its prediction creates an accident
+    assert not safe_times  # unsafe wrt to rear object B, because B becomes in front of ego (accident)
 
     ego_ftraj = create_trajectory(v0=20, vT=20, lane0=0, laneT=1, T_d=5)
     obj_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=0, lon0=-45)  # B
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
-    assert safe_times  # unsafe wrt to rear object B, because B is blamed for danger (not accident)
+    assert safe_times  # unsafe wrt to rear object B, because B is blamed for danger
