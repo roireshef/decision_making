@@ -14,36 +14,32 @@ OBJ_ACCEL_DIST = 0.5 * LON_SAFETY_ACCEL_DURING_DELAY * SPECIFICATION_MARGIN_TIME
 
 class SafetyUtils:
     @staticmethod
-    def get_safe_times(ego_ftraj: FrenetTrajectories2D, ego_size: ObjectSize,
-                       obj_ftraj: np.array, obj_sizes: List[ObjectSize]) -> np.array:
+    def get_safe_times(ego: FrenetTrajectories2D, ego_size: ObjectSize, obj: np.array, obj_sizes: List[ObjectSize]) -> \
+            np.array:
         """
         Calculate safety boolean tensor for different ego Frenet trajectories and objects' Frenet trajectories.
-        :param ego_ftraj: ego Frenet trajectories: 3D tensor of shape: traj_num x timestamps_num x Frenet state size
+        :param ego: ego Frenet trajectories: 3D tensor of shape: traj_num x timestamps_num x Frenet state size
         :param ego_size: ego size
-        :param obj_ftraj: 3D array of ftrajectories of objects: shape: objects_num x timestamps_num x 6 (Frenet state size)
+        :param obj: 3D array of ftrajectories of objects: shape: objects_num x timestamps_num x 6 (Frenet state size)
         :param obj_sizes: list of objects' sizes
         :return: [bool] safety per [ego trajectory, object, timestamp]. Tensor of shape: traj_num x objects_num x timestamps_num
         """
-        objects_num = obj_ftraj.shape[0]
-        # split the trajectories to 6 fstate components for the duplicated ego and the object
-        ego = np.transpose(ego_ftraj, (2, 0, 1))
-        obj = np.transpose(obj_ftraj, (2, 0, 1))
-
+        objects_num = obj.shape[0]
         # calculate blame times for every object
-        safe_times = np.ones((ego.shape[1], objects_num, ego.shape[2])).astype(bool)
+        safe_times = np.ones((ego.shape[0], objects_num, ego.shape[1])).astype(bool)
         ego_size_arr = np.array([ego_size.length, ego_size.width])
         for i in range(objects_num):  # loop over objects
             obj_size_arr = np.array([obj_sizes[i].length, obj_sizes[i].width])
-            safe_times[:, i] = SafetyUtils._get_safe_times_per_obj(ego, ego_size_arr, obj[:, i], obj_size_arr)
+            safe_times[:, i] = SafetyUtils._get_safe_times_per_obj(ego, ego_size_arr, obj[i], obj_size_arr)
         return safe_times
 
     @staticmethod
     def _get_safe_times_per_obj(ego: np.array, ego_size: np.array, obj: np.array, obj_size: np.array) -> np.array:
         """
         Calculate safety boolean tensor for different ego Frenet trajectories and a single object.
-        :param ego: ego fstate components: 3D tensor of shape: 6 x traj_num x timestamps_num
+        :param ego: ego frenet trajectories: 3D tensor of shape: traj_num x timestamps_num x 6
         :param ego_size: array of size 2: ego length, ego width
-        :param obj: object's fstate components: 2D matrix of shape 6 x timestamps_num
+        :param obj: object's frenet trajectories: 2D matrix of shape timestamps_num x 6
         :param obj_size: one or array of arrays of size 2: i-th row is i-th object's size
         :return: [bool] ego blame per [ego trajectory, timestamp]. 2D matrix of shape: traj_num x timestamps_num
         """
@@ -57,8 +53,8 @@ class SafetyUtils:
         lat_safe_times, lat_vel_blame = SafetyUtils._get_lat_safety(ego, SAFETY_MARGIN_TIME_DELAY, obj,
                                                                     SPECIFICATION_MARGIN_TIME_DELAY, lat_margin)
         # calculate and return blame times
-        safe_times = SafetyUtils._calc_fully_safe_times(ego[FS_SX], obj[FS_SX], lon_safe_times, lat_safe_times, lat_vel_blame,
-                                                        lon_margin)
+        safe_times = SafetyUtils._calc_fully_safe_times(ego[..., FS_SX], obj[..., FS_SX], lon_safe_times,
+                                                        lat_safe_times, lat_vel_blame, lon_margin)
         return safe_times
 
     @staticmethod
@@ -66,16 +62,16 @@ class SafetyUtils:
                         margin: float, max_brake: float=-LON_ACC_LIMITS[LIMIT_MIN]) -> np.array:
         """
         Calculate longitudinal safety between ego and another object for all timestamps.
-        :param ego: ego fstate components: 3D tensor of shape: 6 x traj_num x timestamps_num
+        :param ego: ego frenet trajectories: 3D tensor of shape: traj_num x timestamps_num x 6
         :param ego_response_time: [sec] ego response time
-        :param obj: object's fstate components: 2D matrix: 6 x timestamps_num
+        :param obj: object's frenet trajectories: 2D matrix: timestamps_num x 6
         :param obj_response_time: [sec] object's response time
         :param margin: [m] cars' lengths half sum
         :param max_brake: [m/s^2] maximal deceleration of both objects
         :return: [bool] longitudinal safety per timestamp. 2D matrix shape: traj_num x timestamps_num
         """
-        ego_lon, ego_vel = ego[FS_SX], ego[FS_SV]
-        obj_lon, obj_vel = obj[FS_SX], obj[FS_SV]
+        ego_lon, ego_vel = ego[..., FS_SX], ego[..., FS_SV]
+        obj_lon, obj_vel = obj[..., FS_SX], obj[..., FS_SV]
 
         dist = ego_lon - obj_lon
         sign = np.sign(dist)
@@ -93,17 +89,17 @@ class SafetyUtils:
                         margin: float, max_brake: float=-LAT_ACC_LIMITS[LIMIT_MIN]) -> np.array:
         """
         Calculate lateral safety between ego and another object for all timestamps.
-        :param ego: ego fstate components: 3D tensor of shape: 6 x traj_num x timestamps_num
+        :param ego: ego frenet trajectories: 3D tensor of shape: traj_num x timestamps_num x 6
         :param ego_response_time: [sec] object1 response time
-        :param obj: object's fstate components: 2D matrix: 6 x timestamps_num
+        :param obj: object's frenet trajectories: 2D matrix: timestamps_num x 6
         :param obj_response_time: [sec] object2 response time
         :param margin: [m] half sum of objects' widths + mu (mu is from Mobileye's paper)
         :param max_brake: [m/s^2] maximal deceleration of both objects
         :return: [bool] 1. lateral safety per timestamp. 2D matrix shape: traj_num x timestamps_num
                         2. lateral velocity blame: True if ego moves laterally towards object. The same shape.
         """
-        ego_lat, ego_lat_vel = ego[FS_DX], ego[FS_DV]
-        obj_lat, obj_lat_vel = obj[FS_DX], obj[FS_DV]
+        ego_lat, ego_lat_vel = ego[..., FS_DX], ego[..., FS_DV]
+        obj_lat, obj_lat_vel = obj[..., FS_DX], obj[..., FS_DV]
 
         dist = ego_lat - obj_lat
         sign = np.sign(dist)

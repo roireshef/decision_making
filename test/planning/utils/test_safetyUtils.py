@@ -125,34 +125,34 @@ def test_calcSafetyForTrajectories_overtakeOfSlowF_sallCasesShouldComplyRSS():
     assert safe_times  # F moves with the same velocity as ego, then safe
 
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1, T_d=5)
-    obj_ftraj = create_trajectory(v0=20, vT=20, lane0=0, laneT=0, lon0=135)
+    obj_ftraj = create_trajectory(v0=20, vT=20, lane0=0, laneT=0, lon0=130)
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     # becomes unsafe longitudinally, after it becomes safe laterally
     assert safe_times  # ego_v=30 overtake obj_v=20, lon=135 m, T_d = 5     safe
 
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1, T_d=5)
-    obj_ftraj = create_trajectory(v0=20, vT=20, lane0=0, laneT=0, lon0=130)
+    obj_ftraj = create_trajectory(v0=20, vT=20, lane0=0, laneT=0, lon0=125)
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     # becomes unsafe longitudinally, before it becomes safe laterally
     assert not safe_times  # ego_v=30 overtake obj_v=20, lon=130 m, T_d = 5   unsafe
 
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1, T_d=2.6)
-    obj_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0, lon0=175)
+    obj_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0, lon0=165)
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     assert not safe_times  # ego_v=30 overtake obj_v=10, 175 m, T_d = 2.6   unsafe
 
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1, T_d=2.5)
-    obj_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0, lon0=175)
+    obj_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0, lon0=165)
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     assert safe_times  # ego_v=30 overtake obj_v=10, 175 m, T_d = 2.5   safe
 
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1, T_d=5)
-    obj_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0, lon0=210)
+    obj_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0, lon0=190)
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     assert not safe_times  # ego_v=30 overtake obj_v=10, 210 m, T_d = 5     unsafe
 
     ego_ftraj = create_trajectory(v0=30, vT=30, lane0=0, laneT=1, T_d=5)
-    obj_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0, lon0=215)
+    obj_ftraj = create_trajectory(v0=10, vT=10, lane0=0, laneT=0, lon0=195)
     safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego_size, obj_ftraj, obj_size).all(axis=-1)
     assert safe_times  # ego_v=30 overtake obj_v=10, 215 m, T_d = 5     safe
 
