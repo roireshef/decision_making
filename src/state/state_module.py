@@ -1,25 +1,23 @@
 from logging import Logger
 from threading import Lock
+from traceback import format_exc
 from typing import Optional, List, Dict
 
 import numpy as np
 
-from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID, \
-    UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS, LOG_MSG_STATE_MODULE_PUBLISH_STATE
-from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.planning.types import CartesianPoint3D
-from decision_making.src.planning.utils.transformations import Transformations
-from decision_making.src.state.state import OccupancyState, EgoState, DynamicObject, ObjectSize, State
-from mapping.src.exceptions import MapCellNotFound, raises
-from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
-
-from mapping.src.service.map_service import MapService
-
-from common_data.src.communication.pubsub.pubsub import PubSub
+import rte.python.profiler as prof
 from common_data.lcm.config import pubsub_topics
 from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedDynamicObjectList
 from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedSelfLocalization
-import rte.python.profiler as prof
+from common_data.src.communication.pubsub.pubsub import PubSub
+from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID, \
+    UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS, LOG_MSG_STATE_MODULE_PUBLISH_STATE
+from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.planning.utils.transformations import Transformations
+from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
+    DynamicObject, EgoState
+from decision_making.src.utils.map_utils import MapUtils
+from mapping.src.exceptions import MapCellNotFound, raises
 
 
 class StateModule(DmModule):
@@ -28,7 +26,7 @@ class StateModule(DmModule):
     # TODO(cont): processing when multiple events come in concurrently.
     def __init__(self, pubsub: PubSub, logger: Logger, occupancy_state: Optional[OccupancyState],
                  dynamic_objects: Optional[List[DynamicObject]], ego_state: Optional[EgoState],
-                 dynamic_objects_memory_map: Dict[int,DynamicObject] = {}) ->  None:
+                 dynamic_objects_memory_map: Dict[int, DynamicObject] = {}) -> None:
         super().__init__(pubsub, logger)
         """
         :param dds: Inter-process communication interface.
@@ -83,7 +81,7 @@ class StateModule(DmModule):
 
             self._publish_state_if_full()
         except Exception as e:
-            self.logger.error("StateModule._dynamic_obj_callback failed due to {}".format(e))
+            self.logger.error("StateModule._dynamic_obj_callback failed due to %s", format_exc())
 
     @raises(MapCellNotFound)
     def create_dyn_obj_list(self, dyn_obj_list: LcmPerceivedDynamicObjectList) -> List[DynamicObject]:
@@ -91,7 +89,7 @@ class StateModule(DmModule):
         Convert serialized object perception and global localization data into a DM object (This also includes computation
         of the object's road localization). Additionally store the object in memory as preparation for the case where it will leave
         the field of view.
-        :param objects: Serialized dynamic objects list.
+        :param dyn_obj_list: Serialized dynamic objects list.
         :return: List of dynamic object in DM format.
         """
 
@@ -121,26 +119,36 @@ class StateModule(DmModule):
                 v_x = np.cos(yaw) * glob_v_x + np.sin(yaw) * glob_v_y
                 v_y = -np.sin(yaw) * glob_v_x + np.cos(yaw) * glob_v_y
 
+                total_v = np.linalg.norm([v_x, v_y])
+
                 # TODO: currently acceleration_lon is 0 for dynamic_objects.
                 # TODO: When it won't be zero, consider that the speed and acceleration should be in the same direction
                 # TODO: The same for curvature.
                 acceleration_lon = UNKNOWN_DEFAULT_VAL
                 curvature = UNKNOWN_DEFAULT_VAL
 
-                is_predicted = lcm_dyn_obj.tracking_status.is_predicted
-
                 global_coordinates = np.array([x, y, z])
+                # TODO: we might consider using velocity_yaw = np.arctan2(object_state.v_y, object_state.v_x)
                 global_yaw = yaw
 
-                # When filtering off-road objects, try to localize object on road.
-                if not FILTER_OFF_ROAD_OBJECTS or self._is_object_on_road(global_coordinates, global_yaw):
-                    dyn_obj = DynamicObject(id, timestamp, global_coordinates[0], global_coordinates[1],
-                                            global_coordinates[2], global_yaw, size, confidence, v_x, v_y,
-                                            acceleration_lon, curvature)
-                    self._dynamic_objects_memory_map[id] = dyn_obj
-                    dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
-                else:
-                    continue
+                try:
+                    dyn_obj = DynamicObject.create_from_cartesian_state(
+                        obj_id=id, timestamp=timestamp, size=size, confidence=confidence,
+                        cartesian_state=np.array([x, y, global_yaw, total_v, acceleration_lon, curvature]))
+
+                    # When filtering off-road objects, try to localize object on road.
+                    if not FILTER_OFF_ROAD_OBJECTS or MapUtils.is_object_on_road(dyn_obj.map_state):
+
+                        self._dynamic_objects_memory_map[id] = dyn_obj
+                        dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
+                    else:
+                        continue
+
+                except MapCellNotFound:
+                    x, y, z = global_coordinates
+                    self.logger.warning(
+                        "Couldn't localize object on road. Object location: ({}, {}, {})".format(id, x, y, z))
+
 
             else:
                 # object is out of FOV, using its last known location and timestamp.
@@ -151,24 +159,6 @@ class StateModule(DmModule):
                     self.logger.warning("received out of FOV object which is not in memory.")
         return dyn_obj_list
 
-    def _is_object_on_road(self, global_coordinates: CartesianPoint3D, global_yaw: float)->bool:
-        """
-        Try to localize coordinates on any road of the map
-        :param global_coordinates: CartesianPoint3D
-        :param global_yaw: heading of object
-        :return: True is on a road, False otherwise
-        """
-        try:
-            road_localization = MapService.get_instance().compute_road_localization(global_coordinates, global_yaw)
-            # Filter objects out of road:
-            road_width = MapService.get_instance().get_road(road_id=road_localization.road_id).road_width
-            is_on_road = road_width + ROAD_SHOULDERS_WIDTH > road_localization.intra_road_lat > -ROAD_SHOULDERS_WIDTH
-            return is_on_road
-        except MapCellNotFound:
-            x,y,z = global_coordinates
-            self.logger.warning(
-                "Couldn't localize object on road. Object location: ({}, {}, {})".format(id, x, y, z))
-            return False
 
     @prof.ProfileFunction()
     def _self_localization_callback(self, self_localization: LcmPerceivedSelfLocalization) -> None:
@@ -189,9 +179,13 @@ class StateModule(DmModule):
             curvature = self_localization.curvature
             size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
 
+            total_v = np.linalg.norm([v_x, v_y])
+
             # Update state information under lock
             with self._ego_state_lock:
-                self._ego_state = EgoState(EGO_ID, timestamp, x, y, z, yaw, size, confidence, v_x, v_y, a_x, curvature)
+                self._ego_state = EgoState.create_from_cartesian_state(
+                    obj_id=EGO_ID, timestamp=timestamp, size=size, confidence=confidence,
+                    cartesian_state=np.array([x, y, yaw, total_v, a_x, curvature]))
                 self._ego_state = Transformations.transform_ego_from_origin_to_center(self._ego_state)
 
             self._publish_state_if_full()

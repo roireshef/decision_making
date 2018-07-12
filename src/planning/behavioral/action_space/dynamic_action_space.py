@@ -14,15 +14,13 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import LIMIT_MAX, FS_SV, FS_SX, LIMIT_MIN, FS_SA, FS_DA, FS_DV, FS_DX
-from decision_making.src.planning.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
-from decision_making.src.prediction.predictor import Predictor
-from mapping.src.service.map_service import MapService
+from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 
 
 class DynamicActionSpace(ActionSpace):
-    def __init__(self, logger: Logger, predictor: Predictor, filtering: RecipeFiltering):
+    def __init__(self, logger: Logger, predictor: EgoAwarePredictor, filtering: RecipeFiltering):
         super().__init__(logger,
                          recipes=[DynamicActionRecipe.from_args_list(comb)
                                   for comb in cartesian([RelativeLane,
@@ -48,17 +46,14 @@ class DynamicActionSpace(ActionSpace):
         :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
         ego = behavioral_state.ego_state
-        road_frenet = MapUtils.get_road_rhs_frenet(ego)
-
-        # project ego vehicle onto the road
-        ego_init_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
+        ego_init_fstate = ego.map_state.road_fstate
 
         targets = [behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
                    for action_recipe in action_recipes]
 
-        desired_center_lane_latitude = np.array([target.center_lane_latitude for target in targets])
+        desired_center_lane_latitude = np.array([target.dynamic_object.map_state.lane_center_lat for target in targets])
         target_length = np.array([target.dynamic_object.size.length for target in targets])
-        target_fstate = np.array([target.fstate for target in targets])
+        target_fstate = np.array([target.dynamic_object.map_state.road_fstate for target in targets])
 
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])

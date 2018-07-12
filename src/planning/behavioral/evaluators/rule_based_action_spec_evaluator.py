@@ -11,7 +11,7 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import \
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
-from decision_making.src.planning.types import FrenetPoint, FP_SX, LAT_CELL
+from decision_making.src.planning.types import FrenetPoint, FP_SX, LAT_CELL, FP_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from mapping.src.service.map_service import MapService
 
@@ -81,10 +81,9 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
                                   MIN_OVERTAKE_VEL)
 
         ego = behavioral_state.ego_state
-        road_id = ego.road_localization.road_id
-        road_points = MapService.get_instance()._shift_road_points_to_latitude(road_id, 0.0)
-        road_frenet = FrenetSerret2DFrame(road_points)
-        ego_fpoint = road_frenet.cpoint_to_fpoint(np.array([ego.x, ego.y]))
+        road_id = ego.map_state.road_id
+        road_frenet = MapService.get_instance()._rhs_roads_frenet[road_id]
+        ego_fpoint = behavioral_state.ego_state.map_state.road_fstate[[FP_SX, FP_DX]]
 
         dist_to_backleft, safe_left_dist_behind_ego = RuleBasedActionSpecEvaluator._calc_safe_dist_behind_ego(
             behavioral_state, road_frenet, ego_fpoint, RelativeLane.LEFT_LANE)
@@ -128,7 +127,7 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         :return: longitudinal distance between ego and rear object, safe distance between ego and the rear object
         """
         dist_to_back_obj = np.inf
-        safe_dist_behind_ego = 0
+        safe_dist_behind_ego = 0.0
         back_objects = []
         if (relative_lane, RelativeLongitudinalPosition.REAR) in behavioral_state.road_occupancy_grid:
             back_objects = behavioral_state.road_occupancy_grid[(relative_lane, RelativeLongitudinalPosition.REAR)]
@@ -136,12 +135,12 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
             back_object = back_objects[0].dynamic_object
             back_fpoint = road_frenet.cpoint_to_fpoint(np.array([back_object.x, back_object.y]))
             dist_to_back_obj = ego_fpoint[FP_SX] - back_fpoint[FP_SX]
-            if behavioral_state.ego_state.v_x > back_object.v_x:
-                safe_dist_behind_ego = back_object.v_x * SPECIFICATION_MARGIN_TIME_DELAY
+            if behavioral_state.ego_state.velocity > back_object.velocity:
+                safe_dist_behind_ego = back_object.velocity * SPECIFICATION_MARGIN_TIME_DELAY
             else:
-                safe_dist_behind_ego = back_object.v_x * SPECIFICATION_MARGIN_TIME_DELAY + \
-                                       back_object.v_x ** 2 / (2 * abs(LON_ACC_LIMITS[0])) - \
-                                       behavioral_state.ego_state.v_x ** 2 / (2 * abs(LON_ACC_LIMITS[0]))
+                safe_dist_behind_ego = back_object.velocity * SPECIFICATION_MARGIN_TIME_DELAY + \
+                                       back_object.velocity ** 2 / (2 * abs(LON_ACC_LIMITS[0])) - \
+                                       behavioral_state.ego_state.velocity ** 2 / (2 * abs(LON_ACC_LIMITS[0]))
         return dist_to_back_obj, safe_dist_behind_ego
 
     @staticmethod
