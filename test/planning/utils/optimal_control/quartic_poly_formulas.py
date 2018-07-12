@@ -96,7 +96,7 @@ class QuarticMotionPredicatesCreator:
                QuarticPoly1D.acceleration_profile_function(a_0, v_0, v_T, T)
 
     @staticmethod
-    def generate_predicate_value(w_T, w_J, a_0, v_0, v_T, consider_local_minima):
+    def generate_predicate_value(w_T, w_J, a_0, v_0, v_T, consider_local_minima=False):
         """
         Generates the actual predicate value (true/false) for the given action,weights and scenario params
         :param w_T: weight of Time component in time-jerk cost function
@@ -174,7 +174,7 @@ class QuarticMotionPredicatesCreator:
                 for m, a_0 in enumerate(self.a0_grid):
                     for j, v_T in enumerate(self.vT_grid):
                         self.predicate[k, m, j] = \
-                            QuarticMotionPredicatesCreator.generate_predicate_value(w_T, w_J, a_0, v_0, v_T, False)
+                            QuarticMotionPredicatesCreator.generate_predicate_value(w_T, w_J, a_0, v_0, v_T)
 
             output_predicate_file_name = '%s_predicate_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
             output_predicate_file_path = Paths.get_resource_absolute_path_filename(

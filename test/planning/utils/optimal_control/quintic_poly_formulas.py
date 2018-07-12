@@ -115,7 +115,7 @@ class QuinticMotionPredicatesCreator:
                QuinticPoly1D.acceleration_profile_function(a_0, v_0, v_T, s_T, T, T_m)
 
     @staticmethod
-    def generate_predicate_value(action_type, w_T, w_J, a_0, v_0, v_T, s_T, T_m, T_safety, consider_local_minima):
+    def generate_predicate_value(action_type, w_T, w_J, a_0, v_0, v_T, s_T, T_m, T_safety, consider_local_minima=False):
         """
         Generates the actual predicate value (true/false) for the given action,weights and scenario params
         :param action_type:
@@ -221,7 +221,7 @@ class QuinticMotionPredicatesCreator:
                             for j, v_T in enumerate(self.vT_grid):
                                 self.predicate[k, m, i, j] = \
                                     QuinticMotionPredicatesCreator.generate_predicate_value(
-                                        action_type, w_T, w_J, a_0, v_0, v_T, s_T, T_m, T_safety, False)
+                                        action_type, w_T, w_J, a_0, v_0, v_T, s_T, T_m, T_safety)
 
                 output_predicate_file_name = '%s_predicate_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
                 output_predicate_file_path = Paths.get_resource_absolute_path_filename(
