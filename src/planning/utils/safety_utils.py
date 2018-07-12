@@ -29,7 +29,7 @@ class SafetyUtils:
         ego = behavioral_state.ego_state
         (ego_length, ego_width) = (ego.size.length, ego.size.width)
         ego_size = np.array([ego_length, ego_width])
-        lane_width = MapService.get_instance().get_road(ego.road_localization.road_id).lane_width
+        lane_width = MapService.get_instance().get_road(ego.map_state.road_id).lane_width
 
         # collect non-filtered specs details: t,v,s,d, and mapping between valid specs and all specs.
         specs_arr = np.array([np.array([i, spec.t, spec.v, spec.s, spec.d])

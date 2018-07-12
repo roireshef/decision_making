@@ -12,12 +12,12 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_STATI
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
-from decision_making.src.planning.types import FS_SX, FS_SV, C_A, C_K, C_X, C_Y, C_YAW, C_V
+from decision_making.src.planning.types import FS_SX, FS_SV, C_A, C_K, C_X, C_Y, C_YAW, C_V, FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
-from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import ObjectSize, State, DynamicObject, EgoState
 from mapping.src.service.map_service import MapService
 
@@ -319,7 +319,7 @@ def test_calcSafeTd():
     samples_num = time_samples.shape[0]
 
     ego = create_canonic_ego(0, ego_lon, ego_lat, ego_vel, ego_size, road_frenet)
-    ego_fstate = np.array([ego.road_localization.road_lon, ego.v_x, 0, ego.road_localization.intra_road_lat, 0, 0])
+    ego_fstate = np.array([ego.map_state.road_fstate[FS_SX], ego.velocity, 0, ego.map_state.road_fstate[FS_DX], 0, 0])
 
     obj_sizes = np.array([ObjectSize(4, 2, 0), ObjectSize(6, 2, 0), ObjectSize(6, 2, 0), ObjectSize(4, 2, 0)])
 
@@ -331,7 +331,7 @@ def test_calcSafeTd():
     predictions = []
     obj_sizes_mat = []
     for i, obj in enumerate(objects):
-        fstate = np.array([obj.road_localization.road_lon, obj.v_x, 0, obj.road_localization.intra_road_lat, 0, 0])
+        fstate = np.array([obj.map_state.road_fstate[FS_SX], obj.velocity, 0, obj.map_state.road_fstate[FS_DX], 0, 0])
         prediction = np.tile(fstate, samples_num).reshape(samples_num, 6)
         prediction[:, 0] = fstate[FS_SX] + time_samples * fstate[FS_SV]
         predictions.append(prediction)
@@ -348,8 +348,9 @@ def test_calcSafeTd():
     predictions_dict = {}
     for cell in grid:
         obj = grid[cell][0]
-        prediction = np.tile(obj.fstate, samples_num).reshape(samples_num, 6)
-        prediction[:, 0] = obj.fstate[FS_SX] + time_samples * obj.fstate[FS_SV]
+        obj_fstate = obj.dynamic_object.map_state.road_fstate
+        prediction = np.tile(obj_fstate, samples_num).reshape(samples_num, 6)
+        prediction[:, 0] = obj_fstate[FS_SX] + time_samples * obj_fstate[FS_SV]
         predictions_dict[obj.dynamic_object.obj_id] = prediction
 
     # Action specification
@@ -378,8 +379,8 @@ def create_canonic_ego(timestamp: int, lon: float, lat: float, vel: float, size:
     """
     fstate = np.array([lon, vel, 0, lat, 0, 0])
     cstate = road_frenet.fstate_to_cstate(fstate)
-    return EgoState(0, timestamp, cstate[C_X], cstate[C_Y], 0, cstate[C_YAW], size, 0, cstate[C_V], 0,
-                    cstate[C_A], cstate[C_K])
+    ego_state = EgoState.create_from_cartesian_state(0, timestamp, cstate, size, 0)
+    return ego_state
 
 
 def create_canonic_object(obj_id: int, timestamp: int, lon: float, lat: float, vel: float, size: ObjectSize,
@@ -389,8 +390,8 @@ def create_canonic_object(obj_id: int, timestamp: int, lon: float, lat: float, v
     """
     fstate = np.array([lon, vel, 0, lat, 0, 0])
     cstate = road_frenet.fstate_to_cstate(fstate)
-    return DynamicObject(obj_id, timestamp, cstate[C_X], cstate[C_Y], 0, cstate[C_YAW], size, 0, cstate[C_V], 0,
-                         cstate[C_A], cstate[C_K])
+    dyn_obj = DynamicObject.create_from_cartesian_state(obj_id, timestamp, cstate, size, 0)
+    return dyn_obj
 
 
 def get_road_rhs_frenet_by_road_id(road_id: int):
