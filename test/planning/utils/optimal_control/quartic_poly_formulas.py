@@ -81,7 +81,7 @@ class QuarticMotionPredicatesCreator:
         self.vT_grid = vT_grid
 
         self.predicates_resources_target_directory = predicates_resources_target_directory  # 'predicates'
-        self.predicate = np.full(shape=[len(v0_grid), len(a0_grid), len(vT_grid)], fill_value=0)
+        self.predicate = np.full(shape=[len(v0_grid), len(a0_grid), len(vT_grid)], fill_value=False)
 
     @staticmethod
     def create_quartic_motion_funcs(a_0, v_0, v_T, T):
@@ -117,22 +117,22 @@ class QuarticMotionPredicatesCreator:
         extremum_T = cost_real_roots[np.isfinite(cost_real_roots)]
 
         if len(extremum_T) == 0:
-            return 0
+            return False
 
         T = extremum_T.max()  # Later extrema is our global minimum (might be our only minimum)
 
         global_min_is_valid = QuarticMotionPredicatesCreator.check_validity(a_0, v_0, v_T, T)
 
         if global_min_is_valid:
-            return 2
+            return True
 
         # global minima isn't valid and we'd like to consider the local minima instead (if there's one)
         if consider_local_minima and len(extremum_T) > 1:
             T = extremum_T.min()
             local_minima_is_valid = QuarticMotionPredicatesCreator.check_validity(a_0, v_0, v_T, T)
-            return int(local_minima_is_valid)
+            return local_minima_is_valid
         else:
-            return 0
+            return False
 
     @staticmethod
     def check_validity(a_0, v_0, v_T, T):
