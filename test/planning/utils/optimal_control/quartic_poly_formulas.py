@@ -66,6 +66,7 @@ class QuarticMotionSymbolicsCreator:
 class QuarticMotionPredicatesCreator:
     """This class creates predicates for filtering trajectories before specification according to initial velocity and
      acceleration and desired velocity"""
+
     def __init__(self, v0_grid: UniformGrid, a0_grid: UniformGrid, vT_grid: UniformGrid,
                  predicates_resources_target_directory: str):
         """
@@ -80,8 +81,7 @@ class QuarticMotionPredicatesCreator:
         self.vT_grid = vT_grid
 
         self.predicates_resources_target_directory = predicates_resources_target_directory  # 'predicates'
-        self.predicate = np.full(shape=[len(v0_grid), len(a0_grid), len(vT_grid)],
-                                 fill_value=False)
+        self.predicate = np.full(shape=[len(v0_grid), len(a0_grid), len(vT_grid)], fill_value=0)
 
     @staticmethod
     def create_quartic_motion_funcs(a_0, v_0, v_T, T):
@@ -96,7 +96,7 @@ class QuarticMotionPredicatesCreator:
                QuarticPoly1D.acceleration_profile_function(a_0, v_0, v_T, T)
 
     @staticmethod
-    def generate_predicate_value(w_T, w_J, a_0, v_0, v_T):
+    def generate_predicate_value(w_T, w_J, a_0, v_0, v_T, consider_local_minima):
         """
         Generates the actual predicate value (true/false) for the given action,weights and scenario params
         :param w_T: weight of Time component in time-jerk cost function
@@ -104,39 +104,59 @@ class QuarticMotionPredicatesCreator:
         :param a_0: initial acceleration [m/s^2]
         :param v_0: initial velocity [m/s]
         :param v_T: desired final velocity [m/s]
-        :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
-                acceleration constraints.
+        :param consider_local_minima: check validity against local minima if global minima is invalid[bool]
+        :return: 1 or 2 if given parameters will generate a feasible trajectory that meets time, velocity and
+                acceleration constraints based on the shorter or longer time horizon, respectively.
+                0 if no feasible trajectories exist.
         """
         time_cost_poly_coefs = \
             QuarticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
                                                               np.array([a_0]), np.array([v_0]),
                                                               np.array([v_T]))[0]
-        cost_real_roots = Math.find_real_roots_in_limits(time_cost_poly_coefs,
-                                                          np.array([0, BP_ACTION_T_LIMITS[1]]))
+        cost_real_roots = Math.find_real_roots_in_limits(time_cost_poly_coefs, np.array([0, np.nan]))
         extremum_T = cost_real_roots[np.isfinite(cost_real_roots)]
 
         if len(extremum_T) == 0:
-            return False
+            return 0
 
-        T = extremum_T.min()  # First extrema is our local (and sometimes global) minimum
+        T = extremum_T.max()  # Later extrema is our global minimum (might be our only minimum)
+
+        global_min_is_valid = QuarticMotionPredicatesCreator.check_validity(a_0, v_0, v_T, T)
+
+        if global_min_is_valid:
+            return 2
+
+        # global minima isn't valid and we'd like to consider the local minima instead (if there's one)
+        if consider_local_minima and len(extremum_T) > 1:
+            T = extremum_T.min()
+            local_minima_is_valid = QuarticMotionPredicatesCreator.check_validity(a_0, v_0, v_T, T)
+            return int(local_minima_is_valid)
+        else:
+            return 0
+
+    @staticmethod
+    def check_validity(a_0, v_0, v_T, T):
 
         # Handling the case of an action where we'd like to continue doing exactly what we're doing,
         # so action time might be zero or very small and gets quantized to zero.
         if T == 0:
             return True
 
+        # if the horizon T is too long for an action:
+        if T > BP_ACTION_T_LIMITS[1] + EPS:
+            return False
+
         v_t_func, a_t_func = QuarticMotionPredicatesCreator.create_quartic_motion_funcs(a_0, v_0, v_T, T)
 
         time_res_for_extremum_query = 0.01
-        t = np.arange(0, T+EPS, time_res_for_extremum_query)
+        t = np.arange(0, T + EPS, time_res_for_extremum_query)
         min_v, max_v = min(v_t_func(t)), max(v_t_func(t))
         min_a, max_a = min(a_t_func(t)), max(a_t_func(t))
 
-        is_T_in_range = (T <= BP_ACTION_T_LIMITS[1] + EPS)
         is_vel_in_range = (min_v >= VELOCITY_LIMITS[0] - EPS) and (max_v <= VELOCITY_LIMITS[1] + EPS)
         is_acc_in_range = (min_a >= LON_ACC_LIMITS[0] - EPS) and (max_a <= LON_ACC_LIMITS[1] + EPS)
 
-        return is_T_in_range and is_vel_in_range and is_acc_in_range
+        return is_vel_in_range and is_acc_in_range
 
     def create_predicates(self, jerk_time_weights: np.ndarray) -> None:
         """
@@ -153,7 +173,8 @@ class QuarticMotionPredicatesCreator:
                 print('v_0 is: %.2f' % v_0)
                 for m, a_0 in enumerate(self.a0_grid):
                     for j, v_T in enumerate(self.vT_grid):
-                        self.predicate[k, m, j] = QuarticMotionPredicatesCreator.generate_predicate_value(w_T, w_J, a_0, v_0, v_T)
+                        self.predicate[k, m, j] = \
+                            QuarticMotionPredicatesCreator.generate_predicate_value(w_T, w_J, a_0, v_0, v_T, False)
 
             output_predicate_file_name = '%s_predicate_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
             output_predicate_file_path = Paths.get_resource_absolute_path_filename(

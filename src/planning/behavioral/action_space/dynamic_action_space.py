@@ -75,8 +75,8 @@ class DynamicActionSpace(ActionSpace):
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], dx=ds,
             a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV], v_T=v_T, T_m=SPECIFICATION_MARGIN_TIME_DELAY)
-        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
-        T_s = np.fmin.reduce(roots_s, axis=-1)
+        roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, np.inf]))
+        T_s = np.fmax.reduce(roots_s, axis=-1)
 
         # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
         # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later

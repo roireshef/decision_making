@@ -67,7 +67,7 @@ class QuinticMotionSymbolicsCreator:
         desmos_a_t = package_a_t.subs(a0, 0).simplify()
         desmos_j_t = package_j_t.subs(a0, 0).simplify()
 
-        return package_v_t, package_delta_s_t, package_distance_from_target_deriv, package_a_t, package_j_t,\
+        return package_v_t, package_delta_s_t, package_distance_from_target_deriv, package_a_t, package_j_t, \
                desmos_cost, desmos_cost_diff, desmos_delta_s_t, desmos_v_t, desmos_a_t, desmos_j_t
 
 
@@ -95,8 +95,7 @@ class QuinticMotionPredicatesCreator:
         self.T_safety = T_safety
 
         self.predicates_resources_target_directory = predicates_resources_target_directory  # 'predicates'
-        self.predicate = np.full(shape=[len(v0_grid), len(a0_grid), len(sT_grid), len(vT_grid)],
-                                 fill_value=False)
+        self.predicate = np.full(shape=[len(v0_grid), len(a0_grid), len(sT_grid), len(vT_grid)], fill_value=0)
 
     @staticmethod
     def create_quintic_motion_funcs(a_0, v_0, v_T, s_T, T, T_m):
@@ -116,7 +115,7 @@ class QuinticMotionPredicatesCreator:
                QuinticPoly1D.acceleration_profile_function(a_0, v_0, v_T, s_T, T, T_m)
 
     @staticmethod
-    def generate_predicate_value(action_type, w_T, w_J, a_0, v_0, v_T, s_T, T_m, T_safety):
+    def generate_predicate_value(action_type, w_T, w_J, a_0, v_0, v_T, s_T, T_m, T_safety, consider_local_minima):
         """
         Generates the actual predicate value (true/false) for the given action,weights and scenario params
         :param action_type:
@@ -128,27 +127,51 @@ class QuinticMotionPredicatesCreator:
         :param s_T: initial distance from target car (+/- constant safety margin) [m]
         :param T_m: specification margin from target vehicle [s]
         :param T_safety: safety margin from target vehicle [s]
-        :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
-                acceleration constraints and doesn't get into target vehicle safety zone.
+        :param consider_local_minima: check validity against local minima if global minima is invalid[bool]
+        :return: 1 or 2 if given parameters will generate a feasible trajectory that meets time, velocity and
+                acceleration constraints and doesn't get into target vehicle safety zone based on the shorter or longer
+                time horizon, respectively. 0 if no feasible trajectories exist.
         """
         time_cost_poly_coefs = \
             QuinticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
                                                               np.array([a_0]), np.array([v_0]),
                                                               np.array([v_T]), np.array([s_T]),
                                                               np.array([T_m]))[0]
-        cost_real_roots = Math.find_real_roots_in_limits(time_cost_poly_coefs, np.array(
-            [0, BP_ACTION_T_LIMITS[1]]))
+        cost_real_roots = Math.find_real_roots_in_limits(time_cost_poly_coefs, np.array([0, np.inf]))
         extremum_T = cost_real_roots[np.isfinite(cost_real_roots)]
 
         if len(extremum_T) == 0:
-            return False
+            return 0
 
-        T = extremum_T.min()  # First extrema is our local (and sometimes global) minimum
+        T = extremum_T.max()  # Later extrema is our global minimum (might be our only minimum)
+
+        global_min_is_valid = QuinticMotionPredicatesCreator.check_validity(action_type, a_0, v_0, v_T, s_T, T, T_m,
+                                                                            T_safety)
+
+        if global_min_is_valid:
+            return 2
+
+        # global minima isn't valid and we'd like to consider the local minima instead (if there's one)
+        if consider_local_minima and len(extremum_T) > 1:
+            T = extremum_T.min()
+            local_minima_is_valid = QuinticMotionPredicatesCreator.check_validity(action_type, a_0, v_0, v_T, s_T, T,
+                                                                                  T_m,
+                                                                                  T_safety)
+            return int(local_minima_is_valid)
+        else:
+            return 0
+
+    @staticmethod
+    def check_validity(action_type, a_0, v_0, v_T, s_T, T, T_m, T_safety):
 
         # Handling the case of an action where we'd like to continue doing exactly what we're doing,
         # so action time might be zero or very small and gets quantized to zero.
         if T == 0:
             return True
+
+        # if the horizon T is too long for an action:
+        if T > BP_ACTION_T_LIMITS[1] + EPS:
+            return False
 
         delta_s_t_func, coefs_s_der, v_t_func, a_t_func = QuinticMotionPredicatesCreator.create_quintic_motion_funcs(
             a_0, v_0,
@@ -164,7 +187,6 @@ class QuinticMotionPredicatesCreator:
         min_v, max_v = min(v_t_func(t)), max(v_t_func(t))
         min_a, max_a = min(a_t_func(t)), max(a_t_func(t))
 
-        is_T_in_range = (T <= BP_ACTION_T_LIMITS[1] + EPS)
         is_vel_in_range = (min_v >= VELOCITY_LIMITS[0] - EPS) and (max_v <= VELOCITY_LIMITS[1] + EPS)
         is_acc_in_range = (min_a >= LON_ACC_LIMITS[0] - EPS) and (max_a <= LON_ACC_LIMITS[1] + EPS)
         if action_type == ActionType.FOLLOW_VEHICLE:
@@ -174,7 +196,7 @@ class QuinticMotionPredicatesCreator:
         else:
             is_dist_safe = True
 
-        return is_T_in_range and is_vel_in_range and is_acc_in_range and is_dist_safe
+        return is_vel_in_range and is_acc_in_range and is_dist_safe
 
     def create_predicates(self, jerk_time_weights: np.ndarray, action_types: List[ActionType]) -> None:
         """
@@ -199,7 +221,7 @@ class QuinticMotionPredicatesCreator:
                             for j, v_T in enumerate(self.vT_grid):
                                 self.predicate[k, m, i, j] = \
                                     QuinticMotionPredicatesCreator.generate_predicate_value(
-                                        action_type, w_T, w_J, a_0, v_0, v_T, s_T, T_m, T_safety)
+                                        action_type, w_T, w_J, a_0, v_0, v_T, s_T, T_m, T_safety, False)
 
                 output_predicate_file_name = '%s_predicate_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
                 output_predicate_file_path = Paths.get_resource_absolute_path_filename(

@@ -79,7 +79,8 @@ VELOCITY_STEP = 10/3.6
 # Used for grid search in the [T_MIN, T_MAX] range with resolution of T_RES
 BP_ACTION_T_LIMITS = np.array([2.0, 20.0])
 
-# Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
+# Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action,
+# have to be sorted from calm to aggressive
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
     [12, 0.15, 0.1],
     [2, 0.15, 0.1],

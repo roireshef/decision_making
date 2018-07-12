@@ -45,7 +45,7 @@ def test_createPredicates_predicateFileMatchesCurrentPredicateGeneration():
                 margin_sign = +1 if action_type == ActionType.FOLLOW_VEHICLE else -1
                 result_now[i] = predicates_creator.generate_predicate_value(action_type, wT, wJ, a_0,
                                                                             v_0, v_T, margin_sign*s_T, margin_sign*T_m,
-                                                                            margin_sign * T_safety)
+                                                                            margin_sign * T_safety, consider_local_minima=False)
                 result_lut[i] = predicate[FILTER_V_0_GRID.get_index(v_0),
                                           FILTER_A_0_GRID.get_index(a_0),
                                           FILTER_S_T_GRID.get_index(s_T),
