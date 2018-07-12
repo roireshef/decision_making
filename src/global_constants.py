@@ -102,7 +102,7 @@ LATERAL_SAFETY_MU = 0.5
 
 # [m/sec] lateral velocity blame threshold: in case of lateral danger,
 # if ego_lat_vel >= min(obj_lat_vel, LAT_VEL_BLAME_THRESH), then ego is blamed
-LAT_VEL_BLAME_THRESH = 0.2
+LAT_VEL_BLAME_THRESH = 0.1
 
 # [m/s^2] longitudinal acceleration of object during time delay in RSS
 LON_SAFETY_ACCEL_DURING_DELAY = 0

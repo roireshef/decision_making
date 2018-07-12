@@ -103,7 +103,7 @@ class SafetyUtils:
                         2. lateral velocity blame: True if ego moves laterally towards object. The same shape.
         """
         ego_lat, ego_lat_vel = ego[FS_DX], ego[FS_DV]
-        obj_lat, obj_lat_vel = obj[FS_DX], ego[FS_DV]
+        obj_lat, obj_lat_vel = obj[FS_DX], obj[FS_DV]
 
         dist = ego_lat - obj_lat
         sign = np.sign(dist)
