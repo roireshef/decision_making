@@ -12,6 +12,7 @@ from decision_making.src.planning.utils.file_utils import BinaryReadWrite, TextR
 
 # DynamicActionRecipe Filters
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
+from decision_making.test.planning.utils.optimal_control.quartic_poly_formulas import QuarticMotionPredicatesCreator
 
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
@@ -128,6 +129,8 @@ class FilterBadExpectedTrajectory(RecipeFilter):
             v_T = recipe.velocity
 
             predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
+
+            res = QuarticMotionPredicatesCreator.generate_predicate_value(wT,wJ,a_0,v_0,v_T,False)
 
             return predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
                              FILTER_V_T_GRID.get_index(v_T)] > 0

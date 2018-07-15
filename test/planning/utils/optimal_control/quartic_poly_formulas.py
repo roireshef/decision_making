@@ -113,7 +113,7 @@ class QuarticMotionPredicatesCreator:
             QuarticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
                                                               np.array([a_0]), np.array([v_0]),
                                                               np.array([v_T]))[0]
-        cost_real_roots = Math.find_real_roots_in_limits(time_cost_poly_coefs, np.array([0, np.nan]))
+        cost_real_roots = Math.find_real_roots_in_limits(time_cost_poly_coefs, np.array([0, np.inf]))
         extremum_T = cost_real_roots[np.isfinite(cost_real_roots)]
 
         if len(extremum_T) == 0:
