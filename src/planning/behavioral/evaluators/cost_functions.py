@@ -10,7 +10,9 @@ from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPol
 
 class BP_CostFunctions:
     @staticmethod
-    def calc_efficiency_cost(ego_fstate: np.array, spec: ActionSpec) -> float:
+    def calc_efficiency_cost(ego_fstate: np.array, spec: ActionSpec,
+                             cost_weight: float=BP_EFFICIENCY_COST_WEIGHT,
+                             des_vel: float=BP_DEFAULT_DESIRED_SPEED) -> float:
         """
         Calculate efficiency cost for a planned following car or lane.
         Do it by calculation of average velocity during achieving the followed car and then following it with
@@ -20,11 +22,11 @@ class BP_CostFunctions:
         :return: the efficiency cost
         """
         avg_vel = (spec.s - ego_fstate[FS_SX]) / spec.t
-        efficiency_cost = BP_CostFunctions.calc_efficiency_cost_for_velocities(np.array([avg_vel]))[0]
-        return BP_EFFICIENCY_COST_WEIGHT * efficiency_cost * spec.t
+        efficiency_cost = BP_CostFunctions.calc_efficiency_cost_for_velocities(np.array([avg_vel]), des_vel)[0]
+        return cost_weight * efficiency_cost * spec.t
 
     @staticmethod
-    def calc_efficiency_cost_for_velocities(vel: np.array) -> np.array:
+    def calc_efficiency_cost_for_velocities(vel: np.array, des_vel: float=BP_DEFAULT_DESIRED_SPEED) -> np.array:
         """
         calculate efficiency (velocity) cost by parabola function
         C(vel) = P(v) = a*v*v + b*v, where v = abs(1 - vel/vel_des), C(vel_des) = 0, C(0) = 1, C'(0)/C'(vel_des) = r
@@ -35,7 +37,7 @@ class BP_CostFunctions:
         # the following two lines are the solution of two equations on a and b: P(1) = 1, P'(1)/P'(0) = r
         coef_2 = (r-1)/(r+1)    # coefficient of x^2
         coef_1 = 2/(r+1)        # coefficient of x
-        normalized_vel = np.absolute(1 - vel / BP_DEFAULT_DESIRED_SPEED)
+        normalized_vel = np.absolute(1 - vel / des_vel)
         costs = normalized_vel * (coef_2 * normalized_vel + coef_1)
         return costs
 
@@ -69,20 +71,21 @@ class BP_CostFunctions:
         return lon_cost, lat_cost
 
     @staticmethod
-    def calc_right_lane_cost(time_period: float, lane_idx: int) -> float:
+    def calc_right_lane_cost(time_period: float, lane_idx: int, cost_weight: float=BP_RIGHT_LANE_COST_WEIGHT) -> float:
         """
         Calculate non-right lane cost for the given lane
         :param time_period: [s] time period of the action
         :param lane_idx: lane index (0 means the rightest lane)
         :return: non-right lane cost
         """
-        return BP_RIGHT_LANE_COST_WEIGHT * lane_idx * time_period
+        return cost_weight * lane_idx * time_period
 
     @staticmethod
-    def calc_lane_deviation_cost(relative_lat_dev: float) -> float:
+    def calc_lane_deviation_cost(relative_lat_dev: float,
+                                 cost_weight: float=BP_METRICS_LANE_DEVIATION_COST_WEIGHT) -> float:
         """
         Calculate lane deviation cost for an action
         :param relative_lat_dev: maximal relative lateral deviation during an action. The range: [0, 1].
         :return: lane deviation cost
         """
-        return BP_METRICS_LANE_DEVIATION_COST_WEIGHT * relative_lat_dev * relative_lat_dev
+        return cost_weight * relative_lat_dev * relative_lat_dev
