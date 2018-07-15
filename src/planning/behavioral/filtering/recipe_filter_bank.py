@@ -130,8 +130,6 @@ class FilterBadExpectedTrajectory(RecipeFilter):
 
             predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
 
-            res = QuarticMotionPredicatesCreator.generate_predicate_value(wT,wJ,a_0,v_0,v_T,False)
-
             return predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
                              FILTER_V_T_GRID.get_index(v_T)] > 0
         else:
