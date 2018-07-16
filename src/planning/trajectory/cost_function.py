@@ -190,7 +190,7 @@ class Costs:
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
         # st = time.time()
         # with prof.time_range('old_compute_obstacle_costs{ctrajectories: %s, objects'):
-        #     obstacles_costs = Costs.old_compute_obstacle_costs(ctrajectories, state, params, global_time_samples, predictor)
+        #     old_obstacles_costs = Costs.old_compute_obstacle_costs(ctrajectories, state, params, global_time_samples, predictor)
         # print('obs_cost_time=%f' % (time.time()-st))
 
         # st = time.time()
@@ -216,7 +216,8 @@ class Costs:
         :param predictor: predictor instance to use to compute future localizations for DynamicObjects
         :return: MxN matrix of obstacle costs per point, where N is trajectories number, M is trajectory length
         """
-        offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
+        offset = np.array([params.obstacle_cost_x.offset + state.ego_state.size.length/2,
+                           params.obstacle_cost_y.offset + state.ego_state.size.width/2])
         close_obstacles = \
             [SigmoidDynamicBoxObstacle.from_object(state= state, obj=obs, k=params.obstacle_cost_x.k, offset=offset,
                                                    time_samples=global_time_samples, predictor=predictor)
@@ -298,14 +299,14 @@ class Costs:
         objects_H = CartesianFrame.homo_tensor_2d(objects_ctrajectories[:, :, C_YAW],
                                                   objects_ctrajectories[:, :, [C_X, C_Y]])
         objects_H_inv = np.linalg.inv(objects_H)
-        objects_H_inv_transposed_trimmed = objects_H_inv.transpose((0, 1, 3, 2))[..., :2]
+        objects_H_inv_transposed_trimmed = objects_H_inv[..., :2, :]
 
         ego_points = ego_ctrajectories[:, :, [C_X, C_Y]]
         ego_points_ext = np.dstack((ego_points, np.ones(ego_points.shape[:2])))
 
         # Ego-center coordinates are projected onto the objects' reference frames [M, N, T, 2]
         # with M ego-trajectories, N objects, T timestamps.
-        ego_centers_in_objs_frame = np.einsum('mti, ntij -> mntj', ego_points_ext, objects_H_inv_transposed_trimmed)
+        ego_centers_in_objs_frame = np.einsum('mti, ntji -> mntj', ego_points_ext, objects_H_inv_transposed_trimmed)
 
         # deduct ego and objects' half-sizes on both dimensions (to reflect objects' boundaries and not center-point)
         distances_from_ego_boundaries = np.abs(ego_centers_in_objs_frame) - 0.5 * (objects_sizes[:, np.newaxis] + ego_size)
