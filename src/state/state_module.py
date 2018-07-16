@@ -11,9 +11,11 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedDynamicObjectList
 from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedSelfLocalization
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID, \
-    UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS, LOG_MSG_STATE_MODULE_PUBLISH_STATE
+    UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS, LOG_MSG_STATE_MODULE_PUBLISH_STATE, VELOCITY_MINIMAL_THRESHOLD
 from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.planning.types import FS_SV
 from decision_making.src.planning.utils.transformations import Transformations
+from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
     DynamicObject, EgoState
 from decision_making.src.utils.map_utils import MapUtils
@@ -53,10 +55,9 @@ class StateModule(DmModule):
         When starting the State Module, subscribe to dynamic objects, ego state and occupancy state services.
         """
         self.pubsub.subscribe(pubsub_topics.PERCEIVED_DYNAMIC_OBJECTS_TOPIC
-                            , self._dynamic_obj_callback)
+                              , self._dynamic_obj_callback)
         self.pubsub.subscribe(pubsub_topics.PERCEIVED_SELF_LOCALIZATION_TOPIC
-                            , self._self_localization_callback)
-
+                              , self._self_localization_callback)
 
     # TODO - implement unsubscribe only when logic is fixed in LCM
     def _stop_impl(self) -> None:
@@ -139,6 +140,14 @@ class StateModule(DmModule):
                     # When filtering off-road objects, try to localize object on road.
                     if not FILTER_OFF_ROAD_OBJECTS or MapUtils.is_object_on_road(dyn_obj.map_state):
 
+                        if FILTER_OFF_ROAD_OBJECTS and dyn_obj.map_state.road_fstate[
+                            FS_SV] < VELOCITY_MINIMAL_THRESHOLD:
+                            thresholded_road_fstate = np.copy(dyn_obj.map_state.road_fstate)
+                            thresholded_road_fstate[FS_SV] = VELOCITY_MINIMAL_THRESHOLD
+                            dyn_obj = dyn_obj.clone_from_map_state(
+                                map_state=MapState(road_fstate=thresholded_road_fstate,
+                                                   road_id=dyn_obj.map_state.road_id))
+
                         self._dynamic_objects_memory_map[id] = dyn_obj
                         dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
                     else:
@@ -158,7 +167,6 @@ class StateModule(DmModule):
                 else:
                     self.logger.warning("received out of FOV object which is not in memory.")
         return dyn_obj_list
-
 
     @prof.ProfileFunction()
     def _self_localization_callback(self, self_localization: LcmPerceivedSelfLocalization) -> None:
