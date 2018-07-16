@@ -1,12 +1,12 @@
 import numpy as np
 
-from decision_making.src.state.state import NewDynamicObject
+from decision_making.src.state.state import DynamicObject
 
 
 class Utils:
 
     @staticmethod
-    def assert_dyn_objects_numerical_fields_are_equal(actual_object: NewDynamicObject, expected_object: NewDynamicObject) -> None:
+    def assert_dyn_objects_numerical_fields_are_equal(actual_object: DynamicObject, expected_object: DynamicObject) -> None:
         """
         Assert that all fields with numerical values are equal between actual and expected object
         :param actual_object:

@@ -2,7 +2,7 @@ from decision_making.src.global_constants import EGO_ORIGIN_LON_FROM_CENTER
 from decision_making.src.planning.types import C_YAW
 import numpy as np
 
-from decision_making.src.state.state import NewEgoState
+from decision_making.src.state.state import EgoState
 
 
 class Transformations:
@@ -24,7 +24,7 @@ class Transformations:
 
     @staticmethod
     def transform_ego_from_origin_to_center(ego_state):
-        # type: (NewEgoState) -> NewEgoState
+        # type: (EgoState) -> EgoState
         """
         Transform ego state from ego origin to ego center
         :param ego_state: original ego state
@@ -34,6 +34,5 @@ class Transformations:
         transformed_ego_cstate = Transformations.transform_trajectory_between_ego_center_and_ego_origin(
             trajectory=np.array([ego_cstate]), direction=-1)[0]
         # return cloned ego state with transformed position (since road_localization should be recomputed)
-        cartesian_state = np.array([transformed_ego_cstate[0], transformed_ego_cstate[1], ego_state.yaw, ego_state.velocity,
-                                    ego_state.acceleration, 0])
-        return ego_state.clone_from_cartesian_state(cartesian_state, ego_state.timestamp_in_sec)
+        cartesian_state = np.concatenate((transformed_ego_cstate, ego_cstate[C_YAW:]))
+        return ego_state.clone_from_cartesian_state(cartesian_state)

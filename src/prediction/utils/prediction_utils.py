@@ -3,17 +3,17 @@ from typing import List
 
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION
 from decision_making.src.planning.types import FS_SV, FS_SX, \
-    CartesianExtendedTrajectory, FrenetTrajectory2D
+    CartesianExtendedTrajectory, FrenetTrajectory2D, GlobalTimeStampInSec, MinGlobalTimeStampInSec
 from decision_making.src.prediction.ego_aware_prediction.ended_maneuver_params import EndedManeuverParams
 from decision_making.src.prediction.ego_aware_prediction.maneuver_spec import ManeuverSpec
 from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import NewDynamicObject
+from decision_making.src.state.state import DynamicObject, State
 from mapping.src.service.map_service import MapService
 
 
 class PredictionUtils:
     @staticmethod
-    def convert_to_maneuver_spec(object_state: NewDynamicObject,
+    def convert_to_maneuver_spec(object_state: DynamicObject,
                                  ended_maneuver_params: EndedManeuverParams) -> ManeuverSpec:
         """
         Converts the parameters of the maneuver to a complete maneuver spec
@@ -72,9 +72,9 @@ class PredictionUtils:
         return s_x_vec[-1], s_v_vec[-1]
 
     @staticmethod
-    def convert_ctrajectory_to_dynamic_objects(dynamic_object: NewDynamicObject,
+    def convert_ctrajectory_to_dynamic_objects(dynamic_object: DynamicObject,
                                                predictions: CartesianExtendedTrajectory,
-                                               prediction_timestamps: np.ndarray) -> List[NewDynamicObject]:
+                                               prediction_timestamps: np.ndarray) -> List[DynamicObject]:
         """
         Given original dynamic object, its predictions, and their respective time stamps, creates a list of dynamic
          objects corresponding to the predicted object in those timestamps.
@@ -92,9 +92,9 @@ class PredictionUtils:
         return predicted_object_states
 
     @staticmethod
-    def convert_ftrajectory_to_dynamic_objects(dynamic_object: NewDynamicObject,
+    def convert_ftrajectory_to_dynamic_objects(dynamic_object: DynamicObject,
                                                predictions: FrenetTrajectory2D,
-                                               prediction_timestamps: np.ndarray) -> List[NewDynamicObject]:
+                                               prediction_timestamps: np.ndarray) -> List[DynamicObject]:
         """
         Given original dynamic object, its predictions, and their respective time stamps, creates a list of dynamic
          objects corresponding to the predicted object in those timestamps.
@@ -112,3 +112,17 @@ class PredictionUtils:
             range(len(prediction_timestamps))]
 
         return predicted_object_states
+
+    @staticmethod
+    def extract_most_recent_timestamp(state: State) -> float:
+        """
+        Returns state with all objects aligned to the most recent timestamp.
+        Most recent timestamp is taken as the max between the current_timestamp, and the most recent
+        timestamp of all objects in the scene.
+        :param state: state containing objects with different timestamps
+        :return: most_recent_timestamp:  most recent timestamp among all dynamic objects and ego
+        """
+        ego_timestamp_in_sec = state.ego_state.timestamp_in_sec
+        objects_timestamp_in_sec = [state.dynamic_objects[x].timestamp_in_sec for x in range(len(state.dynamic_objects))]
+        objects_timestamp_in_sec.append(ego_timestamp_in_sec)
+        return np.max(objects_timestamp_in_sec)

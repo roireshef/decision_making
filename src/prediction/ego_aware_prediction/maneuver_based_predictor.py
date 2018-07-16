@@ -4,13 +4,13 @@ from typing import List, Dict, Optional
 import copy
 import numpy as np
 
-from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
+from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import C_X, C_V, C_YAW, C_Y
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.maneuver_recognition.manuever_classifier import \
     ManeuverClassifier
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
-from decision_making.src.state.state import State, NewDynamicObject
+from decision_making.src.state.state import State, DynamicObject
 from mapping.src.service.map_service import MapService
 from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.trajectory_generator import \
     TrajectoryGenerator
@@ -73,7 +73,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
             else:
                 predicted_ego_state = None
 
-            state = State(occupancy_state=copy.deepcopy(state.occupancy_state),
+            state = State(occupancy_state=state.occupancy_state,
                           ego_state=predicted_ego_state,
                           dynamic_objects=predicted_dynamic_objects)
 
@@ -82,7 +82,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
         return future_states
 
     def predict_objects(self, state: State, object_ids: List[int], prediction_timestamps: np.ndarray,
-                        action_trajectory: Optional[SamplableTrajectory]) -> Dict[int, List[NewDynamicObject]]:
+                        action_trajectory: Optional[SamplableTrajectory]) -> Dict[int, List[DynamicObject]]:
         """
         Predicte the future of the specified objects, for the specified timestamps
         :param state: the initial state to begin prediction from. Though predicting a single object, the full state
@@ -94,7 +94,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
         :return: a mapping between object id to the list of future dynamic objects of the matching object
         """
 
-        predicted_objects_states_dict: Dict[int, List[NewDynamicObject]] = dict()
+        predicted_objects_states_dict: Dict[int, List[DynamicObject]] = dict()
 
         for obj_id in object_ids:
             dynamic_object = State.get_object_from_state(state=state, target_obj_id=obj_id)
@@ -119,3 +119,12 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
             predicted_objects_states_dict[obj_id] = future_states
 
         return predicted_objects_states_dict
+
+    def predict_frenet_states(self, objects_fstates: np.ndarray, horizons: np.ndarray):
+        """
+        Constant velocity prediction for all timestamps and objects in a matrix computation
+        :param objects_fstates: numpy 2D array [Nx6] where N is the number of objects, each row is an FSTATE
+        :param horizons: numpy 1D array [T] with T horizons (relative time for prediction into the future)
+        :return: numpy 3D array [NxTx6]
+        """
+        raise Exception("Not implemented yet")

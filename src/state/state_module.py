@@ -15,7 +15,7 @@ from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LEN
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.planning.utils.transformations import Transformations
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
-    NewDynamicObject, NewEgoState
+    DynamicObject, EgoState
 from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.exceptions import MapCellNotFound, raises
 
@@ -25,8 +25,8 @@ class StateModule(DmModule):
     # TODO: implement double-buffer mechanism for locks wherever needed. Current lock mechanism may slow the
     # TODO(cont): processing when multiple events come in concurrently.
     def __init__(self, pubsub: PubSub, logger: Logger, occupancy_state: Optional[OccupancyState],
-                 dynamic_objects: Optional[List[NewDynamicObject]], ego_state: Optional[NewEgoState],
-                 dynamic_objects_memory_map: Dict[int,NewDynamicObject] = {}) -> None:
+                 dynamic_objects: Optional[List[DynamicObject]], ego_state: Optional[EgoState],
+                 dynamic_objects_memory_map: Dict[int, DynamicObject] = {}) -> None:
         super().__init__(pubsub, logger)
         """
         :param dds: Inter-process communication interface.
@@ -84,7 +84,7 @@ class StateModule(DmModule):
             self.logger.error("StateModule._dynamic_obj_callback failed due to %s", format_exc())
 
     @raises(MapCellNotFound)
-    def create_dyn_obj_list(self, dyn_obj_list: LcmPerceivedDynamicObjectList) -> List[NewDynamicObject]:
+    def create_dyn_obj_list(self, dyn_obj_list: LcmPerceivedDynamicObjectList) -> List[DynamicObject]:
         """
         Convert serialized object perception and global localization data into a DM object (This also includes computation
         of the object's road localization). Additionally store the object in memory as preparation for the case where it will leave
@@ -127,14 +127,12 @@ class StateModule(DmModule):
                 acceleration_lon = UNKNOWN_DEFAULT_VAL
                 curvature = UNKNOWN_DEFAULT_VAL
 
-                is_predicted = lcm_dyn_obj.tracking_status.is_predicted
-
                 global_coordinates = np.array([x, y, z])
+                # TODO: we might consider using velocity_yaw = np.arctan2(object_state.v_y, object_state.v_x)
                 global_yaw = yaw
 
                 try:
-
-                    dyn_obj = NewDynamicObject.create_from_cartesian_state(
+                    dyn_obj = DynamicObject.create_from_cartesian_state(
                         obj_id=id, timestamp=timestamp, size=size, confidence=confidence,
                         cartesian_state=np.array([x, y, global_yaw, total_v, acceleration_lon, curvature]))
 
@@ -185,7 +183,7 @@ class StateModule(DmModule):
 
             # Update state information under lock
             with self._ego_state_lock:
-                self._ego_state = NewEgoState.create_from_cartesian_state(
+                self._ego_state = EgoState.create_from_cartesian_state(
                     obj_id=EGO_ID, timestamp=timestamp, size=size, confidence=confidence,
                     cartesian_state=np.array([x, y, yaw, total_v, a_x, curvature]))
                 self._ego_state = Transformations.transform_ego_from_origin_to_center(self._ego_state)

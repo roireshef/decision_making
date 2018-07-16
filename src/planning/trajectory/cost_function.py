@@ -1,18 +1,19 @@
 from abc import abstractmethod
+from typing import List
 
 import numpy as np
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD_DIST
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
-from decision_making.src.planning.types import CartesianTrajectory, C_YAW, CartesianState, C_Y, C_X, \
+from decision_making.src.planning.types import C_YAW, CartesianState, C_Y, C_X, \
     CartesianTrajectories, CartesianPaths2D, CartesianPoint2D, C_A, C_K, C_V, CartesianExtendedTrajectories, \
     FrenetTrajectories2D, FS_DX
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import State, NewDynamicObject
+from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
+from decision_making.src.state.state import State, DynamicObject
 from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
@@ -81,7 +82,7 @@ class SigmoidBoxObstacle:
 
 
 class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
-    def __init__(self, poses: CartesianTrajectory, length: float, width: float, k: float, margin: CartesianPoint2D):
+    def __init__(self, poses: List[DynamicObject], length: float, width: float, k: float, margin: CartesianPoint2D):
         """
         :param poses: array of the object's predicted poses, each pose is np.array([x, y, theta, vel])
         :param length: length of the box in its own longitudinal axis (box's x)
@@ -91,9 +92,9 @@ class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
 
         # conversion matrices from global to relative to obstacle
         # TODO: make this more efficient by removing for loop
-        self._H_inv = np.zeros((poses.shape[0], 3, 3))
-        for pose_ind in range(poses.shape[0]):
-            H = CartesianFrame.homo_matrix_2d(poses[pose_ind, C_YAW], poses[pose_ind, :C_YAW])
+        self._H_inv = np.zeros((len(poses), 3, 3))
+        for pose_ind in range(len(poses)):
+            H = CartesianFrame.homo_matrix_2d(poses[pose_ind].cartesian_state[C_YAW], poses[pose_ind].cartesian_state[:C_YAW])
             self._H_inv[pose_ind] = np.linalg.inv(H).transpose()
 
     def convert_to_obstacle_coordinate_frame(self, points: np.ndarray):
@@ -107,10 +108,11 @@ class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
         return np.abs(np.einsum('ijk, jkl -> ijl', points_ext, self._H_inv)[:, :, :(C_Y+1)])
 
     @classmethod
-    def from_object(cls, obj: NewDynamicObject, k: float, offset: CartesianPoint2D, time_samples: np.ndarray,
+    def from_object(cls, state: State, obj: DynamicObject, k: float, offset: CartesianPoint2D, time_samples: np.ndarray,
                     predictor: EgoAwarePredictor):
         """
         Additional constructor that takes a ObjectState from the State object and wraps it
+        :param state:
         :param obj: ObjectState object from State object (in global coordinates)
         :param k:
         :param offset: longitudinal & lateral margins (half size of ego)
@@ -119,8 +121,7 @@ class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
         :return: new instance
         """
         # get predictions of the dynamic object in global coordinates
-        predicted_objects = predictor._predict_object(obj, time_samples)
-        predictions = np.array([obj.cartesian_state for obj in predicted_objects])
+        predictions = predictor.predict_objects(state, [obj.obj_id], time_samples, None)[obj.obj_id]
         return cls(predictions, obj.size.length, obj.size.width, k, offset)
 
 
@@ -153,7 +154,7 @@ class SigmoidStaticBoxObstacle(SigmoidBoxObstacle):
         return np.abs(np.einsum('ijk, kl -> ijl', points_ext, self._H_inv)[:, :, :(C_Y+1)])
 
     @classmethod
-    def from_object(cls, obj: NewDynamicObject, k: float, offset: CartesianPoint2D):
+    def from_object(cls, obj: DynamicObject, k: float, offset: CartesianPoint2D):
         """
         Additional constructor that takes a ObjectState from the State object and wraps it
         :param obj: ObjectState object from State object (in global coordinates)
@@ -169,7 +170,7 @@ class Costs:
     @staticmethod
     def compute_pointwise_costs(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D,
                                 state: State, params: TrajectoryCostParams,
-                                global_time_samples: np.ndarray, predictor: Predictor, dt: float) -> \
+                                global_time_samples: np.ndarray, predictor: EgoAwarePredictor, dt: float) -> \
             [np.ndarray, np.ndarray, np.ndarray]:
         """
         Compute obstacle, deviation and jerk costs for every trajectory point separately.
@@ -200,18 +201,18 @@ class Costs:
 
     @staticmethod
     def old_compute_obstacle_costs(ctrajectories: CartesianExtendedTrajectories, state: State, params: TrajectoryCostParams,
-                               global_time_samples: np.ndarray, predictor: Predictor):
+                                   global_time_samples: np.ndarray, predictor: EgoAwarePredictor):
         """
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
         :param state: the state object (that includes obstacles, etc.)
         :param params: parameters for the cost function (from behavioral layer)
         :param global_time_samples: [sec] time samples for prediction (global, not relative)
-        :param predictor: predictor instance to use to compute future localizations for DyanmicObjects
+        :param predictor: predictor instance to use to compute future localizations for DynamicObjects
         :return: MxN matrix of obstacle costs per point, where N is trajectories number, M is trajectory length
         """
         offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
         close_obstacles = \
-            [SigmoidDynamicBoxObstacle.from_object(obj=obs, k=params.obstacle_cost_x.k, offset=offset,
+            [SigmoidDynamicBoxObstacle.from_object(state= state, obj=obs, k=params.obstacle_cost_x.k, offset=offset,
                                                    time_samples=global_time_samples, predictor=predictor)
              for obs in state.dynamic_objects
              if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < PLANNING_LOOKAHEAD_DIST]
