@@ -123,7 +123,7 @@ class TrajectoryPlanningFacade(DmModule):
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
                 state_aligned, params.reference_route, ctrajectories, costs,
-                params.time - state.ego_state.timestamp_in_sec, self._short_time_predictor)
+                params.time - state.ego_state.timestamp_in_sec, self._strategy_handlers[params.strategy].predictor)
 
             self._publish_debug(debug_results)
 

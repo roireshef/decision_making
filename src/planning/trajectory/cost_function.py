@@ -165,6 +165,8 @@ class SigmoidStaticBoxObstacle(SigmoidBoxObstacle):
         return cls(np.array([obj.x, obj.y, obj.yaw, 0]), obj.size.length, obj.size.width, k, offset)
 
 
+import time
+
 class Costs:
 
     @staticmethod
@@ -186,10 +188,14 @@ class Costs:
         The tensor shape: N x M x 3, where N is trajectories number, M is trajectory length.
         """
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
+        # st = time.time()
         # with prof.time_range('old_compute_obstacle_costs{ctrajectories: %s, objects'):
         #     obstacles_costs = Costs.old_compute_obstacle_costs(ctrajectories, state, params, global_time_samples, predictor)
+        # print('obs_cost_time=%f' % (time.time()-st))
 
+        # st = time.time()
         obstacles_costs = Costs.compute_obstacle_costs(ctrajectories, state, params, global_time_samples, predictor)
+        # print('obs_cost_time=%f' % (time.time()-st))
 
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
         deviations_costs = Costs.compute_deviation_costs(ftrajectories, params)
@@ -249,7 +255,8 @@ class Costs:
 
             # Predict objects' future movement, then project predicted objects' states to Cartesian frame
             objects_fstates = np.array([obs.map_state.road_fstate for obs in close_objects])
-            objects_predicted_ftrajectories = predictor._predict_states(objects_fstates, global_time_samples)
+            objects_predicted_ftrajectories = predictor.predict_frenet_states(
+                objects_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
             objects_predicted_ctrajectories = road_frenet.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
 
             objects_sizes = np.array([[obs.size.length, obs.size.width] for obs in close_objects])
@@ -261,8 +268,8 @@ class Costs:
             # compute a flipped-sigmoid for distances in each dimension [x, y] of each point (in each trajectory)
             k = np.array([params.obstacle_cost_x.k, params.obstacle_cost_y.k])
             offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
-            points_offset = distances + offset
-            per_dimension_cost = np.divide(1.0, (1.0+np.exp(np.clip(np.multiply(k, points_offset), -np.inf, EXP_CLIP_TH))))
+            points_offset = distances - offset
+            per_dimension_cost = np.divide(1.0, (1.0+np.exp(np.minimum(np.multiply(k, points_offset), EXP_CLIP_TH))))
 
             # multiply dimensional flipped-logistic costs, so that big values are where the two dimensions have
             # negative distance, i.e. collision
@@ -297,40 +304,13 @@ class Costs:
         ego_points_ext = np.dstack((ego_points, np.ones(ego_points.shape[:2])))
 
         # Ego-center coordinates are projected onto the objects' reference frames [M, N, T, 2]
-        # and difference in yaw is computed [M, N, T] with M ego-trajectories, N objects, T timestamps.
+        # with M ego-trajectories, N objects, T timestamps.
         ego_centers_in_objs_frame = np.einsum('mti, ntij -> mntj', ego_points_ext, objects_H_inv_transposed_trimmed)
-        yaw_diffs = objects_ctrajectories[:, :, C_YAW] - ego_ctrajectories[:, np.newaxis, :, C_YAW]
 
-        # Ego-center coordinates are mirrored onto the 1st quadrant.
-        # if the initial quadrant was 2/4 - we need to fix the rotation angle
-        quadrant_fix = np.sign(ego_centers_in_objs_frame).prod(axis=-1)
-        fixed_yaw_diffs = yaw_diffs * quadrant_fix
-        fixed_ego_centers = np.abs(ego_centers_in_objs_frame)
-
-        # deduct objects' half-sizes on both dimensions (to reflect objects' boundaries and not center-point)
-        translated_ego_centers = fixed_ego_centers - np.divide(objects_sizes[:, np.newaxis], 2.)
-
-
-        # Now project the objects' center coordinate onto the new ego coordinate frames
-        obj_centers_in_ego_new_frame = Costs._origin_of_inverse(fixed_yaw_diffs, translated_ego_centers)
-
-        # deduct ego's half-sizes on both dimensions (to reflect ego's boundaries and not center-point)
-        distances_from_ego_boundaries = np.abs(obj_centers_in_ego_new_frame) - np.divide(ego_size, 2.)
+        # deduct ego and objects' half-sizes on both dimensions (to reflect objects' boundaries and not center-point)
+        distances_from_ego_boundaries = np.abs(ego_centers_in_objs_frame) - 0.5 * (objects_sizes[:, np.newaxis] + ego_size)
 
         return distances_from_ego_boundaries
-
-    @staticmethod
-    def _origin_of_inverse(rotation, translation):
-        """
-        computes the following in a more (memory) efficient way:
-        # H = CartesianFrame.homo_tensor_2d(rotation, translation)
-        # H_inv = np.linalg.inv(ego_H)
-        # H_inv[..., :2, 2]
-        """
-        sin, cos = np.sin(rotation), np.cos(rotation)
-        term = translation[..., 0]*sin - translation[..., 1]*cos
-        return np.stack(((-translation[..., 0]+term*sin)/cos, term), axis=-1)
-
 
     @staticmethod
     def compute_deviation_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams):
