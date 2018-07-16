@@ -1,171 +1,17 @@
-from abc import abstractmethod
-from typing import List
-
 import numpy as np
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD_DIST
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
-from decision_making.src.planning.types import C_YAW, CartesianState, C_Y, C_X, \
-    CartesianTrajectories, CartesianPaths2D, CartesianPoint2D, C_A, C_K, C_V, CartesianExtendedTrajectories, \
+from decision_making.src.planning.types import C_YAW, C_Y, C_X, C_A, C_K, C_V, CartesianExtendedTrajectories, \
     FrenetTrajectories2D, FS_DX
 from decision_making.src.planning.utils.math import Math
-from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.state.state import State, DynamicObject
+from decision_making.src.state.state import State
 from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
-
-class SigmoidBoxObstacle:
-    def __init__(self, length: float, width: float, k: float, margin: CartesianPoint2D):
-        """
-        :param length: length of the box in its own longitudinal axis (box's x)
-        :param width: length of the box in its own lateral axis (box's y)
-        """
-        self._length = length
-        self._width = width
-        self._k = k
-        self._margin = margin
-
-    @property
-    def length(self): return self._length
-
-    @property
-    def width(self): return self._width
-
-    @property
-    def k(self): return self._k
-
-    @property
-    def margin(self): return self._margin
-
-    def compute_cost_per_point(self, points: np.ndarray) -> np.ndarray:
-        """
-        Takes a list of points in vehicle's coordinate frame and returns cost of proximity (to self) for each point
-        :param points: either a CartesianPath2D or CartesianPaths2D
-        :return: numpy vector of corresponding costs per point
-        """
-        if len(points.shape) == 2:
-            points = np.array([points])
-
-        points_proj = self.convert_to_obstacle_coordinate_frame(points)
-
-        # subtract from the distances: 1. the box dimensions (height, width) and the margin
-        points_offset = np.subtract(points_proj, [self.length / 2 + self.margin[0], self.width / 2 + self.margin[1]])
-
-        # compute a sigmoid for each dimension [x, y] of each point (in each trajectory)
-        logit_costs = np.divide(1.0, (1.0 + np.exp(np.clip(np.multiply(self.k, points_offset), -np.inf, EXP_CLIP_TH))))
-
-        return logit_costs[:, :, C_X] * logit_costs[:, :, C_Y]
-
-    def compute_cost(self, points: np.ndarray) -> np.ndarray:
-        """
-        Takes a list of points in vehicle's coordinate frame and returns cost of proximity (to self) for each point
-        :param points: either a CartesianTrajectory or CartesianTrajectories
-        :return: numpy vector of corresponding trajectory-costs
-        """
-        logit_costs = self.compute_cost_per_point(points)
-        return np.sum(logit_costs[:, :], axis=1)
-
-    @abstractmethod
-    def convert_to_obstacle_coordinate_frame(self, points: CartesianPaths2D) -> CartesianPaths2D:
-        """
-        Project all points to the box-obstacle's own coordinate-frame (for each trajectory).
-        Each trajectory-point is multiplied by the appropriate conversion matrix.
-        now each record is relative to the box coordinate frame (box-center).
-        :param points: CartesianPaths2D tensor of trajectories in global-frame
-        :return: CartesianPaths2D tensor of trajectories in object's-coordinate-frame
-        """
-        pass
-
-
-class SigmoidDynamicBoxObstacle(SigmoidBoxObstacle):
-    def __init__(self, poses: List[DynamicObject], length: float, width: float, k: float, margin: CartesianPoint2D):
-        """
-        :param poses: array of the object's predicted poses, each pose is np.array([x, y, theta, vel])
-        :param length: length of the box in its own longitudinal axis (box's x)
-        :param width: length of the box in its own lateral axis (box's y)
-        """
-        super().__init__(length, width, k, margin)
-
-        # conversion matrices from global to relative to obstacle
-        # TODO: make this more efficient by removing for loop
-        self._H_inv = np.zeros((len(poses), 3, 3))
-        for pose_ind in range(len(poses)):
-            H = CartesianFrame.homo_matrix_2d(poses[pose_ind].cartesian_state[C_YAW], poses[pose_ind].cartesian_state[:C_YAW])
-            self._H_inv[pose_ind] = np.linalg.inv(H).transpose()
-
-    def convert_to_obstacle_coordinate_frame(self, points: np.ndarray):
-        """ see base method """
-        # add a third value (=1.0) to each point in each trajectory for multiplication with homogeneous-matrix
-        ones = np.ones(points.shape[:2])
-        points_ext = np.dstack((points, ones))
-
-        # this also removes third value (=1.0) from results to return to (x,y) coordinates
-        # dimensions - (i) trajectories, (j) timestamp, (k) old-frame-coordinates, (l) new-frame-coordinates
-        return np.abs(np.einsum('ijk, jkl -> ijl', points_ext, self._H_inv)[:, :, :(C_Y+1)])
-
-    @classmethod
-    def from_object(cls, state: State, obj: DynamicObject, k: float, offset: CartesianPoint2D, time_samples: np.ndarray,
-                    predictor: EgoAwarePredictor):
-        """
-        Additional constructor that takes a ObjectState from the State object and wraps it
-        :param state:
-        :param obj: ObjectState object from State object (in global coordinates)
-        :param k:
-        :param offset: longitudinal & lateral margins (half size of ego)
-        :param time_samples: [sec] time period for prediction (absolute time)
-        :param predictor:
-        :return: new instance
-        """
-        # get predictions of the dynamic object in global coordinates
-        predictions = predictor.predict_objects(state, [obj.obj_id], time_samples, None)[obj.obj_id]
-        return cls(predictions, obj.size.length, obj.size.width, k, offset)
-
-
-class SigmoidStaticBoxObstacle(SigmoidBoxObstacle):
-    """
-    Static 2D obstacle represented in vehicle's coordinate frame that computes sigmoid costs for
-    points in the vehicle's coordinate frame
-    """
-
-    # width is on y, length is on x
-    def __init__(self, pose: CartesianState, length: float, width: float, k: float, margin: CartesianPoint2D):
-        """
-        :param pose: 1D numpy array [x, y, theta, vel] that represents object's pose
-        :param length: length of the box in its own longitudinal axis (box's x)
-        :param width: length of the box in its own lateral axis (box's y)
-        :param k: sigmoid's  exponent coefficient
-        :param margin: center of sigmoid offset
-        """
-        super().__init__(length, width, k, margin)
-        H = CartesianFrame.homo_matrix_2d(pose[C_YAW], pose[:C_YAW])
-        self._H_inv = np.linalg.inv(H).transpose()
-
-    def convert_to_obstacle_coordinate_frame(self, points: CartesianTrajectories):
-        # add a third value (=1.0) to each point in each trajectory for multiplication with homogeneous-matrix
-        ones = np.ones(points.shape[:2])
-        points_ext = np.dstack((points, ones))
-
-        # this also removes third value (=1.0) from results to return to (x,y) coordinates
-        # dimensions - (i) trajectories, (j) timestamp, (k) old-frame-coordinates, (l) new-frame-coordinates
-        return np.abs(np.einsum('ijk, kl -> ijl', points_ext, self._H_inv)[:, :, :(C_Y+1)])
-
-    @classmethod
-    def from_object(cls, obj: DynamicObject, k: float, offset: CartesianPoint2D):
-        """
-        Additional constructor that takes a ObjectState from the State object and wraps it
-        :param obj: ObjectState object from State object (in global coordinates)
-        :param k:
-        :param offset:
-        :return: new instance
-        """
-        return cls(np.array([obj.x, obj.y, obj.yaw, 0]), obj.size.length, obj.size.width, k, offset)
-
-
-import time
 
 class Costs:
 
@@ -188,14 +34,7 @@ class Costs:
         The tensor shape: N x M x 3, where N is trajectories number, M is trajectory length.
         """
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
-        # st = time.time()
-        # with prof.time_range('old_compute_obstacle_costs{ctrajectories: %s, objects'):
-        #     old_obstacles_costs = Costs.old_compute_obstacle_costs(ctrajectories, state, params, global_time_samples, predictor)
-        # print('obs_cost_time=%f' % (time.time()-st))
-
-        # st = time.time()
         obstacles_costs = Costs.compute_obstacle_costs(ctrajectories, state, params, global_time_samples, predictor)
-        # print('obs_cost_time=%f' % (time.time()-st))
 
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
         deviations_costs = Costs.compute_deviation_costs(ftrajectories, params)
@@ -204,32 +43,6 @@ class Costs:
         jerk_costs = Costs.compute_jerk_costs(ctrajectories, params, dt)
 
         return np.dstack((obstacles_costs, deviations_costs, jerk_costs))
-
-    @staticmethod
-    def old_compute_obstacle_costs(ctrajectories: CartesianExtendedTrajectories, state: State, params: TrajectoryCostParams,
-                                   global_time_samples: np.ndarray, predictor: EgoAwarePredictor):
-        """
-        :param ctrajectories: numpy tensor of trajectories in cartesian-frame
-        :param state: the state object (that includes obstacles, etc.)
-        :param params: parameters for the cost function (from behavioral layer)
-        :param global_time_samples: [sec] time samples for prediction (global, not relative)
-        :param predictor: predictor instance to use to compute future localizations for DynamicObjects
-        :return: MxN matrix of obstacle costs per point, where N is trajectories number, M is trajectory length
-        """
-        offset = np.array([params.obstacle_cost_x.offset + state.ego_state.size.length/2,
-                           params.obstacle_cost_y.offset + state.ego_state.size.width/2])
-        close_obstacles = \
-            [SigmoidDynamicBoxObstacle.from_object(state= state, obj=obs, k=params.obstacle_cost_x.k, offset=offset,
-                                                   time_samples=global_time_samples, predictor=predictor)
-             for obs in state.dynamic_objects
-             if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < PLANNING_LOOKAHEAD_DIST]
-
-        if len(close_obstacles) > 0:
-            cost_per_obstacle = [obs.compute_cost_per_point(ctrajectories[:, :, 0:(C_Y+1)]) for obs in close_obstacles]
-            obstacles_costs = params.obstacle_cost_x.w * np.sum(cost_per_obstacle, axis=0)
-        else:
-            obstacles_costs = np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
-        return obstacles_costs
 
     @staticmethod
     def compute_obstacle_costs(ctrajectories: CartesianExtendedTrajectories, state: State,
@@ -362,4 +175,3 @@ class Jerk:
         lon_jerks = np.square(np.diff(ctrajectories[:, :, C_A], axis=1)) / dt
         lat_jerks = np.square(np.diff(ctrajectories[:, :, C_K] * np.square(ctrajectories[:, :, C_V]), axis=1)) / dt
         return lon_jerks, lat_jerks
-
