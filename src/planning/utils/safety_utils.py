@@ -13,19 +13,33 @@ OBJ_ACCEL_DIST = 0.5 * LON_SAFETY_ACCEL_DURING_DELAY * SPECIFICATION_MARGIN_TIME
 
 
 class SafetyUtils:
+    """
+    This class is an implementation of RSS safety from the paper of Mobileye https://arxiv.org/abs/1708.06374
+    RSS safety promises avoidance of accident on ego's blame.
+    """
+    # TODO: treat cases of occlusions (Mobileye / ACDA), road intersection/merge/split, stohastic predictions.
+
     @staticmethod
     def get_safe_times(ego: FrenetTrajectories2D, ego_size: ObjectSize, obj: np.array, obj_sizes: List[ObjectSize]) -> \
             np.array:
         """
-        Calculate safety boolean tensor for different ego Frenet trajectories and objects' Frenet trajectories.
+        For every ego Frenet trajectory, every predicted object's Frenet trajectory and every timestamp (3D tensor)
+        calculate RSS safety: a boolean indicating whether this tensor element is safe.
+        An exception from the pure RSS: If
+            the unsafe object is rear wrt ego AND
+            the unsafe situation was caused by the rear object AND
+            the rear object's predicted trajectory does not create an accident with ego trajectory
+        then the function returns True (safe).
         :param ego: ego Frenet trajectories: 3D tensor of shape: traj_num x timestamps_num x Frenet state size
         :param ego_size: ego size
         :param obj: 3D array of ftrajectories of objects: shape: objects_num x timestamps_num x 6 (Frenet state size)
         :param obj_sizes: list of objects' sizes
         :return: [bool] safety per [ego trajectory, object, timestamp]. Tensor of shape: traj_num x objects_num x timestamps_num
         """
+        # TODO: the cases when the safety is violated by another object should be treated differently from ego's blame.
+        # TODO: instead of boolean tensor the function should return tensor with 3 values: safe, blameless, unsafe.
         objects_num = obj.shape[0]
-        # calculate blame times for every object
+        # calculate safe times for every object
         safe_times = np.ones((ego.shape[0], objects_num, ego.shape[1])).astype(bool)
         ego_size_arr = np.array([ego_size.length, ego_size.width])
         for i in range(objects_num):  # loop over objects
@@ -36,7 +50,12 @@ class SafetyUtils:
     @staticmethod
     def _get_safe_times_per_obj(ego: np.array, ego_size: np.array, obj: np.array, obj_size: np.array) -> np.array:
         """
-        Calculate safety boolean tensor for different ego Frenet trajectories and a single object.
+        Calculate safety boolean tensor for different ego Frenet trajectories and a SINGLE object.
+        Safety definition by the RSS paper: an object is defined safe if it's safe either longitudinally OR laterally.
+        Do it by calculation of
+            (1) longitudinal safety,
+            (2) lateral safety,
+            (3) blame determination using the combination of the above results.
         :param ego: ego frenet trajectories: 3D tensor of shape: traj_num x timestamps_num x 6
         :param ego_size: array of size 2: ego length, ego width
         :param obj: object's frenet trajectories: 2D matrix of shape timestamps_num x 6
@@ -62,6 +81,8 @@ class SafetyUtils:
                         margin: float, max_brake: float=-LON_ACC_LIMITS[LIMIT_MIN]) -> np.array:
         """
         Calculate longitudinal safety between ego and another object for all timestamps.
+        Longitudinal safety between two objects considers only their longitudinal data: longitude and longitudinal velocity.
+        An object is defined safe if it's safe either longitudinally OR laterally.
         :param ego: ego frenet trajectories: 3D tensor of shape: traj_num x timestamps_num x 6
         :param ego_response_time: [sec] ego response time
         :param obj: object's frenet trajectories: 2D matrix: timestamps_num x 6
@@ -70,15 +91,21 @@ class SafetyUtils:
         :param max_brake: [m/s^2] maximal deceleration of both objects
         :return: [bool] longitudinal safety per timestamp. 2D matrix shape: traj_num x timestamps_num
         """
+        # extract the relevant longitudinal data from the trajectories
         ego_lon, ego_vel = ego[..., FS_SX], ego[..., FS_SV]
         obj_lon, obj_vel = obj[..., FS_SX], obj[..., FS_SV]
 
+        # determine which object is in front (per trajectory and timestamp)
         dist = ego_lon - obj_lon
         sign = np.sign(dist)
         ego_ahead = (sign > 0).astype(int)
+
+        # worst-cases velocity of the rear object may increase during its reaction time
         delayed_ego_vel = ego_vel + (1-ego_ahead) * ego_response_time * LON_SAFETY_ACCEL_DURING_DELAY
         delayed_obj_vel = obj_vel + ego_ahead * obj_response_time * LON_SAFETY_ACCEL_DURING_DELAY
 
+        # longitudinal RSS formula considers distance reduction during the reaction time and difference between
+        # objects' braking distances
         safe_dist = np.maximum(np.divide(sign * (delayed_obj_vel ** 2 - delayed_ego_vel ** 2), 2 * max_brake), 0) + \
                     (1 - ego_ahead) * (ego_vel * ego_response_time + EGO_ACCEL_DIST) + \
                     ego_ahead * (obj_vel * obj_response_time + OBJ_ACCEL_DIST) + margin
@@ -89,6 +116,8 @@ class SafetyUtils:
                         margin: float, max_brake: float=-LAT_ACC_LIMITS[LIMIT_MIN]) -> np.array:
         """
         Calculate lateral safety between ego and another object for all timestamps.
+        Lateral safety between two objects considers only their lateral data: latitude and lateral velocity.
+        An object is defined safe if it's safe either longitudinally OR laterally.
         :param ego: ego frenet trajectories: 3D tensor of shape: traj_num x timestamps_num x 6
         :param ego_response_time: [sec] object1 response time
         :param obj: object's frenet trajectories: 2D matrix: timestamps_num x 6
@@ -98,19 +127,25 @@ class SafetyUtils:
         :return: [bool] 1. lateral safety per timestamp. 2D matrix shape: traj_num x timestamps_num
                         2. lateral velocity blame: True if ego moves laterally towards object. The same shape.
         """
+        # extract the relevant lateral data from the trajectories
         ego_lat, ego_lat_vel = ego[..., FS_DX], ego[..., FS_DV]
         obj_lat, obj_lat_vel = obj[..., FS_DX], obj[..., FS_DV]
 
+        # determine which object is on the left side (per trajectory and timestamp)
         dist = ego_lat - obj_lat
         sign = np.sign(dist)
 
+        # worst-cases objects' lateral velocities may increase during their reaction time
         delayed_ego_vel = ego_lat_vel - sign * ego_response_time * LAT_SAFETY_ACCEL_DURING_DELAY
         delayed_obj_vel = obj_lat_vel + sign * obj_response_time * LAT_SAFETY_ACCEL_DURING_DELAY
+
+        # the distance objects move one towards another during their reaction time
         avg_ego_vel = 0.5 * (ego_lat_vel + delayed_ego_vel)
         avg_obj_vel = 0.5 * (obj_lat_vel + delayed_obj_vel)
-
         reaction_dist = sign * (avg_obj_vel * obj_response_time - avg_ego_vel * ego_response_time)
 
+        # lateral RSS formula considers lateral distance reduction during the reaction time and difference between
+        # objects' lateral braking distances
         safe_dist = np.maximum(np.divide(sign * (delayed_obj_vel * np.abs(delayed_obj_vel) -
                                                  delayed_ego_vel * np.abs(delayed_ego_vel)),
                                          2 * max_brake) + reaction_dist,

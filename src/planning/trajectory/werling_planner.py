@@ -162,32 +162,32 @@ class WerlingPlanner(TrajectoryPlanner):
         safe_traj_indices = self.filter_frajectories_by_safety(state, planning_time_points, ftrajectories_refiltered)
         # TODO: Throw an error if no safe trajectory is found
         if safe_traj_indices.any():
-            ftrajectories_refiltered = ftrajectories_refiltered[safe_traj_indices]
-            ctrajectories_filtered = ctrajectories_filtered[safe_traj_indices]
-            refiltered_indices = refiltered_indices[safe_traj_indices]
+            ftrajectories_refiltered_safe = ftrajectories_refiltered[safe_traj_indices]
+            ctrajectories_filtered_safe = ctrajectories_filtered[safe_traj_indices]
+            refiltered_indices_safe = refiltered_indices[safe_traj_indices]
 
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
         filtered_trajectory_costs = \
-            self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
+            self._compute_cost(ctrajectories_filtered_safe, ftrajectories_refiltered_safe, state, goal_frenet_state, cost_params,
                                global_time_sample, self._predictor, self.dt)
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
         self._logger.debug("Chosen trajectory planned with lateral horizon : {}".format(
-            T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]]))
+            T_d_vals[refiltered_indices_safe[sorted_filtered_idxs[0]]]))
 
         samplable_trajectory = SamplableWerlingTrajectory(
             timestamp_in_sec=state.ego_state.timestamp_in_sec,
             T_s=T_s,
-            T_d=T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]],
+            T_d=T_d_vals[refiltered_indices_safe[sorted_filtered_idxs[0]]],
             frenet_frame=frenet,
-            poly_s_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][:6],
-            poly_d_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][6:]
+            poly_s_coefs=poly_coefs[refiltered_indices_safe[sorted_filtered_idxs[0]]][:6],
+            poly_d_coefs=poly_coefs[refiltered_indices_safe[sorted_filtered_idxs[0]]][6:]
         )
 
         return samplable_trajectory, \
-               ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
+               ctrajectories_filtered_safe[sorted_filtered_idxs, :, :(C_V + 1)], \
                filtered_trajectory_costs[sorted_filtered_idxs]
 
     @staticmethod
@@ -412,8 +412,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # st = time.time()
         # calculate RSS safety for all trajectories, all objects and all timestamps
-        with prof.time_range('calc_safety(ego_traj=%s, objs_num=%d)' % (ego_ftraj.shape, len(state.dynamic_objects))):
-            safe_times = SafetyUtils.get_safe_times(ego_ftraj, state.ego_state.size, obj_ftraj, obj_sizes)
+        safe_times = SafetyUtils.get_safe_times(ego_ftraj, state.ego_state.size, obj_ftraj, obj_sizes)
         # AND over all objects and all timestamps
         safe_trajectories = safe_times.all(axis=(1, 2))
 
