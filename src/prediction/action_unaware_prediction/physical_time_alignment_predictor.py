@@ -3,10 +3,12 @@ from typing import List, Dict
 
 import numpy as np
 
+from decision_making.src.global_constants import FILTER_OFF_ROAD_OBJECTS
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_DV, FS_DX
 from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, DynamicObject
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
@@ -62,8 +64,9 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
         predicted_dynamic_objects_dict = self.predict_objects(state=state, object_ids=object_ids,
                                                               prediction_timestamps=prediction_timestamps)
 
-        predicted_dynamic_objects = [future_object_states[0] for future_object_states in
-                                     predicted_dynamic_objects_dict.values()]
+        predicted_dynamic_objects = [future_object_states[0]  for future_object_states in
+                                     predicted_dynamic_objects_dict.values()
+                                     if MapUtils.is_object_on_road(future_object_states[0].map_state) or not FILTER_OFF_ROAD_OBJECTS]
 
         predicted_ego_state = self._predict_object(dynamic_object=state.ego_state,
                                                    prediction_timestamp=prediction_timestamps[0])[0]
