@@ -82,6 +82,8 @@ class SafetyUtils:
         """
         Calculate longitudinal safety between ego and another object for all timestamps.
         Longitudinal safety between two objects considers only their longitudinal data: longitude and longitudinal velocity.
+        Longitudinal RSS formula considers distance reduction during the reaction time and difference between
+        objects' braking distances.
         An object is defined safe if it's safe either longitudinally OR laterally.
         :param ego: ego frenet trajectories: 3D tensor of shape: traj_num x timestamps_num x 6
         :param ego_response_time: [sec] ego response time
@@ -117,6 +119,8 @@ class SafetyUtils:
         """
         Calculate lateral safety between ego and another object for all timestamps.
         Lateral safety between two objects considers only their lateral data: latitude and lateral velocity.
+        Lateral RSS formula considers lateral distance reduction during the reaction time and difference between
+        objects' lateral braking distances.
         An object is defined safe if it's safe either longitudinally OR laterally.
         :param ego: ego frenet trajectories: 3D tensor of shape: traj_num x timestamps_num x 6
         :param ego_response_time: [sec] object1 response time
