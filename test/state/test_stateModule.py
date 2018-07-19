@@ -44,60 +44,26 @@ def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(pubsub: Pub
     # the object should be loaded from memory and this is why its location and speed remains the same as in in_fov fixture
     assert new_dyn_obj_list[0].x == dynamic_objects_in_fov.dynamic_objects[0].location.x
     assert new_dyn_obj_list[0].y == dynamic_objects_in_fov.dynamic_objects[0].location.y
-    glob_v_x = dynamic_objects_in_fov.dynamic_objects[0].velocity.v_x
-    glob_v_y = dynamic_objects_in_fov.dynamic_objects[0].velocity.v_y
+
+    velocity = new_dyn_obj_list[0].velocity
+
     yaw = dynamic_objects_in_fov.dynamic_objects[0].bbox.yaw
 
-    # convert velocity from map coordinates to relative to its own yaw
-    v_x = np.cos(yaw) * glob_v_x + np.sin(yaw) * glob_v_y
-    v_y = -np.sin(yaw) * glob_v_x + np.cos(yaw) * glob_v_y
+    v_x = velocity * np.cos(yaw)
+    v_y = velocity * np.sin(yaw)
 
-    assert new_dyn_obj_list[0].v_x == v_x
-    assert new_dyn_obj_list[0].v_y == v_y
+    assert np.isclose(dynamic_objects_in_fov.dynamic_objects[0].velocity.v_x , v_x, atol=1e-3)
+    assert np.isclose(dynamic_objects_in_fov.dynamic_objects[0].velocity.v_y, v_y, atol=1e-3)
 
     state_module.stop()
 
-
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-def test_isObjectOnRoad_objectOffOfRoad_False(pubsub: PubSub, ego_state_fix: EgoState):
-    """
-    :param pubsub: Inter-process communication interface.
-    :param ego_state_fix: Fixture of an ego state.
-
-    Checking functionality of _is_object_on_road for an object that is off the road.
-    """
-    logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
-
-    state_module = StateModule(pubsub=pubsub, logger=logger,
-                               occupancy_state=OccupancyState(0, np.array([]), np.array([])),
-                               dynamic_objects=None, ego_state=ego_state_fix)
-    actual_result = state_module._is_object_on_road(np.array([17.0,17.0,0.0]), 0.0)
-    expected_result = False
-    assert expected_result == actual_result
-
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-def test_isObjectOnRoad_objectOnRoad_True(pubsub: PubSub, ego_state_fix: EgoState):
-    """
-    :param pubsub: Inter-process communication interface.
-    :param ego_state_fix: Fixture of an ego state.
-
-    Checking functionality of _is_object_on_road for an object that is on the road.
-    """
-    logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
-
-    state_module = StateModule(pubsub=pubsub, logger=logger,
-                               occupancy_state=OccupancyState(0, np.array([]), np.array([])),
-                               dynamic_objects=None, ego_state=ego_state_fix)
-    actual_result = state_module._is_object_on_road(np.array([5.0,1.0,0.0]), 0.0)
-    expected_result = True
-    assert expected_result == actual_result
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 @patch(FILTER_OBJECT_OFF_ROAD_PATH, False)
 def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: PubSub,
-                                                                                   dynamic_objects_not_on_road: LcmPerceivedDynamicObjectList,
-                                                                                   ego_state_fix: EgoState):
+                                                                       dynamic_objects_not_on_road: LcmPerceivedDynamicObjectList,
+                                                                       ego_state_fix: EgoState):
     """
     :param pubsub: Inter-process communication interface.
     :param ego_state_fix: Fixture of an ego state.
@@ -117,8 +83,8 @@ def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: P
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_dynamicObjCallbackWithFilter_objectOffRoad_stateWithoutObject(pubsub: PubSub,
-                                                                                   dynamic_objects_not_on_road: LcmPerceivedDynamicObjectList,
-                                                                                   ego_state_fix: EgoState):
+                                                                       dynamic_objects_not_on_road: LcmPerceivedDynamicObjectList,
+                                                                       ego_state_fix: EgoState):
     """
     :param pubsub: Inter-process communication interface.
     :param ego_state_fix: Fixture of an ego state.

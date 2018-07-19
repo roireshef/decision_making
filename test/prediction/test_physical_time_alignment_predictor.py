@@ -27,12 +27,12 @@ def test_AlignObjects_ExternalTimestamp_AccuratePrediction(physical_time_alignme
     # Verify predictions are made for the same timestamps and same order
     actual_predicted_object = predicted_state.get_object_from_state(predicted_state, DYNAMIC_OBJECT_ID)
     assert np.isclose(actual_predicted_object.timestamp_in_sec, prediction_timestamps[0])
-    Utils.assert_objects_numerical_fields_are_equal(actual_predicted_object,
-                                                    predicted_dyn_object_states_constant_yaw[0])
+    Utils.assert_dyn_objects_numerical_fields_are_equal(actual_predicted_object,
+                                                        predicted_dyn_object_states_constant_yaw[0])
     actual_predicted_ego = predicted_state.ego_state
     assert np.isclose(actual_predicted_ego.timestamp_in_sec, prediction_timestamps[0])
-    Utils.assert_objects_numerical_fields_are_equal(actual_predicted_ego,
-                                                    predicted_static_ego_states[0])
+    Utils.assert_dyn_objects_numerical_fields_are_equal(actual_predicted_ego,
+                                                        predicted_static_ego_states[0])
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
@@ -48,10 +48,10 @@ def test_AlignObjects_ExternalTimestamp_ConstantYawAccuratePrediction(
     # Verify predictions are made for the same timestamps and same order
     actual_predicted_object = predicted_state.get_object_from_state(predicted_state, DYNAMIC_OBJECT_ID)
     assert np.isclose(actual_predicted_object.timestamp_in_sec, prediction_timestamps[1])
-    Utils.assert_objects_numerical_fields_are_equal(actual_predicted_object,
-                                                    predicted_dyn_object_states_constant_yaw[1])
+    Utils.assert_dyn_objects_numerical_fields_are_equal(actual_predicted_object,
+                                                        predicted_dyn_object_states_constant_yaw[1])
     actual_predicted_ego = predicted_state.ego_state
     assert np.isclose(actual_predicted_ego.timestamp_in_sec, prediction_timestamps[1])
-    Utils.assert_objects_numerical_fields_are_equal(actual_predicted_ego,
-                                                    predicted_static_ego_states[1])
+    Utils.assert_dyn_objects_numerical_fields_are_equal(actual_predicted_ego,
+                                                        predicted_static_ego_states[1])
 
