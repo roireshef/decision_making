@@ -242,18 +242,26 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         lcm_msg._cached_map_state = self.map_state.serialize()
         lcm_msg.size = self.size.serialize()
         lcm_msg.confidence = self.confidence
+        lcm_msg.history_length = len(self.history)
+        lcm_msg.history = self.history
         return lcm_msg
 
     @classmethod
     def deserialize(cls, lcmMsg):
         # type: (LcmDynamicObject) -> DynamicObject
+
+        history = list()
+        for i in range(lcmMsg.history_length):
+            history.append(DynamicObject.deserialize(lcmMsg.history[i]))
+
         return cls(lcmMsg.obj_id, lcmMsg.timestamp
                    , np.ndarray(shape=tuple(lcmMsg._cached_cartesian_state.shape)
                                 , buffer=np.array(lcmMsg._cached_cartesian_state.data)
                                 , dtype=float)
                    , MapState.deserialize(lcmMsg._cached_map_state)
                    , ObjectSize.deserialize(lcmMsg.size)
-                   , lcmMsg.confidence)
+                   , lcmMsg.confidence,
+                   history)
 
 
 class EgoState(DynamicObject):
