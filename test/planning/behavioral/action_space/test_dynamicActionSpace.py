@@ -1,4 +1,3 @@
-from logging import Logger
 from typing import List
 
 import numpy as np
@@ -9,11 +8,8 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING
 from decision_making.src.planning.types import FS_SX, FS_SV
-from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from rte.python.logger.AV_logger import AV_Logger
-
-from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
-    follow_vehicle_recipes_towards_front_cells, state_with_sorrounding_objects, pg_map_api
 
 
 # specifies follow actions for front vehicles in 3 lanes. longitudinal and latitudinal coordinates

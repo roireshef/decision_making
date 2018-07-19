@@ -37,7 +37,7 @@ from decision_making.src.planning.navigation.navigation_facade import Navigation
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
-from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import OccupancyState
 from decision_making.src.state.state_module import StateModule
 from mapping.src.global_constants import DEFAULT_MAP_FILE

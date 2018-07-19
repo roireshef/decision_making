@@ -1,36 +1,15 @@
-from logging import Logger
 from typing import List
 
-import time
+import numpy as np
 
-from decision_making.src.global_constants import SPECIFICATION_MARGIN_TIME_DELAY, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID, FILTER_V_T_GRID
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
-    RelativeLongitudinalPosition
-from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, AggressivenessLevel, ActionType, \
-    StaticActionRecipe
-from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
-from decision_making.src.planning.types import FS_SX, FS_SV
-from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state import ObjectSize, EgoState, State
-from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
-    behavioral_grid_state_with_objects_for_filtering_tracking_mode, \
-    behavioral_grid_state_with_objects_for_filtering_negative_sT, \
-    behavioral_grid_state_with_objects_for_filtering_too_aggressive, \
-    state_with_objects_for_filtering_tracking_mode, state_with_objects_for_filtering_negative_sT, \
-    state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes, \
-    pg_map_api
-from decision_making.test.planning.utils.optimal_control.quartic_poly_formulas import QuarticMotionPredicatesCreator
-from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import QuinticMotionPredicatesCreator
-from mapping.src.service.map_service import MapService
-from rte.python.logger.AV_logger import AV_Logger
-
-from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, StaticActionRecipe
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterBadExpectedTrajectory
-
-import numpy as np
+from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+from rte.python.logger.AV_logger import AV_Logger
 
 
 def test_filter_followVehicleTracking_filterResultsMatchExpected(

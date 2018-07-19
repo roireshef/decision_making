@@ -1,18 +1,16 @@
 import time
 from logging import Logger
 from typing import List
-from unittest.mock import patch
 
 import numpy as np
-import pytest
-from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer, ActionSpace
-from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
-from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 
 from decision_making.src.global_constants import BP_DEFAULT_DESIRED_SPEED, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, SAFETY_MARGIN_TIME_DELAY, LON_ACC_LIMITS, \
     VELOCITY_LIMITS, SPECIFICATION_MARGIN_TIME_DELAY
+from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer, ActionSpace
+from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
+from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING, \
     DEFAULT_DYNAMIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.evaluators.heuristic_action_spec_evaluator import \
@@ -25,7 +23,7 @@ from decision_making.src.planning.behavioral.planner.cost_based_behavioral_plann
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, C_A, C_K
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import DynamicObject, ObjectSize, EgoState, State
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger

@@ -12,7 +12,7 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmState
 
 from decision_making.src.exceptions import NoUniqueObjectStateForEvaluation
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW
+from decision_making.src.planning.types import CartesianState, C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K
 from mapping.src.model.localization import RoadLocalization
 from mapping.src.service.map_service import MapService
 
@@ -167,6 +167,21 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
         # Construct a new object
         return self.__class__(**object_fields)
+
+    @classmethod
+    def create_from_cartesian_state(cls, obj_id, timestamp, ext_cartesian_state, size, confidence):
+        # type: (int, int, CartesianExtendedState, ObjectSize, float) -> DynamicObject
+        """
+        Constructor that gets only cartesian-state (without map-state)
+        :param obj_id: object id
+        :param timestamp: time of perception [nanosec.]
+        :param ext_cartesian_state: localization relative to map's cartesian origin frame
+        :param size: class ObjectSize
+        :param confidence: of object's existence
+        """
+        return cls(obj_id, timestamp, ext_cartesian_state[C_X], ext_cartesian_state[C_Y], 0,
+                   ext_cartesian_state[C_YAW], size, confidence,
+                   ext_cartesian_state[C_V], 0, ext_cartesian_state[C_A], ext_cartesian_state[C_K])
 
     @property
     # TODO: road localization needs to use frenet transformations
