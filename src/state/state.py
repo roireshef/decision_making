@@ -90,9 +90,6 @@ class ObjectSize(PUBSUB_MSG_IMPL):
         return cls(lcmMsg.length, lcmMsg.width, lcmMsg.height)
 
 
-DynamicObjectHistory = List[DynamicObject]
-
-
 class DynamicObject(PUBSUB_MSG_IMPL):
     members_remapping = {'_cached_cartesian_state': 'cartesian_state',
                          '_cached_map_state': 'map_state'}
@@ -262,6 +259,9 @@ class DynamicObject(PUBSUB_MSG_IMPL):
                    , ObjectSize.deserialize(lcmMsg.size)
                    , lcmMsg.confidence,
                    history)
+
+
+DynamicObjectHistory = List[DynamicObject]
 
 
 class EgoState(DynamicObject):
