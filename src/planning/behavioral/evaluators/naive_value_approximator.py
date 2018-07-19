@@ -8,8 +8,8 @@ from decision_making.src.planning.behavioral.evaluators.cost_functions import BP
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.data_objects import NavigationGoal, ActionSpec
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.types import FS_SV, FS_SX, FrenetState2D
-from decision_making.src.planning.utils.map_utils import MapUtils
+from decision_making.src.planning.types import FS_SV, FS_SX, FrenetState2D, FS_DX
+from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.service.map_service import MapService
 
 
@@ -31,24 +31,24 @@ class NaiveValueApproximator(ValueApproximator):
         :return: value function approximation
         """
         ego = behavioral_state.ego_state
-        ego_loc = ego.road_localization
-        (ego_lane, ego_lon, ego_length, road_id) = (ego_loc.lane_num, ego_loc.road_lon, ego.size.length, ego_loc.road_id)
-        road_frenet = MapUtils.get_road_rhs_frenet(ego)
-        ego_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
-        lane_width = MapService.get_instance().get_road(ego_loc.road_id).lane_width
+        ego_fstate = ego.map_state.road_fstate
+        road_id = ego.map_state.road_id
+        lane_width = MapService.get_instance().get_road(road_id).lane_width
+        ego_lane = int(ego_fstate[FS_DX]/lane_width)
+        (ego_lon, ego_length) = (ego_fstate[FS_SX], ego.size.length)
 
         # calculate time to goal
         map_based_nav_plan = MapService.get_instance().get_road_based_navigation_plan(road_id)
         # goal.lon - ego_loc.road_lon
         dist_to_goal = MapService.get_instance().get_longitudinal_difference(
-            road_id, ego_loc.road_lon, goal.road_id, goal.lon, map_based_nav_plan)
-        if ego.v_x > 0:
-            time_to_goal = dist_to_goal / ego.v_x
+            road_id, ego_lon, goal.road_id, goal.lon, map_based_nav_plan)
+        if ego.velocity > 0:
+            time_to_goal = dist_to_goal / ego.velocity
         else:
             return np.inf
 
         # calculate efficiency and non-right lane costs
-        efficiency_cost = NaiveValueApproximator._calc_efficiency_cost(ego.v_x, time_to_goal)
+        efficiency_cost = NaiveValueApproximator._calc_efficiency_cost(ego.velocity, time_to_goal)
         right_lane_cost = NaiveValueApproximator._calc_rightlane_cost(ego_lane, time_to_goal)
 
         # calculate lane deviation and comfort cost for reaching the goal
