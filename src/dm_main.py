@@ -100,7 +100,7 @@ class DmInitialization:
                                                                         DEFAULT_DYNAMIC_RECIPE_FILTERING)])
 
         recipe_evaluator = None
-        action_spec_evaluator = HeuristicActionSpecEvaluator(logger)
+        action_spec_evaluator = HeuristicActionSpecEvaluator(logger, predictor)
         value_approximator = NaiveValueApproximator(logger)
 
         action_spec_filtering = ActionSpecFiltering(filters=[FilterIfNone()], logger=logger)

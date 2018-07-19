@@ -16,6 +16,7 @@ from decision_making.src.planning.behavioral.evaluators.value_approximator impor
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
     CostBasedBehavioralPlanner
+from decision_making.src.planning.types import FS_SX
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 
@@ -75,8 +76,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         # generate navigation goals at the same distance for all terminal_behavioral_states, containing all lanes
         navigation_goals = CostBasedBehavioralPlanner._generate_goals(
-            behavioral_state.ego_state.road_localization.road_id,
-            behavioral_state.ego_state.road_localization.road_lon,
+            behavioral_state.ego_state.map_state.road_id,
+            behavioral_state.ego_state.map_state.road_fstate[FS_SX],
             terminal_behavioral_states)
 
         terminal_states_values = np.array([self.value_approximator.approximate(state, navigation_goals[i])

@@ -16,7 +16,8 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
 from decision_making.src.planning.behavioral.evaluators.cost_functions import BP_CostFunctions
 from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
 from decision_making.src.planning.types import FP_SX, FS_DV, FS_DX, FS_SX, FS_SV, FrenetState2D, FS_DA, LIMIT_MAX
-from decision_making.src.planning.utils.map_utils import MapUtils
+from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
+from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
@@ -28,13 +29,9 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
     Link to the algorithm documentation in confluence:
     https://confluence.gm.com/display/SHAREGPDIT/BP+costs+and+heuristic+assumptions
     """
-    def __init__(self, logger: Logger):
+    def __init__(self, logger: Logger, predictor: EgoAwarePredictor):
         super().__init__(logger)
-        self.back_danger_lane = None
-        self.back_danger_side = None
-        self.back_danger_time = None
-        self.front_blame = False
-        self.changing_lane = False
+        self.predictor = predictor
 
     def evaluate(self, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
                  action_specs: List[ActionSpec], action_specs_mask: List[bool]) -> np.ndarray:
@@ -50,14 +47,12 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         :return: array of costs (one cost per action)
         """
         ego = behavioral_state.ego_state
-        ego_road = ego.road_localization
-        ego_lane = ego_road.lane_num
-        road_frenet = MapUtils.get_road_rhs_frenet(ego)
-        ego_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
-        lane_width = MapService.get_instance().get_road(ego_road.road_id).lane_width
+        lane_width = MapService.get_instance().get_road(ego.map_state.road_id).lane_width
+        ego_fstate = ego.map_state.road_fstate
+        ego_lane = int(ego_fstate[FS_DX] / lane_width)
 
         print('\ntime=%.1f ego_lon=%.2f ego_v=%.2f ego_lat=%.2f ego_dv=%.2f grid_size=%d' %
-              (ego.timestamp_in_sec, ego.road_localization.road_lon, ego.v_x, ego_road.intra_road_lat,
+              (ego.timestamp_in_sec, ego_fstate[FS_SX], ego.velocity, ego_fstate[FS_DX],
                ego_fstate[FS_DV], len(behavioral_state.road_occupancy_grid)))
 
         costs = np.full(len(action_recipes), np.inf)
@@ -65,16 +60,15 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
 
         times_step = 0.1
         time_samples = np.arange(0, BP_ACTION_T_LIMITS[LIMIT_MAX], times_step)
-        samples_num = time_samples.shape[0]
 
         # TODO: use fast predictor
         grid = behavioral_state.road_occupancy_grid
+        obj_ids = np.array([grid[cell][0].dynamic_object.obj_id for cell in grid])
+        objects_curr_fstates = np.array([grid[cell][0].dynamic_object.map_state.road_fstate for cell in grid])
+        predicted_fstates = self.predictor.predict_frenet_states(objects_curr_fstates, time_samples)
         predictions = {}
-        for cell in grid:
-            obj = grid[cell][0]
-            prediction = np.tile(obj.fstate, samples_num).reshape(samples_num, 6)
-            prediction[:, 0] = obj.fstate[FS_SX] + time_samples * obj.fstate[FS_SV]
-            predictions[obj.dynamic_object.obj_id] = prediction
+        for i, obj_id in enumerate(obj_ids):
+            predictions[obj_id] = predicted_fstates[i]
 
         st = time.time()
 
@@ -194,134 +188,6 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         T_d = np.fmin.reduce(roots_d, axis=-1)
         return T_d
 
-    # def _calc_largest_safe_time(self, behavioral_state: BehavioralGridState, recipe: ActionRecipe, i: int,
-    #                             vel_profile: VelocityProfile, ego_length: float, T_d: float, lane_width: float) -> float:
-    #     """
-    #     For a lane change action, given ego velocity profile and behavioral_state, get two cars that may
-    #     require faster lateral movement (the front overtaken car and the back interfered car) and calculate the last
-    #     time, for which the safety holds w.r.t. these two cars.
-    #     :param behavioral_state: semantic actions grid behavioral state
-    #     :param vel_profile: the velocity profile of ego
-    #     :param ego_length: half ego length
-    #     :param T_d: time for comfortable lane change
-    #     :param lane_width: lane width of the road
-    #     :return: the latest time, when ego is still safe; return -1 if the current state is unsafe for this action
-    #     """
-    #     action_lat_cell = recipe.relative_lane
-    #     ego = behavioral_state.ego_state
-    #     ego_road = ego.road_localization
-    #     ego_lon = ego_road.road_lon
-    #     cur_time = ego.timestamp_in_sec
-    #
-    #     forward_cell = (action_lat_cell, RelativeLongitudinalPosition.FRONT)
-    #     front_cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT)
-    #     side_rear_cell = (action_lat_cell, RelativeLongitudinalPosition.REAR)
-    #     rear_cell = (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.REAR)
-    #
-    #     lane_change = (action_lat_cell != RelativeLane.SAME_LANE)
-    #     lat_dist_to_target = abs(action_lat_cell.value - (ego_road.intra_lane_lat / lane_width - 0.5))  # in [0, 1.5]
-    #     # increase time delay if ego does not move laterally according to the current action
-    #     is_moving_laterally_to_target = (lane_change and ego_road.intra_road_yaw * action_lat_cell.value <= 0)
-    #
-    #     # check safety w.r.t. the followed object on the target lane (if exists)
-    #     if forward_cell in behavioral_state.road_occupancy_grid:
-    #         followed_obj = behavioral_state.road_occupancy_grid[forward_cell][0].dynamic_object
-    #         # calculate initial and final safety w.r.t. the followed object
-    #         td = SAFETY_MARGIN_TIME_DELAY
-    #         td_spec = SPECIFICATION_MARGIN_TIME_DELAY
-    #         margin = 0.5 * (ego.size.length + followed_obj.size.length)
-    #         (act_time, act_dist) = (vel_profile.total_time(), vel_profile.total_dist())
-    #         obj_lon = followed_obj.road_localization.road_lon
-    #         (end_ego_lon, end_obj_lon) = (ego_lon + act_dist, obj_lon + followed_obj.v_x * act_time)
-    #         init_spec_dist = obj_lon - ego_lon - td_spec * followed_obj.v_x
-    #         end_spec_dist = end_obj_lon - end_ego_lon - td_spec * followed_obj.v_x
-    #         init_safe_dist = VelocityProfile.get_safety_dist(followed_obj.v_x, ego.v_x, obj_lon - ego_lon, td, margin)
-    #         end_safe_dist = VelocityProfile.get_safety_dist(followed_obj.v_x, vel_profile.v_tar,
-    #                                                         end_obj_lon - end_ego_lon, td, margin)
-    #
-    #         # the action is unsafe if:  (change_lane and initially unsafe) or
-    #         #                           (finally_unsafe and worse than initially) or
-    #         #                           (the profile is unsafe)
-    #         if (lane_change and init_safe_dist <= 0) or end_safe_dist <= 0. or \
-    #                         end_spec_dist <= min(0., init_spec_dist):
-    #             print('forward unsafe: %d(%d %d) rel_lat=%d dist=%.2f t=%.2f final_dist=%.2f v_obj=%.2f '
-    #                   'prof=(t=[%.2f %.2f %.2f] v=[%.2f %.2f %.2f]) init_safe=%.2f final_safe=%.2f; td=%.2f' %
-    #                   (i, recipe.action_type.value, recipe.aggressiveness.value, action_lat_cell.value,
-    #                    obj_lon - ego_lon, act_time,
-    #                    obj_lon + act_time * followed_obj.v_x - (ego_lon + act_dist),
-    #                    followed_obj.v_x, vel_profile.t_first, vel_profile.t_flat, vel_profile.t_last, vel_profile.v_init,
-    #                    vel_profile.v_mid, vel_profile.v_tar, init_safe_dist, end_safe_dist, td))
-    #             return -1
-    #
-    #     safe_time = np.inf
-    #     if lane_change:  # for lane change actions check safety w.r.t. F, LB, RB
-    #         # TODO: move it to a filter
-    #         # check whether there is a car in the neighbor cell (same longitude)
-    #         if (action_lat_cell, RelativeLongitudinalPosition.PARALLEL) in behavioral_state.road_occupancy_grid:
-    #             print('side unsafe rel_lat=%d: action %d' % (action_lat_cell.value, i))
-    #             return -1
-    #
-    #         # check safety w.r.t. the front object F on the original lane (if exists)
-    #         if front_cell in behavioral_state.road_occupancy_grid:
-    #             front_obj = behavioral_state.road_occupancy_grid[front_cell][0].dynamic_object
-    #             # time delay decreases as function of lateral distance to the target: td_0 = td_T + 1
-    #             # td_0 > td_T, since as latitude advances ego can escape laterally easier
-    #             td_T = 0.  # dist to F after completing lane change. TODO: increase it when the planning will be deep
-    #             td_0 = SAFETY_MARGIN_TIME_DELAY * lat_dist_to_target
-    #             # calculate last safe time w.r.t. F
-    #             front_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_length,
-    #                 front_obj.road_localization.road_lon, front_obj.v_x, front_obj.size.length, 0.75 * T_d, td_0, td_T)
-    #             if front_safe_time < np.inf:
-    #                 print('front_safe_time=%.2f action %d(%d %d): front_dist=%.2f front_vel=%.2f lat_d=%.2f td_0=%.2f td_T=%.2f' %
-    #                       (front_safe_time, i, recipe.action_type.value, recipe.aggressiveness.value,
-    #                        front_obj.road_localization.road_lon - ego_lon, front_obj.v_x, lat_dist_to_target, td_0, td_T))
-    #             if front_safe_time <= 0:
-    #                 return -1
-    #             safe_time = min(safe_time, front_safe_time)
-    #
-    #         # check safety w.r.t. the back object on the original lane (if exists)
-    #         if side_rear_cell in behavioral_state.road_occupancy_grid:
-    #             back_obj = behavioral_state.road_occupancy_grid[side_rear_cell][0].dynamic_object
-    #             td = SPECIFICATION_MARGIN_TIME_DELAY
-    #             # calculate last safe time w.r.t. LB or RB
-    #             back_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_length,
-    #                     back_obj.road_localization.road_lon, back_obj.v_x, back_obj.size.length, T_d, td)
-    #             if back_safe_time < np.inf:
-    #                 print('back_safe_time=%.2f action %d(%d %d): back_dist=%.2f back_vel=%.2f rel_lat=%.2f td=%.2f' %
-    #                       (back_safe_time, i, recipe.action_type.value, recipe.aggressiveness.value,
-    #                        ego_lon - back_obj.road_localization.road_lon, back_obj.v_x, action_lat_cell.value, td))
-    #             # if ego is unsafe w.r.t. back_obj, then save a flag for the case ego will enter to its lane,
-    #             # such that ego will check safety w.r.t to the rear object
-    #             if back_safe_time <= 0 and is_moving_laterally_to_target:
-    #                 self.back_danger_lane = ego_road.lane_num + action_lat_cell.value
-    #                 self.back_danger_side = action_lat_cell.value  # -1 or 1
-    #                 self.back_danger_time = cur_time
-    #             if back_safe_time <= 0:
-    #                 return -1
-    #             safe_time = min(safe_time, back_safe_time)
-    #
-    #     # check safety w.r.t. the rear object R for the case we are after back danger and arrived to the dangerous lane
-    #     if self.back_danger_lane is not None:
-    #         if cur_time - self.back_danger_time < 4:  # the danger is still relevant
-    #             # if ego is on the danger_lane but still didn't reach the lane center,
-    #             # and if this action is to the danger_lane center, then check safety w.r.t. the rear object
-    #             if self.back_danger_lane == ego_road.lane_num and self.back_danger_side == action_lat_cell.value and \
-    #                ego_road.intra_lane_lat * action_lat_cell.value < 0 and rear_cell in behavioral_state.road_occupancy_grid:
-    #                     td = SPECIFICATION_MARGIN_TIME_DELAY
-    #                     rear_obj = behavioral_state.road_occupancy_grid[rear_cell][0].dynamic_object
-    #                     # calculate last safe time w.r.t. R
-    #                     back_safe_time = vel_profile.calc_last_safe_time(ego_lon, ego_length,
-    #                             rear_obj.road_localization.road_lon, rear_obj.v_x, rear_obj.size.length, T_d, td)
-    #                     if back_safe_time <= 0:
-    #                         return -1
-    #                     safe_time = min(safe_time, back_safe_time)
-    #         else:  # after timeout, delete the danger flag
-    #             self.back_danger_lane = None
-    #
-    #     # print('front_time=%f back_time=%f forward_time=%f safe_time=%f' % \
-    #     # (front_safe_time, back_safe_time, forward_safe_time, safe_time))
-    #     return safe_time
-
     @staticmethod
     def _calc_action_costs(ego_fstate: np.array, spec: ActionSpec, lane_width: float,
                            T_d_max: float, T_d_approx: float) -> [float, np.array]:
@@ -357,11 +223,11 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         :param spec: action specification
         :return: distance from the target
         """
-        lane_width = MapService.get_instance().get_road(state.ego_state.road_localization.road_id).lane_width
+        lane_width = MapService.get_instance().get_road(state.ego_state.map_state.road_id).lane_width
         _, rel_lanes = SafetyUtils._get_rel_lane_from_specs(lane_width, ego_fstate, np.array([spec.d]))
         forward_cell = (rel_lanes[0], RelativeLongitudinalPosition.FRONT)
         dist = np.inf
         if forward_cell in state.road_occupancy_grid:
-            cell = state.road_occupancy_grid[forward_cell][0]
-            dist = cell.fstate[FS_SX] - ego_fstate[FS_SX]
+            cell_fstate = state.road_occupancy_grid[forward_cell][0].dynamic_object.map_state.road_fstate
+            dist = cell_fstate[FS_SX] - ego_fstate[FS_SX]
         return dist
