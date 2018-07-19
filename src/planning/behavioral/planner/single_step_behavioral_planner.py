@@ -1,5 +1,5 @@
 from logging import Logger
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 
@@ -9,7 +9,7 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import \
     BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe
+from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, ActionRecipe
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionRecipeEvaluator, \
     ActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
@@ -36,13 +36,15 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         super().__init__(action_space, recipe_evaluator, action_spec_evaluator, action_spec_validator, value_approximator,
                          predictor, logger)
 
-    @prof.ProfileFunction()
-    def plan(self, state: State, nav_plan: NavigationPlanMsg):
-        action_recipes = self.action_space.recipes
-
-        # create road semantic grid from the raw State object
-        # behavioral_state contains road_occupancy_grid and ego_state
-        behavioral_state = BehavioralGridState.create_from_state(state=state, logger=self.logger)
+    def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe]):
+        """
+        upon receiving an input state, return an action specification and its respective index in the given list of
+        action recipes.
+        :param state:
+        :param behavioral_state:
+        :param action_recipes:
+        :return:
+        """
 
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
@@ -52,7 +54,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         # Action specification
         # TODO: replace numpy array with fast sparse-list implementation
-        action_specs = np.full(action_recipes.__len__(), None)
+        action_specs = np.full(len(action_recipes), None)
         valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
         action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, behavioral_state)
         action_specs = list(action_specs)
@@ -83,6 +85,18 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         valid_idxs = np.where(action_specs_mask)[0]
         selected_action_index = valid_idxs[action_q_cost[valid_idxs].argmin()]
         selected_action_spec = action_specs[selected_action_index]
+
+        return selected_action_index, selected_action_spec
+
+    @prof.ProfileFunction()
+    def plan(self, state: State, nav_plan: NavigationPlanMsg):
+        action_recipes = self.action_space.recipes
+
+        # create road semantic grid from the raw State object
+        # behavioral_state contains road_occupancy_grid and ego_state
+        behavioral_state = BehavioralGridState.create_from_state(state=state, logger=self.logger)
+
+        selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes)
 
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(behavioral_state=behavioral_state,
                                                                                       action_spec=selected_action_spec,

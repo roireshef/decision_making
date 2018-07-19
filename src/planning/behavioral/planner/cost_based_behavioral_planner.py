@@ -55,6 +55,18 @@ class CostBasedBehavioralPlanner:
         self._last_action_spec: Optional[ActionSpec] = None
 
     @abstractmethod
+    def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe]):
+        """
+        upon receiving an input state, return an action specification and its respective index in the given list of
+        action recipes.
+        :param state:
+        :param behavioral_state:
+        :param action_recipes:
+        :return:
+        """
+        pass
+
+    @abstractmethod
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
         """
         Given current state and navigation plan, plans the next semantic action to be carried away. This method makes
