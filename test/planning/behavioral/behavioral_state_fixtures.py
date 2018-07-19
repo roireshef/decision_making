@@ -8,9 +8,10 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionType, AggressivenessLevel, \
     StaticActionRecipe
-from decision_making.src.state.state import OccupancyState, State, EgoState, DynamicObject, ObjectSize
+from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from mapping.src.model.map_api import MapAPI
 from mapping.src.service.map_service import MapService
+
 
 @pytest.fixture(scope='function')
 def pg_map_api():
@@ -36,9 +37,10 @@ def state_with_sorrounding_objects(pg_map_api: MapAPI):
 
     ego_pos, ego_yaw = pg_map_api.convert_road_to_global_coordinates(road_id=road_id, lon=ego_road_lon,
                                                                      lat=ego_road_lat)
-
-    ego_state = EgoState(obj_id=0, timestamp=0, x=ego_pos[0], y=ego_pos[1], z=ego_pos[2], yaw=ego_yaw,
-                         size=car_size, confidence=1.0, v_x=ego_vel, v_y=0.0, acceleration_lon=0.0, curvature=0.0)
+    ego_x, ego_y = ego_pos[0], ego_pos[1]
+    ego_state = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
+                                                     cartesian_state=[ego_x, ego_y, ego_yaw, ego_vel, 0.0, 0.0],
+                                                     size=car_size, confidence=1.0)
 
     # Generate objects at the following locations:
     obj_road_lons = [ego_road_lon - 20, ego_road_lon, ego_road_lon + 20]
@@ -57,10 +59,10 @@ def state_with_sorrounding_objects(pg_map_api: MapAPI):
                                                                              lon=obj_road_lon,
                                                                              lat=obj_road_lat)
 
-            dynamic_object = DynamicObject(obj_id=obj_id, timestamp=0, x=obj_pos[0], y=obj_pos[1], z=obj_pos[2],
-                                           yaw=obj_yaw, size=car_size, confidence=1.0, v_x=ego_vel, v_y=0.0,
-                                           acceleration_lon=0.0, curvature=0.0)
-
+            dynamic_object = DynamicObject.create_from_cartesian_state(obj_id=obj_id, timestamp=0,
+                                                                       cartesian_state=[obj_pos[0], obj_pos[1],
+                                                                                           obj_yaw, ego_vel, 0.0, 0.0],
+                                                                       size=car_size, confidence=1.0)
             dynamic_objects.append(dynamic_object)
             obj_id += 1
 
@@ -86,9 +88,10 @@ def state_with_objects_for_filtering_tracking_mode(pg_map_api: MapAPI):
     ego_pos, ego_yaw = pg_map_api.convert_road_to_global_coordinates(road_id=road_id, lon=ego_road_lon,
                                                                      lat=ego_road_lat)
 
-    ego_state = EgoState(obj_id=0, timestamp=0, x=ego_pos[0], y=ego_pos[1], z=ego_pos[2], yaw=ego_yaw,
-                         size=car_size, confidence=1.0, v_x=ego_vel, v_y=0.0,
-                         acceleration_lon=0.0, curvature=0.0)
+    ego_x, ego_y = ego_pos[0], ego_pos[1]
+    ego_state = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
+                                                     cartesian_state=[ego_x, ego_y, ego_yaw, ego_vel, 0.0, 0.0],
+                                                     size=car_size, confidence=1.0)
 
     # Generate objects at the following locations:
     obj_road_lon = ego_road_lon + 20
@@ -102,9 +105,10 @@ def state_with_objects_for_filtering_tracking_mode(pg_map_api: MapAPI):
                                                                      lon=obj_road_lon,
                                                                      lat=obj_road_lat)
 
-    dynamic_object = DynamicObject(obj_id=obj_id, timestamp=0, x=obj_pos[0], y=obj_pos[1], z=obj_pos[2],
-                                   yaw=obj_yaw, size=car_size, confidence=1.0, v_x=obj_vel, v_y=0.0,
-                                   acceleration_lon=0.0, curvature=0.0)
+    dynamic_object = DynamicObject.create_from_cartesian_state(obj_id=obj_id, timestamp=0,
+                                                               cartesian_state=[obj_pos[0], obj_pos[1],
+                                                                                   obj_yaw, obj_vel, 0.0, 0.0],
+                                                               size=car_size, confidence=1.0)
 
     dynamic_objects.append(dynamic_object)
 
@@ -130,9 +134,10 @@ def state_with_objects_for_filtering_negative_sT(pg_map_api: MapAPI):
     ego_pos, ego_yaw = pg_map_api.convert_road_to_global_coordinates(road_id=road_id, lon=ego_road_lon,
                                                                      lat=ego_road_lat)
 
-    ego_state = EgoState(obj_id=0, timestamp=0, x=ego_pos[0], y=ego_pos[1], z=ego_pos[2], yaw=ego_yaw,
-                         size=car_size, confidence=1.0, v_x=ego_vel, v_y=0.0,
-                         acceleration_lon=0.0, curvature=0.0)
+    ego_x, ego_y = ego_pos[0], ego_pos[1]
+    ego_state = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
+                                                     cartesian_state=[ego_x, ego_y, ego_yaw, ego_vel, 0.0, 0.0],
+                                                     size=car_size, confidence=1.0)
 
     # Generate objects at the following locations:
     obj_road_lon = ego_road_lon + 3.8
@@ -146,9 +151,10 @@ def state_with_objects_for_filtering_negative_sT(pg_map_api: MapAPI):
                                                                      lon=obj_road_lon,
                                                                      lat=obj_road_lat)
 
-    dynamic_object = DynamicObject(obj_id=obj_id, timestamp=0, x=obj_pos[0], y=obj_pos[1], z=obj_pos[2],
-                                   yaw=obj_yaw, size=car_size, confidence=1.0, v_x=obj_vel, v_y=0.0,
-                                   acceleration_lon=0.0, curvature=0.0)
+    dynamic_object = DynamicObject.create_from_cartesian_state(obj_id=obj_id, timestamp=0,
+                                                               cartesian_state=[obj_pos[0], obj_pos[1],
+                                                                                   obj_yaw, obj_vel, 0.0, 0.0],
+                                                               size=car_size, confidence=1.0)
 
     dynamic_objects.append(dynamic_object)
 
@@ -174,8 +180,10 @@ def state_with_objects_for_filtering_too_aggressive(pg_map_api: MapAPI):
     ego_pos, ego_yaw = pg_map_api.convert_road_to_global_coordinates(road_id=road_id, lon=ego_road_lon,
                                                                      lat=ego_road_lat)
 
-    ego_state = EgoState(obj_id=0, timestamp=0, x=ego_pos[0], y=ego_pos[1], z=ego_pos[2], yaw=ego_yaw,
-                         size=car_size, confidence=1.0, v_x=ego_vel, v_y=0.0, acceleration_lon=0.0, curvature=0.0)
+    ego_x, ego_y = ego_pos[0], ego_pos[1]
+    ego_state = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
+                                                     cartesian_state=[ego_x, ego_y, ego_yaw, ego_vel, 0.0, 0.0],
+                                                     size=car_size, confidence=1.0)
 
     # Generate objects at the following locations:
     obj_road_lon = ego_road_lon + 58
@@ -189,9 +197,10 @@ def state_with_objects_for_filtering_too_aggressive(pg_map_api: MapAPI):
                                                                      lon=obj_road_lon,
                                                                      lat=obj_road_lat)
 
-    dynamic_object = DynamicObject(obj_id=obj_id, timestamp=0, x=obj_pos[0], y=obj_pos[1], z=obj_pos[2],
-                                   yaw=obj_yaw, size=car_size, confidence=1.0, v_x=obj_vel, v_y=0.0,
-                                   acceleration_lon=0.0, curvature=0.0)
+    dynamic_object = DynamicObject.create_from_cartesian_state(obj_id=obj_id, timestamp=0,
+                                                               cartesian_state=[obj_pos[0], obj_pos[1],
+                                                                                   obj_yaw, obj_vel, 0.0, 0.0],
+                                                               size=car_size, confidence=1.0)
 
     dynamic_objects.append(dynamic_object)
 
@@ -204,7 +213,8 @@ def behavioral_grid_state(state_with_sorrounding_objects: State):
 
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state_with_objects_for_filtering_tracking_mode(state_with_objects_for_filtering_tracking_mode: State):
+def behavioral_grid_state_with_objects_for_filtering_tracking_mode(
+        state_with_objects_for_filtering_tracking_mode: State):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_tracking_mode, None)
 
 
@@ -214,7 +224,8 @@ def behavioral_grid_state_with_objects_for_filtering_negative_sT(state_with_obje
 
 
 @pytest.fixture(scope='function')
-def behavioral_grid_state_with_objects_for_filtering_too_aggressive(state_with_objects_for_filtering_too_aggressive: State):
+def behavioral_grid_state_with_objects_for_filtering_too_aggressive(
+        state_with_objects_for_filtering_too_aggressive: State):
     yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_too_aggressive, None)
 
 

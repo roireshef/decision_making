@@ -4,7 +4,6 @@ from typing import Optional, List
 
 import numpy as np
 import six
-from copy import deepcopy
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, TRAJECTORY_ARCLEN_RESOLUTION, \
@@ -24,15 +23,16 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
-from decision_making.src.planning.trajectory.trajectory_planner import SamplableTrajectory
+from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.trajectory.werling_planner import SamplableWerlingTrajectory
-from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FS_SV
+from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
+from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.planning.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
-from decision_making.src.prediction.predictor import Predictor
-from decision_making.src.state.state import State, ObjectSize, EgoState, DynamicObject
+from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
+from decision_making.src.state.map_state import MapState
+from decision_making.src.state.state import State, ObjectSize, EgoState
+from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -42,7 +42,7 @@ class CostBasedBehavioralPlanner:
     def __init__(self, action_space: ActionSpace, recipe_evaluator: Optional[ActionRecipeEvaluator],
                  action_spec_evaluator: Optional[ActionSpecEvaluator],
                  action_spec_validator: Optional[ActionSpecFiltering],
-                 value_approximator: ValueApproximator, predictor: Predictor, logger: Logger):
+                 value_approximator: ValueApproximator, predictor: EgoAwarePredictor, logger: Logger):
         self.action_space = action_space
         self.recipe_evaluator = recipe_evaluator
         self.action_spec_evaluator = action_spec_evaluator
@@ -70,7 +70,7 @@ class CostBasedBehavioralPlanner:
 
     @prof.ProfileFunction()
     def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray) -> \
-            List[BehavioralGridState]:
+            [BehavioralGridState]:
         """
         Given current state and action specifications, generate a corresponding list of future states using the
         predictor. Uses mask over list of action specifications to avoid unnecessary computation
@@ -81,41 +81,31 @@ class CostBasedBehavioralPlanner:
         """
         # create a new behavioral state at the action end
         ego = state.ego_state
-        road_id = ego.road_localization.road_id
-        road_frenet = MapService.get_instance()._rhs_roads_frenet[road_id]   # TODO: assumes everyone on the same road!
-        # lane_width = MapService.get_instance().get_road(road_id).lane_width
 
-        # TODO: This is hacky - use predictor!
-        terminal_behavioral_states = []
-        for i, spec in enumerate(action_specs):
-            # For invalid actions (masked out), return None
-            if not mask[i]:
-                terminal_behavioral_states.append(None)
-                continue
+        # TODO: assumes everyone on the same road!
+        road_id = ego.map_state.road_id
+        actions_horizons = np.array([spec.t for i, spec in enumerate(action_specs) if mask[i]])
+        terminal_timestamps = ego.timestamp_in_sec + actions_horizons
 
-            # predict ego (s,d,v_s are according to action_spec)
-            spec_v = max(spec.v, np.finfo(np.float16).eps)
-            terminal_ego_cstate = road_frenet.fstate_to_cstate(np.array([spec.s, spec_v, 0, spec.d, 0, 0]))
-            terminal_ego_state = ego.clone_cartesian_state(timestamp_in_sec=ego.timestamp_in_sec + spec.t,
-                                                           cartesian_state=terminal_ego_cstate)
+        objects_curr_fstates = np.array(
+            [dynamic_object.map_state.road_fstate for dynamic_object in state.dynamic_objects])
+        objects_terminal_fstates = self.predictor.predict_frenet_states(objects_curr_fstates, actions_horizons)
 
-            # predict objects (using road-following prediction logic, including alignment to road)
-            predicted_objects = []
-            # for obj in state.dynamic_objects:
-            #     if abs(spec.d - obj.road_localization.intra_road_lat) > lane_width/2:
-            #         continue
-            #     obj_fstate = MapUtils.get_object_road_localization(obj, road_frenet)
-            #     obj_terminal_fstate = np.array([obj_fstate[FS_SX] + obj_fstate[FS_SV] * spec.t, obj_fstate[FS_SV], 0,
-            #                                     obj_fstate[FS_DX], 0, 0])
-            #     obj_terminal_cstate = road_frenet.fstate_to_cstate(obj_terminal_fstate)
-            #     predicted_objects.append(obj.clone_cartesian_state(timestamp_in_sec=obj.timestamp_in_sec + spec.t,
-            #                                                        cartesian_state=obj_terminal_cstate))
+        # Create ego states, dynamic objects, states and finally behavioral states
+        terminal_ego_states = [ego.clone_from_map_state(MapState([spec.s, spec.v, 0, spec.d, 0, 0], road_id),
+                                                        ego.timestamp_in_sec + spec.t)
+                               for i, spec in enumerate(action_specs) if mask[i]]
+        terminal_dynamic_objects = [
+            [dynamic_object.clone_from_map_state(MapState(objects_terminal_fstates[i][j], road_id))
+             for i, dynamic_object in enumerate(state.dynamic_objects)]
+            for j, terminal_timestamp in enumerate(terminal_timestamps)]
+        terminal_states = [
+            state.clone_with(dynamic_objects=terminal_dynamic_objects[i], ego_state=terminal_ego_states[i])
+            for i in range(len(terminal_ego_states))]
 
-            # create a BehavioralGridState from State
-            terminal_state = State(None, predicted_objects, terminal_ego_state)
-            new_behavioral_state = BehavioralGridState.create_from_state(terminal_state, self.logger)
-            terminal_behavioral_states.append(new_behavioral_state)
-
+        valid_behavioral_grid_states = (BehavioralGridState.create_from_state(terminal_state, self.logger)
+                                        for terminal_state in terminal_states)
+        terminal_behavioral_states = [valid_behavioral_grid_states.__next__() if m else None for m in mask]
         return terminal_behavioral_states
 
     @staticmethod
@@ -152,6 +142,9 @@ class CostBasedBehavioralPlanner:
         """
         ego = behavioral_state.ego_state
 
+        # Get road details
+        road_id = ego.map_state.road_id
+
         # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
         # caused by the curve linearization approximation in the resampling process
         # The compensation here is multiplicative because of the different curve-fittings we use:
@@ -164,7 +157,7 @@ class CostBasedBehavioralPlanner:
         # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
         # TODO: better than sending the whole road. Fix when map service is redesigned!
         center_lane_reference_route = MapService.get_instance().get_uniform_path_lookahead(
-            road_id=ego.road_localization.road_id,
+            road_id=road_id,
             lat_shift=action_spec.d,  # THIS ASSUMES THE GOAL ALWAYS FALLS ON THE REFERENCE ROUTE
             starting_lon=0,
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
@@ -173,16 +166,13 @@ class CostBasedBehavioralPlanner:
 
         # The frenet frame used in specify (RightHandSide of road)
         rhs_reference_route = MapService.get_instance().get_uniform_path_lookahead(
-            road_id=ego.road_localization.road_id,
+            road_id=ego.map_state.road_id,
             lat_shift=0,
             starting_lon=0,
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
             steps_num=int(np.ceil(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
             navigation_plan=navigation_plan)
         rhs_frenet = FrenetSerret2DFrame(rhs_reference_route)
-
-        # Get road details
-        road_id = ego.road_localization.road_id
 
         # Convert goal state from rhs-frenet-frame to center-lane-frenet-frame
         goal_cstate = rhs_frenet.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0]))
@@ -212,10 +202,9 @@ class CostBasedBehavioralPlanner:
         """
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
-        road_frenet = MapUtils.get_road_rhs_frenet(ego)
 
         # project ego vehicle onto the road
-        ego_init_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
+        ego_init_fstate = ego.map_state.road_fstate
 
         target_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
 
@@ -226,6 +215,8 @@ class CostBasedBehavioralPlanner:
 
         poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
         poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
+
+        road_frenet = MapUtils.get_road_rhs_frenet(ego)
 
         return SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
                                           T_s=action_spec.t,

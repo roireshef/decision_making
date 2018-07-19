@@ -12,7 +12,6 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Sta
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FS_SV, FS_SA, FS_DX, FS_DA, FS_DV, FS_SX
-from decision_making.src.planning.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from mapping.src.service.map_service import MapService
@@ -44,16 +43,13 @@ class StaticActionSpace(ActionSpace):
         :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
         ego = behavioral_state.ego_state
-        road_frenet = MapUtils.get_road_rhs_frenet(ego)
-
-        # project ego vehicle onto the road
-        ego_init_fstate = MapUtils.get_ego_road_localization(ego, road_frenet)
+        ego_init_fstate = ego.map_state.road_fstate
 
         # get the relevant desired center lane latitude (from road's RHS)
-        road_id = ego.road_localization.road_id
+        road_id = ego.map_state.road_id
         road_lane_latitudes = MapService.get_instance().get_center_lanes_latitudes(road_id)
         relative_lane = np.array([action_recipe.relative_lane.value for action_recipe in action_recipes])
-        desired_lane = ego.road_localization.lane_num + relative_lane
+        desired_lane = ego.map_state.lane_num + relative_lane
         desired_center_lane_latitude = road_lane_latitudes[desired_lane]
 
         # get relevant aggressiveness weights for all actions
