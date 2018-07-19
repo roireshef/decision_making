@@ -152,6 +152,43 @@ def dynamic_objects_not_on_road():
 
 
 @pytest.fixture(scope='function')
+def dynamic_objects_negative_velocity():
+    objects = LcmPerceivedDynamicObjectList()
+
+    objects.timestamp = 3
+    objects.dynamic_objects = []
+
+    dyn_obj = LcmPerceivedDynamicObject()
+    dyn_obj.id = 1
+
+    dyn_obj.location = LcmObjectLocation()
+    dyn_obj.location.x = 5
+    dyn_obj.location.y = 1
+    dyn_obj.location.confidence = 1.0
+
+    dyn_obj.bbox = LcmObjectBbox()
+
+    dyn_obj.bbox.yaw = 3.14
+    dyn_obj.bbox.length = 2
+    dyn_obj.bbox.width = 2
+    dyn_obj.bbox.height = 2
+
+    dyn_obj.velocity = LcmObjectVelocity()
+
+    dyn_obj.velocity.v_x = 1
+    dyn_obj.velocity.v_y = 0
+    dyn_obj.velocity.omega_yaw = 0
+
+    dyn_obj.tracking_status = LcmObjectTrackingStatus()
+    dyn_obj.tracking_status.in_fov = True
+    dyn_obj.tracking_status.is_predicted = False
+
+    objects.dynamic_objects.append(dyn_obj)
+
+    yield objects
+
+
+@pytest.fixture(scope='function')
 def state():
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     v_x = 2.0
