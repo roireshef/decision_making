@@ -128,22 +128,25 @@ class QuinticMotionPredicatesCreator:
         :param T_m: specification margin from target vehicle [s]
         :param T_safety: safety margin from target vehicle [s]
         :param consider_local_minima: check validity against local minima if global minima is invalid[bool]
-        :return: 1 or 2 if given parameters will generate a feasible trajectory that meets time, velocity and
-                acceleration constraints and doesn't get into target vehicle safety zone based on the shorter or longer
-                time horizon, respectively. 0 if no feasible trajectories exist.
+        :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
+                acceleration constraints and doesn't get into target vehicle safety zone.
         """
-        time_cost_poly_coefs = \
+
+        # Get polynomial coefficients of time-jerk cost function derivative for our settings
+        time_cost_derivative_poly_coefs = \
             QuinticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
                                                               np.array([a_0]), np.array([v_0]),
                                                               np.array([v_T]), np.array([s_T]),
                                                               np.array([T_m]))[0]
-        cost_real_roots = Math.find_real_roots_in_limits(time_cost_poly_coefs, np.array([0, np.inf]))
+        # Find roots of the polynomial in order to get extremum points
+        cost_real_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([0, np.inf]))
         extremum_T = cost_real_roots[np.isfinite(cost_real_roots)]
 
         if len(extremum_T) == 0:
             return False
 
-        T = extremum_T.max()  # Later extrema is our global minimum (might be our only minimum)
+        # The extrema which is the furthest from origin is our global minimum (might be our only minimum)
+        T = extremum_T.max()
 
         global_min_is_valid = QuinticMotionPredicatesCreator.check_validity(action_type, a_0, v_0, v_T, s_T, T, T_m,
                                                                             T_safety)
@@ -173,11 +176,14 @@ class QuinticMotionPredicatesCreator:
         if T > BP_ACTION_T_LIMITS[1] + EPS:
             return False
 
+        # Get distance from goal, velocity and acceleration motion functions
         delta_s_t_func, coefs_s_der, v_t_func, a_t_func = QuinticMotionPredicatesCreator.create_quintic_motion_funcs(
             a_0, v_0,
             v_T, s_T,
             T,
             T_m=T_m)
+
+        # Check for minimal/maximal values for distance from goal, velocity and acceleration
         time_res_for_extremum_query = 0.01
         s_der_real_roots = Math.find_real_roots_in_limits(coefs_s_der, np.array(
             [time_res_for_extremum_query, T - time_res_for_extremum_query]))
@@ -189,6 +195,7 @@ class QuinticMotionPredicatesCreator:
 
         is_vel_in_range = (min_v >= VELOCITY_LIMITS[0] - EPS) and (max_v <= VELOCITY_LIMITS[1] + EPS)
         is_acc_in_range = (min_a >= LON_ACC_LIMITS[0] - EPS) and (max_a <= LON_ACC_LIMITS[1] + EPS)
+
         if action_type == ActionType.FOLLOW_VEHICLE:
             is_dist_safe = np.all(extremum_delta_s_val >= T_safety * v_T)
         elif action_type == ActionType.OVERTAKE_VEHICLE:

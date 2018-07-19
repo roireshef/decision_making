@@ -1,18 +1,16 @@
 import os
 
+from decision_making.paths import Paths
 from decision_making.src.exceptions import ResourcesNotUpToDateException
 from decision_making.src.global_constants import *
-from decision_making.paths import Paths
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFilter
 from decision_making.src.planning.types import FS_SV, FS_SA
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite, TextReadWrite
-
 # DynamicActionRecipe Filters
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
-from decision_making.test.planning.utils.optimal_control.quartic_poly_formulas import QuarticMotionPredicatesCreator
 
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):

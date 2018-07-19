@@ -105,21 +105,24 @@ class QuarticMotionPredicatesCreator:
         :param v_0: initial velocity [m/s]
         :param v_T: desired final velocity [m/s]
         :param consider_local_minima: check validity against local minima if global minima is invalid[bool]
-        :return: 1 or 2 if given parameters will generate a feasible trajectory that meets time, velocity and
-                acceleration constraints based on the shorter or longer time horizon, respectively.
-                0 if no feasible trajectories exist.
+        :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
+                acceleration constraints and doesn't get into target vehicle safety zone.
         """
-        time_cost_poly_coefs = \
+
+        # Get polynomial coefficients of time-jerk cost function derivative for our settings
+        time_cost_derivative_poly_coefs = \
             QuarticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
                                                               np.array([a_0]), np.array([v_0]),
                                                               np.array([v_T]))[0]
-        cost_real_roots = Math.find_real_roots_in_limits(time_cost_poly_coefs, np.array([0, np.inf]))
+        # Find roots of the polynomial in order to get extremum points
+        cost_real_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([0, np.inf]))
         extremum_T = cost_real_roots[np.isfinite(cost_real_roots)]
 
         if len(extremum_T) == 0:
             return False
 
-        T = extremum_T.max()  # Later extrema is our global minimum (might be our only minimum)
+        # The extrema which is the furthest from origin is our global minimum (might be our only minimum)
+        T = extremum_T.max()
 
         global_min_is_valid = QuarticMotionPredicatesCreator.check_validity(a_0, v_0, v_T, T)
 
@@ -146,8 +149,10 @@ class QuarticMotionPredicatesCreator:
         if T > BP_ACTION_T_LIMITS[1] + EPS:
             return False
 
+        # Get velocity and acceleration motion functions
         v_t_func, a_t_func = QuarticMotionPredicatesCreator.create_quartic_motion_funcs(a_0, v_0, v_T, T)
 
+        # Check for minimal/maximal values for velocity and acceleration
         time_res_for_extremum_query = 0.01
         t = np.arange(0, T + EPS, time_res_for_extremum_query)
         min_v, max_v = min(v_t_func(t)), max(v_t_func(t))
