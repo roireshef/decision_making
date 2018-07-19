@@ -90,6 +90,9 @@ class ObjectSize(PUBSUB_MSG_IMPL):
         return cls(lcmMsg.length, lcmMsg.width, lcmMsg.height)
 
 
+DynamicObjectHistory = List[DynamicObject]
+
+
 class DynamicObject(PUBSUB_MSG_IMPL):
     members_remapping = {'_cached_cartesian_state': 'cartesian_state',
                          '_cached_map_state': 'map_state'}
@@ -101,8 +104,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     size = ObjectSize
     confidence = float
 
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
-        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float) -> DynamicObject
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, history):
+        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float, DynamicObjectHistory) -> DynamicObject
         """
         Data object that hold
         :param obj_id: object id
@@ -111,7 +114,9 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param map_state: localization in a map-object's frame (road,segment,lane)
         :param size: class ObjectSize
         :param confidence: of object's existence
+        :param history: list of former states along history (first item is the oldest)
         """
+        self.history = history
         self.obj_id = obj_id
         self.timestamp = timestamp
         self._cached_cartesian_state = cartesian_state
@@ -186,8 +191,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         return DynamicObject.ticks_to_sec(self.timestamp)
 
     @classmethod
-    def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence):
-        # type: (int, int, CartesianExtendedState, ObjectSize, float) -> DynamicObject
+    def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence, history=[]):
+        # type: (int, int, CartesianExtendedState, ObjectSize, float, DynamicObjectHistory) -> DynamicObject
         """
         Constructor that gets only cartesian-state (without map-state)
         :param obj_id: object id
@@ -196,11 +201,11 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param size: class ObjectSize
         :param confidence: of object's existence
         """
-        return cls(obj_id, timestamp, cartesian_state, None, size, confidence)
+        return cls(obj_id, timestamp, cartesian_state, None, size, confidence, history)
 
     @classmethod
-    def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence):
-        # type: (int, int, MapState, ObjectSize, float) -> DynamicObject
+    def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence, history=[]):
+        # type: (int, int, MapState, ObjectSize, float, DynamicObjectHistory) -> DynamicObject
         """
         Constructor that gets only map-state (without cartesian-state)
         :param obj_id: object id
@@ -209,23 +214,24 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param size: class ObjectSize
         :param confidence: of object's existence
         """
-        return cls(obj_id, timestamp, None, map_state, size, confidence)
+        return cls(obj_id, timestamp, None, map_state, size, confidence, history)
 
-    def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None):
-        # type: (CartesianExtendedState, Optional[float]) -> DynamicObject
+    def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None, history=[]):
+        # type: (CartesianExtendedState, Optional[float], DynamicObjectHistory) -> DynamicObject
         """clones self while overriding cartesian_state and optionally timestamp"""
         return self.__class__.create_from_cartesian_state(self.obj_id,
-                                                          DynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
+                                                          DynamicObject.sec_to_ticks(
+                                                              timestamp_in_sec or self.timestamp_in_sec),
                                                           cartesian_state,
-                                                          self.size, self.confidence)
+                                                          self.size, self.confidence, history)
 
-    def clone_from_map_state(self, map_state, timestamp_in_sec=None):
-        # type: (MapState, Optional[float]) -> DynamicObject
+    def clone_from_map_state(self, map_state, timestamp_in_sec=None, history=[]):
+        # type: (MapState, Optional[float], DynamicObjectHistory) -> DynamicObject
         """clones self while overriding map_state and optionally timestamp"""
         return self.create_from_map_state(self.obj_id,
                                           DynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
                                           map_state,
-                                          self.size, self.confidence)
+                                          self.size, self.confidence, history)
 
     def serialize(self):
         # type: () -> LcmDynamicObject
@@ -251,8 +257,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
 
 class EgoState(DynamicObject):
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
-        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float) -> EgoState
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, history):
+        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float, DynamicObjectHistory) -> EgoState
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
 
@@ -265,7 +271,7 @@ class EgoState(DynamicObject):
         :param confidence: of object's existence
         """
         super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state,
-                                             map_state=map_state, size=size, confidence=confidence)
+                                             map_state=map_state, size=size, confidence=confidence, history=history)
 
     def serialize(self):
         # type: () -> LcmEgoState
