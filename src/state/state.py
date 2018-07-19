@@ -104,7 +104,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     size = ObjectSize
     confidence = float
 
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, history):
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, history=[]):
         # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float, DynamicObjectHistory) -> DynamicObject
         """
         Data object that hold
@@ -265,7 +265,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
 
 class EgoState(DynamicObject):
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, history):
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, history=[]):
         # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float, DynamicObjectHistory) -> EgoState
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
