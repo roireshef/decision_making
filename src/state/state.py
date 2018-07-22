@@ -94,6 +94,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     members_remapping = {'_cached_cartesian_state': 'cartesian_state',
                          '_cached_map_state': 'map_state'}
 
+    default_values = {'history': []}
+
     obj_id = int
     timestamp = int
     _cached_cartesian_state = CartesianExtendedState

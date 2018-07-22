@@ -12,6 +12,7 @@ from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.str_serializable import SERIALIZABLE_LEFT_OUT_FIELDS_KEY
 
 MEMBERS_REMAPPING_KEY = 'members_remapping'
+DEFAULT_VALUES_KEY = 'default_values'
 
 
 class ClassSerializer(object):
@@ -28,10 +29,31 @@ class ClassSerializer(object):
             annotations = inspect.getmembers(class_type,
                                              lambda a: not (isinstance(a, property)) and not (inspect.isroutine(a)))
             annotations = [a for a in annotations if
-                           not a[0].startswith('__') and not a[0] == MEMBERS_REMAPPING_KEY and not a[
-                                                                                                       0] == SERIALIZABLE_LEFT_OUT_FIELDS_KEY]
+                           not a[0].startswith('__')
+                           and not a[0] == MEMBERS_REMAPPING_KEY
+                           and not a[0] == DEFAULT_VALUES_KEY
+                           and not a[0] == SERIALIZABLE_LEFT_OUT_FIELDS_KEY]
 
         return annotations
+
+    @staticmethod
+    def get_default_values(class_type: Type) -> dict:
+        """
+        Gets a dictionary of the default values of all members
+        :param class_type: class type
+        :return: dictionary of default values
+        """
+        serialization_annotation = inspect.getmembers(class_type,
+                                                      lambda a: not (isinstance(a, property)) and not (
+                                                          inspect.isroutine(a)))
+
+        default_values_dict = [a[1] for a in serialization_annotation if a[0] == DEFAULT_VALUES_KEY]
+        if len(default_values_dict) > 0:
+            default_values_dict = default_values_dict[0]
+        else:
+            default_values_dict = {}
+
+        return default_values_dict
 
     @staticmethod
     def get_members_remapping(class_type: Type) -> (List[Tuple[str, str]], List[str]):
@@ -76,6 +98,7 @@ class ClassSerializer(object):
 
             annotations = ClassSerializer.get_annotations(class_type=class_type)
             members_remapping, members_remapping_keys = ClassSerializer.get_members_remapping(class_type=class_type)
+            default_values = ClassSerializer.get_default_values(class_type=class_type)
 
             for name, tpe in annotations:
 
@@ -85,6 +108,12 @@ class ClassSerializer(object):
                 else:
                     target_name = name
 
+                # If key doesn't exist, take from default values
+                if name not in message:
+                    deser_dict[target_name] = default_values[name]
+                    continue
+
+                # If None keys are allowed, put None
                 if allow_none_objects:
                     if message[name] is None:
                         deser_dict[target_name] = None
