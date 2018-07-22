@@ -2,6 +2,7 @@ import numpy as np
 from logging import Logger
 from typing import Tuple
 import rte.python.profiler as prof
+import time
 
 from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
@@ -15,7 +16,7 @@ from decision_making.src.planning.trajectory.trajectory_planner import Trajector
 from decision_making.src.planning.trajectory.werling_utils import WerlingUtils
 from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FS_SA, FS_SX, FS_DX, LIMIT_MIN, LIMIT_MAX, CartesianTrajectories, FS_DV, FS_DA, CartesianExtendedState, \
-    FrenetState2D, C_A, C_K, D5, Limits
+    FrenetState2D, C_A, C_K, D5, Limits, C_YAW
 from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
@@ -405,26 +406,36 @@ class WerlingPlanner(TrajectoryPlanner):
         The naive objects prediction in Frenet frame is used.
         :param state: the current state
         :param time_samples: time samples of ego trajectories
-        :param ego_ctrajectories: ego Frenet trajectories
+        :param ego_ctrajectories: ego cartesian trajectories
         :return: indices of safe trajectories
         """
+        st = time.time()
         # since objects' fstates are given in rhs_road_frenet, while ego_ftrajectories are given in reference_frenet,
         # we convert ego cartesian trajectories to the road frenet frame
         road_frenet = MapUtils.get_road_rhs_frenet(state.ego_state)
+        # TODO: Optimize the following command. It runs 500-1000 ms!
+        # TODO: Alternatively use rhs as the reference frame for TP, instead of lane center
         ego_ftrajectories = road_frenet.ctrajectories_to_ftrajectories(ego_ctrajectories)
+
+        time1 = time.time()-st
+        st = time.time()
 
         objects_curr_fstates = np.array([dynamic_object.map_state.road_fstate
                                          for dynamic_object in state.dynamic_objects])
-
-        # create a matrix of all objects' predictions and a matrix of objects' sizes
+        # create a matrix of all objects' predictions and a list of objects' sizes
         obj_ftraj = self.predictor.predict_frenet_states(objects_curr_fstates, time_samples)
         obj_sizes = [dynamic_object.size for dynamic_object in state.dynamic_objects]
 
-        # st = time.time()
+        time2 = time.time()-st
+        st = time.time()
+
         # calculate RSS safety for all trajectories, all objects and all timestamps
         safe_times = SafetyUtils.get_safe_times(ego_ftrajectories, state.ego_state.size, obj_ftraj, obj_sizes)
         # AND over all objects and all timestamps
         safe_trajectories = safe_times.all(axis=(1, 2))
 
-        # print('safety in TP time: %f (traj_num=%d, obj_num=%d)' % (time.time()-st, ego_ftraj.shape[0], obj_ftraj.shape[0]))
+        time3 = time.time()-st
+
+        print('safety in TP: time1=%f time2=%f time3=%f (traj_num=%d, obj_num=%d times=%d)' %
+              (time1, time2, time3, ego_ctrajectories.shape[0], obj_ftraj.shape[0], ego_ctrajectories.shape[1]))
         return np.where(safe_trajectories)[0]
