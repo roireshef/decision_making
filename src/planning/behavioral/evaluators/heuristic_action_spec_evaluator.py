@@ -14,9 +14,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionRecipe, A
     RelativeLane, ActionSpec
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.cost_functions import BP_CostFunctions
-from decision_making.src.planning.behavioral.evaluators.velocity_profile import VelocityProfile
 from decision_making.src.planning.types import FP_SX, FS_DV, FS_DX, FS_SX, FS_SV, FrenetState2D, FS_DA, LIMIT_MAX
-from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
@@ -82,6 +80,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             prediction[:, 0] = obj_fstate[FS_SX] + time_samples * obj_fstate[FS_SV]
             predictions.append(prediction)
             obj_sizes.append(np.array([obj.dynamic_object.size.length, obj.dynamic_object.size.width]))
+
         predictions = np.array(predictions)
         obj_sizes = np.array(obj_sizes)
 

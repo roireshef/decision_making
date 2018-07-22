@@ -6,10 +6,10 @@ from decision_making.src.global_constants import BP_METRICS_LANE_DEVIATION_COST_
     BP_RIGHT_LANE_COST_WEIGHT, BP_EFFICIENCY_COST_WEIGHT, BP_CALM_LANE_CHANGE_TIME
 from decision_making.src.planning.behavioral.evaluators.cost_functions import BP_CostFunctions
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
-from decision_making.src.planning.behavioral.data_objects import NavigationGoal, ActionSpec
+from decision_making.src.planning.behavioral.data_objects import ActionSpec
+from decision_making.src.planning.navigation.navigation_goal import NavigationGoal
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.types import FS_SV, FS_SX, FrenetState2D, FS_DX
-from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.service.map_service import MapService
 
 

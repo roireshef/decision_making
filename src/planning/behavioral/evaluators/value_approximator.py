@@ -1,6 +1,6 @@
 from logging import Logger
 
-from decision_making.src.planning.behavioral.data_objects import NavigationGoal
+from decision_making.src.planning.navigation.navigation_goal import NavigationGoal
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 
 
