@@ -162,7 +162,8 @@ class WerlingPlanner(TrajectoryPlanner):
         ftrajectories_refiltered_safe = ftrajectories_refiltered
         ctrajectories_filtered_safe = ctrajectories_filtered
         refiltered_indices_safe = refiltered_indices
-        safe_traj_indices = self.filter_frajectories_by_safety(state, planning_time_points, ftrajectories_refiltered)
+        safe_traj_indices = self.filter_frajectories_by_safety(state, planning_time_points, frenet,
+                                                               ftrajectories_refiltered)
         # TODO: Throw an error if no safe trajectory is found
         if safe_traj_indices.any():
             ftrajectories_refiltered_safe = ftrajectories_refiltered[safe_traj_indices]
@@ -397,19 +398,24 @@ class WerlingPlanner(TrajectoryPlanner):
         return solutions[valid_traj_slice], polynoms[valid_traj_slice], horizons[valid_traj_slice, FP_DX]
 
     @prof.ProfileFunction()
-    def filter_frajectories_by_safety(self, state: State, time_samples: np.ndarray, ego_ftraj: FrenetTrajectories2D) \
-            -> np.array:
+    def filter_frajectories_by_safety(self, state: State, time_samples: np.ndarray, frenet: FrenetSerret2DFrame,
+                                      ego_ftraj: FrenetTrajectories2D) -> np.array:
         """
         Filter frenet trajectories by RSS safety (both longitudinal & lateral).
         The naive objects prediction in Frenet frame is used.
         :param state: the current state
-        :param time_samples: time samples of
+        :param time_samples: time samples of ego trajectories
+        :param frenet: Frenet state of ego trajectories
         :param ego_ftraj: ego Frenet trajectories
         :return: indices of safe trajectories
         """
-        # create a matrix of all objects' predictions and a matrix of objects' sizes
-        objects_curr_fstates = np.array([dynamic_object.map_state.road_fstate
+        # since objects' fstates are given in rhs_road_frenet, while ego_ftrajectories are given in reference_frenet,
+        # we convert objects' cartesian states to reference_frenet frame
+        objects_curr_cstates = np.array([dynamic_object.cartesian_state
                                          for dynamic_object in state.dynamic_objects])
+        objects_curr_fstates = frenet.cpoints_to_fpoints(objects_curr_cstates)
+
+        # create a matrix of all objects' predictions and a matrix of objects' sizes
         obj_ftraj = self.predictor.predict_frenet_states(objects_curr_fstates, time_samples)
         obj_sizes = [dynamic_object.size for dynamic_object in state.dynamic_objects]
 
