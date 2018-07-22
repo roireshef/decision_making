@@ -159,6 +159,9 @@ class WerlingPlanner(TrajectoryPlanner):
                                             len(refiltered_indices), len(ftrajectories)))
 
         # filter trajectories by RSS safety
+        ftrajectories_refiltered_safe = ftrajectories_refiltered
+        ctrajectories_filtered_safe = ctrajectories_filtered
+        refiltered_indices_safe = refiltered_indices
         safe_traj_indices = self.filter_frajectories_by_safety(state, planning_time_points, ftrajectories_refiltered)
         # TODO: Throw an error if no safe trajectory is found
         if safe_traj_indices.any():
