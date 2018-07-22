@@ -1,3 +1,6 @@
+from typing import List
+from unittest.mock import patch
+
 import pytest
 import numpy as np
 
@@ -20,6 +23,9 @@ from decision_making.test.planning.trajectory.mock_trajectory_planning_facade im
 from decision_making.test.state.mock_state_module import StateModuleMock
 from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedDynamicObjectList, LcmPerceivedDynamicObject, LcmObjectLocation, \
     LcmObjectBbox, LcmObjectVelocity, LcmObjectTrackingStatus
+
+from mapping.src.service.map_service import MapService
+from mapping.test.model.testable_map_fixtures import map_api_mock
 
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
@@ -350,3 +356,49 @@ def trajectory_planner_facade(pubsub, trajectory, trajectory_visualization_msg):
 def predictor():
     logger = AV_Logger.get_logger("PREDICTOR_TEST_LOGGER")
     yield RoadFollowingPredictor(logger)
+
+
+@pytest.fixture(scope='function')
+def state_with_history():
+    with patch.object(MapService, 'get_instance', map_api_mock):
+        # Stub of occupancy grid
+        occupancy_state = OccupancyState(0, np.array([]), np.array([]))
+
+        car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
+
+        # Ego state
+        obj_road_id = 1
+        obj_road_lon_start = 15.0
+        obj_road_lon_end = 25.0
+        obj_road_lat_start = 4.5
+        obj_road_lat_end = 5.0
+
+        obj_road_lon = np.linspace(obj_road_lon_start, obj_road_lon_end, 10)
+        obj_road_lat = np.linspace(obj_road_lat_start, obj_road_lat_end, 10)
+
+        # Generate history
+        object_history: List[DynamicObject] = list()
+        for x in range(9):
+            obj_pos, obj_yaw = MapService.get_instance().convert_road_to_global_coordinates(
+                road_id=obj_road_id,
+                lon=obj_road_lon[x],
+                lat=obj_road_lat[x])
+
+            cartesian_state = np.array([obj_pos[0], obj_pos[1], obj_yaw, 0.0, 0.0, 0.0])
+            history_state = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
+                                                                 cartesian_state=cartesian_state,
+                                                                 size=car_size, confidence=1.0)
+            object_history.append(history_state)
+
+        # Generate object with history
+        obj_pos, obj_yaw = MapService.get_instance().convert_road_to_global_coordinates(
+            road_id=obj_road_id,
+            lon=obj_road_lon[9],
+            lat=obj_road_lat[9])
+        cartesian_state = np.array([obj_pos[0], obj_pos[1], obj_yaw, 0.0, 0.0, 0.0])
+
+        # Create state
+        ego_state = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
+                                                         cartesian_state=cartesian_state,
+                                                         size=car_size, confidence=1.0, history=object_history)
+        yield State(occupancy_state=occupancy_state, dynamic_objects=[], ego_state=ego_state)
