@@ -100,6 +100,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     _cached_map_state = MapState
     size = ObjectSize
     confidence = float
+    history = List['DynamicObject']
 
     def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence, history=[]):
         # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float, DynamicObjectHistory) -> DynamicObject
