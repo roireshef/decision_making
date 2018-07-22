@@ -1,6 +1,7 @@
 import numpy as np
 from logging import Logger
 from typing import Tuple
+import rte.python.profiler as prof
 
 from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
@@ -22,6 +23,7 @@ from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
+from decision_making.src.planning.utils.safety_utils import SafetyUtils
 
 
 class WerlingPlanner(TrajectoryPlanner):
@@ -156,28 +158,36 @@ class WerlingPlanner(TrajectoryPlanner):
                                             len(cartesian_refiltered_indices), len(ctrajectories),
                                             len(refiltered_indices), len(ftrajectories)))
 
+        # filter trajectories by RSS safety
+        safe_traj_indices = self.filter_frajectories_by_safety(state, planning_time_points, ftrajectories_refiltered)
+        # TODO: Throw an error if no safe trajectory is found
+        if safe_traj_indices.any():
+            ftrajectories_refiltered_safe = ftrajectories_refiltered[safe_traj_indices]
+            ctrajectories_filtered_safe = ctrajectories_filtered[safe_traj_indices]
+            refiltered_indices_safe = refiltered_indices[safe_traj_indices]
+
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
         filtered_trajectory_costs = \
-            self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
+            self._compute_cost(ctrajectories_filtered_safe, ftrajectories_refiltered_safe, state, goal_frenet_state, cost_params,
                                global_time_sample, self._predictor, self.dt)
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
         self._logger.debug("Chosen trajectory planned with lateral horizon : {}".format(
-            T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]]))
+            T_d_vals[refiltered_indices_safe[sorted_filtered_idxs[0]]]))
 
         samplable_trajectory = SamplableWerlingTrajectory(
             timestamp_in_sec=state.ego_state.timestamp_in_sec,
             T_s=T_s,
-            T_d=T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]],
+            T_d=T_d_vals[refiltered_indices_safe[sorted_filtered_idxs[0]]],
             frenet_frame=frenet,
-            poly_s_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][:6],
-            poly_d_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][6:]
+            poly_s_coefs=poly_coefs[refiltered_indices_safe[sorted_filtered_idxs[0]]][:6],
+            poly_d_coefs=poly_coefs[refiltered_indices_safe[sorted_filtered_idxs[0]]][6:]
         )
 
         return samplable_trajectory, \
-               ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
+               ctrajectories_filtered_safe[sorted_filtered_idxs, :, :(C_V + 1)], \
                filtered_trajectory_costs[sorted_filtered_idxs]
 
     @staticmethod
@@ -382,3 +392,29 @@ class WerlingPlanner(TrajectoryPlanner):
         valid_traj_slice = horizons[:, FP_SX] >= horizons[:, FP_DX]
 
         return solutions[valid_traj_slice], polynoms[valid_traj_slice], horizons[valid_traj_slice, FP_DX]
+
+    @prof.ProfileFunction()
+    def filter_frajectories_by_safety(self, state: State, time_samples: np.ndarray, ego_ftraj: FrenetTrajectories2D) \
+            -> np.array:
+        """
+        Filter frenet trajectories by RSS safety (both longitudinal & lateral).
+        The naive objects prediction in Frenet frame is used.
+        :param state: the current state
+        :param time_samples: time samples of
+        :param ego_ftraj: ego Frenet trajectories
+        :return: indices of safe trajectories
+        """
+        # create a matrix of all objects' predictions and a matrix of objects' sizes
+        objects_curr_fstates = np.array([dynamic_object.map_state.road_fstate
+                                         for dynamic_object in state.dynamic_objects])
+        obj_ftraj = self.predictor.predict_frenet_states(objects_curr_fstates, time_samples)
+        obj_sizes = [dynamic_object.size for dynamic_object in state.dynamic_objects]
+
+        # st = time.time()
+        # calculate RSS safety for all trajectories, all objects and all timestamps
+        safe_times = SafetyUtils.get_safe_times(ego_ftraj, state.ego_state.size, obj_ftraj, obj_sizes)
+        # AND over all objects and all timestamps
+        safe_trajectories = safe_times.all(axis=(1, 2))
+
+        # print('safety in TP time: %f (traj_num=%d, obj_num=%d)' % (time.time()-st, ego_ftraj.shape[0], obj_ftraj.shape[0]))
+        return np.where(safe_trajectories)[0]

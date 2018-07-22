@@ -96,14 +96,22 @@ LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
-# [sec] safe distance for specification, divided by front vehicle velocity
-SPECIFICATION_MARGIN_TIME_DELAY = 2.
-
-# [sec] time delay of AV vehicle
-SAFETY_MARGIN_TIME_DELAY = 1.
+SPECIFICATION_MARGIN_TIME_DELAY = 2
+SAFETY_MARGIN_TIME_DELAY = 1
 
 # [m] minimal lateral safe distance between objects
 LATERAL_SAFETY_MU = 0.5
+
+# [m/sec] lateral velocity blame threshold: in case of lateral danger,
+# if ego_lat_vel >= min(obj_lat_vel, LAT_VEL_BLAME_THRESH), then ego is blamed
+LAT_VEL_BLAME_THRESH = 0.1
+
+# [m/s^2] longitudinal acceleration of object during time delay in RSS
+LON_SAFETY_ACCEL_DURING_DELAY = 0
+
+# [m/s^2] lateral acceleration of object during time delay in RSS
+LAT_SAFETY_ACCEL_DURING_DELAY = 0
+
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3
