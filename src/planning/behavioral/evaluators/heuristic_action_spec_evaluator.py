@@ -14,7 +14,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionRecipe, A
     RelativeLane, ActionSpec
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.cost_functions import BP_CostFunctions
-from decision_making.src.planning.types import FP_SX, FS_DV, FS_DX, FS_SX, FS_SV, FrenetState2D, FS_DA, LIMIT_MAX
+from decision_making.src.planning.types import FP_SX, FS_DV, FS_DX, FS_SX, FS_SV, FrenetState2D, FS_DA, LIMIT_MAX, FS_SA
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
@@ -79,10 +79,10 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             prediction = np.tile(obj_fstate, samples_num).reshape(samples_num, 6)
             prediction[:, 0] = obj_fstate[FS_SX] + time_samples * obj_fstate[FS_SV]
             predictions.append(prediction)
-            obj_sizes.append(np.array([obj.dynamic_object.size.length, obj.dynamic_object.size.width]))
+            obj_sizes.append(obj.dynamic_object.size)
 
         predictions = np.array(predictions)
-        obj_sizes = np.array(obj_sizes)
+        # obj_sizes = np.array(obj_sizes)
 
         # calculate maximal safe T_d for all specs
 
@@ -117,7 +117,8 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         time4 = time.time()-st
         st = time.time()
 
-        ego_sx, ego_sv = SafetyUtils._calc_longitudinal_ego_trajectories(ego_fstate, specs_t, specs_v, specs_s, time_samples)
+        ego_sx, ego_sv = HeuristicActionSpecEvaluator._create_longitudinal_ego_trajectories(
+            ego_fstate, specs_t, specs_v, specs_s, time_samples)
 
         time5 = time.time()-st
         st = time.time()
@@ -133,7 +134,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         time6 = time.time()-st
         st = time.time()
 
-        safe_times = SafetyUtils.calc_safety_for_trajectories(ego_ftraj, ego_size, predictions, obj_sizes)
+        safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego.size, predictions, obj_sizes)
         safe_specs_T_d = safe_times.all(axis=(1, 2)).reshape(specs_t.shape[0], T_d.shape[0])
         safe_specs = safe_specs_T_d.any(axis=1)
         max_safe_T_d = T_d[T_d.shape[0] - 1 - np.argmax(np.fliplr(safe_specs_T_d), axis=1)]  # for each spec find max T_d
@@ -280,10 +281,105 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         :return: distance from the target
         """
         lane_width = MapService.get_instance().get_road(state.ego_state.map_state.road_id).lane_width
-        _, rel_lanes = SafetyUtils._get_rel_lane_from_specs(lane_width, ego_fstate, np.array([spec.d]))
+        _, rel_lanes = HeuristicActionSpecEvaluator._get_rel_lane_from_specs(lane_width, ego_fstate, np.array([spec.d]))
         forward_cell = (rel_lanes[0], RelativeLongitudinalPosition.FRONT)
         dist = np.inf
         if forward_cell in state.road_occupancy_grid:
             obj_fstate = state.road_occupancy_grid[forward_cell][0].dynamic_object.map_state.road_fstate
             dist = obj_fstate[FS_SX] - ego_fstate[FS_SX]
         return dist
+
+    @staticmethod
+    def _get_rel_lane_from_specs(lane_width: float, ego_fstate: FrenetState2D, specs_d: np.array) -> \
+            [List[RelativeLane], List[RelativeLane]]:
+        """
+        Return origin and target relative lanes
+        :param lane_width:
+        :param ego_fstate:
+        :param specs_d:
+        :return: origin & target relative lanes
+        """
+        specs_num = specs_d.shape[0]
+        d_dist = specs_d - ego_fstate[FS_DX]
+
+        # same_same_idxs = np.where(-lane_width/4 <= d_dist <= lane_width/4)[0]
+        # right_same_idxs = np.where(np.logical_and(lane_width / 4 < d_dist, d_dist <= lane_width / 2))
+        # left_same_idxs = np.where(np.logical_and(-lane_width / 2 <= d_dist, d_dist < -lane_width / 4))
+        same_left_idxs = np.where(d_dist > lane_width / 2)
+        same_right_idxs = np.where(d_dist < -lane_width / 2)
+
+        origin_lanes = np.array([RelativeLane.SAME_LANE] * specs_num)
+        target_lanes = np.array([RelativeLane.SAME_LANE] * specs_num)
+        # origin_lanes[right_same_idxs] = RelativeLane.RIGHT_LANE
+        # origin_lanes[left_same_idxs] = RelativeLane.LEFT_LANE
+        target_lanes[same_left_idxs] = RelativeLane.LEFT_LANE
+        target_lanes[same_right_idxs] = RelativeLane.RIGHT_LANE
+        return list(origin_lanes), list(target_lanes)
+
+    @staticmethod
+    def _create_longitudinal_ego_trajectories(ego_init_fstate: FrenetState2D,
+                                              specs_t: np.array, specs_v: np.array, specs_s: np.array,
+                                              time_samples: np.array) -> [np.array, np.array]:
+        """
+        Calculate longitudinal ego trajectory for the given time samples.
+        :param ego_init_fstate:
+        :param specs:
+        :param time_samples:
+        :return: x_profile, v_profile
+        """
+        # TODO: Acceleration is not calculated.
+
+        # duplicate time_samples array actions_num times
+
+        actions_num = specs_t.shape[0]
+        dup_time_samples = np.repeat(time_samples, actions_num).reshape(len(time_samples), actions_num)
+
+        ds = specs_s - ego_init_fstate[FS_SX]
+        # profiles for the cases, when dynamic object is in front of ego
+        sx = QuinticPoly1D.distance_by_constraints(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
+                                                   v_T=specs_v, ds=ds, T=specs_t, t=time_samples)
+
+        # set inf to samples outside specs_t
+        outside_samples = np.where(dup_time_samples > specs_t)
+        sx[outside_samples[1], outside_samples[0]] = np.inf
+
+        sv = QuinticPoly1D.velocity_by_constraints(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
+                                                   v_T=specs_v, ds=ds, T=specs_t, t=time_samples)
+        return ego_init_fstate[FS_SX] + sx, sv
+
+    @staticmethod
+    def _calc_lateral_ego_trajectories(ego_init_fstate: FrenetState2D, specs_t: np.array, specs_d: np.array,
+                                       T_d: np.array, time_samples: np.array) -> [np.array, np.array]:
+        """
+        Calculate lateral ego trajectory for the given time samples.
+        :param ego_init_fstate:
+        :param specs_t:
+        :param specs_d:
+        :param time_samples:
+        :return: x_profile, v_profile
+        """
+        # TODO: Acceleration is not calculated.
+
+        # duplicate time_samples array actions_num times
+        actions_num = specs_t.shape[0]
+        dup_time_samples = np.repeat(time_samples, actions_num).reshape(len(time_samples), actions_num)
+
+        dd = specs_d - ego_init_fstate[FS_DX]
+        # profiles for the cases, when dynamic object is in front of ego
+        dx = QuinticPoly1D.distance_by_constraints(a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV],
+                                                   v_T=0, ds=dd, T=T_d, t=time_samples)
+
+        dv = QuinticPoly1D.velocity_by_constraints(a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV],
+                                                   v_T=0, ds=dd, T=T_d, t=time_samples)
+
+        # fill all elements of dx & dv beyond T_d by the values of dx & dv at T_d
+        for i, td in enumerate(T_d):
+            last_sample = np.where(time_samples >= td)[0][0]
+            dx[:, last_sample+1:] = dx[:, last_sample:last_sample+1]
+            dv[:, last_sample+1:] = dv[:, last_sample:last_sample+1]
+        # set inf to samples outside specs_t
+        outside_samples = np.where(dup_time_samples > specs_t)
+        dx[outside_samples[1], outside_samples[0]] = np.inf
+
+        return ego_init_fstate[FS_DX] + dx, dv
+
