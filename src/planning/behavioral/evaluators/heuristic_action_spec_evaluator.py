@@ -7,7 +7,7 @@ import time
 import sys
 
 from decision_making.src.global_constants import SPECIFICATION_MARGIN_TIME_DELAY, SAFETY_MARGIN_TIME_DELAY, \
-    LAT_CALM_ACC, MINIMAL_STATIC_ACTION_TIME, BP_ACTION_T_LIMITS
+    LAT_CALM_ACC, MINIMAL_STATIC_ACTION_TIME, BP_ACTION_T_LIMITS, EPS
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, \
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionType, \
@@ -89,9 +89,9 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         st_tot = time.time()
         st = time.time()
 
-        T_d = np.arange(3, 7 + np.finfo(np.float16).eps)
-        T_d_num = T_d.shape[0]
-        A_inv = QuinticPoly1D.inv_time_constraints_tensor(T_d)
+        T_d_options = np.arange(7, 3 - EPS, -1)
+        T_d_num = T_d_options.shape[0]
+        A_inv = QuinticPoly1D.inv_time_constraints_tensor(T_d_options)
         (zeros, ones) = (np.zeros(len(specs_d)), np.ones(len(specs_d)))
         constraints_d = np.array([ego_fstate[FS_DX] * ones, ego_fstate[FS_DV] * ones, ego_fstate[FS_DA] * ones,
                                   specs_d, zeros, zeros])  # 6 x len(specs_d)
@@ -110,7 +110,7 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         st = time.time()
 
         # fill all elements of ftraj_d beyond T_d by the values of ftraj_d at T_d
-        for i, td in enumerate(T_d):
+        for i, td in enumerate(T_d_options):
             last_sample = np.where(time_samples >= td)[0][0]
             ftraj_d[i::T_d_num, last_sample+1:, :] = ftraj_d[i::T_d_num, last_sample:last_sample+1, :]
 
@@ -123,21 +123,19 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
         time5 = time.time()-st
         st = time.time()
 
-        ego_sx = np.tile(ego_sx, T_d.shape[0]).reshape(specs_t.shape[0] * T_d.shape[0], samples_num)
-        ego_sv = np.tile(ego_sv, T_d.shape[0]).reshape(specs_t.shape[0] * T_d.shape[0], samples_num)
+        ego_sx = np.tile(ego_sx, T_d_options.shape[0]).reshape(specs_t.shape[0] * T_d_options.shape[0], samples_num)
+        ego_sv = np.tile(ego_sv, T_d_options.shape[0]).reshape(specs_t.shape[0] * T_d_options.shape[0], samples_num)
         zeros = np.zeros(ego_sx.shape)
 
         ego_ftraj = np.dstack((ego_sx, ego_sv, zeros, ftraj_d[:, :, 0], ftraj_d[:, :, 1], zeros))
-
-        ego_size = np.array([ego.size.length, ego.size.width])
 
         time6 = time.time()-st
         st = time.time()
 
         safe_times = SafetyUtils.get_safe_times(ego_ftraj, ego.size, predictions, obj_sizes)
-        safe_specs_T_d = safe_times.all(axis=(1, 2)).reshape(specs_t.shape[0], T_d.shape[0])
+        safe_specs_T_d = safe_times.all(axis=(1, 2)).reshape(specs_t.shape[0], T_d_options.shape[0])
         safe_specs = safe_specs_T_d.any(axis=1)
-        max_safe_T_d = T_d[T_d.shape[0] - 1 - np.argmax(np.fliplr(safe_specs_T_d), axis=1)]  # for each spec find max T_d
+        max_safe_T_d = T_d_options[np.argmax(safe_specs_T_d, axis=1)]  # for each spec find max T_d
 
         time7 = time.time()-st
         time_tot = time.time() - st_tot
@@ -159,10 +157,16 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
             T_d = T_d_array[i]
 
             if not safe_specs[i]:
-                print('unsafe action %3d(%d): lane %d dist=%.2f [t=%.2f td=%.2f s=%.2f v=%.2f]' %
+                unsafe_objects = np.where(np.logical_not(safe_times[T_d_options.shape[0] * i, :, :].all(axis=-1)))[0]
+                unsafe_time = np.where(np.logical_not(safe_times[T_d_options.shape[0] * i, unsafe_objects[0], :]))[0][0]
+                rel_obj_pos = [predictions[unsafe_objects[0], 0, FS_SX] - ego_fstate[FS_SX],
+                               predictions[unsafe_objects[0], 0, FS_DX] - ego_fstate[FS_DX]]
+                print('unsafe action %3d(%d): lane %d dist=%.2f [t=%.2f td=%.2f s=%.2f v=%.2f] '
+                      'unsafe_obj=%s unsafe_t=%d rel_obj_pos=[%.2f, %.2f]' %
                       (spec_orig_idxs[i], recipe.aggressiveness.value, ego_lane + recipe.relative_lane.value,
                        HeuristicActionSpecEvaluator._dist_to_target(behavioral_state, ego_fstate, spec),
-                       spec.t, T_d, spec.s - ego_fstate[0], spec.v))
+                       spec.t, T_d, spec.s - ego_fstate[0], spec.v, unsafe_objects, unsafe_time,
+                       rel_obj_pos[0], rel_obj_pos[1]))
                 continue
             T_d_max = max_safe_T_d[i]
 
