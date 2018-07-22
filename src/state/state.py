@@ -240,7 +240,10 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         lcm_msg.size = self.size.serialize()
         lcm_msg.confidence = self.confidence
         lcm_msg.history_length = len(self.history)
-        lcm_msg.history = self.history
+        if (isinstance(self, EgoState)):
+            lcm_msg.history = [history_state.serialize().dynamic_obj for history_state in self.history]
+        else:
+            lcm_msg.history = [history_state.serialize() for history_state in self.history]
         return lcm_msg
 
     @classmethod
@@ -294,7 +297,7 @@ class EgoState(DynamicObject):
         return cls(dyn_obj.obj_id, dyn_obj.timestamp
                    , dyn_obj._cached_cartesian_state, dyn_obj._cached_map_state
                    , dyn_obj.size
-                   , dyn_obj.confidence)
+                   , dyn_obj.confidence, dyn_obj.history)
 
 
 class State(PUBSUB_MSG_IMPL):
