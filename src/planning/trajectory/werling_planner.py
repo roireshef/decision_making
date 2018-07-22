@@ -413,7 +413,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # we convert objects' cartesian states to reference_frenet frame
         objects_curr_cstates = np.array([dynamic_object.cartesian_state
                                          for dynamic_object in state.dynamic_objects])
-        objects_curr_fstates = frenet.cpoints_to_fpoints(objects_curr_cstates)
+        objects_curr_fstates = frenet.ctrajectory_to_ftrajectory(objects_curr_cstates)
 
         # create a matrix of all objects' predictions and a matrix of objects' sizes
         obj_ftraj = self.predictor.predict_frenet_states(objects_curr_fstates, time_samples)
