@@ -11,7 +11,7 @@ from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATI
     DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, \
     OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, \
     DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS, DEFAULT_DISTANCE_TO_NAVIGATION_GOAL
+    LAT_ACC_LIMITS, DEFAULT_DISTANCE_TO_NAVIGATION_GOAL, SAFETY_MARGIN_TIME_DELAY
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
@@ -27,7 +27,7 @@ from decision_making.src.planning.behavioral.semantic_actions_utils import Seman
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
-from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
+from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, LIMIT_MAX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -153,7 +153,8 @@ class CostBasedBehavioralPlanner:
         # Due to that, a point's longitude-value will be different between the 2 curves.
         # This error is accumulated depending on the actual length of the curvature -
         # when it is long, the error will potentially be big.
-        lookahead_distance = action_spec.s * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
+        lookahead_distance = action_spec.s * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO + \
+            action_spec.v * SAFETY_MARGIN_TIME_DELAY + action_spec.v ** 2 / (2*LAT_ACC_LIMITS[LIMIT_MAX])
 
         # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
         # TODO: better than sending the whole road. Fix when map service is redesigned!
