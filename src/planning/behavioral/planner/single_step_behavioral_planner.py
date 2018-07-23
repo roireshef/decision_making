@@ -40,10 +40,10 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         """
         upon receiving an input state, return an action specification and its respective index in the given list of
         action recipes.
-        :param state:
-        :param behavioral_state:
-        :param action_recipes:
-        :return:
+        :param state: the current world state
+        :param behavioral_state: processed behavioral state
+        :param action_recipes: a list of enumerated semantic actions [ActionRecipe].
+        :return: a tuple of the selected action index and selected action spec itself (int, ActionSpec).
         """
 
         # Recipe filtering

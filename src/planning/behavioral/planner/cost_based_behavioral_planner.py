@@ -59,10 +59,10 @@ class CostBasedBehavioralPlanner:
         """
         upon receiving an input state, return an action specification and its respective index in the given list of
         action recipes.
-        :param state:
-        :param behavioral_state:
-        :param action_recipes:
-        :return:
+        :param state: the current world state
+        :param behavioral_state: processed behavioral state
+        :param action_recipes: a list of enumerated semantic actions [ActionRecipe].
+        :return: a tuple of the selected action index and selected action spec itself (int, ActionSpec).
         """
         pass
 
@@ -74,7 +74,7 @@ class CostBasedBehavioralPlanner:
         and evaluating actions. Its output will be further handled and used to create a trajectory in Trajectory Planner
         and has the form of TrajectoryParams, which includes the reference route, target time, target state to be in,
         cost params and strategy.
-        :param state:
+        :param state: the current world state
         :param nav_plan:
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
