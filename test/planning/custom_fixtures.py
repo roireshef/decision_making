@@ -385,7 +385,7 @@ def state_with_history():
                 lat=obj_road_lat[x])
 
             cartesian_state = np.array([obj_pos[0], obj_pos[1], obj_yaw, 0.0, 0.0, 0.0])
-            history_state = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
+            history_state = DynamicObject.create_from_cartesian_state(obj_id=0, timestamp=0,
                                                                  cartesian_state=cartesian_state,
                                                                  size=car_size, confidence=1.0)
             object_history.append(history_state)

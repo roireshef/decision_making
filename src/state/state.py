@@ -243,10 +243,11 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         lcm_msg.size = self.size.serialize()
         lcm_msg.confidence = self.confidence
         lcm_msg.history_length = len(self.history)
-        if (isinstance(self, EgoState)):
-            lcm_msg.history = [history_state.serialize().dynamic_obj for history_state in self.history]
-        else:
-            lcm_msg.history = [history_state.serialize() for history_state in self.history]
+        # if (isinstance(self, EgoState)):
+        #     lcm_msg.history = [history_state.serialize().dynamic_obj for history_state in self.history]
+        # else:
+        lcm_msg.history = [history_state.serialize() for history_state in self.history]
+
         return lcm_msg
 
     @classmethod
