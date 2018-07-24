@@ -1,5 +1,4 @@
-from decision_making.src.planning.types import FrenetState2D, C_X, C_Y, CartesianExtendedState, FS_DX
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.types import C_X, C_Y, CartesianExtendedState, FS_DX, FS_SX
 from decision_making.src.state.map_state import MapState
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
@@ -46,5 +45,6 @@ class MapUtils:
         :return: Returns true of the object is on the road. False otherwise.
         """
         road_width = MapService.get_instance().get_road(road_id=map_state.road_id).road_width
-        is_on_road = road_width + ROAD_SHOULDERS_WIDTH > map_state.road_fstate[FS_DX] > -ROAD_SHOULDERS_WIDTH
-        return is_on_road
+        is_on_road_lat = road_width + ROAD_SHOULDERS_WIDTH > map_state.road_fstate[FS_DX] > -ROAD_SHOULDERS_WIDTH
+        is_on_road_lon = map_state.road_fstate[FS_SX] < 995
+        return is_on_road_lat and is_on_road_lon
