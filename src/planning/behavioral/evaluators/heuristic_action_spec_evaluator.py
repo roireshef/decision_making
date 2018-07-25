@@ -162,11 +162,11 @@ class HeuristicActionSpecEvaluator(ActionSpecEvaluator):
                 rel_obj_pos = [predictions[unsafe_objects[0], 0, FS_SX] - ego_fstate[FS_SX],
                                predictions[unsafe_objects[0], 0, FS_DX] - ego_fstate[FS_DX]]
                 print('unsafe action %3d(%d): lane %d dist=%.2f [t=%.2f td=%.2f s=%.2f v=%.2f] '
-                      'unsafe_obj=%s unsafe_t=%d rel_obj_pos=[%.2f, %.2f]' %
+                      'unsafe_obj=%s unsafe_t=%.2f rel_obj_pos=[%.2f, %.2f] obj_v=%.2f' %
                       (spec_orig_idxs[i], recipe.aggressiveness.value, ego_lane + recipe.relative_lane.value,
                        HeuristicActionSpecEvaluator._dist_to_target(behavioral_state, ego_fstate, spec),
-                       spec.t, T_d, spec.s - ego_fstate[0], spec.v, unsafe_objects, unsafe_time,
-                       rel_obj_pos[0], rel_obj_pos[1]))
+                       spec.t, T_d, spec.s - ego_fstate[0], spec.v, unsafe_objects, unsafe_time * times_step,
+                       rel_obj_pos[0], rel_obj_pos[1], predictions[unsafe_objects[0], 0, FS_SV]))
                 continue
             T_d_max = max_safe_T_d[i]
 
