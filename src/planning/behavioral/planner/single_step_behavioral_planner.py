@@ -9,7 +9,8 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import \
     BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, ActionRecipe
+from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, ActionRecipe, \
+    ActionSpec
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionRecipeEvaluator, \
     ActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
@@ -36,21 +37,18 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         super().__init__(action_space, recipe_evaluator, action_spec_evaluator, action_spec_validator, value_approximator,
                          predictor, logger)
 
-    def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe]):
+    def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
+                      recipes_mask: List[bool]) -> (int, ActionSpec):
         """
         upon receiving an input state, return an action specification and its respective index in the given list of
         action recipes.
+        :param recipes_mask: A list of boolean values, which are True if respective action recipe in
+        input argument action_recipes is valid, else False.
         :param state: the current world state
         :param behavioral_state: processed behavioral state
         :param action_recipes: a list of enumerated semantic actions [ActionRecipe].
         :return: a tuple of the selected action index and selected action spec itself (int, ActionSpec).
         """
-
-        # Recipe filtering
-        recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
-
-        self.logger.debug('Number of actions originally: %d, valid: %d',
-                          self.action_space.action_space_size, np.sum(recipes_mask))
 
         # Action specification
         # TODO: replace numpy array with fast sparse-list implementation
@@ -96,7 +94,13 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # behavioral_state contains road_occupancy_grid and ego_state
         behavioral_state = BehavioralGridState.create_from_state(state=state, logger=self.logger)
 
-        selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes)
+        # Recipe filtering
+        recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
+
+        self.logger.debug('Number of actions originally: %d, valid: %d',
+                          self.action_space.action_space_size, np.sum(recipes_mask))
+
+        selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes, recipes_mask)
 
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(behavioral_state=behavioral_state,
                                                                                       action_spec=selected_action_spec,

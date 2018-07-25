@@ -24,8 +24,8 @@ from decision_making.src.planning.behavioral.evaluators.value_approximator impor
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
+from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
@@ -55,10 +55,13 @@ class CostBasedBehavioralPlanner:
         self._last_action_spec: Optional[ActionSpec] = None
 
     @abstractmethod
-    def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe]):
+    def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
+                      recipes_mask: List[bool]):
         """
         upon receiving an input state, return an action specification and its respective index in the given list of
         action recipes.
+        :param recipes_mask: A list of boolean values, which are True if respective action recipe in
+        input argument action_recipes is valid, else False.
         :param state: the current world state
         :param behavioral_state: processed behavioral state
         :param action_recipes: a list of enumerated semantic actions [ActionRecipe].
