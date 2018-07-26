@@ -5,7 +5,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec
 
 from decision_making.src.global_constants import BP_RIGHT_LANE_COST_WEIGHT, BP_EFFICIENCY_COST_WEIGHT, \
     LAT_JERK_COST_WEIGHT, LON_JERK_COST_WEIGHT, BP_DEFAULT_DESIRED_SPEED, \
-    BP_METRICS_LANE_DEVIATION_COST_WEIGHT, BP_EFFICIENCY_COST_CONVEXITY_RATIO
+    BP_METRICS_LANE_DEVIATION_COST_WEIGHT, BP_EFFICIENCY_COST_CONVEXITY_RATIO, EPS
 from decision_making.src.planning.types import FS_SA, FS_SV, FS_SX, FS_DA, FS_DV, FS_DX
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.state.state import State
@@ -47,33 +47,35 @@ class BP_CostFunctions:
         return costs
 
     @staticmethod
-    def calc_comfort_cost(ego_fstate: np.array, spec: ActionSpec, T_d_max: float, T_d_approx: float) -> [float, float]:
+    def calc_comfort_cost(state: State, specs: List[ActionSpec], T_d_max: np.array=None) -> [np.array, np.array]:
         """
         Calculate comfort cost for lateral and longitudinal movement
-        :param ego_fstate: initial ego Frenet state
-        :param spec: action spec
-        :param T_d_max: [sec] the largest possible lateral time imposed by safety. T_d_max=spec.t if it's not imposed
-        :param T_d_approx: [sec] heuristic approximation of lateral time, according to the initial and end constraints
+        :param state: current state
+        :param specs: action specifications list
+        :param T_d_max: [sec] array: the largest possible lateral time imposed by safety. T_d_max=spec.t if it's not imposed
         :return: comfort cost in units of the general performance metrics cost
         """
-        if 0 == T_d_max < T_d_approx:
-            return 0, np.inf
-        lat_cost = lon_cost = 0
+        ego_fstate = state.ego_state.map_state.road_fstate
+        TSVD = np.array([np.array([spec.t, spec.s, spec.v, spec.d]) for spec in specs])
+        specs_t, specs_s, specs_v, specs_d = np.split(TSVD, 4, axis=1)
+
+        T_d = T_s = np.clip(specs_t, EPS, 1./EPS)
+        if T_d_max is not None:
+            T_d = np.clip(np.minimum(specs_t, T_d_max), EPS, 1./EPS)
 
         # lateral jerk
-        T_d = min(T_d_approx, T_d_max)
-        (dx, dv) = (spec.d - ego_fstate[FS_DX], ego_fstate[FS_DV])
-        if 0. < T_d < np.inf and (abs(dx) > 0.5 or dx * dv < 0):  # prevent singular point for short
-            lat_jerk = QuinticPoly1D.cumulative_jerk_from_constraints(ego_fstate[FS_DA], dv, 0, dx, T_d)
-            lat_cost = lat_jerk * LAT_JERK_COST_WEIGHT
+        (dx, dv) = (specs_d - ego_fstate[FS_DX], ego_fstate[FS_DV])
+        # if ego is very close to the target lane center, T_d_max=0 should not cause infinite lateral jerk
+        dx[np.where(np.abs(dx) < 0.1)] = 0
+        lat_jerks = QuinticPoly1D.cumulative_jerk_from_constraints(ego_fstate[FS_DA], dv, 0, dx, T_d)
+        lat_costs = lat_jerks * LAT_JERK_COST_WEIGHT
 
         # longitudinal jerk
-        if spec.t > 0:
-            lon_jerk = QuinticPoly1D.cumulative_jerk_from_constraints(
-                ego_fstate[FS_SA], ego_fstate[FS_SV], spec.v, spec.s - ego_fstate[FS_SX], spec.t)
-            lon_cost = lon_jerk * LON_JERK_COST_WEIGHT
+        lon_jerks = QuinticPoly1D.cumulative_jerk_from_constraints(
+            ego_fstate[FS_SA], ego_fstate[FS_SV], specs_v, specs_s - ego_fstate[FS_SX], T_s)
+        lon_costs = lon_jerks * LON_JERK_COST_WEIGHT
 
-        return lon_cost, lat_cost
+        return lon_costs, lat_costs
 
     @staticmethod
     def calc_right_lane_cost(state: State, specs: List[ActionSpec]) -> np.array:
