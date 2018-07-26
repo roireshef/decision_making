@@ -226,6 +226,9 @@ EGO_ID = 0
 # [m] Default height for objects - State Module
 DEFAULT_OBJECT_Z_VALUE = 0.
 
+#Cutoff thershold to avoid negative velocities. Hack.
+VELOCITY_MINIMAL_THRESHOLD = 0.001
+
 # Whether we filter out dynamic objects that are not on the road
 # Request by perception for viewing recordings in non-mapped areas.
 # SHOULD ALWAYS BE TRUE FOR NORMAL DM FLOW

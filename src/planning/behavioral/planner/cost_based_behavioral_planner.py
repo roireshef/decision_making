@@ -24,8 +24,8 @@ from decision_making.src.planning.behavioral.evaluators.value_approximator impor
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
+from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, LIMIT_MAX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
@@ -55,6 +55,21 @@ class CostBasedBehavioralPlanner:
         self._last_action_spec: Optional[ActionSpec] = None
 
     @abstractmethod
+    def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
+                      recipes_mask: List[bool]):
+        """
+        upon receiving an input state, return an action specification and its respective index in the given list of
+        action recipes.
+        :param recipes_mask: A list of boolean values, which are True if respective action recipe in
+        input argument action_recipes is valid, else False.
+        :param state: the current world state
+        :param behavioral_state: processed behavioral state
+        :param action_recipes: a list of enumerated semantic actions [ActionRecipe].
+        :return: a tuple of the selected action index and selected action spec itself (int, ActionSpec).
+        """
+        pass
+
+    @abstractmethod
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
         """
         Given current state and navigation plan, plans the next semantic action to be carried away. This method makes
@@ -62,7 +77,7 @@ class CostBasedBehavioralPlanner:
         and evaluating actions. Its output will be further handled and used to create a trajectory in Trajectory Planner
         and has the form of TrajectoryParams, which includes the reference route, target time, target state to be in,
         cost params and strategy.
-        :param state:
+        :param state: the current world state
         :param nav_plan:
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
