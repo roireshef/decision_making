@@ -1,5 +1,4 @@
 import time
-import time
 import traceback
 from logging import Logger
 from typing import Dict
@@ -17,7 +16,6 @@ from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
-from decision_making.src.planning.trajectory.fixed_trajectory_planner import FixedSamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, CartesianPath2D
