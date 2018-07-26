@@ -38,7 +38,7 @@ class StaticActionSpace(ActionSpace):
         """
         This method's purpose is to specify the enumerated actions (recipes) that the agent can take.
         Each semantic action (ActionRecipe) is translated into a terminal state specification (ActionSpec).
-        :param action_recipes: an enumerated semantic action [ActionRecipe].
+        :param action_recipes: a list of enumerated semantic actions [ActionRecipe].
         :param behavioral_state: a Frenet state of ego at initial point
         :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
