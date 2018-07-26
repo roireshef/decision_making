@@ -3,7 +3,7 @@ from typing import Tuple
 import numpy as np
 
 from decision_making.src.global_constants import SPECIFICATION_MARGIN_TIME_DELAY, SAFETY_MARGIN_TIME_DELAY, \
-    LON_ACC_LIMITS
+    LON_ACC_LIMITS, LAT_ACC_LIMITS
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.behavioral.evaluators.cost_functions import BP_CostFunctions
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
@@ -12,13 +12,18 @@ from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPol
 
 
 def cost_shaping():
-    efficiency_weight = efficiency_vs_comfort()
+    efficiency_weight = efficiency_vs_lon_comfort()
     lane_dev_weight, right_lane_weight = efficiency_vs_right_lane(efficiency_weight)
     print('comfort weight=1, efficiency_weight=%.2f, lane_dev_weight=%.2f, right_lane_weight=%.2f' %
           (efficiency_weight, lane_dev_weight, right_lane_weight))
 
 
-def efficiency_vs_comfort() -> float:
+def efficiency_vs_lat_comfort() -> float:
+    v = 10
+    max_curvature = LAT_ACC_LIMITS[1] / v**2
+
+
+def efficiency_vs_lon_comfort() -> float:
     """
     Let a static action: acceleration from 0 to 100 km/h. T is unknown.
     Let the desired maximal acceleration for the action is LON_ACC_LIMITS[1] (3 m/s^2).
