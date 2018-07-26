@@ -97,6 +97,24 @@ def static_cartesian_state() -> CartesianExtendedState:
 
 
 @pytest.fixture(scope='function')
+def init_ego_cartesian_state() -> CartesianExtendedState:
+    yield np.array([50.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+
+
+@pytest.fixture(scope='function')
+def predicted_ego_cartesian_state_0() -> CartesianExtendedState:
+    yield np.array([51.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+
+
+@pytest.fixture(scope='function')
+def predicted_ego_cartesian_state_1() -> CartesianExtendedState:
+    yield np.array([59.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+
+@pytest.fixture(scope='function')
+def predicted_ego_cartesian_state_2() -> CartesianExtendedState:
+    yield np.array([70.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+
+@pytest.fixture(scope='function')
 def prediction_timestamps() -> np.array:
     yield np.array([1.0, 9.0, 20.0])
 
@@ -113,12 +131,22 @@ def init_ego_state(static_cartesian_state: CartesianExtendedState, car_size: Obj
     yield EgoState.create_from_cartesian_state(obj_id=EGO_OBJECT_ID, timestamp=int(0e9),
                                                cartesian_state=static_cartesian_state, size=car_size, confidence=0)
 
+@pytest.fixture(scope='function')
+def init_dynamic_ego_state(init_ego_cartesian_state: CartesianExtendedState, car_size: ObjectSize) -> EgoState:
+    yield EgoState.create_from_cartesian_state(obj_id=EGO_OBJECT_ID, timestamp=int(0e9),
+                                               cartesian_state=init_ego_cartesian_state, size=car_size, confidence=0)
+
 
 @pytest.fixture(scope='function')
 def init_state(init_ego_state: EgoState, init_dyn_obj: DynamicObject) -> State:
     yield State(ego_state=init_ego_state, dynamic_objects=[init_dyn_obj],
                 occupancy_state=OccupancyState(0, np.array([]), np.array([])))
 
+
+@pytest.fixture(scope='function')
+def dynamic_init_state(init_dynamic_ego_state: EgoState, init_dyn_obj: DynamicObject) -> State:
+    yield State(ego_state=init_dynamic_ego_state, dynamic_objects=[init_dyn_obj],
+                occupancy_state=OccupancyState(0, np.array([]), np.array([])))
 
 @pytest.fixture(scope='function')
 def unaligned_dynamic_object(predicted_cartesian_state_1_constant_yaw: CartesianExtendedState, prediction_timestamps,
@@ -212,6 +240,29 @@ def predicted_static_ego_states(static_cartesian_state: CartesianExtendedState, 
 
     yield ego_states
 
+
+@pytest.fixture(scope='function')
+def predicted_dynamic_ego_states(predicted_ego_cartesian_state_0: CartesianExtendedState,
+                                 predicted_ego_cartesian_state_1: CartesianExtendedState,
+                                 predicted_ego_cartesian_state_2: CartesianExtendedState,
+                                         prediction_timestamps: np.ndarray) -> List[EgoState]:
+    ego_states = [
+        EgoState.create_from_cartesian_state(obj_id=EGO_OBJECT_ID,
+                                             timestamp=int(prediction_timestamps[0] * 1e9),
+                                             cartesian_state=predicted_ego_cartesian_state_0, size=car_size,
+                                             confidence=0),
+        EgoState.create_from_cartesian_state(obj_id=EGO_OBJECT_ID,
+                                             timestamp=int(prediction_timestamps[1] * 1e9),
+                                             cartesian_state=predicted_ego_cartesian_state_1,
+                                             size=car_size, confidence=0),
+
+        EgoState.create_from_cartesian_state(obj_id=EGO_OBJECT_ID,
+                                             timestamp=int(prediction_timestamps[2] * 1e9),
+                                             cartesian_state=predicted_ego_cartesian_state_2,
+                                             size=car_size, confidence=0)
+    ]
+
+    yield ego_states
 
 @pytest.fixture(scope='function')
 def ego_samplable_trajectory(static_cartesian_state: CartesianExtendedState) -> SamplableTrajectory:
