@@ -417,7 +417,7 @@ class QuinticPoly1D(Poly1D):
                720 * a5 ** 2 * T ** 5
 
     @staticmethod
-    def cumulative_jerk_from_constraints(a_0: float, v_0: float, v_T: float, ds: float, T: float):
+    def cumulative_jerk_from_constraints(a_0: float, v_0: float, v_T: float, ds: np.array, T: np.array):
         """
         Computes cumulative 1D jerk from initial constraints (0, v_0, a_0) and end constraints (ds, v_T, 0)
         :param a_0: [m/s^2] initial acceleration
