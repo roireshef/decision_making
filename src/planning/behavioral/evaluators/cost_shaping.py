@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import numpy as np
 
 from decision_making.src.global_constants import SPECIFICATION_MARGIN_TIME_DELAY, SAFETY_MARGIN_TIME_DELAY, \
@@ -9,21 +7,19 @@ from decision_making.src.planning.behavioral.evaluators.cost_functions import BP
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D, Poly1D
+from decision_making.src.state.map_state import MapState
+from decision_making.src.state.state import State, EgoState, ObjectSize
 
+ROAD_ID = 20
 
 def cost_shaping():
-    efficiency_weight = efficiency_vs_lon_comfort()
+    efficiency_weight = efficiency_vs_comfort()
     lane_dev_weight, right_lane_weight = efficiency_vs_right_lane(efficiency_weight)
     print('comfort weight=1, efficiency_weight=%.2f, lane_dev_weight=%.2f, right_lane_weight=%.2f' %
           (efficiency_weight, lane_dev_weight, right_lane_weight))
 
 
-def efficiency_vs_lat_comfort() -> float:
-    v = 10
-    max_curvature = LAT_ACC_LIMITS[1] / v**2
-
-
-def efficiency_vs_lon_comfort() -> float:
+def efficiency_vs_comfort() -> float:
     """
     Let a static action: acceleration from 0 to 100 km/h. T is unknown.
     Let the desired maximal acceleration for the action is LON_ACC_LIMITS[1] (3 m/s^2).
@@ -62,8 +58,11 @@ def efficiency_vs_lon_comfort() -> float:
             poly_s = WerlingPlanner._solve_1d_poly(constraints_s[np.newaxis], T, QuarticPoly1D)[0]
             sT = Math.polyval2d(poly_s[np.newaxis], np.array([float(T)]))
             spec = ActionSpec(t=T, v=vT, s=sT, d=0)
-            efficiency_costs[T] = BP_CostFunctions.calc_efficiency_cost(fstate, spec, w, vT)
-            comfort_costs[T], _ = BP_CostFunctions.calc_comfort_cost(fstate, spec, 0, 0)
+            ego = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=MapState(fstate, ROAD_ID),
+                                                 size=ObjectSize(0,0,0), confidence=0)
+            state = State(None, [], ego)
+            efficiency_costs[T] = BP_CostFunctions.calc_efficiency_cost(state, [spec], w, vT)
+            comfort_costs[T], _ = BP_CostFunctions.calc_comfort_cost(state, [spec])
         dist_from_correct_T[i] = abs(np.argmin(efficiency_costs + comfort_costs) - T_by_accel)
 
     efficiency_weight = efficiency_weights_list[np.argmin(dist_from_correct_T)]
@@ -105,7 +104,10 @@ def efficiency_vs_right_lane(efficiency_weight: float) -> [float, float]:
     long_T = dist_to_goal/slow_v
     fstate = np.array([0, slow_v, 0, 0, 0, 0])
     spec = ActionSpec(t=long_T, v=slow_v, s=dist_to_goal, d=0)
-    lane0_costs = BP_CostFunctions.calc_efficiency_cost(fstate, spec, efficiency_weight, desired_v)
+    ego = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=MapState(fstate, ROAD_ID),
+                                         size=ObjectSize(0,0,0), confidence=0)
+    state = State(None, [], ego)
+    lane0_costs = BP_CostFunctions.calc_efficiency_cost(state, [spec], efficiency_weight, desired_v)
 
     car_length = 4
     lat_comfort_cost, T_d = calc_lane_change_comfort_cost()
@@ -123,8 +125,11 @@ def calc_lane_change_comfort_cost():
     lane_width = 3.6
     T_d = 7
     fstate = np.array([0, 0, 0, 0, 0, 0])
-    spec = ActionSpec(0, 0, 0, d=lane_width)
-    _, lat_comfort_cost = BP_CostFunctions.calc_comfort_cost(fstate, spec, T_d, T_d)
+    spec = ActionSpec(t=T_d, v=0, s=0, d=lane_width)
+    ego = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=MapState(fstate, ROAD_ID),
+                                         size=ObjectSize(0,0,0), confidence=0)
+    state = State(None, [], ego)
+    _, lat_comfort_cost = BP_CostFunctions.calc_comfort_cost(state, [spec])
     return lat_comfort_cost, T_d
 
 
