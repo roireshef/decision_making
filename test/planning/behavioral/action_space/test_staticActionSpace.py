@@ -23,7 +23,7 @@ def test_specifyGoals_closeToTargetVelocity_specifyNotFail():
     ego_vel = target_vel + 0.01
     ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon,
                                                                                        road_mid_lat - lane_width)
-    ego = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
+    ego = EgoState.create_from_cartesian_state(obj_id=1, timestamp=0,
                                                cartesian_state=[ego_cpoint[0], ego_cpoint[1], ego_yaw, ego_vel, 0, 0],
                                                size=size, confidence=0)
 

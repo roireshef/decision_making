@@ -11,7 +11,7 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmOccupancyState
 from common_data.lcm.generatedFiles.gm_lcm import LcmState
 
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC, EGO_OBJ_ID
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K
 from decision_making.src.state.map_state import MapState
 from common_data.lcm.python.utils.lcm_utils import LCMUtils
@@ -365,15 +365,17 @@ class State(PUBSUB_MSG_IMPL):
         :param target_obj_id: the id of the requested object
         :return: the dynamic_object matching the requested id
         """
+        if target_obj_id == EGO_OBJ_ID:
+            return state.ego_state
+        else:
+            selected_objects = [obj for obj in state.dynamic_objects if obj.obj_id == target_obj_id]
 
-        selected_objects = [obj for obj in state.dynamic_objects if obj.obj_id == target_obj_id]
+            # Verify that object exists in state exactly once
+            if len(selected_objects) != 1:
+                raise MultipleObjectsWithRequestedID(
+                    'Found %d matching objects for object ID %d' % (len(selected_objects), target_obj_id))
 
-        # Verify that object exists in state exactly once
-        if len(selected_objects) != 1:
-            raise MultipleObjectsWithRequestedID(
-                'Found %d matching objects for object ID %d' % (len(selected_objects), target_obj_id))
-
-        return selected_objects[0]
+            return selected_objects[0]
 
     # TODO: remove when access to dynamic objects according to dictionary will be available.
     @classmethod

@@ -11,7 +11,8 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedDynamicObjectList
 from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedSelfLocalization
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID, \
-    UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS, LOG_MSG_STATE_MODULE_PUBLISH_STATE, VELOCITY_MINIMAL_THRESHOLD
+    UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS, LOG_MSG_STATE_MODULE_PUBLISH_STATE, VELOCITY_MINIMAL_THRESHOLD, \
+    EGO_OBJ_ID
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.planning.types import FS_SV
 from decision_making.src.planning.utils.transformations import Transformations
@@ -101,6 +102,10 @@ class StateModule(DmModule):
             ''' lcm_dyn_obj is an instance of LcmPerceivedDynamicObject class '''
             in_fov = lcm_dyn_obj.tracking_status.in_fov
             id = lcm_dyn_obj.id
+
+            # Check that object id is not Ego's object id
+            assert id is not EGO_OBJ_ID
+
             if in_fov:
                 # object is in FOV, so we take its latest detection.
                 x = lcm_dyn_obj.location.x
