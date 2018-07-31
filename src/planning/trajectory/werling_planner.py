@@ -166,8 +166,8 @@ class WerlingPlanner(TrajectoryPlanner):
         safe_traj_indices = self.filter_trajectories_by_safety(state, planning_time_points, ftrajectories_refiltered,
                                                                frenet)
         # Throw an error if no safe trajectory is found
-        if safe_traj_indices.any():
-            raise NoSafeTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s. " %
+        if not safe_traj_indices.any():
+            raise NoSafeTrajectoriesFound("No safe trajectories found. time: %f, goal: %s, state: %s. " %
                                           (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', '')))
 
         ftrajectories_refiltered_safe = ftrajectories_refiltered[safe_traj_indices]
