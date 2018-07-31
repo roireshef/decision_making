@@ -93,3 +93,9 @@ LIMIT_MAX = 1
 
 # BehavioralGridState cell tuple-indices
 LAT_CELL, LON_CELL = 0, 1
+
+# Object's dimensions
+OBJ_LENGTH, OBJ_WIDTH = 0, 1
+
+# Object's size as numpy array of shape [OBJ_LENGTH, OBJ_WIDTH]
+ObjectSizeArray = np.ndarray

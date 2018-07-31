@@ -4,7 +4,8 @@ from typing import Tuple
 import rte.python.profiler as prof
 import copy
 
-from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
+from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories, \
+    NoSafeTrajectoriesFound
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
     TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES
@@ -162,16 +163,16 @@ class WerlingPlanner(TrajectoryPlanner):
                                             len(refiltered_indices), len(ftrajectories)))
 
         # filter trajectories by RSS safety
-        ftrajectories_refiltered_safe = ftrajectories_refiltered
-        ctrajectories_filtered_safe = ctrajectories_filtered
-        refiltered_indices_safe = refiltered_indices
         safe_traj_indices = self.filter_trajectories_by_safety(state, planning_time_points, ftrajectories_refiltered,
                                                                frenet)
-        # TODO: Throw an error if no safe trajectory is found
+        # Throw an error if no safe trajectory is found
         if safe_traj_indices.any():
-            ftrajectories_refiltered_safe = ftrajectories_refiltered[safe_traj_indices]
-            ctrajectories_filtered_safe = ctrajectories_filtered[safe_traj_indices]
-            refiltered_indices_safe = refiltered_indices[safe_traj_indices]
+            raise NoSafeTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s. " %
+                                          (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', '')))
+
+        ftrajectories_refiltered_safe = ftrajectories_refiltered[safe_traj_indices]
+        ctrajectories_filtered_safe = ctrajectories_filtered[safe_traj_indices]
+        refiltered_indices_safe = refiltered_indices[safe_traj_indices]
 
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
@@ -412,8 +413,6 @@ class WerlingPlanner(TrajectoryPlanner):
         :param frenet: Frenet frame (reference lane center)
         :return: indices of safe trajectories
         """
-        import time
-        st = time.time()
         # since objects' fstates are given in rhs_road_frenet, while ego_ftrajectories are given in reference_frenet,
         # we convert objects' cstate to the lane center reference frame
         objects_curr_fstates = []
@@ -423,6 +422,8 @@ class WerlingPlanner(TrajectoryPlanner):
                 obj_fstate = frenet.cstate_to_fstate(dynamic_object.cartesian_state)
                 objects_curr_fstates.append(obj_fstate)
                 obj_sizes.append(dynamic_object.size)
+            # Part of the objects may be too far (not affected by safety) and outside the reference frame.
+            # We don't care them here.
             except OutOfSegmentFront:
                 pass
         if len(objects_curr_fstates) == 0:
@@ -436,8 +437,4 @@ class WerlingPlanner(TrajectoryPlanner):
         # AND over all objects and all timestamps
         safe_trajectories = safe_times.all(axis=(1, 2))
 
-        time = time.time()-st
-
-        print('safety in TP: time=%f (traj_num=%d, obj_num=%d times=%d)' %
-              (time, ego_ftrajectories.shape[0], obj_ftraj.shape[0], ego_ftrajectories.shape[1]))
         return np.where(safe_trajectories)[0]
