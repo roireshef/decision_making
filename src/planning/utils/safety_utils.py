@@ -152,6 +152,7 @@ class SafetyUtils:
                                          2 * max_brake), 0) + \
                     (1 - ego_ahead) * (ego_vel * ego_response_time + ego_acceleration_dist) + \
                     ego_ahead * (obj_vel * obj_response_time + obj_acceleration_dist) + margin
+
         return sign_of_lon_relative_to_obj * lon_relative_to_obj > safe_dist
 
     @staticmethod
@@ -206,6 +207,7 @@ class SafetyUtils:
         lat_vel_blame = np.logical_or(-sign_of_lat_relative_to_obj * ego_lat_vel >
                                       np.clip(sign_of_lat_relative_to_obj * obj_lat_vel, 0, LAT_VEL_BLAME_THRESH),
                                       -sign_of_lat_relative_to_obj * action_lat_dir > 0)
+
         return sign_of_lat_relative_to_obj * lat_relative_to_obj > safe_dist, lat_vel_blame
 
     @staticmethod

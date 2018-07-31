@@ -15,7 +15,7 @@ def default_object_size():
 @pytest.fixture(scope='module')
 def T_s():
     """
-    :return: longitudinal planning time of testable trajectories
+    longitudinal planning time of testable trajectories
     """
     return 10
 
