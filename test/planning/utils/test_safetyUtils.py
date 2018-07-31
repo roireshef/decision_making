@@ -1,10 +1,9 @@
 import numpy as np
 import pytest
 
-from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
 from decision_making.src.state.state import ObjectSize
+from decision_making.test.planning.utils.trajectory_utils import TrajectoryUtils
 
 
 @pytest.fixture(scope='function')
@@ -58,8 +57,8 @@ def test_calcSafetyForTrajectories_safetyWrtFrontObject_allCasesShouldComplyRSS(
     :param expected: (bool ground truth) expected safety result for every scenario in the list @pytest.mark.parametrize
     """
     obj_size = default_object_size()
-    ego_ftraj = create_trajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
-    obj_ftraj = create_trajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
+    ego_ftraj = TrajectoryUtils.create_ftrajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
+    obj_ftraj = TrajectoryUtils.create_ftrajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
     actual_safe = SafetyUtils.get_safe_times(ego_ftraj, obj_size, obj_ftraj, [obj_size]).all(axis=-1)[0][0]
     assert actual_safe == expected
 
@@ -104,8 +103,8 @@ def test_calcSafetyForTrajectories_safetyWrtLeftBackObject_allCasesShouldComplyR
     :param expected: (bool ground truth) expected safety result for every scenario in the list @pytest.mark.parametrize
     """
     obj_size = default_object_size()
-    ego_ftraj = create_trajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
-    obj_ftraj = create_trajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
+    ego_ftraj = TrajectoryUtils.create_ftrajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
+    obj_ftraj = TrajectoryUtils.create_ftrajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
     actual_safe = SafetyUtils.get_safe_times(ego_ftraj, obj_size, obj_ftraj, [obj_size]).all(axis=-1)[0][0]
     assert actual_safe == expected
 
@@ -144,8 +143,8 @@ def test_calcSafetyForTrajectories_safetyWrtLeftFrontObject_allCasesShouldComply
     :param expected: (bool ground truth) expected safety result for every scenario in the list @pytest.mark.parametrize
     """
     obj_size = default_object_size()
-    ego_ftraj = create_trajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
-    obj_ftraj = create_trajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
+    ego_ftraj = TrajectoryUtils.create_ftrajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
+    obj_ftraj = TrajectoryUtils.create_ftrajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
     actual_safe = SafetyUtils.get_safe_times(ego_ftraj, obj_size, obj_ftraj, [obj_size]).all(axis=-1)[0][0]
     assert actual_safe == expected
 
@@ -192,8 +191,8 @@ def test_calcSafetyForTrajectories_safetyWrtLeftObject_allCasesShouldComplyRSS(
     :param expected: (bool ground truth) expected safety result for every scenario in the list @pytest.mark.parametrize
     """
     obj_size = default_object_size()
-    ego_ftraj = create_trajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
-    obj_ftraj = create_trajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
+    ego_ftraj = TrajectoryUtils.create_ftrajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
+    obj_ftraj = TrajectoryUtils.create_ftrajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
     actual_safe = SafetyUtils.get_safe_times(ego_ftraj, obj_size, obj_ftraj, [obj_size]).all(axis=-1)[0][0]
     assert actual_safe == expected
 
@@ -230,39 +229,7 @@ def test_calcSafetyForTrajectories_safetyWrtRearObject_allCasesShouldComplyRSS(
     :param expected: (bool ground truth) expected safety result for every scenario in the list @pytest.mark.parametrize
     """
     obj_size = default_object_size()
-    ego_ftraj = create_trajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
-    obj_ftraj = create_trajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
+    ego_ftraj = TrajectoryUtils.create_ftrajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
+    obj_ftraj = TrajectoryUtils.create_ftrajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
     actual_safe = SafetyUtils.get_safe_times(ego_ftraj, obj_size, obj_ftraj, [obj_size]).all(axis=-1)[0][0]
     assert actual_safe == expected
-
-
-def create_trajectory(v0: float, vT: float, lane0: int, laneT: int, lon0: float=0, T_d: float=T_s()):
-    """
-    Create Frenet trajectory (quartic for longitudinal axis, quintic for lateral axis) 
-    Create trajectory (for ego or object) for given start/end velocities, start/end lane centers, relative longitude, T_d
-    Used by all RSS tests.
-    :param v0: initial velocity
-    :param vT: end velocity
-    :param lane0: initial lane
-    :param laneT: end lane
-    :param lon0: initial relative longitude (wrt initial ego longitude ego_lon)
-    :param T_d: lateral motion time
-    :return: resulting Frenet trajectory
-    """
-    times_step = 0.1
-    time_range = np.arange(0, T_s() + 0.001, times_step)
-    ego_lon = 200
-    lane_wid = 3.5
-    center_lane_lats = lane_wid / 2 + np.arange(0, 2 * lane_wid + 0.001, lane_wid)  # 3 lanes
-
-    constraints_s = np.array([[ego_lon + lon0, v0, 0, vT, 0]])
-    constraints_d = np.array([[center_lane_lats[lane0], 0, 0, center_lane_lats[laneT], 0, 0]])
-    poly_s = WerlingPlanner._solve_1d_poly(constraints_s, T_s(), QuarticPoly1D)
-    fstates_s = QuarticPoly1D.polyval_with_derivatives(poly_s, time_range)
-    poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T_d, QuinticPoly1D)
-    fstates_d = QuinticPoly1D.polyval_with_derivatives(poly_d, time_range)
-    if T_d < T_s():  # fill all samples beyond T_d by the sample at T_d
-        T_d_sample = int(T_d / times_step)
-        fstates_d[:, T_d_sample+1:, :] = fstates_d[:, T_d_sample:T_d_sample+1, :]
-    ftraj = np.dstack((fstates_s, fstates_d))
-    return ftraj
