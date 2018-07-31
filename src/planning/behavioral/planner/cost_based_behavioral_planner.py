@@ -27,7 +27,6 @@ from decision_making.src.planning.trajectory.samplable_trajectory import Samplab
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, LIMIT_MAX
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
@@ -164,15 +163,7 @@ class CostBasedBehavioralPlanner:
             navigation_plan=navigation_plan)
 
         # The frenet frame used in specify (RightHandSide of road)
-        rhs_reference_route = MapService.get_instance().get_uniform_path_lookahead(
-            road_id=ego.map_state.road_id,
-            lat_shift=0,
-            starting_lon=0,
-            lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
-            steps_num=int(np.ceil(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
-            navigation_plan=navigation_plan)
-        rhs_frenet = FrenetSerret2DFrame(rhs_reference_route)
-
+        rhs_frenet = MapService.get_instance()._rhs_roads_frenet[ego.map_state.road_id]
         # Convert goal state from rhs-frenet-frame to center-lane-frenet-frame
         goal_cstate = rhs_frenet.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0]))
 
