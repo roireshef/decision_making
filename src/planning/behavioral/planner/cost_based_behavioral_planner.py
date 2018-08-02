@@ -24,10 +24,9 @@ from decision_making.src.planning.behavioral.evaluators.value_approximator impor
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
+from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
@@ -55,6 +54,21 @@ class CostBasedBehavioralPlanner:
         self._last_action_spec: Optional[ActionSpec] = None
 
     @abstractmethod
+    def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
+                      recipes_mask: List[bool]):
+        """
+        upon receiving an input state, return an action specification and its respective index in the given list of
+        action recipes.
+        :param recipes_mask: A list of boolean values, which are True if respective action recipe in
+        input argument action_recipes is valid, else False.
+        :param state: the current world state
+        :param behavioral_state: processed behavioral state
+        :param action_recipes: a list of enumerated semantic actions [ActionRecipe].
+        :return: a tuple of the selected action index and selected action spec itself (int, ActionSpec).
+        """
+        pass
+
+    @abstractmethod
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
         """
         Given current state and navigation plan, plans the next semantic action to be carried away. This method makes
@@ -62,7 +76,7 @@ class CostBasedBehavioralPlanner:
         and evaluating actions. Its output will be further handled and used to create a trajectory in Trajectory Planner
         and has the form of TrajectoryParams, which includes the reference route, target time, target state to be in,
         cost params and strategy.
-        :param state:
+        :param state: the current world state
         :param nav_plan:
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
         """
@@ -165,15 +179,7 @@ class CostBasedBehavioralPlanner:
             navigation_plan=navigation_plan)
 
         # The frenet frame used in specify (RightHandSide of road)
-        rhs_reference_route = MapService.get_instance().get_uniform_path_lookahead(
-            road_id=ego.map_state.road_id,
-            lat_shift=0,
-            starting_lon=0,
-            lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
-            steps_num=int(np.ceil(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
-            navigation_plan=navigation_plan)
-        rhs_frenet = FrenetSerret2DFrame(rhs_reference_route)
-
+        rhs_frenet = MapService.get_instance()._rhs_roads_frenet[ego.map_state.road_id]
         # Convert goal state from rhs-frenet-frame to center-lane-frenet-frame
         goal_cstate = rhs_frenet.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0]))
 
