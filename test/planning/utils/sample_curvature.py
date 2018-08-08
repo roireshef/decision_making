@@ -18,29 +18,30 @@ from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, EgoState, ObjectSize
 
 
+# number of segments, by which the curvature array is divided (for encoding)
+CURVATURE_ENCODING_PARTS_NUM = 6
+
+
 def sample_curvature(num_samples: int) -> [np.array, np.array]:
     """
     Build a smooth road with zigzags along global X axis
     :param num_samples: number of random samples
     :return: 2D matrix of random samples; each sample contains: init velocity, end velocity, encoded road curvature
     """
-    # define road parameters
-    num_road_zigzags = 4                # number of zigzags of the curve road
-    road_length = 100                   # length of the encoded part of the road
-    zigzag_sigma = 0.023 * road_length  # zigzags' strength
-
     # define velocity parameters
-    vel_mean = 12                       # mean velocity (normal truncated distribution)
-    vel_sigma = 6                       # sigma velocity (normal truncated distribution)
+    vel_mean = 24.                      # mean velocity (normal truncated distribution)
+    vel_sigma = vel_mean/2              # sigma velocity (normal truncated distribution)
     min_limit = vel_mean - 2 * vel_sigma
     max_limit = vel_mean + 2 * vel_sigma
 
-    # define curvature encoding parameters
-    curvature_pieces_num = 8            # number of segments, by which the curvature array is divided (for encoding)
+    # define road parameters
+    num_road_zigzags = 4                # number of zigzags of the curve road
+    road_length = vel_mean * 12         # length of the encoded part of the road
+    zigzag_sigma = (5.5 / vel_mean**2) * road_length  # zigzags' strength such that half of samples have acceleration > 3
 
     max_accel_arr = np.zeros(num_samples)
     vel_arr = np.empty((0, 2))
-    curvatures_arr = np.empty((0, curvature_pieces_num))
+    curvatures_arr = np.empty((0, CURVATURE_ENCODING_PARTS_NUM))
 
     for i in range(num_samples):
 
@@ -88,18 +89,36 @@ def sample_curvature(num_samples: int) -> [np.array, np.array]:
         max_lat_acc = np.max(np.abs(ctrajectory[:, C_K]) * ctrajectory[:, C_V] ** 2)
         max_accel_arr[i] = max_lat_acc
 
-        all_curvatures = np.abs(frenet.k[from_idx:from_idx+road_length, 0])
-        size = curvature_pieces_num * int(all_curvatures.shape[0] / curvature_pieces_num)
-        curvatures = np.split(all_curvatures[:size], curvature_pieces_num)
-        curvature_pieces = np.max(curvatures, axis=1)
-        curvatures_arr = np.concatenate((curvatures_arr, curvature_pieces[np.newaxis]), axis=0)
+        encoded_curvature = encode_curvature(frenet.k[from_idx:from_idx+int(road_length), 0])
+        curvatures_arr = np.concatenate((curvatures_arr, encoded_curvature[np.newaxis]), axis=0)
 
         #plt.subplot(2, 1, 2)
         #plt.plot(frenet.k[from_idx:till_idx, 0])
         #plt.show()
         #print('%.2f %.2f %s %.2f\n' % (v_0, v_T, curvatures, max_lat_acc), end=" ")
 
-    # print('%d' % (len(np.where(max_accel_arr < 3)[0])))
+    print('%d' % (len(np.where(max_accel_arr < 3)[0])))
 
-    # return np.c_[vel_arr*0.1, curvatures_arr*1000], max_accel_arr
-    return np.c_[np.square(vel_arr)*0.01, np.reciprocal(curvatures_arr)*0.001], max_accel_arr
+    # return np.c_[vel_arr*0.1, curvatures_arr*1000], max_accel_arr, np.array([0, 1, 0, 1, 0, 1])
+
+    sq_vel = np.square(vel_arr)
+    curve_radius = np.reciprocal(curvatures_arr)
+
+    vel_normalize_factor = 2. / vel_mean**2
+    curv_normalize_factor = 0.2 / vel_mean**2
+
+    return np.c_[sq_vel * vel_normalize_factor, curve_radius * curv_normalize_factor], max_accel_arr
+
+
+def encode_curvature(full_curvature: np.array) -> np.array:
+    """
+    Encode road's curvature array, such that it may be used as a part of encoded state representation.
+    The method: split the curvature array by CURVATURE_ENCODING_PARTS_NUM and take a maximum curvature for each part.
+    :param full_curvature: 1D array of road curvatures per sample point of Frenet frame.
+    :return: 1D array: encoded curvature
+    """
+    # reduce the full_curvature array such that its size is divided by CURVATURE_ENCODING_PARTS_NUM
+    aligned_array_size = full_curvature.shape[0] - full_curvature.shape[0] % CURVATURE_ENCODING_PARTS_NUM
+    aligned_abs_curvature = np.abs(full_curvature[:aligned_array_size])
+    split_curvatures = np.split(aligned_abs_curvature, CURVATURE_ENCODING_PARTS_NUM)
+    return np.max(split_curvatures, axis=1)  # return maximum curvature in each part

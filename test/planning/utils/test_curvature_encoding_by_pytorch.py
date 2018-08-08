@@ -14,6 +14,7 @@ def test_curvature_encoding_by_pytorch():
 
     train_dataset = create_tensor_dataset(10000)
     train_loader = data_utils.DataLoader(train_dataset, batch_size=64, shuffle=True)
+
     net = Net(train_dataset.data_tensor.size(1))
     pytorch_train(net, train_loader)
 
@@ -49,7 +50,10 @@ def pytorch_train(net: Net, trainloader: DataLoader):
     optimizer = optim.Adam(net.parameters(), lr=1e-4)
 
     for epoch in range(500):  # loop over the dataset multiple times
+
         running_loss = 0.0
+        steps = 0
+
         # With a batch size of 64 in each iteration
         for i, data in enumerate(trainloader, 0):  # trainloader reads data
             inputs, labels = data
@@ -62,25 +66,28 @@ def pytorch_train(net: Net, trainloader: DataLoader):
             loss.backward()
             optimizer.step()
 
-            running_loss = loss.data[0]
+            running_loss += loss.data[0]
+            steps += 1
 
-        print(f"Loss {running_loss}")
+        print(f"Train loss {running_loss/steps}")
 
     print('Finished Training')
 
 
 def pytorch_test(net: Net, testloader: DataLoader):
-    error = 0.
-    total = 0.
+    total_error = 0.
+    samples = 0.
     classification_errors = 0
     output_thresh = 3
     for data in testloader:
         inputs, labels = data
         outputs = net(Variable(inputs))
-        error += (outputs.data[0, 0] - labels[0]) ** 2
+        loss = outputs.data[0, 0] - labels[0]
+        total_error += loss ** 2
         classification_errors += int((outputs.data[0, 0] - output_thresh) * (labels[0] - output_thresh) < 0)
-        total += 1
-    print('test error = %f, classification_error = %f' % (np.sqrt(error/total), classification_errors/total))
+        samples += 1
+        print('Test loss %f' % loss)
+    print('test error = %f; classification error=%f' % (np.sqrt(total_error/samples), classification_errors/samples))
 
 
 # def pytorch_train1(features, targets):
