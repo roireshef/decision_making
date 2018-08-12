@@ -81,7 +81,8 @@ class DynamicActionSpace(ActionSpace):
         # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
         # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later
         # when setting T
-        T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
+        with np.errstate(invalid='ignore'):
+            T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
 
         # latitudinal difference to target
         init_latitudinal_difference = desired_center_lane_latitude - ego_init_fstate[FS_DX]
