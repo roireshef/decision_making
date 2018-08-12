@@ -111,8 +111,6 @@ class FrenetSerret2DFrame:
         # velocity (s_v=0)
         non_zero_vel = (s_v > 0)
         if not non_zero_vel.all():  # s_v has zero velocity elements
-            # this code will work only if s_v has zeros either at the beginning or at the end of the trajectories
-            # or both, and will NOT work if s_v has zeros in the middle of some trajectory
             d_tag = np.zeros(s_v.shape)
             d_tag[non_zero_vel] = d_v[non_zero_vel] / s_v[non_zero_vel]  # d_tag = d_v / s_v
             # build d_tagtag similarly to d_tag
