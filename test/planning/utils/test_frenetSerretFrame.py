@@ -213,9 +213,7 @@ def test_fitFrenet_originalRoutePointsAreProjected_errorsAreLowEnough():
 def test_ctrajectoryToFtrajectoryToCtrajectory_zeroVelocityTwoWayConversion_accuratePoseAndVelocity():
     POSITION_ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
     VEL_ACCURACY_TH = 1e-3  # up to 1 [mm/sec] error in velocity
-    ACC_ACCURACY_TH = 1e-1  # up to 1 [mm/sec^2] error in acceleration
-    CURV_ACCURACY_TH = 1e-1  # up to 0.1 [1/m] error in curvature
-    YAW_ACCURACY_TH = 1e-2  # up to 0.01 [rad] error in yaw
+    YAW_ACCURACY_TH = 1e-3  # up to 0.01 [rad] error in yaw
 
     route_points = RouteFixture.get_route(lng=200, k=0.05, step=1, lat=100, offset=-50.0)
     cpoints = np.array([[100.0, 0.0, -np.pi/8, 0, 1.0, 1e-2], [130.0, 0.0, np.pi/6, 0, 1.1, 1e-2],
@@ -231,19 +229,13 @@ def test_ctrajectoryToFtrajectoryToCtrajectory_zeroVelocityTwoWayConversion_accu
     # currently there is no guarantee on the accuracy of acceleration and curvature
     position_errors = np.linalg.norm(cpoints[:, :C_YAW] - new_cstates[:, :C_YAW], axis=1)
     vel_errors = np.abs(cpoints[:, C_V] - new_cstates[:, C_V])
-    acc_errors = np.abs(cpoints[:, C_A] - new_cstates[:, C_A])
-    curv_errors = np.abs(cpoints[:, C_K] - new_cstates[:, C_K])
 
     # verify that zero velocity points take their road-relative yaw from the nearest non-zero-vel point on the trajectory
-    assert abs(new_cstates[0, C_YAW] - cpoints[2, C_YAW]) < YAW_ACCURACY_TH
-    assert abs(new_cstates[1, C_YAW] - cpoints[2, C_YAW]) < YAW_ACCURACY_TH
-    assert abs(new_cstates[-1, C_YAW] - cpoints[-2, C_YAW]) < YAW_ACCURACY_TH
+    assert abs(new_cstates[0, C_YAW]) < YAW_ACCURACY_TH
+    assert abs(new_cstates[1, C_YAW]) < YAW_ACCURACY_TH
+    assert abs(new_cstates[-1, C_YAW]) < YAW_ACCURACY_TH
 
     np.testing.assert_array_less(position_errors, POSITION_ACCURACY_TH,
                                  err_msg='FrenetMovingFrame position conversions aren\'t accurate enough')
     np.testing.assert_array_less(vel_errors, VEL_ACCURACY_TH,
                                  err_msg='FrenetMovingFrame velocity conversions aren\'t accurate enough')
-    np.testing.assert_array_less(acc_errors, ACC_ACCURACY_TH,
-                                 err_msg='FrenetMovingFrame acceleration conversions aren\'t accurate enough')
-    np.testing.assert_array_less(curv_errors, CURV_ACCURACY_TH,
-                                 err_msg='FrenetMovingFrame curvature conversions aren\'t accurate enough')

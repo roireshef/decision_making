@@ -4,7 +4,7 @@ import numpy as np
 from scipy.interpolate.fitpack2 import UnivariateSpline
 
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_SPLINE_FIT_ORDER, \
-    TINY_CURVATURE, EPS
+    TINY_CURVATURE
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
     FrenetTrajectory2D, CartesianPath2D, FrenetTrajectories2D, CartesianExtendedTrajectories, FS_SX, \
     FS_SV, FS_SA, FS_DX, FS_DV, FS_DA, C_Y, C_X, CartesianExtendedTrajectory, FrenetPoint, C_YAW, C_K, C_V, C_A, \
@@ -85,8 +85,7 @@ class FrenetSerret2DFrame:
         """
         return self.ftrajectories_to_ctrajectories(np.array([ftrajectory]))[0]
 
-    def ftrajectories_to_ctrajectories(self, ftrajectories: FrenetTrajectories2D) -> \
-            CartesianExtendedTrajectories:
+    def ftrajectories_to_ctrajectories(self, ftrajectories: FrenetTrajectories2D) -> CartesianExtendedTrajectories:
         """
         Transforms Frenet-frame trajectories to cartesian-frame trajectories, using tensor operations.
         For formulas derivations please refer to: http://ieeexplore.ieee.org/document/5509799/
@@ -116,23 +115,10 @@ class FrenetSerret2DFrame:
             # or both, and will NOT work if s_v has zeros in the middle of some trajectory
             d_tag = np.zeros(s_v.shape)
             d_tag[non_zero_vel] = d_v[non_zero_vel] / s_v[non_zero_vel]  # d_tag = d_v / s_v
-            # for each trajectory, fill all ending elements of d_tag matching to s_v=0 by the value d_tag[k],
-            # such that s_v[k] is the last non-zero element of s_v for this trajectory
-            d_tag[:, 1:] += np.cumsum(d_tag[:, :-1] * (s_v[:, 1:] == 0), axis=1)
-            # for each trajectory, fill all starting elements of d_tag matching to s_v=0 by the value d_tag[k],
-            # such that s_v[k] is the first non-zero element of s_v for this trajectory
-            d_tag[:, :-1] += np.fliplr(np.cumsum(np.fliplr(d_tag)[:, :-1] * (np.fliplr(s_v)[:, 1:] == 0), axis=1))
-
             # build d_tagtag similarly to d_tag
             d_tagtag = np.zeros(s_v.shape)
             # for all non-zero s_v, d_tagtag = (d_a - d_tag * s_a) / (s_v ** 2)
             d_tagtag[non_zero_vel] = (d_a[non_zero_vel] - d_tag[non_zero_vel] * s_a[non_zero_vel]) / (s_v[non_zero_vel] ** 2)
-            # for each trajectory, fill all ending elements of d_tagtag matching to s_v=0 by the value of d_tagtag[k],
-            # such that s_v[k] is the last non-zero element of s_v for this trajectory
-            d_tagtag[:, 1:] += np.cumsum(d_tagtag[:, :-1] * (s_v[:, 1:] == 0), axis=1)
-            # for each trajectory, fill all starting elements of d_tagtag matching to s_v=0 by the value d_tagtag[k],
-            # such that s_v[k] is the first non-zero element of s_v for this trajectory
-            d_tagtag[:, :-1] += np.fliplr(np.cumsum(np.fliplr(d_tagtag)[:, :-1] * (np.fliplr(s_v)[:, 1:] == 0), axis=1))
         else:  # s_v does not have zero-velocity elements
             d_tag = d_v / s_v  # 1st derivative of d_x by distance
             d_tagtag = (d_a - d_tag * s_a) / (s_v ** 2)  # 2nd derivative of d_x by distance
@@ -145,7 +131,6 @@ class FrenetSerret2DFrame:
         v_x = np.divide(s_v * radius_ratio, cos_delta_theta)
 
         # compute k_x (curvature)
-        # d_tagtag = (d_a - d_tag * s_a) / (s_v ** 2)  # 2nd derivative of d_x by distance
         k_x = ((d_tagtag + (k_r_tag * d_x + k_r * d_tag) * np.tan(delta_theta)) * np.cos(
             delta_theta) ** 2 / radius_ratio + k_r) * np.cos(delta_theta) / radius_ratio
 
