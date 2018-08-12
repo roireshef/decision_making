@@ -108,6 +108,8 @@ class FrenetSerret2DFrame:
 
         radius_ratio = 1 - k_r * d_x  # pre-compute terms to use below
 
+        # calculate d_tag & d_tagtag as 1st and 2nd derivatives of d_x by distance and prevent division by zero
+        # velocity (s_v=0)
         non_zero_vel = (s_v > 0)
         if not non_zero_vel.all():  # s_v has zero velocity elements
             # this code will work only if s_v has zeros either at the beginning or at the end of the trajectories
