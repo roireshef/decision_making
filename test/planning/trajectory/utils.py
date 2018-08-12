@@ -3,11 +3,10 @@ from typing import List
 import matplotlib.patches as patches
 import numpy as np
 
-from decision_making.src.planning.trajectory.cost_function import SigmoidDynamicBoxObstacle, SigmoidStaticBoxObstacle, \
-    SigmoidBoxObstacle
-from decision_making.src.planning.types import CURVE_YAW, CartesianPoint2D, CartesianExtendedState, C_X, C_Y
+from decision_making.src.planning.types import CURVE_YAW, CartesianPoint2D, CartesianExtendedState, C_X, C_Y, C_YAW
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import DynamicObject, State
+from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
 class RouteFixture:
@@ -76,55 +75,36 @@ class RouteFixture:
         return np.array([[x, lat + curvature*lng*((x/lng)**3)] for x in np.arange(-ext, lng+ext, step)])
 
 
-class PlottableSigmoidBoxObstacle(SigmoidBoxObstacle):
-    def plot(self, plt):
-        pass
-
-
-class PlottableSigmoidStaticBoxObstacle(SigmoidStaticBoxObstacle, PlottableSigmoidBoxObstacle):
-    def __init__(self, obj: DynamicObject, k: float, margin: CartesianPoint2D):
-        pose = np.array([obj.x, obj.y, obj.yaw, 0])
-        super().__init__(pose, obj.size.length, obj.size.width, k, margin)
-        self.pose = pose
-
-    def plot(self, plt):
-        plt.plot(self.pose[0], self.pose[1], '*k')
-        H_inv = np.linalg.inv(self._H_inv.transpose())
-        lower_left_p = np.dot(H_inv, [-self.length / 2, -self.width / 2, 1])
-        plt.add_patch(patches.Rectangle(
-            (lower_left_p[0], lower_left_p[1]), self.length, self.width, angle=np.rad2deg(self.pose[CURVE_YAW]),
-            hatch='\\', fill=False
-        ))
-
-        lower_left_p = np.dot(H_inv, [-self.length / 2 - self._margin[0], -self.width / 2 - self._margin[1], 1])
-        plt.add_patch(patches.Rectangle(
-            (lower_left_p[0], lower_left_p[1]), self.length + 2 * self._margin[0], self.width + 2 * self._margin[1],
-            angle=np.rad2deg(self.pose[CURVE_YAW]), fill=True, alpha=0.15, color=[0, 0, 0]
-        ))
-
-
-class PlottableSigmoidDynamicBoxObstacle(SigmoidDynamicBoxObstacle, PlottableSigmoidBoxObstacle):
+class PlottableSigmoidBoxObstacle:
     def __init__(self, state: State, obj: DynamicObject, k: float, margin: CartesianPoint2D,
                  time_samples: np.ndarray, predictor: EgoAwarePredictor):
         # get predictions of the dynamic object in global coordinates
-        poses = predictor.predict_objects(state, [obj.obj_id], time_samples)[obj.obj_id]
+        predicted_objects = predictor.predict_objects(state, [obj.obj_id], time_samples, None)[obj.obj_id]
+        poses = [obj.cartesian_state for obj in predicted_objects]
         poses[0][CURVE_YAW] = obj.yaw
-        super().__init__(poses, obj.size.length, obj.size.width, k, margin)
         self.poses = poses
+        self.length = obj.size.length
+        self.width = obj.size.width
+        self.k = k
+        self.margin = margin
+        self.H_inv = np.zeros((len(poses), 3, 3))
+        for pose_ind in range(len(poses)):
+            H = CartesianFrame.homo_matrix_2d(poses[pose_ind][C_YAW], poses[pose_ind][:C_YAW])
+            self.H_inv[pose_ind] = np.linalg.inv(H).transpose()
 
     def plot(self, plt):
         plt.plot(self.poses[0][0], self.poses[0][1], '*k')
         plt.plot(self.poses[-1][0], self.poses[-1][1], '*r')
-        H_inv = np.linalg.inv(self._H_inv[0].transpose())
+        H_inv = np.linalg.inv(self.H_inv[0].transpose())
         lower_left_p = np.dot(H_inv, [-self.length / 2, -self.width / 2, 1])
         plt.add_patch(patches.Rectangle(
             (lower_left_p[0], lower_left_p[1]), self.length, self.width, angle=np.rad2deg(self.poses[0][CURVE_YAW]),
             hatch='\\', fill=False
         ))
 
-        lower_left_p = np.dot(H_inv, [-self.length / 2 - self._margin[C_X], -self.width / 2 - self._margin[C_Y], 1])
+        lower_left_p = np.dot(H_inv, [-self.length / 2 - self.margin[C_X], -self.width / 2 - self.margin[C_Y], 1])
         plt.add_patch(patches.Rectangle(
-            (lower_left_p[0], lower_left_p[1]), self.length + 2 * self._margin[C_X], self.width + 2 * self._margin[C_Y],
+            (lower_left_p[0], lower_left_p[1]), self.length + 2 * self.margin[C_X], self.width + 2 * self.margin[C_Y],
             angle=np.rad2deg(self.poses[0][CURVE_YAW]), fill=False, alpha=0.15, color=[0, 0, 0]
         ))
 
