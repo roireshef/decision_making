@@ -118,10 +118,10 @@ class FrenetSerret2DFrame:
             d_tag[non_zero_vel] = d_v[non_zero_vel] / s_v[non_zero_vel]  # d_tag = d_v / s_v
             # for each trajectory, fill all ending elements of d_tag matching to s_v=0 by the value d_tag[k],
             # such that s_v[k] is the last non-zero element of s_v for this trajectory
-            d_tag[:, 1:] -= np.cumsum(np.diff(d_tag, axis=1) * (s_v[:, 1:] == 0), axis=1)
+            d_tag[:, 1:] += np.cumsum(d_tag[:, :-1] * (s_v[:, 1:] == 0), axis=1)
             # for each trajectory, fill all starting elements of d_tag matching to s_v=0 by the value d_tag[k],
             # such that s_v[k] is the first non-zero element of s_v for this trajectory
-            d_tag[:, :-1] -= np.fliplr(np.cumsum(np.diff(np.fliplr(d_tag), axis=1) * (np.fliplr(s_v)[:, 1:] == 0), axis=1))
+            d_tag[:, :-1] += np.fliplr(np.cumsum(np.fliplr(d_tag)[:, :-1] * (np.fliplr(s_v)[:, 1:] == 0), axis=1))
 
             # build d_tagtag similarly to d_tag
             d_tagtag = np.zeros(s_v.shape)
@@ -129,10 +129,10 @@ class FrenetSerret2DFrame:
             d_tagtag[non_zero_vel] = (d_a[non_zero_vel] - d_tag[non_zero_vel] * s_a[non_zero_vel]) / (s_v[non_zero_vel] ** 2)
             # for each trajectory, fill all ending elements of d_tagtag matching to s_v=0 by the value of d_tagtag[k],
             # such that s_v[k] is the last non-zero element of s_v for this trajectory
-            d_tagtag[:, 1:] -= np.cumsum(np.diff(d_tagtag, axis=1) * (s_v[:, 1:] == 0), axis=1)
+            d_tagtag[:, 1:] += np.cumsum(d_tagtag[:, :-1] * (s_v[:, 1:] == 0), axis=1)
             # for each trajectory, fill all starting elements of d_tagtag matching to s_v=0 by the value d_tagtag[k],
             # such that s_v[k] is the first non-zero element of s_v for this trajectory
-            d_tagtag[:, :-1] -= np.fliplr(np.cumsum(np.diff(np.fliplr(d_tagtag), axis=1) * (np.fliplr(s_v)[:, 1:] == 0), axis=1))
+            d_tagtag[:, :-1] += np.fliplr(np.cumsum(np.fliplr(d_tagtag)[:, :-1] * (np.fliplr(s_v)[:, 1:] == 0), axis=1))
         else:  # s_v does not have zero-velocity elements
             d_tag = d_v / s_v  # 1st derivative of d_x by distance
             d_tagtag = (d_a - d_tag * s_a) / (s_v ** 2)  # 2nd derivative of d_x by distance
