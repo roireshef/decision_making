@@ -4,6 +4,7 @@ from typing import Optional, List
 import numpy as np
 
 import rte.python.profiler as prof
+from decision_making.src.global_constants import EPS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
@@ -17,8 +18,13 @@ from decision_making.src.planning.behavioral.evaluators.value_approximator impor
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
     CostBasedBehavioralPlanner
+from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
+from decision_making.src.planning.types import FS_SX, FS_SA, FS_DX, FS_DA
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
+from decision_making.src.planning.utils.safety_utils import SafetyUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
+from mapping.src.service.map_service import MapService
 
 
 class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
@@ -67,6 +73,10 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # ActionSpec filtering
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
 
+        # filter by safety
+        action_specs_mask = [self.check_action_safety(state, spec) if action_specs_mask[i] else False
+                             for i, spec in enumerate(action_specs)]
+
         # State-Action Evaluation
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
 
@@ -86,6 +96,44 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         selected_action_spec = action_specs[selected_action_index]
 
         return selected_action_index, selected_action_spec
+
+    def check_action_safety(self, state: State, action_spec: ActionSpec) -> bool:
+        ego = state.ego_state
+        ego_init_fstate = ego.map_state.road_fstate
+        road_id = ego.map_state.road_id
+        road_frenet = MapService.get_instance()._rhs_roads_frenet[road_id]
+
+        target_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
+
+        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_matrix(action_spec.t))
+
+        constraints_s = np.concatenate((ego_init_fstate[FS_SX:(FS_SA + 1)], target_fstate[FS_SX:(FS_SA + 1)]))
+        constraints_d = np.concatenate((ego_init_fstate[FS_DX:(FS_DA + 1)], target_fstate[FS_DX:(FS_DA + 1)]))
+
+        poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
+        poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
+
+        samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
+                                                          T_s=action_spec.t,
+                                                          T_d=action_spec.t,
+                                                          frenet_frame=road_frenet,
+                                                          poly_s_coefs=poly_coefs_s,
+                                                          poly_d_coefs=poly_coefs_d)
+
+        time_points = np.arange(ego.timestamp_in_sec, ego.timestamp_in_sec + action_spec.t + EPS, 0.5)
+        ftrajectory = samplable_trajectory.sample_frenet(time_points)
+
+        # create obj_trajectories
+        obj_trajectories = []
+        obj_sizes = []
+        for obj in state.dynamic_objects:
+            obj_trajectory = self.predictor.predict_frenet_states(np.array([obj.map_state.road_fstate]),
+                                                                  np.array([action_spec.t]))
+            obj_trajectories.append(obj_trajectory)
+            obj_sizes.append(obj.size)
+
+        safe_times = SafetyUtils.get_safe_times(ftrajectory[np.newaxis], ego.size, np.array(obj_trajectories), obj_sizes)[0]
+        return safe_times.all()
 
     @prof.ProfileFunction()
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
