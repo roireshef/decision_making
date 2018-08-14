@@ -4,7 +4,7 @@ from typing import Optional, List
 import numpy as np
 
 import rte.python.profiler as prof
-from decision_making.src.global_constants import EPS
+from decision_making.src.global_constants import EPS, TRAJECTORY_TIME_RESOLUTION
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
@@ -18,13 +18,11 @@ from decision_making.src.planning.behavioral.evaluators.value_approximator impor
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
     CostBasedBehavioralPlanner
-from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
-from decision_making.src.planning.types import FS_SX, FS_SA, FS_DX, FS_DA
+from decision_making.src.planning.types import FS_DX, FS_SX
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
-from mapping.src.service.map_service import MapService
 
 
 class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
@@ -73,9 +71,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # ActionSpec filtering
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
 
-        # filter by safety
-        action_specs_mask = [self.check_action_safety(state, spec) if action_specs_mask[i] else False
-                             for i, spec in enumerate(action_specs)]
+        # filter specs by RSS safety
+        action_specs_mask = self.check_actions_safety(state, action_specs, action_specs_mask)
 
         # State-Action Evaluation
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
@@ -97,43 +94,61 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         return selected_action_index, selected_action_spec
 
-    def check_action_safety(self, state: State, action_spec: ActionSpec) -> bool:
+    def check_actions_safety(self, state: State, action_specs: List[ActionSpec], action_specs_mask: np.array) \
+            -> List[bool]:
+        """
+        Check RSS safety for all action specs, for which action_specs_mask is true.
+        An action spec is considered safe if it's safe wrt all dynamic objects for all timestamps < spec.t.
+        :param state: the current world state
+        :param action_specs: list of action specifications
+        :param action_specs_mask: 1D mask vector (boolean) for filtering valid action specifications
+        :return: boolean list of safe specifications. The list's size is equal to the original action_specs size.
+        Specifications filtered by action_specs_mask are considered "unsafe".
+        """
+        # TODO: in the current version T_d = T_s. Test safety for different values of T_d.
         ego = state.ego_state
         ego_init_fstate = ego.map_state.road_fstate
-        road_id = ego.map_state.road_id
-        road_frenet = MapService.get_instance()._rhs_roads_frenet[road_id]
 
-        target_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
+        spec_arr = np.array([np.array([spec.t, spec.s, spec.v, spec.d])
+                             for i, spec in enumerate(action_specs) if action_specs_mask[i]])
+        t_arr, s_arr, v_arr, d_arr = np.split(spec_arr, 4, axis=1)
+        zeros = np.zeros(t_arr.shape[0])
 
-        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_matrix(action_spec.t))
+        init_fstates = np.tile(ego_init_fstate, t_arr.shape[0]).reshape(t_arr.shape[0], 6)
+        target_fstates = np.c_[s_arr, v_arr, zeros, d_arr, zeros, zeros]
 
-        constraints_s = np.concatenate((ego_init_fstate[FS_SX:(FS_SA + 1)], target_fstate[FS_SX:(FS_SA + 1)]))
-        constraints_d = np.concatenate((ego_init_fstate[FS_DX:(FS_DA + 1)], target_fstate[FS_DX:(FS_DA + 1)]))
+        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(t_arr))
 
-        poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
-        poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
+        constraints_s = np.concatenate((init_fstates[:, :FS_DX], target_fstates[:, :FS_DX]), axis=1)
+        constraints_d = np.concatenate((init_fstates[:, FS_DX:], target_fstates[:, FS_DX:]), axis=1)
 
-        samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
-                                                          T_s=action_spec.t,
-                                                          T_d=action_spec.t,
-                                                          frenet_frame=road_frenet,
-                                                          poly_s_coefs=poly_coefs_s,
-                                                          poly_d_coefs=poly_coefs_d)
+        poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
+        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
 
-        time_points = np.arange(ego.timestamp_in_sec, ego.timestamp_in_sec + action_spec.t + EPS, 0.5)
-        ftrajectory = samplable_trajectory.sample_frenet(time_points)
+        time_points = np.arange(0, np.max(t_arr) + EPS, TRAJECTORY_TIME_RESOLUTION)
+        fstates_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, time_points)
+        fstates_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_points)  # T_d = T_s
+        ftrajectories = np.concatenate((fstates_s, fstates_d), axis=-1)
 
-        # create obj_trajectories
-        obj_trajectories = []
-        obj_sizes = []
-        for obj in state.dynamic_objects:
-            obj_trajectory = self.predictor.predict_frenet_states(np.array([obj.map_state.road_fstate]),
-                                                                  np.array([action_spec.t]))
-            obj_trajectories.append(obj_trajectory)
-            obj_sizes.append(obj.size)
+        # set all points beyond spec.t at infinity, such that they will be safe and will not affect the result
+        for i, ftrajectory in enumerate(ftrajectories):
+            end_t_idx = int(t_arr[i] / TRAJECTORY_TIME_RESOLUTION)
+            ftrajectory[end_t_idx:, FS_SX] = np.inf
 
-        safe_times = SafetyUtils.get_safe_times(ftrajectory[np.newaxis], ego.size, np.array(obj_trajectories), obj_sizes)[0]
-        return safe_times.all()
+        # create objects' trajectories
+        obj_fstates = np.array([obj.map_state.road_fstate for obj in state.dynamic_objects])
+        obj_sizes = [obj.size for obj in state.dynamic_objects]
+        obj_trajectories = self.predictor.predict_frenet_states(obj_fstates, time_points)
+
+        # calculate safety for each trajectory, each object, each timestamp
+        safe_times = SafetyUtils.get_safe_times(ftrajectories, ego.size, obj_trajectories, obj_sizes)
+        # trajectory is considered safe if it's safe wrt all dynamic objects for all timestamps
+        safe_trajectories = safe_times.all(axis=(1, 2))
+
+        # assign safety to the specs, for which specs_mask is true
+        safe_specs = np.copy(np.array(action_specs_mask))
+        safe_specs[safe_specs] = safe_trajectories
+        return list(safe_specs)  # list's size like the original action_specs size
 
     @prof.ProfileFunction()
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
