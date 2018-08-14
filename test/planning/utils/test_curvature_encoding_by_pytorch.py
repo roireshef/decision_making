@@ -12,10 +12,10 @@ from decision_making.test.planning.utils.sample_curvature import sample_curvatur
 
 def test_curvature_encoding_by_pytorch():
 
-    train_dataset = create_tensor_dataset(10000)
+    train_dataset = create_tensor_dataset(100000)
     train_loader = data_utils.DataLoader(train_dataset, batch_size=64, shuffle=True)
 
-    net = Net(train_dataset.data_tensor.size(1))
+    net = Net(train_dataset.data_tensor.size(1), train_dataset.target_tensor.size(1))
     pytorch_train(net, train_loader)
 
     test_dataset = create_tensor_dataset(5000)
@@ -32,10 +32,10 @@ def create_tensor_dataset(num_samples: int) -> TensorDataset:
 
 
 class Net(nn.Module):
-    def __init__(self, input_dim):
+    def __init__(self, input_dim, output_dim):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(input_dim, 120)
-        self.fc2 = nn.Linear(120, 1)
+        self.fc1 = nn.Linear(input_dim, 240)
+        self.fc2 = nn.Linear(240, output_dim)
 
     def forward(self, x):
         # x = x.view(-1, self.input_dim)
@@ -79,15 +79,18 @@ def pytorch_test(net: Net, testloader: DataLoader):
     samples = 0.
     classification_errors = 0
     output_thresh = 3
+    output_dim = None
     for data in testloader:
         inputs, labels = data
-        outputs = net(Variable(inputs))
-        loss = outputs.data[0, 0] - labels[0]
-        total_error += loss ** 2
-        classification_errors += int((outputs.data[0, 0] - output_thresh) * (labels[0] - output_thresh) < 0)
+        labels = labels.numpy()
+        output_dim = labels.shape[1]
+        outputs = net(Variable(inputs)).data.numpy()
+        loss = outputs - labels
+        total_error += np.sum(loss ** 2)
+        classification_errors += np.sum((outputs - output_thresh) * (labels - output_thresh) < 0)
         samples += 1
-        print('Test loss %f' % loss)
-    print('test error = %f; classification error=%f' % (np.sqrt(total_error/samples), classification_errors/samples))
+        print('Test loss %f' % np.sqrt(np.sum(loss ** 2)/output_dim))
+    print('test error = %f; classification error=%f' % (np.sqrt(total_error/(output_dim*samples)), classification_errors/(output_dim*samples)))
 
 
 # def pytorch_train1(features, targets):
