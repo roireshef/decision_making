@@ -62,7 +62,6 @@ def test_ctrajectoryToFtrajectoryToCtrajectory_pointTwoWayConversion_accuratePos
     fstates = frenet.ctrajectory_to_ftrajectory(cpoints)
     new_cstates = frenet.ftrajectory_to_ctrajectory(fstates)
 
-    # currently there is no guarantee on the accuracy of acceleration and curvature
     position_errors = np.linalg.norm(cpoints - new_cstates, axis=1)
     vel_errors = np.abs(cpoints[:, C_V] - new_cstates[:, C_V])
     acc_errors = np.abs(cpoints[:, C_A] - new_cstates[:, C_A])
