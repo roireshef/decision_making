@@ -21,6 +21,7 @@ from decision_making.src.planning.utils.localization_utils import LocalizationUt
 from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State
+from decision_making.src.utils.metric_logger import MetricLogger
 
 
 class BehavioralPlanningFacade(DmModule):
@@ -54,9 +55,10 @@ class BehavioralPlanningFacade(DmModule):
           to the trajectory planner and as debug information to the visualizer.
         :return: void
         """
-        try:
-            start_time = time.time()
 
+        try:
+            MetricLogger.get_logger().report()
+            start_time = time.time()
             state = self._get_current_state()
 
             # Update state: align all object to most recent timestamp, based on ego and dynamic objects timestamp

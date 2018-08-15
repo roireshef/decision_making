@@ -1,6 +1,6 @@
-import numpy as np
 from logging import Logger
 from typing import Tuple
+import numpy as np
 
 from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
@@ -22,19 +22,21 @@ from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
+from decision_making.src.utils.metric_logger import MetricLogger
 
 
 class WerlingPlanner(TrajectoryPlanner):
     def __init__(self, logger: Logger, predictor: EgoAwarePredictor, dt=WERLING_TIME_RESOLUTION):
         super().__init__(logger, predictor)
         self._dt = dt
+        self._metric_logger = MetricLogger.get_logger()
 
     @property
     def dt(self):
         return self._dt
 
     def plan(self, state: State, reference_route: np.ndarray, goal: CartesianExtendedState, time_horizon: float,
-             cost_params: TrajectoryCostParams)-> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
+             cost_params: TrajectoryCostParams, bp_time: int)-> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """ see base class """
         T_s = time_horizon
 
@@ -93,7 +95,7 @@ class WerlingPlanner(TrajectoryPlanner):
         lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, self.dt)
 
         assert T_s >= lower_bound_T_d
-
+        #TODO: This should be changed
         self._logger.debug('WerlingPlanner is planning from %s (frenet) to %s (frenet) in %s seconds' %
                            (NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
                             T_s))
@@ -120,11 +122,13 @@ class WerlingPlanner(TrajectoryPlanner):
         cartesian_refiltered_indices = self._filter_by_cartesian_limits(ctrajectories, cost_params)
 
         refiltered_indices = frenet_filtered_indices[cartesian_refiltered_indices]
-
         ctrajectories_filtered = ctrajectories[cartesian_refiltered_indices]
         ftrajectories_refiltered = ftrajectories[frenet_filtered_indices][cartesian_refiltered_indices]
 
+
         self._logger.debug(LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, len(ctrajectories_filtered))
+        self._metric_logger.bind(ts=state.ego_state.timestamp, ctrajectories_filtered_len=len(ctrajectories_filtered),
+                                 bp_time=bp_time)
 
         if len(ctrajectories) == 0:
             raise CouldNotGenerateTrajectories("No valid cartesian trajectories. time: %f, goal: %s, state: %s. "
@@ -161,7 +165,7 @@ class WerlingPlanner(TrajectoryPlanner):
         filtered_trajectory_costs = \
             self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
                                global_time_sample, self._predictor, self.dt)
-
+        # self._metric_logger.bind(filtered_trajectory_costs=filtered_trajectory_costs)
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
         self._logger.debug("Chosen trajectory planned with lateral horizon : {}".format(
@@ -175,6 +179,7 @@ class WerlingPlanner(TrajectoryPlanner):
             poly_s_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][:6],
             poly_d_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][6:]
         )
+
 
         return samplable_trajectory, \
                ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \

@@ -176,7 +176,8 @@ class CostBasedBehavioralPlanner:
                                                  time=action_spec.t + ego.timestamp_in_sec,
                                                  target_state=goal_cstate,
                                                  cost_params=cost_params,
-                                                 strategy=TrajectoryPlanningStrategy.HIGHWAY)
+                                                 strategy=TrajectoryPlanningStrategy.HIGHWAY,
+                                                 bp_time=ego.timestamp)
 
         return trajectory_parameters
 

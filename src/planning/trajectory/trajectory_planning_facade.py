@@ -25,6 +25,7 @@ from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predic
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State
+from decision_making.src.utils.metric_logger import MetricLogger
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
@@ -63,6 +64,7 @@ class TrajectoryPlanningFacade(DmModule):
         :return: no return value. results are published in self.__publish_results()
         """
         try:
+            MetricLogger.get_logger().report()
             # Monitor execution time of a time-critical component (prints to logging at the end of method)
             start_time = time.time()
 
@@ -98,7 +100,8 @@ class TrajectoryPlanningFacade(DmModule):
 
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon, params.cost_params)
+                plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
+                     params.cost_params, params.bp_time)
 
             center_vehicle_trajectory_points = samplable_trajectory.sample(
                 np.linspace(start=0,

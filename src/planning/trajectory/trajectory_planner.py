@@ -24,7 +24,7 @@ class TrajectoryPlanner(metaclass=ABCMeta):
     @abstractmethod
     @raises(NoValidTrajectoriesFound, CouldNotGenerateTrajectories)
     def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, time_horizon: float,
-             cost_params: TrajectoryCostParams) -> \
+             cost_params: TrajectoryCostParams, bp_time: int) -> \
             Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
         Plans a trajectory according to the specifications in the arguments
@@ -36,6 +36,7 @@ class TrajectoryPlanner(metaclass=ABCMeta):
         :param goal: A 1D numpy array of the desired ego-state to plan towards, represented in current
         global-coordinate-frame (see EGO_* in planning.utils.types.py for the fields)
         :param cost_params: Data object with parameters that specify how to build the planning's cost function
+        :param bp_time: The ego timestamp corresponding to the TrajectoryParams value from the Behavior Planner.
         :return: a tuple of: (samplable representation of the chosen trajectory, tensor of trajectory alternatives,
          trajectories costs correspond to previous output)
         """
