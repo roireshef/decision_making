@@ -4,19 +4,12 @@ import pytest
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
 from decision_making.src.state.state import ObjectSize
 from decision_making.test.planning.utils.trajectory_utils import TrajectoryUtils
+from decision_making.test.planning.utils.trajectory_utils import T_s
 
 
 @pytest.fixture(scope='function')
 def default_object_size():
     return ObjectSize(4, 2, 0)
-
-
-@pytest.fixture(scope='module')
-def T_s():
-    """
-    longitudinal planning time of testable trajectories
-    """
-    return 10
 
 
 @pytest.mark.parametrize(

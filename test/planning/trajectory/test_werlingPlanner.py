@@ -48,9 +48,9 @@ def test_werlingPlanner_toyScenario_noException():
     predictor = RoadFollowingPredictor(logger)
 
     goal = np.concatenate((route_points[len(route_points) // 2, [CURVE_X, CURVE_Y, CURVE_YAW]], [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
-    pos1 = np.array([7, -.5])
+    pos1 = np.array([25, -.5])
     yaw1 = 0
-    pos2 = np.array([11, 1.5])
+    pos2 = np.array([29, 1.5])
     yaw2 = np.pi / 4
 
     obs = list([

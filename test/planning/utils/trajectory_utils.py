@@ -1,8 +1,16 @@
 import numpy as np
+import pytest
 
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.planning.utils.optimal_control.poly1d import QuarticPoly1D, QuinticPoly1D
-from decision_making.test.planning.utils.test_safetyUtils import T_s
+
+
+@pytest.fixture(scope='module')
+def T_s():
+    """
+    longitudinal planning time of testable trajectories
+    """
+    return 10
 
 
 class TrajectoryUtils:
