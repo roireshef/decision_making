@@ -138,7 +138,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # create objects' trajectories
         obj_fstates = np.array([obj.map_state.road_fstate for obj in state.dynamic_objects])
         obj_sizes = [obj.size for obj in state.dynamic_objects]
-        obj_trajectories = self.predictor.predict_frenet_states(obj_fstates, time_points)
+        obj_trajectories = np.array(self.predictor.predict_frenet_states(obj_fstates, time_points))
 
         # calculate safety for each trajectory, each object, each timestamp
         safe_times = SafetyUtils.get_safe_times(ftrajectories, ego.size, obj_trajectories, obj_sizes)
