@@ -167,9 +167,17 @@ class WerlingPlanner(TrajectoryPlanner):
                                                                frenet)
         # Throw an error if no safe trajectory is found
         if not safe_traj_indices.any():
-            ego_fstate = state.ego_state.map_state.road_fstate  # create _cached_map_state
-            raise NoSafeTrajectoriesFound("No safe trajectories found. time: %f, goal_frenet: %s, state: %s. " %
-                                          (T_s, NumpyUtils.str_log(goal_frenet_state), str(state).replace('\n', '')))
+            objects_curr_fstates = []
+            for dynamic_object in state.dynamic_objects:
+                try:
+                    obj_fstate = frenet.cstate_to_fstate(dynamic_object.cartesian_state)
+                    objects_curr_fstates.append(obj_fstate)
+                except OutOfSegmentFront:
+                    pass
+            raise NoSafeTrajectoriesFound("No safe trajectories found. time: %f, goal_frenet: %s, state: %s. "
+                                          "ego_fstate %s; objects_fstates %s" %
+                                          (T_s, NumpyUtils.str_log(goal_frenet_state), str(state).replace('\n', ''),
+                                           ftrajectories[0, 0, :], objects_curr_fstates))
 
         ftrajectories_refiltered_safe = ftrajectories_refiltered[safe_traj_indices]
         ctrajectories_filtered_safe = ctrajectories_filtered[safe_traj_indices]
