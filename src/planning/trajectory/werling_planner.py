@@ -54,6 +54,13 @@ class WerlingPlanner(TrajectoryPlanner):
 
         ego_frenet_state: FrenetState2D = frenet.cstate_to_fstate(ego_cartesian_state)
 
+
+
+        objects_fstates = [obj.map_state.road_fstate for obj in state.dynamic_objects]
+        self._logger.warning("ego: %s; objects: %s" % (state.ego_state.map_state.road_fstate, objects_fstates))
+
+
+
         # THIS HANDLES CURRENT STATES WHERE THE VEHICLE IS STANDING STILL
         if np.any(np.isnan(ego_frenet_state)):
             self._logger.warning("Werling planner tried to convert current EgoState from cartesian-frame (%s)"
