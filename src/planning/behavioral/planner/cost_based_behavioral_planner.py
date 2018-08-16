@@ -339,6 +339,9 @@ class CostBasedBehavioralPlanner:
         # trajectory is considered safe if it's safe wrt all dynamic objects for all timestamps
         safe_trajectories = safe_times.all(axis=(1, 2))
 
+        if not safe_trajectories.any():
+            self.logger.warning("_check_actions_safety: No safe action found")
+
         # assign safety to the specs, for which specs_mask is true
         safe_specs = np.copy(np.array(action_specs_mask))
         safe_specs[safe_specs] = safe_trajectories
