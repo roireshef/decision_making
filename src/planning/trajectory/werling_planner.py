@@ -167,6 +167,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                                                frenet)
         # Throw an error if no safe trajectory is found
         if not safe_traj_indices.any():
+            ego_fstate = state.ego_state.map_state.road_fstate  # create _cached_map_state
             raise NoSafeTrajectoriesFound("No safe trajectories found. time: %f, goal_frenet: %s, state: %s. " %
                                           (T_s, NumpyUtils.str_log(goal_frenet_state), str(state).replace('\n', '')))
 
