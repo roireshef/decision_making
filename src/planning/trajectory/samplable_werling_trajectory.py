@@ -79,3 +79,17 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         fstates = np.hstack((fstates_s, fstates_d))
 
         return fstates
+
+    def get_time_by_longitude(self, lon: float) -> float:
+        """
+        Given longitude, calculate time, for which the samplable trajectory passes this longitude.
+        :param lon: [m] the required longitude
+        :return: [sec] time, for which the samplable trajectory passes the longitude, or None if it doesn't.
+        """
+        # solve polynomial equation: poly_s(t) = lon
+        equation_poly_s_coefs = np.concatenate((self.poly_s_coefs[:-1], np.array([self.poly_s_coefs[-1] - lon])))
+        candidate_roots = np.roots(equation_poly_s_coefs)
+        is_real = np.isclose(np.imag(candidate_roots), 0.)
+        real_parts = np.real(candidate_roots)
+        valid_roots = np.logical_and(np.logical_and(is_real, real_parts >= 0), real_parts <= self.T)
+        return real_parts[valid_roots][0] if valid_roots.any() else None
