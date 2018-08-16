@@ -54,13 +54,6 @@ class WerlingPlanner(TrajectoryPlanner):
 
         ego_frenet_state: FrenetState2D = frenet.cstate_to_fstate(ego_cartesian_state)
 
-
-
-        objects_fstates = [obj.map_state.road_fstate for obj in state.dynamic_objects]
-        self._logger.warning("ego: %s; objects: %s" % (state.ego_state.map_state.road_fstate, objects_fstates))
-
-
-
         # THIS HANDLES CURRENT STATES WHERE THE VEHICLE IS STANDING STILL
         if np.any(np.isnan(ego_frenet_state)):
             self._logger.warning("Werling planner tried to convert current EgoState from cartesian-frame (%s)"
@@ -174,8 +167,8 @@ class WerlingPlanner(TrajectoryPlanner):
                                                                frenet)
         # Throw an error if no safe trajectory is found
         if not safe_traj_indices.any():
-            raise NoSafeTrajectoriesFound("No safe trajectories found. time: %f, goal: %s, state: %s. " %
-                                          (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', '')))
+            raise NoSafeTrajectoriesFound("No safe trajectories found. time: %f, goal_frenet: %s, state: %s. " %
+                                          (T_s, NumpyUtils.str_log(goal_frenet_state), str(state).replace('\n', '')))
 
         ftrajectories_refiltered_safe = ftrajectories_refiltered[safe_traj_indices]
         ctrajectories_filtered_safe = ctrajectories_filtered[safe_traj_indices]
