@@ -1,7 +1,8 @@
 import numpy as np
 
 from decision_making.src.global_constants import TRAJECTORY_CURVE_SPLINE_FIT_ORDER, ROAD_MAP_REQUIRED_RES
-from decision_making.src.planning.types import C_A, C_V, C_K, FP_SX, FS_SX, FS_DX, FS_DV, FS_SV, FS_DA, FS_SA, FP_DX
+from decision_making.src.planning.types import C_A, C_V, C_K, FP_SX, FS_SX, FS_DX, FS_DV, FS_SV, FS_DA, FS_SA, FP_DX, \
+    C_YAW
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.test.planning.trajectory.utils import RouteFixture
 from mapping.src.service.map_service import MapService
@@ -61,7 +62,6 @@ def test_ctrajectoryToFtrajectoryToCtrajectory_pointTwoWayConversion_accuratePos
     fstates = frenet.ctrajectory_to_ftrajectory(cpoints)
     new_cstates = frenet.ftrajectory_to_ctrajectory(fstates)
 
-    # currently there is no guarantee on the accuracy of acceleration and curvature
     position_errors = np.linalg.norm(cpoints - new_cstates, axis=1)
     vel_errors = np.abs(cpoints[:, C_V] - new_cstates[:, C_V])
     acc_errors = np.abs(cpoints[:, C_A] - new_cstates[:, C_A])
@@ -207,3 +207,34 @@ def test_fitFrenet_originalRoutePointsAreProjected_errorsAreLowEnough():
     #
     # fig.show()
     # fig.clear()
+
+
+def test_ctrajectoryToFtrajectoryToCtrajectory_zeroVelocityTwoWayConversion_accuratePoseAndVelocity():
+    POSITION_ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
+    VEL_ACCURACY_TH = 1e-3  # up to 1 [mm/sec] error in velocity
+    YAW_ACCURACY_TH = 1e-3  # up to 0.01 [rad] error in yaw
+
+    route_points = RouteFixture.get_route(lng=200, k=0.05, step=1, lat=100, offset=-50.0)
+    cpoints = np.array([[100.0, 0.0, -np.pi/8, 0, 1.0, 1e-2], [130.0, 0.0, np.pi/6, 0, 1.1, 1e-2],
+                        [150.0, 40.0, np.pi/7, 10.0, -0.9, 1e-2], [450.0, 50.0, np.pi/8, 3, -0.5, -5*1e-2],
+                        [460.0, 50.0, np.pi/9, 0, -2, 0]
+                        ])
+
+    frenet = FrenetSerret2DFrame(route_points)
+
+    fstates = frenet.ctrajectory_to_ftrajectory(cpoints)
+    new_cstates = frenet.ftrajectory_to_ctrajectory(fstates)
+
+    # currently there is no guarantee on the accuracy of acceleration and curvature
+    position_errors = np.linalg.norm(cpoints[:, :C_YAW] - new_cstates[:, :C_YAW], axis=1)
+    vel_errors = np.abs(cpoints[:, C_V] - new_cstates[:, C_V])
+
+    # verify that zero velocity points take their road-relative yaw from the nearest non-zero-vel point on the trajectory
+    assert abs(new_cstates[0, C_YAW]) < YAW_ACCURACY_TH
+    assert abs(new_cstates[1, C_YAW]) < YAW_ACCURACY_TH
+    assert abs(new_cstates[-1, C_YAW]) < YAW_ACCURACY_TH
+
+    np.testing.assert_array_less(position_errors, POSITION_ACCURACY_TH,
+                                 err_msg='FrenetMovingFrame position conversions aren\'t accurate enough')
+    np.testing.assert_array_less(vel_errors, VEL_ACCURACY_TH,
+                                 err_msg='FrenetMovingFrame velocity conversions aren\'t accurate enough')
