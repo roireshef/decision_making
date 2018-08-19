@@ -4,6 +4,7 @@ from typing import Optional, List
 import numpy as np
 
 import rte.python.profiler as prof
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_METRICS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
@@ -37,7 +38,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
                  value_approximator: ValueApproximator, predictor: EgoAwarePredictor, logger: Logger):
         super().__init__(action_space, recipe_evaluator, action_spec_evaluator, action_spec_validator, value_approximator,
                          predictor, logger)
-        self._metric_logger = MetricLogger.get_logger()
+        self._metric_logger = MetricLogger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
 
     def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
                       recipes_mask: List[bool]) -> (int, ActionSpec):
@@ -111,7 +112,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
                                  action_space_size=self.action_space.action_space_size,
                                  valid_action_space=np.sum(recipes_mask))
         selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes, recipes_mask)
-
+        self._metric_logger.bind(selected_action_index=selected_action_index)
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(behavioral_state=behavioral_state,
                                                                                       action_spec=selected_action_spec,
                                                                                       navigation_plan=nav_plan)

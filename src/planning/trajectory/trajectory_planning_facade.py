@@ -11,7 +11,8 @@ from decision_making.src.exceptions import MsgDeserializationError, NoValidTraje
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION, \
     NUM_ALTERNATIVE_TRAJECTORIES, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
-    LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME
+    LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
+    TRAJECTORY_PLANNING_NAME_FOR_METRICS
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
@@ -64,7 +65,7 @@ class TrajectoryPlanningFacade(DmModule):
         :return: no return value. results are published in self.__publish_results()
         """
         try:
-            MetricLogger.get_logger().report()
+            MetricLogger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_METRICS).report()
             # Monitor execution time of a time-critical component (prints to logging at the end of method)
             start_time = time.time()
 

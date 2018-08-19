@@ -265,7 +265,8 @@ def trajectory_params():
                                                   VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)
     yield TrajectoryParams(reference_route=ref_route, target_state=target_state,
                            cost_params=trajectory_cost_params, time=16,
-                           strategy=TrajectoryPlanningStrategy.HIGHWAY)
+                           strategy=TrajectoryPlanningStrategy.HIGHWAY,
+                           bp_time=0)
 
 
 @pytest.fixture(scope='function')

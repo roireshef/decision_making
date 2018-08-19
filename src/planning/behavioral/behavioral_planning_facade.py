@@ -8,7 +8,7 @@ from common_data.lcm.config import pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
-    LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME
+    LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
@@ -57,7 +57,7 @@ class BehavioralPlanningFacade(DmModule):
         """
 
         try:
-            MetricLogger.get_logger().report()
+            MetricLogger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_METRICS).report()
             start_time = time.time()
             state = self._get_current_state()
 

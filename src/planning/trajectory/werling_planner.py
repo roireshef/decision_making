@@ -5,7 +5,8 @@ import numpy as np
 from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
-    TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES
+    TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, \
+    TRAJECTORY_PLANNING_NAME_FOR_METRICS
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import Costs
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
@@ -29,7 +30,7 @@ class WerlingPlanner(TrajectoryPlanner):
     def __init__(self, logger: Logger, predictor: EgoAwarePredictor, dt=WERLING_TIME_RESOLUTION):
         super().__init__(logger, predictor)
         self._dt = dt
-        self._metric_logger = MetricLogger.get_logger()
+        self._metric_logger = MetricLogger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_METRICS)
 
     @property
     def dt(self):
@@ -165,11 +166,12 @@ class WerlingPlanner(TrajectoryPlanner):
         filtered_trajectory_costs = \
             self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
                                global_time_sample, self._predictor, self.dt)
-        # self._metric_logger.bind(filtered_trajectory_costs=filtered_trajectory_costs)
+
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
         self._logger.debug("Chosen trajectory planned with lateral horizon : {}".format(
             T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]]))
+        self._metric_logger.bind(lateral_horizon=T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]])
 
         samplable_trajectory = SamplableWerlingTrajectory(
             timestamp_in_sec=state.ego_state.timestamp_in_sec,
