@@ -22,12 +22,12 @@ def test_getTimeByLongitude():
     poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
     road_frenet = MapService.get_instance()._rhs_roads_frenet[20]
 
-    samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=0, T_s=T, T_d=T, frenet_frame=road_frenet,
+    samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=10, T_s=T, T_d=T, frenet_frame=road_frenet,
                                                       poly_s_coefs=poly_coefs_s, poly_d_coefs=poly_coefs_d)
 
     lon = 30.
     # calculate t, for which the samplable trajectory passes lon
-    t = samplable_trajectory.get_time_by_longitude(lon)
+    t = samplable_trajectory.get_time_from_longitude(lon)
     # sample the trajectory at t
     lon1 = samplable_trajectory.sample_frenet(np.array([t]))[0, FS_SX]
     assert np.isclose(lon, lon1)

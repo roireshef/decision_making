@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 
 from decision_making.src.global_constants import EPS
@@ -80,11 +82,11 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
 
         return fstates
 
-    def get_time_by_longitude(self, lon: float) -> float:
+    def get_time_from_longitude(self, lon: float) -> Optional[float]:
         """
-        Given longitude, calculate time, for which the samplable trajectory passes this longitude.
+        Given longitude, calculate time, for which the samplable trajectory reaches this longitude.
         :param lon: [m] the required longitude
-        :return: [sec] time, for which the samplable trajectory passes the longitude, or None if it doesn't.
+        :return: [sec] global time, for which the samplable trajectory reaches the longitude, or None if it doesn't.
         """
         # solve polynomial equation: poly_s(t) = lon
         equation_poly_s_coefs = np.concatenate((self.poly_s_coefs[:-1], np.array([self.poly_s_coefs[-1] - lon])))
@@ -92,4 +94,4 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
         is_real = np.isclose(np.imag(candidate_roots), 0.)
         real_parts = np.real(candidate_roots)
         valid_roots = np.logical_and(np.logical_and(is_real, real_parts >= 0), real_parts <= self.T)
-        return real_parts[valid_roots][0] if valid_roots.any() else None
+        return self.timestamp_in_sec + real_parts[valid_roots][0] if valid_roots.any() else None
