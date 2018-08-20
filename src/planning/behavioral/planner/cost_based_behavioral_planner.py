@@ -320,9 +320,9 @@ class CostBasedBehavioralPlanner:
         poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
 
         time_points = np.arange(0, np.max(t_arr) + EPS, TRAJECTORY_TIME_RESOLUTION)
-        fstates_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, time_points)
-        fstates_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_points)  # T_d = T_s
-        ftrajectories = np.concatenate((fstates_s, fstates_d), axis=-1)
+        ftrajectories_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, time_points)
+        ftrajectories_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_points)  # T_d = T_s
+        ftrajectories = np.concatenate((ftrajectories_s, ftrajectories_d), axis=-1)
 
         # set all points beyond spec.t at infinity, such that they will be safe and will not affect the result
         for i, ftrajectory in enumerate(ftrajectories):
