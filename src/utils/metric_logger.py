@@ -26,5 +26,5 @@ class MetricLogger:
         self._logger.bind(**{self._component_name+'_'+k:v for k,v in kwargs.items()})
 
     def unbind(self, *args):
-        self._logger.unbind([self._component_name+'_'+a for a in args])
+        self._logger.unbind(*[self._component_name+'_'+a for a in args])
 
