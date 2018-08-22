@@ -68,6 +68,9 @@ GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goa
 LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
 LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
+SAFETY_SIGMOID_COST = 1000                  # maximal cost of RSS safety (sigmoid)
+SAFETY_SIGMOID_K_PARAM = 9                  # sigmoid k (slope) param of RSS safety cost
+
 # [m/sec] speed to plan towards by default in BP
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 14.0  # TODO - get this value from the map
 

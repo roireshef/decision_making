@@ -3,7 +3,7 @@ from typing import List
 
 import numpy as np
 
-from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD_DIST
+from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD_DIST, SAFETY_SIGMOID_COST
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import C_YAW, CartesianState, C_Y, C_X, \
     CartesianTrajectories, CartesianPaths2D, CartesianPoint2D, C_A, C_K, C_V, CartesianExtendedTrajectories, \
@@ -218,14 +218,14 @@ class Costs:
         return obstacles_costs
 
     @staticmethod
-    def compute_safety_costs(safety_costs: np.array, params: TrajectoryCostParams):
+    def compute_safety_costs(safety_costs: np.array):
         """
         Given raw (not weighted) safety costs (based on RSS), sum it over obstacles and multiply by weight
         :param safety_costs: 1D array (of size trajectories_number) of safety costs based on RSS in range [0, 1]
         :param params: parameters for the cost function (from behavioral layer)
         :return: MxN matrix of safety costs per point, where N is trajectories number, M is trajectory length.
         """
-        return 100 * safety_costs
+        return SAFETY_SIGMOID_COST * safety_costs
 
     @staticmethod
     def compute_deviation_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams):

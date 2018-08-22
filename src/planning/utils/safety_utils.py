@@ -5,7 +5,7 @@ import numpy as np
 
 from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY, SPECIFICATION_MARGIN_TIME_DELAY, \
     LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU, LAT_VEL_BLAME_THRESH, LON_SAFETY_ACCEL_DURING_DELAY, \
-    LAT_SAFETY_ACCEL_DURING_DELAY, LONGITUDINAL_SAFETY_MIN_DIST, EXP_CLIP_TH
+    LAT_SAFETY_ACCEL_DURING_DELAY, LONGITUDINAL_SAFETY_MIN_DIST, EXP_CLIP_TH, SAFETY_SIGMOID_K_PARAM
 from decision_making.src.planning.types import LIMIT_MIN, FrenetTrajectories2D, FS_SX, FS_SV, FS_DX, FS_DV, \
     ObjectSizeArray, OBJ_LENGTH, OBJ_WIDTH
 from decision_making.src.state.state import ObjectSize
@@ -237,9 +237,8 @@ class SafetyUtils:
         """
         # transfer lon & lat normalized safe distances to truncated sigmoid costs
         points_offset = np.array([lon_safe_dist, lat_safe_dist])
-        sigmoid_k = 8
         # the following sigmoid obtains values between 0 and 2.
-        logit_costs = np.divide(2., (1. + np.exp(np.minimum(sigmoid_k * points_offset, EXP_CLIP_TH))))
+        logit_costs = np.divide(2., (1. + np.exp(np.minimum(SAFETY_SIGMOID_K_PARAM * points_offset, EXP_CLIP_TH))))
         # truncate the sigmoid by 1 and extract lon & lat costs, which are safe if 0 < cost < 1 and unsafe if cost = 1
         lon_cost, lat_cost = np.split(np.minimum(logit_costs, 1), 2)
 

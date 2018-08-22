@@ -288,7 +288,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                                     params.dist_from_goal_cost.w, params.dist_from_goal_cost.k)
 
         ''' RSS (truncated sigmoid) '''
-        safety_costs = Costs.compute_safety_costs(non_weigted_safety_costs, params)
+        safety_costs = Costs.compute_safety_costs(non_weigted_safety_costs)
 
         ''' point-wise costs: obstacles, deviations, jerk '''
         pointwise_costs = Costs.compute_pointwise_costs(ctrajectories, ftrajectories, state, params,
