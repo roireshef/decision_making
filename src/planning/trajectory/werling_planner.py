@@ -144,14 +144,16 @@ class WerlingPlanner(TrajectoryPlanner):
                                                 len(frenet_filtered_indices), len(ftrajectories)))
         elif len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
-            raise NoValidTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s. "
+            raise NoValidTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, "
+                                           "goal_fstate: %s, ego_fstate: %s, state: %s. "
                                            "planned velocities range [%s, %s] (limits: %s); "
                                            "planned lon. accelerations range [%s, %s] (limits: %s); "
                                            "planned lat. accelerations range [%s, %s] (limits: %s); "
                                            "number of trajectories passed according to Frenet limits: %s/%s;"
                                            "number of trajectories passed according to Cartesian limits: %s/%s;"
                                            "number of trajectories passed according to all limits: %s/%s;" %
-                                           (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
+                                           (T_s, NumpyUtils.str_log(goal), NumpyUtils.str_log(goal_frenet_state),
+                                            NumpyUtils.str_log(ego_frenet_state), str(state).replace('\n', ''),
                                             np.min(ctrajectories[:, :, C_V]), np.max(ctrajectories[:, :, C_V]),
                                             NumpyUtils.str_log(cost_params.velocity_limits),
                                             np.min(ctrajectories[:, :, C_A]), np.max(ctrajectories[:, :, C_A]),
@@ -163,8 +165,8 @@ class WerlingPlanner(TrajectoryPlanner):
                                             len(refiltered_indices), len(ftrajectories)))
 
         # filter trajectories by RSS safety
-        safe_traj_indices = self.filter_trajectories_by_safety(state, planning_time_points, ftrajectories_refiltered,
-                                                               frenet)
+        safe_traj_indices, safety_costs = \
+            self.filter_trajectories_by_safety(state, planning_time_points, ftrajectories_refiltered, frenet)
         # Throw an error if no safe trajectory is found
         if not safe_traj_indices.any():
             objects_curr_fstates = []
@@ -182,12 +184,13 @@ class WerlingPlanner(TrajectoryPlanner):
         ftrajectories_refiltered_safe = ftrajectories_refiltered[safe_traj_indices]
         ctrajectories_filtered_safe = ctrajectories_filtered[safe_traj_indices]
         refiltered_indices_safe = refiltered_indices[safe_traj_indices]
+        safety_costs_safe = safety_costs[safe_traj_indices]
 
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
         filtered_trajectory_costs = \
-            self._compute_cost(ctrajectories_filtered_safe, ftrajectories_refiltered_safe, state, goal_frenet_state, cost_params,
-                               global_time_sample, self._predictor, self.dt)
+            self._compute_cost(ctrajectories_filtered_safe, ftrajectories_refiltered_safe, state, goal_frenet_state,
+                               safety_costs_safe, cost_params, global_time_sample, self._predictor, self.dt)
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
@@ -260,8 +263,8 @@ class WerlingPlanner(TrajectoryPlanner):
 
     @staticmethod
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,
-                      goal_in_frenet: FrenetState2D, params: TrajectoryCostParams, global_time_samples: np.ndarray,
-                      predictor: EgoAwarePredictor, dt: float) -> np.ndarray:
+                      goal_in_frenet: FrenetState2D, non_weigted_safety_costs: np.array, params: TrajectoryCostParams,
+                      global_time_samples: np.ndarray, predictor: EgoAwarePredictor, dt: float) -> np.ndarray:
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
@@ -284,11 +287,14 @@ class WerlingPlanner(TrajectoryPlanner):
         dist_from_goal_costs = Math.clipped_sigmoid(trajectory_end_goal_dist - params.dist_from_goal_cost.offset,
                                                     params.dist_from_goal_cost.w, params.dist_from_goal_cost.k)
 
+        ''' RSS (truncated sigmoid) '''
+        safety_costs = Costs.compute_safety_costs(non_weigted_safety_costs, params)
+
         ''' point-wise costs: obstacles, deviations, jerk '''
         pointwise_costs = Costs.compute_pointwise_costs(ctrajectories, ftrajectories, state, params,
                                                         global_time_samples, predictor, dt)
 
-        return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs
+        return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs + safety_costs
 
     # TODO: determine tighter lower bound according to physical constraints and ego control limitations
     def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints, fconstraints_tT: FrenetConstraints,
@@ -412,7 +418,8 @@ class WerlingPlanner(TrajectoryPlanner):
 
     @prof.ProfileFunction()
     def filter_trajectories_by_safety(self, state: State, time_samples: np.ndarray,
-                                      ego_ftrajectories: FrenetTrajectories2D, frenet: FrenetSerret2DFrame) -> np.array:
+                                      ego_ftrajectories: FrenetTrajectories2D, frenet: FrenetSerret2DFrame) -> \
+            [np.array, np.array]:
         """
         Filter frenet trajectories by RSS safety (both longitudinal & lateral).
         The naive objects prediction in Frenet frame is used.
@@ -436,14 +443,14 @@ class WerlingPlanner(TrajectoryPlanner):
             except OutOfSegmentFront:
                 pass
         if len(objects_curr_fstates) == 0:
-            return np.array(range(ego_ftrajectories.shape[0]))
+            return np.array(range(ego_ftrajectories.shape[0])), np.zeros((ego_ftrajectories.shape[0]))
 
         # create a matrix of all objects' predictions and a list of objects' sizes
         obj_ftraj = self.predictor.predict_frenet_states(np.array(objects_curr_fstates), time_samples)
 
         # calculate RSS safety for all trajectories, all objects and all timestamps
-        safe_times = SafetyUtils.get_safe_times(ego_ftrajectories, state.ego_state.size, obj_ftraj, obj_sizes)
+        safety_costs = SafetyUtils.get_safety_costs(ego_ftrajectories, state.ego_state.size, obj_ftraj, obj_sizes)
         # AND over all objects and all timestamps
-        safe_trajectories = safe_times.all(axis=(1, 2))
+        safe_trajectories = (safety_costs < 1).all(axis=(1, 2))
 
-        return np.where(safe_trajectories)[0]
+        return np.where(safe_trajectories)[0], np.max(safety_costs, axis=(1, 2))

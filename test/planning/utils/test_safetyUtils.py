@@ -52,7 +52,7 @@ def test_calcSafetyForTrajectories_safetyWrtFrontObject_allCasesShouldComplyRSS(
     obj_size = default_object_size()
     ego_ftraj = TrajectoryUtils.create_ftrajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
     obj_ftraj = TrajectoryUtils.create_ftrajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
-    actual_safe = SafetyUtils.get_safe_times(ego_ftraj, obj_size, obj_ftraj, [obj_size]).all(axis=-1)[0][0]
+    actual_safe = (SafetyUtils.get_safety_costs(ego_ftraj, obj_size, obj_ftraj, [obj_size]) < 1).all(axis=-1)[0][0]
     assert actual_safe == expected
 
 
@@ -66,7 +66,7 @@ def test_calcSafetyForTrajectories_safetyWrtFrontObject_allCasesShouldComplyRSS(
      (3, 10, 20,  0,    1,    3,  30, 30,  1,    1, -190, T_s(), True),# ego enters to corridor of LB when it safe lon.
      (4, 30, 30,  0,    1,T_s(),  20, 20,  1,    1,  -15, T_s(), True),# safe wrt to close LB: becomes safe lon. before it becomes unsafe lat
      (5, 30, 30,  0,    1,T_s(),  20, 20,  1,    1,  -10, T_s(), False),# dangerous cut-in of LB: becomes safe lon. after it becomes unsafe laterally
-     (6, 10, 30,  0,    1,    6,   9,  9,  1,    1,  -20, T_s(), True),# ego is safe wrt close slow LB (9 m/s, 20 m behind ego)
+     (6, 10, 30,  0,    1,    6,   8,  8,  1,    1,  -20, T_s(), True),# ego is safe wrt close slow LB (8 m/s, 20 m behind ego)
      (7, 10, 30,  0,    1,T_s(),  30, 30,  1,    1,  -20, T_s(), True),# LB moves to ego's lane behind ego on unsafe distance, but ego is safe because its rear obj's blame
      (8, 30, 30,  0,    1,T_s(),  30, 30,  1,    0,  -30, T_s(), False),# ego & LB move one towards another laterally; unsafe because of ego blame
      (9, 30, 30,  0,    1,T_s(),  30, 30,  1,    0,  -30,     3, False)# ego & LB move one towards another laterally. At blame time ego moves laterally slower than thresh, but its actions is toward LB, then it's blamed
@@ -98,7 +98,7 @@ def test_calcSafetyForTrajectories_safetyWrtLeftBackObject_allCasesShouldComplyR
     obj_size = default_object_size()
     ego_ftraj = TrajectoryUtils.create_ftrajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
     obj_ftraj = TrajectoryUtils.create_ftrajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
-    actual_safe = SafetyUtils.get_safe_times(ego_ftraj, obj_size, obj_ftraj, [obj_size]).all(axis=-1)[0][0]
+    actual_safe = (SafetyUtils.get_safety_costs(ego_ftraj, obj_size, obj_ftraj, [obj_size]) < 1).all(axis=-1)[0][0]
     assert actual_safe == expected
 
 
@@ -138,7 +138,7 @@ def test_calcSafetyForTrajectories_safetyWrtLeftFrontObject_allCasesShouldComply
     obj_size = default_object_size()
     ego_ftraj = TrajectoryUtils.create_ftrajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
     obj_ftraj = TrajectoryUtils.create_ftrajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
-    actual_safe = SafetyUtils.get_safe_times(ego_ftraj, obj_size, obj_ftraj, [obj_size]).all(axis=-1)[0][0]
+    actual_safe = (SafetyUtils.get_safety_costs(ego_ftraj, obj_size, obj_ftraj, [obj_size]) < 1).all(axis=-1)[0][0]
     assert actual_safe == expected
 
 
@@ -186,7 +186,7 @@ def test_calcSafetyForTrajectories_safetyWrtLeftObject_allCasesShouldComplyRSS(
     obj_size = default_object_size()
     ego_ftraj = TrajectoryUtils.create_ftrajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
     obj_ftraj = TrajectoryUtils.create_ftrajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
-    actual_safe = SafetyUtils.get_safe_times(ego_ftraj, obj_size, obj_ftraj, [obj_size]).all(axis=-1)[0][0]
+    actual_safe = (SafetyUtils.get_safety_costs(ego_ftraj, obj_size, obj_ftraj, [obj_size]) < 1).all(axis=-1)[0][0]
     assert actual_safe == expected
 
 
@@ -224,5 +224,5 @@ def test_calcSafetyForTrajectories_safetyWrtRearObject_allCasesShouldComplyRSS(
     obj_size = default_object_size()
     ego_ftraj = TrajectoryUtils.create_ftrajectory(ego_v0, ego_vT, ego_lane0, ego_laneT, T_d=ego_T_d)
     obj_ftraj = TrajectoryUtils.create_ftrajectory(obj_v0, obj_vT, obj_lane0, obj_laneT, lon0=obj_lon0, T_d=obj_T_d)
-    actual_safe = SafetyUtils.get_safe_times(ego_ftraj, obj_size, obj_ftraj, [obj_size]).all(axis=-1)[0][0]
+    actual_safe = (SafetyUtils.get_safety_costs(ego_ftraj, obj_size, obj_ftraj, [obj_size]) < 1).all(axis=-1)[0][0]
     assert actual_safe == expected

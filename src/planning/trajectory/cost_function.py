@@ -218,6 +218,16 @@ class Costs:
         return obstacles_costs
 
     @staticmethod
+    def compute_safety_costs(safety_costs: np.array, params: TrajectoryCostParams):
+        """
+        Given raw (not weighted) safety costs (based on RSS), sum it over obstacles and multiply by weight
+        :param safety_costs: 1D array (of size trajectories_number) of safety costs based on RSS in range [0, 1]
+        :param params: parameters for the cost function (from behavioral layer)
+        :return: MxN matrix of safety costs per point, where N is trajectories number, M is trajectory length.
+        """
+        return 100 * safety_costs
+
+    @staticmethod
     def compute_deviation_costs(ftrajectories: FrenetTrajectories2D, params: TrajectoryCostParams):
         """
         Compute point-wise deviation costs from lane, shoulders and road together.

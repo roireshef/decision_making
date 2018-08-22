@@ -335,9 +335,9 @@ class CostBasedBehavioralPlanner:
         obj_trajectories = np.array(self.predictor.predict_frenet_states(obj_fstates, time_points))
 
         # calculate safety for each trajectory, each object, each timestamp
-        safe_times = SafetyUtils.get_safe_times(ftrajectories, ego.size, obj_trajectories, obj_sizes)
+        safety_costs = SafetyUtils.get_safety_costs(ftrajectories, ego.size, obj_trajectories, obj_sizes)
         # trajectory is considered safe if it's safe wrt all dynamic objects for all timestamps
-        safe_trajectories = safe_times.all(axis=(1, 2))
+        safe_trajectories = (safety_costs < 1).all(axis=(1, 2))
 
         if not safe_trajectories.any():
             self.logger.warning("_check_actions_safety: No safe action found")

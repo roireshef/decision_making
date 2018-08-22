@@ -97,6 +97,8 @@ LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 SPECIFICATION_MARGIN_TIME_DELAY = 2
 SAFETY_MARGIN_TIME_DELAY = 1
 
+# [m] minimal longitudinal safe distance between objects
+LONGITUDINAL_SAFETY_MIN_DIST = 0.5
 # [m] minimal lateral safe distance between objects
 LATERAL_SAFETY_MU = 0.5
 
