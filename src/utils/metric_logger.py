@@ -5,17 +5,21 @@ class MetricLogger:
     """
     Report measurements from anywhere in the DM modules.
     """
-    _instance = None
+    _instances = {}
 
-    def __init__(self,component_name):
+    def __init__(self,prefix):
         self._logger = AV_Logger.get_json_logger()
-        self._component_name = component_name
+        self._prefix = prefix
 
     @classmethod
-    def get_logger(cls,component_name):
-        if cls._instance is None:
-            cls._instance = MetricLogger(component_name)
-        return cls._instance
+    def get_logger(cls,prefix):
+        """
+        :param prefix:  is not a process-id nor an instance id. Just prefix
+        :return:
+        """
+        if prefix not in cls._instances:
+            cls._instances[prefix] = MetricLogger(prefix)
+        return cls._instances[prefix]
 
     def report(self, message='', *args, **kwargs):
         if len(kwargs) > 0:
@@ -23,8 +27,8 @@ class MetricLogger:
         self._logger.debug(message, *args)
 
     def bind(self, **kwargs):
-        self._logger.bind(**{self._component_name+'_'+k:v for k,v in kwargs.items()})
+        self._logger.bind(**{self._prefix + '_' + k:v for k, v in kwargs.items()})
 
     def unbind(self, *args):
-        self._logger.unbind(*[self._component_name+'_'+a for a in args])
+        self._logger.unbind(*[self._prefix + '_' + a for a in args])
 

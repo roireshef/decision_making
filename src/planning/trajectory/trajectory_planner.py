@@ -24,7 +24,7 @@ class TrajectoryPlanner(metaclass=ABCMeta):
     @abstractmethod
     @raises(NoValidTrajectoriesFound, CouldNotGenerateTrajectories)
     def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, time_horizon: float,
-             cost_params: TrajectoryCostParams, bp_time: int) -> \
+             cost_params: TrajectoryCostParams, bp_time: int=0) -> \
             Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
         Plans a trajectory according to the specifications in the arguments

@@ -37,7 +37,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return self._dt
 
     def plan(self, state: State, reference_route: np.ndarray, goal: CartesianExtendedState, time_horizon: float,
-             cost_params: TrajectoryCostParams, bp_time: int)-> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
+             cost_params: TrajectoryCostParams, bp_time: int=0)-> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """ see base class """
         T_s = time_horizon
 
