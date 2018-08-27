@@ -7,7 +7,7 @@ import json
   
         Usage: 
             first arg: <Json log location> 
-            second optional flag [-s] (for simple, (not merging))
+            second optional flag [-m] (for merging))
   
 """
 
@@ -52,10 +52,10 @@ def do_dump_jsons():
 if __name__ == '__main__':
     try:
         log_filename = argv[1]
-        if len(argv) > 2 and argv[2] == '-s':
+        if len(argv) > 2 and argv[2] == '-m':
+            do_dump_jsons()
+        else:
             for j in simple_strip():
                 print(j)
-        else:
-            do_dump_jsons()
     except:
-        "Usage: {0} <Json log location> [-s]" % argv[0]
+        "Usage: {0} <Json log location> [-m]" % argv[0]

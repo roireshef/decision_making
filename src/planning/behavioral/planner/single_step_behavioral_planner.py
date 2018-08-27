@@ -67,11 +67,6 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self.logger.debug('Number of actions specified: %d (#%dS,#%dD)',
                           num_of_specified_actions, num_of_considered_static_actions, num_of_considered_dynamic_actions)
 
-        self._metric_logger.bind(ts=state.ego_state.timestamp,
-                                 num_of_specified_actions=num_of_specified_actions,
-                                 num_of_considered_static_actions=num_of_considered_static_actions,
-                                 num_of_considered_dynamic_actions=num_of_considered_dynamic_actions)
-
         # ActionSpec filtering
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
 
@@ -108,11 +103,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         self.logger.debug('Number of actions originally: %d, valid: %d',
                           self.action_space.action_space_size, np.sum(recipes_mask))
-        self._metric_logger.bind(ts=state.ego_state.timestamp,
-                                 action_space_size=self.action_space.action_space_size,
-                                 valid_action_space=np.sum(recipes_mask))
         selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes, recipes_mask)
-        self._metric_logger.bind(selected_action_index=selected_action_index)
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(behavioral_state=behavioral_state,
                                                                                       action_spec=selected_action_spec,
                                                                                       navigation_plan=nav_plan)

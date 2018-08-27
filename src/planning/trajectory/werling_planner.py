@@ -128,8 +128,6 @@ class WerlingPlanner(TrajectoryPlanner):
 
 
         self._logger.debug(LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, len(ctrajectories_filtered))
-        self._metric_logger.bind(ts=state.ego_state.timestamp, ctrajectories_filtered_len=len(ctrajectories_filtered),
-                                 bp_time=bp_time)
 
         if len(ctrajectories) == 0:
             raise CouldNotGenerateTrajectories("No valid cartesian trajectories. time: %f, goal: %s, state: %s. "
@@ -171,7 +169,6 @@ class WerlingPlanner(TrajectoryPlanner):
 
         self._logger.debug("Chosen trajectory planned with lateral horizon : {}".format(
             T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]]))
-        self._metric_logger.bind(lateral_horizon=T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]])
 
         samplable_trajectory = SamplableWerlingTrajectory(
             timestamp_in_sec=state.ego_state.timestamp_in_sec,
