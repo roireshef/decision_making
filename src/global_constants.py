@@ -239,6 +239,8 @@ STATE_MODULE_NAME_FOR_LOGGING = "State Module"
 RVIZ_MODULE_NAME_FOR_LOGGING = "Rviz Module"
 
 
+#### MetricLogger
+METRIC_LOGGER_DELIMITER= '_'
 
 ##### Log messages
 # TODO: update decision_making_sim messages

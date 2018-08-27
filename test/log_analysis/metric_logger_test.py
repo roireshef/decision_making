@@ -21,7 +21,7 @@ def test_with_autobinding_notRasingException():
 
 
 
-def test_with_simple_binding_notRasingException():
+def test_simplebinding_notRasingException():
     try:
         logger = MetricLogger.get_logger('TEST')
         logger.bind(data={'x': 10})
@@ -29,7 +29,7 @@ def test_with_simple_binding_notRasingException():
     except:
         pytest.fail("Exception was thrown")
 
-def test_multiple_messages_single_binding_notRasingException():
+def test_multiple_messagesSingleBinding_notRasingException():
     try:
         logger = MetricLogger.get_logger('TEST')
         logger.bind(a=1, b=2, c=3, d=4)
@@ -40,14 +40,15 @@ def test_multiple_messages_single_binding_notRasingException():
     except:
         pytest.fail("Exception was thrown")
 
-def test_binding_persistency_over_calls():
+def test_binding_persistencyOverCalls():
     try:
         logger = MetricLogger.get_logger('TEST')
         logger.report('message should include a-d')
+        #Manually check in logfile
     except:
         pytest.fail("Exception was thrown")
 
-def test_unbinding_manual_validation():
+def test_unbinding_manualValidation_notRaisingException():
     try:
         logger = MetricLogger.get_logger('TEST')
 
