@@ -46,6 +46,8 @@ class TrajectoryPlanningFacade(DmModule):
         """
         super().__init__(pubsub=pubsub, logger=logger)
 
+        self._metric_logger = MetricLogger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_METRICS)
+
         self._short_time_predictor = short_time_predictor
         self._strategy_handlers = strategy_handlers
         self._validate_strategy_handlers()
@@ -65,7 +67,6 @@ class TrajectoryPlanningFacade(DmModule):
         :return: no return value. results are published in self.__publish_results()
         """
         try:
-            MetricLogger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_METRICS).report()
             # Monitor execution time of a time-critical component (prints to logging at the end of method)
             start_time = time.time()
 
@@ -99,10 +100,12 @@ class TrajectoryPlanningFacade(DmModule):
             else:
                 updated_state = state_aligned
 
+            self._metric_logger.bind(bp_time=params.bp_time)
+
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
-                     params.cost_params, params.bp_time)
+                     params.cost_params)
 
             center_vehicle_trajectory_points = samplable_trajectory.sample(
                 np.linspace(start=0,
@@ -130,6 +133,7 @@ class TrajectoryPlanningFacade(DmModule):
             self._publish_debug(debug_results)
 
             self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
+            self._metric_logger.report()
 
         except MsgDeserializationError:
             self.logger.error("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
@@ -226,10 +230,11 @@ class TrajectoryPlanningFacade(DmModule):
         # predicted_states[1] is the predicted state in the end of the execution of traj.
         # TODO: Hack! We need a prediction method for this case which: 1. creates states,
         # TODO: 2.predicts for more than one timestamp, 3. ego can't be None because LCM doesn't like it.
-        predicted_states_without_ego = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps, action_trajectory=None)
+        predicted_states_without_ego = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps,
+                                                               action_trajectory=None)
         predicted_states = [State(occupancy_state=predicted_state.occupancy_state,
-                                      dynamic_objects=predicted_state.dynamic_objects,
-                                      ego_state=state.ego_state) for predicted_state in predicted_states_without_ego]
+                                  dynamic_objects=predicted_state.dynamic_objects,
+                                  ego_state=state.ego_state) for predicted_state in predicted_states_without_ego]
 
         _, downsampled_reference_route, _ = CartesianFrame.resample_curve(reference_route,
                                                                           step_size=DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION)

@@ -1,9 +1,12 @@
 from decision_making.src.global_constants import METRIC_LOGGER_DELIMITER
 from rte.python.logger.AV_logger import AV_Logger
-from typing import Any
+from typing import Any, TypeVar
+
+T = TypeVar('T', bound='MetricLogger')
 
 
 class MetricLogger:
+
     """
     Report measurements from anywhere in the DM modules.
     Usage:
@@ -27,7 +30,7 @@ class MetricLogger:
         self._prefix = prefix
 
     @classmethod
-    def get_logger(cls, prefix: str):
+    def get_logger(cls, prefix: str) -> T:
         """
         Obtains a MetricLogger associated with a specific prefix
         :param prefix:  is not a process-id nor an instance id. Just prefix

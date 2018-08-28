@@ -37,7 +37,7 @@ class WerlingPlanner(TrajectoryPlanner):
         return self._dt
 
     def plan(self, state: State, reference_route: np.ndarray, goal: CartesianExtendedState, time_horizon: float,
-             cost_params: TrajectoryCostParams, bp_time: int=0)-> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
+             cost_params: TrajectoryCostParams)-> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """ see base class """
         T_s = time_horizon
 
@@ -96,11 +96,9 @@ class WerlingPlanner(TrajectoryPlanner):
         lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, self.dt)
 
         assert T_s >= lower_bound_T_d
-        #TODO: This should be changed
-        self._logger.debug('WerlingPlanner is planning from %s (frenet) to %s (frenet) in %s seconds' %
-                           (NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
-                            T_s))
-
+        self._logger.debug('WerlingPlanner is planning from %s (frenet) to %s (frenet) in %s seconds',
+                           NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
+                            T_s)
         # create a grid on T_d (lateral movement time-grid)
         T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_s, lower_bound_T_d, self.dt)
 
