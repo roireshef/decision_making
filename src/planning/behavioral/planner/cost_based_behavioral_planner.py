@@ -11,7 +11,7 @@ from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATI
     DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, \
     OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, \
     DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS, SAFETY_MARGIN_TIME_DELAY, TRAJECTORY_TIME_RESOLUTION, EPS
+    LAT_ACC_LIMITS, SAFETY_MARGIN_TIME_DELAY, TRAJECTORY_TIME_RESOLUTION, EPS, SPECIFICATION_MARGIN_TIME_DELAY
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
@@ -26,7 +26,7 @@ from decision_making.src.planning.behavioral.semantic_actions_utils import Seman
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, LIMIT_MAX
+from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, LIMIT_MAX, FS_SV, FS_DV, FrenetState2D
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -342,7 +342,47 @@ class CostBasedBehavioralPlanner:
         if not safe_trajectories.any():
             self.logger.warning("_check_actions_safety: No safe action found")
 
+        CostBasedBehavioralPlanner.log_safety(ego_init_fstate, obj_fstates, ego.size, obj_sizes)
+
         # assign safety to the specs, for which specs_mask is true
         safe_specs = np.copy(np.array(action_specs_mask))
         safe_specs[safe_specs] = safe_trajectories
         return list(safe_specs)  # list's size like the original action_specs size
+
+    @staticmethod
+    def log_safety(ego_init_fstate: FrenetState2D, obj_fstates: np.array, ego_size: ObjectSize, obj_sizes: np.array):
+        actual_lon_distance = np.zeros(obj_fstates.shape[0])
+        min_safe_lon_distance = np.zeros(obj_fstates.shape[0])
+        obj_size_arr = np.zeros((obj_fstates.shape[0], 2))
+
+        for i, obj_fstate in enumerate(obj_fstates):
+            cars_size_lon_margin = (ego_size.length + obj_sizes[i].length) / 2
+            if obj_fstates[i, FS_SX] > ego_init_fstate[FS_SX]:
+                actual_lon_distance[i] = obj_fstates[:, FS_SX] - ego_init_fstate[FS_SX]
+                min_safe_lon_distance[i] = max(0, ego_init_fstate[FS_SV] ** 2 - obj_fstates[:, FS_SV] ** 2) / \
+                                           (-2 * LON_ACC_LIMITS[0]) + \
+                                           ego_init_fstate[FS_SV] * SAFETY_MARGIN_TIME_DELAY + cars_size_lon_margin
+            else:
+                actual_lon_distance[i] = ego_init_fstate[FS_SX] - obj_fstates[:, FS_SX]
+                min_safe_lon_distance[i] = max(0, obj_fstates[:, FS_SV] ** 2 - ego_init_fstate[FS_SV] ** 2) / \
+                                           (-2 * LON_ACC_LIMITS[0]) + \
+                                           obj_fstates[:, FS_SV] * SPECIFICATION_MARGIN_TIME_DELAY + cars_size_lon_margin
+            obj_size_arr[i] = np.array([obj_sizes[i].length, obj_sizes[i].width])
+
+        lat_relative_to_obj = obj_fstates[:, FS_DX] - ego_init_fstate[FS_DX]
+        sign_of_lat_relative_to_obj = np.sign(lat_relative_to_obj)
+        ego_vel_after_reaction_time = ego_init_fstate[FS_DV] - sign_of_lat_relative_to_obj * SAFETY_MARGIN_TIME_DELAY
+        obj_vel_after_reaction_time = obj_fstates[:,
+                                      FS_DV] + sign_of_lat_relative_to_obj * SPECIFICATION_MARGIN_TIME_DELAY
+        # the distance objects move one towards another during their reaction time
+        avg_ego_vel = 0.5 * (ego_init_fstate[FS_DV] + ego_vel_after_reaction_time)
+        avg_obj_vel = 0.5 * (obj_fstates[:, FS_DV] + obj_vel_after_reaction_time)
+        reaction_dist = sign_of_lat_relative_to_obj * (avg_obj_vel * SPECIFICATION_MARGIN_TIME_DELAY -
+                                                       avg_ego_vel * SAFETY_MARGIN_TIME_DELAY)
+
+        actual_lon_distance = np.abs(lat_relative_to_obj)
+        min_safe_lat_dist = np.maximum(np.divide(sign_of_lat_relative_to_obj *
+                                                 (obj_vel_after_reaction_time * np.abs(obj_vel_after_reaction_time) -
+                                                  ego_vel_after_reaction_time * np.abs(ego_vel_after_reaction_time)),
+                                                 2 * LAT_ACC_LIMITS[1]) + reaction_dist, 0) + \
+                            (ego_size.width + obj_size_arr[:, 1]) / 2
