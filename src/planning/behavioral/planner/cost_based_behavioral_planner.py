@@ -303,8 +303,7 @@ class CostBasedBehavioralPlanner:
         ego = state.ego_state
         ego_init_fstate = ego.map_state.road_fstate
 
-        spec_arr = np.array([np.array([spec.t, spec.s, spec.v, spec.d])
-                             for i, spec in enumerate(action_specs) if action_specs_mask[i]])
+        spec_arr = np.array([[spec.t, spec.s, spec.v, spec.d] for i, spec in enumerate(action_specs) if action_specs_mask[i]])
         t_arr, s_arr, v_arr, d_arr = np.split(spec_arr, 4, axis=1)
         zeros = np.zeros(t_arr.shape[0])
 
@@ -358,15 +357,15 @@ class CostBasedBehavioralPlanner:
         for i, obj_fstate in enumerate(obj_fstates):
             cars_size_lon_margin = (ego_size.length + obj_sizes[i].length) / 2
             if obj_fstates[i, FS_SX] > ego_init_fstate[FS_SX]:
-                actual_lon_distance[i] = obj_fstates[:, FS_SX] - ego_init_fstate[FS_SX]
-                min_safe_lon_distance[i] = max(0, ego_init_fstate[FS_SV] ** 2 - obj_fstates[:, FS_SV] ** 2) / \
+                actual_lon_distance[i] = obj_fstates[i, FS_SX] - ego_init_fstate[FS_SX]
+                min_safe_lon_distance[i] = max(0, ego_init_fstate[FS_SV] ** 2 - obj_fstates[i, FS_SV] ** 2) / \
                                            (-2 * LON_ACC_LIMITS[0]) + \
                                            ego_init_fstate[FS_SV] * SAFETY_MARGIN_TIME_DELAY + cars_size_lon_margin
             else:
-                actual_lon_distance[i] = ego_init_fstate[FS_SX] - obj_fstates[:, FS_SX]
-                min_safe_lon_distance[i] = max(0, obj_fstates[:, FS_SV] ** 2 - ego_init_fstate[FS_SV] ** 2) / \
+                actual_lon_distance[i] = ego_init_fstate[FS_SX] - obj_fstates[i, FS_SX]
+                min_safe_lon_distance[i] = max(0, obj_fstates[i, FS_SV] ** 2 - ego_init_fstate[FS_SV] ** 2) / \
                                            (-2 * LON_ACC_LIMITS[0]) + \
-                                           obj_fstates[:, FS_SV] * SPECIFICATION_MARGIN_TIME_DELAY + cars_size_lon_margin
+                                           obj_fstates[i, FS_SV] * SPECIFICATION_MARGIN_TIME_DELAY + cars_size_lon_margin
             obj_size_arr[i] = np.array([obj_sizes[i].length, obj_sizes[i].width])
 
         lat_relative_to_obj = obj_fstates[:, FS_DX] - ego_init_fstate[FS_DX]
@@ -380,9 +379,11 @@ class CostBasedBehavioralPlanner:
         reaction_dist = sign_of_lat_relative_to_obj * (avg_obj_vel * SPECIFICATION_MARGIN_TIME_DELAY -
                                                        avg_ego_vel * SAFETY_MARGIN_TIME_DELAY)
 
-        actual_lon_distance = np.abs(lat_relative_to_obj)
+        actual_lat_distance = np.abs(lat_relative_to_obj)
         min_safe_lat_dist = np.maximum(np.divide(sign_of_lat_relative_to_obj *
                                                  (obj_vel_after_reaction_time * np.abs(obj_vel_after_reaction_time) -
                                                   ego_vel_after_reaction_time * np.abs(ego_vel_after_reaction_time)),
                                                  2 * LAT_ACC_LIMITS[1]) + reaction_dist, 0) + \
                             (ego_size.width + obj_size_arr[:, 1]) / 2
+        print('actual_lon_distance=%.2f min_safe_lon_distance=%.2f' % (actual_lon_distance[0], min_safe_lon_distance[0]))
+        print('ego_vel=%.2f obj_vel=%.2f' % (ego_init_fstate[FS_SV], obj_fstates[0, FS_SV]))

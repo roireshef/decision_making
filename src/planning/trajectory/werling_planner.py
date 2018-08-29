@@ -174,10 +174,11 @@ class WerlingPlanner(TrajectoryPlanner):
                     objects_curr_fstates.append(obj_fstate)
                 except OutOfSegmentFront:
                     pass
-            raise NoSafeTrajectoriesFound("No safe trajectories found. time: %f, goal_frenet: %s, state: %s. "
-                                          "ego_fstate %s; objects_fstates %s" %
+            raise NoSafeTrajectoriesFound("No safe trajectories found\ntime: %f, goal_frenet: %s\nstate: %s\n"
+                                          "ego_fstate: %s\nobjects_fstates: %s" %
                                           (T_s, NumpyUtils.str_log(goal_frenet_state), str(state).replace('\n', ''),
-                                           ftrajectories[0, 0, :], objects_curr_fstates))
+                                           NumpyUtils.str_log(ftrajectories[0, 0, :]),
+                                           NumpyUtils.str_log(np.array(objects_curr_fstates))))
 
         ftrajectories_refiltered_safe = ftrajectories_refiltered[safe_traj_indices]
         ctrajectories_filtered_safe = ctrajectories_filtered[safe_traj_indices]
