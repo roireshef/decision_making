@@ -12,7 +12,7 @@ from decision_making.src.state.state import State
 from mapping.src.service.map_service import MapService
 
 
-class BP_CostFunctions:
+class BPCosts:
     @staticmethod
     def calc_efficiency_cost(state: State, specs: List[ActionSpec]) -> np.array:
         """
@@ -20,14 +20,14 @@ class BP_CostFunctions:
         Do it by calculation of average velocity during achieving the followed car and then following it with
         constant velocity. Total considered time is given by time_horizon.
         :param state: current state
-        :param specs: action specifications list
+        :param specs: action specifications list; all specs should be valid (not None)
         :return: the efficiency costs array
         """
         ego_fstate = state.ego_state.map_state.road_fstate
-        TS = np.array([np.array([spec.t, spec.s]) for spec in specs])
-        specs_t, specs_s = np.split(TS, 2, axis=1)
+        specs_t = np.array([spec.t for spec in specs])
+        specs_s = np.array([spec.s for spec in specs])
         avg_vel = (specs_s - ego_fstate[FS_SX]) / specs_t
-        efficiency_cost = BP_CostFunctions._calc_efficiency_cost_for_velocities(avg_vel)
+        efficiency_cost = BPCosts._calc_efficiency_cost_for_velocities(avg_vel)
         return BP_EFFICIENCY_COST_WEIGHT * efficiency_cost * specs_t
 
     @staticmethod
@@ -51,14 +51,13 @@ class BP_CostFunctions:
         """
         Calculate comfort cost for lateral and longitudinal movement
         :param state: current state
-        :param specs: action specifications list
+        :param specs: action specifications list; all specs should be valid (not None)
         :param T_d_max: [sec] array: the largest possible lateral time imposed by safety. T_d_max=spec.t if it's not imposed
         :return: comfort cost in units of the general performance metrics cost
         """
         ego_fstate = state.ego_state.map_state.road_fstate
-        TSVD = np.array([np.array([spec.t, spec.s, spec.v, spec.d]) for spec in specs])
-        specs_t, specs_s, specs_v, specs_d = np.split(TSVD, 4, axis=1)
-
+        specs_t, specs_s, specs_v, specs_d = np.split(np.array([[spec.t, spec.s, spec.v, spec.d] for spec in specs]), 4,
+                                                      axis=1)
         T_d = T_s = np.clip(specs_t, EPS, 1./EPS)
         if T_d_max is not None:
             T_d = np.clip(np.minimum(specs_t, T_d_max), EPS, 1./EPS)
@@ -82,11 +81,11 @@ class BP_CostFunctions:
         """
         Calculate non-right lane cost for the given lane
         :param state: current state
-        :param specs: action specifications list
+        :param specs: action specifications list; all specs should be valid (not None)
         :return: non-right lane costs array
         """
-        TD = np.array([np.array([spec.t, spec.d]) for spec in specs])
-        specs_t, specs_d = np.split(TD, 2, axis=1)
+        specs_t = np.array([spec.t for spec in specs])
+        specs_d = np.array([spec.d for spec in specs])
         lane_width = MapService.get_instance().get_road(state.ego_state.map_state.road_id).lane_width
         lane_idxs = np.floor(specs_d / lane_width)
         return BP_RIGHT_LANE_COST_WEIGHT * lane_idxs * specs_t
@@ -96,7 +95,7 @@ class BP_CostFunctions:
         """
         Calculate lane deviation costs for an actions
         :param state: current state
-        :param specs: action specifications list
+        :param specs: action specifications list; all specs should be valid (not None)
         :return: lane deviation costs array
         """
         curr_d = state.ego_state.map_state.road_fstate[FS_DX]
