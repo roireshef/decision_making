@@ -242,3 +242,9 @@ def follow_lane_recipes():
     yield [StaticActionRecipe(RelativeLane.SAME_LANE, velocity, agg)
            for velocity in velocity_grid
            for agg in AggressivenessLevel]
+
+
+@pytest.fixture(scope='function')
+def follow_vehicle_recipes_towards_front_same_lane():
+    yield [DynamicActionRecipe(RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT, ActionType.FOLLOW_VEHICLE, agg)
+           for agg in AggressivenessLevel]
