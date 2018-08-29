@@ -82,14 +82,15 @@ class SamplableWerlingTrajectory(SamplableTrajectory):
 
         return fstates
 
-    def get_time_from_longitude(self, lon: float) -> Optional[float]:
+    def get_time_from_longitude(self, road_id: int, longitude: float) -> Optional[float]:
         """
         Given longitude, calculate time, for which the samplable trajectory reaches this longitude.
-        :param lon: [m] the required longitude
+        :param road_id: road id (is used in another derived class of SamplableTrajectory)
+        :param longitude: [m] the required longitude on the road
         :return: [sec] global time, for which the samplable trajectory reaches the longitude, or None if it doesn't.
         """
         # solve polynomial equation: poly_s(t) = lon
-        equation_poly_s_coefs = np.concatenate((self.poly_s_coefs[:-1], np.array([self.poly_s_coefs[-1] - lon])))
+        equation_poly_s_coefs = np.concatenate((self.poly_s_coefs[:-1], np.array([self.poly_s_coefs[-1] - longitude])))
         candidate_roots = np.roots(equation_poly_s_coefs)
         is_real = np.isclose(np.imag(candidate_roots), 0.)
         real_parts = np.real(candidate_roots)

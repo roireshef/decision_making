@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 from abc import ABCMeta, abstractmethod
 
@@ -26,6 +28,16 @@ class SamplableTrajectory(metaclass=ABCMeta):
         curvature> along the trajectory
         :param time_points: 1D numpy array of time stamps *in seconds* (global self.timestamp)
         :return: 2D numpy array with every row having the format of <x, y, yaw, velocity, a, k>
+        """
+        pass
+
+    @abstractmethod
+    def get_time_from_longitude(self, road_id: int, longitude: float) -> Optional[float]:
+        """
+        Given longitude, calculate time, for which the samplable trajectory reaches this longitude.
+        :param road_id: road id (is used in another derived class of SamplableTrajectory)
+        :param longitude: [m] the required longitude on the road
+        :return: [sec] global time, for which the samplable trajectory reaches the longitude, or None if it doesn't.
         """
         pass
 

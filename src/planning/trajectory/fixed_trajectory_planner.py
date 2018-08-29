@@ -1,6 +1,6 @@
 import time
 from logging import Logger
-from typing import Tuple
+from typing import Tuple, Optional
 
 import numpy as np
 
@@ -10,10 +10,12 @@ from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEG
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
-    CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D
+    CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D, C_X, \
+    C_YAW
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 from decision_making.test.exceptions import NotTriggeredException
+from mapping.src.service.map_service import MapService
 
 
 class FixedSamplableTrajectory(SamplableTrajectory):
@@ -32,6 +34,18 @@ class FixedSamplableTrajectory(SamplableTrajectory):
         indices_of_closest_time_points = np.round((time_points - self.timestamp_in_sec) / WERLING_TIME_RESOLUTION).astype(int)
 
         return self._fixed_trajectory[indices_of_closest_time_points]
+
+    def get_time_from_longitude(self, road_id: int, longitude: float) -> Optional[float]:
+        """
+        Given longitude, calculate time, for which the samplable trajectory reaches this longitude.
+        :param road_id: road id (is used in another derived class of SamplableTrajectory)
+        :param longitude: [m] the required longitude on the road
+        :return: [sec] global time, for which the samplable trajectory reaches the longitude, or None if it doesn't.
+        """
+        cpoint, _ = MapService.get_instance().convert_road_to_global_coordinates(road_id, longitude, 0)
+        road_cpoints = self._fixed_trajectory[:, C_X:C_YAW]
+        closest_point_idx = np.argmin(np.linalg.norm(road_cpoints - cpoint[:2], axis=1))
+        return self.timestamp_in_sec + WERLING_TIME_RESOLUTION * closest_point_idx
 
 
 class FixedTrajectoryPlanner(TrajectoryPlanner):
