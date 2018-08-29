@@ -10,7 +10,7 @@ from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, \
     DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_MARGIN_FROM_EGO
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
-from decision_making.src.planning.trajectory.cost_function import Costs, Jerk
+from decision_making.src.planning.trajectory.cost_function import TPCosts, Jerk
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner, \
     SamplableWerlingTrajectory
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, \
@@ -339,8 +339,8 @@ def compute_pixel_costs(route_points: np.array, reference_route_latitude: float,
 
     # calculate cost components for all image pixels by building a static "trajectory" for every pixel
     pointwise_costs = \
-        Costs.compute_pointwise_costs(cartesian_pixels, frenet_pixels, state, cost_params, time_samples,
-                                      planner.predictor, planner.dt)
+        TPCosts.compute_pointwise_costs(cartesian_pixels, frenet_pixels, state, cost_params, time_samples,
+                                        planner.predictor, planner.dt)
 
     pixel_costs = (pointwise_costs[:, :, 0] + pointwise_costs[:, :, 1]).reshape(height, width, time_samples.shape[0])
     return pixels2D, pixel_costs

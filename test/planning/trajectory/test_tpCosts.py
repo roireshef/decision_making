@@ -5,7 +5,7 @@ import numpy as np
 from decision_making.src.global_constants import EPS, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, \
     LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
-from decision_making.src.planning.trajectory.cost_function import Costs
+from decision_making.src.planning.trajectory.cost_function import TPCosts
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.types import FS_DX
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
@@ -85,9 +85,9 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
                                        dist_from_goal_cost=None, dist_from_goal_lat_factor=None, lon_jerk_cost=None,
                                        lat_jerk_cost=None, velocity_limits=None, lon_acceleration_limits=None,
                                        lat_acceleration_limits=None)
-    pointwise_costs = Costs.compute_obstacle_costs(ctrajectories, state, cost_params, time_points, predictor)
+    pointwise_costs = TPCosts.compute_obstacle_costs(ctrajectories, state, cost_params, time_points, predictor)
     total_costs = np.sum(pointwise_costs, axis=1)  # costs per trajectory
 
-    assert total_costs[0] < 1           # obstacle-free route (smallest T_d)
-    assert 1e3 < total_costs[1] < 1e4   # close to obstacle route (medium T_d)
-    assert total_costs[2] > 1e5         # obstacle-colliding route (largest T_d)
+    assert total_costs[0] < total_costs[1]              # obstacle-free route (smallest T_d)
+    assert total_costs[1] < OBSTACLE_SIGMOID_COST       # close to obstacle route (medium T_d)
+    assert total_costs[2] > OBSTACLE_SIGMOID_COST       # obstacle-colliding route (largest T_d)
