@@ -53,8 +53,14 @@ def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCel
     np.testing.assert_array_almost_equal(longitudes, expected_longitudes)
 
 
-def test_specifyGoals_stateWithFrontObject_planningTimesReasonable(
+def test_specifyGoals_followSlowFrontObject_specsComplyAccAndTimeLimits(
         follow_vehicle_recipes_towards_front_same_lane: List[DynamicActionRecipe]):
+    """
+    Test specify_goals for dynamic actions towards much slower front object.
+    Verify that choosing of maximal roots of 'time_cost_function_derivative_coefs' polynomial create specs
+    that comply with acceleration and time limits, while choosing minimal roots does not comply the limits.
+    :param follow_vehicle_recipes_towards_front_same_lane:
+    """
     logger = AV_Logger.get_logger()
     predictor = RoadFollowingPredictor(logger)
     dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=DEFAULT_DYNAMIC_RECIPE_FILTERING)
