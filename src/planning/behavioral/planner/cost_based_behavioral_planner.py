@@ -300,6 +300,9 @@ class CostBasedBehavioralPlanner:
         Specifications filtered by action_specs_mask are considered "unsafe".
         """
         # TODO: in the current version T_d = T_s. Test safety for different values of T_d.
+        if len(state.dynamic_objects) == 0:
+            return list(action_specs_mask)
+
         ego = state.ego_state
         ego_init_fstate = ego.map_state.road_fstate
 
