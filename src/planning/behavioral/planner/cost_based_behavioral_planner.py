@@ -306,7 +306,8 @@ class CostBasedBehavioralPlanner:
         ego = state.ego_state
         ego_init_fstate = ego.map_state.road_fstate
 
-        spec_arr = np.array([[spec.t, spec.s, spec.v, spec.d] for i, spec in enumerate(action_specs) if action_specs_mask[i]])
+        spec_arr = np.array([[spec.t, spec.s, spec.v, spec.d] for i, spec in enumerate(action_specs)
+                             if action_specs_mask[i]])
         t_arr, s_arr, v_arr, d_arr = np.split(spec_arr, 4, axis=1)
         zeros = np.zeros(t_arr.shape[0])
 
@@ -326,29 +327,40 @@ class CostBasedBehavioralPlanner:
         ftrajectories_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_points)  # T_d = T_s
         ftrajectories = np.concatenate((ftrajectories_s, ftrajectories_d), axis=-1)
 
-        # set all points beyond spec.t at infinity, such that they will be safe and will not affect the result
-        for i, ftrajectory in enumerate(ftrajectories):
-            end_t_idx = int(t_arr[i] / TRAJECTORY_TIME_RESOLUTION)
-            ftrajectory[end_t_idx:, FS_SX] = np.inf
-
         # predict objects' trajectories
         obj_fstates = np.array([obj.map_state.road_fstate for obj in state.dynamic_objects])
         obj_sizes = [obj.size for obj in state.dynamic_objects]
         obj_trajectories = np.array(self.predictor.predict_frenet_states(obj_fstates, time_points))
+
+        # verify that terminal state of any action keeps safe distance of at least 2 sec.
+        terminal_safe_times = np.zeros((ftrajectories.shape[0], obj_trajectories.shape[0]))
+        for ftraj_idx, ftrajectory in enumerate(ftrajectories):
+            end_traj_idx = int(t_arr[ftraj_idx] / TRAJECTORY_TIME_RESOLUTION)
+            for obj_idx, obj_trajectory in enumerate(obj_trajectories):
+                terminal_safe_times[ftraj_idx, obj_idx] = \
+                    SafetyUtils._get_lon_safety(ftrajectory[end_traj_idx], SPECIFICATION_MARGIN_TIME_DELAY,
+                                                obj_trajectory[end_traj_idx], SPECIFICATION_MARGIN_TIME_DELAY,
+                                                0.5 * (ego.size.length + obj_sizes[obj_idx].length))
+            # set all points beyond spec.t at infinity, such that they will be safe and will not affect the result
+            ftrajectory[end_traj_idx + 1:, FS_SX] = np.inf
 
         # calculate safety for each trajectory, each object, each timestamp
         safe_times = SafetyUtils.get_safe_times(ftrajectories, ego.size, obj_trajectories, obj_sizes)
         # trajectory is considered safe if it's safe wrt all dynamic objects for all timestamps
         safe_trajectories = safe_times.all(axis=(1, 2))
 
-        if not safe_trajectories.any():
+        # filter trajectories with unsafe terminal state for safety_margin_time_delay = SPECIFICATION_MARGIN_TIME_DELAY
+        trajectories_with_safe_terminal_state = terminal_safe_times.all(axis=1)
+        fully_safe_trajectories = np.logical_and(safe_trajectories, trajectories_with_safe_terminal_state)
+
+        if not fully_safe_trajectories.any():
             self.logger.warning("_check_actions_safety: No safe action found")
 
         CostBasedBehavioralPlanner.log_safety(ego_init_fstate, obj_fstates, ego.size, obj_sizes)
 
         # assign safety to the specs, for which specs_mask is true
         safe_specs = np.copy(np.array(action_specs_mask))
-        safe_specs[safe_specs] = safe_trajectories
+        safe_specs[safe_specs] = fully_safe_trajectories
         return list(safe_specs)  # list's size like the original action_specs size
 
     @staticmethod
@@ -388,5 +400,6 @@ class CostBasedBehavioralPlanner:
                                                   ego_vel_after_reaction_time * np.abs(ego_vel_after_reaction_time)),
                                                  2 * LAT_ACC_LIMITS[1]) + reaction_dist, 0) + \
                             (ego_size.width + obj_size_arr[:, 1]) / 2
-        print('actual_lon_distance=%.2f min_safe_lon_distance=%.2f' % (actual_lon_distance[0], min_safe_lon_distance[0]))
-        print('ego_vel=%.2f obj_vel=%.2f' % (ego_init_fstate[FS_SV], obj_fstates[0, FS_SV]))
+        print('actual_lon_distance=%.2f min_safe_lon_distance=%.2f; ego: %.2f %.2f; obj: %.2f %.2f' %
+              (actual_lon_distance[0], min_safe_lon_distance[0], ego_init_fstate[FS_SX], ego_init_fstate[FS_SV],
+               obj_fstates[0, FS_SX], obj_fstates[0, FS_SV]))

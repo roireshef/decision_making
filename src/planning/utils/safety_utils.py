@@ -53,8 +53,7 @@ class SafetyUtils:
 
     @staticmethod
     def get_safe_times(ego_trajectories: FrenetTrajectories2D, ego_size: ObjectSize,
-                       obj_trajectories: np.array, obj_sizes: List[ObjectSize]) -> \
-            np.array:
+                       obj_trajectories: np.array, obj_sizes: List[ObjectSize]) -> np.array:
         """
         For every ego Frenet trajectory, every predicted object's Frenet trajectory and every timestamp (3D tensor)
         calculate RSS safety: a boolean indicating whether this tensor element is safe.
@@ -63,9 +62,9 @@ class SafetyUtils:
             the unsafe situation was caused by the rear object AND
             the rear object's predicted trajectory does not create an accident with ego trajectory
         then the function returns True (safe).
-        :param ego_trajectories: ego Frenet trajectories: 3D tensor of shape: traj_num x timestamps_num x Frenet state size
+        :param ego_trajectories: ego Frenet trajectories; 3D tensor: traj_num x timestamps_num x 6 (Frenet state size)
         :param ego_size: ego size
-        :param obj_trajectories: 3D array of ftrajectories of objects: shape: objects_num x timestamps_num x 6 (Frenet state size)
+        :param obj_trajectories: objects Frenet trajectories; 3D tensor: objects_num x timestamps_num x 6 (Frenet state size)
         :param obj_sizes: list of objects' sizes
         :return: [bool] safety per [ego trajectory, object, timestamp].
                 Tensor of shape: traj_num x objects_num x timestamps_num
