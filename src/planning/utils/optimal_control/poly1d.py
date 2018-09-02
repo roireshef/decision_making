@@ -107,7 +107,7 @@ class Poly1D:
                 polynomial x(t), and restrictions on its <degree> derivative, return True if restrictions are met,
                 False otherwise
                 :param degree:
-                :param polys_coefs: 2D numpy array with N polynomials and <cls.num_coefs()> coefficients each
+                :param poly_coefs: 2D numpy array with N polynomials and <cls.num_coefs()> coefficients each
                 :param T_vals: 1D numpy array of planning-times [N]
                 :param limits: minimal and maximal allowed values for the <degree> derivative of x(t)
                 :return: 1D numpy array of booleans where True means the restrictions are met.
@@ -432,8 +432,8 @@ class QuinticPoly1D(Poly1D):
         :param T_m: T_m: [sec] T_m * v_T is added to dx
         :return: coefficient matrix for all possibilities
         """
-        zeros = np.zeros(w_T.shape[0])
-        return np.c_[w_T,
+        zeros = np.zeros_like(v_T) if np.isscalar(w_T) else np.zeros_like(w_T)
+        return np.c_[w_T + zeros,
                      zeros,
                      -9 * a_0 ** 2 * w_J,
                      -144 * a_0 * v_0 * w_J + 144 * a_0 * v_T * w_J,
