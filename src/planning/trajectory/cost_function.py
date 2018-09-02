@@ -13,7 +13,7 @@ from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
-class TPCosts:
+class TrajectoryPlannerCosts:
 
     @staticmethod
     def compute_pointwise_costs(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D,
@@ -34,13 +34,14 @@ class TPCosts:
         The tensor shape: N x M x 3, where N is trajectories number, M is trajectory length.
         """
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
-        obstacles_costs = TPCosts.compute_obstacle_costs(ctrajectories, state, params, global_time_samples, predictor)
+        obstacles_costs = TrajectoryPlannerCosts.compute_obstacle_costs(ctrajectories, state, params,
+                                                                        global_time_samples, predictor)
 
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
-        deviations_costs = TPCosts.compute_deviation_costs(ftrajectories, params)
+        deviations_costs = TrajectoryPlannerCosts.compute_deviation_costs(ftrajectories, params)
 
         ''' JERK COST '''
-        jerk_costs = TPCosts.compute_jerk_costs(ctrajectories, params, dt)
+        jerk_costs = TrajectoryPlannerCosts.compute_jerk_costs(ctrajectories, params, dt)
 
         return np.dstack((obstacles_costs, deviations_costs, jerk_costs))
 
@@ -77,7 +78,8 @@ class TPCosts:
             ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])
 
             # Compute the distance to the closest point in every object to ego's boundaries (on the length and width axes)
-            distances = TPCosts.compute_distances_to_objects(ctrajectories, objects_predicted_ctrajectories, objects_sizes, ego_size)
+            distances = TrajectoryPlannerCosts.compute_distances_to_objects(
+                ctrajectories, objects_predicted_ctrajectories, objects_sizes, ego_size)
 
             # compute a flipped-sigmoid for distances in each dimension [x, y] of each point (in each trajectory)
             k = np.array([params.obstacle_cost_x.k, params.obstacle_cost_y.k])
