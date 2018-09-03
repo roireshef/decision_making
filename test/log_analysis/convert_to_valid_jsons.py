@@ -14,7 +14,7 @@ import json
 component_merges = {'TP': 'TP_bp_time', 'BP': 'BP_ts'}
 
 
-class convertJsonsScript():
+class ConvertJsonsScript():
 
     @staticmethod
     def simple_strip():
@@ -41,8 +41,8 @@ class convertJsonsScript():
     @staticmethod
     def do_dump_jsons():
         jsons = {c: [] for c in component_merges}
-        for j in [json.loads(l) for l in convertJsonsScript.simple_strip()]:
-            ec = convertJsonsScript.extract_component(j)
+        for j in [json.loads(l) for l in ConvertJsonsScript.simple_strip()]:
+            ec = ConvertJsonsScript.extract_component(j)
             if ec is not None:
                 jsons[ec].append(j)
         c, cf = list(component_merges.items())[0]
@@ -58,9 +58,9 @@ if __name__ == '__main__':
     try:
         log_filename = argv[1]
         if len(argv) > 2 and argv[2] == '-m':
-            convertJsonsScript.do_dump_jsons()
+            ConvertJsonsScript.do_dump_jsons()
         else:
-            for j in convertJsonsScript.simple_strip():
+            for j in ConvertJsonsScript.simple_strip():
                 print(j)
     except:
         "Usage: {0} <Json log location> [-m]" % argv[0]
