@@ -10,11 +10,12 @@ class MetricLogger:
     """
     Report measurements from anywhere in the DM modules.
     Usage:
-     * Obtain instance using get_logger method. Use prefix to diffrentiate between two metric loggers.
      * use 'bind' to indicate a metric to report
      * use report() to output the binded metrics
 
      Example:
+         MetricLogger.init('something')
+         MetricLogger.get_logger().bind(my_metric=my_metric)
 
          self._metric_logger = MetricLogger.get_logger('MY_MODULE_NAME')
          ....
@@ -23,22 +24,24 @@ class MetricLogger:
          ...
          self._metric_logger.report()
     """
-    _instances = {}
+    _instance = None
 
     def __init__(self, prefix: str):
-        self._logger = AV_Logger.get_json_logger()
         self._prefix = prefix
+        self._logger = AV_Logger.get_json_logger()
 
     @classmethod
-    def get_logger(cls, prefix: str) -> T:
+    def init(cls,prefix):
+        cls._instance = MetricLogger(prefix)
+
+    @classmethod
+    def get_logger(cls) -> T:
         """
-        Obtains a MetricLogger associated with a specific prefix
-        :param prefix:  is not a process-id nor an instance id. Just prefix
+        Obtains a MetricLogger
         :return:
         """
-        if prefix not in cls._instances:
-            cls._instances[prefix] = MetricLogger(prefix)
-        return cls._instances[prefix]
+        #maybe throw exception if not initialized
+        return cls._instance
 
     def report(self, message: str='', *args: Any, **kwargs: Any) -> None:
         """

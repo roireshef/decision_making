@@ -20,7 +20,6 @@ from decision_making.src.planning.behavioral.planner.cost_based_behavioral_plann
     CostBasedBehavioralPlanner
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
-from decision_making.src.utils.metric_logger import MetricLogger
 
 
 class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
@@ -38,7 +37,6 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
                  value_approximator: ValueApproximator, predictor: EgoAwarePredictor, logger: Logger):
         super().__init__(action_space, recipe_evaluator, action_spec_evaluator, action_spec_validator, value_approximator,
                          predictor, logger)
-        self._metric_logger = MetricLogger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
 
     def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
                       recipes_mask: List[bool]) -> (int, ActionSpec):

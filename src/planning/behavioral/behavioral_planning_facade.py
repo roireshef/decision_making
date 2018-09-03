@@ -39,6 +39,7 @@ class BehavioralPlanningFacade(DmModule):
         self._predictor = short_time_predictor
         self.logger.info("Initialized Behavioral Planner Facade.")
         self._last_trajectory = last_trajectory
+        MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
 
     def _start_impl(self):
         self.pubsub.subscribe(pubsub_topics.STATE_TOPIC, None)
@@ -57,7 +58,7 @@ class BehavioralPlanningFacade(DmModule):
         """
 
         try:
-            MetricLogger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_METRICS).report()
+            MetricLogger.get_logger().report()
             start_time = time.time()
             state = self._get_current_state()
 

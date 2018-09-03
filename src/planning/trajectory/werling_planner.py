@@ -30,7 +30,6 @@ class WerlingPlanner(TrajectoryPlanner):
     def __init__(self, logger: Logger, predictor: EgoAwarePredictor, dt=WERLING_TIME_RESOLUTION):
         super().__init__(logger, predictor)
         self._dt = dt
-        self._metric_logger = MetricLogger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_METRICS)
 
     @property
     def dt(self):

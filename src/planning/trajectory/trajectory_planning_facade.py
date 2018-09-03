@@ -46,7 +46,7 @@ class TrajectoryPlanningFacade(DmModule):
         """
         super().__init__(pubsub=pubsub, logger=logger)
 
-        self._metric_logger = MetricLogger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_METRICS)
+        MetricLogger.init(TRAJECTORY_PLANNING_NAME_FOR_METRICS)
 
         self._short_time_predictor = short_time_predictor
         self._strategy_handlers = strategy_handlers
@@ -100,7 +100,7 @@ class TrajectoryPlanningFacade(DmModule):
             else:
                 updated_state = state_aligned
 
-            self._metric_logger.bind(bp_time=params.bp_time)
+            MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
@@ -133,7 +133,7 @@ class TrajectoryPlanningFacade(DmModule):
             self._publish_debug(debug_results)
 
             self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
-            self._metric_logger.report()
+            MetricLogger.get_logger().report()
 
         except MsgDeserializationError:
             self.logger.error("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
