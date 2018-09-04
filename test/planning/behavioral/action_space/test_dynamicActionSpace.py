@@ -137,7 +137,7 @@ def test_stress():
     zeros = np.zeros(states_num)
     print('states num = %d' % (states_num))
 
-    good_states = np.full((weights.shape[0], 2, states_num), False)
+    good_states = np.full((weights.shape[0], 2, states_num), False)  # states that passed all limits & safety
     T_s = np.zeros((weights.shape[0], 2, states_num, weights.shape[1]))
 
     for wi, w in enumerate(weights):
@@ -192,14 +192,14 @@ def test_stress():
     #     if not b:
     #         print([v0[i], vT[i], a0[i], s[i], T_s[best_max, 1, i, 0], T_s[best_max, 1, i, 1], T_s[best_max, 1, i, 2]])
 
-    # list of states that work for min_roots and don't work for max_roots
+    # list of states that worked for min_roots and didn't work for max_roots
     print('\nmin worked, max failed')
     for i in np.where(~best_max & best_min)[0]:
         print([v0[i], vT[i], a0[i], s[i]])
 
     #
-    # Used for monitoring a quality of the best set of weights (maximal roots).
-    # print tables (vT_range x s_range) for the best weights per v0
+    # Use for monitoring a quality of the best set of weights (maximal roots).
+    # Print tables (vT x s) for the best weights per v0
     #
     # for v0_fixed in v0_range:
     #     success_map = np.ones((vT_range.shape[0], s_range.shape[0]))
@@ -211,8 +211,8 @@ def test_stress():
     #
 
     #
-    # Used for comparison between two sets of weights.
-    # Print tables (vT_range x s_range) for weights[1] relatively to weights[0] per v0 (max root);
+    # Use for comparison between two sets of weights (maximal roots).
+    # Print tables (vT x s) for weights[1] relatively to weights[0] per v0.
     # Each value in the table means:
     #    1: weights[1] is better than weights[0] for this state
     #   -1: weights[1] is worse than weights[0] for this state
