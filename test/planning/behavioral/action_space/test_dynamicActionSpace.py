@@ -9,7 +9,7 @@ from decision_making.src.global_constants import SPECIFICATION_MARGIN_TIME_DELAY
     VELOCITY_LIMITS, TRAJECTORY_TIME_RESOLUTION, SAFETY_MARGIN_TIME_DELAY
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe
+from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionSpec
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.planning.types import FS_SX, FS_SV, FS_SA, FrenetTrajectories2D, LIMIT_MIN, FrenetTrajectory2D
@@ -101,6 +101,8 @@ def test_specifyGoals_followSlowFrontObject_specsComplyAccAndTimeLimits(
 def test_stress():
 
     cars_size_margin = 5
+
+    # states ranges
     v_step = 2
     v0_range = np.arange(0, 18 + EPS, v_step)
     vT_range = np.arange(0, 18 + EPS, v_step)
@@ -108,46 +110,39 @@ def test_stress():
     a0_range = np.array([0])
     s_range = np.arange(10, 160 + EPS, 10)
 
-    # v0_range = np.array([0])
-    # vT_range = np.array([0])
-    # a0_range = np.array([0])
-    # s_range = np.array([60])
+    #
+    # test a full range of weights (~8 minutes)
+    #
+    # w2_range = np.geomspace(0.01, 0.16, num=8)
+    # w12_range = np.geomspace(1.2, 32, num=8)
+    # w01_range = np.geomspace(1.2, 32, num=8)
+    # w01, w12, w2 = np.meshgrid(w01_range, w12_range, w2_range)
+    # w01, w12, w2 = np.ravel(w01), np.ravel(w12), np.ravel(w2)
+    # weights = np.c_[w01 * w12 * w2, w12 * w2, w2]
 
-    # w2_range = np.array([BP_JERK_S_JERK_D_TIME_WEIGHTS[2, 0]])
-    # w12_range = np.array([BP_JERK_S_JERK_D_TIME_WEIGHTS[1, 0]/BP_JERK_S_JERK_D_TIME_WEIGHTS[2, 0]])
-    # w01_range = np.array([BP_JERK_S_JERK_D_TIME_WEIGHTS[0, 0]/BP_JERK_S_JERK_D_TIME_WEIGHTS[1, 0]])
-    w2_range = np.geomspace(0.01, 0.16, num=8)
-    w12_range = np.geomspace(1.2, 8, num=8)
-    w01_range = np.geomspace(1.2, 8, num=8)
-    # w2_range = np.array([0.1])
-    # w12_range = np.array([2])
-    # w01_range = np.array([2])
+    #
+    # compare a pair of weights sets (or test a single set)
+    #
+    # weights = np.array([[0.426, 0.139, 0.072], [8, 0.36, 0.08]])  # global maximum over sets vs. local max with high weights
+    weights = np.array([BP_JERK_S_JERK_D_TIME_WEIGHTS[:, 0], [8, 0.36, 0.08]])  # original set vs. local max with high weights
 
-    w01, w12, w2 = np.meshgrid(w01_range, w12_range, w2_range)
-    w01, w12, w2 = np.ravel(w01), np.ravel(w12), np.ravel(w2)
-
-    # v0_range = np.arange(10, 11 + EPS, 0.1)
-    # vT_range = np.arange(10, 11 + EPS, 0.1)
-    # a0_range = np.arange(-3, 3.1, 0.1)
-    # s_range = np.arange(20, 22 + EPS, 0.1)
-
+    # create all states
     v0, vT, a0, s = np.meshgrid(v0_range, vT_range, a0_range, s_range)
     v0, vT, a0, s = np.ravel(v0), np.ravel(vT), np.ravel(a0), np.ravel(s)
 
-    # remove trivial states (T=0)
+    # remove trivial states, for which T_s = 0
     non_trivial_states = np.where(~np.logical_and(np.isclose(v0, vT), np.isclose(vT * 2, s)))
     v0, vT, a0, s = v0[non_trivial_states], vT[non_trivial_states], a0[non_trivial_states], s[non_trivial_states]
-    zeros = np.zeros(v0.shape[0])
-    print('states num = %d' % (v0.shape[0]))
+    states_num = v0.shape[0]
+    zeros = np.zeros(states_num)
+    print('states num = %d' % (states_num))
 
-    weights = np.c_[w01 * w12 * w2, w12 * w2, w2]
-    legal_T_s = np.full((weights.shape[0], 2, v0.shape[0]), False)
-    T_s = np.zeros((weights.shape[0], 2, v0.shape[0], weights.shape[1]))
-
-    time_samples = np.arange(0, BP_ACTION_T_LIMITS[1], TRAJECTORY_TIME_RESOLUTION)
+    good_states = np.full((weights.shape[0], 2, states_num), False)
+    T_s = np.zeros((weights.shape[0], 2, states_num, weights.shape[1]))
 
     for wi, w in enumerate(weights):
-        vel_acc_in_limits = np.zeros((2, v0.shape[0], weights.shape[1]))
+        vel_acc_in_limits = np.zeros((2, states_num, weights.shape[1]))
+        safe_actions = copy.deepcopy(vel_acc_in_limits)
         for aggr in range(3):
             cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
                 w_T=BP_JERK_S_JERK_D_TIME_WEIGHTS[aggr, 2], w_J=w[aggr], dx=s,
@@ -168,53 +163,67 @@ def test_stress():
                 vel_in_limits = QuinticPoly1D.are_velocities_in_limits(poly_coefs, T, VELOCITY_LIMITS)
                 vel_acc_in_limits[minmax, :, aggr] = np.logical_and(acc_in_limits, vel_in_limits)
 
-                # ego_trajectories_list = \
-                #     [Poly1D.polyval_with_derivatives(np.array([poly]),
-                #                                      np.arange(0, T[i]+EPS, TRAJECTORY_TIME_RESOLUTION))[0]
-                #      for i, poly in enumerate(poly_coefs)]
-                trajectories_s = Poly1D.polyval_with_derivatives(poly_coefs, time_samples)
-                ego_trajectories_list = [traj[0:int(T[i]/TRAJECTORY_TIME_RESOLUTION)+1] for i, traj in enumerate(trajectories_s)]
-
-                obj_trajectories_list = \
-                    [np.c_[np.linspace(s[i], s[i] + vT[i] * T[i], len(ego_trajectory)),
-                           np.full(len(ego_trajectory), vT[i]), np.zeros(len(ego_trajectory))]
-                     for i, ego_trajectory in enumerate(ego_trajectories_list)]
-
-                safe_times = SafetyUtils.get_lon_safety_for_trajectories_list(ego_trajectories_list,
-                                                                              obj_trajectories_list, cars_size_margin)
+                action_specs = [ActionSpec(t=T[i], v=vT[i], s=s[i], d=0) for i in range(states_num)]
+                safe_actions[minmax, :, aggr] = SafetyUtils.get_lon_safety_for_action_specs(poly_coefs, action_specs, cars_size_margin)
 
         time_in_limits = NumpyUtils.is_in_limits(T_s[wi], BP_ACTION_T_LIMITS)
-        in_limits = np.logical_and(vel_acc_in_limits, time_in_limits)
-        legal_T_s[wi] = in_limits.any(axis=-1)  # OR on aggressiveness levels
+        in_limits = np.logical_and(vel_acc_in_limits, np.logical_and(time_in_limits, safe_actions))
+        good_states[wi] = in_limits.any(axis=-1)  # OR on aggressiveness levels
 
         print('weight: %.3f %.3f %.3f' % (w[0], w[1], w[2]))
         for minmax, T in enumerate(T_s[wi]):
-            print('%s: total = %d; failed = %d' % ('min' if minmax == 0 else 'max', legal_T_s.shape[-1], np.sum(~legal_T_s[wi, minmax])))
+            print('%s: total = %d; failed = %d' % ('min' if minmax == 0 else 'max', good_states.shape[-1], np.sum(~good_states[wi, minmax])))
 
-    best_min_wi = np.argmax(np.sum(legal_T_s[:, 0], axis=-1))
-    best_max_wi = np.argmax(np.sum(legal_T_s[:, 1], axis=-1))
-    best_min = legal_T_s[best_min_wi, 0]
-    best_max = legal_T_s[best_max_wi, 1]
+    good_min = good_states[:, 0]  # successes of states for min roots
+    good_max = good_states[:, 1]  # successes of states for max roots
+    best_min_wi = np.argmax(np.sum(good_min, axis=-1))
+    best_max_wi = np.argmax(np.sum(good_max, axis=-1))
+    best_min = good_min[best_min_wi]
+    best_max = good_max[best_max_wi]
     failed_min = np.sum(~best_min)
     failed_max = np.sum(~best_max)
-    print('best weights for min: %s; failed %d (%.2f)' % (weights[best_min_wi], failed_min, float(failed_min)/legal_T_s.shape[-1]))
-    print('best weights for max: %s; failed %d (%.2f)' % (weights[best_max_wi], failed_max, float(failed_max)/legal_T_s.shape[-1]))
+    print('best weights for min: %s; failed %d (%.2f)' % (weights[best_min_wi], failed_min, float(failed_min)/good_states.shape[-1]))
+    print('best weights for max: %s; failed %d (%.2f)' % (weights[best_max_wi], failed_max, float(failed_max)/good_states.shape[-1]))
+    # how many states work for min_roots and don't work for max_roots
     print('min worked, max failed: %d' % np.sum(best_min & ~best_max))
 
-    # print('\nParams that failed')
-    # for i, b in enumerate(legal_T_s[best_max, 1]):
+    # print('\nList of states that failed for the best set of weights (max roots):')
+    # for i, b in enumerate(good_max[best_max]):
     #     if not b:
     #         print([v0[i], vT[i], a0[i], s[i], T_s[best_max, 1, i, 0], T_s[best_max, 1, i, 1], T_s[best_max, 1, i, 2]])
 
+    # list of states that work for min_roots and don't work for max_roots
     print('\nmin worked, max failed')
     for i in np.where(~best_max & best_min)[0]:
         print([v0[i], vT[i], a0[i], s[i]])
 
+    #
+    # Used for monitoring a quality of the best set of weights (maximal roots).
+    # print tables (vT_range x s_range) for the best weights per v0
+    #
+    # for v0_fixed in v0_range:
+    #     success_map = np.ones((vT_range.shape[0], s_range.shape[0]))
+    #     for i, b in enumerate(good_max[best_max_wi]):
+    #         if v0[i] == v0_fixed and not b:
+    #             success_map[np.argwhere(vT_range == vT[i]), np.argwhere(s_range == s[i])] = b
+    #     print('v0_fixed = %d' % v0_fixed)
+    #     print(success_map.astype(int))
+    #
+
+    #
+    # Used for comparison between two sets of weights.
+    # Print tables (vT_range x s_range) for weights[1] relatively to weights[0] per v0 (max root);
+    # Each value in the table means:
+    #    1: weights[1] is better than weights[0] for this state
+    #   -1: weights[1] is worse than weights[0] for this state
+    #    0: weights[1] is like weights[0] for this state
+    #
     for v0_fixed in v0_range:
-        success_map = np.ones((vT_range.shape[0], s_range.shape[0]))
-        for i, b in enumerate(legal_T_s[best_max_wi, 1]):
-            if v0[i] == v0_fixed and not b:
-                success_map[np.argwhere(vT_range == vT[i]), np.argwhere(s_range == s[i])] = b
+        success_map = np.zeros((vT_range.shape[0], s_range.shape[0]))
+        for i in range(states_num):  # loop over states' successes for weights[0]
+            if v0[i] == v0_fixed:
+                success_map[np.argwhere(vT_range == vT[i]), np.argwhere(s_range == s[i])] = \
+                    (good_max[1, i].astype(int) - good_max[0, i].astype(int))  # diff between the two weights qualities
         print('v0_fixed = %d' % v0_fixed)
         print(success_map.astype(int))
 
@@ -222,16 +231,39 @@ def test_stress():
 class SafetyUtils:
 
     @staticmethod
-    def get_lon_safety_for_trajectories_list(ego_trajectories: List[FrenetTrajectory2D],
-                                             obj_trajectories: List[FrenetTrajectory2D],
-                                             margin: float) -> List[np.array]:
+    def get_lon_safety_for_action_specs(poly_coefs: np.array, action_specs: List[ActionSpec],
+                                        cars_size_margin: float) -> np.array:
+        """
+        Given polynomial coefficients and action specs for each polynomial, calculate longitudinal safety
+        w.r.t. the front cars with constant velocities, described by the specs.
+        :param poly_coefs: 2D matrix Nx6: N quintic polynomials of ego
+        :param action_specs: list of N action specs
+        :param cars_size_margin: sum of half sizes of the cars
+        :return: boolean array of size N: longitudinal safety for each spec
+        """
+        assert poly_coefs.shape[0] == len(action_specs)
+        specs_arr = np.array([[spec.t, spec.s, spec.v] for spec in action_specs])
+        t_arr, s_arr, v_arr = np.split(specs_arr, 3, axis=1)
+        time_samples = np.arange(0, np.max(t_arr) + EPS, TRAJECTORY_TIME_RESOLUTION)
+
+        trajectories_s = Poly1D.polyval_with_derivatives(poly_coefs, time_samples)
+        ego_trajectories = [trajectory[0:int(t_arr[i] / TRAJECTORY_TIME_RESOLUTION) + 1]
+                            for i, trajectory in enumerate(trajectories_s)]
+
+        obj_trajectories = \
+            [np.c_[v_arr[i] * SPECIFICATION_MARGIN_TIME_DELAY + cars_size_margin +
+                                        np.linspace(s_arr[i], s_arr[i] + v_arr[i] * t_arr[i], len(ego_trajectory)),
+                   np.full(len(ego_trajectory), v_arr[i]), np.zeros(len(ego_trajectory))]
+             for i, ego_trajectory in enumerate(ego_trajectories)]
 
         ego_trajectory = np.concatenate(ego_trajectories)
         obj_trajectory = np.concatenate(obj_trajectories)
         safe_times = SafetyUtils._get_lon_safety(ego_trajectory, SAFETY_MARGIN_TIME_DELAY,
-                                                 obj_trajectory, SPECIFICATION_MARGIN_TIME_DELAY, margin)
+                                                 obj_trajectory, SPECIFICATION_MARGIN_TIME_DELAY, cars_size_margin)
         trajectories_lengths = [len(trajectory) for trajectory in ego_trajectories]
-        return np.split(safe_times, np.cumsum(trajectories_lengths[:-1]))
+        safe_times = np.split(safe_times, np.cumsum(trajectories_lengths[:-1]))
+        safe_specs = [spec_safety.all() for spec_safety in safe_times]  # AND on all time samples
+        return np.array(safe_specs)
 
     @staticmethod
     def _get_lon_safety(ego_trajectories: FrenetTrajectories2D, ego_response_time: float,
@@ -252,18 +284,17 @@ class SafetyUtils:
         :return: [bool] longitudinal safety per timestamp. 2D matrix shape: traj_num x timestamps_num
         """
         # extract the relevant longitudinal data from the trajectories
-        ego_lon, ego_vel = ego_trajectories[..., FS_SX], ego_trajectories[..., FS_SV]
+        ego_lon, ego_vel, ego_acc = ego_trajectories[..., FS_SX], ego_trajectories[..., FS_SV], ego_trajectories[..., FS_SA]
         obj_lon, obj_vel = obj_trajectories[..., FS_SX], obj_trajectories[..., FS_SV]
 
         # determine which object is in front (per trajectory and timestamp)
-        lon_relative_to_obj = ego_lon - obj_lon
-        sign_of_lon_relative_to_obj = np.sign(lon_relative_to_obj)
-        ego_ahead = (sign_of_lon_relative_to_obj > 0).astype(int)
+        lon_relative_to_obj = obj_lon - ego_lon
+        ego_vel_after_delay = ego_vel + ego_acc * ego_response_time
+        ego_dist_during_reaction = ego_vel * ego_response_time + 0.5 * ego_acc * ego_response_time ** 2
 
         # longitudinal RSS formula considers distance reduction during the reaction time and difference between
         # objects' braking distances
-        safe_dist = np.maximum(np.divide(sign_of_lon_relative_to_obj * (obj_vel ** 2 - ego_vel ** 2),
-                                         2 * max_brake), 0) + \
-                    (1 - ego_ahead) * ego_vel * ego_response_time + ego_ahead * obj_vel * obj_response_time + margin
+        safe_dist = np.maximum(np.divide((ego_vel_after_delay ** 2 - obj_vel ** 2), 2 * max_brake), 0) + \
+                    ego_dist_during_reaction + margin
 
-        return sign_of_lon_relative_to_obj * lon_relative_to_obj > safe_dist
+        return lon_relative_to_obj > safe_dist
