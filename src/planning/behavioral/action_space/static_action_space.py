@@ -38,7 +38,7 @@ class StaticActionSpace(ActionSpace):
         """
         This method's purpose is to specify the enumerated actions (recipes) that the agent can take.
         Each semantic action (ActionRecipe) is translated into a terminal state specification (ActionSpec).
-        :param action_recipes: an enumerated semantic action [ActionRecipe].
+        :param action_recipes: a list of enumerated semantic actions [ActionRecipe].
         :param behavioral_state: a Frenet state of ego at initial point
         :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
@@ -68,7 +68,8 @@ class StaticActionSpace(ActionSpace):
         # voids (setting <np.nan>) all non-Calm actions with T_s < (minimal allowed T_s)
         # this still leaves some values of T_s which are smaller than (minimal allowed T_s) and will be replaced later
         # when setting T
-        T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
+        with np.errstate(invalid='ignore'):
+            T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
 
         # latitudinal difference to target
         latitudinal_difference = desired_center_lane_latitude - ego_init_fstate[FS_DX]
