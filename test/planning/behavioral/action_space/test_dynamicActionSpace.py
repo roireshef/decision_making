@@ -137,13 +137,14 @@ def test_stress():
     zeros = np.zeros(states_num)
     print('states num = %d' % (states_num))
 
-    good_states = np.full((weights.shape[0], 2, states_num), False)  # states that passed all limits & safety
+    # the second dimension (of size 2) is for switching between min/max roots
+    is_good_state = np.full((weights.shape[0], 2, states_num), False)  # states that passed all limits & safety
     T_s = np.zeros((weights.shape[0], 2, states_num, weights.shape[1]))
 
-    for wi, w in enumerate(weights):
+    for wi, w in enumerate(weights):  # loop on weights' sets
         vel_acc_in_limits = np.zeros((2, states_num, weights.shape[1]))
         safe_actions = copy.deepcopy(vel_acc_in_limits)
-        for aggr in range(3):
+        for aggr in range(3):  # loop on aggressiveness levels
             cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
                 w_T=BP_JERK_S_JERK_D_TIME_WEIGHTS[aggr, 2], w_J=w[aggr], dx=s,
                 a_0=a0, v_0=v0, v_T=vT, T_m=SPECIFICATION_MARGIN_TIME_DELAY)
@@ -154,36 +155,37 @@ def test_stress():
             T_s[wi, 0, :, aggr] = T_min
             T_s[wi, 1, :, aggr] = T_max
 
-            for minmax, T in enumerate([T_min, T_max]):
+            for minmax, T in enumerate([T_min, T_max]):  # switch between min/max roots
                 A = QuinticPoly1D.time_constraints_tensor(T)
                 A_inv = np.linalg.inv(A)
                 constraints = np.c_[zeros, v0, a0, s + vT * (T - SPECIFICATION_MARGIN_TIME_DELAY), vT, zeros]
                 poly_coefs = QuinticPoly1D.zip_solve(A_inv, constraints)
+                # check acc & vel limits
                 acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
                 vel_in_limits = QuinticPoly1D.are_velocities_in_limits(poly_coefs, T, VELOCITY_LIMITS)
                 vel_acc_in_limits[minmax, :, aggr] = np.logical_and(acc_in_limits, vel_in_limits)
-
+                # check safety
                 action_specs = [ActionSpec(t=T[i], v=vT[i], s=s[i], d=0) for i in range(states_num)]
                 safe_actions[minmax, :, aggr] = SafetyUtils.get_lon_safety_for_action_specs(poly_coefs, action_specs, cars_size_margin)
 
         time_in_limits = NumpyUtils.is_in_limits(T_s[wi], BP_ACTION_T_LIMITS)
         in_limits = np.logical_and(vel_acc_in_limits, np.logical_and(time_in_limits, safe_actions))
-        good_states[wi] = in_limits.any(axis=-1)  # OR on aggressiveness levels
+        is_good_state[wi] = in_limits.any(axis=-1)  # OR on aggressiveness levels
 
         print('weight: %.3f %.3f %.3f' % (w[0], w[1], w[2]))
         for minmax, T in enumerate(T_s[wi]):
-            print('%s: total = %d; failed = %d' % ('min' if minmax == 0 else 'max', good_states.shape[-1], np.sum(~good_states[wi, minmax])))
+            print('%s: total = %d; failed = %d' % ('min' if minmax == 0 else 'max', is_good_state.shape[-1], np.sum(~is_good_state[wi, minmax])))
 
-    good_min = good_states[:, 0]  # successes of states for min roots
-    good_max = good_states[:, 1]  # successes of states for max roots
+    good_min = is_good_state[:, 0]  # successes of states for min roots
+    good_max = is_good_state[:, 1]  # successes of states for max roots
     best_min_wi = np.argmax(np.sum(good_min, axis=-1))
     best_max_wi = np.argmax(np.sum(good_max, axis=-1))
     best_min = good_min[best_min_wi]
     best_max = good_max[best_max_wi]
     failed_min = np.sum(~best_min)
     failed_max = np.sum(~best_max)
-    print('best weights for min: %s; failed %d (%.2f)' % (weights[best_min_wi], failed_min, float(failed_min)/good_states.shape[-1]))
-    print('best weights for max: %s; failed %d (%.2f)' % (weights[best_max_wi], failed_max, float(failed_max)/good_states.shape[-1]))
+    print('best weights for min: %s; failed %d (%.2f)' % (weights[best_min_wi], failed_min, float(failed_min)/is_good_state.shape[-1]))
+    print('best weights for max: %s; failed %d (%.2f)' % (weights[best_max_wi], failed_max, float(failed_max)/is_good_state.shape[-1]))
     # how many states work for min_roots and don't work for max_roots
     print('min worked, max failed: %d' % np.sum(best_min & ~best_max))
 
@@ -246,6 +248,7 @@ class SafetyUtils:
         t_arr, s_arr, v_arr = np.split(specs_arr, 3, axis=1)
         time_samples = np.arange(0, np.max(t_arr) + EPS, TRAJECTORY_TIME_RESOLUTION)
 
+        # sample polynomials and create ftrajectories_s
         trajectories_s = Poly1D.polyval_with_derivatives(poly_coefs, time_samples)
         ego_trajectories = [trajectory[0:int(t_arr[i] / TRAJECTORY_TIME_RESOLUTION) + 1]
                             for i, trajectory in enumerate(trajectories_s)]
@@ -256,13 +259,19 @@ class SafetyUtils:
                    np.full(len(ego_trajectory), v_arr[i]), np.zeros(len(ego_trajectory))]
              for i, ego_trajectory in enumerate(ego_trajectories)]
 
+        # concatenate all trajectories to a single long trajectory
         ego_trajectory = np.concatenate(ego_trajectories)
         obj_trajectory = np.concatenate(obj_trajectories)
+
+        # calc longitudinal RSS for the long trajectory
         safe_times = SafetyUtils._get_lon_safety(ego_trajectory, SAFETY_MARGIN_TIME_DELAY,
                                                  obj_trajectory, SPECIFICATION_MARGIN_TIME_DELAY, cars_size_margin)
+
+        # split the safety results according to the original trajectories
         trajectories_lengths = [len(trajectory) for trajectory in ego_trajectories]
         safe_times = np.split(safe_times, np.cumsum(trajectories_lengths[:-1]))
-        safe_specs = [spec_safety.all() for spec_safety in safe_times]  # AND on all time samples
+        # AND on all time samples
+        safe_specs = [spec_safety.all() for spec_safety in safe_times]
         return np.array(safe_specs)
 
     @staticmethod
@@ -290,10 +299,12 @@ class SafetyUtils:
         # determine which object is in front (per trajectory and timestamp)
         lon_relative_to_obj = obj_lon - ego_lon
         ego_vel_after_delay = ego_vel + ego_acc * ego_response_time
+        # assume constant acceleration during the response time
         ego_dist_during_reaction = ego_vel * ego_response_time + 0.5 * ego_acc * ego_response_time ** 2
 
         # longitudinal RSS formula considers distance reduction during the reaction time and difference between
-        # objects' braking distances
+        # objects' braking distances.
+        # assume constant acceleration during the response time
         safe_dist = np.maximum(np.divide((ego_vel_after_delay ** 2 - obj_vel ** 2), 2 * max_brake), 0) + \
                     ego_dist_during_reaction + margin
 
