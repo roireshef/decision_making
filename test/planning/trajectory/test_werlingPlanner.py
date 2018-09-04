@@ -458,15 +458,3 @@ def test_computeJerk_simpleTrajectory():
     ctrajectory: CartesianTrajectory = np.array([p1, p2])
     lon_jerks, lat_jerks = Jerk.compute_jerks(np.array([ctrajectory]), 0.1)
     assert np.isclose(lon_jerks[0][0], 10) and np.isclose(lat_jerks[0][0], 0.9)
-
-def test_polynomialRoots():
-    poly_sq = np.random.rand(10000, 3)
-    roots1 = np.apply_along_axis(np.roots, 1, poly_sq.astype(complex))
-    roots2 = Poly1D.calc_polynomial_roots(poly_sq)
-    assert ((np.isclose(roots1[:, 0], roots2[:, 0]) & np.isclose(roots1[:, 1], roots2[:, 1])) +
-            (np.isclose(roots1[:, 0], roots2[:, 1]) & np.isclose(roots1[:, 1], roots2[:, 0]))).all()
-
-    poly_lin = np.random.rand(10000, 2)
-    roots1 = np.apply_along_axis(np.roots, 1, poly_lin)
-    roots2 = Poly1D.calc_polynomial_roots(poly_lin)
-    assert (np.isclose(roots1, roots2)).all()
