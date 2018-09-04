@@ -74,10 +74,8 @@ class Poly1D:
         :param poly_coefs: 2d numpy array [MxL] of the quartic (position) polynomials coefficients, where
          each row out of the M is a different polynomial and contains L coefficients
         :param time_samples: 1d numpy array [K] of the time stamps for the evaluation of the polynomials
-        :return: 3d numpy array [M,K,3] with the following dimnesions:
-            1. solution (corresponds to a given polynomial coefficients  vector in <poly_coefs>)
-            2. time stamp
-            3. [position value, velocity value, acceleration value]
+        :return: 3d numpy array [M,K,3] with the following dimensions:
+            [position value, velocity value, acceleration value]
         """
         # compute the coefficients of the polynom's 1st derivative (m=1)
         poly_dot_coefs = Math.polyder2d(poly_coefs, m=1)
@@ -114,28 +112,20 @@ class Poly1D:
                 """
         # a(0) and a(T) checks are omitted as they they are provided by the user.
         # compute extrema points, by finding the roots of the 3rd derivative
-        jerk_poly = Math.polyder2d(poly_coefs, m=degree + 1)
+        jerk_poly = Math.polyder2d(poly_coefs, m=degree+1)
         acc_poly = Math.polyder2d(poly_coefs, m=degree)
         # Giving np.apply_along_axis a complex type enables us to get complex roots (which means acceleration doesn't
         # have extrema in range).
 
-        #  Find roots of jerk_poly, either real or complex.
-        acc_suspected_points = Poly1D.calc_polynomial_roots(jerk_poly)
-        # Check whether the roots are real or complex. The problem is that real roots may have very small
-        # imaginary part (e.g. 1e-15), which are identified as complex by numpy.
-        # Therefore, we check if the imaginary part is close to 0.
-        is_real = np.isclose(np.imag(acc_suspected_points), 0.0).astype(int)
-        # If a root is found as real, then take it's real part. Otherwise take it as is.
-        acc_suspected_points = np.real(acc_suspected_points) * is_real + acc_suspected_points * (1 - is_real)
+        #  Find roots of jerk_poly (nan for complex or negative roots).
+        acc_suspected_points = Math.find_real_roots_in_limits(jerk_poly, value_limits=np.array([0, np.inf]))
         acc_suspected_values = Math.zip_polyval2d(acc_poly, acc_suspected_points)
 
         # are extrema points out of [0, T] range and are they non-complex
-        is_suspected_point_in_time_range = np.greater_equal(acc_suspected_points, 0) & \
-                                           np.less_equal(acc_suspected_points, T_vals[:, np.newaxis]) & \
-                                           is_real
+        is_suspected_point_in_time_range = (acc_suspected_points <= T_vals[:, np.newaxis])
 
-        # check if extrema values are within [a_min, a_max] limits
-        is_suspected_value_in_limits = NumpyUtils.is_in_limits(acc_suspected_values, limits)
+        # check if extrema values are within [a_min, a_max] limits or very close to the limits
+        is_suspected_value_in_limits = NumpyUtils.is_almost_in_limits(acc_suspected_values, limits)
 
         # for all non-complex extrema points that are inside the time range, verify their values are in [a_min, a_max]
         return np.all(np.logical_or(np.logical_not(is_suspected_point_in_time_range), is_suspected_value_in_limits),
@@ -163,12 +153,12 @@ class Poly1D:
         Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
         polynomial x(t), and restrictions on the velocity values, return True if restrictions are met,
         False otherwise
-        :param polys_coefs: 2D numpy array with N polynomials and 6 coefficients each [Nx6]
+        :param poly_coefs: 2D numpy array with N polynomials and 6 coefficients each [Nx6]
         :param T_vals: 1D numpy array of planning-times [N]
         :param vel_limits: minimal and maximal allowed values of velocities [m/sec]
         :return: 1D numpy array of booleans where True means the restrictions are met.
         """
-        pass
+        return cls.are_derivatives_in_limits(degree=1, poly_coefs=poly_coefs, T_vals=T_vals, limits=vel_limits)
 
     @classmethod
     def is_velocity_in_limits(cls, poly_coefs: np.ndarray, T: float, vel_limits: Limits) -> bool:
@@ -181,26 +171,6 @@ class Poly1D:
         :return: True if restrictions are met, False otherwise
         """
         return cls.are_velocities_in_limits(np.array([poly_coefs]), np.array([T]), vel_limits)[0]
-
-    @staticmethod
-    def calc_polynomial_roots(poly_coefs: np.ndarray):
-        """
-        calculate roots of polynomial with poly_coefs, either square or linear
-        :param poly_coefs: 2D numpy array with N polynomials and 6 coefficients each [Nx6]
-        :return: 2D numpy array with Nx2 or Nx1 roots, depending on the polynomials degree
-        """
-        if poly_coefs.shape[1] == 3:
-            poly_coefs[poly_coefs[:, 0] == 0, 0] = np.finfo(np.float32).eps  # prevent zero first coefficient
-            poly = poly_coefs.astype(np.complex)
-            det = np.sqrt(poly[:, 1] ** 2 - 4 * poly[:, 0] * poly[:, 2])
-            roots1 = (-poly[:, 1] + det) / (2 * poly[:, 0])
-            roots2 = (-poly[:, 1] - det) / (2 * poly[:, 0])
-            return np.c_[roots1, roots2]
-        elif poly_coefs.shape[1] == 2:
-            roots = -poly_coefs[:, 1] / poly_coefs[:, 0]
-            return roots[:, np.newaxis]
-        else:
-            return np.apply_along_axis(np.roots, 1, poly_coefs.astype(np.complex))
 
 
 class QuarticPoly1D(Poly1D):
@@ -237,19 +207,6 @@ class QuarticPoly1D(Poly1D):
               [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3],  # x_dot(T)
               [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2]]  # x_dotdot(T)
              for T in terminal_times], dtype=np.float)
-
-    @classmethod
-    def are_velocities_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, vel_limits: Limits) -> np.ndarray:
-        """
-        Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
-        polynomial x(t), and restrictions on the velocity values, return True if restrictions are met,
-        False otherwise
-        :param polys_coefs: 2D numpy array with N polynomials and 6 coefficients each [Nx6]
-        :param T_vals: 1D numpy array of planning-times [N]
-        :param vel_limits: minimal and maximal allowed values of velocities [m/sec]
-        :return: 1D numpy array of booleans where True means the restrictions are met.
-        """
-        return cls.are_derivatives_in_limits(degree=1, poly_coefs=poly_coefs, T_vals=T_vals, limits=vel_limits)
 
     @staticmethod
     def time_cost_function_derivative_coefs(w_T: np.ndarray, w_J: np.ndarray, a_0: np.ndarray, v_0: np.ndarray,
@@ -372,33 +329,6 @@ class QuinticPoly1D(Poly1D):
               [0.0, 1.0, 2.0 * T, 3.0 * T ** 2, 4.0 * T ** 3, 5.0 * T ** 4],  # x_dot(T)
               [0.0, 0.0, 2.0, 6.0 * T, 12.0 * T ** 2, 20.0 * T ** 3]]  # x_dotdot(T)
              for T in terminal_times], dtype=np.float)
-
-    @classmethod
-    def are_velocities_in_limits(cls, poly_coefs: np.ndarray, T_vals: np.ndarray, vel_limits: Limits) -> np.ndarray:
-        """
-        Applies the following on a vector of polynomials and planning-times: given coefficients vector of a
-        polynomial x(t), and restrictions on the velocity values, return True if restrictions are met,
-        False otherwise
-        :param polys_coefs: 2D numpy array with N polynomials and 6 coefficients each [Nx6]
-        :param T_vals: 1D numpy array of planning-times [N]
-        :param vel_limits: minimal and maximal allowed values of velocities [m/sec]
-        :return: 1D numpy array of booleans where True means the restrictions are met.
-        """
-        # For quintic polynomials 3rd degree np.roots calculation is in for loop and inefficient.
-        # Then in this case check limits by velocities calculation in all sampled points.
-        if len(T_vals) > 1:
-            (min_T, max_T, dt) = (np.min(T_vals), np.max(T_vals), T_vals[1] - T_vals[0])
-        else:
-            dt = WERLING_TIME_RESOLUTION
-            min_T = max_T = T_vals[0]
-        vel_poly_s = Math.polyder2d(poly_coefs, m=1)
-        traj_times = np.arange(dt, max_T - np.finfo(np.float16).eps, dt)  # from dt to max_T-dt
-        times = np.array([traj_times, ] * len(T_vals))  # repeat full traj_times for all T_vals
-        velocities = Math.zip_polyval2d(vel_poly_s, times)  # get velocities for all T_vals and all t[i,j] < T_vals[i]
-        # zero irrelevant velocities to get lower triangular matrix: 0 <= t[i,j] < T_val[i]
-        if len(T_vals) > 1:
-            velocities = np.tril(velocities, int(round(min_T / dt)) - 2)
-        return np.all(NumpyUtils.is_in_limits(velocities, vel_limits), axis=1)
 
     @staticmethod
     def cumulative_jerk(poly_coefs: np.ndarray, T: Union[float, np.ndarray]):
