@@ -9,7 +9,7 @@ from rte.python.logger.AV_logger import AV_Logger, LOG_DIRECTORY
 
 def get_log_file():
     list_of_files = glob.glob(LOG_DIRECTORY + '/*JSON*')  # * means all if need specific format then *.csv
-    latest_file = max(list_of_files, key=os.path.getctime)
+    latest_file = max(list_of_files, key=os.path.getmtime)
     return latest_file
 
 
