@@ -31,8 +31,9 @@ class MetricLogger:
         self._logger = AV_Logger.get_json_logger()
 
     @classmethod
-    def init(cls,prefix):
-        cls._instance = MetricLogger(prefix)
+    def init(cls,prefix=None):
+        if cls._instance is None:
+            cls._instance = MetricLogger(prefix)
 
     @classmethod
     def get_logger(cls) -> T:
@@ -41,6 +42,8 @@ class MetricLogger:
         :return:
         """
         #maybe throw exception if not initialized
+        if cls._instance is None:
+            cls.init()
         return cls._instance
 
     def report(self, message: str='', *args: Any, **kwargs: Any) -> None:
