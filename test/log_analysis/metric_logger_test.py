@@ -4,7 +4,6 @@ import os
 from pathlib import Path
 from decision_making.src.utils.metric_logger import MetricLogger
 
-log_file='../../../logs/AV_Log_JSON__jb_pytest_runner.log'
 
 """
 !!IMPORTANT!!! 
@@ -14,26 +13,32 @@ ideally, this should be implemented with sending the fixture 'rm_logflie' as an 
 and calling AV_Logger.shutdown_logger() after every call. 
 
 """
+
+def get_log_file():
+    root=os.path.join(os.path.dirname(__file__)).split('spav')[0]
+    return root + 'spav/logs/AV_Log_JSON__jb_pytest_runner.log'
+
 @pytest.fixture
 def rm_logfile():
     try:
-        os.remove(log_file)
+        os.remove(get_log_file())
     except OSError:
         pass
 
 def checkFile():
-    print('log_file:'+str(Path(log_file).exists()))
+    print('log_file:'+str(Path(get_log_file()).exists()))
 
 def get_codelines():
     sleep(1) #waiting for logger to end
-    with open(log_file, 'r') as log_file_recs:
-        return [eval(ll.split('data:')[1].replace('\'','"').rstrip()[:-1]) for ll in log_file_recs]
+    with open(get_log_file(), 'r') as log_file_recs:
+        return [eval(ll.split('data:')[1].replace('\'','"').rstrip()[:-1]) for ll in log_file_recs if ll.find('TEST')]
 
 
 def test_MetricLogger_simpleoutput_OutputsToLogFile():
     simple_message= 'Just a simple message'
     try:
-        logger = MetricLogger.get_logger('TEST')
+        MetricLogger.init('TEST')
+        logger = MetricLogger.get_logger()
         logger.report(simple_message)
 
     except Exception as e:
@@ -47,7 +52,9 @@ def test_MetricLogger_simpleoutput_OutputsToLogFile():
 def test_MetricLogger_withAutobinding_correctReport():
     binded_message = 'Message with args: %d and binded data'
     try:
-        logger = MetricLogger.get_logger('TEST')
+
+        MetricLogger.init('TEST')
+        logger = MetricLogger.get_logger()
         logger.report(binded_message, 3, a='arg1', b='arg2')
     except:
         pytest.fail("Exception was thrown")
@@ -58,7 +65,9 @@ def test_MetricLogger_withAutobinding_correctReport():
 
 def test_MetricLogger_simpleBinding_correctReport():
     try:
-        logger = MetricLogger.get_logger('TEST')
+        MetricLogger.init('TEST')
+        logger = MetricLogger.get_logger()
+
         logger.bind(data={'x': 10})
         logger.report()
     except:
@@ -68,7 +77,8 @@ def test_MetricLogger_simpleBinding_correctReport():
 
 def test_MetricLogger_multipleMessagesSingleBinding_correctReport():
     try:
-        logger = MetricLogger.get_logger('TEST')
+        MetricLogger.init('TEST')
+        logger = MetricLogger.get_logger()
         logger.bind(a=1, b=2)
         logger.report('just a message')
         logger.report('just another message 1')
@@ -86,7 +96,8 @@ def test_MetricLogger_multipleMessagesSingleBinding_correctReport():
 
 def test_MetricLogger_bindingPersistencyOverCalls():
     try:
-        logger = MetricLogger.get_logger('TEST')
+        MetricLogger.init('TEST')
+        logger = MetricLogger.get_logger()
         logger.report('message should include a,b')
     except:
         pytest.fail("Exception was thrown")
@@ -97,7 +108,8 @@ def test_MetricLogger_bindingPersistencyOverCalls():
 
 def test_MetricLogger_unbinding():
     try:
-        logger = MetricLogger.get_logger('TEST')
+        MetricLogger.init('TEST')
+        logger = MetricLogger.get_logger()
         logger.bind(a='a', b='b')
         logger.report('initial binding')
         logger.report('message with binding')

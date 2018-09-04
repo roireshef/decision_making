@@ -32,7 +32,6 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, ObjectSize, EgoState
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.src.utils.metric_logger import MetricLogger
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -101,7 +100,6 @@ class CostBasedBehavioralPlanner:
         road_id = ego.map_state.road_id
         actions_horizons = np.array([spec.t for i, spec in enumerate(action_specs) if mask[i]])
         terminal_timestamps = ego.timestamp_in_sec + actions_horizons
-        MetricLogger.get_logger().report(ego_timestamp_in_sec=ego.timestamp_in_sec)
 
         objects_curr_fstates = np.array(
             [dynamic_object.map_state.road_fstate for dynamic_object in state.dynamic_objects])

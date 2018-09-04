@@ -23,7 +23,6 @@ from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
-from decision_making.src.utils.metric_logger import MetricLogger
 
 
 class WerlingPlanner(TrajectoryPlanner):
