@@ -16,7 +16,8 @@ def get_log_file():
 def get_logger_for_testing():
     """
     This is a hack/workaround for testing because the AV_Logger.shutdown_logger() works only
-    before calling AV_Logger.get_JSON_logger().
+    before calling AV_Logger.get_JSON_logger(). The shutdown_logger is needed for starting a new logfile for
+    every test case
     :return:
     """
     MetricLogger._instance = None
@@ -40,6 +41,10 @@ def checkFile():
 def get_loglines():
     sleep(1)  # waiting for logger to end
     with open(get_log_file(), 'r') as log_file_recs:
+        print('** LOG CONTENT ***')
+        for pl in log_file_recs:
+            print(pl)
+        print('*****')
         return [eval(ll.split('data:')[1].replace('\'', '"').rstrip()[:-1]) for ll in log_file_recs if
                 ll.find('TEST') != -1 and ll.find('data:') !=-1]
 
