@@ -11,7 +11,7 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryCostPar
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
     CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D, C_X, \
-    C_YAW
+    C_YAW, C_Y, FrenetTrajectory2D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
 from decision_making.test.exceptions import NotTriggeredException
@@ -34,6 +34,23 @@ class FixedSamplableTrajectory(SamplableTrajectory):
         indices_of_closest_time_points = np.round((time_points - self.timestamp_in_sec) / WERLING_TIME_RESOLUTION).astype(int)
 
         return self._fixed_trajectory[indices_of_closest_time_points]
+
+    def sample_frenet(self, time_points: np.ndarray) -> FrenetTrajectory2D:
+        """
+        Sample cartesian states at the given time points, find the containing road and convert them to Frenet trajectory
+        This function works slowly!
+        :param time_points: time points for the sampling
+        :return: Frenet trajectory
+        """
+        # sample cartesian trajectory
+        ctrajectory = self.sample(time_points)
+        # find road_id
+        road_id, lon, lat, yaw, is_on_road = \
+            MapService.get_instance().convert_global_to_road_coordinates(ctrajectory[0, C_X], ctrajectory[0, C_Y])
+        # convert to Frenet trajectory
+        frenet = MapService.get_instance()._rhs_roads_frenet[road_id]
+        ftrajectory = frenet.ctrajectory_to_ftrajectory(ctrajectory)
+        return ftrajectory
 
     def get_time_from_longitude(self, road_id: int, longitude: float) -> Optional[float]:
         """

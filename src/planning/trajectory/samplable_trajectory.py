@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 from abc import ABCMeta, abstractmethod
 
-from decision_making.src.planning.types import CartesianExtendedTrajectory
+from decision_making.src.planning.types import CartesianExtendedTrajectory, FrenetTrajectory2D
 
 
 class SamplableTrajectory(metaclass=ABCMeta):
@@ -28,6 +28,15 @@ class SamplableTrajectory(metaclass=ABCMeta):
         curvature> along the trajectory
         :param time_points: 1D numpy array of time stamps *in seconds* (global self.timestamp)
         :return: 2D numpy array with every row having the format of <x, y, yaw, velocity, a, k>
+        """
+        pass
+
+    @abstractmethod
+    def sample_frenet(self, time_points: np.ndarray) -> FrenetTrajectory2D:
+        """
+        Sample cartesian states at the given time points, find the containing road and convert them to Frenet trajectory
+        :param time_points: time points for the sampling
+        :return: Frenet trajectory
         """
         pass
 

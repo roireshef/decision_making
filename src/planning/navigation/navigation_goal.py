@@ -41,11 +41,8 @@ class NavigationGoal:
         if goal_time is None or next_state_time < goal_time:
             return GoalStatus.NOT_YET
 
-        if "sample_frenet" in samplable_trajectory:
-            fstate_at_goal = samplable_trajectory.sample_frenet(np.array([goal_time]))[0]  # much more efficient!
-        else:
-            cstate_at_goal = samplable_trajectory.sample(np.array([goal_time]))[0]
-            fstate_at_goal = MapService.get_instance().convert_global_to_road_coordinates(cstate_at_goal[C_X], cstate_at_goal[C_Y])
+        # WerlingSamplable.sample_frenet() is much more efficient than FixedSamplable.sample_frenet()!
+        fstate_at_goal = samplable_trajectory.sample_frenet(np.array([goal_time]))[0]
 
         if MapState(fstate_at_goal, self.road_id).lane_num in self.lanes:
             return GoalStatus.REACHED
