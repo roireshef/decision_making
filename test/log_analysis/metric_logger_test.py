@@ -37,11 +37,11 @@ def checkFile():
     print('log_file:' + str(Path(get_log_file()).exists()))
 
 
-def get_codelines():
+def get_loglines():
     sleep(1)  # waiting for logger to end
     with open(get_log_file(), 'r') as log_file_recs:
         return [eval(ll.split('data:')[1].replace('\'', '"').rstrip()[:-1]) for ll in log_file_recs if
-                ll.find('TEST') != -1]
+                ll.find('TEST') != -1 and ll.find('data:') !=-1]
 
 
 def test_MetricLogger_simpleoutput_OutputsToLogFile():
@@ -51,8 +51,7 @@ def test_MetricLogger_simpleoutput_OutputsToLogFile():
         logger.report(simple_message)
     except Exception as e:
         pytest.fail("Exception was thrown", e)
-    ll = get_codelines()[0]
-    print(get_codelines())
+    ll = get_loglines()[0]
     assert ll['message'] == simple_message
     AV_Logger.shutdown_logger()
     sleep(2)
@@ -65,10 +64,9 @@ def test_MetricLogger_withAutobinding_correctReport():
         logger.report(binded_message, 3, a='arg1', b='arg2')
     except:
         pytest.fail("Exception was thrown")
-    print(get_codelines())
-    assert get_codelines()[0]['message'] == binded_message % 3
-    assert get_codelines()[0]['TEST_a'] == 'arg1'
-    assert get_codelines()[0]['TEST_b'] == 'arg2'
+    assert get_loglines()[0]['message'] == binded_message % 3
+    assert get_loglines()[0]['TEST_a'] == 'arg1'
+    assert get_loglines()[0]['TEST_b'] == 'arg2'
     AV_Logger.shutdown_logger()
     sleep(1)
 
@@ -80,8 +78,7 @@ def test_MetricLogger_simpleBinding_correctReport():
         logger.report()
     except:
         pytest.fail("Exception was thrown")
-    print(get_codelines())
-    assert get_codelines()[0]['TEST_data'] == {'x': 10}
+    assert get_loglines()[0]['TEST_data'] == {'x': 10}
     AV_Logger.shutdown_logger()
     sleep(1)
 
@@ -94,13 +91,13 @@ def test_MetricLogger_multipleMessagesSingleBinding_correctReport():
         logger.report('TEST just another message 1')
     except:
         pytest.fail("Exception was thrown")
-    assert get_codelines()[0]['message'] == 'TEST just a message'
-    assert get_codelines()[0]['TEST_a'] == 1
-    assert get_codelines()[0]['TEST_b'] == 2
+    assert get_loglines()[0]['message'] == 'TEST just a message'
+    assert get_loglines()[0]['TEST_a'] == 1
+    assert get_loglines()[0]['TEST_b'] == 2
 
-    assert get_codelines()[1]['message'] == 'TEST just another message 1'
-    assert get_codelines()[1]['TEST_a'] == 1
-    assert get_codelines()[1]['TEST_b'] == 2
+    assert get_loglines()[1]['message'] == 'TEST just another message 1'
+    assert get_loglines()[1]['TEST_a'] == 1
+    assert get_loglines()[1]['TEST_b'] == 2
 
     AV_Logger.shutdown_logger()
     sleep(1)
@@ -117,15 +114,15 @@ def test_MetricLogger_unbinding():
     except:
         pytest.fail("Exception was thrown")
 
-    assert get_codelines()[0]['message'] == 'TEST initial binding'
-    assert get_codelines()[0]['TEST_a'] == 'a'
-    assert get_codelines()[0]['TEST_b'] == 'b'
+    assert get_loglines()[0]['message'] == 'TEST initial binding'
+    assert get_loglines()[0]['TEST_a'] == 'a'
+    assert get_loglines()[0]['TEST_b'] == 'b'
 
-    assert get_codelines()[1]['TEST_a'] == 'a'
-    assert get_codelines()[1]['TEST_b'] == 'b'
+    assert get_loglines()[1]['TEST_a'] == 'a'
+    assert get_loglines()[1]['TEST_b'] == 'b'
 
-    assert get_codelines()[2]['message'] == 'TEST without binding'
-    assert 'TEST_a' not in get_codelines()[2]
-    assert 'TEST_b' not in get_codelines()[2]
+    assert get_loglines()[2]['message'] == 'TEST without binding'
+    assert 'TEST_a' not in get_loglines()[2]
+    assert 'TEST_b' not in get_loglines()[2]
     AV_Logger.shutdown_logger()
     sleep(1)
