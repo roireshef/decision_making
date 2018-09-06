@@ -47,7 +47,7 @@ def get_loglines():
     sleep(1)  # waiting for logger to end
     print_log_content()
     with open(get_log_file(), 'r') as log_file_recs:
-        return [eval(ll.split('data":"')[1].replace('\'', '"').rstrip()[:-1]) for ll in log_file_recs
+        return [eval(ll.split('data":"')[1].replace('\'', '"').rstrip()[:-2]) for ll in log_file_recs
                 if ll.find('TEST') !=-1 and ll.find('data') !=-1]
 
 #{"levelname":"DEBUG", "timestamp":"2018-09-06 14:24:27.520", "process":"79626", "processName":"DM_process_create_behavioral_planner", "filename":"metric_logger.py", "lineno":"61", "function":"report", "data":"{'message': '', 'args': {}}"}
