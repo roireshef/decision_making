@@ -37,16 +37,27 @@ def rm_logfile():
 def checkFile():
     print('log_file:' + str(Path(get_log_file()).exists()))
 
-
 def get_loglines():
     sleep(1)  # waiting for logger to end
     with open(get_log_file(), 'r') as log_file_recs:
-        print('** LOG CONTENT ***')
-        for pl in log_file_recs:
-            print(pl)
-        print('*****')
-        return [eval(ll.split('data:')[1].replace('\'', '"').rstrip()[:-1]) for ll in log_file_recs if
-                ll.find('TEST') != -1 and ll.find('data:') !=-1]
+        return [eval(ll.split('data:')[1].replace('\'', '"').rstrip()[:-1]) for ll in log_file_recs
+                if ll.find('TEST') !=-1 and ll.find('data:') !=-1]
+
+
+#def get_loglines():
+#    sleep(1)  # waiting for logger to end
+#    tmp=[]
+#    with open(get_log_file(), 'r') as log_file_recs:
+#        for ll in log_file_recs:
+#            #print(ll)
+#            if ll.find('TEST') !=-1 and ll.find('data:') !=-1:
+#               # print('*',)
+#                #print(eval(ll.split('data:')[1].replace('\'', '"').rstrip()[:-1]))
+#                tmp.append(eval(ll.split('data:')[1].replace('\'', '"').rstrip()[:-1]))
+#       # tmp=[eval(ll.split('data:')[1].replace('\'', '"').rstrip()[:-1]) for ll in log_file_recs if ll.find('TEST') != -1 and ll.find('data:') !=-1]
+#       # tmp=[eval(ll.split('data:')[1].replace('\'', '"').rstrip()[:-1]) for ll in log_file_recs if ll.find('TEST') != -1 and ll.find('data:') !=-1]
+#       # print(tmp)
+#    return tmp
 
 
 def test_MetricLogger_simpleoutput_OutputsToLogFile():
