@@ -8,6 +8,10 @@ from rte.python.logger.AV_logger import AV_Logger, LOG_DIRECTORY
 
 
 def get_log_file():
+    """
+    Returns the last modified JSON file
+    :return:
+    """
     list_of_files = glob.glob(LOG_DIRECTORY + '/*JSON*')  # * means all if need specific format then *.csv
     latest_file = max(list_of_files, key=os.path.getmtime)
     return latest_file
@@ -44,46 +48,13 @@ def print_log_content():
             print (l)
     print('********END-LOG*********')
 
-#def eval_quote(line):
-#    """
-#    Extract from log when double-quotes exits
-#    :param line:
-#    :return:
-#    """
-#    return eval(line.replace('"','').split('data:')[1].rstrip()[:-1])
-#
-#def eval_noquote(line):
-#    """
-#    Extract from log when double-quotes exits
-#    :param line:
-#    :return:
-#    """
-#    return eval(line.split('data:')[1].rstrip()[:-1])
 
 
 def get_loglines():
     sleep(1)  # waiting for logger to end
-    print_log_content()
+    #print_log_content()
     with open(get_log_file(), 'r') as log_file_recs:
         return [eval(ll.replace('"','').split('data:')[1].rstrip()[:-1]) for ll in log_file_recs if ll.find('TEST') !=-1 and ll.find('data') !=-1]
-
-#{"levelname":"DEBUG", "timestamp":"2018-09-06 14:24:27.520", "process":"79626", "processName":"DM_process_create_behavioral_planner", "filename":"metric_logger.py", "lineno":"61", "function":"report", "data":"{'message': '', 'args': {}}"}
-
-
-#def get_loglines():
-#    sleep(1)  # waiting for logger to end
-#    tmp=[]
-#    with open(get_log_file(), 'r') as log_file_recs:
-#        for ll in log_file_recs:
-#            #print(ll)
-#            if ll.find('TEST') !=-1 and ll.find('data:') !=-1:
-#               # print('*',)
-#                #print(eval(ll.split('data:')[1].replace('\'', '"').rstrip()[:-1]))
-#                tmp.append(eval(ll.split('data:')[1].replace('\'', '"').rstrip()[:-1]))
-#       # tmp=[eval(ll.split('data:')[1].replace('\'', '"').rstrip()[:-1]) for ll in log_file_recs if ll.find('TEST') != -1 and ll.find('data:') !=-1]
-#       # tmp=[eval(ll.split('data:')[1].replace('\'', '"').rstrip()[:-1]) for ll in log_file_recs if ll.find('TEST') != -1 and ll.find('data:') !=-1]
-#       # print(tmp)
-#    return tmp
 
 
 def test_MetricLogger_simpleoutput_OutputsToLogFile():
