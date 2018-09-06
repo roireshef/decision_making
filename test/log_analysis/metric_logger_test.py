@@ -43,12 +43,29 @@ def print_log_content():
         for l in lf:
             print (l)
     print('********END-LOG*********')
+
+def eval_quote(line):
+    """
+    Extract from log when double-quotes exits
+    :param line:
+    :return:
+    """
+    return eval(line.replace('"','').split('data:')[1].rstrip()[:-1])
+
+def eval_noquote(line):
+    """
+    Extract from log when double-quotes exits
+    :param line:
+    :return:
+    """
+    return eval(line.split('data:')[1].rstrip()[:-1])
+
+
 def get_loglines():
     sleep(1)  # waiting for logger to end
     print_log_content()
     with open(get_log_file(), 'r') as log_file_recs:
-        return [eval(ll.split('data":"')[1].replace('\'', '"').rstrip()[:-2]) for ll in log_file_recs
-                if ll.find('TEST') !=-1 and ll.find('data') !=-1]
+        return [eval_quote(ll) for ll in log_file_recs if ll.find('TEST') !=-1 and ll.find('data') !=-1]
 
 #{"levelname":"DEBUG", "timestamp":"2018-09-06 14:24:27.520", "process":"79626", "processName":"DM_process_create_behavioral_planner", "filename":"metric_logger.py", "lineno":"61", "function":"report", "data":"{'message': '', 'args': {}}"}
 
