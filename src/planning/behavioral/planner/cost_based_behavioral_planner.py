@@ -22,7 +22,6 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
     ActionRecipeEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
-from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy

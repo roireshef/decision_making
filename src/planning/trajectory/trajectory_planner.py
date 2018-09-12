@@ -36,7 +36,6 @@ class TrajectoryPlanner(metaclass=ABCMeta):
         :param goal: A 1D numpy array of the desired ego-state to plan towards, represented in current
         global-coordinate-frame (see EGO_* in planning.utils.types.py for the fields)
         :param cost_params: Data object with parameters that specify how to build the planning's cost function
-        :param bp_time: The ego timestamp corresponding to the TrajectoryParams value from the Behavior Planner.
         :return: a tuple of: (samplable representation of the chosen trajectory, tensor of trajectory alternatives,
          trajectories costs correspond to previous output)
         """
