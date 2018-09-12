@@ -1,10 +1,8 @@
+import numpy as np
 from logging import Logger
 from typing import Optional, List
 
-import numpy as np
-
 import rte.python.profiler as prof
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_NAME_FOR_METRICS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
