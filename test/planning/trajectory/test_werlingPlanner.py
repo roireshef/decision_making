@@ -10,7 +10,7 @@ from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, \
     DEFAULT_ACCELERATION, DEFAULT_CURVATURE, EGO_HEIGHT, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, LON_MARGIN_FROM_EGO
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import CostBasedBehavioralPlanner
-from decision_making.src.planning.trajectory.cost_function import Costs, Jerk
+from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts, Jerk
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner, \
     SamplableWerlingTrajectory
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, \
@@ -21,7 +21,7 @@ from decision_making.src.planning.utils.optimal_control.poly1d import Poly1D
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, DynamicObject, EgoState
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidDynamicBoxObstacle, \
+from decision_making.test.planning.trajectory.utils import RouteFixture, PlottableSigmoidBoxObstacle, \
     WerlingVisualizer
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.model.map_api import MapAPI
@@ -54,16 +54,17 @@ def test_werlingPlanner_toyScenario_noException():
     yaw2 = np.pi / 4
 
     obs = list([
-        DynamicObject.create_from_cartesian_state(obj_id=0, timestamp=950 * 10e6, cartesian_state=[pos1[0], pos1[1], yaw1, 0, 0, 0],
+        DynamicObject.create_from_cartesian_state(obj_id=0, timestamp=950 * 10e6,
+                                                  cartesian_state=np.array([pos1[0], pos1[1], yaw1, 0, 0, 0]),
                                                   size=ObjectSize(1.5, 0.5, 0), confidence=1.0),
         DynamicObject.create_from_cartesian_state(obj_id=1, timestamp=950 * 10e6,
-                                                  cartesian_state=[pos2[0], pos2[1], yaw2, 0, 0, 0],
+                                                  cartesian_state=np.array([pos2[0], pos2[1], yaw2, 0, 0, 0]),
                                                   size=ObjectSize(1.5, 0.5, 0), confidence=1.0)
     ])
 
     # set ego starting longitude > 0 in order to prevent the starting point to be outside the reference route
     ego = EgoState.create_from_cartesian_state(obj_id=-1, timestamp=1000 * 10e6,
-                                               cartesian_state=[LON_MARGIN_FROM_EGO, 0, 0, v0, 0.0, 0.0],
+                                               cartesian_state=np.array([LON_MARGIN_FROM_EGO, 0, 0, v0, 0.0, 0.0]),
                                                size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT), confidence=1.0)
 
     state = State(occupancy_state=None, dynamic_objects=obs, ego_state=ego)
@@ -198,15 +199,15 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             # run Werling planner
             planner = WerlingPlanner(logger, predictor)
             _, ctrajectories, costs = planner.plan(state=state, reference_route=ext_route_points[:, :2],
-                                                                    goal=goal, time_horizon=T, cost_params=cost_params)
+                                                   goal=goal, time_horizon=T, cost_params=cost_params)
 
-            time_samples = np.arange(0, Math.round_to_step(T, planner.dt) + np.finfo(np.float16).eps, planner.dt) + \
+            time_samples = np.arange(0, T + np.finfo(np.float16).eps, planner.dt) + \
                            state.ego_state.timestamp_in_sec
             assert time_samples.shape[0] == ctrajectories.shape[1]
 
             offsets = np.array([cost_params.obstacle_cost_x.offset, cost_params.obstacle_cost_y.offset])
-            plottable_obs = [PlottableSigmoidDynamicBoxObstacle(state,o, cost_params.obstacle_cost_x.k, offsets, time_samples,
-                                                                planner.predictor)
+            plottable_obs = [PlottableSigmoidBoxObstacle(state, o, cost_params.obstacle_cost_x.k, offsets, time_samples,
+                                                         planner.predictor)
                              for o in state.dynamic_objects]
 
             # create pixels grid of the visualization image and compute costs for these pixels for given time samples
@@ -273,9 +274,9 @@ def create_state_for_test_werlingPlanner(frenet: FrenetSerret2DFrame, obs_poses:
 
     ego = EgoState.create_from_cartesian_state(obj_id=-1, timestamp=0, size=ObjectSize(EGO_LENGTH, EGO_WIDTH, 0),
                                                confidence=1.0,
-                                               cartesian_state=[ctraj_start_goal[0][C_X], ctraj_start_goal[0][C_Y],
+                                               cartesian_state=np.array([ctraj_start_goal[0][C_X], ctraj_start_goal[0][C_Y],
                                                                    ctraj_start_goal[0][C_YAW], ctraj_start_goal[0][C_V],
-                                                                   0.0, 0.0])
+                                                                   0.0, 0.0]))
 
     goal = ctraj_start_goal[1]
     goal[C_X] -= 0.001
@@ -285,7 +286,8 @@ def create_state_for_test_werlingPlanner(frenet: FrenetSerret2DFrame, obs_poses:
         fobs = np.array([pose[FP_SX], pose[FP_DX]])
         cobs = frenet.fpoint_to_cpoint(fobs)
         dynamic_object = DynamicObject.create_from_cartesian_state(obj_id=i, timestamp=0,
-                                                                   cartesian_state=[cobs[C_X], cobs[C_Y], frenet.get_yaw(pose[FP_SX]), 0.0, 0.0],
+                                                                   cartesian_state=np.array([cobs[C_X], cobs[C_Y],
+                                                                        frenet.get_yaw(pose[FP_SX]), 0.0, 0.0, 0.0]),
                                                                    size=ObjectSize(4, 1.8, 0), confidence=1.0)
         obs.append(dynamic_object)
 
@@ -337,8 +339,8 @@ def compute_pixel_costs(route_points: np.array, reference_route_latitude: float,
 
     # calculate cost components for all image pixels by building a static "trajectory" for every pixel
     pointwise_costs = \
-        Costs.compute_pointwise_costs(cartesian_pixels, frenet_pixels, state, cost_params, time_samples,
-                                      planner.predictor, planner.dt)
+        TrajectoryPlannerCosts.compute_pointwise_costs(cartesian_pixels, frenet_pixels, state, cost_params, time_samples,
+                                                       planner.predictor, planner.dt)
 
     pixel_costs = (pointwise_costs[:, :, 0] + pointwise_costs[:, :, 1]).reshape(height, width, time_samples.shape[0])
     return pixels2D, pixel_costs
@@ -348,7 +350,7 @@ def visualize_test_scenario(route_points: np.array, reference_route_latitude: fl
                             state: State, goal: CartesianExtendedState,
                             ctrajectories: np.array, traj_costs: np.array,
                             pixels: np.array, pixel_costs: np.array,
-                            plottable_obs: List[PlottableSigmoidDynamicBoxObstacle],
+                            plottable_obs: List[PlottableSigmoidBoxObstacle],
                             image_file_name: str):
     """
     Given running results (trajectories and their costs) of Werling planner on some scenario (road, state, goal),

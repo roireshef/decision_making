@@ -1,13 +1,13 @@
-import numpy as np
 from logging import Logger
 from typing import Tuple
+import numpy as np
 
 from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
     TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
-from decision_making.src.planning.trajectory.cost_function import Costs
+from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
@@ -93,11 +93,9 @@ class WerlingPlanner(TrajectoryPlanner):
         lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, self.dt)
 
         assert T_s >= lower_bound_T_d
-
-        self._logger.debug('WerlingPlanner is planning from %s (frenet) to %s (frenet) in %s seconds' %
-                           (NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
-                            T_s))
-
+        self._logger.debug('WerlingPlanner is planning from %s (frenet) to %s (frenet) in %s seconds',
+                           NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
+                            T_s)
         # create a grid on T_d (lateral movement time-grid)
         T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_s, lower_bound_T_d, self.dt)
 
@@ -120,9 +118,9 @@ class WerlingPlanner(TrajectoryPlanner):
         cartesian_refiltered_indices = self._filter_by_cartesian_limits(ctrajectories, cost_params)
 
         refiltered_indices = frenet_filtered_indices[cartesian_refiltered_indices]
-
         ctrajectories_filtered = ctrajectories[cartesian_refiltered_indices]
         ftrajectories_refiltered = ftrajectories[frenet_filtered_indices][cartesian_refiltered_indices]
+
 
         self._logger.debug(LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, len(ctrajectories_filtered))
 
@@ -175,6 +173,7 @@ class WerlingPlanner(TrajectoryPlanner):
             poly_s_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][:6],
             poly_d_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][6:]
         )
+
 
         return samplable_trajectory, \
                ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \
@@ -258,8 +257,8 @@ class WerlingPlanner(TrajectoryPlanner):
                                                     params.dist_from_goal_cost.w, params.dist_from_goal_cost.k)
 
         ''' point-wise costs: obstacles, deviations, jerk '''
-        pointwise_costs = Costs.compute_pointwise_costs(ctrajectories, ftrajectories, state, params,
-                                                        global_time_samples, predictor, dt)
+        pointwise_costs = TrajectoryPlannerCosts.compute_pointwise_costs(ctrajectories, ftrajectories, state, params,
+                                                                         global_time_samples, predictor, dt)
 
         return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs
 

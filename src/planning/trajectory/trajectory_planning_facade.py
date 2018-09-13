@@ -11,7 +11,8 @@ from decision_making.src.exceptions import MsgDeserializationError, NoValidTraje
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION, \
     NUM_ALTERNATIVE_TRAJECTORIES, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
-    LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME
+    LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
+    TRAJECTORY_PLANNING_NAME_FOR_METRICS
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
@@ -25,6 +26,7 @@ from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predic
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State
+from decision_making.src.utils.metric_logger import MetricLogger
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
@@ -43,6 +45,8 @@ class TrajectoryPlanningFacade(DmModule):
         :param last_trajectory: a representation of the last trajectory that was planned during self._periodic_action_impl
         """
         super().__init__(pubsub=pubsub, logger=logger)
+
+        MetricLogger.init(TRAJECTORY_PLANNING_NAME_FOR_METRICS)
 
         self._short_time_predictor = short_time_predictor
         self._strategy_handlers = strategy_handlers
@@ -96,9 +100,12 @@ class TrajectoryPlanningFacade(DmModule):
             else:
                 updated_state = state_aligned
 
+            MetricLogger.get_logger().bind(bp_time=params.bp_time)
+
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon, params.cost_params)
+                plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
+                     params.cost_params)
 
             center_vehicle_trajectory_points = samplable_trajectory.sample(
                 np.linspace(start=0,
@@ -126,6 +133,7 @@ class TrajectoryPlanningFacade(DmModule):
             self._publish_debug(debug_results)
 
             self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
+            MetricLogger.get_logger().report()
 
         except MsgDeserializationError:
             self.logger.error("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",
@@ -222,10 +230,11 @@ class TrajectoryPlanningFacade(DmModule):
         # predicted_states[1] is the predicted state in the end of the execution of traj.
         # TODO: Hack! We need a prediction method for this case which: 1. creates states,
         # TODO: 2.predicts for more than one timestamp, 3. ego can't be None because LCM doesn't like it.
-        predicted_states_without_ego = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps, action_trajectory=None)
+        predicted_states_without_ego = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps,
+                                                               action_trajectory=None)
         predicted_states = [State(occupancy_state=predicted_state.occupancy_state,
-                                      dynamic_objects=predicted_state.dynamic_objects,
-                                      ego_state=state.ego_state) for predicted_state in predicted_states_without_ego]
+                                  dynamic_objects=predicted_state.dynamic_objects,
+                                  ego_state=state.ego_state) for predicted_state in predicted_states_without_ego]
 
         _, downsampled_reference_route, _ = CartesianFrame.resample_curve(reference_route,
                                                                           step_size=DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION)
