@@ -34,7 +34,7 @@ class SamplableTrajectory(metaclass=ABCMeta):
     @abstractmethod
     def sample_frenet(self, time_points: np.ndarray) -> FrenetTrajectory2D:
         """
-        Sample cartesian states at the given time points, find the containing road and convert them to Frenet trajectory
+        Sample Frenet states at the given time points, find the containing road and convert them to Frenet trajectory
         :param time_points: time points for the sampling
         :return: Frenet trajectory
         """
