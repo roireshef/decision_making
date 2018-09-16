@@ -82,9 +82,9 @@ BP_ACTION_T_LIMITS = np.array([2.0, 20.0])
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action,
 # have to be sorted from calm to aggressive
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
-    [12, 0.15, 0.1],
-    [2, 0.15, 0.1],
-    [0.01, 0.15, 0.1]
+    [8.50, 0.15, 0.1],
+    [0.34, 0.15, 0.1],
+    [0.08, 0.15, 0.1]
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
@@ -96,7 +96,7 @@ LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
 SPECIFICATION_MARGIN_TIME_DELAY = 2
-SAFETY_MARGIN_TIME_DELAY = 1
+SAFETY_MARGIN_TIME_DELAY = 0.5
 
 
 # [m/sec] Minimal difference of velocities to justify an overtake

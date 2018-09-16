@@ -318,10 +318,11 @@ def test_braking_print_graphs():
                 vel_poly_coefs.append(vel_poly)
                 extrema.append(extremum)
 
-                ml.bind(v0=v0, vT=vT, s=s)
-                for i in range(len(vel_samples)):
-                    ml.bind(time=times[i], sample=vel_samples[i])
-                    ml.report()
+                if valid_state.any():  # OR on aggressiveness levels
+                    ml.bind(v0=v0, vT=vT, s=s)
+                    for i in range(len(vel_samples)):
+                        ml.bind(time=times[i], sample=vel_samples[i])
+                        ml.report()
 
     a=0
 
