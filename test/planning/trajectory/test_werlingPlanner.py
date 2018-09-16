@@ -17,7 +17,6 @@ from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, C_X,
     CartesianExtendedState, CartesianTrajectory
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.math import Math
-from decision_making.src.planning.utils.optimal_control.poly1d import Poly1D
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, DynamicObject, EgoState
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
@@ -451,6 +450,7 @@ def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
         np.array([trajectory.timestamp_in_sec + (trajectory.T_s + trajectory.T_d) / 2]))[0])
 
     np.testing.assert_allclose(fstate_after_T_d[FS_DX], fstate_terminal[FS_DX])
+
 
 def test_computeJerk_simpleTrajectory():
     p1 :CartesianExtendedState = np.array([0, 0, 0, 1, 0, 0.1])
