@@ -100,8 +100,6 @@ def test_specifyGoals_followSlowFrontObject_specsComplyAccAndTimeLimits(
 
 
 LON_SAFETY_ACCEL_DURING_DELAY = 3
-SAFETY_MARGIN_TIME_DELAY = 0.5
-SPECIFICATION_MARGIN_TIME_DELAY = 2.0
 
 def test_stress():
 
