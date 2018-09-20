@@ -81,9 +81,9 @@ BP_ACTION_T_LIMITS = np.array([2.0, 20.0])
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
-    [12, 0.15, 0.1],
-    [2, 0.15, 0.1],
-    [0.01, 0.15, 0.1]
+    [16, 0.15, 0.1],
+    [1.6, 0.15, 0.1],
+    [0.08, 0.15, 0.1]
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
@@ -95,7 +95,7 @@ LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
 SPECIFICATION_MARGIN_TIME_DELAY = 2
-SAFETY_MARGIN_TIME_DELAY = 1
+SAFETY_MARGIN_TIME_DELAY = 0.5
 
 # [m] minimal lateral safe distance between objects
 LATERAL_SAFETY_MU = 0.5
@@ -105,7 +105,7 @@ LATERAL_SAFETY_MU = 0.5
 LAT_VEL_BLAME_THRESH = 0.1
 
 # [m/s^2] longitudinal acceleration of object during time delay in RSS
-LON_SAFETY_ACCEL_DURING_DELAY = 0
+LON_SAFETY_ACCEL_DURING_DELAY = LON_ACC_LIMITS[1]
 
 # [m/s^2] lateral acceleration of object during time delay in RSS
 LAT_SAFETY_ACCEL_DURING_DELAY = 0

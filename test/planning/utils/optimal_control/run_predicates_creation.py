@@ -1,6 +1,7 @@
 from decision_making.paths import Paths
 from decision_making.src.global_constants import FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID, FILTER_V_T_GRID, \
-    SPECIFICATION_MARGIN_TIME_DELAY, BP_JERK_S_JERK_D_TIME_WEIGHTS, SAFETY_MARGIN_TIME_DELAY
+    SPECIFICATION_MARGIN_TIME_DELAY, BP_JERK_S_JERK_D_TIME_WEIGHTS, SAFETY_MARGIN_TIME_DELAY, \
+    LON_SAFETY_ACCEL_DURING_DELAY
 from decision_making.src.planning.behavioral.data_objects import ActionType
 from decision_making.src.planning.utils.file_utils import TextReadWrite
 from decision_making.test.planning.utils.optimal_control.quartic_poly_formulas import QuarticMotionPredicatesCreator
@@ -45,7 +46,8 @@ def document_created_predicates(target_directory):
                 'FILTER_S_T_GRID : ' + str(FILTER_S_T_GRID),
                 'FILTER_V_T_GRID : ' + str(FILTER_V_T_GRID),
                 'SPECIFICATION_MARGIN_TIME_DELAY : ' + str(SPECIFICATION_MARGIN_TIME_DELAY),
-                'SAFETY_MARGIN_TIME_DELAY : ' + str(SAFETY_MARGIN_TIME_DELAY)]
+                'SAFETY_MARGIN_TIME_DELAY : ' + str(SAFETY_MARGIN_TIME_DELAY),
+                'LON_SAFETY_ACCEL_DURING_DELAY : ' + str(LON_SAFETY_ACCEL_DURING_DELAY)]
     TextReadWrite.write(lines_in, output_predicate_file_path)
 
 
