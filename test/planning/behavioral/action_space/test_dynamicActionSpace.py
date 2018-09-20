@@ -1,6 +1,6 @@
 from logging import Logger
 from typing import List
-
+import pdb
 import copy
 import numpy as np
 
@@ -99,10 +99,15 @@ def test_specifyGoals_followSlowFrontObject_specsComplyAccAndTimeLimits(
     assert np.any(np.logical_and(acc_in_limits, time_in_limits))
 
 
-LON_SAFETY_ACCEL_DURING_DELAY = 3
-
 def test_stress():
-
+    """
+    Create 3D grid of configurations (states): initial velocity, end velocity, initial distance from object.
+    Create 3D grid of Jerk-Time weights for 3 aggressiveness levels.
+    For each state and for each triplet of weights, check validity of the state based on acceleration limits,
+    velocity limits, action time limits and RSS safety.
+    Output brief states coverage for all weights sets (number of invalid states for each weights set).
+    Output detailed states coverage (3D grid of states) for the best weights set or compare two weights sets.
+    """
     # states ranges
     v_step = 2
     v0_range = np.arange(0, 18 + EPS, v_step)
@@ -122,8 +127,8 @@ def test_stress():
     # weights = np.c_[w01 * w12 * w2, w12 * w2, w2]
 
     # w2_range = np.geomspace(0.072, 0.08, num=3)
-    # w12_range = np.geomspace(3, 6, num=8)
-    # w01_range = np.geomspace(20, 50, num=8)
+    # w12_range = np.geomspace(20, 30, num=6)
+    # w01_range = np.geomspace(5, 10, num=4)
     # w01, w12, w2 = np.meshgrid(w01_range, w12_range, w2_range)
     # w01, w12, w2 = np.ravel(w01), np.ravel(w12), np.ravel(w2)
     # weights = np.c_[w01 * w12 * w2, w12 * w2, w2]
@@ -133,8 +138,8 @@ def test_stress():
     #
     # weights = np.array([[0.426, 0.139, 0.072], [8.5, 0.34, 0.08]])  # global maximum over sets vs. local max with high weights
     # weights = np.array([BP_JERK_S_JERK_D_TIME_WEIGHTS[:, 0], [8.5, 0.34, 0.08]])  # original set vs. local max with high weights
-    weights = np.array([[8.5, 0.34, 0.08]])  # local max with high weights
-    # weights = np.array([BP_JERK_S_JERK_D_TIME_WEIGHTS[:, 0]])
+    # weights = np.array([[8.5, 0.34, 0.08], [16, 1.6, 0.08]])  # local max with high weights
+    weights = np.array([[12, 2, 0.01], [16, 1.6, 0.08]])
 
     # create all states
     v0, vT, a0, s = np.meshgrid(v0_range, vT_range, a0_range, s_range)
@@ -174,6 +179,7 @@ def test_stress():
                 constraints = np.c_[zeros, v0, a0, s + vT * (T - SPECIFICATION_MARGIN_TIME_DELAY), vT, zeros]
                 poly_coefs = QuinticPoly1D.zip_solve(A_inv, constraints)
                 # check acc & vel limits
+                poly_coefs[np.where(poly_coefs[:, 0] == 0), 0] = EPS
                 acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
                 vel_in_limits = QuinticPoly1D.are_velocities_in_limits(poly_coefs, T, VELOCITY_LIMITS)
                 vel_acc_in_limits[minmax, :, aggr] = np.logical_and(acc_in_limits, vel_in_limits)
@@ -248,82 +254,147 @@ def test_braking_print_graphs():
     ml = MetricLogger.get_logger()
 
     v0_from = 4
-    v0_till = 24
+    v0_till = 18
     vT_from = 0
     vT_till_rel = -2
     v_step = 4
-    s_from = 40
-    s_till = 100
+    s_from = 40  # 40
+    s_till = 100  # 100
     a0 = 0.
-    w_J = np.array([8.5, 0.34, 0.08])
+    w_J_list = [np.array([16, 1.6, 0.08]), np.array([8.5, 0.34, 0.08])]
+    # w_J_list = [np.array([12, 2, 0.01]), np.array([16.9, 3.446, 0.108])]
+    # w_J_list = [np.array([12, 2, 0.01]), np.array([10.565, 2.155, 0.108])]
+    # w_J_list = [np.array([12, 2, 0.01]), np.array([11.364, 1.451, 0.072])]
+    # w_J_list = [np.array([12, 2, 0.01]), np.array([12.7, 1.6, 0.08])]
+    # w_J_list = [np.array([8.5, 0.34, 0.08]), np.array([11.364, 1.451, 0.072])]
+    # w_J_list = [np.array([12, 2, 0.01]), np.array([16, 1.6, 0.08])]
+
+    zeros = np.zeros(3)
+
+    all_acc_samples = {}
+    acc_rate = {}
+    all_T_s = {}
+    failure_reason = {}
 
     aggressiveness = []
     states = []
     T_arr = []
     vel_poly_coefs = []
     extrema = []
+    worsen_rates = []
+    worsen_states = []
+    new_states = []
+    old_states = []
+    destroyed_states = []
+    old_rates_sum = new_rates_sum = 0
 
-    zeros = np.zeros(3)
+    for wi, w_J in enumerate(w_J_list):
+        for v0 in np.arange(v0_from, v0_till+EPS, v_step):
+            for vT in np.arange(vT_from, v0 + vT_till_rel + EPS, v_step):
+                for s in np.arange(s_from, s_till+EPS, 10):
 
-    for v0 in np.arange(v0_from, v0_till+EPS, v_step):
-        for vT in np.arange(vT_from, v0 + vT_till_rel + EPS, v_step):
-            for s in np.arange(s_from, s_till+EPS, 10):
+                    cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
+                        w_T=BP_JERK_S_JERK_D_TIME_WEIGHTS[:, 2], w_J=w_J, dx=s, a_0=a0, v_0=v0, v_T=vT,
+                        T_m=SPECIFICATION_MARGIN_TIME_DELAY)
+                    real_roots = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, np.inf]))
+                    T = np.fmax.reduce(real_roots, axis=-1)
 
-                cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
-                    w_T=BP_JERK_S_JERK_D_TIME_WEIGHTS[:, 2], w_J=w_J, dx=s, a_0=a0, v_0=v0, v_T=vT, T_m=SPECIFICATION_MARGIN_TIME_DELAY)
-                real_roots = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, np.inf]))
-                T = np.fmax.reduce(real_roots, axis=-1)
+                    A = QuinticPoly1D.time_constraints_tensor(T)
+                    A_inv = np.linalg.inv(A)
+                    constraints = np.c_[zeros, v0 + zeros, a0 + zeros, s + vT * (T - SPECIFICATION_MARGIN_TIME_DELAY),
+                                        vT + zeros, zeros]
+                    poly_coefs = QuinticPoly1D.zip_solve(A_inv, constraints)
+                    # check acc & vel limits
+                    acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
+                    vel_in_limits = QuinticPoly1D.are_velocities_in_limits(poly_coefs, T, VELOCITY_LIMITS)
+                    vel_acc_in_limits = np.logical_and(acc_in_limits, vel_in_limits)
+                    # check safety
+                    action_specs = [ActionSpec(t=T[aggr], v=vT, s=s, d=0) for aggr in range(3)]
+                    safe_actions = SafetyUtils.get_lon_safety_for_action_specs(poly_coefs, action_specs, 0)
 
-                A = QuinticPoly1D.time_constraints_tensor(T)
-                A_inv = np.linalg.inv(A)
-                constraints = np.c_[zeros, v0 + zeros, a0 + zeros, s + vT * (T - SPECIFICATION_MARGIN_TIME_DELAY), vT + zeros, zeros]
-                poly_coefs = QuinticPoly1D.zip_solve(A_inv, constraints)
-                # check acc & vel limits
-                acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
-                vel_in_limits = QuinticPoly1D.are_velocities_in_limits(poly_coefs, T, VELOCITY_LIMITS)
-                vel_acc_in_limits = np.logical_and(acc_in_limits, vel_in_limits)
-                # check safety
-                action_specs = [ActionSpec(t=T[aggr], v=vT, s=s, d=0) for aggr in range(3)]
-                safe_actions = SafetyUtils.get_lon_safety_for_action_specs(poly_coefs, action_specs, 0)
-
-                time_in_limits = NumpyUtils.is_in_limits(T, BP_ACTION_T_LIMITS)
-                valid_state = np.logical_and(vel_acc_in_limits, np.logical_and(time_in_limits, safe_actions))
-
-                lowest_aggr = -1
-                T_s = -1
-                vel_poly = np.zeros(5)
-                extremum = np.zeros(9)
-                if valid_state.any():  # OR on aggressiveness levels
+                    time_in_limits = NumpyUtils.is_in_limits(T, BP_ACTION_T_LIMITS)
+                    valid_state = np.logical_and(vel_acc_in_limits, np.logical_and(time_in_limits, safe_actions))
                     lowest_aggr = np.argmax(valid_state)
-                    T_s = T[lowest_aggr]
-                    times = np.arange(0, T_s + EPS, 0.1)
-                    vel_poly = Math.polyder2d(poly_coefs[lowest_aggr][np.newaxis], m=1)[0]
-                    vel_samples = Math.polyval2d(vel_poly[np.newaxis], times)[0]
-                    mini = np.argmin(vel_samples)
-                    maxi = np.argmax(vel_samples)
-                    minv = vel_samples[mini]
-                    maxv = vel_samples[maxi]
-                    if 0 < mini < len(times)-1 and 0 < maxi < len(times)-1:
-                        extremum = np.array([[0, times[mini], times[maxi], T_s, s], [v0, minv, maxv, vT, s]])
-                    elif 0 < mini < len(times)-1:
-                        extremum = np.array([[0, times[mini], 0, T_s, s], [v0, minv, 0, vT, s]])
-                    elif 0 < maxi < len(times)-1:
-                        extremum = np.array([[0, 0, times[maxi], T_s, s], [v0, 0, maxv, vT, s]])
 
-                states.append(np.array([v0, vT, s]))
-                T_arr.append(T_s)
-                aggressiveness.append(lowest_aggr)
-                vel_poly_coefs.append(vel_poly)
-                extrema.append(extremum)
+                    for ag in range(3):
+                        if valid_state[ag]:  # OR on aggressiveness levels
+                            T_s = T[ag]
+                            times = np.arange(0, T_s + EPS, 0.1)
+                            vel_poly = Math.polyder2d(poly_coefs[ag][np.newaxis], m=1)[0]
+                            acc_poly = Math.polyder2d(poly_coefs[ag][np.newaxis], m=2)[0]
+                            vel_samples = Math.polyval2d(vel_poly[np.newaxis], times)[0]
+                            acc_samples = Math.polyval2d(acc_poly[np.newaxis], times)[0]
 
-                if valid_state.any():  # OR on aggressiveness levels
-                    ml.bind(v0=v0, vT=vT, s=s)
-                    for i in range(len(vel_samples)):
-                        ml.bind(time=times[i], sample=vel_samples[i])
-                        ml.report()
+                            all_T_s[(wi, v0, vT, s, ag)] = T_s
+                            all_acc_samples[(wi, v0, vT, s, ag)] = acc_samples
+                            rate = rate_acceleration_quality(acc_samples)
+                            acc_rate[(wi, v0, vT, s, ag)] = rate
+                            if wi == 1:
+                                new_states.append((v0, vT, s, ag))
+                                new_rates_sum += rate
+                            else:
+                                old_states.append((v0, vT, s, ag))
+                                old_rates_sum += rate
 
-    a=0
+                            key_str = str(wi) + '_' + str(v0) + '_' + str(vT) + '_' + str(s) + '_' + str(ag)
+                            ml.bind(key_str=key_str)
+                            ml.bind(w=wi, v0=v0, vT=vT, s=s, ag=ag)
+                            for i, acc in enumerate(acc_samples):
+                                print('wi=%d; time=%.2f' % (wi, times[i]))
+                                ml.bind(time=times[i], vel_sample=vel_samples[i], acc_sample=acc)
+                                ml.report()
 
+                            # if wi == 1 and (0, v0, vT, s, ag) in acc_rate and rate > 0.5 and acc_rate[(0, v0, vT, s, ag)] < rate:
+                            #     worsen_rates.append([acc_rate[(0, v0, vT, s, ag)], acc_rate[(1, v0, vT, s, ag)]])
+                            #     worsen_states.append((v0, vT, s, ag))
+
+                        elif wi == 1:
+                            if not acc_in_limits[ag]:
+                                failure_reason[(v0, vT, s, ag)] = "acc"
+                            elif not vel_in_limits[ag]:
+                                failure_reason[(v0, vT, s, ag)] = "vel"
+                            elif T[ag] < 2:
+                                failure_reason[(v0, vT, s, ag)] = "short"
+                            elif T[ag] > 20:
+                                failure_reason[(v0, vT, s, ag)] = "long"
+                            else:
+                                failure_reason[(v0, vT, s, ag)] = "unsafe"
+
+                        # if (wi == 1) and ((0, v0, vT, s, ag) in acc_rate) and (not ((1, v0, vT, s, ag) in acc_rate)):
+                        #     destroyed_states.append((v0, vT, s, ag))
+                        #     if not acc_in_limits[ag]:
+                        #         failure_reason[(v0, vT, s, ag)] = "acc"
+                        #     elif not vel_in_limits[ag]:
+                        #         failure_reason[(v0, vT, s, ag)] = "vel"
+                        #     elif T[ag] < 2:
+                        #         failure_reason[(v0, vT, s, ag)] = "short"
+                        #     elif T[ag] > 20:
+                        #         failure_reason[(v0, vT, s, ag)] = "long"
+                        #     else:
+                        #         failure_reason[(v0, vT, s, ag)] = "unsafe"
+
+                        # states.append(np.array([v0, vT, s, ag]))
+                        # T_arr.append(T_s)
+                        # aggressiveness.append(lowest_aggr)
+                        # vel_poly_coefs.append(vel_poly)
+                        # extrema.append(extremum)
+
+
+def rate_acceleration_quality(acc_samples: np.array) -> float:
+    """
+    calculate normalized center of mass of braking: late braking gets higher rate than early braking
+    :param acc_samples:
+    :return: center of mass of acc_samples from the interval [0..1]
+    """
+    cum_acceleration_time = cum_acceleration = 0
+    for i, acc in enumerate(acc_samples):
+        if acc < 0:
+            cum_acceleration_time += i * acc
+            cum_acceleration += acc
+    return cum_acceleration_time / (cum_acceleration * len(acc_samples))
+
+
+LON_SAFETY_ACCEL_DURING_DELAY = 3
 
 class SafetyUtils:
 
