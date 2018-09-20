@@ -184,7 +184,7 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
     cost_params = TrajectoryCostParams
     time = float
 
-    def __init__(self, strategy, reference_route, target_state, cost_params, time):
+    def __init__(self, strategy, reference_route, target_state, cost_params, time, bp_time):
         # type: (TrajectoryPlanningStrategy, np.ndarray, np.ndarray, TrajectoryCostParams, float)->None
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
@@ -199,6 +199,7 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         self.cost_params = cost_params
         self.strategy = strategy
         self.time = time
+        self.bp_time = bp_time
 
     def __str__(self):
         return str(self.to_dict(left_out_fields=['reference_route']))
@@ -228,6 +229,7 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         lcm_msg.cost_params = self.cost_params.serialize()
 
         lcm_msg.time = self.time
+        lcm_msg.bp_time = self.bp_time
 
         return lcm_msg
 
@@ -242,5 +244,6 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
                             , buffer = np.array(lcmMsg.target_state.data)
                             , dtype = float)
                  , TrajectoryCostParams.deserialize(lcmMsg.cost_params)
-                 , lcmMsg.time)
+                 , lcmMsg.time
+                 , lcmMsg.bp_time)
 

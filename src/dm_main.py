@@ -86,7 +86,7 @@ class DmInitialization:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
         # Init map
-        MapService.initialize(map_file=DEFAULT_MAP_FILE)
+        MapService.initialize()
 
         predictor = RoadFollowingPredictor(logger)
 
