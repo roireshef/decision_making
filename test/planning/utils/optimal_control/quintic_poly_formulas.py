@@ -224,14 +224,14 @@ class QuinticMotionPredicatesCreator:
         """
         # sample the lambda functions and create ego longitudinal Frenet trajectory
         t = np.arange(0, T + EPS, TRAJECTORY_TIME_RESOLUTION)
-        ego_trajectory = np.c_[s_t_func(t), v_t_func(t), np.full(len(t), 0)]
+        ego_trajectory = np.c_[s_t_func(t), v_t_func(t)]  # only SX & SV
 
         # create the dynamic object's trajectory
         obj_s_samples = dist_sign * (s_T + v_T * (t + T_m) + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT)
         # check consistency of dist_sign w.r.t. objects initial location
         if dist_sign * (obj_s_samples[0] - ego_trajectory[0, 0]) <= 0:
             return False
-        obj_trajectory = np.c_[obj_s_samples, np.full(len(t), v_T), np.full(len(t), 0)]
+        obj_trajectory = np.c_[obj_s_samples, np.full(len(t), v_T)]  # only SX & SV
 
         # calc longitudinal RSS for the long trajectory
         safe_times = SafetyUtils._get_lon_safety(ego_trajectories=ego_trajectory, ego_response_time=SAFETY_MARGIN_TIME_DELAY,
