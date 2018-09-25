@@ -66,13 +66,16 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # ActionSpec filtering
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
 
+        # filter specs by RSS safety
+        action_specs_mask_safe = self._check_actions_safety(state, action_specs, action_specs_mask)
+
         # State-Action Evaluation
-        action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
+        action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask_safe)
 
         # approximate cost-to-go per terminal state
-        terminal_behavioral_states = self._generate_terminal_states(state, action_specs, action_specs_mask)
+        terminal_behavioral_states = self._generate_terminal_states(state, action_specs, action_specs_mask_safe)
         # TODO: NavigationPlan is now None and should be meaningful when we have one
-        terminal_states_values = np.array([self.value_approximator.approximate(state, None) if action_specs_mask[i] else np.nan
+        terminal_states_values = np.array([self.value_approximator.approximate(state, None) if action_specs_mask_safe[i] else np.nan
                                            for i, state in enumerate(terminal_behavioral_states)])
 
         self.logger.debug('terminal states value: %s', np.array_repr(terminal_states_values).replace('\n', ' '))
@@ -80,7 +83,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # compute "approximated Q-value" (action cost +  cost-to-go) for all actions
         action_q_cost = action_costs + terminal_states_values
 
-        valid_idxs = np.where(action_specs_mask)[0]
+        valid_idxs = np.where(action_specs_mask_safe)[0]
         selected_action_index = valid_idxs[action_q_cost[valid_idxs].argmin()]
         selected_action_spec = action_specs[selected_action_index]
 
