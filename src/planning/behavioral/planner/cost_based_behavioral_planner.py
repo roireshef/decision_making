@@ -23,9 +23,11 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
     ActionRecipeEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
+from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
+from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, LIMIT_MAX, FS_SV, FS_DV, FrenetState2D
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
@@ -304,54 +306,62 @@ class CostBasedBehavioralPlanner:
 
         ego = state.ego_state
         ego_init_fstate = ego.map_state.road_fstate
+        lane_width = MapService.get_instance().get_road(ego.map_state.road_id).lane_width
 
         spec_arr = np.array([[spec.t, spec.s, spec.v, spec.d] for i, spec in enumerate(action_specs)
                              if action_specs_mask[i]])
         t_arr, s_arr, v_arr, d_arr = np.split(spec_arr, 4, axis=1)
         zeros = np.zeros(t_arr.shape[0])
+        time_points = np.arange(0, np.max(t_arr) + EPS, TRAJECTORY_TIME_RESOLUTION)
 
         init_fstates = np.tile(ego_init_fstate, t_arr.shape[0]).reshape(t_arr.shape[0], 6)
         target_fstates = np.c_[s_arr, v_arr, zeros, d_arr, zeros, zeros]
 
-        A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(t_arr))
+        # calculate A_inv_d as a concatenation of inverse matrices for maximal T_d (= T_s) and for minimal T_d
+        A_inv_s = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(t_arr))
+        min_T_d = np.array([CostBasedBehavioralPlanner._calc_minimal_T_d(ego_init_fstate[FS_DX:], d) for d in d_arr])
+        A_inv_min_d = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(min_T_d))
+        A_inv_d = np.concatenate((A_inv_s, A_inv_min_d), axis=0)
 
+        # create ftrajectories_s and duplicated ftrajectories_d (for max_T_d and min_T_d)
         constraints_s = np.concatenate((init_fstates[:, :FS_DX], target_fstates[:, :FS_DX]), axis=1)
         constraints_d = np.concatenate((init_fstates[:, FS_DX:], target_fstates[:, FS_DX:]), axis=1)
-
-        poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, constraints_s)
-        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv, constraints_d)
-
-        time_points = np.arange(0, np.max(t_arr) + EPS, TRAJECTORY_TIME_RESOLUTION)
+        poly_coefs_s = QuinticPoly1D.zip_solve(A_inv_s, constraints_s)
+        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv_d, np.concatenate((constraints_d, constraints_d)))
         ftrajectories_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, time_points)
-        ftrajectories_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_points)  # T_d = T_s
-        ftrajectories = np.concatenate((ftrajectories_s, ftrajectories_d), axis=-1)
+        ftrajectories_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_points)
+        # for any T_d < T_s, complement ftrajectories_d to the length of T_s by adding states with zero lateral velocity
+        last_t = (min_T_d / TRAJECTORY_TIME_RESOLUTION).astype(int)
+        for i, ftrajectory_d in enumerate(np.split(ftrajectories_d, 2)[1]):
+            ftrajectory_d[(last_t[i] + 1):] = np.array([d_arr[i], 0, 0])
 
         # predict objects' trajectories
         obj_fstates = np.array([obj.map_state.road_fstate for obj in state.dynamic_objects])
         obj_sizes = [obj.size for obj in state.dynamic_objects]
         obj_trajectories = np.array(self.predictor.predict_frenet_states(obj_fstates, time_points))
 
-        # verify that terminal state of any action keeps safe distance of at least 2 sec.
-        terminal_safe_times = np.zeros((ftrajectories.shape[0], obj_trajectories.shape[0]))
-        for ftraj_idx, ftrajectory in enumerate(ftrajectories):
+        # verify that terminal state of any (static) action keeps distance of at least 2 sec from the front object
+        keep_distance_trajectories = np.ones(ftrajectories_s.shape[0], dtype=bool)
+        for ftraj_idx, ftrajectory_s in enumerate(ftrajectories_s):
             end_traj_idx = int(t_arr[ftraj_idx] / TRAJECTORY_TIME_RESOLUTION)
             for obj_idx, obj_trajectory in enumerate(obj_trajectories):
-                terminal_safe_times[ftraj_idx, obj_idx] = \
-                    SafetyUtils._get_lon_safety(ftrajectory[end_traj_idx], SPECIFICATION_MARGIN_TIME_DELAY,
-                                                obj_trajectory[end_traj_idx], SPECIFICATION_MARGIN_TIME_DELAY,
-                                                0.5 * (ego.size.length + obj_sizes[obj_idx].length))
+                end_dist_from_obj = target_fstates[ftraj_idx] - obj_trajectory[end_traj_idx]
+                if end_dist_from_obj[FS_SX] > 0 and abs(end_dist_from_obj[FS_DX]) < lane_width / 2:
+                    min_dist = SPECIFICATION_MARGIN_TIME_DELAY * obj_trajectory[end_traj_idx, FS_SV] + \
+                               (ego.size.length + obj_sizes[obj_idx].length) / 2.
+                    keep_distance_trajectories[ftraj_idx] &= (end_dist_from_obj[FS_SX] >= min_dist)
             # set all points beyond spec.t at infinity, such that they will be safe and will not affect the result
-            ftrajectory[end_traj_idx + 1:, FS_SX] = np.inf
+            ftrajectory_s[(end_traj_idx + 1):, FS_SX] = np.inf
+
+        ftrajectories = np.concatenate((np.concatenate((ftrajectories_s, ftrajectories_s)), ftrajectories_d), axis=-1)
 
         # calculate safety for each trajectory, each object, each timestamp
         safe_times = SafetyUtils.get_safe_times(ftrajectories, ego.size, obj_trajectories, obj_sizes)
-        # trajectory is considered safe if it's safe wrt all dynamic objects for all timestamps
-        safe_trajectories = safe_times.all(axis=(1, 2))
-
-        # filter trajectories with unsafe terminal state for safety_margin_time_delay = SPECIFICATION_MARGIN_TIME_DELAY
-        trajectories_with_safe_terminal_state = terminal_safe_times.all(axis=1)
-        fully_safe_trajectories = np.logical_and(safe_trajectories, trajectories_with_safe_terminal_state)
-
+        safe_min_max_trajectories = safe_times.all(axis=(1, 2))  # AND on objects and timestamps
+        # OR between safe trajectories for max_d and safe trajectories for min_d
+        safe_trajectories = np.array(np.split(safe_min_max_trajectories, 2)).any(axis=0)
+        # filter trajectories that don't keep 2 sec distance
+        fully_safe_trajectories = np.logical_and(safe_trajectories, keep_distance_trajectories)
         if not fully_safe_trajectories.any():
             self.logger.warning("_check_actions_safety: No safe action found")
 
@@ -363,10 +373,17 @@ class CostBasedBehavioralPlanner:
         return list(safe_specs)  # list's size like the original action_specs size
 
     @staticmethod
+    def _calc_minimal_T_d(fstate_d: np.array, target_d: float):
+        fconstraints_t0 = FrenetConstraints(0, 0, 0, fstate_d[0], fstate_d[1], fstate_d[2])
+        fconstraints_tT = FrenetConstraints(0, 0, 0, target_d, 0, 0)
+        return WerlingPlanner.low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, TRAJECTORY_TIME_RESOLUTION)
+
+    @staticmethod
     def log_safety(ego_init_fstate: FrenetState2D, obj_fstates: np.array, ego_size: ObjectSize, obj_sizes: np.array):
         actual_lon_distance = np.zeros(obj_fstates.shape[0])
         min_safe_lon_distance = np.zeros(obj_fstates.shape[0])
         obj_size_arr = np.zeros((obj_fstates.shape[0], 2))
+        front_obj_dist = np.zeros(obj_fstates.shape[0])
 
         for i, obj_fstate in enumerate(obj_fstates):
             cars_size_lon_margin = (ego_size.length + obj_sizes[i].length) / 2
@@ -381,6 +398,11 @@ class CostBasedBehavioralPlanner:
                                            (-2 * LON_ACC_LIMITS[0]) + \
                                            obj_fstates[i, FS_SV] * SPECIFICATION_MARGIN_TIME_DELAY + cars_size_lon_margin
             obj_size_arr[i] = np.array([obj_sizes[i].length, obj_sizes[i].width])
+
+            lat_dist = abs(ego_init_fstate[FS_DX] - obj_fstate[FS_DX])
+            front_obj_dist[i] = actual_lon_distance[i] + lat_dist if actual_lon_distance[i] > 0 and lat_dist < 1.8 else np.inf
+
+        front_obj_idx = np.argmin(front_obj_dist)
 
         lat_relative_to_obj = obj_fstates[:, FS_DX] - ego_init_fstate[FS_DX]
         sign_of_lat_relative_to_obj = np.sign(lat_relative_to_obj)
@@ -399,6 +421,13 @@ class CostBasedBehavioralPlanner:
                                                   ego_vel_after_reaction_time * np.abs(ego_vel_after_reaction_time)),
                                                  2 * LAT_ACC_LIMITS[1]) + reaction_dist, 0) + \
                             (ego_size.width + obj_size_arr[:, 1]) / 2
-        print('actual_lon_distance=%.2f min_safe_lon_distance=%.2f; ego: %.2f %.2f; obj: %.2f %.2f' %
-              (actual_lon_distance[0], min_safe_lon_distance[0], ego_init_fstate[FS_SX], ego_init_fstate[FS_SV],
-               obj_fstates[0, FS_SX], obj_fstates[0, FS_SV]))
+
+        if not np.isinf(front_obj_dist[front_obj_idx]):
+            print('actual_lon_distance=%.2f min_safe_lon_distance=%.2f; ego: %.2f %.2f dx=%.1f; obj: %.2f %.2f' %
+                  (actual_lon_distance[front_obj_idx], min_safe_lon_distance[front_obj_idx],
+                   ego_init_fstate[FS_SX], ego_init_fstate[FS_SV], ego_init_fstate[FS_DX],
+                   obj_fstates[front_obj_idx, FS_SX], obj_fstates[front_obj_idx, FS_SV]))
+
+        print('objects:')
+        for i, obj_fstate in enumerate(obj_fstates):
+            print(obj_fstate[:4])

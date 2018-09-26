@@ -87,6 +87,18 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         selected_action_index = valid_idxs[action_q_cost[valid_idxs].argmin()]
         selected_action_spec = action_specs[selected_action_index]
 
+        log_actions_list = [41, 65, 68, 104, 120, 121]
+        str = 'mask: '
+        for idx in log_actions_list:
+            str = str + '%d:%d%d' % (idx, action_specs_mask[idx], action_specs_mask_safe[idx])
+            if action_specs[idx] is not None:
+                str = str + ' T=%.2f; ' % action_specs[idx].t
+            else:
+                str = str + '; '
+        print(str)
+        print('%.2f: selected action %d: %s\n' % (state.ego_state.timestamp_in_sec, selected_action_index,
+                                                  action_recipes[selected_action_index]))
+
         return selected_action_index, selected_action_spec
 
     @prof.ProfileFunction()
