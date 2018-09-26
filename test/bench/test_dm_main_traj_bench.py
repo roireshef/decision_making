@@ -29,7 +29,7 @@ def test_DMMainTraj_Bench_SingleLocalizationMessage_TrajectoryOutput():
     localization_msg.location.y = start_y
 
     #create pubsub and subscribe a magic mock to the perceived localization topic
-    pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
+    pubsub = create_pubsub()
     receive_output_mock = MagicMock()
     pubsub.subscribe(TRAJECTORY_TOPIC, receive_output_mock)
 

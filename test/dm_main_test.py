@@ -31,7 +31,7 @@ class DmMockInitialization:
     @staticmethod
     def create_trajectory_planner() -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
+        pubsub = create_pubsub()
 
         # Init map
         MapService.initialize()
