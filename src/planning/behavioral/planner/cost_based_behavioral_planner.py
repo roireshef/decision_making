@@ -335,9 +335,9 @@ class CostBasedBehavioralPlanner:
         ftrajectories_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, time_points)
         ftrajectories_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_points)
         # for any T_d < T_s, complement ftrajectories_d to the length of T_s by adding states with zero lateral velocity
-        last_t = (min_T_d_arr / TRAJECTORY_TIME_RESOLUTION).astype(int)
-        for i, ftrajectory_d in enumerate(np.split(ftrajectories_d, 2)[1]):
-            ftrajectory_d[(last_t[i] + 1):] = np.array([d_arr[i], 0, 0])
+        last_t = (np.concatenate((T_s_arr, min_T_d_arr)) / TRAJECTORY_TIME_RESOLUTION).astype(int)
+        for i, ftrajectory_d in enumerate(ftrajectories_d):
+            ftrajectory_d[(last_t[i] + 1):] = np.array([ftrajectory_d[last_t[i], 0], 0, 0])
         ftrajectories = np.concatenate((np.concatenate((ftrajectories_s, ftrajectories_s)), ftrajectories_d), axis=-1)
 
         fconst_0 = FrenetConstraints.from_state(init_fstates)

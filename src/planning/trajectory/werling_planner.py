@@ -389,6 +389,10 @@ class WerlingPlanner(TrajectoryPlanner):
         poly_d = np.empty(shape=(0, 6))
         solutions_d = np.empty(shape=(0, len(time_samples_s), 3))
         horizons_d = np.empty(shape=0)
+        duplicated_solutions_s = np.empty(shape=(0, len(time_samples_s), 3))
+        duplicated_poly_s = np.empty(shape=(0, len(time_samples_s), poly_s.shape[-1]))
+        duplicated_horizons_s = np.empty(shape=0)
+
         for T_d in T_d_vals:
             time_samples_d = np.arange(dt, np.max(T_d) + np.finfo(np.float16).eps, dt)
 
@@ -398,12 +402,18 @@ class WerlingPlanner(TrajectoryPlanner):
             # generate the trajectories for the polynomials of dimension d - within the horizon T_d
             partial_solutions_d = QuinticPoly1D.polyval_with_derivatives(partial_poly_d, time_samples_d)
 
-            # if T_d varies between trajectories, replace all lateral frenet states beyond T_d[i] by (last_d, 0, 0)
-            if not np.isscalar(T_d):  # if T_d is array
+            if np.isscalar(T_d):  # if T_d is scalar
+                horizons_d = np.append(horizons_d, np.repeat(T_d, len(constraints_d)))
+            else:  # T_d is array
+                # if T_d varies between trajectories, replace all lateral frenet states beyond T_d[i] by (last_d, 0, 0)
                 last_t_idxs = (T_d / dt).astype(int)
                 for i, solution_d in enumerate(partial_solutions_d):
                     if last_t_idxs[i] < solution_d.shape[0] - 1:
                         solution_d[(last_t_idxs[i] + 1):] = np.array([solution_d[last_t_idxs[i], 0], 0, 0])
+                duplicated_horizons_s = np.append(duplicated_horizons_s, horizons_s)
+                duplicated_poly_s = np.vstack((duplicated_poly_s, poly_s))
+                duplicated_solutions_s = np.vstack((duplicated_solutions_s, solutions_s))
+                horizons_d = np.append(horizons_d, T_d)
 
             # Expand lateral solutions (dimension d) to the size of the longitudinal solutions (dimension s)
             # with its final positions replicated. NOTE: we assume that final (dim d) velocities and accelerations = 0 !
@@ -418,7 +428,6 @@ class WerlingPlanner(TrajectoryPlanner):
             # append polynomials, trajectories and time-horizons to the dimensions d buffers
             poly_d = np.vstack((poly_d, partial_poly_d))
             solutions_d = np.vstack((solutions_d, full_horizon_solutions_d))
-            horizons_d = np.append(horizons_d, np.repeat(T_d, len(constraints_d)))
 
         # generate 2D trajectories by Cartesian product of {horizons, polynomials, and 1D trajectories}
         # of dimensions {s,d}
@@ -427,12 +436,9 @@ class WerlingPlanner(TrajectoryPlanner):
             polynoms = NumpyUtils.cartesian_product_matrix_rows(poly_s, poly_d)
             solutions = NumpyUtils.cartesian_product_matrix_rows(solutions_s, solutions_d)
         else:  # if T_s is array, just concatenate outputs for s & d
-            dup_horizon_s = np.repeat(horizons_s[np.newaxis], T_d_vals.shape[0], axis=0).reshape([-1] + list(horizons_s.shape[1:]))
-            dup_poly_s = np.repeat(poly_s[np.newaxis], T_d_vals.shape[0], axis=0).reshape([-1] + list(poly_s.shape[1:]))
-            dup_solutions_s = np.repeat(solutions_s[np.newaxis], T_d_vals.shape[0], axis=0).reshape([-1] + list(solutions_s.shape[1:]))
-            horizons = np.concatenate((dup_horizon_s, horizons_d), axis=-1)
-            polynoms = np.concatenate((dup_poly_s, poly_d), axis=-1)
-            solutions = np.concatenate((dup_solutions_s, solutions_d), axis=-1)
+            horizons = np.c_[duplicated_horizons_s, horizons_d]
+            polynoms = np.concatenate((duplicated_poly_s, poly_d), axis=-1)
+            solutions = np.concatenate((duplicated_solutions_s, solutions_d), axis=-1)
 
         # slice the results according to the rule T_s >= T_d since we don't want to generate trajectories whose
         valid_traj_slice = horizons[:, FP_SX] >= horizons[:, FP_DX]
