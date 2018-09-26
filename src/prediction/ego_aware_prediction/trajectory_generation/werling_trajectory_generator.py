@@ -38,12 +38,12 @@ class WerlingTrajectoryGenerator(TrajectoryGenerator):
                                                da=predicted_maneuver_spec.final_state[FS_DA])
 
         # solve problem in Frenet-frame
-        ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconst_0=fconstraints_init,
-                                                                                 fconst_t=fconstraints_final,
-                                                                                 T_s=predicted_maneuver_spec.T_s,
-                                                                                 T_d_vals=np.array(
+        ftrajectories, poly_coefs, T_d_vals = WerlingPlanner.solve_optimization(fconst_0=fconstraints_init,
+                                                                                fconst_t=fconstraints_final,
+                                                                                T_s=predicted_maneuver_spec.T_s,
+                                                                                T_d_vals=np.array(
                                                                                      [predicted_maneuver_spec.T_d]),
-                                                                                 dt=np.minimum(
+                                                                                dt=np.minimum(
                                                                                      predicted_maneuver_spec.T_d,
                                                                                      predicted_maneuver_spec.T_s))
 

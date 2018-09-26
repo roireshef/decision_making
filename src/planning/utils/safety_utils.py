@@ -3,8 +3,8 @@ from typing import List
 import numpy as np
 
 from decision_making.src.global_constants import SAFETY_MARGIN_TIME_DELAY, SPECIFICATION_MARGIN_TIME_DELAY, \
-    LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU, LAT_VEL_BLAME_THRESH, LON_SAFETY_ACCEL_DURING_DELAY, \
-    LAT_SAFETY_ACCEL_DURING_DELAY
+    LON_ACC_LIMITS, LAT_ACC_LIMITS, LATERAL_SAFETY_MU, LAT_VEL_BLAME_THRESH, LON_SAFETY_ACCEL_DURING_RESPONSE, \
+    LAT_SAFETY_ACCEL_DURING_RESPONSE
 from decision_making.src.planning.types import LIMIT_MIN, FrenetTrajectories2D, FS_SX, FS_SV, FS_DX, FS_DV, \
     ObjectSizeArray, OBJ_LENGTH, OBJ_WIDTH
 from decision_making.src.state.state import ObjectSize
@@ -139,13 +139,13 @@ class SafetyUtils:
 
         # The worst-case velocity of the rear object (either ego or another object) may increase during its reaction
         # time, since it may accelerate before it starts to brake.
-        ego_vel_after_reaction_time = ego_vel + (1-ego_ahead) * ego_response_time * LON_SAFETY_ACCEL_DURING_DELAY
-        obj_vel_after_reaction_time = obj_vel + ego_ahead * obj_response_time * LON_SAFETY_ACCEL_DURING_DELAY
+        ego_vel_after_reaction_time = ego_vel + (1-ego_ahead) * ego_response_time * LON_SAFETY_ACCEL_DURING_RESPONSE
+        obj_vel_after_reaction_time = obj_vel + ego_ahead * obj_response_time * LON_SAFETY_ACCEL_DURING_RESPONSE
 
         # longitudinal RSS formula considers distance reduction during the reaction time and difference between
         # objects' braking distances
-        ego_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_DELAY * SAFETY_MARGIN_TIME_DELAY * SAFETY_MARGIN_TIME_DELAY
-        obj_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_DELAY * SPECIFICATION_MARGIN_TIME_DELAY * SPECIFICATION_MARGIN_TIME_DELAY
+        ego_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_RESPONSE * SAFETY_MARGIN_TIME_DELAY * SAFETY_MARGIN_TIME_DELAY
+        obj_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_RESPONSE * SPECIFICATION_MARGIN_TIME_DELAY * SPECIFICATION_MARGIN_TIME_DELAY
         safe_dist = np.maximum(np.divide(sign_of_lon_relative_to_obj * (obj_vel_after_reaction_time ** 2 -
                                                                         ego_vel_after_reaction_time ** 2),
                                          2 * max_brake), 0) + \
@@ -183,8 +183,8 @@ class SafetyUtils:
 
         # The worst-case lateral velocity of any object (either ego or another object) may increase during its
         # reaction time, since it may accelerate laterally toward the second object before it starts to brake laterally.
-        ego_vel_after_reaction_time = ego_lat_vel - sign_of_lat_relative_to_obj * ego_response_time * LAT_SAFETY_ACCEL_DURING_DELAY
-        obj_vel_after_reaction_time = obj_lat_vel + sign_of_lat_relative_to_obj * obj_response_time * LAT_SAFETY_ACCEL_DURING_DELAY
+        ego_vel_after_reaction_time = ego_lat_vel - sign_of_lat_relative_to_obj * ego_response_time * LAT_SAFETY_ACCEL_DURING_RESPONSE
+        obj_vel_after_reaction_time = obj_lat_vel + sign_of_lat_relative_to_obj * obj_response_time * LAT_SAFETY_ACCEL_DURING_RESPONSE
 
         # the distance objects move one towards another during their reaction time
         avg_ego_vel = 0.5 * (ego_lat_vel + ego_vel_after_reaction_time)

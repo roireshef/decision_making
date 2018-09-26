@@ -105,10 +105,10 @@ LATERAL_SAFETY_MU = 0.5
 LAT_VEL_BLAME_THRESH = 0.1
 
 # [m/s^2] longitudinal acceleration of object during time delay in RSS
-LON_SAFETY_ACCEL_DURING_DELAY = LON_ACC_LIMITS[1]
+LON_SAFETY_ACCEL_DURING_RESPONSE = LON_ACC_LIMITS[1]
 
 # [m/s^2] lateral acceleration of object during time delay in RSS
-LAT_SAFETY_ACCEL_DURING_DELAY = 0
+LAT_SAFETY_ACCEL_DURING_RESPONSE = 0
 
 
 # [m/sec] Minimal difference of velocities to justify an overtake

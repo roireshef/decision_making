@@ -67,8 +67,8 @@ class OfflineTrajectoryGenerator:
         time_points = np.arange(0.0, T+WERLING_TIME_RESOLUTION, WERLING_TIME_RESOLUTION)
         goal_state = FrenetConstraints(sx=init_constraints._sx + (goal_sv + init_constraints._sv) / 2 * T, sv=goal_sv,
                                        sa=0, dx=init_constraints._dx + delta_dx, dv=0, da=0)
-        ftrajectories, _, _ = WerlingPlanner._solve_optimization(init_constraints, goal_state, T, np.array([T]),
-                                                                 WERLING_TIME_RESOLUTION)
+        ftrajectories, _, _ = WerlingPlanner.solve_optimization(init_constraints, goal_state, T, np.array([T]),
+                                                                WERLING_TIME_RESOLUTION)
         ctrajectories = self.frenet.ftrajectories_to_ctrajectories(ftrajectories)
         return ctrajectories[0], goal_state
 
