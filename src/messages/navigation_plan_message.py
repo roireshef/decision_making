@@ -2,8 +2,8 @@ from typing import Optional
 
 import numpy as np
 
-from common_data.lcm.generatedFiles.gm_lcm import LcmNavigationPlan
-from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedIntNumpyArray
+from common_data.src.communication.middleware.idl_generated_files import LcmNavigationPlan
+from common_data.src.communication.middleware.idl_generated_files.sub_structures import LcmNonTypedIntNumpyArray
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from mapping.src.exceptions import RoadNotFound, raises
 

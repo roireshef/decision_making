@@ -7,8 +7,8 @@ import numpy as np
 
 import rte.python.profiler as prof
 from common_data.lcm.config import pubsub_topics
-from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedDynamicObjectList
-from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedSelfLocalization
+from common_data.src.communication.middleware.idl_generated_files import LcmPerceivedDynamicObjectList
+from common_data.src.communication.middleware.idl_generated_files import LcmPerceivedSelfLocalization
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID, \
     UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS, LOG_MSG_STATE_MODULE_PUBLISH_STATE, VELOCITY_MINIMAL_THRESHOLD

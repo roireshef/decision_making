@@ -6,7 +6,7 @@ import time
 
 from common_data.lcm.config import config_defs
 from common_data.lcm.config.pubsub_topics import PERCEIVED_SELF_LOCALIZATION_TOPIC, TRAJECTORY_TOPIC
-from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedSelfLocalization
+from common_data.src.communication.middleware.idl_generated_files import LcmPerceivedSelfLocalization
 from common_data.lcm.python.Communication.lcmpubsub import LcmPubSub
 from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from decision_making.paths import Paths

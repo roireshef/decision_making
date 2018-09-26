@@ -2,10 +2,10 @@ from enum import Enum
 
 import numpy as np
 
-from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
-from common_data.lcm.generatedFiles.gm_lcm import LcmSigmoidFunctionParams
-from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryCostParams
-from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryParameters
+from common_data.src.communication.middleware.idl_generated_files.sub_structures import LcmNumpyArray
+from common_data.src.communication.middleware.idl_generated_files.sub_structures import LcmSigmoidFunctionParams
+from common_data.src.communication.middleware.idl_generated_files.sub_structures import LcmTrajectoryCostParams
+from common_data.src.communication.middleware.idl_generated_files import LcmTrajectoryParameters
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.str_serializable import StrSerializable
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
