@@ -368,9 +368,12 @@ class WerlingPlanner(TrajectoryPlanner):
         if np.isscalar(T_s):
             constraints_s = NumpyUtils.cartesian_product_matrix_rows(fconst_0.get_grid_s(), fconst_t.get_grid_s())
             constraints_d = NumpyUtils.cartesian_product_matrix_rows(fconst_0.get_grid_d(), fconst_t.get_grid_d())
+            # store a vector of time-horizons for solutions of dimension s
+            horizons_s = np.repeat([T_s], len(constraints_s))
         else:  # if T_s is array, we don't build meshgrid of constraints, but just join init & end constraints
             constraints_s = np.concatenate((fconst_0.to_states_s(), fconst_t.to_states_s()), axis=-1)
             constraints_d = np.concatenate((fconst_0.to_states_d(), fconst_t.to_states_d()), axis=-1)
+            horizons_s = T_s
 
         # in case of Quartic poly1D remove the terminal s (column #3) from constraints_s
         poly_impl_constraints_s = np.concatenate((constraints_s[..., :3], constraints_s[..., 4:]), axis=-1) \
@@ -381,9 +384,6 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # generate trajectories for the polynomials of dimension s
         solutions_s = poly_s_impl.polyval_with_derivatives(poly_s, time_samples_s)
-
-        # store a vector of time-horizons for solutions of dimension s
-        horizons_s = np.repeat([T_s], len(constraints_s))
 
         # Iterate over different time-horizons for dimension d
         poly_d = np.empty(shape=(0, 6))
