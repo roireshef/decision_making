@@ -35,6 +35,7 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, ObjectSize, EgoState
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.utils.metric_logger import MetricLogger
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -365,7 +366,7 @@ class CostBasedBehavioralPlanner:
         if not fully_safe_trajectories.any():
             self.logger.warning("_check_actions_safety: No safe action found")
 
-        CostBasedBehavioralPlanner.log_safety(ego_init_fstate, obj_fstates, ego.size, obj_sizes)
+        CostBasedBehavioralPlanner.log_safety(ego_init_fstate, obj_fstates, ego.size, obj_sizes, lane_width, ego.timestamp_in_sec)
 
         # assign safety to the specs, for which specs_mask is true
         safe_specs = np.copy(np.array(action_specs_mask))
@@ -379,7 +380,12 @@ class CostBasedBehavioralPlanner:
         return WerlingPlanner.low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, TRAJECTORY_TIME_RESOLUTION)
 
     @staticmethod
-    def log_safety(ego_init_fstate: FrenetState2D, obj_fstates: np.array, ego_size: ObjectSize, obj_sizes: np.array):
+    def log_safety(ego_init_fstate: FrenetState2D, obj_fstates: np.array, ego_size: ObjectSize, obj_sizes: np.array,
+                   lane_width: float, time: float):
+
+        MetricLogger.init('Safety')
+        ml = MetricLogger.get_logger()
+
         actual_lon_distance = np.zeros(obj_fstates.shape[0])
         min_safe_lon_distance = np.zeros(obj_fstates.shape[0])
         obj_size_arr = np.zeros((obj_fstates.shape[0], 2))
@@ -400,15 +406,15 @@ class CostBasedBehavioralPlanner:
             obj_size_arr[i] = np.array([obj_sizes[i].length, obj_sizes[i].width])
 
             lat_dist = abs(ego_init_fstate[FS_DX] - obj_fstate[FS_DX])
-            front_obj_dist[i] = actual_lon_distance[i] + lat_dist if actual_lon_distance[i] > 0 and lat_dist < 1.8 else np.inf
+            front_obj_dist[i] = actual_lon_distance[i] + lat_dist \
+                if actual_lon_distance[i] > 0 and lat_dist < lane_width/2 else np.inf
 
         front_obj_idx = np.argmin(front_obj_dist)
 
         lat_relative_to_obj = obj_fstates[:, FS_DX] - ego_init_fstate[FS_DX]
         sign_of_lat_relative_to_obj = np.sign(lat_relative_to_obj)
         ego_vel_after_reaction_time = ego_init_fstate[FS_DV] - sign_of_lat_relative_to_obj * SAFETY_MARGIN_TIME_DELAY
-        obj_vel_after_reaction_time = obj_fstates[:,
-                                      FS_DV] + sign_of_lat_relative_to_obj * SPECIFICATION_MARGIN_TIME_DELAY
+        obj_vel_after_reaction_time = obj_fstates[:, FS_DV] + sign_of_lat_relative_to_obj * SPECIFICATION_MARGIN_TIME_DELAY
         # the distance objects move one towards another during their reaction time
         avg_ego_vel = 0.5 * (ego_init_fstate[FS_DV] + ego_vel_after_reaction_time)
         avg_obj_vel = 0.5 * (obj_fstates[:, FS_DV] + obj_vel_after_reaction_time)
@@ -423,11 +429,8 @@ class CostBasedBehavioralPlanner:
                             (ego_size.width + obj_size_arr[:, 1]) / 2
 
         if not np.isinf(front_obj_dist[front_obj_idx]):
-            print('actual_lon_distance=%.2f min_safe_lon_distance=%.2f; ego: %.2f %.2f dx=%.1f; obj: %.2f %.2f' %
-                  (actual_lon_distance[front_obj_idx], min_safe_lon_distance[front_obj_idx],
-                   ego_init_fstate[FS_SX], ego_init_fstate[FS_SV], ego_init_fstate[FS_DX],
-                   obj_fstates[front_obj_idx, FS_SX], obj_fstates[front_obj_idx, FS_SV]))
-
-        print('objects:')
+            ml.bind(time=time, ego_sx=ego_init_fstate[FS_SX], ego_sv=ego_init_fstate[FS_SV], ego_dx=ego_init_fstate[FS_DX])
+            ml.bind(actual_lon_dist=actual_lon_distance[front_obj_idx], min_safe_lon_dist=min_safe_lon_distance[front_obj_idx])
+            ml.bind(actual_lat_dist=actual_lat_distance, min_safe_lat_dist=min_safe_lat_dist)
         for i, obj_fstate in enumerate(obj_fstates):
-            print(obj_fstate[:4])
+            ml.bind(obj_fstate=obj_fstate[:4])
