@@ -338,14 +338,6 @@ class CostBasedBehavioralPlanner:
         last_t = (np.concatenate((T_s_arr, min_T_d_arr)) / TRAJECTORY_TIME_RESOLUTION).astype(int)
         for i, ftrajectory_d in enumerate(ftrajectories_d):
             ftrajectory_d[(last_t[i] + 1):] = np.array([ftrajectory_d[last_t[i], 0], 0, 0])
-        ftrajectories = np.concatenate((np.concatenate((ftrajectories_s, ftrajectories_s)), ftrajectories_d), axis=-1)
-
-        fconst_0 = FrenetConstraints.from_state(init_fstates)
-        fconst_t = FrenetConstraints.from_state(target_fstates)
-        new_ftrajectories, _, _ = WerlingPlanner.solve_optimization(fconst_0=fconst_0, fconst_t=fconst_t,
-                                                                T_s=T_s_arr,
-                                                                T_d_vals=np.array([T_s_arr, min_T_d_arr]),
-                                                                dt=TRAJECTORY_TIME_RESOLUTION)
 
         # predict objects' trajectories
         obj_fstates = np.array([obj.map_state.road_fstate for obj in state.dynamic_objects])
