@@ -390,7 +390,7 @@ class WerlingPlanner(TrajectoryPlanner):
         solutions_d = np.empty(shape=(0, len(time_samples_s), 3))
         horizons_d = np.empty(shape=0)
         duplicated_solutions_s = np.empty(shape=(0, len(time_samples_s), 3))
-        duplicated_poly_s = np.empty(shape=(0, len(time_samples_s), poly_s.shape[-1]))
+        duplicated_poly_s = np.empty(shape=(0, poly_s.shape[-1]))
         duplicated_horizons_s = np.empty(shape=0)
 
         for T_d in T_d_vals:
