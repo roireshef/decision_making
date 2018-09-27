@@ -394,7 +394,7 @@ class WerlingPlanner(TrajectoryPlanner):
         duplicated_horizons_s = np.empty(shape=0)
 
         for T_d in T_d_vals:
-            time_samples_d = np.arange(dt, np.max(T_d) + np.finfo(np.float16).eps, dt)
+            time_samples_d = np.arange(0, np.max(T_d) + np.finfo(np.float16).eps, dt)
 
             # solve for dimension d (with time-horizon T_d)
             partial_poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T_d, QuinticPoly1D)
