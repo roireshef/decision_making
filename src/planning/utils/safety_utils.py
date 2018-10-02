@@ -144,8 +144,8 @@ class SafetyUtils:
 
         # longitudinal RSS formula considers distance reduction during the reaction time and difference between
         # objects' braking distances
-        ego_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_RESPONSE * SAFETY_MARGIN_TIME_DELAY * SAFETY_MARGIN_TIME_DELAY
-        obj_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_RESPONSE * SPECIFICATION_MARGIN_TIME_DELAY * SPECIFICATION_MARGIN_TIME_DELAY
+        ego_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_RESPONSE * SAFETY_MARGIN_TIME_DELAY ** 2
+        obj_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_RESPONSE * SPECIFICATION_MARGIN_TIME_DELAY ** 2
         safe_dist = np.maximum(np.divide(sign_of_lon_relative_to_obj * (obj_vel_after_reaction_time ** 2 -
                                                                         ego_vel_after_reaction_time ** 2),
                                          2 * max_brake), 0) + \
