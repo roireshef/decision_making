@@ -103,7 +103,7 @@ class BehavioralPlanningFacade(DmModule):
                                  e, traceback.format_exc())
 
     def _get_current_state(self) -> State:
-        input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
+        is_success, input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if input_state is None:
             raise MsgDeserializationError('LCM message queue for %s topic is empty or topic isn\'t subscribed',
@@ -113,7 +113,7 @@ class BehavioralPlanningFacade(DmModule):
         return object_state
 
     def _get_current_navigation_plan(self) -> NavigationPlanMsg:
-        input_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.NAVIGATION_PLAN_TOPIC, timeout=1)
+        is_success, input_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.NAVIGATION_PLAN_TOPIC, timeout=1)
         object_plan = NavigationPlanMsg.deserialize(input_plan)
         self.logger.debug('Received navigation plan: %s', object_plan)
         return object_plan

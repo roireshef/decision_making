@@ -162,7 +162,7 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received state.
         :return: deserialized State
         """
-        input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
+        is_success, input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
         if input_state is None:
             raise MsgDeserializationError('LCM message queue for %s topic is empty or topic isn\'t subscribed',
                                           pubsub_topics.STATE_TOPIC)
@@ -177,7 +177,7 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-        input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_TOPIC, timeout=1)
+        is_success, input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_TOPIC, timeout=1)
         object_params = TrajectoryParams.deserialize(input_params)
         self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, object_params)
         return object_params
