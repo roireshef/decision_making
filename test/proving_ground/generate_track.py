@@ -19,7 +19,7 @@ class OfflineTrajectoryGenerator:
         :param road_id: the road id on which the trajectory will be planned
         :param map_file_name: the filename for MapService to work on
         """
-        MapService.initialize(map_file=map_file_name)
+        MapService.initialize()
         self.map: MapAPI = MapService.get_instance()
         self.road = self.map.get_road(road_id)
         self.frenet = FrenetSerret2DFrame(self.road._points)

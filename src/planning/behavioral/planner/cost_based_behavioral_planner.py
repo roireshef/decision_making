@@ -11,7 +11,7 @@ from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATI
     DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, \
     OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, \
     DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS
+    LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
@@ -22,7 +22,6 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
     ActionRecipeEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
-from decision_making.src.planning.behavioral.semantic_actions_utils import SemanticActionsUtils
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -176,7 +175,8 @@ class CostBasedBehavioralPlanner:
                                                  time=action_spec.t + ego.timestamp_in_sec,
                                                  target_state=goal_cstate,
                                                  cost_params=cost_params,
-                                                 strategy=TrajectoryPlanningStrategy.HIGHWAY)
+                                                 strategy=TrajectoryPlanningStrategy.HIGHWAY,
+                                                 bp_time=ego.timestamp)
 
         return trajectory_parameters
 
@@ -258,12 +258,10 @@ class CostBasedBehavioralPlanner:
 
         # Set objects parameters
         # dilate each object by ego length + safety margin
-        objects_dilation_length = SemanticActionsUtils.get_ego_lon_margin(ego_size)
-        objects_dilation_width = SemanticActionsUtils.get_ego_lat_margin(ego_size)
         objects_cost_x = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
-                                               offset=objects_dilation_length)  # Very high (inf) cost
+                                               offset=LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT)  # Very high (inf) cost
         objects_cost_y = SigmoidFunctionParams(w=OBSTACLE_SIGMOID_COST, k=OBSTACLE_SIGMOID_K_PARAM,
-                                               offset=objects_dilation_width)  # Very high (inf) cost
+                                               offset=LATERAL_SAFETY_MARGIN_FROM_OBJECT)  # Very high (inf) cost
         dist_from_goal_cost = SigmoidFunctionParams(w=DEVIATION_FROM_GOAL_COST, k=GOAL_SIGMOID_K_PARAM,
                                                     offset=GOAL_SIGMOID_OFFSET)
         dist_from_goal_lat_factor = DEVIATION_FROM_GOAL_LAT_LON_RATIO
