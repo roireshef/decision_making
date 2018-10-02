@@ -4,6 +4,7 @@ from typing import List
 
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.state.map_state import MapState
+from decision_making.src.state.state import State
 
 
 class GoalStatus(Enum):
@@ -27,13 +28,14 @@ class NavigationGoal:
         self.lon = lon
         self.lanes = lanes
 
-    def validate(self, map_state: MapState) -> GoalStatus:
+    def validate(self, state: State) -> GoalStatus:
         """
         check if the given state reached missed or yet not reached the goal
-        :param map_state: MapState of ego
+        :param state: the (next) State
         :return: GoalStatus (REACHED, MISSED or NOT_YET)
         """
         # TODO: use route planner to check if the case map_state.road_id != goal.road means MISSED or NOT_YET
+        map_state = state.ego_state.map_state
         if map_state.road_id == self.road_id and map_state.road_fstate[FS_SX] >= self.lon:
             if map_state.lane_num in self.lanes:
                 return GoalStatus.REACHED
