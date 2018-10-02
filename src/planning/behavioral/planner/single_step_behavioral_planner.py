@@ -1,7 +1,6 @@
+import numpy as np
 from logging import Logger
 from typing import Optional, List
-
-import numpy as np
 
 import rte.python.profiler as prof
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -87,7 +86,6 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         valid_idxs = np.where(action_specs_mask_safe)[0]
         selected_action_index = valid_idxs[action_q_cost[valid_idxs].argmin()]
         selected_action_spec = action_specs[selected_action_index]
-
         return selected_action_index, selected_action_spec
 
     @prof.ProfileFunction()
@@ -103,9 +101,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         self.logger.debug('Number of actions originally: %d, valid: %d',
                           self.action_space.action_space_size, np.sum(recipes_mask))
-
         selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes, recipes_mask)
-
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(behavioral_state=behavioral_state,
                                                                                       action_spec=selected_action_spec,
                                                                                       navigation_plan=nav_plan)

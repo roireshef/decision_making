@@ -4,6 +4,7 @@ import numpy as np
 
 from decision_making.src.global_constants import EXP_CLIP_TH
 from decision_making.src.planning.types import Limits, LIMIT_MIN, LIMIT_MAX
+from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 
 
 class Math:
@@ -128,6 +129,6 @@ class Math:
         roots = np.roots(coef_matrix) if coef_matrix.ndim == 1 else Math.roots(coef_matrix)
         real_roots = np.real(roots)
         is_real = np.isclose(np.imag(roots), 0.0)
-        is_in_limits = np.logical_and(real_roots >= value_limits[LIMIT_MIN], real_roots <= value_limits[LIMIT_MAX])
-        real_roots[~np.logical_and(is_real,  is_in_limits)] = np.nan
+        is_in_limits = NumpyUtils.is_in_limits(real_roots, value_limits)
+        real_roots[~np.logical_and(is_real, is_in_limits)] = np.nan
         return real_roots

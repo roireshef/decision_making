@@ -4,4 +4,5 @@ FILTER_A_0_GRID : UniformGrid(-4.0 to 3.0, resolution: 0.5, length: 15)
 FILTER_S_T_GRID : UniformGrid(-10 to 110, resolution: 1, length: 121)
 FILTER_V_T_GRID : UniformGrid(0.0 to 34.0, resolution: 0.5, length: 69)
 SPECIFICATION_MARGIN_TIME_DELAY : 2
-SAFETY_MARGIN_TIME_DELAY : 1
+SAFETY_MARGIN_TIME_DELAY : 0.5
+LON_SAFETY_ACCEL_DURING_RESPONSE : 3.0

@@ -84,9 +84,9 @@ BP_ACTION_T_LIMITS = np.array([2.0, 20.0])
 
 # Behavioral planner action-specification weights for longitudinal jerk vs lateral jerk vs time of action
 BP_JERK_S_JERK_D_TIME_WEIGHTS = np.array([
-    [12, 0.15, 0.1],
-    [2, 0.15, 0.1],
-    [0.01, 0.15, 0.1]
+    [16, 0.15, 0.1],
+    [1.6, 0.15, 0.1],
+    [0.08, 0.15, 0.1]
 ])
 
 # Longitudinal Acceleration Limits [m/sec^2]
@@ -98,7 +98,7 @@ LAT_ACC_LIMITS = np.array([-4.0, 4.0])
 # Assumed response delay on road [sec]
 # Used to compute safe distance from other agents on road
 SPECIFICATION_MARGIN_TIME_DELAY = 2
-SAFETY_MARGIN_TIME_DELAY = 1
+SAFETY_MARGIN_TIME_DELAY = 0.5
 
 # [m] minimal longitudinal safe distance between objects
 LONGITUDINAL_SAFETY_MIN_DIST = 0.5
@@ -110,10 +110,10 @@ LATERAL_SAFETY_MU = 0.5
 LAT_VEL_BLAME_THRESH = 0.1
 
 # [m/s^2] longitudinal acceleration of object during time delay in RSS
-LON_SAFETY_ACCEL_DURING_DELAY = 0
+LON_SAFETY_ACCEL_DURING_RESPONSE = LON_ACC_LIMITS[1]
 
 # [m/s^2] lateral acceleration of object during time delay in RSS
-LAT_SAFETY_ACCEL_DURING_DELAY = 0
+LAT_SAFETY_ACCEL_DURING_RESPONSE = 0
 
 
 # [m/sec] Minimal difference of velocities to justify an overtake
@@ -247,15 +247,20 @@ TRAJECTORY_PLANNING_MODULE_PERIOD = 0.2
 MAP_NAME_FOR_LOGGING = "Map API"
 DM_MANAGER_NAME_FOR_LOGGING = "DM Manager"
 NAVIGATION_PLANNING_NAME_FOR_LOGGING = "Navigation Planning"
+NAVIGATION_PLANNING_NAME_FOR_METRICS = "NP"
 BEHAVIORAL_PLANNING_NAME_FOR_LOGGING = "Behavioral Planning"
+BEHAVIORAL_PLANNING_NAME_FOR_METRICS = "BP"
 BEHAVIORAL_STATE_NAME_FOR_LOGGING = "Behavioral State"
 BEHAVIORAL_POLICY_NAME_FOR_LOGGING = "Behavioral Policy"
 ACDA_NAME_FOR_LOGGING = "ACDA Module"
 TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
+TRAJECTORY_PLANNING_NAME_FOR_METRICS = "TP"
 STATE_MODULE_NAME_FOR_LOGGING = "State Module"
 RVIZ_MODULE_NAME_FOR_LOGGING = "Rviz Module"
 
 
+#### MetricLogger
+METRIC_LOGGER_DELIMITER= '_'
 
 ##### Log messages
 # TODO: update decision_making_sim messages

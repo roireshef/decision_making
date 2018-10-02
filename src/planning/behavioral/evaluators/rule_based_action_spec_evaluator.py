@@ -7,7 +7,7 @@ from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MIN_OVERTAKE_VEL, \
     SPECIFICATION_MARGIN_TIME_DELAY, LON_ACC_LIMITS
 from decision_making.src.planning.behavioral.behavioral_grid_state import \
-    BehavioralGridState, SemanticGridCell, RelativeLane, RelativeLongitudinalPosition
+    BehavioralGridState, SemanticGridCell, RelativeLane, RelativeLongitudinalPosition, RoadSemanticOccupancyGrid
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
@@ -48,11 +48,14 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
 
         # get indices of semantic_actions array for 3 actions: goto-right, straight, goto-left
         current_lane_action_ind = RuleBasedActionSpecEvaluator._get_action_ind(
-            action_recipes, action_specs_mask, (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT))
+            action_recipes, action_specs_mask, (RelativeLane.SAME_LANE, RelativeLongitudinalPosition.FRONT),
+            behavioral_state.road_occupancy_grid)
         left_lane_action_ind = RuleBasedActionSpecEvaluator._get_action_ind(
-            action_recipes, action_specs_mask, (RelativeLane.LEFT_LANE, RelativeLongitudinalPosition.FRONT))
+            action_recipes, action_specs_mask, (RelativeLane.LEFT_LANE, RelativeLongitudinalPosition.FRONT),
+            behavioral_state.road_occupancy_grid)
         right_lane_action_ind = RuleBasedActionSpecEvaluator._get_action_ind(
-            action_recipes, action_specs_mask, (RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT))
+            action_recipes, action_specs_mask, (RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.FRONT),
+            behavioral_state.road_occupancy_grid)
 
         # The cost for each action is assigned so that the preferred policy would be:
         # Go to right if right and current lanes are fast enough.
@@ -144,7 +147,8 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         return dist_to_back_obj, safe_dist_behind_ego
 
     @staticmethod
-    def _get_action_ind(action_recipes: List[ActionRecipe], recipes_mask: List[bool], cell: SemanticGridCell):
+    def _get_action_ind(action_recipes: List[ActionRecipe], recipes_mask: List[bool], cell: SemanticGridCell,
+                        occupancy_grid: RoadSemanticOccupancyGrid):
         """
         Given semantic actions array and action cell, return index of action matching to the given cell.
         :param action_recipes: array of semantic actions
@@ -153,6 +157,13 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         """
         action_ind = [i for i, recipe in enumerate(action_recipes)
                       if recipe.relative_lane == cell[LAT_CELL]
-                      and recipe.action_type==ActionType.FOLLOW_LANE
+                      and ((len(occupancy_grid[cell]) == 0 and recipe.action_type == ActionType.FOLLOW_LANE) or
+                           (len(occupancy_grid[cell]) > 0 and recipe.action_type == ActionType.FOLLOW_VEHICLE))
+                      and recipes_mask[i]]
+        if len(action_ind) > 0:
+            return action_ind[-1]
+        action_ind = [i for i, recipe in enumerate(action_recipes)
+                      if recipe.relative_lane == cell[LAT_CELL]
+                      and recipe.action_type == ActionType.FOLLOW_LANE
                       and recipes_mask[i]]
         return action_ind[-1] if len(action_ind) > 0 else None

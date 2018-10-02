@@ -10,7 +10,7 @@ from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STE
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
     TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
-from decision_making.src.planning.trajectory.cost_function import Costs
+from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
@@ -96,20 +96,19 @@ class WerlingPlanner(TrajectoryPlanner):
         planning_time_points = np.arange(0, T_s + np.finfo(np.float16).eps, self.dt)
 
         # Latitudinal planning horizon(Td) lower bound, now approximated from x=a*t^2
-        lower_bound_T_d = self._low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, self.dt)
+        lower_bound_T_d = WerlingPlanner.low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, self.dt)
 
         assert T_s >= lower_bound_T_d
-
-        self._logger.debug('WerlingPlanner is planning from %s (frenet) to %s (frenet) in %s seconds' %
-                           (NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
-                            T_s))
-
+        self._logger.debug('WerlingPlanner is planning from %s (frenet) to %s (frenet) in %s seconds',
+                           NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
+                            T_s)
         # create a grid on T_d (lateral movement time-grid)
         T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_s, lower_bound_T_d, self.dt)
 
         self._logger.debug("Lateral horizon grid considered is: {}".format(str(T_d_grid)))
 
         # solve problem in frenet-frame
+        print('time = %.2f' % state.ego_state.timestamp_in_sec)
         ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
                                                                                  T_s, T_d_grid, self.dt)
 
@@ -126,7 +125,6 @@ class WerlingPlanner(TrajectoryPlanner):
         cartesian_refiltered_indices = self._filter_by_cartesian_limits(ctrajectories, cost_params)
 
         refiltered_indices = frenet_filtered_indices[cartesian_refiltered_indices]
-
         ctrajectories_filtered = ctrajectories[cartesian_refiltered_indices]
         ftrajectories_refiltered = ftrajectories[frenet_filtered_indices][cartesian_refiltered_indices]
 
@@ -176,10 +174,11 @@ class WerlingPlanner(TrajectoryPlanner):
                     objects_curr_fstates.append(obj_fstate)
                 except OutOfSegmentFront:
                     pass
-            raise NoSafeTrajectoriesFound("No safe trajectories found. time: %f, goal_frenet: %s, state: %s. "
-                                          "ego_fstate %s; objects_fstates %s" %
+            raise NoSafeTrajectoriesFound("No safe trajectories found\ntime: %f, goal_frenet: %s\nstate: %s\n"
+                                          "ego_fstate: %s\nobjects_fstates: %s" %
                                           (T_s, NumpyUtils.str_log(goal_frenet_state), str(state).replace('\n', ''),
-                                           ftrajectories[0, 0, :], objects_curr_fstates))
+                                           NumpyUtils.str_log(ftrajectories[0, 0, :]),
+                                           NumpyUtils.str_log(np.array(objects_curr_fstates))))
 
         ftrajectories_refiltered_safe = ftrajectories_refiltered[safe_traj_indices]
         ctrajectories_filtered_safe = ctrajectories_filtered[safe_traj_indices]
@@ -291,14 +290,14 @@ class WerlingPlanner(TrajectoryPlanner):
         safety_costs = Costs.compute_safety_costs(non_weigted_safety_costs)
 
         ''' point-wise costs: obstacles, deviations, jerk '''
-        pointwise_costs = Costs.compute_pointwise_costs(ctrajectories, ftrajectories, state, params,
-                                                        global_time_samples, predictor, dt)
+        pointwise_costs = TrajectoryPlannerCosts.compute_pointwise_costs(ctrajectories, ftrajectories, state, params,
+                                                                         global_time_samples, predictor, dt)
 
         return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs + safety_costs
 
     # TODO: determine tighter lower bound according to physical constraints and ego control limitations
-    def _low_bound_lat_horizon(self, fconstraints_t0: FrenetConstraints, fconstraints_tT: FrenetConstraints,
-                               dt) -> float:
+    @staticmethod
+    def low_bound_lat_horizon(fconstraints_t0: FrenetConstraints, fconstraints_tT: FrenetConstraints, dt: float) -> float:
         """
         Calculates the lower bound for the lateral time horizon based on the physical constraints.
         :param fconstraints_t0: a set of constraints over the initial state
@@ -308,7 +307,7 @@ class WerlingPlanner(TrajectoryPlanner):
         """
         min_lat_movement = np.min(np.abs(fconstraints_tT.get_grid_d()[:, 0] - fconstraints_t0.get_grid_d()[0, 0]))
         low_bound_lat_plan_horizon = max(np.sqrt((2 * min_lat_movement) / LAT_ACC_LIMITS[LIMIT_MAX]), dt)
-        return max(low_bound_lat_plan_horizon, TD_MIN_DT * self.dt)
+        return max(low_bound_lat_plan_horizon, TD_MIN_DT * dt)
 
     @staticmethod
     def _create_lat_horizon_grid(T_s: float, T_d_low_bound: float, dt: float) -> np.ndarray:
@@ -327,6 +326,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # Make sure T_d_vals values are multiples of dt (or else the matrix, calculated using T_d, and the latitudinal
         #  time axis, lat_time_samples, won't fit).
         T_d_vals = Math.round_to_step(T_d_vals, dt)
+        T_d_vals = T_d_vals[T_d_vals <= T_s]
 
         return T_d_vals
 
@@ -382,7 +382,7 @@ class WerlingPlanner(TrajectoryPlanner):
         solutions_d = np.empty(shape=(0, len(time_samples_s), 3))
         horizons_d = np.empty(shape=0)
         for T_d in T_d_vals:
-            time_samples_d = np.arange(dt, T_d + np.finfo(np.float16).eps, dt)
+            time_samples_d = np.arange(0, T_d + np.finfo(np.float16).eps, dt)
 
             # solve for dimension d (with time-horizon T_d)
             partial_poly_d = WerlingPlanner._solve_1d_poly(constraints_d, T_d, QuinticPoly1D)
@@ -431,22 +431,22 @@ class WerlingPlanner(TrajectoryPlanner):
         """
         # since objects' fstates are given in rhs_road_frenet, while ego_ftrajectories are given in reference_frenet,
         # we convert objects' cstate to the lane center reference frame
-        objects_curr_fstates = []
+        objects_frenet_states_list = []
         obj_sizes = []
         for dynamic_object in state.dynamic_objects:
             try:
                 obj_fstate = frenet.cstate_to_fstate(dynamic_object.cartesian_state)
-                objects_curr_fstates.append(obj_fstate)
+                objects_frenet_states_list.append(obj_fstate)
                 obj_sizes.append(dynamic_object.size)
             # Part of the objects may be too far (not affected by safety) and outside the reference frame.
             # We don't care them here.
             except OutOfSegmentFront:
                 pass
-        if len(objects_curr_fstates) == 0:
+        if len(objects_frenet_states_list) == 0:
             return np.array(range(ego_ftrajectories.shape[0])), np.zeros((ego_ftrajectories.shape[0]))
 
         # create a matrix of all objects' predictions and a list of objects' sizes
-        obj_ftraj = self.predictor.predict_frenet_states(np.array(objects_curr_fstates), time_samples)
+        obj_ftraj = self.predictor.predict_frenet_states(np.array(objects_frenet_states_list), time_samples)
 
         # calculate RSS safety for all trajectories, all objects and all timestamps
         safety_costs = SafetyUtils.get_safety_costs(ego_ftrajectories, state.ego_state.size, obj_ftraj, obj_sizes)

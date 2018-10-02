@@ -47,6 +47,17 @@ class NumpyUtils:
         """
         return np.logical_and(arr >= limits[LIMIT_MIN], arr <= limits[LIMIT_MAX])
 
+    @staticmethod
+    def is_almost_in_limits(arr: np.array, limits: Limits):
+        """
+        tests if values of arr are in the limit [lb, ub] or very close to the limits
+        :param arr: any tensor shape
+        :param limits: Limits object - 1D numpy array of [lower_bound, upper_bound]
+        :return: tensor of boolean values of the shape of <arr>
+        """
+        return np.logical_or(np.logical_and(arr >= limits[LIMIT_MIN], arr <= limits[LIMIT_MAX]),
+                             np.logical_or(np.isclose(arr, limits[LIMIT_MIN]), np.isclose(arr, limits[LIMIT_MAX])))
+
 
 class UniformGrid:
     """Lean version of a uniform grid (inclusive)"""

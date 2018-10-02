@@ -2,7 +2,7 @@ from typing import Union
 import numpy as np
 from numbers import Number
 
-from decision_making.src.planning.types import FrenetState2D
+from decision_making.src.planning.types import FrenetState2D, FrenetStates2D
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 
 
@@ -31,9 +31,21 @@ class FrenetConstraints:
     def __str__(self):
         return "FrenetConstraints(%s)" % ["%s: %s" % (k, NumpyUtils.str_log(v)) for k, v in self.__dict__.items()]
 
+    def size(self):
+        return 1 if np.isscalar(self._sx) else self._sx.size
+
     @classmethod
     def from_state(cls, state: FrenetState2D):
-        return cls(state[0], state[1], state[2], state[3], state[4], state[5])
+        return cls(state[..., 0], state[..., 1], state[..., 2], state[..., 3], state[..., 4], state[..., 5])
+
+    def to_states(self) -> FrenetStates2D:
+        return np.c_[self._sx, self._sv, self._sa, self._dx, self._dv, self._da]
+
+    def to_states_s(self) -> np.array:
+        return np.c_[self._sx, self._sv, self._sa]
+
+    def to_states_d(self) -> np.array:
+        return np.c_[self._dx, self._dv, self._da]
 
     def get_grid_s(self) -> np.ndarray:
         """
