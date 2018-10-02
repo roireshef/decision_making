@@ -2,11 +2,8 @@ import numpy as np
 from enum import Enum
 from typing import List
 
-from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
-from decision_making.src.planning.types import C_X, C_Y
+from decision_making.src.planning.types import FS_SX
 from decision_making.src.state.map_state import MapState
-from mapping.src.service.map_service import MapService
 
 
 class GoalStatus(Enum):
@@ -30,21 +27,17 @@ class NavigationGoal:
         self.lon = lon
         self.lanes = lanes
 
-    def validate(self, samplable_trajectory: SamplableTrajectory, next_state_time: float) -> GoalStatus:
+    def validate(self, map_state: MapState) -> GoalStatus:
         """
-        check if given samplable trajectory at next state time reaches misses or not reaches the goal
-        :param samplable_trajectory: samplable trajectory (from TP)
-        :param next_state_time: [sec] global time of the next state
+        check if the given state reached missed or yet not reached the goal
+        :param map_state: MapState of ego
         :return: GoalStatus (REACHED, MISSED or NOT_YET)
         """
-        goal_time = samplable_trajectory.get_time_from_longitude(self.road_id, self.lon)
-        if goal_time is None or next_state_time < goal_time:
-            return GoalStatus.NOT_YET
-
-        # WerlingSamplable.sample_frenet() is much more efficient than FixedSamplable.sample_frenet()!
-        fstate_at_goal = samplable_trajectory.sample_frenet(np.array([goal_time]))[0]
-
-        if MapState(fstate_at_goal, self.road_id).lane_num in self.lanes:
-            return GoalStatus.REACHED
+        # TODO: use route planner to check if the case map_state.road_id != goal.road means MISSED or NOT_YET
+        if map_state.road_id == self.road_id and map_state.road_fstate[FS_SX] >= self.lon:
+            if map_state.lane_num in self.lanes:
+                return GoalStatus.REACHED
+            else:
+                return GoalStatus.MISSED
         else:
-            return GoalStatus.MISSED
+            return GoalStatus.NOT_YET
