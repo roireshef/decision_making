@@ -12,7 +12,7 @@ from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATI
     OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, \
     DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_MARGIN_TIME_DELAY, \
-    TRAJECTORY_TIME_RESOLUTION, EPS, SPECIFICATION_MARGIN_TIME_DELAY
+    TRAJECTORY_TIME_RESOLUTION, EPS, SPECIFICATION_MARGIN_TIME_DELAY, DX_OFFSET_MIN, DX_OFFSET_MAX, TD_STEPS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
@@ -314,6 +314,7 @@ class CostBasedBehavioralPlanner:
         ego = state.ego_state
         ego_init_fstate = ego.map_state.road_fstate
         lane_width = MapService.get_instance().get_road(ego.map_state.road_id).lane_width
+        road_frenet = MapService.get_instance()._rhs_roads_frenet[ego.map_state.road_id]
 
         # duplicate initial frenet states and create target frenet states based on the specifications
         zeros = np.zeros(T_s_arr.shape[0])
@@ -322,22 +323,52 @@ class CostBasedBehavioralPlanner:
 
         # calculate A_inv_d as a concatenation of inverse matrices for maximal T_d (= T_s) and for minimal T_d
         A_inv_s = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_s_arr))
-        min_T_d_arr = np.array([CostBasedBehavioralPlanner._calc_minimal_T_d(ego_init_fstate[FS_DX:], d) for d in d_arr])
-        A_inv_min_d = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(min_T_d_arr))
-        A_inv_d = np.concatenate((A_inv_s, A_inv_min_d), axis=0)
+
+        T_d_arr = np.concatenate([CostBasedBehavioralPlanner._calc_T_d_grid(ego_init_fstate[FS_DX:], d, T_s_arr[i])
+                                    for i, d in enumerate(d_arr)])
+        A_inv_d = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_d_arr))
 
         # create ftrajectories_s and duplicated ftrajectories_d (for max_T_d and min_T_d)
         constraints_s = np.concatenate((init_fstates[:, :FS_DX], target_fstates[:, :FS_DX]), axis=1)
         constraints_d = np.concatenate((init_fstates[:, FS_DX:], target_fstates[:, FS_DX:]), axis=1)
+        duplicated_constraints_d = np.repeat(constraints_d, TD_STEPS, axis=0)
         poly_coefs_s = QuinticPoly1D.zip_solve(A_inv_s, constraints_s)
-        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv_d, np.concatenate((constraints_d, constraints_d)))
+        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv_d, duplicated_constraints_d)
         time_points = np.arange(0, np.max(T_s_arr) + EPS, TRAJECTORY_TIME_RESOLUTION)
         ftrajectories_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, time_points)
         ftrajectories_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_points)
         # for any T_d < T_s, complement ftrajectories_d to the length of T_s by adding states with zero lateral velocity
-        last_t = (np.concatenate((T_s_arr, min_T_d_arr)) / TRAJECTORY_TIME_RESOLUTION).astype(int)
+        last_t_d_indices = np.floor(T_d_arr / TRAJECTORY_TIME_RESOLUTION).astype(int)
         for i, ftrajectory_d in enumerate(ftrajectories_d):
-            ftrajectory_d[(last_t[i] + 1):] = np.array([ftrajectory_d[last_t[i], 0], 0, 0])
+            ftrajectory_d[(last_t_d_indices[i] + 1):] = np.array([ftrajectory_d[last_t_d_indices[i], 0], 0, 0])
+
+        # set all points beyond spec.t at infinity, such that they will be safe and will not affect the result
+        end_traj_indices = np.floor(T_s_arr / TRAJECTORY_TIME_RESOLUTION).astype(int)
+        for i, ftrajectory_s in enumerate(ftrajectories_s):
+            ftrajectory_s[(end_traj_indices[i] + 1):] = np.array([road_frenet.s_limits[1] - road_frenet.ds, VELOCITY_LIMITS[1], 0])
+        # duplicate ftrajectories_s TD_STEPS times to be aligned with ftrajectories_d
+        duplicated_ftrajectories_s = np.repeat(ftrajectories_s, TD_STEPS, axis=0)
+
+        # create full Frenet trajectories
+        ftrajectories = np.concatenate((duplicated_ftrajectories_s, ftrajectories_d), axis=-1)
+
+        # filter the trajectories by Frenet and Cartesian fitlers, like in TP
+        cost_params = TrajectoryCostParams(None, None, None, None, None, None, None, None, None, None, None, None,
+                                           VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)
+        frenet_filtered_indices = WerlingPlanner._filter_by_frenet_limits(
+            ftrajectories, poly_coefs_d, T_d_arr, cost_params, road_frenet.s_limits)
+        ctrajectories = road_frenet.ftrajectories_to_ctrajectories(ftrajectories[frenet_filtered_indices])
+        cartesian_refiltered_indices = WerlingPlanner._filter_by_cartesian_limits(ctrajectories, cost_params)
+        refiltered_indices = frenet_filtered_indices[cartesian_refiltered_indices]
+
+        # for each action leave only min_T_d and max_T_d among all refiltered_indices
+        min_T_d = np.repeat(np.inf, T_s_arr.shape[0])
+        max_T_d = np.repeat(-np.inf, T_s_arr.shape[0])
+        refiltered_action_indices = np.floor(refiltered_indices.astype(float) / TD_STEPS).astype(int)
+        for i, ftraj_idx in enumerate(refiltered_indices):
+            action_idx = refiltered_action_indices[i]
+            min_T_d[action_idx] = min(min_T_d[action_idx], ftraj_idx)
+            max_T_d[action_idx] = max(max_T_d[action_idx], ftraj_idx)
 
         # predict objects' trajectories
         obj_fstates = np.array([obj.map_state.road_fstate for obj in state.dynamic_objects])
@@ -345,51 +376,64 @@ class CostBasedBehavioralPlanner:
         obj_trajectories = np.array(self.predictor.predict_frenet_states(obj_fstates, time_points))
 
         # verify that terminal state of any (static) action keeps distance of at least 2 sec from the front object
-        keep_distance_trajectories = np.ones(ftrajectories_s.shape[0], dtype=bool)
-        for ftraj_idx, ftrajectory_s in enumerate(ftrajectories_s):
-            end_traj_idx = int(T_s_arr[ftraj_idx] / TRAJECTORY_TIME_RESOLUTION)
+        keep_distance_trajectories = np.full(T_s_arr.shape[0], True)
+        for action_idx in range(T_s_arr.shape[0]):
+            end_traj_idx = int(T_s_arr[action_idx] / TRAJECTORY_TIME_RESOLUTION)
             for obj_idx, obj_trajectory in enumerate(obj_trajectories):
-                end_dist_from_obj = target_fstates[ftraj_idx] - obj_trajectory[end_traj_idx]
+                end_dist_from_obj = target_fstates[action_idx] - obj_trajectory[end_traj_idx]
                 if end_dist_from_obj[FS_SX] > 0 and abs(end_dist_from_obj[FS_DX]) < lane_width / 2:
                     min_dist = SPECIFICATION_MARGIN_TIME_DELAY * obj_trajectory[end_traj_idx, FS_SV] + \
                                (ego.size.length + obj_sizes[obj_idx].length) / 2.
-                    keep_distance_trajectories[ftraj_idx] &= (end_dist_from_obj[FS_SX] >= min_dist)
-            # set all points beyond spec.t at infinity, such that they will be safe and will not affect the result
-            ftrajectory_s[(end_traj_idx + 1):, FS_SX] = np.inf
+                    keep_distance_trajectories[action_idx] &= (end_dist_from_obj[FS_SX] >= min_dist)
 
-        ftrajectories = np.concatenate((np.concatenate((ftrajectories_s, ftrajectories_s)), ftrajectories_d), axis=-1)
+        # extract min_T_d and max_T_d indices for keeping distance trajectories
+        filtered_indices = []
+        for action_idx in range(T_s_arr.shape[0]):
+            if not np.isinf(min_T_d[action_idx]) and keep_distance_trajectories[action_idx]:
+                filtered_indices.append(min_T_d[action_idx])
+                if min_T_d[action_idx] != max_T_d[action_idx]:
+                    filtered_indices.append(max_T_d[action_idx])
+        filtered_indices = np.array(filtered_indices).astype(int)
 
         # calculate safety for each trajectory, each object, each timestamp
-        safety_costs = SafetyUtils.get_safety_costs(ftrajectories, ego.size, obj_trajectories, obj_sizes)
+        safety_costs = SafetyUtils.get_safety_costs(ftrajectories[filtered_indices], ego.size, obj_trajectories, obj_sizes)
         # trajectory is considered safe if it's safe wrt all dynamic objects for all timestamps
-        safe_min_max_trajectories = (safety_costs < 1).all(axis=(1, 2))
+        safe_filtered_trajectories = (safety_costs < 1).all(axis=(1, 2))
+        safe_indices = filtered_indices[safe_filtered_trajectories]
         # OR between safe trajectories for max_d and safe trajectories for min_d
-        safe_trajectories = np.array(np.split(safe_min_max_trajectories, 2)).any(axis=0)
-        # filter trajectories that don't keep 2 sec distance
-        fully_safe_trajectories = np.logical_and(safe_trajectories, keep_distance_trajectories)
-        if not fully_safe_trajectories.any():
+        safe_trajectories = np.full(T_s_arr.shape[0], False)
+        safe_trajectories[np.floor(safe_indices.astype(float) / TD_STEPS).astype(int)] = True
+        if not safe_trajectories.any():
             self.logger.warning("CostBasedBehavioralPlanner._check_actions_safety: No safe action found")
 
         CostBasedBehavioralPlanner.log_safety(ego_init_fstate, obj_fstates, ego.size, obj_sizes, lane_width, ego.timestamp_in_sec)
 
         # assign safety to the specs, for which specs_mask is true
         safe_specs = np.copy(np.array(action_specs_mask))
-        safe_specs[safe_specs] = fully_safe_trajectories
+        safe_specs[safe_specs] = safe_trajectories
         return list(safe_specs)  # list's size like the original action_specs size
 
     @staticmethod
-    def _calc_minimal_T_d(fstate_d: np.array, target_d: float) -> float:
+    def _calc_T_d_grid(fstate_d: np.array, target_d: float, T_s: float) -> np.array:
         """
-        Given current Frenet lateral state and target latitude, calculate theoretical lower bound for lateral time
-        horizon (based on lateral velocity & acceleration rather than on the real physical ability of a car)
-        to perform the move.
+        Calculate the lower bound of the lateral time horizon T_d_low_bound and return a grid of possible lateral
+        planning time values.
         :param fstate_d: 1D array containing: current latitude, lateral velocity and lateral acceleration
         :param target_d: [m] target latitude
-        :return: Low bound for lateral time horizon.
+        :param T_s: [m] longitudinal time horizon
+        :return: numpy array (1D) of the possible lateral planning horizons
         """
-        fconstraints_t0 = FrenetConstraints(0, 0, 0, fstate_d[0], fstate_d[1], fstate_d[2])
-        fconstraints_tT = FrenetConstraints(0, 0, 0, target_d, 0, 0)
-        return WerlingPlanner.low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, TRAJECTORY_TIME_RESOLUTION)
+        dt = TRAJECTORY_TIME_RESOLUTION
+        dx = min(abs(fstate_d[0] - (target_d - DX_OFFSET_MIN)), abs(fstate_d[0] - (target_d + DX_OFFSET_MAX)))
+        fconstraints_t0 = FrenetConstraints(0, 0, 0, dx, fstate_d[1], fstate_d[2])
+        fconstraints_tT = FrenetConstraints(0, 0, 0, 0, 0, 0)
+        lower_bound_T_d = WerlingPlanner.low_bound_lat_horizon(fconstraints_t0, fconstraints_tT, dt)
+        T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_s, lower_bound_T_d, dt)
+        if len(T_d_grid) < TD_STEPS:  # make T_d_grid to be of size TD_STEPS
+            T_d_grid = np.concatenate((T_d_grid, np.full(TD_STEPS - len(T_d_grid), T_d_grid[-1])))
+        elif len(T_d_grid) > TD_STEPS:
+            T_d_grid = T_d_grid[:TD_STEPS]
+        return T_d_grid
 
     @staticmethod
     def log_safety(ego_fstate: FrenetState2D, obj_fstates: np.array, ego_size: ObjectSize, obj_sizes: np.array,

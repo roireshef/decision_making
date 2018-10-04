@@ -100,15 +100,16 @@ class WerlingPlanner(TrajectoryPlanner):
 
         assert T_s >= lower_bound_T_d
         self._logger.debug('WerlingPlanner is planning from %s (frenet) to %s (frenet) in %s seconds',
-                           NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state),
-                            T_s)
+                           NumpyUtils.str_log(ego_frenet_state), NumpyUtils.str_log(goal_frenet_state), T_s)
         # create a grid on T_d (lateral movement time-grid)
         T_d_grid = WerlingPlanner._create_lat_horizon_grid(T_s, lower_bound_T_d, self.dt)
 
         self._logger.debug("Lateral horizon grid considered is: {}".format(str(T_d_grid)))
 
         # solve problem in frenet-frame
-        print('time = %.2f' % state.ego_state.timestamp_in_sec)
+        print('TP t=%.2f: ego: %.2f %.2f; obj: %.2f %.2f' %
+              (state.ego_state.timestamp_in_sec, state.ego_state.map_state.road_fstate[0], state.ego_state.map_state.road_fstate[1],
+               state.dynamic_objects[0].map_state.road_fstate[0], state.dynamic_objects[0].map_state.road_fstate[1]))
         ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
                                                                                  T_s, T_d_grid, self.dt)
 
@@ -320,14 +321,13 @@ class WerlingPlanner(TrajectoryPlanner):
         :return: numpy array (1D) of the possible lateral planning horizons
         """
         T_d_vals = np.array([T_d_low_bound])
-        if T_s != T_d_low_bound:
-            T_d_vals = np.linspace(T_d_low_bound, T_s, TD_STEPS)
+        T_s_floor = np.floor(T_s / dt) * dt
+        if T_s_floor != T_d_low_bound:
+            T_d_vals = np.linspace(T_d_low_bound, T_s_floor, TD_STEPS)
 
         # Make sure T_d_vals values are multiples of dt (or else the matrix, calculated using T_d, and the latitudinal
         #  time axis, lat_time_samples, won't fit).
         T_d_vals = Math.round_to_step(T_d_vals, dt)
-        T_d_vals = T_d_vals[T_d_vals <= T_s]
-
         return T_d_vals
 
     @staticmethod

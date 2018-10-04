@@ -83,9 +83,16 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # compute "approximated Q-value" (action cost +  cost-to-go) for all actions
         action_q_cost = action_costs + terminal_states_values
 
+        print('BP t=%.2f: ego: %.2f %.2f; obj: %.2f %.2f' %
+              (state.ego_state.timestamp_in_sec, state.ego_state.map_state.road_fstate[0], state.ego_state.map_state.road_fstate[1],
+               state.dynamic_objects[0].map_state.road_fstate[0], state.dynamic_objects[0].map_state.road_fstate[1]))
+
         valid_idxs = np.where(action_specs_mask_safe)[0]
         selected_action_index = valid_idxs[action_q_cost[valid_idxs].argmin()]
         selected_action_spec = action_specs[selected_action_index]
+
+        print('Action %d: spec=%s' % (selected_action_index, selected_action_spec))
+
         return selected_action_index, selected_action_spec
 
     @prof.ProfileFunction()

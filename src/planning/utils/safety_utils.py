@@ -248,12 +248,11 @@ class SafetyUtils:
         becomes_unsafe_laterally_excluding_time_0 = \
             np.logical_and(lat_safe_dist[:, :-1] > 0, lat_safe_dist[:, 1:] <= 0)  # become unsafe laterally
         # add first column (time 0)
-        becomes_unsafe_laterally = np.insert(becomes_unsafe_laterally_excluding_time_0, 0,
-                                             lat_safe_dist[:, 0] <= 0, axis=-1)
+        becomes_unsafe_laterally = np.insert(becomes_unsafe_laterally_excluding_time_0, 0, lat_safe_dist[:, 0] <= 0, axis=-1)
 
-        # front_lat_blame=True if ego cuts-in rear object, i.e. becomes unsafe laterally wrt rear object on ego blame
-        front_lat_blame = front_ego * lat_vel_blame * becomes_unsafe_laterally
+        # front_lat_blame_cost=1 if ego cuts-in rear object, i.e. becomes unsafe laterally wrt rear object on ego blame
+        front_lat_cost = front_ego * lat_vel_blame * becomes_unsafe_laterally  # 0 or 1
         # lat_cost for non-front ego
         non_front_lat_cost = (1 - front_ego) * lat_cost
-        # final cost: lon_cost * lat_cost for two cases: ego is in front and not in front
-        return lon_cost * (front_lat_blame + non_front_lat_cost)
+        # final_cost = lon_cost * lat_cost, where lat_cost has two cases: ego is front and not in front
+        return lon_cost * (front_lat_cost + non_front_lat_cost)
