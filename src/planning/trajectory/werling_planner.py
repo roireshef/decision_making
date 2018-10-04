@@ -320,14 +320,15 @@ class WerlingPlanner(TrajectoryPlanner):
         :param dt: [sec] basic time unit from constructor.
         :return: numpy array (1D) of the possible lateral planning horizons
         """
-        T_d_vals = np.array([T_d_low_bound])
         T_s_floor = np.floor(T_s / dt) * dt
-        if T_s_floor != T_d_low_bound:
+        if T_d_low_bound < T_s_floor:
             T_d_vals = np.linspace(T_d_low_bound, T_s_floor, TD_STEPS)
+            # Make sure T_d_vals values are multiples of dt (or else the matrix, calculated using T_d, and the lateral
+            #  time axis, lat_time_samples, won't fit).
+            T_d_vals = Math.round_to_step(T_d_vals, dt)
+        else:
+            T_d_vals = np.array([T_s_floor])
 
-        # Make sure T_d_vals values are multiples of dt (or else the matrix, calculated using T_d, and the latitudinal
-        #  time axis, lat_time_samples, won't fit).
-        T_d_vals = Math.round_to_step(T_d_vals, dt)
         return T_d_vals
 
     @staticmethod
