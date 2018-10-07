@@ -317,9 +317,9 @@ class State(PUBSUB_MSG_IMPL):
         lcm_msg.occupancy_state = self.occupancy_state.serialize()
         ''' resize the list at once to the right length '''
         lcm_msg.num_obj = len(self.dynamic_objects)
-        lcm_msg.dynamic_objects = list()
+
         for i in range(lcm_msg.num_obj):
-            lcm_msg.dynamic_objects.append(self.dynamic_objects[i].serialize())
+            lcm_msg.dynamic_objects[i] = self.dynamic_objects[i].serialize()
         lcm_msg.ego_state = self.ego_state.serialize()
         return lcm_msg
 
