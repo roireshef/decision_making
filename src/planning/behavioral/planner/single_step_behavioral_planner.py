@@ -67,7 +67,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
 
         # filter specs by RSS safety
-        action_specs_mask_safe = self._check_actions_safety(state, action_specs, action_specs_mask)
+        action_specs_mask_safe = self._check_actions_safety(state, action_recipes, action_specs, action_specs_mask)
 
         # State-Action Evaluation
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask_safe)

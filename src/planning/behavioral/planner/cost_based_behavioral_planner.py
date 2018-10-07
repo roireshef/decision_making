@@ -12,13 +12,14 @@ from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATI
     OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, \
     DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, \
     LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_MARGIN_TIME_DELAY, \
-    TRAJECTORY_TIME_RESOLUTION, EPS, SPECIFICATION_MARGIN_TIME_DELAY, DX_OFFSET_MIN, DX_OFFSET_MAX, TD_STEPS
+    TRAJECTORY_TIME_RESOLUTION, EPS, SPECIFICATION_MARGIN_TIME_DELAY, DX_OFFSET_MIN, DX_OFFSET_MAX, TD_STEPS, \
+    BP_ACTION_T_LIMITS, BP_JERK_S_JERK_D_TIME_WEIGHTS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, StaticActionRecipe
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator, \
     ActionRecipeEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
@@ -29,6 +30,7 @@ from decision_making.src.planning.trajectory.samplable_werling_trajectory import
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, LIMIT_MAX, FS_SV, FS_DV, FrenetState2D
+from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -290,7 +292,8 @@ class CostBasedBehavioralPlanner:
 
         return cost_params
 
-    def _check_actions_safety(self, state: State, action_specs: List[ActionSpec], action_specs_mask: np.array) \
+    def _check_actions_safety(self, state: State, action_recipes: List[ActionRecipe],
+                              action_specs: List[ActionSpec], action_specs_mask: np.array) \
             -> List[bool]:
         """
         Check RSS safety for all action specs, for which action_specs_mask is true.
@@ -324,16 +327,22 @@ class CostBasedBehavioralPlanner:
         # calculate A_inv_d as a concatenation of inverse matrices for maximal T_d (= T_s) and for minimal T_d
         A_inv_s = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_s_arr))
 
-        T_d_arr = np.concatenate([CostBasedBehavioralPlanner._calc_T_d_grid(ego_init_fstate[FS_DX:], d, T_s_arr[i])
-                                    for i, d in enumerate(d_arr)])
+        # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
+        aggressiveness = np.array([action_recipe.aggressiveness.value
+                                   for i, action_recipe in enumerate(action_recipes) if action_specs_mask[i]])
+        weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness]
+        cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
+            w_T=weights[:, 2], w_J=weights[:, 1], dx=d_arr - ego_init_fstate[FS_DX],
+            a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV], v_T=0, T_m=SPECIFICATION_MARGIN_TIME_DELAY)
+        roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
+        T_d_arr = np.fmin.reduce(roots_d, axis=-1)
         A_inv_d = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_d_arr))
 
         # create ftrajectories_s and duplicated ftrajectories_d (for max_T_d and min_T_d)
         constraints_s = np.concatenate((init_fstates[:, :FS_DX], target_fstates[:, :FS_DX]), axis=1)
         constraints_d = np.concatenate((init_fstates[:, FS_DX:], target_fstates[:, FS_DX:]), axis=1)
-        duplicated_constraints_d = np.repeat(constraints_d, TD_STEPS, axis=0)
         poly_coefs_s = QuinticPoly1D.zip_solve(A_inv_s, constraints_s)
-        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv_d, duplicated_constraints_d)
+        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv_d, constraints_d)
         time_points = np.arange(0, np.max(T_s_arr) + EPS, TRAJECTORY_TIME_RESOLUTION)
         ftrajectories_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, time_points)
         ftrajectories_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_points)
@@ -346,29 +355,9 @@ class CostBasedBehavioralPlanner:
         end_traj_indices = np.floor(T_s_arr / TRAJECTORY_TIME_RESOLUTION).astype(int)
         for i, ftrajectory_s in enumerate(ftrajectories_s):
             ftrajectory_s[(end_traj_indices[i] + 1):] = np.array([road_frenet.s_limits[1] - road_frenet.ds, VELOCITY_LIMITS[1], 0])
-        # duplicate ftrajectories_s TD_STEPS times to be aligned with ftrajectories_d
-        duplicated_ftrajectories_s = np.repeat(ftrajectories_s, TD_STEPS, axis=0)
 
         # create full Frenet trajectories
-        ftrajectories = np.concatenate((duplicated_ftrajectories_s, ftrajectories_d), axis=-1)
-
-        # filter the trajectories by Frenet and Cartesian fitlers, like in TP
-        cost_params = TrajectoryCostParams(None, None, None, None, None, None, None, None, None, None, None, None,
-                                           VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS)
-        frenet_filtered_indices = WerlingPlanner._filter_by_frenet_limits(
-            ftrajectories, poly_coefs_d, T_d_arr, cost_params, road_frenet.s_limits)
-        ctrajectories = road_frenet.ftrajectories_to_ctrajectories(ftrajectories[frenet_filtered_indices])
-        cartesian_refiltered_indices = WerlingPlanner._filter_by_cartesian_limits(ctrajectories, cost_params)
-        refiltered_indices = frenet_filtered_indices[cartesian_refiltered_indices]
-
-        # for each action leave only min_T_d and max_T_d among all refiltered_indices
-        min_T_d = np.repeat(np.inf, T_s_arr.shape[0])
-        max_T_d = np.repeat(-np.inf, T_s_arr.shape[0])
-        refiltered_action_indices = np.floor(refiltered_indices.astype(float) / TD_STEPS).astype(int)
-        for i, ftraj_idx in enumerate(refiltered_indices):
-            action_idx = refiltered_action_indices[i]
-            min_T_d[action_idx] = min(min_T_d[action_idx], ftraj_idx)
-            max_T_d[action_idx] = max(max_T_d[action_idx], ftraj_idx)
+        ftrajectories = np.concatenate((ftrajectories_s, ftrajectories_d), axis=-1)
 
         # predict objects' trajectories
         obj_fstates = np.array([obj.map_state.road_fstate for obj in state.dynamic_objects])
@@ -386,31 +375,20 @@ class CostBasedBehavioralPlanner:
                                (ego.size.length + obj_sizes[obj_idx].length) / 2.
                     keep_distance_trajectories[action_idx] &= (end_dist_from_obj[FS_SX] >= min_dist)
 
-        # extract min_T_d and max_T_d indices for keeping distance trajectories
-        filtered_indices = []
-        for action_idx in range(T_s_arr.shape[0]):
-            if not np.isinf(min_T_d[action_idx]) and keep_distance_trajectories[action_idx]:
-                filtered_indices.append(min_T_d[action_idx])
-                if min_T_d[action_idx] != max_T_d[action_idx]:
-                    filtered_indices.append(max_T_d[action_idx])
-        filtered_indices = np.array(filtered_indices).astype(int)
-
         # calculate safety for each trajectory, each object, each timestamp
-        safety_costs = SafetyUtils.get_safety_costs(ftrajectories[filtered_indices], ego.size, obj_trajectories, obj_sizes)
+        safety_costs = SafetyUtils.get_safety_costs(ftrajectories, ego.size, obj_trajectories, obj_sizes)
         # trajectory is considered safe if it's safe wrt all dynamic objects for all timestamps
-        safe_filtered_trajectories = (safety_costs < 1).all(axis=(1, 2))
-        safe_indices = filtered_indices[safe_filtered_trajectories]
-        # OR between safe trajectories for max_d and safe trajectories for min_d
-        safe_trajectories = np.full(T_s_arr.shape[0], False)
-        safe_trajectories[np.floor(safe_indices.astype(float) / TD_STEPS).astype(int)] = True
-        if not safe_trajectories.any():
+        safe_masked_trajectories = (safety_costs < 1).all(axis=(1, 2))
+        # filter trajectories with unsafe terminal state for safety_margin_time_delay = SPECIFICATION_MARGIN_TIME_DELAY
+        fully_safe_masked_trajectories = np.logical_and(safe_masked_trajectories, keep_distance_trajectories)
+        if not fully_safe_masked_trajectories.any():
             self.logger.warning("CostBasedBehavioralPlanner._check_actions_safety: No safe action found")
 
         CostBasedBehavioralPlanner.log_safety(ego_init_fstate, obj_fstates, ego.size, obj_sizes, lane_width, ego.timestamp_in_sec)
 
         # assign safety to the specs, for which specs_mask is true
         safe_specs = np.copy(np.array(action_specs_mask))
-        safe_specs[safe_specs] = safe_trajectories
+        safe_specs[safe_specs] = fully_safe_masked_trajectories
         return list(safe_specs)  # list's size like the original action_specs size
 
     @staticmethod
