@@ -107,9 +107,6 @@ class WerlingPlanner(TrajectoryPlanner):
         self._logger.debug("Lateral horizon grid considered is: {}".format(str(T_d_grid)))
 
         # solve problem in frenet-frame
-        # print('TP t=%.2f: ego: %.2f %.2f; obj: %.2f %.2f' %
-        #       (state.ego_state.timestamp_in_sec, state.ego_state.map_state.road_fstate[0], state.ego_state.map_state.road_fstate[1],
-        #        state.dynamic_objects[0].map_state.road_fstate[0], state.dynamic_objects[0].map_state.road_fstate[1]))
         ftrajectories, poly_coefs, T_d_vals = WerlingPlanner._solve_optimization(fconstraints_t0, fconstraints_tT,
                                                                                  T_s, T_d_grid, self.dt)
 
@@ -196,23 +193,6 @@ class WerlingPlanner(TrajectoryPlanner):
 
         self._logger.debug("Chosen trajectory planned with lateral horizon : {}".format(
             T_d_vals[refiltered_indices_safe[sorted_filtered_idxs[0]]]))
-
-        # if state.ego_state.timestamp_in_sec > 11:
-        #     ti = int((12.1 - state.ego_state.timestamp_in_sec) / self.dt)
-        #     np.set_printoptions(suppress=True, precision=3)
-        #     p = ftrajectories[refiltered_indices_safe[sorted_filtered_idxs[0]], ti]
-        #     obj = state.dynamic_objects[0]
-        #     obj_s = obj.map_state.road_fstate[0] + ti * self.dt * obj.map_state.road_fstate[1]
-        #     obj_traj = obj_s + obj.map_state.road_fstate[1] * np.arange(0, 4, 0.1)
-        #     dist = SafetyUtils._get_lon_safe_dist(ftrajectories[refiltered_indices_safe[sorted_filtered_idxs[0]], :40],
-        #                                           0.5, obj_traj, 2,
-        #                                           0.5 * (state.ego_state.size.length + obj.size.length) + 0.5)
-        #     bp_dist = SafetyUtils._get_lon_safe_dist(np.array([117.28, 15.74]),
-        #                                           0.5, np.array([162.73, 8.24]), 2,
-        #                                           0.5 * (state.ego_state.size.length + obj.size.length) + 0.5)
-        #     print('%.1f: TP at 12.1: T=%.2f %s d=%.3f dist=%s bp_dist=%.3f' %
-        #           (state.ego_state.timestamp_in_sec, T_s, p[:2], p[3]+5.4, dist, bp_dist))
-
 
         samplable_trajectory = SamplableWerlingTrajectory(
             timestamp_in_sec=state.ego_state.timestamp_in_sec,
