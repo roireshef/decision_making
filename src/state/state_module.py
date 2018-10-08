@@ -6,7 +6,7 @@ from typing import Optional, List, Dict
 import numpy as np
 
 import rte.python.profiler as prof
-from common_data.lcm.config import pubsub_topics
+from common_data.src.communication.middleware.pubsub import mw_pubsub_topics as pubsub_topics
 from common_data.src.communication.middleware.idl_generated_files import LcmPerceivedDynamicObjectList
 from common_data.src.communication.middleware.idl_generated_files import LcmPerceivedSelfLocalization
 from common_data.src.communication.pubsub.pubsub import PubSub
@@ -54,9 +54,9 @@ class StateModule(DmModule):
         """
         When starting the State Module, subscribe to dynamic objects, ego state and occupancy state services.
         """
-        self.pubsub.subscribe(pubsub_topics.PERCEIVED_DYNAMIC_OBJECTS_TOPIC
+        self.pubsub.subscribe(pubsub_topics.PERCEIVED_DYNAMIC_OBJECTS_LCM
                               , self._dynamic_obj_callback)
-        self.pubsub.subscribe(pubsub_topics.PERCEIVED_SELF_LOCALIZATION_TOPIC
+        self.pubsub.subscribe(pubsub_topics.PERCEIVED_SELF_LOCALIZATION_LCM
                               , self._self_localization_callback)
 
     # TODO - implement unsubscribe only when logic is fixed in LCM
@@ -222,4 +222,4 @@ class StateModule(DmModule):
             state = State(self._occupancy_state, self._dynamic_objects, self._ego_state)
         self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
 
-        self.pubsub.publish(pubsub_topics.STATE_TOPIC, state.serialize())
+        self.pubsub.publish(pubsub_topics.STATE_LCM, state.serialize())

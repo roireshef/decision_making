@@ -44,7 +44,7 @@ class MapState(PUBSUB_MSG_IMPL):
     def serialize(self):
         # type: () -> LcmMapState
         lcm_msg = LcmMapState()
-        lcm_msg.road_fstate = LCMUtils.numpy_array_to_lcm_non_typed_numpy_array(self.road_fstate)
+        lcm_msg.road_fstate = self.road_fstate
         lcm_msg.road_id = self.road_id
         return lcm_msg
 

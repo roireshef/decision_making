@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from common_data.lcm.config import pubsub_topics
+from common_data.src.communication.middleware.pubsub import mw_pubsub_topics as pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
@@ -48,7 +48,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
                                                           strategy_handlers=strategy_handlers,
                                                           short_time_predictor=short_time_predictor)
 
-    pubsub.subscribe(pubsub_topics.TRAJECTORY_TOPIC, trajectory_publish_mock)
+    pubsub.subscribe(pubsub_topics.TRAJECTORY_LCM, trajectory_publish_mock)
 
     state_module.periodic_action()
     trajectory_planning_module.start()
@@ -93,7 +93,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
     behavioral_planner_module = BehavioralPlanningFacade(pubsub=pubsub, logger=bp_logger, behavioral_planner=planner,
                                                          short_time_predictor=short_time_predictor)
 
-    pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, behavioral_publish_mock)
+    pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_LCM, behavioral_publish_mock)
 
     bp_logger.warn.assert_not_called()
     bp_logger.error.assert_not_called()

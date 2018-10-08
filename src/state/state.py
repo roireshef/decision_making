@@ -232,7 +232,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         lcm_msg = LcmDynamicObject()
         lcm_msg.obj_id = self.obj_id
         lcm_msg.timestamp = self.timestamp
-        lcm_msg._cached_cartesian_state = LCMUtils.numpy_array_to_lcm_non_typed_numpy_array(self.cartesian_state)
+        lcm_msg._cached_cartesian_state = self.cartesian_state
         lcm_msg._cached_map_state = self.map_state.serialize()
         lcm_msg.size = self.size.serialize()
         lcm_msg.confidence = self.confidence

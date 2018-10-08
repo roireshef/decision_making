@@ -4,7 +4,7 @@ from logging import Logger
 
 import numpy as np
 
-from common_data.lcm.config import pubsub_topics
+from common_data.src.communication.middleware.pubsub import mw_pubsub_topics as pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
@@ -42,8 +42,8 @@ class BehavioralPlanningFacade(DmModule):
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
 
     def _start_impl(self):
-        self.pubsub.subscribe(pubsub_topics.STATE_TOPIC, None)
-        self.pubsub.subscribe(pubsub_topics.NAVIGATION_PLAN_TOPIC, None)
+        self.pubsub.subscribe(pubsub_topics.STATE_LCM, None)
+        self.pubsub.subscribe(pubsub_topics.NAVIGATION_PLAN_LCM, None)
 
     # TODO: unsubscribe once logic is fixed in LCM
     def _stop_impl(self):

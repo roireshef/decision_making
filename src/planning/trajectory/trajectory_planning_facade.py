@@ -5,7 +5,7 @@ from typing import Dict
 
 import numpy as np
 
-from common_data.lcm.config import pubsub_topics
+from common_data.src.communication.middleware.pubsub import mw_pubsub_topics as pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
@@ -54,12 +54,12 @@ class TrajectoryPlanningFacade(DmModule):
         self._last_trajectory = last_trajectory
 
     def _start_impl(self):
-        self.pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, None)
-        self.pubsub.subscribe(pubsub_topics.STATE_TOPIC, None)
+        self.pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_LCM, None)
+        self.pubsub.subscribe(pubsub_topics.STATE_LCM, None)
 
     def _stop_impl(self):
-        self.pubsub.unsubscribe(pubsub_topics.TRAJECTORY_PARAMS_TOPIC)
-        self.pubsub.unsubscribe(pubsub_topics.STATE_TOPIC)
+        self.pubsub.unsubscribe(pubsub_topics.TRAJECTORY_PARAMS_LCM)
+        self.pubsub.unsubscribe(pubsub_topics.STATE_LCM)
 
     def _periodic_action_impl(self):
         """
@@ -162,10 +162,10 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received state.
         :return: deserialized State
         """
-        is_success, input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
+        is_success, input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_LCM, timeout=1)
         if input_state is None:
             raise MsgDeserializationError('LCM message queue for %s topic is empty or topic isn\'t subscribed',
-                                          pubsub_topics.STATE_TOPIC)
+                                          pubsub_topics.STATE_LCM)
         object_state = State.deserialize(input_state)
         self.logger.debug('%s: %s' % (LOG_MSG_RECEIVED_STATE, object_state))
         return object_state
@@ -177,16 +177,16 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-        is_success, input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_TOPIC, timeout=1)
+        is_success, input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_LCM, timeout=1)
         object_params = TrajectoryParams.deserialize(input_params)
         self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, object_params)
         return object_params
 
     def _publish_trajectory(self, results: TrajectoryPlanMsg) -> None:
-        self.pubsub.publish(pubsub_topics.TRAJECTORY_TOPIC, results.serialize())
+        self.pubsub.publish(pubsub_topics.TRAJECTORY_LCM, results.serialize())
 
     def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
-        self.pubsub.publish(pubsub_topics.TRAJECTORY_VISUALIZATION_TOPIC, debug_msg.serialize())
+        self.pubsub.publish(pubsub_topics.TRAJECTORY_VISUALIZATION_LCM, debug_msg.serialize())
 
     def _get_state_with_expected_ego(self, state: State) -> State:
         """

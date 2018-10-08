@@ -1,5 +1,5 @@
 from common_data.src.communication.pubsub.pubsub import PubSub
-from common_data.lcm.config import pubsub_topics
+from common_data.src.communication.middleware.pubsub import mw_pubsub_topics as pubsub_topics
 from decision_making.src.state.state import State
 from decision_making.src.state.state_module import StateModule
 from logging import Logger
@@ -20,5 +20,5 @@ class StateModuleMock(StateModule):
         super().__init__(pubsub=pubsub, logger=logger, dynamic_objects=None, ego_state=None, occupancy_state=None)
 
     def _periodic_action_impl(self):
-        self.pubsub.publish(pubsub_topics.STATE_TOPIC, self._state.serialize())
+        self.pubsub.publish(pubsub_topics.STATE_LCM, self._state.serialize())
 
