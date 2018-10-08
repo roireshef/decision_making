@@ -23,144 +23,198 @@ def jerk_time_weights_optimization():
     Output brief states coverage for all weights sets (number of invalid states for each weights set).
     Output detailed states coverage (3D grid of states) for the best weights set or compare two weights sets.
     """
-    # states ranges
-    v_step = 2
-    v0_range = np.arange(0, 18 + EPS, v_step)
-    vT_range = np.arange(0, 18 + EPS, v_step)
-    # a0_range = np.arange(-3, 2 + EPS, 1)
+    # states grid ranges
+    V_STEP = 2   # velocity step in the states grid
+    V_MAX = 18   # max velocity in the states grid
+    S_MIN = 10   # min distance between two objects in the states grid
+    S_MAX = 160  # max distance between two objects in the states grid
+
+    # weights grid ranges
+    W2_FROM = 0.01  # min of the range of w2 weight
+    W2_TILL = 0.16  # max of the range of w2 weight
+    W12_RATIO_FROM = 1.2  # min of the range of ratio w1/w2
+    W12_RATIO_TILL = 32   # max of the range of ratio w1/w2
+    W01_RATIO_FROM = 1.2  # min of the range of ratio w0/w1
+    W01_RATIO_TILL = 32   # max of the range of ratio w0/w1
+    GRID_RESOLUTION = 8   # the weights grid resolution
+
+    # create ranges of the grid of states
+    v0_range = np.arange(0, V_MAX + EPS, V_STEP)
+    vT_range = np.arange(0, V_MAX + EPS, V_STEP)
     a0_range = np.array([0])
-    s_range = np.arange(10, 160 + EPS, 10)
+    s_range = np.arange(S_MIN, S_MAX + EPS, 10)
 
-    #
-    # test a full range of weights (~8 minutes)
-    #
-    # w2_range = np.geomspace(0.01, 0.16, num=8)
-    # w12_range = np.geomspace(1.2, 32, num=8)
-    # w01_range = np.geomspace(1.2, 32, num=8)
-    # w01, w12, w2 = np.meshgrid(w01_range, w12_range, w2_range)
-    # w01, w12, w2 = np.ravel(w01), np.ravel(w12), np.ravel(w2)
-    # weights = np.c_[w01 * w12 * w2, w12 * w2, w2]
-
-    # w2_range = np.geomspace(0.072, 0.08, num=3)
-    # w12_range = np.geomspace(20, 30, num=6)
-    # w01_range = np.geomspace(5, 10, num=4)
-    # w01, w12, w2 = np.meshgrid(w01_range, w12_range, w2_range)
-    # w01, w12, w2 = np.ravel(w01), np.ravel(w12), np.ravel(w2)
-    # weights = np.c_[w01 * w12 * w2, w12 * w2, w2]
-
-    #
-    # compare a pair of weights sets (or test a single set)
-    #
-    # weights = np.array([[0.426, 0.139, 0.072], [8.5, 0.34, 0.08]])  # global maximum over sets vs. local max with high weights
-    # weights = np.array([BP_JERK_S_JERK_D_TIME_WEIGHTS[:, 0], [8.5, 0.34, 0.08]])  # original set vs. local max with high weights
-    # weights = np.array([[8.5, 0.34, 0.08], [16, 1.6, 0.08]])  # local max with high weights
-    weights = np.array([[12, 2, 0.01], [16, 1.6, 0.08]])
-
-    # create all states
+    # create the grid of states
     v0, vT, a0, s = np.meshgrid(v0_range, vT_range, a0_range, s_range)
     v0, vT, a0, s = np.ravel(v0), np.ravel(vT), np.ravel(a0), np.ravel(s)
+
+    # create grid of weights
+    test_full_range = False
+    if test_full_range:
+        # test a full range of weights (~8 minutes)
+        weights = create_full_range_of_weights(W2_FROM, W2_TILL, W12_RATIO_FROM, W12_RATIO_TILL,
+                                               W01_RATIO_FROM, W01_RATIO_TILL, GRID_RESOLUTION)
+    else:  # compare a pair of weights sets
+        weights = np.array([[8.5, 0.34, 0.08], [16, 1.6, 0.08]])
 
     # remove trivial states, for which T_s = 0
     non_trivial_states = np.where(~np.logical_and(np.isclose(v0, vT), np.isclose(vT * SPECIFICATION_MARGIN_TIME_DELAY, s)))
     v0, vT, a0, s = v0[non_trivial_states], vT[non_trivial_states], a0[non_trivial_states], s[non_trivial_states]
     states_num = v0.shape[0]
-    zeros = np.zeros(states_num)
     print('states num = %d' % (states_num))
 
     # the second dimension (of size 2) is for switching between min/max roots
-    is_good_state = np.full((weights.shape[0], 2, states_num), False)  # states that passed all limits & safety
-    T_s = np.zeros((weights.shape[0], 2, states_num, weights.shape[1]))
+    is_good_state = np.full((weights.shape[0], states_num), False)  # states that passed all limits & safety
+    T_s = np.zeros((weights.shape[0], states_num, weights.shape[1]))
 
     for wi, w in enumerate(weights):  # loop on weights' sets
-        vel_acc_in_limits = np.zeros((2, states_num, weights.shape[1]))
+        vel_acc_in_limits = np.zeros((states_num, weights.shape[1]))
         safe_actions = copy.deepcopy(vel_acc_in_limits)
         for aggr in range(3):  # loop on aggressiveness levels
-            cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
-                w_T=BP_JERK_S_JERK_D_TIME_WEIGHTS[aggr, 2], w_J=w[aggr], dx=s,
-                a_0=a0, v_0=v0, v_T=vT, T_m=SPECIFICATION_MARGIN_TIME_DELAY)
-            real_roots = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, np.inf]))
-            T_min = np.fmin.reduce(real_roots, axis=-1)
-            T_max = np.fmax.reduce(real_roots, axis=-1)
-            T_min[np.where(T_min == 0)] = 0.01  # prevent zero times
-            T_max[np.where(T_max == 0)] = 0.01  # prevent zero times
-            T_s[wi, 0, :, aggr] = T_min
-            T_s[wi, 1, :, aggr] = T_max
+            # calculate time horizon for all states
+            T_s[wi, :, aggr] = T = calculate_T_s(v0, vT, s, a0, BP_JERK_S_JERK_D_TIME_WEIGHTS[aggr, 2], w[aggr])
+            # calculate states validity wrt velocity & acceleration limits
+            vel_acc_in_limits[:, aggr], safe_actions[:, aggr] = check_action_validity(T, v0, vT, s, a0)
 
-            for minmax, T in enumerate([T_min, T_max]):  # switch between min/max roots
-                if minmax == 0:
-                    continue
-                A = QuinticPoly1D.time_constraints_tensor(T)
-                A_inv = np.linalg.inv(A)
-                constraints = np.c_[zeros, v0, a0, s + vT * (T - SPECIFICATION_MARGIN_TIME_DELAY), vT, zeros]
-                poly_coefs = QuinticPoly1D.zip_solve(A_inv, constraints)
-                # check acc & vel limits
-                poly_coefs[np.where(poly_coefs[:, 0] == 0), 0] = EPS
-                acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
-                vel_in_limits = QuinticPoly1D.are_velocities_in_limits(poly_coefs, T, VELOCITY_LIMITS)
-                vel_acc_in_limits[minmax, :, aggr] = np.logical_and(acc_in_limits, vel_in_limits)
-                # check safety
-                action_specs = [ActionSpec(t=T[i], v=vT[i], s=s[i], d=0) for i in range(states_num)]
-                safe_actions[minmax, :, aggr] = SafetyUtils.get_lon_safety_for_action_specs(poly_coefs, action_specs, 0)
-
+        # combine velocity & acceleration limits with time limits and safety, to obtain states validity
         time_in_limits = NumpyUtils.is_in_limits(T_s[wi], BP_ACTION_T_LIMITS)
         in_limits = np.logical_and(vel_acc_in_limits, np.logical_and(time_in_limits, safe_actions))
         is_good_state[wi] = in_limits.any(axis=-1)  # OR on aggressiveness levels
+        print('weight: %7.3f %.3f %.3f: failed %d' % (w[0], w[1], w[2], np.sum(~is_good_state[wi])))
 
-        print('weight: %7.3f %.3f %.3f: failed %d' % (w[0], w[1], w[2], np.sum(~is_good_state[wi, minmax])))
-        # for minmax, T in enumerate(T_s[wi]):
-        #   print('%s: total = %d; failed = %d' % ('min' if minmax == 0 else 'max', is_good_state.shape[-1], np.sum(~is_good_state[wi, minmax])))
+    if test_full_range:
+        # Monitor a quality of the best set of weights (maximal roots).
+        print_success_map_for_weights_set(v0_range, vT_range, s_range, v0, vT, s, is_good_state, weights)
+    else:
+        # Compare between two sets of weights (maximal roots).
+        print_comparison_between_two_weights_sets(v0_range, vT_range, s_range, v0, vT, s, is_good_state)
 
-    good_min = is_good_state[:, 0]  # successes of states for min roots
-    good_max = is_good_state[:, 1]  # successes of states for max roots
-    best_min_wi = np.argmax(np.sum(good_min, axis=-1))
-    best_max_wi = np.argmax(np.sum(good_max, axis=-1))
-    best_min = good_min[best_min_wi]
-    best_max = good_max[best_max_wi]
-    failed_min = np.sum(~best_min)
-    failed_max = np.sum(~best_max)
-    print('best weights for min: %s; failed %d (%.2f)' % (weights[best_min_wi], failed_min, float(failed_min)/is_good_state.shape[-1]))
-    print('best weights for max: %s; failed %d (%.2f)' % (weights[best_max_wi], failed_max, float(failed_max)/is_good_state.shape[-1]))
-    # how many states work for min_roots and don't work for max_roots
-    print('min worked, max failed: %d' % np.sum(best_min & ~best_max))
 
-    # print('\nList of states that failed for the best set of weights (max roots):')
-    # for i, b in enumerate(good_max[best_max]):
-    #     if not b:
-    #         print([v0[i], vT[i], a0[i], s[i], T_s[best_max, 1, i, 0], T_s[best_max, 1, i, 1], T_s[best_max, 1, i, 2]])
+def create_full_range_of_weights(w2_from: float, w2_till: float, w12_ratio_from: float, w12_ratio_till: float,
+                                 w01_ratio_from: float, w01_ratio_till: float, resolution: int) -> np.array:
+    """
+    Create grid of full range of weights (the full optimization runs ~8 minutes)
+    :param w2_from: min of the range of w2 weight
+    :param w2_till: max of the range of w2 weight
+    :param w12_ratio_from: min of the range of ratio w1/w2
+    :param w12_ratio_till: max of the range of ratio w1/w2
+    :param w01_ratio_from: min of the range of ratio w0/w1
+    :param w01_ratio_till: max of the range of ratio w0/w1
+    :param resolution: the weights grid resolution
+    :return: grid of weights: 3D matrix of shape resolution x resolution x resolution
+    """
+    w2_range = np.geomspace(w2_from, w2_till, num=resolution)
+    w12_range = np.geomspace(w12_ratio_from, w12_ratio_till, num=resolution)
+    w01_range = np.geomspace(w01_ratio_from, w01_ratio_till, num=resolution)
+    w01, w12, w2 = np.meshgrid(w01_range, w12_range, w2_range)
+    w01, w12, w2 = np.ravel(w01), np.ravel(w12), np.ravel(w2)
+    weights = np.c_[w01 * w12 * w2, w12 * w2, w2]
+    return weights
 
-    # list of states that worked for min_roots and didn't work for max_roots
-    print('\nmin worked, max failed')
-    for i in np.where(~best_max & best_min)[0]:
-        print([v0[i], vT[i], a0[i], s[i]])
 
-    #
-    # Use for monitoring a quality of the best set of weights (maximal roots).
-    # Print tables (vT x s) for the best weights per v0
-    #
+def calculate_T_s(v0_grid: np.array, vT_grid: np.array, s_grid: np.array, a0_grid: np.array,
+                  time_weights: np.array, jerk_weights: np.array) -> np.array:
+    """
+    Given time-jerk weights and v0, vT, s grids, calculate T_s minimizing the cost function.
+    :param v0_grid: v0 of meshgrid of v0_range, vT_range, s_range
+    :param vT_grid: vT of meshgrid of v0_range, vT_range, s_range
+    :param a0_grid: initial acceleration of meshgrid of v0_range, vT_range, s_range
+    :param s_grid: s of meshgrid of v0_range, vT_range, s_range
+    :param jerk_weights:
+    :return: array of optimal T_s (time horizon) for every state from the grid (v0, vT, a0, s)
+    """
+    cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
+        w_T=time_weights, w_J=jerk_weights, dx=s_grid,
+        a_0=a0_grid, v_0=v0_grid, v_T=vT_grid, T_m=SPECIFICATION_MARGIN_TIME_DELAY)
+    real_roots = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, np.inf]))
+    T_s = np.fmax.reduce(real_roots, axis=-1)
+    T_s[np.where(T_s == 0)] = 0.01  # prevent zero times
+    return T_s
+
+
+def check_action_validity(T: np.array, v0_grid: np.array, vT_grid: np.array, s_grid: np.array, a0_grid: np.array) -> \
+        [np.array, np.array]:
+    """
+    Given time horizon T (T_s) and grid of states, calculate validity wrt velocity & acceleration limits,
+    and safety of each state.
+    :param T: optimal T_s for every grid state
+    :param v0_grid: v0 of meshgrid of v0_range, vT_range, s_range
+    :param vT_grid: vT of meshgrid of v0_range, vT_range, s_range
+    :param a0_grid: initial acceleration of meshgrid of v0_range, vT_range, s_range
+    :param s_grid: s of meshgrid of v0_range, vT_range, s_range
+    :return: two boolean arrays: (1) is in limits of velocity & acceleration, (2) is the baseline trajectory safe
+    """
+    zeros = np.zeros(v0_grid.shape[0])
+    A = QuinticPoly1D.time_constraints_tensor(T)
+    A_inv = np.linalg.inv(A)
+    constraints = np.c_[zeros, v0_grid, a0_grid, s_grid + vT_grid * (T - SPECIFICATION_MARGIN_TIME_DELAY), vT_grid, zeros]
+    poly_coefs = QuinticPoly1D.zip_solve(A_inv, constraints)
+    # check acc & vel limits
+    poly_coefs[np.where(poly_coefs[:, 0] == 0), 0] = EPS
+    acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
+    vel_in_limits = QuinticPoly1D.are_velocities_in_limits(poly_coefs, T, VELOCITY_LIMITS)
+    is_in_limits = np.logical_and(acc_in_limits, vel_in_limits)
+    # check safety
+    action_specs = [ActionSpec(t=T[i], v=vT_grid[i], s=s_grid[i], d=0) for i in range(v0_grid.shape[0])]
+    is_safe = SafetyUtils.get_lon_safety_for_action_specs(poly_coefs, action_specs, 0)
+    return is_in_limits, is_safe
+
+
+def print_success_map_for_weights_set(v0_range: np.array, vT_range: np.array, s_range: np.array,
+                                      v0_grid: np.array, vT_grid: np.array, s_grid: np.array,
+                                      is_valid_state: np.array, weights: np.array):
+    """
+    Use for monitoring a quality of the best set of weights (maximal roots).
+    Print tables (vT x s) for the best weights per v0
+    :param v0_range: v0 values in the 3D grid
+    :param vT_range: vT values in the 3D grid
+    :param s_range:  s values in the 3D grid
+    :param v0_grid: v0 of meshgrid of v0_range, vT_range, s_range
+    :param vT_grid: vT of meshgrid of v0_range, vT_range, s_range
+    :param s_grid: s of meshgrid of v0_range, vT_range, s_range
+    :param is_valid_state: boolean array: True if the state is valid (complies all thresholds & safety)
+    """
+    best_wi = np.argmax(np.sum(is_valid_state, axis=-1))
+    failed_num = np.sum(~is_valid_state[best_wi])
+    print('best weights for max: %s; failed %d (%.2f)' % (weights[best_wi], failed_num, float(failed_num)/is_valid_state.shape[-1]))
+
     for v0_fixed in v0_range:
         success_map = np.ones((vT_range.shape[0], s_range.shape[0]))
-        for i, b in enumerate(good_max[best_max_wi]):
-            if v0[i] == v0_fixed and not b:
-                success_map[np.argwhere(vT_range == vT[i]), np.argwhere(s_range == s[i])] = b
+        for i, b in enumerate(is_valid_state[best_wi]):
+            if v0_grid[i] == v0_fixed and not b:
+                success_map[np.argwhere(vT_range == vT_grid[i]), np.argwhere(s_range == s_grid[i])] = b
         print('v0_fixed = %d' % v0_fixed)
         print(success_map.astype(int))
 
-    #
-    # Use for comparison between two sets of weights (maximal roots).
-    # Print tables (vT x s) for weights[1] relatively to weights[0] per v0.
-    # Each value in the table means:
-    #    1: weights[1] is better than weights[0] for this state
-    #   -1: weights[1] is worse than weights[0] for this state
-    #    0: weights[1] is like weights[0] for this state
-    #
-    # for v0_fixed in v0_range:
-    #     success_map = np.zeros((vT_range.shape[0], s_range.shape[0]))
-    #     for i in range(states_num):  # loop over states' successes for weights[0]
-    #         if v0[i] == v0_fixed:
-    #             success_map[np.argwhere(vT_range == vT[i]), np.argwhere(s_range == s[i])] = \
-    #                 (good_max[1, i].astype(int) - good_max[0, i].astype(int))  # diff between the two weights qualities
-    #     print('v0_fixed = %d' % v0_fixed)
-    #     print(success_map.astype(int))
+
+def print_comparison_between_two_weights_sets(v0_range: np.array, vT_range: np.array, s_range: np.array,
+                                              v0_grid: np.array, vT_grid: np.array, s_grid: np.array,
+                                              is_valid_state: np.array):
+    """
+    Use for comparison between two sets of weights (maximal roots).
+    Print tables (vT x s) for weights1 relatively to weights0 per v0.
+    Each value in the table means:
+       1: weights1 is better than weights0 for this state
+      -1: weights1 is worse than weights0 for this state
+       0: weights1 is like weights0 for this state
+    :param v0_range: v0 values in the 3D grid
+    :param vT_range: vT values in the 3D grid
+    :param s_range:  s values in the 3D grid
+    :param v0_grid: v0 of meshgrid of v0_range, vT_range, s_range
+    :param vT_grid: vT of meshgrid of v0_range, vT_range, s_range
+    :param s_grid: s of meshgrid of v0_range, vT_range, s_range
+    :param is_valid_state_w1: boolean array: True if the state is valid for weights1 (complies all thresholds & safety)
+    :param is_valid_state_w0: boolean array: True if the state is valid for weights0 (complies all thresholds & safety)
+    """
+    print('Comparison:')
+    for v0_fixed in v0_range:
+        success_map = np.zeros((vT_range.shape[0], s_range.shape[0]))
+        for i in range(v0_grid.shape[0]):  # loop over states' successes for weights[0]
+            if v0_grid[i] == v0_fixed:
+                success_map[np.argwhere(vT_range == vT_grid[i]), np.argwhere(s_range == s_grid[i])] = \
+                    (is_valid_state[1, i].astype(int) - is_valid_state[0, i].astype(int))  # diff between the two weights qualities
+        print('v0_fixed = %d' % v0_fixed)
+        print(success_map.astype(int))
 
 
 def calc_braking_quality_and_print_graphs():
