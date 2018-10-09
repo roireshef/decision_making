@@ -7,6 +7,7 @@ from decision_making.src.state.state import EgoState, ObjectSize, DynamicObject,
 
 
 class SceneUtils:
+
     @staticmethod
     def get_state_from_scene(scene: SceneMessage):
 
@@ -52,3 +53,25 @@ class SceneUtils:
 
         return State(occupancy_state=OccupancyState(0, np.array([0]), np.array([0])),
                      dynamic_objects=dynamic_objects, ego_state=ego_state)
+
+    @staticmethod
+    def get_cartesian_point_lane_index(x: float, y: float):
+        """
+        returns the lane id containing the cartesian point [x,y]
+        :param x: [float]
+        :param y: [float]
+        :return: lane id [int]
+        """
+        # TODO: replace later
+        return 0
+
+    @staticmethod
+    def get_lane_num(lane_id: int):
+        """
+        returns the lane number based on the lane id.
+        :param lane_id: int
+        :return: lane number [int]
+        """
+        # TODO: replace later
+        return 0
+
