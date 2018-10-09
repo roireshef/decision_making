@@ -226,23 +226,19 @@ def calc_braking_quality_and_print_graphs():
     MetricLogger.init('VelProfiles')
     ml = MetricLogger.get_logger()
 
-    v0_from = 4
-    v0_till = 18
-    vT_from = 0
-    vT_till_rel = -2
-    v_step = 4
-    s_from = 40  # 40
-    s_till = 100  # 100
-    a0 = 0.
-    w_J_list = [np.array([16, 1.6, 0.08]), np.array([8.5, 0.34, 0.08])]
-    # w_J_list = [np.array([12, 2, 0.01]), np.array([16.9, 3.446, 0.108])]
-    # w_J_list = [np.array([12, 2, 0.01]), np.array([10.565, 2.155, 0.108])]
-    # w_J_list = [np.array([12, 2, 0.01]), np.array([11.364, 1.451, 0.072])]
-    # w_J_list = [np.array([12, 2, 0.01]), np.array([12.7, 1.6, 0.08])]
-    # w_J_list = [np.array([8.5, 0.34, 0.08]), np.array([11.364, 1.451, 0.072])]
-    # w_J_list = [np.array([12, 2, 0.01]), np.array([16, 1.6, 0.08])]
+    V0_FROM = 4
+    V0_TILL = 18
+    VT_FROM = 0
+    VT_TILL_RELATIVE = -2  # terminal velocity - initial velocity
+    V_STEP = 4
+    S_FROM = 40  # 40
+    S_TILL = 100  # 100
+    A0 = 0.
 
-    zeros = np.zeros(3)
+    # jerk weights list
+    w_J_list = [np.array([16, 1.6, 0.08]), np.array([8.5, 0.34, 0.08])]
+
+    zeros3 = np.zeros(3)
 
     all_acc_samples = {}
     acc_rate = {}
@@ -253,21 +249,23 @@ def calc_braking_quality_and_print_graphs():
     old_states = []
     old_rates_sum = new_rates_sum = 0
 
+    # loop on all jerk weights, initial and terminal velocities (v0, vT) and distances between two objects (s);
+    # calculate velocity / acceleration profile for each state in the grid
     for wi, w_J in enumerate(w_J_list):
-        for v0 in np.arange(v0_from, v0_till+EPS, v_step):
-            for vT in np.arange(vT_from, v0 + vT_till_rel + EPS, v_step):
-                for s in np.arange(s_from, s_till+EPS, 10):
+        for v0 in np.arange(V0_FROM, V0_TILL+EPS, V_STEP):
+            for vT in np.arange(VT_FROM, v0 + VT_TILL_RELATIVE + EPS, V_STEP):
+                for s in np.arange(S_FROM, S_TILL+EPS, 10):
 
                     cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
-                        w_T=BP_JERK_S_JERK_D_TIME_WEIGHTS[:, 2], w_J=w_J, dx=s, a_0=a0, v_0=v0, v_T=vT,
+                        w_T=BP_JERK_S_JERK_D_TIME_WEIGHTS[:, 2], w_J=w_J, dx=s, a_0=A0, v_0=v0, v_T=vT,
                         T_m=SPECIFICATION_MARGIN_TIME_DELAY)
                     real_roots = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, np.inf]))
                     T = np.fmax.reduce(real_roots, axis=-1)
 
                     A = QuinticPoly1D.time_constraints_tensor(T)
                     A_inv = np.linalg.inv(A)
-                    constraints = np.c_[zeros, v0 + zeros, a0 + zeros, s + vT * (T - SPECIFICATION_MARGIN_TIME_DELAY),
-                                        vT + zeros, zeros]
+                    constraints = np.c_[zeros3, v0 + zeros3, A0 + zeros3, s + vT * (T - SPECIFICATION_MARGIN_TIME_DELAY),
+                                        vT + zeros3, zeros3]
                     poly_coefs = QuinticPoly1D.zip_solve(A_inv, constraints)
                     # check acc & vel limits
                     acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
