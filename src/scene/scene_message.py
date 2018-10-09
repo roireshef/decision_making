@@ -127,7 +127,7 @@ class SceneMessage:
     def __init__(self, timestamp_sec: float, perception_horizon_front_m: float, perception_horizon_rear_m: float,
                  road_segment_count: int, road_segment: List[RoadSegment], lane_segment_count: int,
                  lane_segment: List[LaneSegment], host_localization: HostLocalization,
-                 object_count: int, object_localization: List[ObjectLocalization],
+                 object_count: int, object_localizations: List[ObjectLocalization],
                  road_intersection_count: int, road_intersection: List[RoadIntersection]):
         self.timestamp_sec = timestamp_sec
         self.perception_horizon_front_m = perception_horizon_front_m
@@ -138,6 +138,6 @@ class SceneMessage:
         self.lane_segment = lane_segment
         self.host_localization = host_localization
         self.object_count = object_count
-        self.object_localization = object_localization
+        self.object_localizations = object_localizations
         self.road_intersection_count = road_intersection_count
         self.road_intersection = road_intersection
