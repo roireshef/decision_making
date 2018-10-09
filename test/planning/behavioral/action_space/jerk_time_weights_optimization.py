@@ -74,7 +74,7 @@ def jerk_time_weights_optimization():
             # calculate time horizon for all states
             T_s[wi, :, aggr] = T = calculate_T_s(v0, vT, s, a0, BP_JERK_S_JERK_D_TIME_WEIGHTS[aggr, 2], w[aggr])
             # calculate states validity wrt velocity & acceleration limits
-            vel_acc_in_limits[:, aggr], safe_actions[:, aggr] = check_action_validity(T, v0, vT, s, a0)
+            vel_acc_in_limits[:, aggr], safe_actions[:, aggr], _ = check_action_validity(T, v0, vT, s, a0)
 
         # combine velocity & acceleration limits with time limits and safety, to obtain states validity
         time_in_limits = NumpyUtils.is_in_limits(T_s[wi], BP_ACTION_T_LIMITS)
@@ -156,8 +156,8 @@ def check_action_validity(T: np.array, v0_grid: np.array, vT_grid: np.array, s_g
     is_in_limits = np.logical_and(acc_in_limits, vel_in_limits)
     # check safety
     action_specs = [ActionSpec(t=T[i], v=vT_grid[i], s=s_grid[i], d=0) for i in range(v0_grid.shape[0])]
-    is_safe = SafetyUtils.get_lon_safety_for_action_specs(poly_coefs, action_specs, 0)
-    return is_in_limits, is_safe
+    is_safe = get_lon_safety_for_action_specs(poly_coefs, action_specs, 0)
+    return is_in_limits, is_safe, poly_coefs
 
 
 def print_success_map_for_weights_set(v0_range: np.array, vT_range: np.array, s_range: np.array,
@@ -233,94 +233,52 @@ def calc_braking_quality_and_print_graphs():
     V_STEP = 4
     S_FROM = 40  # 40
     S_TILL = 100  # 100
-    A0 = 0.
+
+    a0 = 0.
 
     # jerk weights list
-    w_J_list = [np.array([16, 1.6, 0.08]), np.array([8.5, 0.34, 0.08])]
-
-    zeros3 = np.zeros(3)
+    jerk_weights_list = [np.array([16, 1.6, 0.08]), np.array([8.5, 0.34, 0.08])]
 
     all_acc_samples = {}
     acc_rate = {}
     all_T_s = {}
-    failure_reason = {}
-
-    new_states = []
-    old_states = []
-    old_rates_sum = new_rates_sum = 0
 
     # loop on all jerk weights, initial and terminal velocities (v0, vT) and distances between two objects (s);
     # calculate velocity / acceleration profile for each state in the grid
-    for wi, w_J in enumerate(w_J_list):
+    for wi, w_J in enumerate(jerk_weights_list):
         for v0 in np.arange(V0_FROM, V0_TILL+EPS, V_STEP):
             for vT in np.arange(VT_FROM, v0 + VT_TILL_RELATIVE + EPS, V_STEP):
                 for s in np.arange(S_FROM, S_TILL+EPS, 10):
+                    for aggr in range(3):  # loop on aggressiveness levels
+                        # check if the state is valid
+                        T = calculate_T_s(v0, vT, s, a0, BP_JERK_S_JERK_D_TIME_WEIGHTS[aggr, 2], w_J[aggr])
+                        vel_acc_in_limits, is_safe, poly_coefs = \
+                            check_action_validity(T, np.array([v0]), np.array([vT]), np.array([s]), np.array([a0]))
+                        time_in_limits = NumpyUtils.is_in_limits(T, BP_ACTION_T_LIMITS)
+                        is_valid_state = vel_acc_in_limits[0] and time_in_limits[0] and is_safe[0]
 
-                    cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
-                        w_T=BP_JERK_S_JERK_D_TIME_WEIGHTS[:, 2], w_J=w_J, dx=s, a_0=A0, v_0=v0, v_T=vT,
-                        T_m=SPECIFICATION_MARGIN_TIME_DELAY)
-                    real_roots = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, np.inf]))
-                    T = np.fmax.reduce(real_roots, axis=-1)
+                        if is_valid_state:
+                            # calculate velocity & acceleration profile
+                            times = np.arange(0, T[0] + EPS, 0.1)
+                            vel_poly = Math.polyder2d(poly_coefs, m=1)
+                            acc_poly = Math.polyder2d(poly_coefs, m=2)
+                            vel_samples = Math.polyval2d(vel_poly, times)[0]
+                            acc_samples = Math.polyval2d(acc_poly, times)[0]
 
-                    A = QuinticPoly1D.time_constraints_tensor(T)
-                    A_inv = np.linalg.inv(A)
-                    constraints = np.c_[zeros3, v0 + zeros3, A0 + zeros3, s + vT * (T - SPECIFICATION_MARGIN_TIME_DELAY),
-                                        vT + zeros3, zeros3]
-                    poly_coefs = QuinticPoly1D.zip_solve(A_inv, constraints)
-                    # check acc & vel limits
-                    acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
-                    vel_in_limits = QuinticPoly1D.are_velocities_in_limits(poly_coefs, T, VELOCITY_LIMITS)
-                    vel_acc_in_limits = np.logical_and(acc_in_limits, vel_in_limits)
-                    # check safety
-                    action_specs = [ActionSpec(t=T[aggr], v=vT, s=s, d=0) for aggr in range(3)]
-                    safe_actions = SafetyUtils.get_lon_safety_for_action_specs(poly_coefs, action_specs, 0)
-
-                    time_in_limits = NumpyUtils.is_in_limits(T, BP_ACTION_T_LIMITS)
-                    valid_state = np.logical_and(vel_acc_in_limits, np.logical_and(time_in_limits, safe_actions))
-
-                    for ag in range(3):
-                        if valid_state[ag]:  # OR on aggressiveness levels
-                            T_s = T[ag]
-                            times = np.arange(0, T_s + EPS, 0.1)
-                            vel_poly = Math.polyder2d(poly_coefs[ag][np.newaxis], m=1)[0]
-                            acc_poly = Math.polyder2d(poly_coefs[ag][np.newaxis], m=2)[0]
-                            vel_samples = Math.polyval2d(vel_poly[np.newaxis], times)[0]
-                            acc_samples = Math.polyval2d(acc_poly[np.newaxis], times)[0]
-
-                            all_T_s[(wi, v0, vT, s, ag)] = T_s
-                            all_acc_samples[(wi, v0, vT, s, ag)] = acc_samples
+                            # calculate acceleration profile rate (late braking gets higher rate than early braking)
+                            all_T_s[(wi, v0, vT, s, aggr)] = T[0]
+                            all_acc_samples[(wi, v0, vT, s, aggr)] = acc_samples
                             rate = rate_acceleration_quality(acc_samples)
-                            acc_rate[(wi, v0, vT, s, ag)] = rate
-                            if wi == 1:
-                                new_states.append((v0, vT, s, ag))
-                                new_rates_sum += rate
-                            else:
-                                old_states.append((v0, vT, s, ag))
-                                old_rates_sum += rate
+                            acc_rate[(wi, v0, vT, s, aggr)] = rate
 
-                            key_str = str(wi) + '_' + str(v0) + '_' + str(vT) + '_' + str(s) + '_' + str(ag)
+                            # add velocity & acceleration profile to the metric logger
+                            print('wi=%d v0=%.2f vT=%.2f s=%.2f aggr=%d' % (wi, v0, vT, s, aggr))
+                            key_str = str(wi) + '_' + str(v0) + '_' + str(vT) + '_' + str(s) + '_' + str(aggr)
                             ml.bind(key_str=key_str)
-                            ml.bind(w=wi, v0=v0, vT=vT, s=s, ag=ag)
+                            ml.bind(w=wi, v0=v0, vT=vT, s=s, ag=aggr)
                             for i, acc in enumerate(acc_samples):
-                                print('wi=%d; time=%.2f' % (wi, times[i]))
                                 ml.bind(time=times[i], vel_sample=vel_samples[i], acc_sample=acc)
                                 ml.report()
-
-                            # if wi == 1 and (0, v0, vT, s, ag) in acc_rate and rate > 0.5 and acc_rate[(0, v0, vT, s, ag)] < rate:
-                            #     worsen_rates.append([acc_rate[(0, v0, vT, s, ag)], acc_rate[(1, v0, vT, s, ag)]])
-                            #     worsen_states.append((v0, vT, s, ag))
-
-                        elif wi == 1:
-                            if not acc_in_limits[ag]:
-                                failure_reason[(v0, vT, s, ag)] = "acc"
-                            elif not vel_in_limits[ag]:
-                                failure_reason[(v0, vT, s, ag)] = "vel"
-                            elif T[ag] < 2:
-                                failure_reason[(v0, vT, s, ag)] = "short"
-                            elif T[ag] > 20:
-                                failure_reason[(v0, vT, s, ag)] = "long"
-                            else:
-                                failure_reason[(v0, vT, s, ag)] = "unsafe"
 
 
 def rate_acceleration_quality(acc_samples: np.array) -> float:
@@ -337,51 +295,51 @@ def rate_acceleration_quality(acc_samples: np.array) -> float:
     return cum_acceleration_time / (cum_acceleration * len(acc_samples))
 
 
+def get_lon_safety_for_action_specs(poly_coefs: np.array, action_specs: List[ActionSpec],
+                                    cars_size_margin: float) -> np.array:
+    """
+    Given polynomial coefficients and action specs for each polynomial, calculate longitudinal safety
+    w.r.t. the front cars with constant velocities, described by the specs.
+    :param poly_coefs: 2D matrix Nx6: N quintic polynomials of ego
+    :param action_specs: list of N action specs
+    :param cars_size_margin: sum of half sizes of the cars
+    :return: boolean array of size N: longitudinal safety for each spec
+    """
+    assert poly_coefs.shape[0] == len(action_specs)
+    specs_arr = np.array([[spec.t, spec.s, spec.v] for spec in action_specs])
+    t_arr, s_arr, v_arr = np.split(specs_arr, 3, axis=1)
+    time_samples = np.arange(0, np.max(t_arr) + EPS, TRAJECTORY_TIME_RESOLUTION)
+
+    # sample polynomials and create ftrajectories_s
+    trajectories_s = Poly1D.polyval_with_derivatives(poly_coefs, time_samples)
+    ego_trajectories = [trajectory[0:int(t_arr[i] / TRAJECTORY_TIME_RESOLUTION) + 1]
+                        for i, trajectory in enumerate(trajectories_s)]
+
+    obj_trajectories = [np.c_[v_arr[i] * SPECIFICATION_MARGIN_TIME_DELAY + cars_size_margin +
+                              np.linspace(s_arr[i], s_arr[i] + v_arr[i] * t_arr[i] + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT,
+                                          len(ego_trajectory)),
+               np.full(len(ego_trajectory), v_arr[i]), np.zeros(len(ego_trajectory))]
+         for i, ego_trajectory in enumerate(ego_trajectories)]
+
+    # concatenate all trajectories to a single long trajectory
+    ego_trajectory = np.concatenate(ego_trajectories)
+    obj_trajectory = np.concatenate(obj_trajectories)
+
+    # calc longitudinal RSS for the long trajectory
+    safe_times = SafetyUtils._get_lon_safety(ego_trajectory, SAFETY_MARGIN_TIME_DELAY,
+                                             obj_trajectory, SPECIFICATION_MARGIN_TIME_DELAY, cars_size_margin)
+
+    # split the safety results according to the original trajectories
+    trajectories_lengths = [len(trajectory) for trajectory in ego_trajectories]
+    safe_times = np.split(safe_times, np.cumsum(trajectories_lengths[:-1]))
+    # AND on all time samples
+    safe_specs = [spec_safety.all() for spec_safety in safe_times]
+    return np.array(safe_specs)
+
+
 LON_SAFETY_ACCEL_DURING_DELAY = 3
 
 class SafetyUtils:
-
-    @staticmethod
-    def get_lon_safety_for_action_specs(poly_coefs: np.array, action_specs: List[ActionSpec],
-                                        cars_size_margin: float) -> np.array:
-        """
-        Given polynomial coefficients and action specs for each polynomial, calculate longitudinal safety
-        w.r.t. the front cars with constant velocities, described by the specs.
-        :param poly_coefs: 2D matrix Nx6: N quintic polynomials of ego
-        :param action_specs: list of N action specs
-        :param cars_size_margin: sum of half sizes of the cars
-        :return: boolean array of size N: longitudinal safety for each spec
-        """
-        assert poly_coefs.shape[0] == len(action_specs)
-        specs_arr = np.array([[spec.t, spec.s, spec.v] for spec in action_specs])
-        t_arr, s_arr, v_arr = np.split(specs_arr, 3, axis=1)
-        time_samples = np.arange(0, np.max(t_arr) + EPS, TRAJECTORY_TIME_RESOLUTION)
-
-        # sample polynomials and create ftrajectories_s
-        trajectories_s = Poly1D.polyval_with_derivatives(poly_coefs, time_samples)
-        ego_trajectories = [trajectory[0:int(t_arr[i] / TRAJECTORY_TIME_RESOLUTION) + 1]
-                            for i, trajectory in enumerate(trajectories_s)]
-
-        obj_trajectories = [np.c_[v_arr[i] * SPECIFICATION_MARGIN_TIME_DELAY + cars_size_margin +
-                                  np.linspace(s_arr[i], s_arr[i] + v_arr[i] * t_arr[i] + LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT,
-                                              len(ego_trajectory)),
-                   np.full(len(ego_trajectory), v_arr[i]), np.zeros(len(ego_trajectory))]
-             for i, ego_trajectory in enumerate(ego_trajectories)]
-
-        # concatenate all trajectories to a single long trajectory
-        ego_trajectory = np.concatenate(ego_trajectories)
-        obj_trajectory = np.concatenate(obj_trajectories)
-
-        # calc longitudinal RSS for the long trajectory
-        safe_times = SafetyUtils._get_lon_safety(ego_trajectory, SAFETY_MARGIN_TIME_DELAY,
-                                                 obj_trajectory, SPECIFICATION_MARGIN_TIME_DELAY, cars_size_margin)
-
-        # split the safety results according to the original trajectories
-        trajectories_lengths = [len(trajectory) for trajectory in ego_trajectories]
-        safe_times = np.split(safe_times, np.cumsum(trajectories_lengths[:-1]))
-        # AND on all time samples
-        safe_specs = [spec_safety.all() for spec_safety in safe_times]
-        return np.array(safe_specs)
 
     @staticmethod
     def _get_lon_safety(ego_trajectories: FrenetTrajectories2D, ego_response_time: float,
@@ -430,3 +388,4 @@ class SafetyUtils:
 
 if __name__ == '__main__':
     jerk_time_weights_optimization()
+    #calc_braking_quality_and_print_graphs()
