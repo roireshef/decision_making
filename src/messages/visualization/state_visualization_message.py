@@ -1,5 +1,5 @@
 from decision_making.src.state.state import State
-from common_data.src.communication.middleware.idl_generated_files.sub_structures import LcmStateVisualizationMsg
+from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmStateVisualizationMsg
 
 
 class StateVisualizationMsg:

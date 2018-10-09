@@ -1,7 +1,7 @@
 import numpy as np
 
-from common_data.src.communication.middleware.idl_generated_files.sub_structures import LcmNumpyArray
-from common_data.src.communication.middleware.idl_generated_files import LcmTrajectoryData
+from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmNumpyArray
+from common_data.interface.py.idl_generated_files.dm import LcmTrajectoryData
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 

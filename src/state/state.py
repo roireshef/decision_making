@@ -3,12 +3,12 @@ from typing import List, Optional
 
 import numpy as np
 
-from common_data.src.communication.middleware.idl_generated_files.sub_structures import LcmDynamicObject
-from common_data.src.communication.middleware.idl_generated_files.sub_structures import LcmEgoState
-from common_data.src.communication.middleware.idl_generated_files.sub_structures import LcmNonTypedNumpyArray
-from common_data.src.communication.middleware.idl_generated_files.sub_structures import LcmObjectSize
-from common_data.src.communication.middleware.idl_generated_files.sub_structures import LcmOccupancyState
-from common_data.src.communication.middleware.idl_generated_files import LcmState
+from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmDynamicObject
+from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmEgoState
+from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmNonTypedNumpyArray
+from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmObjectSize
+from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmOccupancyState
+from common_data.interface.py.idl_generated_files.dm import LcmState
 
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC

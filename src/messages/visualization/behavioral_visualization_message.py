@@ -1,7 +1,7 @@
 import numpy as np
 
-from common_data.src.communication.middleware.idl_generated_files import LcmBehavioralVisualizationMsg
-from common_data.src.communication.middleware.idl_generated_files.sub_structures import LcmNonTypedNumpyArray
+from common_data.interface.py.idl_generated_files.dm import LcmBehavioralVisualizationMsg
+from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmNonTypedNumpyArray
 from decision_making.src.planning.types import CartesianPath2D
 
 

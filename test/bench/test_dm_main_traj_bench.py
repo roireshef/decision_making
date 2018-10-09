@@ -4,9 +4,10 @@ from multiprocessing import Process
 
 import time
 
+from common_data.interface.py.pubsub.dm_pubsub_topics import PubSubMessageTypes
 from common_data.lcm.config import config_defs
 from common_data.lcm.config.pubsub_topics import PERCEIVED_SELF_LOCALIZATION_TOPIC, TRAJECTORY_TOPIC
-from common_data.src.communication.middleware.idl_generated_files import LcmPerceivedSelfLocalization
+from common_data.interface.py.idl_generated_files.dm import LcmPerceivedSelfLocalization
 from common_data.lcm.python.Communication.lcmpubsub import LcmPubSub
 from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from decision_making.paths import Paths
@@ -29,7 +30,7 @@ def test_DMMainTraj_Bench_SingleLocalizationMessage_TrajectoryOutput():
     localization_msg.location.y = start_y
 
     #create pubsub and subscribe a magic mock to the perceived localization topic
-    pubsub = create_pubsub()
+    pubsub = create_pubsub(PubSubMessageTypes)
     receive_output_mock = MagicMock()
     pubsub.subscribe(TRAJECTORY_TOPIC, receive_output_mock)
 

@@ -4,8 +4,8 @@ from typing import List
 from decision_making.src.planning.types import CartesianPath2D, CartesianExtendedTrajectories
 from decision_making.src.state.state import State
 
-from common_data.src.communication.middleware.idl_generated_files.sub_structures import LcmNonTypedNumpyArray
-from common_data.src.communication.middleware.idl_generated_files import LcmTrajectoryVisualizationMsg
+from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmNonTypedNumpyArray
+from common_data.interface.py.idl_generated_files.dm import LcmTrajectoryVisualizationMsg
 
 
 class TrajectoryVisualizationMsg:

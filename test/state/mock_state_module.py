@@ -1,5 +1,5 @@
 from common_data.src.communication.pubsub.pubsub import PubSub
-from common_data.src.communication.middleware.pubsub import mw_pubsub_topics as pubsub_topics
+from common_data.interface.py.pubsub import dm_pubsub_topics as pubsub_topics
 from decision_making.src.state.state import State
 from decision_making.src.state.state_module import StateModule
 from logging import Logger

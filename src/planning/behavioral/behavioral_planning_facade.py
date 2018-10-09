@@ -4,7 +4,7 @@ from logging import Logger
 
 import numpy as np
 
-from common_data.src.communication.middleware.pubsub import mw_pubsub_topics as pubsub_topics
+from common_data.interface.py.pubsub import dm_pubsub_topics as pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \

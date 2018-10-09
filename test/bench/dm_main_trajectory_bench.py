@@ -2,6 +2,7 @@ from os import getpid
 
 import numpy as np
 
+from common_data.interface.py.pubsub.dm_pubsub_topics import PubSubMessageTypes
 from common_data.lcm.config import config_defs
 from common_data.lcm.python.Communication.lcmpubsub import LcmPubSub
 from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
@@ -46,7 +47,7 @@ class DmMockInitialization:
     #for a dynamic object update.
     def create_state_module() -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
-        pubsub = create_pubsub()
+        pubsub = create_pubsub(PubSubMessageTypes)
         MapService.initialize()
         #TODO: figure out if we want to use OccupancyState at all
         default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
@@ -58,7 +59,7 @@ class DmMockInitialization:
     @staticmethod
     def create_trajectory_planner(fixed_trajectory_file: str = None) -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
-        pubsub = create_pubsub()
+        pubsub = create_pubsub(PubSubMessageTypes)
 
         # Init map
         MapService.initialize()
