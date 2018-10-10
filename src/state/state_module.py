@@ -69,7 +69,7 @@ class StateModule(DmModule):
         pass
 
     @prof.ProfileFunction()
-    def _dynamic_obj_callback(self, objects: LcmPerceivedDynamicObjectList):
+    def _dynamic_obj_callback(self, objects: LcmPerceivedDynamicObjectList, args):
         """
         Deserialize dynamic objects message and replace pointer reference to dynamic object list under lock
         :param objects: Serialized dynamic object list
@@ -172,7 +172,7 @@ class StateModule(DmModule):
         return objects_list
 
     @prof.ProfileFunction()
-    def _self_localization_callback(self, self_localization: LcmPerceivedSelfLocalization) -> None:
+    def _self_localization_callback(self, self_localization: LcmPerceivedSelfLocalization, args) -> None:
         """
         Deserialize localization information, convert to road coordinates and update state information.
         :param self_localization: Serialized self localization message.
