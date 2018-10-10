@@ -14,7 +14,9 @@ class SceneUtils:
     @staticmethod
     def get_state_from_scene(scene: SceneMessage) -> State:
 
-        # TODO: This logic assumes the same frenet curve for all objects (based on ego's lane)
+        # TODO: This logic assumes :
+        # TODO: 1.The same frenet curve for all objects (based on ego's lane)
+        # TODO: 2.There is only one hypothesis for an object's location
         road_id = scene.host_localization.lane_segment_id
         obj_id = 0
         timestamp = DynamicObject.sec_to_ticks(scene.timestamp_sec)
@@ -37,18 +39,18 @@ class SceneUtils:
 
         dynamic_objects = []
         for object_loc in scene.object_localizations:
-            cartesian_state = np.array([object_loc.s_cartesian_localization.east_x,
-                                        object_loc.s_cartesian_localization.north_y,
-                                        object_loc.s_cartesian_localization.heading,
-                                        object_loc.s_cartesian_localization.velocity_longitudinal,
-                                        object_loc.s_cartesian_localization.acceleration_longitudinal,
-                                        object_loc.s_cartesian_localization.curvature])
-            road_fstate = np.array([object_loc.s_lane_frenet_coordinate.s,
-                                    object_loc.s_lane_frenet_coordinate.s_dot,
-                                    object_loc.s_lane_frenet_coordinate.s_dotdot,
-                                    object_loc.s_lane_frenet_coordinate.d,
-                                    object_loc.s_lane_frenet_coordinate.d_dot,
-                                    object_loc.s_lane_frenet_coordinate.d_dotdot])
+            cartesian_state = np.array([object_loc.s_object_hypotheses[0].s_cartesian_localization.east_x,
+                                        object_loc.s_object_hypotheses[0].s_cartesian_localization.north_y,
+                                        object_loc.s_object_hypotheses[0].s_cartesian_localization.heading,
+                                        object_loc.s_object_hypotheses[0].s_cartesian_localization.velocity_longitudinal,
+                                        object_loc.s_object_hypotheses[0].s_cartesian_localization.acceleration_longitudinal,
+                                        object_loc.s_object_hypotheses[0].s_cartesian_localization.curvature])
+            road_fstate = np.array([object_loc.s_object_hypotheses[0].s_lane_frenet_coordinate.s,
+                                    object_loc.s_object_hypotheses[0].s_lane_frenet_coordinate.s_dot,
+                                    object_loc.s_object_hypotheses[0].s_lane_frenet_coordinate.s_dotdot,
+                                    object_loc.s_object_hypotheses[0].s_lane_frenet_coordinate.d,
+                                    object_loc.s_object_hypotheses[0].s_lane_frenet_coordinate.d_dot,
+                                    object_loc.s_object_hypotheses[0].s_lane_frenet_coordinate.d_dotdot])
             size = size
             confidence = 1.0
             dynamic_objects.append(DynamicObject(object_loc.object_id, timestamp, cartesian_state,
@@ -60,7 +62,7 @@ class SceneUtils:
     @staticmethod
     def get_cstate_from_scene(scene: SceneMessage, obj_id: int) -> CartesianExtendedState:
 
-        # TODO: This logic assumes the same frenet curve for all objects (based on ego's lane)
+        # TODO: This logic assumes there is only one hypothesis for an object's location
         if obj_id == 0:
             return np.array([scene.host_localization.s_cartesian_localization.east_x,
                              scene.host_localization.s_cartesian_localization.north_y,
@@ -73,12 +75,12 @@ class SceneUtils:
             desired_object_loc = [object_loc for object_loc in scene.object_localizations
                                   if object_loc.object_id == obj_id]
             assert len(desired_object_loc) == 1
-            return np.array([desired_object_loc[0].s_cartesian_localization.east_x,
-                             desired_object_loc[0].s_cartesian_localization.north_y,
-                             desired_object_loc[0].s_cartesian_localization.heading,
-                             desired_object_loc[0].s_cartesian_localization.velocity_longitudinal,
-                             desired_object_loc[0].s_cartesian_localization.acceleration_longitudinal,
-                             desired_object_loc[0].s_cartesian_localization.curvature])
+            return np.array([desired_object_loc[0].s_object_hypotheses[0].s_cartesian_localization.east_x,
+                             desired_object_loc[0].s_object_hypotheses[0].s_cartesian_localization.north_y,
+                             desired_object_loc[0].s_object_hypotheses[0].s_cartesian_localization.heading,
+                             desired_object_loc[0].s_object_hypotheses[0].s_cartesian_localization.velocity_longitudinal,
+                             desired_object_loc[0].s_object_hypotheses[0].s_cartesian_localization.acceleration_longitudinal,
+                             desired_object_loc[0].s_object_hypotheses[0].s_cartesian_localization.curvature])
 
     @staticmethod
     def get_mapstate_from_scene(scene: SceneMessage, obj_id: int) -> MapState:
@@ -96,12 +98,12 @@ class SceneUtils:
             desired_object_loc = [object_loc for object_loc in scene.object_localizations
                                   if object_loc.object_id == obj_id]
             assert len(desired_object_loc) == 1
-            fstate = np.array([desired_object_loc[0].s_lane_frenet_coordinate.s,
-                               desired_object_loc[0].s_lane_frenet_coordinate.s_dot,
-                               desired_object_loc[0].s_lane_frenet_coordinate.s_dotdot,
-                               desired_object_loc[0].s_lane_frenet_coordinate.d,
-                               desired_object_loc[0].s_lane_frenet_coordinate.d_dot,
-                               desired_object_loc[0].s_lane_frenet_coordinate.d_dotdot])
+            fstate = np.array([desired_object_loc[0].s_object_hypotheses[0].s_lane_frenet_coordinate.s,
+                               desired_object_loc[0].s_object_hypotheses[0].s_lane_frenet_coordinate.s_dot,
+                               desired_object_loc[0].s_object_hypotheses[0].s_lane_frenet_coordinate.s_dotdot,
+                               desired_object_loc[0].s_object_hypotheses[0].s_lane_frenet_coordinate.d,
+                               desired_object_loc[0].s_object_hypotheses[0].s_lane_frenet_coordinate.d_dot,
+                               desired_object_loc[0].s_object_hypotheses[0].s_lane_frenet_coordinate.d_dotdot])
             return MapState(fstate, desired_object_loc[0].s_lane_frenet_coordinate.lane_segment_id)
 
     @staticmethod
