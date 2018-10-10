@@ -1,6 +1,6 @@
 import numpy as np
 
-from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmNumpyArray
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNumpyArray import LcmNumpyArray
 from common_data.interface.py.idl_generated_files.dm import LcmTrajectoryData
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
