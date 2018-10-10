@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import List
+import numpy as np
 
 
 class ObjectClassification(Enum):
@@ -90,6 +91,13 @@ class FrenetLocalization:
         self.d_dot = d_dot
         self.d_dotdot = d_dotdot
 
+    def numpy(self):
+        return np.array([self.s, self.s_dot, self.s_dotdot, self.d, self.d_dot, self.d_dotdot])
+
+    @classmethod
+    def from_numpy(cls, arr: np.ndarray):
+        cls(s=arr[0], s_dot=arr[1], s_dotdot=arr[2], d=arr[3], d_dot=arr[4], d_dotdot=arr[5])
+
 
 class CartesianLocalization:
     def __init__(self, east_x: float, north_y: float, heading: float, yaw_rate: float, velocity_longitudinal: float,
@@ -102,6 +110,15 @@ class CartesianLocalization:
         self.acceleration_longitudinal = acceleration_longitudinal
         self.acceleration_lateral = acceleration_lateral
         self.curvature = curvature
+
+    def numpy(self):
+        return np.array([self.east_x, self.north_y, self.heading, self.velocity_longitudinal,
+                         self.acceleration_longitudinal, self.curvature])
+
+    @classmethod
+    def from_numpy(cls, arr: np.ndarray):
+        cls(east_x=arr[0], north_y=arr[1], heading=arr[2], yaw_rate=arr[3] * arr[5], velocity_longitudinal=arr[3],
+            acceleration_longitudinal=arr[4], acceleration_lateral=arr[5] * arr[3] ** 2, curvature=arr[5])
 
 
 class HostLocalization:
