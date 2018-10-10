@@ -167,3 +167,8 @@ class FilterIfNoLane(RecipeFilter):
         return (recipe.relative_lane == RelativeLane.SAME_LANE or
                 (recipe.relative_lane == RelativeLane.RIGHT_LANE and behavioral_state.right_lane_exists) or
                 (recipe.relative_lane == RelativeLane.LEFT_LANE and behavioral_state.left_lane_exists))
+
+
+class FilterIfAggressive(RecipeFilter):
+    def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
+        return recipe.aggressiveness != AggressivenessLevel.AGGRESSIVE
