@@ -110,7 +110,7 @@ def test_filter_followLane_filterResultsMatchExpected(
     # All ground truths checked with desmos - https://www.desmos.com/calculator/usk7djcttx
 
     expected_filter_results = np.array([False, True, True, True, True, True, True, True, True,
-                                        False, True, False, False, False, False, False, False, False], dtype=bool)
+                                        False, True, True, False, False, False, False, False, False], dtype=bool)
 
     static_action_space = StaticActionSpace(logger, filtering=filtering)
     filter_results = np.array(static_action_space.filter_recipes(follow_lane_recipes,
