@@ -130,3 +130,7 @@ class SceneUtils:
     @staticmethod
     def get_center_lanes_latitudes(scene: SceneMessage) -> List[float]:
         return [1.0, 2.0, 3.0]
+
+    @staticmethod
+    def get_num_lanes(scene: SceneMessage) -> int:
+        return 3

@@ -89,14 +89,12 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         return selected_action_index, selected_action_spec
 
     @prof.ProfileFunction()
-    def plan(self, state: State, nav_plan: NavigationPlanMsg):
+    def plan(self, scene: SceneMessage, nav_plan: NavigationPlanMsg):
         action_recipes = self.action_space.recipes
-
-        scene = SceneMessage()
 
         # create road semantic grid from the raw State object
         # behavioral_state contains road_occupancy_grid and ego_state
-        behavioral_state = BehavioralGridState.create_from_state(state=state, logger=self.logger)
+        behavioral_state = BehavioralGridState.create_from_scene(scene=scene, logger=self.logger)
 
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
@@ -117,9 +115,9 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
                                                                                       selected_action_spec)
 
         self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
-                          action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
+                          action_recipes[selected_action_index], scene.timestamp_sec)
         self.logger.debug("Chosen behavioral action spec %s (ego_timestamp: %.2f)",
-                          selected_action_spec, state.ego_state.timestamp_in_sec)
+                          selected_action_spec, scene.timestamp_sec)
 
         return trajectory_parameters, baseline_trajectory, visualization_message
 
