@@ -1,7 +1,7 @@
 import numpy as np
 
 from common_data.interface.py.idl_generated_files.dm import LcmBehavioralVisualizationMsg
-from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmNonTypedNumpyArray
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNonTypedNumpyArray import LcmNonTypedNumpyArray
 from decision_making.src.planning.types import CartesianPath2D
 
 
@@ -27,7 +27,7 @@ class BehavioralVisualizationMsg:
 
     @classmethod
     def deserialize(cls, lcmMsg: LcmBehavioralVisualizationMsg):
-        return cls(np.ndarray(shape = tuple(lcmMsg.reference_route.shape)
+        return cls(np.ndarray(shape = tuple(lcmMsg.reference_route.shape[:lcmMsg.reference_route.num_dimensions])
                             , buffer = np.array(lcmMsg.reference_route.data)
                             , dtype = float))
 

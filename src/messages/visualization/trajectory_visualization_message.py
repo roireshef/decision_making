@@ -61,13 +61,13 @@ class TrajectoryVisualizationMsg:
     @classmethod
     def deserialize(cls, lcmMsg):
         # type: (LcmTrajectoryVisualizationMsg)-> TrajectoryVisualizationMsg
-        return cls(np.ndarray(shape = tuple(lcmMsg.reference_route.shape)
+        return cls(np.ndarray(shape = tuple(lcmMsg.reference_route.shape[:lcmMsg.reference_route.num_dimensions])
                             , buffer = np.array(lcmMsg.reference_route.data)
                             , dtype = float)
-                 , np.ndarray(shape = tuple(lcmMsg.trajectories.shape)
+                 , np.ndarray(shape = tuple(lcmMsg.trajectories.shape[:lcmMsg.trajectories.num_dimensions])
                             , buffer = np.array(lcmMsg.trajectories.data)
                             , dtype = float)
-                 , np.ndarray(shape = tuple(lcmMsg.costs.shape)
+                 , np.ndarray(shape = tuple(lcmMsg.costs.shape[:lcmMsg.costs.num_dimensions])
                             , buffer = np.array(lcmMsg.costs.data)
                             , dtype = float)
                  , State.deserialize(lcmMsg.state)

@@ -48,7 +48,7 @@ class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
         # type: (LcmTrajectoryData) -> TrajectoryPlanMsg
 
         return cls(lcmMsg.timestamp,
-                   np.ndarray(shape=tuple(lcmMsg.trajectory.shape)
+                   np.ndarray(shape=tuple(lcmMsg.trajectory.shape[:lcmMsg.trajectory.num_dimensions])
                               , buffer=np.array(lcmMsg.trajectory.data)
                               , dtype=float)
                    , lcmMsg.current_speed)

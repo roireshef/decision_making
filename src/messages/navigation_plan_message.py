@@ -42,7 +42,7 @@ class NavigationPlanMsg(PUBSUB_MSG_IMPL):
     @classmethod
     def deserialize(cls, lcmMsg):
         # type: (LcmNavigationPlan) -> NavigationPlanMsg
-        return cls(np.ndarray(shape = tuple(lcmMsg.road_ids.shape)
+        return cls(np.ndarray(shape = tuple(lcmMsg.road_ids.shape[:lcmMsg.road_ids.num_dimensions])
                             , buffer = np.array(lcmMsg.road_ids.data)
                             , dtype = float).astype(int))
 

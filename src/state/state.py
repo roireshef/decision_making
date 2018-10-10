@@ -3,18 +3,17 @@ from typing import List, Optional
 
 import numpy as np
 
-from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmDynamicObject
-from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmEgoState
-from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmNonTypedNumpyArray
-from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmObjectSize
-from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmOccupancyState
-from common_data.interface.py.idl_generated_files.dm import LcmState
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmDynamicObject import LcmDynamicObject
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmEgoState import LcmEgoState
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNonTypedNumpyArray import LcmNonTypedNumpyArray
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmObjectSize import LcmObjectSize
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmOccupancyState import LcmOccupancyState
+from common_data.interface.py.idl_generated_files.dm.LcmState import LcmState
 
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K
 from decision_making.src.state.map_state import MapState
-from common_data.lcm.python.utils.lcm_utils import LCMUtils
 from decision_making.src.utils.map_utils import MapUtils
 
 
@@ -56,10 +55,10 @@ class OccupancyState(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmOccupancyState) -> OccupancyState
         return cls(lcmMsg.timestamp
-                   , np.ndarray(shape=tuple(lcmMsg.free_space.shape)
+                   , np.ndarray(shape=tuple(lcmMsg.free_space.shape[:lcmMsg.free_space.num_dimensions])
                                 , buffer=np.array(lcmMsg.free_space.data)
                                 , dtype=float)
-                   , np.ndarray(shape=tuple(lcmMsg.confidence.shape)
+                   , np.ndarray(shape=tuple(lcmMsg.confidence.shape[:lcmMsg.confidence.num_dimensions])
                                 , buffer=np.array(lcmMsg.confidence.data)
                                 , dtype=float))
 
