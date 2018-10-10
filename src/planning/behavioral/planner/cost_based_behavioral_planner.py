@@ -141,6 +141,7 @@ class CostBasedBehavioralPlanner:
         # Get road details
         road_id = ego.map_state.road_id
 
+        # set the reference route to start with a margin before the current longitudinal position of the vehicle
         ref_route_start = max(0, ego.map_state.road_fstate[FS_SX] - REFERENCE_ROUTE_MARGINS)
 
         # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
@@ -154,10 +155,6 @@ class CostBasedBehavioralPlanner:
         forward_lookahead = action_spec.s - ref_route_start + REFERENCE_ROUTE_MARGINS
         ref_route_length = min(max_road_longitude - ref_route_start, forward_lookahead * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO)
 
-        print('s(ego): %s, ref_route_start: %s, length: %s' % (ego.map_state.road_fstate[FS_SX], ref_route_start, ref_route_length))
-
-        # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
-        # TODO: better than sending the whole road. Fix when map service is redesigned!
         center_lane_reference_route = MapService.get_instance().get_uniform_path_lookahead(
             road_id=road_id,
             lat_shift=action_spec.d,  # THIS ASSUMES THE GOAL ALWAYS FALLS ON THE REFERENCE ROUTE
