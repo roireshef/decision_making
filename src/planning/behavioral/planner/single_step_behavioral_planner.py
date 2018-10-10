@@ -1,6 +1,7 @@
-import numpy as np
 from logging import Logger
 from typing import Optional, List
+
+import numpy as np
 
 import rte.python.profiler as prof
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -17,6 +18,7 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
     CostBasedBehavioralPlanner
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
+from decision_making.src.scene.scene_message import SceneMessage
 from decision_making.src.state.state import State
 
 
@@ -89,6 +91,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
     @prof.ProfileFunction()
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
         action_recipes = self.action_space.recipes
+
+        scene = SceneMessage()
 
         # create road semantic grid from the raw State object
         # behavioral_state contains road_occupancy_grid and ego_state
