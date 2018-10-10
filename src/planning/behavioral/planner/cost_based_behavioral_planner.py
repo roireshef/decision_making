@@ -11,7 +11,7 @@ from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATI
     DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, \
     OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, \
     DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT
+    LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT, REFERENCE_ROUTE_MARGINS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
@@ -141,6 +141,8 @@ class CostBasedBehavioralPlanner:
         # Get road details
         road_id = ego.map_state.road_id
 
+        ref_route_start = max(0, ego.map_state.road_fstate[FS_SX] - REFERENCE_ROUTE_MARGINS)
+
         # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
         # caused by the curve linearization approximation in the resampling process
         # The compensation here is multiplicative because of the different curve-fittings we use:
@@ -148,16 +150,20 @@ class CostBasedBehavioralPlanner:
         # Due to that, a point's longitude-value will be different between the 2 curves.
         # This error is accumulated depending on the actual length of the curvature -
         # when it is long, the error will potentially be big.
-        lookahead_distance = action_spec.s * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
+        max_road_longitude = MapService.get_instance().get_road(ego.map_state.road_id).length
+        forward_lookahead = action_spec.s - ref_route_start + REFERENCE_ROUTE_MARGINS
+        ref_route_length = min(max_road_longitude - ref_route_start, forward_lookahead * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO)
+
+        print('s(ego): %s, ref_route_start: %s, length: %s' % (ego.map_state.road_fstate[FS_SX], ref_route_start, ref_route_length))
 
         # TODO: figure out how to solve the issue of lagging ego-vehicle (relative to reference route)
         # TODO: better than sending the whole road. Fix when map service is redesigned!
         center_lane_reference_route = MapService.get_instance().get_uniform_path_lookahead(
             road_id=road_id,
             lat_shift=action_spec.d,  # THIS ASSUMES THE GOAL ALWAYS FALLS ON THE REFERENCE ROUTE
-            starting_lon=0,
+            starting_lon=ref_route_start,
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
-            steps_num=int(np.ceil(lookahead_distance / TRAJECTORY_ARCLEN_RESOLUTION)),
+            steps_num=int(np.ceil(ref_route_length / TRAJECTORY_ARCLEN_RESOLUTION)),
             navigation_plan=navigation_plan)
 
         # The frenet frame used in specify (RightHandSide of road)
