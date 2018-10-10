@@ -113,14 +113,30 @@ class HostLocalization:
         self.s_lane_frenet_coordinate = s_lane_frenet_coordinate
 
 
-class ObjectLocalization:
-    def __init__(self, object_id: int, object_type: ObjectClassification, s_cartesian_localization: CartesianLocalization,
-                 s_lane_frenet_coordinate: FrenetLocalization, s_host_lane_frenet_coordinate: FrenetLocalization):
-        self.object_id = object_id
-        self.object_type = object_type
+class ObjectHypothesis:
+    def __init__(self, probability: float, s_cartesian_localization: CartesianLocalization,
+                 s_lane_frenet_coordinate: FrenetLocalization, s_host_lane_frenet_coordinate: FrenetLocalization,
+                 lane_segment_id: int, stationary_status, location_uncertainty_x,
+                 location_uncertainty_y, location_uncertainty_yaw, host_lane_frenet_id: int):
+        self.probability = probability
         self.s_cartesian_localization = s_cartesian_localization
         self.s_lane_frenet_coordinate = s_lane_frenet_coordinate
         self.s_host_lane_frenet_coordinate = s_host_lane_frenet_coordinate
+        self.lane_segment_id = lane_segment_id
+        self.stationary_status = stationary_status
+        self.location_uncertainty_x = location_uncertainty_x
+        self.location_uncertainty_y = location_uncertainty_y
+        self.location_uncertainty_yaw = location_uncertainty_yaw
+        self.host_lane_frenet_id = host_lane_frenet_id
+
+
+class ObjectLocalization:
+    def __init__(self, object_id: int, object_type: ObjectClassification,
+                 obj_hypothesis_count: int, s_object_hypotheses: List[ObjectHypothesis]):
+        self.object_id = object_id
+        self.object_type = object_type
+        self.obj_hypothesis_count = obj_hypothesis_count
+        self.s_object_hypotheses = s_object_hypotheses
 
 
 class SceneMessage:
