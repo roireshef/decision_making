@@ -144,7 +144,7 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         return dist_to_back_obj, safe_dist_behind_ego
 
     @staticmethod
-    def _get_action_ind(action_recipes: List[ActionRecipe], recipes_mask: List[bool], cell: SemanticGridCell):
+    def _get_action_ind(action_recipes: List[ActionRecipe], mask: List[bool], cell: SemanticGridCell):
         """
         Given semantic actions array and action cell, return index of action matching to the given cell.
         :param action_recipes: array of semantic actions
@@ -153,6 +153,9 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         """
         action_ind = [i for i, recipe in enumerate(action_recipes)
                       if recipe.relative_lane == cell[LAT_CELL]
-                      and recipe.action_type==ActionType.FOLLOW_LANE
-                      and recipes_mask[i]]
-        return action_ind[-1] if len(action_ind) > 0 else None
+                      and recipe.action_type == ActionType.FOLLOW_LANE
+                      and mask[i]]
+
+        # TODO: by default takes the second most aggressive action since currently
+        # TODO: there is no ActionSpecFilter for accelerations in cartesian frame
+        return action_ind[-2] if len(action_ind) > 0 else None
