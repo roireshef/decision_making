@@ -141,7 +141,7 @@ class TrajectoryPlanningFacade(DmModule):
 
         # TODO - we need to handle this as an emergency.
         except NoValidTrajectoriesFound:
-            self.logger.error("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s",
+            self.logger.error("TrajectoryPlanningFacade: NoValidTrajectoriesFound was raised. skipping planning. %s",
                               traceback.format_exc())
 
         except Exception:
