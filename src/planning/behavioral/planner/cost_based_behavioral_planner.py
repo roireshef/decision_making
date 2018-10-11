@@ -68,7 +68,7 @@ class CostBasedBehavioralPlanner:
         pass
 
     @abstractmethod
-    def plan(self, state: State, nav_plan: NavigationPlanMsg):
+    def plan(self, state: State, nav_plan: NavigationPlanMsg, map_object: MapObject):
         """
         Given current state and navigation plan, plans the next semantic action to be carried away. This method makes
         use of Planner components such as Evaluator,Validator and Predictor for enumerating, specifying
@@ -77,7 +77,9 @@ class CostBasedBehavioralPlanner:
         cost params and strategy.
         :param state: the current world state
         :param nav_plan:
+        :param map_object:
         :return: a tuple: (TrajectoryParams for TP,BehavioralVisualizationMsg for e.g. VizTool)
+
         """
         pass
 
@@ -125,7 +127,7 @@ class CostBasedBehavioralPlanner:
     @prof.ProfileFunction()
     def _generate_trajectory_specs(behavioral_state: BehavioralGridState,
                                    action_spec: ActionSpec,
-                                   navigation_plan: NavigationPlanMsg) -> TrajectoryParams:
+                                   navigation_plan: NavigationPlanMsg, map_object: MapObject) -> TrajectoryParams:
         """
         Generate trajectory specification for trajectory planner given a SemanticActionSpec. This also
         generates the reference route that will be provided to the trajectory planner.
@@ -182,11 +184,12 @@ class CostBasedBehavioralPlanner:
 
     @staticmethod
     @prof.ProfileFunction()
-    def generate_baseline_trajectory(ego: EgoState, action_spec: ActionSpec) -> SamplableTrajectory:
+    def generate_baseline_trajectory(ego: EgoState, action_spec: ActionSpec, map_object: MapObject) -> SamplableTrajectory:
         """
         Creates a SamplableTrajectory as a reference trajectory for a given ActionSpec, assuming T_d=T_s
         :param ego: ego object
         :param action_spec: action specification that contains all relevant info about the action's terminal state
+        :param map_object: map object
         :return: a SamplableWerlingTrajectory object
         """
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from

@@ -67,30 +67,57 @@ class SceneUtils:
             return MapState(fstate, desired_object_loc[0].s_lane_frenet_coordinate.lane_segment_id)
 
     @staticmethod
-    def get_cartesian_point_lane_index(x: float, y: float) -> int:
+    def get_cartesian_point_lane_index(x: float, y: float, map_object: MapObject) -> int:
         """
         returns the lane id containing the cartesian point [x,y]
         :param x: [float]
         :param y: [float]
+        :param map_object: [MapObject]
         :return: lane id [int]
         """
         # TODO: replace later
         return 0
 
     @staticmethod
-    def get_lane_num(lane_id: int) -> int:
+    def get_lane_num(lane_id: int, map_object: MapObject) -> int:
         """
         returns the lane number based on the lane id.
         :param lane_id: int
+        :param map_object: [MapObject]
         :return: lane number [int]
         """
         # TODO: replace later
         return 0
 
     @staticmethod
-    def get_center_lanes_latitudes(scene: SceneMessage) -> List[float]:
+    def get_center_lanes_latitudes(map_object: MapObject) -> List[float]:
+        """
+        :param map_object: [MapObject]
+        :return:
+        """
         return [1.0, 2.0, 3.0]
 
     @staticmethod
-    def get_num_lanes(scene: SceneMessage) -> int:
+    def get_num_lanes(map_object: MapObject) -> int:
+        """
+        :param map_object:
+        :return:
+        """
         return 3
+
+    @staticmethod
+    def get_uniform_path_lookahead(road_id, lat_shift, starting_lon, lon_step, steps_num, navigation_plan):
+        # type: (int, float, float, float, int, NavigationPlanMsg) -> np.ndarray
+        """
+        Create array of uniformly distributed points along a given road, shifted laterally by by lat_shift.
+        When some road finishes, it automatically continues to the next road, according to the navigation plan.
+        The distance between consecutive points is lon_step.
+        :param road_id: starting road_id
+        :param lat_shift: lateral shift from right side of the road [m]
+        :param starting_lon: starting longitude [m]
+        :param lon_step: distance between consecutive points [m]
+        :param steps_num: output points number
+        :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
+        :return: uniform sampled points array (Nx2)
+        """
+        return np.ndarray([0])

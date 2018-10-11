@@ -8,9 +8,9 @@ from decision_making.src.global_constants import LON_MARGIN_FROM_EGO
 from decision_making.src.global_constants import PLANNING_LOOKAHEAD_DIST
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.types import FS_SX
-from decision_making.src.scene.scene_message import SceneMessage
-from decision_making.src.scene.scene_utils import SceneUtils
 from decision_making.src.state.state import DynamicObject, EgoState
+from decision_making.src.state.state import State
+from mapping.src.service.map_service import MapService
 
 
 class SemanticActionType(Enum):
@@ -68,7 +68,7 @@ class BehavioralGridState(BehavioralState):
 
     @classmethod
     @prof.ProfileFunction()
-    def create_from_scene(cls, scene: SceneMessage, logger: Logger):
+    def create_from_state(cls, state: State, map_object: MapObject, logger: Logger):
         """
         Occupy the occupancy grid.
         This method iterates over all dynamic objects, and fits them into the relevant cell
@@ -80,9 +80,7 @@ class BehavioralGridState(BehavioralState):
          ego front).
         :return: road semantic occupancy grid
         """
-        road_id = scene.host_localization.road_segment_id
-
-        state = SceneUtils.get_state_from_scene(scene)
+        road_id = state.ego_state.map_state.road_id
 
         # TODO: the relative localization calculated here assumes that all objects are located on the same road.
         # TODO: Fix after demo and calculate longitudinal difference properly in the general case
@@ -97,7 +95,7 @@ class BehavioralGridState(BehavioralState):
                                                                          state.ego_state)
 
         ego_lane = state.ego_state.map_state.lane_num
-        num_lanes = SceneUtils.get_num_lanes(scene)
+        num_lanes = MapService.get_instance().get_num_lanes(road_id)
         return cls(multi_object_grid, state.ego_state,
                    right_lane_exists=ego_lane > 0, left_lane_exists=ego_lane < num_lanes - 1)
 
@@ -135,15 +133,14 @@ class BehavioralGridState(BehavioralState):
         """
         grid = defaultdict(list)
 
-        ego_lane = SceneUtils.get_lane_num(ego_state.map_state.road_id)
+        ego_lane = ego_state.map_state.lane_num
 
         # We consider only object on the adjacent lanes
         adjacent_lanes = [x.value for x in RelativeLane]
 
         for obj in objects:
             # Compute relative lane to ego
-            object_lane_num = SceneUtils.get_lane_num(obj.dynamic_object.map_state.road_id)
-            object_relative_lane = object_lane_num - ego_lane
+            object_relative_lane = obj.dynamic_object.map_state.lane_num - ego_lane
             # ignore vehicles out of pre-defined range and vehicles not in adjacent lanes
             if abs(obj.longitudinal_distance) <= PLANNING_LOOKAHEAD_DIST and object_relative_lane in adjacent_lanes:
                 # compute longitudinal projection on the grid

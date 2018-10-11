@@ -44,6 +44,7 @@ class BehavioralPlanningFacade(DmModule):
     def _start_impl(self):
         self.pubsub.subscribe(pubsub_topics.STATE_TOPIC, None)
         self.pubsub.subscribe(pubsub_topics.NAVIGATION_PLAN_TOPIC, None)
+        self.pubsub.subscribe(pubsub_topics.MAP_OBJECT_TOPIC, None)
 
     # TODO: unsubscribe once logic is fixed in LCM
     def _stop_impl(self):
@@ -62,9 +63,11 @@ class BehavioralPlanningFacade(DmModule):
             start_time = time.time()
             state = self._get_current_state()
 
+            map_object = self._get_current_map_object()
+
             # Update state: align all object to most recent timestamp, based on ego and dynamic objects timestamp
             most_recent_timestamp = PredictionUtils.extract_most_recent_timestamp(state)
-            state_aligned = self._predictor.predict_state(state, np.array([most_recent_timestamp]))[0]
+            state_aligned = self._predictor.predict_state(state, np.array([most_recent_timestamp]), map_object)[0]
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
@@ -80,7 +83,7 @@ class BehavioralPlanningFacade(DmModule):
 
             navigation_plan = self._get_current_navigation_plan()
 
-            trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state, navigation_plan)
+            trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state, navigation_plan, map_object)
 
             self._last_trajectory = samplable_trajectory
 
@@ -101,6 +104,15 @@ class BehavioralPlanningFacade(DmModule):
         except Exception as e:
             self.logger.critical("UNHANDLED EXCEPTION IN BEHAVIORAL FACADE: %s. Trace: %s",
                                  e, traceback.format_exc())
+
+    def _get_current_map_object(self) -> MapObject:
+        input_map = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
+        if input_map is None:
+            raise MsgDeserializationError('LCM message queue for %s topic is empty or topic isn\'t subscribed',
+                                          pubsub_topics.MAP_OBJECT_TOPIC)
+        object_map = MapObject.deserialize(input_map)
+        self.logger.debug('Received map object: %s', object_map)
+        return object_map
 
     def _get_current_state(self) -> State:
         input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)

@@ -18,7 +18,6 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
     CostBasedBehavioralPlanner
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.scene.scene_message import SceneMessage
 from decision_making.src.state.state import State
 
 
@@ -89,12 +88,12 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         return selected_action_index, selected_action_spec
 
     @prof.ProfileFunction()
-    def plan(self, scene: SceneMessage, nav_plan: NavigationPlanMsg):
+    def plan(self, state: State, nav_plan: NavigationPlanMsg, map_object: MapObject):
         action_recipes = self.action_space.recipes
 
         # create road semantic grid from the raw State object
         # behavioral_state contains road_occupancy_grid and ego_state
-        behavioral_state = BehavioralGridState.create_from_scene(scene=scene, logger=self.logger)
+        behavioral_state = BehavioralGridState.create_from_state(state=state, logger=self.logger)
 
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)

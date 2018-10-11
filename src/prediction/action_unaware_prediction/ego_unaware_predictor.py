@@ -1,7 +1,8 @@
 from abc import ABCMeta, abstractmethod
-from typing import List, Dict
-import numpy as np
 from logging import Logger
+from typing import List, Dict
+
+import numpy as np
 
 from decision_making.src.state.state import State, DynamicObject
 
@@ -28,11 +29,12 @@ class EgoUnawarePredictor(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def predict_state(self, state: State, prediction_timestamps: np.ndarray) -> List[State]:
+    def predict_state(self, state: State, prediction_timestamps: np.ndarray, map_object: MapObject) -> List[State]:
         """
         Predicts the future states of the given state, for the specified timestamps
         :param state: the initial state to begin prediction from
         :param prediction_timestamps: np array of timestamps in [sec] to predict the object for. In ascending order.
         Global, not relative
+        :param map_object:
         :return: a list of predicted states for the requested prediction_timestamps
         """
