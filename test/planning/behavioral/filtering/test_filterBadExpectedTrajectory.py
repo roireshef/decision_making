@@ -106,11 +106,12 @@ def test_filter_followLane_filterResultsMatchExpected(
     # Each three consequent results are of the same velocity and three aggressiveness levels (calm, standard, aggressive)
     # First one is filtered because calming into a stop takes too much time, then all actions meet constraints and for
     # velocity of 18 [m/s] calm takes too much time, aggressive has velocity out of limits and only "standard" is valid.
-    # The rest of the actions gets filtered because they require closing a too big gap in velocities.
+    # For acceleration to 24 m/s the calm action takes more than 20 sec and then is filtered.
+    # For acceleration to 30 m/s only aggressive action takes less than 20 sec. The rest actions are filtered.
     # All ground truths checked with desmos - https://www.desmos.com/calculator/usk7djcttx
 
     expected_filter_results = np.array([False, True, True, True, True, True, True, True, True,
-                                        False, True, True, False, False, False, False, False, False], dtype=bool)
+                                        False, True, True, False, True, True, False, False, True], dtype=bool)
 
     static_action_space = StaticActionSpace(logger, filtering=filtering)
     filter_results = np.array(static_action_space.filter_recipes(follow_lane_recipes,
