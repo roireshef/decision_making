@@ -353,8 +353,6 @@ class QuinticPoly1D(Poly1D):
         For given weights and constraints on a jerk-optimal polynomial solution, this function returns a matrix that
         contains (in each row:) the coefficients of the derivative of the cost function use for finding the optimal time
         horizon: f(T) = w_T * T + w_J * J(T) where J(T) is the accumulated jerk for given time horizon T.
-        Either the weights (w_T, w_J) or the kinematics (v_0, v_T, a_0, dx) may be arrays, but not both of them.
-        The shape of a_0 may be either like the shape of velocities or scalar.
         :param w_T: weight for Time component
         :param w_J: weight for Jerk component
         :param a_0: [m/sec^2] acceleration at time 0
@@ -364,10 +362,10 @@ class QuinticPoly1D(Poly1D):
         :param T_m: T_m: [sec] T_m * v_T is added to dx
         :return: coefficient matrix for all possibilities
         """
-        zeros = np.zeros_like(v_T) if np.isscalar(w_T) else np.zeros_like(w_T)
-        return np.c_[w_T + zeros,
+        zeros = np.zeros(w_T.shape[0])
+        return np.c_[w_T,
                      zeros,
-                     -9 * a_0 ** 2 * w_J + zeros,
+                     -9 * a_0 ** 2 * w_J,
                      -144 * a_0 * v_0 * w_J + 144 * a_0 * v_T * w_J,
                      -360 * T_m * a_0 * v_T * w_J + 360 * a_0 * dx * w_J - 576 * v_0 ** 2 * w_J + 1152 * v_0 * v_T * w_J - 576 * v_T ** 2 * w_J,
                      -2880 * T_m * v_0 * v_T * w_J + 2880 * T_m * v_T ** 2 * w_J + 2880 * dx * v_0 * w_J - 2880 * dx * v_T * w_J,

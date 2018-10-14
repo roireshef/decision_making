@@ -114,16 +114,19 @@ def create_full_range_of_weights(w2_from: float, w2_till: float, w12_ratio_from:
 
 
 def calculate_T_s(v0_grid: np.array, vT_grid: np.array, s_grid: np.array, a0_grid: np.array,
-                  time_weights: np.array, jerk_weights: np.array) -> np.array:
+                  time_weight: float, jerk_weight: float) -> np.array:
     """
     Given time-jerk weights and v0, vT, s grids, calculate T_s minimizing the cost function.
     :param v0_grid: v0 of meshgrid of v0_range, vT_range, s_range
     :param vT_grid: vT of meshgrid of v0_range, vT_range, s_range
     :param a0_grid: initial acceleration of meshgrid of v0_range, vT_range, s_range
     :param s_grid: s of meshgrid of v0_range, vT_range, s_range
-    :param jerk_weights:
+    :param time_weight: weight of the time in time_cost_function_derivative_coefs
+    :param jerk_weight: weight of the jerk in time_cost_function_derivative_coefs
     :return: array of optimal T_s (time horizon) for every state from the grid (v0, vT, a0, s)
     """
+    time_weights = np.full(v0_grid.shape, time_weight)
+    jerk_weights = np.full(v0_grid.shape, jerk_weight)
     cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
         w_T=time_weights, w_J=jerk_weights, dx=s_grid,
         a_0=a0_grid, v_0=v0_grid, v_T=vT_grid, T_m=SPECIFICATION_MARGIN_TIME_DELAY)
