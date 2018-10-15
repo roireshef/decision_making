@@ -4,7 +4,7 @@ from typing import List
 from decision_making.src.planning.types import CartesianPath2D, CartesianExtendedTrajectories
 from decision_making.src.state.state import State
 
-from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNonTypedNumpyArray import LcmNonTypedNumpyArray
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNonTypedSmallNumpyArray import LcmNonTypedSmallNumpyArray
 from common_data.interface.py.idl_generated_files.dm import LcmTrajectoryVisualizationMsg
 
 
@@ -33,7 +33,7 @@ class TrajectoryVisualizationMsg:
         # type: ()->LcmTrajectoryVisualizationMsg
         lcm_msg = LcmTrajectoryVisualizationMsg()
 
-        lcm_msg.reference_route = LcmNonTypedNumpyArray()
+        lcm_msg.reference_route = LcmNonTypedSmallNumpyArray()
         lcm_msg.reference_route.num_dimensions = len(self.reference_route.shape)
         lcm_msg.reference_route.shape = list(self.reference_route.shape)
         lcm_msg.reference_route.length = self.reference_route.size
@@ -45,7 +45,7 @@ class TrajectoryVisualizationMsg:
         # lcm_msg.trajectories.length = self.trajectories.size
         # lcm_msg.trajectories.data = self.trajectories.flat.__array__().tolist()
 
-        lcm_msg.costs = LcmNonTypedNumpyArray()
+        lcm_msg.costs = LcmNonTypedSmallNumpyArray()
         lcm_msg.costs.num_dimensions = len(self.costs.shape)
         lcm_msg.costs.shape = list(self.costs.shape)
         lcm_msg.costs.length = self.costs.size

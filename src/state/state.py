@@ -5,7 +5,7 @@ import numpy as np
 
 from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmDynamicObject import LcmDynamicObject
 from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmEgoState import LcmEgoState
-from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNonTypedNumpyArray import LcmNonTypedNumpyArray
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNonTypedSmallNumpyArray import LcmNonTypedSmallNumpyArray
 from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmObjectSize import LcmObjectSize
 from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmOccupancyState import LcmOccupancyState
 from common_data.interface.py.idl_generated_files.dm.LcmState import LcmState
@@ -39,12 +39,12 @@ class OccupancyState(PUBSUB_MSG_IMPL):
         # type: () -> LcmOccupancyState
         lcm_msg = LcmOccupancyState()
         lcm_msg.timestamp = self.timestamp
-        lcm_msg.free_space = LcmNonTypedNumpyArray()
+        lcm_msg.free_space = LcmNonTypedSmallNumpyArray()
         lcm_msg.free_space.num_dimensions = len(self.free_space.shape)
         lcm_msg.free_space.shape = list(self.free_space.shape)
         lcm_msg.free_space.length = self.free_space.size
         lcm_msg.free_space.data = self.free_space.flat.__array__().tolist()
-        lcm_msg.confidence = LcmNonTypedNumpyArray()
+        lcm_msg.confidence = LcmNonTypedSmallNumpyArray()
         lcm_msg.confidence.num_dimensions = len(self.confidence.shape)
         lcm_msg.confidence.shape = list(self.confidence.shape)
         lcm_msg.confidence.length = self.confidence.size
