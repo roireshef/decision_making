@@ -1,7 +1,7 @@
 import numpy as np
 from decision_making.src.global_constants import LON_ACC_LIMITS, SAFETY_MARGIN_TIME_DELAY, \
-    SPECIFICATION_MARGIN_TIME_DELAY, LON_SAFETY_ACCEL_DURING_RESPONSE
-from decision_making.src.planning.types import FrenetTrajectories2D, FS_SX, FS_SV, LIMIT_MIN
+    SPECIFICATION_MARGIN_TIME_DELAY
+from decision_making.src.planning.types import FrenetTrajectories2D, FS_SX, FS_SV, LIMIT_MIN, LIMIT_MAX
 
 
 class SafetyUtils:
@@ -35,13 +35,13 @@ class SafetyUtils:
 
         # The worst-case velocity of the rear object (either ego or another object) may increase during its reaction
         # time, since it may accelerate before it starts to brake.
-        ego_vel_after_reaction_time = ego_vel + (1-ego_ahead) * ego_response_time * LON_SAFETY_ACCEL_DURING_RESPONSE
-        obj_vel_after_reaction_time = obj_vel + ego_ahead * obj_response_time * LON_SAFETY_ACCEL_DURING_RESPONSE
+        ego_vel_after_reaction_time = ego_vel + (1-ego_ahead) * ego_response_time * LON_ACC_LIMITS[LIMIT_MAX]
+        obj_vel_after_reaction_time = obj_vel + ego_ahead * obj_response_time * LON_ACC_LIMITS[LIMIT_MAX]
 
         # longitudinal RSS formula considers distance reduction during the reaction time and difference between
         # objects' braking distances
-        ego_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_RESPONSE * SAFETY_MARGIN_TIME_DELAY ** 2
-        obj_acceleration_dist = 0.5 * LON_SAFETY_ACCEL_DURING_RESPONSE * SPECIFICATION_MARGIN_TIME_DELAY ** 2
+        ego_acceleration_dist = 0.5 * LON_ACC_LIMITS[LIMIT_MAX] * SAFETY_MARGIN_TIME_DELAY ** 2
+        obj_acceleration_dist = 0.5 * LON_ACC_LIMITS[LIMIT_MAX] * SPECIFICATION_MARGIN_TIME_DELAY ** 2
         safe_dist = np.maximum(np.divide(sign_of_lon_relative_to_obj * (obj_vel_after_reaction_time ** 2 -
                                                                         ego_vel_after_reaction_time ** 2),
                                          2 * max_brake), 0) + \

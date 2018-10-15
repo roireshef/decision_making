@@ -1,18 +1,26 @@
+import copy
 from typing import List
 
 import numpy as np
-import copy
 
 from decision_making.src.global_constants import EPS, SPECIFICATION_MARGIN_TIME_DELAY, BP_JERK_S_JERK_D_TIME_WEIGHTS, \
     BP_ACTION_T_LIMITS, VELOCITY_LIMITS, LON_ACC_LIMITS, TRAJECTORY_TIME_RESOLUTION, \
     LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_MARGIN_TIME_DELAY
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
-from decision_making.src.planning.types import FrenetTrajectories2D, LIMIT_MIN, FS_SX, FS_SV
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
+from decision_making.src.planning.utils.safety_utils import SafetyUtils
 from decision_making.src.utils.metric_logger import MetricLogger
-from decision_making.src.utils.safety_utils import SafetyUtils
+
+
+# This file deals with finding "optimal" weights for time-jerk cost function for dynamic actions.
+# The "optimality" consists of two components:
+# 1. Coverage of feasible (unfiltered) semantic actions in different scenarios. The function
+#    jerk_time_weights_optimization() deals with it.
+# 2. Velocity/acceleration profile of the actions should be convenient or good feel for the passengers, particularly
+#    to prevent too late braking. The function calc_braking_quality_and_print_graphs() draws these profiles
+#    and calculates the convenience rate.
 
 
 def jerk_time_weights_optimization():

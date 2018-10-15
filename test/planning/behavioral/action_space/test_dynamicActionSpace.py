@@ -72,8 +72,6 @@ def test_specifyGoals_followSlowFrontObject_specsComplyAccAndTimeLimits(
 
     ego_init_fstate = np.array([13.3209042, 8.3501435, 0.08652155, 1.8, 0, 0])
     obj_map_state = MapState(np.array([29.7766345, 2.77391842, 0, 1.8, 0, 0]), road_id)
-    # ego_init_fstate = np.array([16.0896022, 11.1188409, 0.0865254213, 1.8, 0, 0])
-    # obj_map_state = MapState(np.array([27.7781913, 2.77510263, 0, 1.8, 0, 0]), road_id)
 
     ego_map_state = MapState(ego_init_fstate, road_id)
     ego = EgoState.create_from_map_state(0, 0, ego_map_state, ObjectSize(5, 2, 0), 0)
