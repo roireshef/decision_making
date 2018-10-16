@@ -2,7 +2,7 @@ from enum import Enum
 
 import numpy as np
 
-from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNumpyArray import LcmNumpyArray
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNonTypedNumpyArray import LcmNonTypedNumpyArray
 from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmSigmoidFunctionParams import LcmSigmoidFunctionParams
 from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmTrajectoryCostParams import LcmTrajectoryCostParams
 from common_data.interface.py.idl_generated_files.dm import LcmTrajectoryParameters
@@ -193,7 +193,7 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
 
         lcm_msg.strategy = self.strategy.value
 
-        lcm_msg.reference_route = LcmNumpyArray()
+        lcm_msg.reference_route = LcmNonTypedNumpyArray()
         lcm_msg.reference_route.num_dimensions = len(self.reference_route.shape)
         lcm_msg.reference_route.shape = list(self.reference_route.shape)
         lcm_msg.reference_route.length = self.reference_route.size
