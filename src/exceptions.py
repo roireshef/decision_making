@@ -2,7 +2,19 @@ import six
 from abc import ABCMeta
 
 
+class MultipleObjectsWithRequestedID(Exception):
+    pass
+
+
+class TimeAlignmentPredictionHorizonTooLong(Exception):
+    pass
+
+
 class PredictedObjectHasNegativeVelocity(Exception):
+    pass
+
+
+class ResourcesNotUpToDateException(Exception):
     pass
 
 

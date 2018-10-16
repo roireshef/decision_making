@@ -36,6 +36,15 @@ class FrenetSerret2DFrame:
     def s_limits(self):
         return np.array([0, self.s_max])
 
+    def get_curvature(self, s: np.ndarray):
+        """
+        Computes curvature for a certain point on the curve given by s (progress from the curve's start)
+        :param s: progress on the curve from its beginning in meters (any tensor shape)
+        :return: curvature in [1/m]
+        """
+        _, _, _, k_r, _ = self._taylor_interp(s)
+        return k_r
+
     def get_yaw(self, s: np.ndarray):
         """
         Computes yaw (in radians, relative to the origin in which the curve points (self.O) are given
@@ -97,7 +106,15 @@ class FrenetSerret2DFrame:
         theta_r = np.arctan2(T_r[..., C_Y], T_r[..., C_X])
 
         radius_ratio = 1 - k_r * d_x  # pre-compute terms to use below
-        d_tag = d_v / s_v  # 1st derivative of d_x by distance
+
+        # Prevent division by zero velocity (s_v=0):
+        #       When vehicle's velocity is zero, we assume that the vehicle is parallel to the road.
+        #       Calculate d_tag & d_tagtag as 1st and 2nd derivatives of d_x by distance
+        # 1st derivative of d_x by distance: d_tag = d_v / s_v
+        d_tag = np.divide(d_v, s_v, out=np.zeros_like(d_v), where=s_v!=0)
+        # 2nd derivative of d_x by distance: d_tagtag = (d_a - d_tag * s_a) / (s_v ** 2)
+        d_tagtag = np.divide(d_a - d_tag * s_a, s_v ** 2, out=np.zeros_like(d_v), where=s_v!=0)
+
         tan_delta_theta = d_tag / radius_ratio
         delta_theta = np.arctan2(d_tag, radius_ratio)
         cos_delta_theta = np.cos(delta_theta)
@@ -106,7 +123,6 @@ class FrenetSerret2DFrame:
         v_x = np.divide(s_v * radius_ratio, cos_delta_theta)
 
         # compute k_x (curvature)
-        d_tagtag = (d_a - d_tag * s_a) / (s_v ** 2)  # 2nd derivative of d_x by distance
         k_x = ((d_tagtag + (k_r_tag * d_x + k_r * d_tag) * np.tan(delta_theta)) * np.cos(
             delta_theta) ** 2 / radius_ratio + k_r) * np.cos(delta_theta) / radius_ratio
 

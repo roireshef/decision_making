@@ -1,15 +1,15 @@
-from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE
-from decision_making.src.planning.trajectory.optimal_control.werling_planner import SamplableWerlingTrajectory
+import numpy as np
+
+from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, C_A, C_K
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
-from decision_making.src.state.state import EgoState, ObjectSize
+from decision_making.src.state.state import ObjectSize, EgoState
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.planning.trajectory.utils import RouteFixture
+from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.planning.custom_fixtures import state
 import numpy as np
-
-from rte.python.logger.AV_logger import AV_Logger
 
 
 def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTrue():
@@ -27,9 +27,8 @@ def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTr
     facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 
     exact_desired_state = samplable_trajectory.sample(np.array([1001]))[0]
-    close_state = EgoState(-1, 1001e9, exact_desired_state[C_X] + 0.1, exact_desired_state[C_Y] + 0.1,
-                           DEFAULT_OBJECT_Z_VALUE, exact_desired_state[C_YAW], ObjectSize(0, 0, 0), 1.0,
-                           exact_desired_state[C_V], 0.0, exact_desired_state[C_A], 0.0, 0.0)
+    close_state = EgoState.create_from_cartesian_state(-1, 1001e9, np.array([exact_desired_state[C_X] + 0.1, exact_desired_state[C_Y] + 0.1,
+                                                                             exact_desired_state[C_YAW], exact_desired_state[C_V], exact_desired_state[C_A], 0.0]), ObjectSize(0, 0, 0), 1.0)
 
     assert LocalizationUtils.is_actual_state_close_to_expected_state(close_state, facade._last_trajectory,
                                                                      facade.logger,
@@ -51,9 +50,9 @@ def test_isActualStateCloseToExpectedState_nonCloseTranslatedOnlyEgoState_return
     facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 
     exact_desired_state = samplable_trajectory.sample(np.array([1001]))[0]
-    close_state = EgoState(-1, 1001e9, exact_desired_state[C_X] + 200, exact_desired_state[C_Y] + 200,
-                           DEFAULT_OBJECT_Z_VALUE, exact_desired_state[C_YAW], ObjectSize(0, 0, 0), 1.0,
-                           exact_desired_state[C_V], 0.0, exact_desired_state[C_A], 0.0, 0.0)
+    close_state = EgoState.create_from_cartesian_state(-1, 1001e9, np.array([exact_desired_state[C_X] + 200, exact_desired_state[C_Y] + 200,
+                                                                             exact_desired_state[C_YAW],
+                                                                             exact_desired_state[C_V], exact_desired_state[C_A], 0.0]), ObjectSize(0, 0, 0), 1.0)
 
     assert not LocalizationUtils.is_actual_state_close_to_expected_state(close_state, facade._last_trajectory,
                                                                          facade.logger,
@@ -84,6 +83,6 @@ def test_getStateWithExpectedEgo_getsState_modifiesEgoStateInIt(state):
     np.testing.assert_almost_equal(modified_state.ego_state.x, sampled_ego_state_vec[C_X])
     np.testing.assert_almost_equal(modified_state.ego_state.y, sampled_ego_state_vec[C_Y])
     np.testing.assert_almost_equal(modified_state.ego_state.yaw, sampled_ego_state_vec[C_YAW])
-    np.testing.assert_almost_equal(modified_state.ego_state.v_x, sampled_ego_state_vec[C_V])
-    np.testing.assert_almost_equal(modified_state.ego_state.acceleration_lon, sampled_ego_state_vec[C_A])
+    np.testing.assert_almost_equal(modified_state.ego_state.velocity, sampled_ego_state_vec[C_V])
+    np.testing.assert_almost_equal(modified_state.ego_state.acceleration, sampled_ego_state_vec[C_A])
     np.testing.assert_almost_equal(modified_state.ego_state.curvature, sampled_ego_state_vec[C_K])

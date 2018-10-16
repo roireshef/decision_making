@@ -63,7 +63,7 @@ FP_SX, FP_DX = 0, 1
 # [FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA]
 FrenetState2D = np.ndarray
 # A Frenet-Frame trajectory: a numpy matrix of FrenetState2D [:, [FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA]]
-FrenetTrajectory2D = np.ndarray
+FrenetStates2D = FrenetTrajectory2D = np.ndarray
 # Frenet-Frame trajectories: a tensor of FrenetTrajectory2D [:, :, [FS_SX, FS_SV, FS_SA, FS_DX, FS_DV, FS_DA]]
 FrenetTrajectories2D = np.ndarray
 
@@ -90,3 +90,6 @@ S5, S4, S3, S2, S1, S0, D5, D4, D3, D2, D1, D0 = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 1
 Limits = np.ndarray
 LIMIT_MIN = 0
 LIMIT_MAX = 1
+
+# BehavioralGridState cell tuple-indices
+LAT_CELL, LON_CELL = 0, 1

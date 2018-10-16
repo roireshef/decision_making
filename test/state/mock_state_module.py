@@ -17,7 +17,7 @@ class StateModuleMock(StateModule):
         :param state: the state message to publish periodically
         """
         self._state = state
-        super().__init__(pubsub, logger, None, None, None)
+        super().__init__(pubsub=pubsub, logger=logger, dynamic_objects=None, ego_state=None, occupancy_state=None)
 
     def _periodic_action_impl(self):
         self.pubsub.publish(pubsub_topics.STATE_TOPIC, self._state.serialize())
