@@ -46,7 +46,8 @@ from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 
 # TODO: move this into config?
-NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))
+NAVIGATION_PLAN = NavigationPlanMsg(np.array([1]))  # 20 for Ayalon PG
+MAP_FILE = '/home/MZ8CJ6/av_code/spav/common_data/maps/OvalMilford.bin'  # None for Ayalon PG
 
 
 class NavigationFacadeMock(NavigationFacade):
@@ -67,7 +68,7 @@ class DmInitialization:
     def create_state_module() -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
-        MapService.initialize()
+        MapService.initialize(MAP_FILE)
         # TODO: figure out if we want to use OccupancyState at all
         default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
                                                  np.array([0.1], dtype=np.float))
@@ -87,7 +88,7 @@ class DmInitialization:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
         # Init map
-        MapService.initialize()
+        MapService.initialize(MAP_FILE)
 
         predictor = RoadFollowingPredictor(logger)
 
@@ -116,7 +117,7 @@ class DmInitialization:
         pubsub = create_pubsub(PubSubMessageTypes)
 
         # Init map
-        MapService.initialize()
+        MapService.initialize(MAP_FILE)
         predictor = RoadFollowingPredictor(logger)
         short_time_predictor = PhysicalTimeAlignmentPredictor(logger)
 
