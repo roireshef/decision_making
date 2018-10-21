@@ -4,7 +4,7 @@ from logging import Logger
 from typing import Tuple
 
 from decision_making.src.exceptions import raises, NoValidTrajectoriesFound, CouldNotGenerateTrajectories
-from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
+from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, ReferenceRoute
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianPath2D, CartesianTrajectories, \
     CartesianExtendedState
@@ -23,7 +23,7 @@ class TrajectoryPlanner(metaclass=ABCMeta):
 
     @abstractmethod
     @raises(NoValidTrajectoriesFound, CouldNotGenerateTrajectories)
-    def plan(self, state: State, reference_route: CartesianPath2D, goal: CartesianExtendedState, time_horizon: float,
+    def plan(self, state: State, reference_route: ReferenceRoute, goal: CartesianExtendedState, time_horizon: float,
              cost_params: TrajectoryCostParams) -> \
             Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """
