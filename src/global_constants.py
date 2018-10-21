@@ -16,7 +16,11 @@ PUBSUB_MSG_IMPL = StrSerializable
 # Behavioral Planner
 
 # [m] high-level behavioral planner lookahead distance
-PLANNING_LOOKAHEAD_DIST = 90.0
+PLANNING_LOOKAHEAD_DIST = 100.0
+
+# [m] When BP sends to TP the reference route, this parameter specifies how much margins (backward and forward) should
+# it take.
+REFERENCE_ROUTE_MARGINS = PLANNING_LOOKAHEAD_DIST
 
 # When retrieving the lookahead path of a given dynamic object, we will multiply the path length
 # by the following ratio in order to avoid extrapolation when resampling the path (due to path sampling
