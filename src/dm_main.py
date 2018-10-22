@@ -1,6 +1,6 @@
 from logging import Logger
 from os import getpid
-
+import os
 import numpy as np
 
 from common_data.interface.py.pubsub.dm_pubsub_topics import PubSubMessageTypes
@@ -47,7 +47,7 @@ from rte.python.os import catch_interrupt_signals
 
 # TODO: move this into config?
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([1]))  # 20 for Ayalon PG
-MAP_FILE = '/home/MZ8CJ6/av_code/spav/common_data/maps/OvalMilford.bin'  # None for Ayalon PG
+MAP_FILE = os.environ['AVCODE_PATH'] + '/spav/common_data/maps/OvalMilford.bin'  # None for Ayalon PG
 
 
 class NavigationFacadeMock(NavigationFacade):
