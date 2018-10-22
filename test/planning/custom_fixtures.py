@@ -19,8 +19,11 @@ from decision_making.test.planning.navigation.mock_navigation_facade import Navi
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.state.mock_state_module import StateModuleMock
 from common_data.interface.py.idl_generated_files.dm import LcmPerceivedDynamicObjectList
-from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmPerceivedDynamicObject, \
-    LcmObjectLocation, LcmObjectBbox, LcmObjectVelocity, LcmObjectTrackingStatus
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmPerceivedDynamicObject import LcmPerceivedDynamicObject
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmObjectLocation import LcmObjectLocation
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmObjectBbox import LcmObjectBbox
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmObjectVelocity import LcmObjectVelocity
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmObjectTrackingStatus import LcmObjectTrackingStatus
 
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
@@ -46,7 +49,6 @@ def dynamic_objects_in_fov():
     objects = LcmPerceivedDynamicObjectList()
 
     objects.timestamp = 1
-    objects.dynamic_objects = []
 
     dyn_obj = LcmPerceivedDynamicObject()
     dyn_obj.id = 1
@@ -73,7 +75,8 @@ def dynamic_objects_in_fov():
     dyn_obj.tracking_status.in_fov = True
     dyn_obj.tracking_status.is_predicted = False
 
-    objects.dynamic_objects.append(dyn_obj)
+    objects.num_objects = 1
+    objects.dynamic_objects[0] = dyn_obj
 
     yield objects
 
@@ -83,7 +86,6 @@ def dynamic_objects_not_in_fov():
     objects = LcmPerceivedDynamicObjectList()
 
     objects.timestamp = 3
-    objects.dynamic_objects = []
 
     dyn_obj = LcmPerceivedDynamicObject()
     dyn_obj.id = 1
@@ -110,7 +112,8 @@ def dynamic_objects_not_in_fov():
     dyn_obj.tracking_status.in_fov = False
     dyn_obj.tracking_status.is_predicted = False
 
-    objects.dynamic_objects.append(dyn_obj)
+    objects.num_objects = 1
+    objects.dynamic_objects[0] = dyn_obj
 
     yield objects
 
@@ -120,7 +123,6 @@ def dynamic_objects_not_on_road():
     objects = LcmPerceivedDynamicObjectList()
 
     objects.timestamp = 3
-    objects.dynamic_objects = []
 
     dyn_obj = LcmPerceivedDynamicObject()
     dyn_obj.id = 1
@@ -147,7 +149,8 @@ def dynamic_objects_not_on_road():
     dyn_obj.tracking_status.in_fov = True
     dyn_obj.tracking_status.is_predicted = False
 
-    objects.dynamic_objects.append(dyn_obj)
+    objects.num_objects = 1
+    objects.dynamic_objects[0] = dyn_obj
 
     yield objects
 
@@ -157,7 +160,6 @@ def dynamic_objects_negative_velocity():
     objects = LcmPerceivedDynamicObjectList()
 
     objects.timestamp = 3
-    objects.dynamic_objects = []
 
     dyn_obj = LcmPerceivedDynamicObject()
     dyn_obj.id = 1
@@ -184,7 +186,8 @@ def dynamic_objects_negative_velocity():
     dyn_obj.tracking_status.in_fov = True
     dyn_obj.tracking_status.is_predicted = False
 
-    objects.dynamic_objects.append(dyn_obj)
+    objects.num_objects = 1
+    objects.dynamic_objects[0] = dyn_obj
 
     yield objects
 
