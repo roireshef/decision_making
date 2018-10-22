@@ -37,8 +37,7 @@ mock_td_steps = 5
 # @patch('decision_making.src.planning.trajectory.optimal_control.werling_planner.DX_STEPS', 5)
 def test_werlingPlanner_toyScenario_noException():
     logger = AV_Logger.get_logger('test_werlingPlanner_toyScenario_noException')
-    route_points = CartesianFrame.add_yaw_and_derivatives(
-        RouteFixture.get_route(lng=10, k=1, step=1, lat=1, offset=-.5))
+    reference_route = FrenetSerret2DFrame.fit(RouteFixture.get_route(lng=10, k=1, step=1, lat=1, offset=-.5))
 
     v0 = 5
     vT = 5
@@ -46,7 +45,10 @@ def test_werlingPlanner_toyScenario_noException():
 
     predictor = RoadFollowingPredictor(logger)
 
-    goal = np.concatenate((route_points[len(route_points) // 2, [CURVE_X, CURVE_Y, CURVE_YAW]], [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
+    goal_pos = np.array([15, 0.005])
+    goal_s = reference_route.cpoint_to_fpoint(goal_pos)[0]
+    goal = np.concatenate((goal_pos, reference_route.get_yaw(np.array([goal_s])), [vT, DEFAULT_ACCELERATION, DEFAULT_CURVATURE]))
+
     pos1 = np.array([7, -.5])
     yaw1 = 0
     pos2 = np.array([11, 1.5])
@@ -88,7 +90,7 @@ def test_werlingPlanner_toyScenario_noException():
 
     start_time = time.time()
 
-    samplable, ctrajectories, costs = planner.plan(state=state, reference_route=route_points[:, :2], goal=goal,
+    samplable, ctrajectories, costs = planner.plan(state=state, reference_route=reference_route, goal=goal,
                                                       time_horizon=Ts, cost_params=cost_params)
 
     samplable.sample(np.arange(0, 1, 0.01) + ego.timestamp_in_sec)
