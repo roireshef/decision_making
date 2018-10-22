@@ -6,7 +6,7 @@ from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, 
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, TIMESTAMP_RESOLUTION_IN_SEC
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
-    TrajectoryParams, ReferenceRoute
+    TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
@@ -258,7 +258,7 @@ def dyn_obj_outside_road():
 @pytest.fixture(scope='function')
 def trajectory_params():
     ref_points = np.array([[x, -2.0] for x in range(0, 16)])
-    ref_route = ReferenceRoute.from_frenet(FrenetSerret2DFrame.fit(ref_points))
+    ref_route = FrenetSerret2DFrame.fit(ref_points)
     target_state = np.array([15.0, -2.0, 0.0, 1, 0.0, 0.0])
     mock_sigmoid = SigmoidFunctionParams(1.0, 2.0, 3.0)
     trajectory_cost_params = TrajectoryCostParams(mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,

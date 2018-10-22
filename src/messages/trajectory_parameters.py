@@ -1,5 +1,3 @@
-from enum import Enum
-
 import numpy as np
 
 from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
@@ -7,7 +5,6 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmSigmoidFunctionParams
 from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryCostParams
 from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryParameters
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.messages.str_serializable import StrSerializable
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_V, Limits
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
@@ -176,94 +173,6 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
                             , dtype = float))
 
 
-class ReferenceRoute(PUBSUB_MSG_IMPL):
-    """Members annotations for python 2 compliant classes"""
-    points = np.ndarray
-    T = np.ndarray
-    N = np.ndarray
-    k = np.ndarray
-    k_tag = np.ndarray
-    ds = float
-
-    def __init__(self, points, T, N, k, k_tag, ds):
-        # type: (np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, float) -> None
-        """
-        A data class that holds all information to build a FrenetSerret2DFrame
-        for field descriptions, please refer to the FrenetSerret2DFrame class
-        """
-        self.points = points
-        self.T = T
-        self.N = N
-        self.k = k
-        self.k_tag = k_tag
-        self.ds = ds
-
-    @classmethod
-    def from_frenet(cls, frenet):
-        # type (FrenetSerret2DFrame) -> None
-        return cls(frenet.O, frenet.T, frenet.N, frenet.k, frenet.k_tag, frenet.ds)
-
-    def serialize(self):
-        # type: () -> LcmReferenceRoute
-        lcm_msg = LcmReferenceRoute()
-
-        lcm_msg.points = LcmNumpyArray()
-        lcm_msg.points.num_dimensions = len(self.points.shape)
-        lcm_msg.points.shape = list(self.points.shape)
-        lcm_msg.points.length = self.points.size
-        lcm_msg.points.data = self.points.flat.__array__().tolist()
-
-        lcm_msg.T = LcmNumpyArray()
-        lcm_msg.T.num_dimensions = len(self.T.shape)
-        lcm_msg.T.shape = list(self.T.shape)
-        lcm_msg.T.length = self.T.size
-        lcm_msg.T.data = self.T.flat.__array__().tolist()
-
-        lcm_msg.N = LcmNumpyArray()
-        lcm_msg.N.num_dimensions = len(self.N.shape)
-        lcm_msg.N.shape = list(self.N.shape)
-        lcm_msg.N.length = self.N.size
-        lcm_msg.N.data = self.N.flat.__array__().tolist()
-
-        lcm_msg.k = LcmNumpyArray()
-        lcm_msg.k.num_dimensions = len(self.k.shape)
-        lcm_msg.k.shape = list(self.k.shape)
-        lcm_msg.k.length = self.k.size
-        lcm_msg.k.data = self.k.flat.__array__().tolist()
-
-        lcm_msg.k_tag = LcmNumpyArray()
-        lcm_msg.k_tag.num_dimensions = len(self.k_tag.shape)
-        lcm_msg.k_tag.shape = list(self.k_tag.shape)
-        lcm_msg.k_tag.length = self.k_tag.size
-        lcm_msg.k_tag.data = self.k_tag.flat.__array__().tolist()
-
-        lcm_msg.ds = self.ds
-
-        return lcm_msg
-
-    @classmethod
-    def deserialize(cls, lcmMsg):
-        # type: (LcmReferenceRoute)->ReferenceRoute
-
-        return cls(
-            np.ndarray(shape=tuple(lcmMsg.points.shape)
-                       , buffer=np.array(lcmMsg.points.data)
-                       , dtype=float)
-            , np.ndarray(shape=tuple(lcmMsg.T.shape)
-                         , buffer=np.array(lcmMsg.T.data)
-                         , dtype=float)
-            , np.ndarray(shape=tuple(lcmMsg.N.shape)
-                         , buffer=np.array(lcmMsg.N.data)
-                         , dtype=float)
-            , np.ndarray(shape=tuple(lcmMsg.k.shape)
-                         , buffer=np.array(lcmMsg.k.data)
-                         , dtype=float)
-            , np.ndarray(shape=tuple(lcmMsg.k_tag.shape)
-                         , buffer=np.array(lcmMsg.k_tag.data)
-                         , dtype=float)
-            , lcmMsg.ds)
-
-
 class TrajectoryParams(PUBSUB_MSG_IMPL):
     """ Members annotations for python 2 compliant classes """
     strategy = TrajectoryPlanningStrategy
@@ -273,10 +182,10 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
     time = float
 
     def __init__(self, strategy, reference_route, target_state, cost_params, time, bp_time):
-        # type: (TrajectoryPlanningStrategy, ReferenceRoute, np.ndarray, TrajectoryCostParams, float)->None
+        # type: (TrajectoryPlanningStrategy, FrenetSerret2DFrame, np.ndarray, TrajectoryCostParams, float)->None
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
-        :param reference_route: a reference route points (often the center of lane)
+        :param reference_route: the frenet frame of the reference route (often the center of lane)
         :param target_state: the vector-representation of the target state to plan ego motion towards
         :param cost_params: list of parameters for the cost function of trajectory planner.
         :param strategy: trajectory planning strategy.
@@ -321,7 +230,7 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmTrajectoryParameters)->TrajectoryParams
         return cls(TrajectoryPlanningStrategy(lcmMsg.strategy)
-                 , ReferenceRoute.deserialize(lcmMsg.reference_route)
+                 , FrenetSerret2DFrame.deserialize(lcmMsg.reference_route)
                  , np.ndarray(shape = tuple(lcmMsg.target_state.shape)
                             , buffer = np.array(lcmMsg.target_state.data)
                             , dtype = float)

@@ -14,7 +14,7 @@ from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATI
     LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT, REFERENCE_ROUTE_MARGINS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
-    SigmoidFunctionParams, ReferenceRoute
+    SigmoidFunctionParams
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe
@@ -175,8 +175,7 @@ class CostBasedBehavioralPlanner:
             reference_route_latitude=action_spec.d  # this assumes the target falls on the reference route
         )
 
-        center_lane_frenet = FrenetSerret2DFrame.fit(center_lane_points)
-        center_lane_reference_route = ReferenceRoute.from_frenet(center_lane_frenet)
+        center_lane_reference_route = FrenetSerret2DFrame.fit(center_lane_points)
 
         trajectory_parameters = TrajectoryParams(reference_route=center_lane_reference_route,
                                                  time=action_spec.t + ego.timestamp_in_sec,

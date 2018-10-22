@@ -3,6 +3,8 @@ from typing import Tuple
 import numpy as np
 from scipy.interpolate.fitpack2 import UnivariateSpline
 
+from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray, LcmFrenetFrame
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_SPLINE_FIT_ORDER, \
     TINY_CURVATURE
 from decision_making.src.planning.types import FP_SX, FP_DX, CartesianPoint2D, \
@@ -13,7 +15,7 @@ from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
 
-class FrenetSerret2DFrame:
+class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
                  ds: float):
         """
@@ -60,6 +62,10 @@ class FrenetSerret2DFrame:
     @property
     def s_max(self):
         return self.ds * len(self.O)
+
+    @property
+    def points(self):
+        return self.O
 
     def get_curvature(self, s: np.ndarray):
         """
@@ -378,7 +384,6 @@ class FrenetSerret2DFrame:
 
         return T, N, np.c_[k], np.c_[k_tag]
 
-
     @staticmethod
     def _fit_frenet(xy: CartesianPath2D, ds: float) -> (CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray,
                                                         np.ndarray):
@@ -418,3 +423,63 @@ class FrenetSerret2DFrame:
         k_tag = np.divide(np.gradient(k), ds)
 
         return T, N, np.c_[k], np.c_[k_tag]
+
+    def serialize(self):
+        # type: () -> LcmFrenetFrame
+        lcm_msg = LcmFrenetFrame()
+
+        lcm_msg.points = LcmNumpyArray()
+        lcm_msg.points.num_dimensions = len(self.O.shape)
+        lcm_msg.points.shape = list(self.O.shape)
+        lcm_msg.points.length = self.O.size
+        lcm_msg.points.data = self.O.flat.__array__().tolist()
+
+        lcm_msg.T = LcmNumpyArray()
+        lcm_msg.T.num_dimensions = len(self.T.shape)
+        lcm_msg.T.shape = list(self.T.shape)
+        lcm_msg.T.length = self.T.size
+        lcm_msg.T.data = self.T.flat.__array__().tolist()
+
+        lcm_msg.N = LcmNumpyArray()
+        lcm_msg.N.num_dimensions = len(self.N.shape)
+        lcm_msg.N.shape = list(self.N.shape)
+        lcm_msg.N.length = self.N.size
+        lcm_msg.N.data = self.N.flat.__array__().tolist()
+
+        lcm_msg.k = LcmNumpyArray()
+        lcm_msg.k.num_dimensions = len(self.k.shape)
+        lcm_msg.k.shape = list(self.k.shape)
+        lcm_msg.k.length = self.k.size
+        lcm_msg.k.data = self.k.flat.__array__().tolist()
+
+        lcm_msg.k_tag = LcmNumpyArray()
+        lcm_msg.k_tag.num_dimensions = len(self.k_tag.shape)
+        lcm_msg.k_tag.shape = list(self.k_tag.shape)
+        lcm_msg.k_tag.length = self.k_tag.size
+        lcm_msg.k_tag.data = self.k_tag.flat.__array__().tolist()
+
+        lcm_msg.ds = self.ds
+
+        return lcm_msg
+
+    @classmethod
+    def deserialize(cls, lcmMsg):
+        # type: (LcmFrenetFrame)->FrenetSerret2DFrame
+
+        return cls(
+            np.ndarray(shape=tuple(lcmMsg.points.shape)
+                       , buffer=np.array(lcmMsg.points.data)
+                       , dtype=float)
+            , np.ndarray(shape=tuple(lcmMsg.T.shape)
+                         , buffer=np.array(lcmMsg.T.data)
+                         , dtype=float)
+            , np.ndarray(shape=tuple(lcmMsg.N.shape)
+                         , buffer=np.array(lcmMsg.N.data)
+                         , dtype=float)
+            , np.ndarray(shape=tuple(lcmMsg.k.shape)
+                         , buffer=np.array(lcmMsg.k.data)
+                         , dtype=float)
+            , np.ndarray(shape=tuple(lcmMsg.k_tag.shape)
+                         , buffer=np.array(lcmMsg.k_tag.data)
+                         , dtype=float)
+            , lcmMsg.ds)

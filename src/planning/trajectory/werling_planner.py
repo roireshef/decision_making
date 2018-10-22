@@ -1,12 +1,13 @@
 from logging import Logger
 from typing import Tuple
+
 import numpy as np
 
 from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
     SV_STEPS, DX_OFFSET_MIN, DX_OFFSET_MAX, DX_STEPS, SX_OFFSET_MIN, SX_OFFSET_MAX, \
     TD_STEPS, LAT_ACC_LIMITS, TD_MIN_DT, LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES
-from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, ReferenceRoute
+from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -33,13 +34,13 @@ class WerlingPlanner(TrajectoryPlanner):
     def dt(self):
         return self._dt
 
-    def plan(self, state: State, reference_route: ReferenceRoute, goal: CartesianExtendedState, time_horizon: float,
+    def plan(self, state: State, reference_route: FrenetSerret2DFrame, goal: CartesianExtendedState, time_horizon: float,
              cost_params: TrajectoryCostParams)-> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """ see base class """
         T_s = time_horizon
 
         # create road coordinate-frame
-        frenet = FrenetSerret2DFrame(reference_route.points, reference_route.T, reference_route.N, reference_route.k,
+        frenet = FrenetSerret2DFrame(reference_route.O, reference_route.T, reference_route.N, reference_route.k,
                                      reference_route.k_tag, reference_route.ds)
 
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
