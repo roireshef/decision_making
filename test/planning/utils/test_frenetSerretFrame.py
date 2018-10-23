@@ -18,7 +18,7 @@ def test_cpointsToFpointsToCpoints_pointTwoWayConversion_accurate():
                         [370.0, 0.0]
                         ])
 
-    frenet = FrenetSerret2DFrame(route_points)
+    frenet = FrenetSerret2DFrame.fit(route_points)
 
     fpoints = frenet.cpoints_to_fpoints(cpoints)
     new_cpoints = frenet.fpoints_to_cpoints(fpoints)
@@ -57,7 +57,7 @@ def test_ctrajectoryToFtrajectoryToCtrajectory_pointTwoWayConversion_accuratePos
                         [370.0, 0.0, np.pi/9, 2.5, -2.0, 0.0]
                         ])
 
-    frenet = FrenetSerret2DFrame(route_points)
+    frenet = FrenetSerret2DFrame.fit(route_points)
 
     fstates = frenet.ctrajectory_to_ftrajectory(cpoints)
     new_cstates = frenet.ftrajectory_to_ctrajectory(fstates)
@@ -111,7 +111,7 @@ def test_ftrajectoryToCtrajectoryToFtrajectory_pointTwoWayConversion_accuratePos
                        [3.90229981e+02,   1.27084880e+01,  -7.14379434e+00,
                         -5.09288718e+01,   9.82118772e-02,   4.22253295e-01]])
 
-    frenet = FrenetSerret2DFrame(route_points)
+    frenet = FrenetSerret2DFrame.fit(route_points)
 
     projected_cstates = frenet.ftrajectory_to_ctrajectory(fstates)
     new_fstates = frenet.ctrajectory_to_ftrajectory(projected_cstates)
@@ -149,7 +149,7 @@ def test_projectCartesianPoint_fivePointsProjection_accurate():
                         [280.0, 40.0], [320.0, 60.0],
                         [370.0, 0.0]
                         ])
-    frenet = FrenetSerret2DFrame(route_points)
+    frenet = FrenetSerret2DFrame.fit(route_points)
     projected_cpoints = frenet.fpoints_to_cpoints(fpoints)
 
     s, _, _, _, _, _ = frenet._project_cartesian_points(projected_cpoints)
@@ -181,7 +181,7 @@ def test_fitFrenet_originalRoutePointsAreProjected_errorsAreLowEnough():
                                                       preserve_step_size=False,
                                                       spline_order=TRAJECTORY_CURVE_SPLINE_FIT_ORDER)
 
-    frenet = FrenetSerret2DFrame(route_points_upsampled_to_required_res)
+    frenet = FrenetSerret2DFrame.fit(route_points_upsampled_to_required_res)
 
     # project the original route points unto the fitted curve - last point can be outside the curve
     # (due to length estimation)
@@ -220,7 +220,7 @@ def test_ctrajectoryToFtrajectoryToCtrajectory_zeroVelocityTwoWayConversion_accu
                         [460.0, 50.0, np.pi/9, 0, -2, 0]
                         ])
 
-    frenet = FrenetSerret2DFrame(route_points)
+    frenet = FrenetSerret2DFrame.fit(route_points)
 
     fstates = frenet.ctrajectory_to_ftrajectory(cpoints)
     new_cstates = frenet.ftrajectory_to_ctrajectory(fstates)

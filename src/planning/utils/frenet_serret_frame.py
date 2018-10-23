@@ -14,27 +14,49 @@ from mapping.src.transformations.geometry_utils import CartesianFrame, Euclidean
 
 
 class FrenetSerret2DFrame:
-    def __init__(self, points: CartesianPath2D, ds: float = TRAJECTORY_ARCLEN_RESOLUTION,
-                 spline_order=TRAJECTORY_CURVE_SPLINE_FIT_ORDER):
+    def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
+                 ds: float):
         """
         This is an object used for paramterizing a curve given discrete set of points in some "global" cartesian frame,
         and then for transforming from the "global" frame to the curve's frenet frame and back.
+        :param points: 2D numpy array of points sampled from a smooth curve (x,y axes; ideally a spline of high order)
+        :param T: 2D numpy array of tangent unit vectors (x,y axes) of <points>
+        :param N: 2D numpy array of normal unit vectors (x,y axes) of <points>
+        :param k: 1D numpy array of curvature values at each point in <points>
+        :param k_tag: 1D numpy array of values of 1st derivative of curvature at each point in <points>
+        :param ds: the resolution of longitudinal distance along the curve (progress diff between points in <points>)
+        """
+        self.O = points
+        self.T = T
+        self.N = N
+        self.k = k
+        self.k_tag = k_tag
+        self.ds = ds
+
+    @classmethod
+    def fit(cls, points: CartesianPath2D, ds: float = TRAJECTORY_ARCLEN_RESOLUTION,
+            spline_order=TRAJECTORY_CURVE_SPLINE_FIT_ORDER):
+        """
+
         :param points: a set of points in some "global" cartesian frame
         :param ds: a resolution parameter - the desired distance between each two consecutive points after re-sampling
         :param spline_order: spline order for fitting and re-sampling the original points
         """
-        splines, self.O, effective_ds = CartesianFrame.resample_curve(curve=points, step_size=ds,
+        splines, points, effective_ds = CartesianFrame.resample_curve(curve=points, step_size=ds,
                                                                       preserve_step_size=False,
                                                                       spline_order=spline_order)
 
-        self.s_max = effective_ds * len(self.O)
-        self.ds = effective_ds
-        self.T, self.N, self.k, self.k_tag = FrenetSerret2DFrame._fit_frenet_from_splines(0.0, self.s_max, self.ds,
-                                                                                          splines)
+        s_max = effective_ds * len(points)
+        T, N, k, k_tag = FrenetSerret2DFrame._fit_frenet_from_splines(0.0, s_max, effective_ds, splines)
+        return cls(points, T, N, k, k_tag, effective_ds)
 
     @property
     def s_limits(self):
         return np.array([0, self.s_max])
+
+    @property
+    def s_max(self):
+        return self.ds * len(self.O)
 
     def get_curvature(self, s: np.ndarray):
         """
