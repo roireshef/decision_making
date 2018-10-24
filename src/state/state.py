@@ -12,10 +12,12 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmState
 
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
+from decision_making.src.planning.behavioral.behavioral_grid_state import RelativeLane
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K
 from decision_making.src.state.map_state import MapState
 from common_data.lcm.python.utils.lcm_utils import LCMUtils
 from decision_making.src.utils.map_utils import MapUtils
+from mapping.src.service.map_service import MapService
 
 
 class OccupancyState(PUBSUB_MSG_IMPL):
@@ -118,6 +120,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         self._cached_map_state = map_state
         self.size = copy.copy(size)
         self.confidence = confidence
+        self._cached_right_map_state = None  # map_state of the object w.r.t. to its right lane
+        self._cached_left_map_state = None   # map_state of the object w.r.t. to its left lane
 
     @property
     def x(self):
@@ -160,6 +164,39 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         if self._cached_map_state is None:
             self._cached_map_state = MapUtils.convert_cartesian_to_map_state(self._cached_cartesian_state)
         return self._cached_map_state
+
+    @property
+    def right_map_state(self):
+        # type: () -> MapState
+        """
+        map_state of the object w.r.t. to its right lane
+        """
+        if self._cached_right_map_state is None:
+            right_lane_id = MapService().get_instance().get_adjacent_lane(self.map_state.lane_id, RelativeLane.RIGHT_LANE)
+            if right_lane_id is not None:
+                right_frenet = MapService().get_instance().get_lane_frenet(right_lane_id)
+                # TODO: the current implementation of cstate_to_fstate is very slow
+                right_fstate = right_frenet.cstate_to_fstate(self.cartesian_state)
+                self._cached_right_map_state = MapState(right_fstate, right_lane_id)
+            else:
+                self._cached_right_map_state = MapState(None, None)  # distinguish between not cached and non-existing lane
+        return self._cached_right_map_state
+
+    @property
+    def left_map_state(self):
+        # type: () -> MapState
+        """
+        map_state of the object w.r.t. to its left lane
+        """
+        if self._cached_left_map_state is None:
+            left_lane_id = MapService().get_instance().get_adjacent_lane(self.map_state.lane_id, RelativeLane.LEFT_LANE)
+            if left_lane_id is not None:
+                left_frenet = MapService().get_instance().get_lane_frenet(left_lane_id)
+                left_fstate = left_frenet.cstate_to_fstate(self.cartesian_state)
+                self._cached_left_map_state = MapState(left_fstate, left_lane_id)
+            else:
+                self._cached_left_map_state = MapState(None, None)  # distinguish between not cached and non-existing lane
+        return self._cached_left_map_state
 
     @staticmethod
     def sec_to_ticks(time_in_seconds: float):

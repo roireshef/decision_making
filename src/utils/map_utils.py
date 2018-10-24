@@ -1,6 +1,11 @@
-from decision_making.src.planning.types import FrenetState2D, C_X, C_Y, CartesianExtendedState, FS_DX
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from typing import List
+
+import numpy as np
+
+from decision_making.src.planning.behavioral.behavioral_grid_state import RelativeLane
+from decision_making.src.planning.types import C_X, C_Y, CartesianExtendedState, FS_DX, FrenetState2D, FS_SX
 from decision_making.src.state.map_state import MapState
+from decision_making.src.state.state import DynamicObject
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -19,23 +24,22 @@ class MapUtils:
 
         relevant_road_ids = map_api._find_roads_containing_point(cartesian_state[C_X], cartesian_state[C_Y])
         closest_road_id = map_api._find_closest_road(cartesian_state[C_X], cartesian_state[C_Y], relevant_road_ids)
+        # TODO: MapService
+        closest_lane_id = map_api._find_closest_lane(closest_road_id, cartesian_state[C_X], cartesian_state[C_Y])
 
-        road_frenet = map_api._rhs_roads_frenet[closest_road_id]
+        lane_frenet = map_api.get_lane_frenet(closest_lane_id)
 
-        obj_fstate = road_frenet.cstate_to_fstate(cartesian_state)
+        obj_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
 
-        return MapState(obj_fstate, closest_road_id)
+        return MapState(obj_fstate, closest_lane_id)
 
     @staticmethod
     def convert_map_to_cartesian_state(map_state):
         # type: (MapState) -> CartesianExtendedState
-        map_api = MapService.get_instance()
+        # TODO: MapService
+        lane_frenet = MapService.get_instance().get_lane_frenet(map_state.lane_id)
+        return lane_frenet.fstate_to_cstate(map_state.lane_fstate)
 
-        road_frenet = map_api._rhs_roads_frenet[map_state.road_id]
-
-        return road_frenet.fstate_to_cstate(map_state.road_fstate)
-
-    # TODO: Note! This function is only valid when the frenet reference frame is from the right side of the road
     @staticmethod
     def is_object_on_road(map_state):
         # type: (MapState) -> bool
@@ -45,6 +49,22 @@ class MapUtils:
         :param map_state: the map state to check
         :return: Returns true of the object is on the road. False otherwise.
         """
-        road_width = MapService.get_instance().get_road(road_id=map_state.road_id).road_width
-        is_on_road = road_width + ROAD_SHOULDERS_WIDTH > map_state.road_fstate[FS_DX] > -ROAD_SHOULDERS_WIDTH
+        dist_from_right, dist_from_left = MapService.get_instance().dist_from_lane_borders(
+            map_state.lane_id, map_state.lane_fstate[FS_SX])
+        is_on_road = -dist_from_right - ROAD_SHOULDERS_WIDTH < map_state.lane_fstate[FS_DX] < dist_from_left + ROAD_SHOULDERS_WIDTH
         return is_on_road
+
+    @staticmethod
+    def project_on_relative_lanes(obj, relative_lanes):
+        # type: (DynamicObject, List[RelativeLane]) -> List[FrenetState2D]
+        """
+        Calculate frenet-states of the given object w.r.t. the relative (adjacent) lanes
+        :param obj: dynamic object
+        :param relative_lanes: list of relative lanes (same, left, right)
+        :return: list of frenet-states of size len(relative_lanes)
+        """
+        return [None
+                if relative_lane != RelativeLane.LEFT_LANE else obj.left_map_state.lane_fstate
+                if relative_lane != RelativeLane.RIGHT_LANE else obj.right_map_state.lane_fstate
+                if relative_lane != RelativeLane.SAME_LANE else obj.map_state.lane_fstate
+                for relative_lane in relative_lanes]

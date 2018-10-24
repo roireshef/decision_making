@@ -143,13 +143,12 @@ class StateModule(DmModule):
                         # Required to verify the object has map state and that the velocity exceeds a minimal value.
                         # If FILTER_OFF_ROAD_OBJECTS is true, it means that the object is on road - therfore has map
                         # state
-                        if FILTER_OFF_ROAD_OBJECTS and dyn_obj.map_state.road_fstate[
-                            FS_SV] < VELOCITY_MINIMAL_THRESHOLD:
-                            thresholded_road_fstate = np.copy(dyn_obj.map_state.road_fstate)
-                            thresholded_road_fstate[FS_SV] = VELOCITY_MINIMAL_THRESHOLD
+                        if FILTER_OFF_ROAD_OBJECTS and dyn_obj.map_state.lane_fstate[FS_SV] < VELOCITY_MINIMAL_THRESHOLD:
+                            thresholded_lane_fstate = np.copy(dyn_obj.map_state.lane_fstate)
+                            thresholded_lane_fstate[FS_SV] = VELOCITY_MINIMAL_THRESHOLD
                             dyn_obj = dyn_obj.clone_from_map_state(
-                                map_state=MapState(road_fstate=thresholded_road_fstate,
-                                                   road_id=dyn_obj.map_state.road_id))
+                                map_state=MapState(lane_fstate=thresholded_lane_fstate,
+                                                   lane_id=dyn_obj.map_state.lane_id))
 
                         self._dynamic_objects_memory_map[id] = dyn_obj
                         dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects

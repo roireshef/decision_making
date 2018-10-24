@@ -65,18 +65,20 @@ class ActionSpec:
     """
     Holds the actual translation of the semantic action in terms of trajectory specifications.
     """
-    def __init__(self, t: float, v: float, s: float, d: float):
+    def __init__(self, t: float, v: float, s: float, d: float, lane_id: int):
         """
         The trajectory specifications are defined by the target ego state
         :param t: time [sec]
         :param v: velocity [m/s]
         :param s: global longitudinal position in Frenet frame [m]
         :param d: global lateral position in Frenet frame [m]
+        :param lane_id: target lane id
         """
         self.t = t
         self.v = v
         self.s = s
         self.d = d
+        self.lane_id = lane_id
 
     def __str__(self):
         return str({k: str(v) for (k, v) in self.__dict__.items()})

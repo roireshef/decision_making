@@ -4,6 +4,7 @@ from typing import List
 
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.state.state import State
+from mapping.src.service.map_service import MapService
 
 
 class GoalStatus(Enum):
@@ -35,7 +36,8 @@ class NavigationGoal:
         """
         # TODO: use route planner to check if the case map_state.road_id != goal.road means MISSED or NOT_YET
         map_state = state.ego_state.map_state
-        if map_state.road_id == self.road_id and map_state.road_fstate[FS_SX] >= self.lon:
+        road_id = MapService().get_instance().get_road_by_lane(map_state.lane_id)
+        if road_id == self.road_id and map_state.lane_fstate[FS_SX] >= self.lon:
             if map_state.lane_num in self.lanes:
                 return GoalStatus.REACHED
             else:
