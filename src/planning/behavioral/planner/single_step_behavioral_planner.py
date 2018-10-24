@@ -103,7 +103,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(behavioral_state=behavioral_state,
                                                                                       action_spec=selected_action_spec,
                                                                                       navigation_plan=nav_plan)
-        visualization_message = BehavioralVisualizationMsg(reference_route=trajectory_parameters.reference_route)
+        visualization_message = BehavioralVisualizationMsg(
+            reference_route_points=trajectory_parameters.reference_route.points)
 
         # keeping selected actions for next iteration use
         self._last_action = action_recipes[selected_action_index]
