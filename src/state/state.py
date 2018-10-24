@@ -160,17 +160,17 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
     @property
     def map_state(self):
-        return self.get_map_state(RelativeLane.SAME_LANE)
+        return self._get_map_state(RelativeLane.SAME_LANE)
 
     @property
     def right_map_state(self):
-        return self.get_map_state(RelativeLane.RIGHT_LANE)
+        return self._get_map_state(RelativeLane.RIGHT_LANE)
 
     @property
     def left_map_state(self):
-        return self.get_map_state(RelativeLane.LEFT_LANE)
+        return self._get_map_state(RelativeLane.LEFT_LANE)
 
-    def get_map_state(self, relative_lane):
+    def _get_map_state(self, relative_lane):
         # type: (RelativeLane) -> MapState
         if self._cached_map_states[relative_lane] is None:
             if relative_lane == RelativeLane.SAME_LANE:
