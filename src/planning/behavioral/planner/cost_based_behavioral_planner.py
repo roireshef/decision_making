@@ -140,7 +140,7 @@ class CostBasedBehavioralPlanner:
         ego = behavioral_state.ego_state
         map_api = MapService.get_instance()
 
-        ego_init_fstate = MapUtils.project_on_relative_lanes(ego, [action_recipe.relative_lane])[0]
+        ego_init_fstate = ego.project_on_relative_lanes([action_recipe.relative_lane])[0]
         assert ego_init_fstate is not None
         goal_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
 
@@ -199,7 +199,7 @@ class CostBasedBehavioralPlanner:
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
 
         # project ego on target lane frenet_frame
-        ego_init_fstate = MapUtils.project_on_relative_lanes(ego, [action_recipe.relative_lane])[0]
+        ego_init_fstate = ego.project_on_relative_lanes([action_recipe.relative_lane])[0]
         assert ego_init_fstate is not None
 
         target_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])

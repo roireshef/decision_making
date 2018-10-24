@@ -1,11 +1,7 @@
-from typing import List
-
 import numpy as np
 
-from decision_making.src.planning.behavioral.behavioral_grid_state import RelativeLane
-from decision_making.src.planning.types import C_X, C_Y, CartesianExtendedState, FS_DX, FrenetState2D, FS_SX
+from decision_making.src.planning.types import C_X, C_Y, CartesianExtendedState, FS_DX, FS_SX
 from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import DynamicObject
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 
@@ -25,7 +21,7 @@ class MapUtils:
         relevant_road_ids = map_api._find_roads_containing_point(cartesian_state[C_X], cartesian_state[C_Y])
         closest_road_id = map_api._find_closest_road(cartesian_state[C_X], cartesian_state[C_Y], relevant_road_ids)
         # TODO: MapService
-        closest_lane_id = map_api._find_closest_lane(closest_road_id, cartesian_state[C_X], cartesian_state[C_Y])
+        closest_lane_id = map_api.find_closest_lane(closest_road_id, cartesian_state[C_X], cartesian_state[C_Y])
 
         lane_frenet = map_api.get_lane_frenet(closest_lane_id)
 
@@ -53,18 +49,3 @@ class MapUtils:
             map_state.lane_id, map_state.lane_fstate[FS_SX])
         is_on_road = -dist_from_right - ROAD_SHOULDERS_WIDTH < map_state.lane_fstate[FS_DX] < dist_from_left + ROAD_SHOULDERS_WIDTH
         return is_on_road
-
-    @staticmethod
-    def project_on_relative_lanes(obj, relative_lanes):
-        # type: (DynamicObject, List[RelativeLane]) -> List[FrenetState2D]
-        """
-        Calculate frenet-states of the given object w.r.t. the relative (adjacent) lanes
-        :param obj: dynamic object
-        :param relative_lanes: list of relative lanes (same, left, right)
-        :return: list of frenet-states of size len(relative_lanes)
-        """
-        return [None
-                if relative_lane != RelativeLane.LEFT_LANE else obj.left_map_state.lane_fstate
-                if relative_lane != RelativeLane.RIGHT_LANE else obj.right_map_state.lane_fstate
-                if relative_lane != RelativeLane.SAME_LANE else obj.map_state.lane_fstate
-                for relative_lane in relative_lanes]

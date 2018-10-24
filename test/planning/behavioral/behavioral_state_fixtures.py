@@ -4,10 +4,9 @@ import numpy as np
 import pytest
 
 from decision_making.src.global_constants import EPS
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
-    RelativeLongitudinalPosition
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionType, AggressivenessLevel, \
-    StaticActionRecipe
+    StaticActionRecipe, RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from mapping.src.model.map_api import MapAPI
 from mapping.src.service.map_service import MapService

@@ -7,34 +7,12 @@ import rte.python.profiler as prof
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO
 from decision_making.src.global_constants import PLANNING_LOOKAHEAD_DIST
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
+from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.service.map_service import MapService
-
-
-class SemanticActionType(Enum):
-    FOLLOW_VEHICLE = 1
-    FOLLOW_LANE = 2
-
-
-class RelativeLane(Enum):
-    """"
-    The lane associated with a certain Recipe, relative to ego
-    """
-    RIGHT_LANE = -1
-    SAME_LANE = 0
-    LEFT_LANE = 1
-
-
-class RelativeLongitudinalPosition(Enum):
-    """"
-    The high-level longitudinal position associated with a certain Recipe, relative to ego
-    """
-    REAR = -1
-    PARALLEL = 0
-    FRONT = 1
 
 
 class DynamicObjectWithRoadSemantics:
@@ -63,11 +41,11 @@ RoadSemanticOccupancyGrid = Dict[SemanticGridCell, List[DynamicObjectWithRoadSem
 
 class BehavioralGridState(BehavioralState):
     def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState,
-                 right_lane_exists: bool, left_lane_exists: bool):
+                 right_lane_id: int, left_lane_id: int):
         self.road_occupancy_grid = road_occupancy_grid
         self.ego_state = ego_state
-        self.right_lane_exists = right_lane_exists
-        self.left_lane_exists = left_lane_exists
+        self.right_lane_id = right_lane_id
+        self.left_lane_id = left_lane_id
 
     @classmethod
     @prof.ProfileFunction()
@@ -97,9 +75,19 @@ class BehavioralGridState(BehavioralState):
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
                                                                          state.ego_state)
 
-        right_lane_exists = MapService.get_instance().get_adjacent_lane(lane_id, RelativeLane.RIGHT_LANE) is not None
-        left_lane_exists = MapService.get_instance().get_adjacent_lane(lane_id, RelativeLane.LEFT_LANE) is not None
-        return cls(multi_object_grid, state.ego_state, right_lane_exists, left_lane_exists)
+        right_lane_id = MapService.get_instance().get_adjacent_lane(lane_id, RelativeLane.RIGHT_LANE)
+        left_lane_id = MapService.get_instance().get_adjacent_lane(lane_id, RelativeLane.LEFT_LANE)
+        return cls(multi_object_grid, state.ego_state, right_lane_id, left_lane_id)
+
+    def get_relative_lane_id(self, relative_lane: RelativeLane) -> int:
+        if relative_lane == RelativeLane.SAME_LANE:
+            return self.ego_state.map_state.lane_id
+        elif relative_lane == RelativeLane.RIGHT_LANE:
+            return self.right_lane_id
+        elif relative_lane == RelativeLane.LEFT_LANE:
+            return self.left_lane_id
+        else:
+            return None
 
     @staticmethod
     @prof.ProfileFunction()
@@ -120,7 +108,7 @@ class BehavioralGridState(BehavioralState):
         # for objects on non-adjacent lanes set relative_lanes[i] = None
         relative_lanes = [RelativeLane(diff) if abs(diff) <= 1 else None for diff in lat_diffs]
 
-        ego_init_fstates = MapUtils.project_on_relative_lanes(ego_state, relative_lanes)
+        ego_init_fstates = ego_state.project_on_relative_lanes(relative_lanes)
 
         # compute the relative longitudinal distance between object and ego (positive means object is in front)
         return [DynamicObjectWithRoadSemantics(obj, obj.map_state.lane_fstate[FS_SX] - ego_init_fstates[i][FS_SX],

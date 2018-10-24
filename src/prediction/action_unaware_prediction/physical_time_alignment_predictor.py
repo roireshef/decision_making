@@ -89,16 +89,16 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
 
         prediction_horizon = prediction_timestamp - dynamic_object.timestamp_in_sec
 
-        predicted_s = dynamic_object.map_state.road_fstate[FS_SX] + dynamic_object.map_state.road_fstate[
+        predicted_s = dynamic_object.map_state.lane_fstate[FS_SX] + dynamic_object.map_state.lane_fstate[
             FS_SV] * prediction_horizon
-        predicted_d = dynamic_object.map_state.road_fstate[FS_DX] + dynamic_object.map_state.road_fstate[
+        predicted_d = dynamic_object.map_state.lane_fstate[FS_DX] + dynamic_object.map_state.lane_fstate[
             FS_DV] * prediction_horizon
 
         obj_final_fstate = np.array(
-            [predicted_s, dynamic_object.map_state.road_fstate[FS_SV], 0, predicted_d,
-             dynamic_object.map_state.road_fstate[FS_DV], 0])
+            [predicted_s, dynamic_object.map_state.lane_fstate[FS_SV], 0, predicted_d,
+             dynamic_object.map_state.lane_fstate[FS_DV], 0])
 
         predicted_object_states = dynamic_object.clone_from_map_state(timestamp_in_sec=prediction_timestamp,
-                                                                      map_state=MapState(road_fstate=obj_final_fstate,
-                                                                                         road_id=dynamic_object.map_state.road_id))
+                                                                      map_state=MapState(lane_fstate=obj_final_fstate,
+                                                                                         lane_id=dynamic_object.map_state.lane_id))
         return [predicted_object_states]

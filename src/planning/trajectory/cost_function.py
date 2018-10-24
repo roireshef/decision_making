@@ -66,13 +66,15 @@ class TrajectoryPlannerCosts:
                 return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
 
             # TODO: this assumes everybody on the same road!
-            road_frenet = MapService.get_instance()._rhs_roads_frenet[state.ego_state.map_state.road_id]
+            ego_lane_frenet = MapService.get_instance().get_lane_frenet(state.ego_state.map_state.lane_id)
+            # TODO: objects' frenet states relative to ego should be part of Scene Provider!!
+            objects_relative_fstates = np.array([ego_lane_frenet.cstate_to_fstate(obj.cartesian_state)
+                                                 for obj in close_objects])
 
             # Predict objects' future movement, then project predicted objects' states to Cartesian frame
-            objects_fstates = np.array([obs.map_state.road_fstate for obs in close_objects])
             objects_predicted_ftrajectories = predictor.predict_frenet_states(
-                objects_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
-            objects_predicted_ctrajectories = road_frenet.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
+                objects_relative_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
+            objects_predicted_ctrajectories = ego_lane_frenet.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
 
             objects_sizes = np.array([[obs.size.length, obs.size.width] for obs in close_objects])
             ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])

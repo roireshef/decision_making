@@ -1,5 +1,5 @@
 import copy
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 import numpy as np
 
@@ -12,8 +12,9 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmState
 
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
-from decision_making.src.planning.behavioral.behavioral_grid_state import RelativeLane
-from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K
+from decision_making.src.planning.behavioral.data_objects import RelativeLane
+from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FrenetState2D, \
+    FrenetStates2D
 from decision_making.src.state.map_state import MapState
 from common_data.lcm.python.utils.lcm_utils import LCMUtils
 from decision_making.src.utils.map_utils import MapUtils
@@ -99,7 +100,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     obj_id = int
     timestamp = int
     _cached_cartesian_state = CartesianExtendedState
-    _cached_map_state = MapState
+    _cached_map_states = Dict[RelativeLane, MapState]
     size = ObjectSize
     confidence = float
 
@@ -117,11 +118,9 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         self.obj_id = obj_id
         self.timestamp = timestamp
         self._cached_cartesian_state = cartesian_state
-        self._cached_map_state = map_state
+        self._cached_map_states = {RelativeLane.SAME_LANE:map_state, RelativeLane.RIGHT_LANE:None, RelativeLane.LEFT_LANE:None}
         self.size = copy.copy(size)
         self.confidence = confidence
-        self._cached_right_map_state = None  # map_state of the object w.r.t. to its right lane
-        self._cached_left_map_state = None   # map_state of the object w.r.t. to its left lane
 
     @property
     def x(self):
@@ -155,48 +154,37 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def cartesian_state(self):
         # type: () -> CartesianExtendedState
         if self._cached_cartesian_state is None:
-            self._cached_cartesian_state = MapUtils.convert_map_to_cartesian_state(self._cached_map_state)
+            self._cached_cartesian_state = \
+                MapUtils.convert_map_to_cartesian_state(self._cached_map_states[RelativeLane.SAME_LANE])
         return self._cached_cartesian_state
 
     @property
     def map_state(self):
-        # type: () -> MapState
-        if self._cached_map_state is None:
-            self._cached_map_state = MapUtils.convert_cartesian_to_map_state(self._cached_cartesian_state)
-        return self._cached_map_state
+        return self.get_map_state(RelativeLane.SAME_LANE)
 
     @property
     def right_map_state(self):
-        # type: () -> MapState
-        """
-        map_state of the object w.r.t. to its right lane
-        """
-        if self._cached_right_map_state is None:
-            right_lane_id = MapService().get_instance().get_adjacent_lane(self.map_state.lane_id, RelativeLane.RIGHT_LANE)
-            if right_lane_id is not None:
-                right_frenet = MapService().get_instance().get_lane_frenet(right_lane_id)
-                # TODO: the current implementation of cstate_to_fstate is very slow
-                right_fstate = right_frenet.cstate_to_fstate(self.cartesian_state)
-                self._cached_right_map_state = MapState(right_fstate, right_lane_id)
-            else:
-                self._cached_right_map_state = MapState(None, None)  # distinguish between not cached and non-existing lane
-        return self._cached_right_map_state
+        return self.get_map_state(RelativeLane.RIGHT_LANE)
 
     @property
     def left_map_state(self):
-        # type: () -> MapState
-        """
-        map_state of the object w.r.t. to its left lane
-        """
-        if self._cached_left_map_state is None:
-            left_lane_id = MapService().get_instance().get_adjacent_lane(self.map_state.lane_id, RelativeLane.LEFT_LANE)
-            if left_lane_id is not None:
-                left_frenet = MapService().get_instance().get_lane_frenet(left_lane_id)
-                left_fstate = left_frenet.cstate_to_fstate(self.cartesian_state)
-                self._cached_left_map_state = MapState(left_fstate, left_lane_id)
+        return self.get_map_state(RelativeLane.LEFT_LANE)
+
+    def get_map_state(self, relative_lane):
+        # type: (RelativeLane) -> MapState
+        if self._cached_map_states[relative_lane] is None:
+            if relative_lane == RelativeLane.SAME_LANE:
+                self._cached_map_states[relative_lane] = MapUtils.convert_cartesian_to_map_state(self._cached_cartesian_state)
             else:
-                self._cached_left_map_state = MapState(None, None)  # distinguish between not cached and non-existing lane
-        return self._cached_left_map_state
+                adjacent_lane_id = MapService().get_instance().get_adjacent_lane(self.map_state.lane_id, relative_lane)
+                if adjacent_lane_id is not None:
+                    frenet = MapService().get_instance().get_lane_frenet(adjacent_lane_id)
+                    # TODO: the current implementation of cstate_to_fstate is very slow
+                    fstate = frenet.cstate_to_fstate(self.cartesian_state)
+                    self._cached_map_states[relative_lane] = MapState(fstate, adjacent_lane_id)
+                else:  # distinguish between not cached and non-existing lane
+                    self._cached_map_states[relative_lane] = MapState(None, None)
+        return self._cached_map_states[relative_lane]
 
     @staticmethod
     def sec_to_ticks(time_in_seconds: float):
@@ -264,6 +252,18 @@ class DynamicObject(PUBSUB_MSG_IMPL):
                                           map_state,
                                           self.size, self.confidence)
 
+    def project_on_relative_lanes(self, relative_lanes):
+        # type: (List[RelativeLane]) -> List[FrenetState2D]
+        """
+        Calculate frenet-states of the given object w.r.t. the relative (adjacent) lanes
+        :param relative_lanes: list of relative lanes (same, left, right)
+        :return: list of frenet-states of size len(relative_lanes)
+        """
+        return [self.map_state.lane_fstate if relative_lane == RelativeLane.SAME_LANE
+                else self.left_map_state.lane_fstate if relative_lane == RelativeLane.LEFT_LANE
+                else self.right_map_state.lane_fstate if relative_lane == RelativeLane.SAME_LANE else None
+                for relative_lane in relative_lanes]
+
     def serialize(self):
         # type: () -> LcmDynamicObject
         lcm_msg = LcmDynamicObject()
@@ -315,7 +315,7 @@ class EgoState(DynamicObject):
         # type: (LcmEgoState) -> EgoState
         dyn_obj = DynamicObject.deserialize(lcmMsg.dynamic_obj)
         return cls(dyn_obj.obj_id, dyn_obj.timestamp
-                   , dyn_obj._cached_cartesian_state, dyn_obj._cached_map_state
+                   , dyn_obj._cached_cartesian_state, dyn_obj._cached_map_states[RelativeLane.SAME_LANE]
                    , dyn_obj.size
                    , dyn_obj.confidence)
 
@@ -381,14 +381,11 @@ class State(PUBSUB_MSG_IMPL):
         :param target_obj_id: the id of the requested object
         :return: the dynamic_object matching the requested id
         """
-
         selected_objects = [obj for obj in state.dynamic_objects if obj.obj_id == target_obj_id]
-
         # Verify that object exists in state exactly once
         if len(selected_objects) != 1:
             raise MultipleObjectsWithRequestedID(
                 'Found %d matching objects for object ID %d' % (len(selected_objects), target_obj_id))
-
         return selected_objects[0]
 
     # TODO: remove when access to dynamic objects according to dictionary will be available.
@@ -401,6 +398,5 @@ class State(PUBSUB_MSG_IMPL):
         :param target_obj_ids: a list of the id of the requested objects
         :return: the dynamic_objects matching the requested ids
         """
-
         selected_objects = [obj for obj in state.dynamic_objects if obj.obj_id in target_obj_ids]
         return selected_objects

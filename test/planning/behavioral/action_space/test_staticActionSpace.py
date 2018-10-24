@@ -1,8 +1,8 @@
 from logging import Logger
 
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, RelativeLane
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.state.state import ObjectSize, State, EgoState
 from mapping.src.service.map_service import MapService

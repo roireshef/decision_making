@@ -1,9 +1,6 @@
 from enum import Enum
 from typing import List
 
-from decision_making.src.planning.behavioral.behavioral_grid_state import RelativeLane, \
-    RelativeLongitudinalPosition
-
 
 class ActionType(Enum):
     """"
@@ -21,6 +18,29 @@ class AggressivenessLevel(Enum):
     CALM = 0
     STANDARD = 1
     AGGRESSIVE = 2
+
+
+class SemanticActionType(Enum):
+    FOLLOW_VEHICLE = 1
+    FOLLOW_LANE = 2
+
+
+class RelativeLane(Enum):
+    """"
+    The lane associated with a certain Recipe, relative to ego
+    """
+    RIGHT_LANE = -1
+    SAME_LANE = 0
+    LEFT_LANE = 1
+
+
+class RelativeLongitudinalPosition(Enum):
+    """"
+    The high-level longitudinal position associated with a certain Recipe, relative to ego
+    """
+    REAR = -1
+    PARALLEL = 0
+    FRONT = 1
 
 
 class ActionRecipe:
