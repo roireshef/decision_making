@@ -1,5 +1,6 @@
 from logging import Logger
 from typing import Tuple
+
 import numpy as np
 
 from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
@@ -33,20 +34,17 @@ class WerlingPlanner(TrajectoryPlanner):
     def dt(self):
         return self._dt
 
-    def plan(self, state: State, reference_route: np.ndarray, goal: CartesianExtendedState, time_horizon: float,
+    def plan(self, state: State, reference_route: FrenetSerret2DFrame, goal: CartesianExtendedState, time_horizon: float,
              cost_params: TrajectoryCostParams)-> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """ see base class """
         T_s = time_horizon
-
-        # create road coordinate-frame
-        frenet = FrenetSerret2DFrame.fit(reference_route)
 
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
         # The vehicle doesn't need to lay parallel to the road.
         ego_cartesian_state = np.array([state.ego_state.x, state.ego_state.y, state.ego_state.yaw, state.ego_state.velocity,
                                         state.ego_state.acceleration, state.ego_state.curvature])
 
-        ego_frenet_state: FrenetState2D = frenet.cstate_to_fstate(ego_cartesian_state)
+        ego_frenet_state: FrenetState2D = reference_route.cstate_to_fstate(ego_cartesian_state)
 
         # THIS HANDLES CURRENT STATES WHERE THE VEHICLE IS STANDING STILL
         if np.any(np.isnan(ego_frenet_state)):
@@ -59,11 +57,11 @@ class WerlingPlanner(TrajectoryPlanner):
         fconstraints_t0 = FrenetConstraints.from_state(ego_frenet_state)
 
         # define constraints for the terminal (goal) state
-        goal_frenet_state: FrenetState2D = frenet.cstate_to_fstate(goal)
+        goal_frenet_state: FrenetState2D = reference_route.cstate_to_fstate(goal)
 
         sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_frenet_state[FS_SX],
                                        (goal_frenet_state[FS_SX] + ego_frenet_state[FS_SX]) / 2)),
-                               np.min((SX_OFFSET_MAX + goal_frenet_state[FS_SX], (len(frenet.O) - 1) * frenet.ds)),
+                               np.min((SX_OFFSET_MAX + goal_frenet_state[FS_SX], (len(reference_route.O) - 1) * reference_route.ds)),
                                SX_STEPS)
 
         sv_range = np.linspace(
@@ -107,10 +105,10 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # filter resulting trajectories by progress on curve, velocity and (lateral) accelerations limits in frenet
         frenet_filtered_indices = self._filter_by_frenet_limits(ftrajectories, poly_coefs[:, D5:], T_d_vals,
-                                                                cost_params, frenet.s_limits)
+                                                                cost_params, reference_route.s_limits)
 
         # project trajectories from frenet-frame to vehicle's cartesian frame
-        ctrajectories: CartesianExtendedTrajectories = frenet.ftrajectories_to_ctrajectories(
+        ctrajectories: CartesianExtendedTrajectories = reference_route.ftrajectories_to_ctrajectories(
             ftrajectories[frenet_filtered_indices])
 
         # filter resulting trajectories by velocity and accelerations limits - this is now done in Cartesian frame
@@ -131,7 +129,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                                "number of trajectories passed according to Frenet limits: %s/%s;" %
                                                (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                                 np.min(ftrajectories[:, :, FS_SX]), np.max(ftrajectories[:, :, FS_SX]),
-                                                frenet.s_limits,
+                                                reference_route.s_limits,
                                                 np.min(ftrajectories[:, :, FS_SV]),
                                                 len(frenet_filtered_indices), len(ftrajectories)))
         elif len(ctrajectories_filtered) == 0:
@@ -169,11 +167,10 @@ class WerlingPlanner(TrajectoryPlanner):
             timestamp_in_sec=state.ego_state.timestamp_in_sec,
             T_s=T_s,
             T_d=T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]],
-            frenet_frame=frenet,
+            frenet_frame=reference_route,
             poly_s_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][:6],
             poly_d_coefs=poly_coefs[refiltered_indices[sorted_filtered_idxs[0]]][6:]
         )
-
 
         return samplable_trajectory, \
                ctrajectories_filtered[sorted_filtered_idxs, :, :(C_V + 1)], \

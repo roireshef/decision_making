@@ -19,7 +19,8 @@ from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanM
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, CartesianPath2D
+from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.planning.utils.transformations import Transformations
 from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
@@ -27,7 +28,6 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
-from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
 class TrajectoryPlanningFacade(DmModule):
@@ -82,7 +82,7 @@ class TrajectoryPlanningFacade(DmModule):
             lon_plan_horizon = params.time - state.ego_state.timestamp_in_sec
 
             self.logger.debug("input: target_state: %s", params.target_state)
-            self.logger.debug("input: reference_route[0]: %s", params.reference_route[0])
+            self.logger.debug("input: reference_route[0]: %s", params.reference_route.points[0])
             self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
             self.logger.debug("input: ego: velocity: %s", state.ego_state.velocity)
             self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", lon_plan_horizon)
@@ -207,13 +207,13 @@ class TrajectoryPlanningFacade(DmModule):
         return updated_state
 
     @staticmethod
-    def _prepare_visualization_msg(state: State, reference_route: CartesianPath2D,
+    def _prepare_visualization_msg(state: State, reference_route: FrenetSerret2DFrame,
                                    ctrajectories: CartesianTrajectories, costs: np.ndarray,
                                    planning_horizon: float, predictor: EgoAwarePredictor):
         """
         prepares visualization message for visualization purposes
         :param state: short-term prediction aligned state
-        :param reference_route: the reference route got from BP
+        :param reference_route: the reference route got from BP (frenet frame)
         :param ctrajectories: alternative trajectories in cartesian-frame
         :param costs: costs computed for each alternative trajectory
         :param planning_horizon: [sec] the (relative) planning-horizon used for planning
@@ -236,8 +236,9 @@ class TrajectoryPlanningFacade(DmModule):
                                   dynamic_objects=predicted_state.dynamic_objects,
                                   ego_state=state.ego_state) for predicted_state in predicted_states_without_ego]
 
-        _, downsampled_reference_route, _ = CartesianFrame.resample_curve(reference_route,
-                                                                          step_size=DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION)
+        # downsample reference route for visualization
+        downsample_skip_factor = max(1, int(DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION // reference_route.ds))
+        downsampled_reference_points = reference_route.points[::downsample_skip_factor]
 
         # slice alternative trajectories by skipping indices - for visualization
         alternative_ids_skip_range = range(0, len(ctrajectories),
@@ -247,7 +248,7 @@ class TrajectoryPlanningFacade(DmModule):
         sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
         sliced_costs = costs[alternative_ids_skip_range]
 
-        return TrajectoryVisualizationMsg(downsampled_reference_route,
+        return TrajectoryVisualizationMsg(downsampled_reference_points,
                                           sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]),
                                           :C_V],
                                           sliced_costs,
