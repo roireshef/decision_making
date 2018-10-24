@@ -186,7 +186,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
                                                                               curvature)
         with patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=lambda : map):
 
-            frenet = FrenetSerret2DFrame(ext_route_points[:, :2])
+            frenet = FrenetSerret2DFrame.fit(ext_route_points[:, :2])
 
             # create state and goal based on ego parameters and obstacles' location
             state, goal = create_state_for_test_werlingPlanner(frenet, obs_poses, reference_route_latitude, ext, lng,
@@ -434,7 +434,7 @@ def visualize_test_scenario(route_points: np.array, reference_route_latitude: fl
 def test_samplableWerlingTrajectory_sampleAfterTd_correctLateralPosition():
     route_points = RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5)
 
-    frenet = FrenetSerret2DFrame(route_points)
+    frenet = FrenetSerret2DFrame.fit(route_points)
 
     trajectory = SamplableWerlingTrajectory(
         timestamp_in_sec=10.0,
