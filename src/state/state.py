@@ -261,7 +261,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         """
         return [self.map_state.lane_fstate if relative_lane == RelativeLane.SAME_LANE
                 else self.left_map_state.lane_fstate if relative_lane == RelativeLane.LEFT_LANE
-                else self.right_map_state.lane_fstate if relative_lane == RelativeLane.SAME_LANE else None
+                else self.right_map_state.lane_fstate if relative_lane == RelativeLane.RIGHT_LANE else None
                 for relative_lane in relative_lanes]
 
     def serialize(self):

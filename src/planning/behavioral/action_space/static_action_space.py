@@ -49,6 +49,7 @@ class StaticActionSpace(ActionSpace):
         relative_lanes = [action_recipe.relative_lane for action_recipe in action_recipes]
         # project ego on target lane frenet_frame
         ego_init_fstates = np.array(ego.project_on_relative_lanes(relative_lanes))
+        assert len(ego_init_fstates.shape) == 2
 
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])

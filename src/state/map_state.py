@@ -24,12 +24,12 @@ class MapState(PUBSUB_MSG_IMPL):
     def serialize(self):
         # type: () -> LcmMapState
         lcm_msg = LcmMapState()
-        lcm_msg.lane_fstate = LCMUtils.numpy_array_to_lcm_non_typed_numpy_array(self.lane_fstate)
-        lcm_msg.lane_id = self.lane_id
+        lcm_msg.road_fstate = LCMUtils.numpy_array_to_lcm_non_typed_numpy_array(self.lane_fstate)
+        lcm_msg.road_id = self.lane_id
         return lcm_msg
 
     @classmethod
     def deserialize(cls, lcm_msg):
         # type: (LcmMapState) -> MapState
-        return cls(np.ndarray(shape=tuple(lcm_msg.lane_fstate.shape)
-                              , buffer=np.array(lcm_msg.lane_fstate.data), dtype=float), lcm_msg.lane_id)
+        return cls(np.ndarray(shape=tuple(lcm_msg.road_fstate.shape)
+                              , buffer=np.array(lcm_msg.road_fstate.data), dtype=float), lcm_msg.road_id)
