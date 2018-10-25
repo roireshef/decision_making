@@ -46,7 +46,7 @@ class DmMockInitialization:
     #for a dynamic object update.
     def create_state_module() -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
+        pubsub = create_pubsub(config_file=config_defs.LCM_SOCKET_CONFIG, pubSubType=LcmPubSub)
         MapService.initialize()
         #TODO: figure out if we want to use OccupancyState at all
         default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
@@ -58,7 +58,7 @@ class DmMockInitialization:
     @staticmethod
     def create_trajectory_planner(fixed_trajectory_file: str = None) -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(config_defs.LCM_SOCKET_CONFIG, LcmPubSub)
+        pubsub = create_pubsub(config_file=config_defs.LCM_SOCKET_CONFIG, pubSubType=LcmPubSub)
 
         # Init map
         MapService.initialize()
