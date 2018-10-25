@@ -1,5 +1,3 @@
-from enum import Enum
-
 import numpy as np
 
 from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNonTypedNumpyArray import LcmNonTypedNumpyArray
@@ -7,13 +5,13 @@ from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmSigmoidFu
 from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmTrajectoryCostParams import LcmTrajectoryCostParams
 from common_data.interface.py.idl_generated_files.dm import LcmTrajectoryParameters
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.messages.str_serializable import StrSerializable
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_V, Limits
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 
 
 class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
-    ''' Members annotations for python 2 compliant classes '''
+    """ Members annotations for python 2 compliant classes """
     w = float
     k = float
     offset = float
@@ -47,7 +45,7 @@ class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
 
 
 class TrajectoryCostParams(PUBSUB_MSG_IMPL):
-    ''' Members annotations for python 2 compliant classes '''
+    """ Members annotations for python 2 compliant classes """
     obstacle_cost_x = SigmoidFunctionParams
     obstacle_cost_y = SigmoidFunctionParams
     left_lane_cost = SigmoidFunctionParams
@@ -63,7 +61,6 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
     velocity_limits = Limits
     lon_acceleration_limits = Limits
     lat_acceleration_limits = Limits
-
 
     def __init__(self, obstacle_cost_x, obstacle_cost_y, left_lane_cost, right_lane_cost, left_shoulder_cost,
                  right_shoulder_cost, left_road_cost, right_road_cost, dist_from_goal_cost, dist_from_goal_lat_factor,
@@ -156,18 +153,18 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
 
 
 class TrajectoryParams(PUBSUB_MSG_IMPL):
-    ''' Members annotations for python 2 compliant classes '''
+    """ Members annotations for python 2 compliant classes """
     strategy = TrajectoryPlanningStrategy
-    reference_route = np.ndarray
+    reference_route = FrenetSerret2DFrame
     target_state = np.ndarray
     cost_params = TrajectoryCostParams
     time = float
 
     def __init__(self, strategy, reference_route, target_state, cost_params, time, bp_time):
-        # type: (TrajectoryPlanningStrategy, np.ndarray, np.ndarray, TrajectoryCostParams, float)->None
+        # type: (TrajectoryPlanningStrategy, FrenetSerret2DFrame, np.ndarray, TrajectoryCostParams, float)->None
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
-        :param reference_route: a reference route points (often the center of lane)
+        :param reference_route: the frenet frame of the reference route (often the center of lane)
         :param target_state: the vector-representation of the target state to plan ego motion towards
         :param cost_params: list of parameters for the cost function of trajectory planner.
         :param strategy: trajectory planning strategy.
@@ -193,11 +190,7 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
 
         lcm_msg.strategy = self.strategy.value
 
-        lcm_msg.reference_route = LcmNonTypedNumpyArray()
-        lcm_msg.reference_route.num_dimensions = len(self.reference_route.shape)
-        lcm_msg.reference_route.shape = list(self.reference_route.shape)
-        lcm_msg.reference_route.length = self.reference_route.size
-        lcm_msg.reference_route.data = self.reference_route.flat.__array__().tolist()
+        lcm_msg.reference_route = self.reference_route.serialize()
 
         lcm_msg.target_state = self.target_state
         lcm_msg.cost_params = self.cost_params.serialize()
@@ -211,9 +204,7 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmTrajectoryParameters)->TrajectoryParams
         return cls(TrajectoryPlanningStrategy(lcmMsg.strategy)
-                 , np.ndarray(shape = tuple(lcmMsg.reference_route.shape[:lcmMsg.reference_route.num_dimensions])
-                            , buffer = np.array(lcmMsg.reference_route.data)
-                            , dtype = float)
+                 , FrenetSerret2DFrame.deserialize(lcmMsg.reference_route)
                  , lcmMsg.target_state
                  , TrajectoryCostParams.deserialize(lcmMsg.cost_params)
                  , lcmMsg.time

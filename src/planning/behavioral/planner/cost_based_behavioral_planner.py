@@ -26,6 +26,7 @@ from decision_making.src.planning.trajectory.samplable_trajectory import Samplab
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
@@ -155,7 +156,7 @@ class CostBasedBehavioralPlanner:
         forward_lookahead = action_spec.s - ref_route_start + REFERENCE_ROUTE_MARGINS
         ref_route_length = min(max_road_longitude - ref_route_start, forward_lookahead * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO)
 
-        center_lane_reference_route = MapService.get_instance().get_uniform_path_lookahead(
+        center_lane_points = MapService.get_instance().get_uniform_path_lookahead(
             road_id=road_id,
             lat_shift=action_spec.d,  # THIS ASSUMES THE GOAL ALWAYS FALLS ON THE REFERENCE ROUTE
             starting_lon=ref_route_start,
@@ -173,6 +174,8 @@ class CostBasedBehavioralPlanner:
             ego_size=ego.size,
             reference_route_latitude=action_spec.d  # this assumes the target falls on the reference route
         )
+
+        center_lane_reference_route = FrenetSerret2DFrame.fit(center_lane_points)
 
         trajectory_parameters = TrajectoryParams(reference_route=center_lane_reference_route,
                                                  time=action_spec.t + ego.timestamp_in_sec,
