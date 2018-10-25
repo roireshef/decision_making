@@ -67,7 +67,7 @@ class DmInitialization:
     @staticmethod
     def create_state_module() -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(config_file=config_defs.LCM_SOCKET_CONFIG, pubSubType=LcmPubSub)
+        pubsub = create_pubsub(PubSubMessageTypes)
         MapService.initialize(MAP_FILE)
         # TODO: figure out if we want to use OccupancyState at all
         default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
@@ -78,7 +78,7 @@ class DmInitialization:
     @staticmethod
     def create_navigation_planner() -> NavigationFacade:
         logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(config_file=config_defs.LCM_SOCKET_CONFIG, pubSubType=LcmPubSub)
+        pubsub = create_pubsub(PubSubMessageTypes)
 
         navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, plan=NAVIGATION_PLAN)
         return navigation_module
@@ -86,7 +86,7 @@ class DmInitialization:
     @staticmethod
     def create_behavioral_planner() -> BehavioralPlanningFacade:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(config_file=config_defs.LCM_SOCKET_CONFIG, pubSubType=LcmPubSub)
+        pubsub = create_pubsub(PubSubMessageTypes)
         # Init map
         MapService.initialize(MAP_FILE)
 
@@ -114,7 +114,7 @@ class DmInitialization:
     @staticmethod
     def create_trajectory_planner() -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(config_file=config_defs.LCM_SOCKET_CONFIG, pubSubType=LcmPubSub)
+        pubsub = create_pubsub(PubSubMessageTypes)
 
         # Init map
         MapService.initialize(MAP_FILE)
