@@ -26,24 +26,24 @@ class MapUtils:
 
     @staticmethod
     def get_road_by_lane(lane_id):
-        return MapService().get_instance()._lane_address[lane_id][0]
+        return MapService.get_instance()._lane_address[lane_id][0]
 
     @staticmethod
     def get_lane_index(lane_id):
-        return MapService().get_instance()._lane_address[lane_id][1]
+        return MapService.get_instance()._lane_address[lane_id][1]
 
     @staticmethod
     def get_lane_frenet(lane_id):
-        return MapService().get_instance()._lane_frenet[lane_id]
+        return MapService.get_instance()._lane_frenet[lane_id]
 
     @staticmethod
     def get_lane_length(lane_id):
-        return MapService().get_instance()._lane_frenet[lane_id].s_max
+        return MapService.get_instance()._lane_frenet[lane_id].s_max
 
     @staticmethod
     def get_adjacent_lane(lane_id, relative_lane):
         # type: (int, RelativeLane) -> int
-        map_api = MapService().get_instance()
+        map_api = MapService.get_instance()
         road_id, lane_idx = map_api._lane_address[lane_id]
         adjacent_idx = lane_idx + relative_lane.value
         return map_api._lane_by_address[(road_id, adjacent_idx)] \
@@ -52,7 +52,7 @@ class MapUtils:
     @staticmethod
     def find_closest_lane(road_id, x, y):
         # type: (int, float, float) -> int
-        map_api = MapService().get_instance()
+        map_api = MapService.get_instance()
         num_lanes = map_api.get_road(road_id).lanes_num
         # convert the given cpoint to fpoints w.r.t. to each lane's frenet frame
         fpoints = {}
@@ -65,14 +65,14 @@ class MapUtils:
     @staticmethod
     def dist_from_lane_borders(lane_id, longitude):
         # type: (int, float) -> (float, float)
-        lane_width = MapService().get_instance().get_road(MapUtils.get_road_by_lane(lane_id)).lane_width
+        lane_width = MapService.get_instance().get_road(MapUtils.get_road_by_lane(lane_id)).lane_width
         return lane_width/2, lane_width/2
 
     @staticmethod
     def dist_from_road_borders(lane_id, longitude):
         # type: (int, float) -> (float, float)
         # TODO: this implementation assumes constant lane width (ignores longitude)
-        map_api = MapService().get_instance()
+        map_api = MapService.get_instance()
         road_id = MapUtils.get_road_by_lane(lane_id)
         lane_width = map_api.get_road(road_id).lane_width
         num_lanes = map_api.get_road(road_id).lanes_num
@@ -101,7 +101,7 @@ class MapUtils:
         :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
         :return: uniform sampled points array (Nx2)
         """
-        map_api = MapService().get_instance()
+        map_api = MapService.get_instance()
         road_id = MapUtils.get_road_by_lane(lane_id)
         road_lat_shift, _ = MapUtils.dist_from_road_borders(lane_id, starting_lon)
         road_lat_shift += lane_lat_shift

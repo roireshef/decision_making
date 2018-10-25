@@ -33,7 +33,7 @@ class NavigationGoal:
         :param state: the (next) State
         :return: GoalStatus (REACHED, MISSED or NOT_YET)
         """
-        # TODO: use route planner to check if the case map_state.road_id != goal.road means MISSED or NOT_YET
+        # TODO: use route planner to check whether current road_id != goal.road means MISSED or NOT_YET
         map_state = state.ego_state.map_state
         road_id = MapUtils.get_road_by_lane(map_state.lane_id)
         if road_id == self.road_id and map_state.lane_fstate[FS_SX] >= self.lon:
