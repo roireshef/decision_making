@@ -10,6 +10,7 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING
 from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
@@ -31,14 +32,15 @@ def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCel
                for recipe in follow_vehicle_recipes_towards_front_cells]
 
     # terminal action-spec latitude equals the current latitude of target vehicle
+    lane_latitudes = [(MapService().get_instance().get_lane_index(action.lane_id) + 0.5)*3.6 for action in actions]
     expected_latitudes = [1.8, 1.8, 1.8, 5.4, 5.4, 5.4, 9, 9, 9]
-    latitudes = [action.d for action in actions]
+    latitudes = [action.d + lane_latitudes[i] for i, action in enumerate(actions)]
     np.testing.assert_array_almost_equal(latitudes, expected_latitudes)
 
     # terminal action-spec longitude equals the terminal longitude of target vehicle
     # (according to prediction at the terminal time)
-    expected_longitudes = [target.dynamic_object.map_state.road_fstate[FS_SX] +
-                           target.dynamic_object.map_state.road_fstate[FS_SV] * actions[i].t -
+    expected_longitudes = [target.dynamic_object.map_state.lane_fstate[FS_SX] +
+                           target.dynamic_object.map_state.lane_fstate[FS_SV] * actions[i].t -
                            actions[i].v * SPECIFICATION_MARGIN_TIME_DELAY -
                            LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT -
                            behavioral_grid_state.ego_state.size.length / 2 - targets[i].dynamic_object.size.length / 2

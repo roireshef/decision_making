@@ -29,10 +29,11 @@ def test_specifyGoals_closeToTargetVelocity_specifyNotFail():
 
     state = State(None, [], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, logger)
+    filtered_recipes = [recipe for recipe in action_space.recipes if recipe.relative_lane != RelativeLane.RIGHT_LANE]
 
-    action_specs = action_space.specify_goals(action_space.recipes, behavioral_state)
+    action_specs = action_space.specify_goals(filtered_recipes, behavioral_state)
 
-    specs = [action_specs[i] for i, recipe in enumerate(action_space.recipes)
+    specs = [action_specs[i] for i, recipe in enumerate(filtered_recipes)
              if recipe.relative_lane == RelativeLane.SAME_LANE and recipe.aggressiveness == AggressivenessLevel.CALM
              and recipe.velocity == target_vel]
 

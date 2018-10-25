@@ -10,7 +10,8 @@ class MapUtils:
     # TODO: replace with navigation plan aware function from map API
     @staticmethod
     def get_road_rhs_frenet(obj):
-        return MapService.get_instance()._rhs_roads_frenet[obj.map_state.road_id]
+        map_api = MapService().get_instance()
+        return map_api._rhs_roads_frenet[map_api.get_road_by_lane(obj.map_state.lane_id)]
 
     @staticmethod
     def convert_cartesian_to_map_state(cartesian_state: CartesianExtendedState):
