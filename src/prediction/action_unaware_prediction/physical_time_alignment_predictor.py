@@ -66,7 +66,7 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
 
         predicted_dynamic_objects = [future_object_states[0]  for future_object_states in
                                      predicted_dynamic_objects_dict.values()
-                                     if MapUtils.is_object_on_road(future_object_states[0].map_state) or not FILTER_OFF_ROAD_OBJECTS]
+                                     if future_object_states[0].map_state.is_on_road() or not FILTER_OFF_ROAD_OBJECTS]
 
         predicted_ego_state = self._predict_object(dynamic_object=state.ego_state,
                                                    prediction_timestamp=prediction_timestamps[0])[0]

@@ -9,7 +9,7 @@ from decision_making.src.planning.utils.math import Math
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
-from mapping.src.service.map_service import MapService
+from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
@@ -66,7 +66,7 @@ class TrajectoryPlannerCosts:
                 return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
 
             # TODO: this assumes everybody on the same road!
-            ego_lane_frenet = MapService.get_instance().get_lane_frenet(state.ego_state.map_state.lane_id)
+            ego_lane_frenet = MapUtils.get_lane_frenet(state.ego_state.map_state.lane_id)
             # TODO: objects' frenet states relative to ego should be part of Scene Provider!!
             objects_relative_fstates = np.array([ego_lane_frenet.cstate_to_fstate(obj.cartesian_state)
                                                  for obj in close_objects])

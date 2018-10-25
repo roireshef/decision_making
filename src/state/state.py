@@ -13,12 +13,10 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmState
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FrenetState2D, \
-    FrenetStates2D
+from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FrenetState2D
 from decision_making.src.state.map_state import MapState
 from common_data.lcm.python.utils.lcm_utils import LCMUtils
 from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.service.map_service import MapService
 
 
 class OccupancyState(PUBSUB_MSG_IMPL):
@@ -154,8 +152,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def cartesian_state(self):
         # type: () -> CartesianExtendedState
         if self._cached_cartesian_state is None:
-            self._cached_cartesian_state = \
-                MapUtils.convert_map_to_cartesian_state(self._cached_map_states[RelativeLane.SAME_LANE])
+            self._cached_cartesian_state = self._cached_map_states[RelativeLane.SAME_LANE].to_cartesian_state()
         return self._cached_cartesian_state
 
     @property
@@ -174,11 +171,11 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         # type: (RelativeLane) -> MapState
         if self._cached_map_states[relative_lane] is None:
             if relative_lane == RelativeLane.SAME_LANE:
-                self._cached_map_states[relative_lane] = MapUtils.convert_cartesian_to_map_state(self._cached_cartesian_state)
+                self._cached_map_states[relative_lane] = MapState.from_cartesian_state(self._cached_cartesian_state)
             else:
-                adjacent_lane_id = MapService().get_instance().get_adjacent_lane(self.map_state.lane_id, relative_lane)
+                adjacent_lane_id = MapUtils.get_adjacent_lane(self.map_state.lane_id, relative_lane)
                 if adjacent_lane_id is not None:
-                    frenet = MapService().get_instance().get_lane_frenet(adjacent_lane_id)
+                    frenet = MapUtils.get_lane_frenet(adjacent_lane_id)
                     # TODO: the current implementation of cstate_to_fstate is very slow
                     fstate = frenet.cstate_to_fstate(self.cartesian_state)
                     self._cached_map_states[relative_lane] = MapState(fstate, adjacent_lane_id)

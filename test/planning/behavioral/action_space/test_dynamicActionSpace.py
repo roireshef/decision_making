@@ -10,7 +10,7 @@ from decision_making.src.planning.behavioral.data_objects import DynamicActionRe
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING
 from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from mapping.src.service.map_service import MapService
+from decision_making.src.utils.map_utils import MapUtils
 from rte.python.logger.AV_logger import AV_Logger
 
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
@@ -32,7 +32,7 @@ def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCel
                for recipe in follow_vehicle_recipes_towards_front_cells]
 
     # terminal action-spec latitude equals the current latitude of target vehicle
-    lane_latitudes = [(MapService().get_instance().get_lane_index(action.lane_id) + 0.5)*3.6 for action in actions]
+    lane_latitudes = [(MapUtils.get_lane_index(action.lane_id) + 0.5)*3.6 for action in actions]
     expected_latitudes = [1.8, 1.8, 1.8, 5.4, 5.4, 5.4, 9, 9, 9]
     latitudes = [action.d + lane_latitudes[i] for i, action in enumerate(actions)]
     np.testing.assert_array_almost_equal(latitudes, expected_latitudes)

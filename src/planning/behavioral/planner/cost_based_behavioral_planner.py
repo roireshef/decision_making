@@ -33,7 +33,6 @@ from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, ObjectSize, EgoState
 from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
-from mapping.src.service.map_service import MapService
 
 
 @six.add_metaclass(ABCMeta)
@@ -139,7 +138,6 @@ class CostBasedBehavioralPlanner:
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
         ego = behavioral_state.ego_state
-        map_api = MapService.get_instance()
 
         ego_init_fstate = ego.project_on_relative_lanes([action_recipe.relative_lane])[0]
         assert ego_init_fstate is not None
@@ -148,7 +146,7 @@ class CostBasedBehavioralPlanner:
         # set the reference route to start with a margin before the current longitudinal position of the vehicle
         ref_route_start = max(0, ego_init_fstate[FS_SX] - REFERENCE_ROUTE_MARGINS)
 
-        max_lane_longitude = map_api.get_lane_length(action_spec.lane_id)
+        max_lane_longitude = MapUtils.get_lane_length(action_spec.lane_id)
         forward_lookahead = action_spec.s - ref_route_start + REFERENCE_ROUTE_MARGINS
         # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
         # caused by the curve linearization approximation in the resampling process
@@ -160,7 +158,7 @@ class CostBasedBehavioralPlanner:
         ref_route_length = min(max_lane_longitude - ref_route_start, forward_lookahead * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO)
 
         # TODO: remove it, when TP will obtain frenet frame
-        center_lane_points = map_api.get_uniform_path_lookahead(
+        center_lane_points = MapUtils.get_uniform_path_lookahead(
             lane_id=action_spec.lane_id,
             lane_lat_shift=action_spec.d,  # THIS ASSUMES THE GOAL ALWAYS FALLS ON THE REFERENCE ROUTE
             starting_lon=ref_route_start,
@@ -175,7 +173,7 @@ class CostBasedBehavioralPlanner:
 
         # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)
         # TODO: remove it, when TP will obtain frenet frame
-        goal_cstate = map_api.get_lane_frenet(action_spec.lane_id).fstate_to_cstate(goal_fstate)
+        goal_cstate = MapUtils.get_lane_frenet(action_spec.lane_id).fstate_to_cstate(goal_fstate)
 
         center_lane_reference_route = FrenetSerret2DFrame.fit(center_lane_points)
 
@@ -215,11 +213,10 @@ class CostBasedBehavioralPlanner:
         poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
         poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
 
-        lane_frenet = MapService().get_instance().get_lane_frenet(action_spec.lane_id)
         return SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
                                           T_s=action_spec.t,
                                           T_d=action_spec.t,
-                                          frenet_frame=lane_frenet,
+                                          frenet_frame=MapUtils.get_lane_frenet(action_spec.lane_id),
                                           poly_s_coefs=poly_coefs_s,
                                           poly_d_coefs=poly_coefs_d)
 
@@ -231,11 +228,10 @@ class CostBasedBehavioralPlanner:
         :param ego_size: ego size used to extract margins (for dilation of other objects on road)
         :return: a TrajectoryCostParams instance that encodes all parameters for TP cost computation.
         """
-        map_api = MapService().get_instance()
         dist_from_right_lane_border, dist_from_left_lane_border = \
-            map_api.dist_from_lane_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
+            MapUtils.dist_from_lane_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
         dist_from_right_road_border, dist_from_left_road_border = \
-            map_api.dist_from_road_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
+            MapUtils.dist_from_road_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
 
         # lateral distance in [m] from ref. path to rightmost edge of lane
         right_lane_offset = dist_from_right_lane_border - ego_size.width / 2

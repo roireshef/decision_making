@@ -13,7 +13,7 @@ from decision_making.src.planning.behavioral.evaluators.action_evaluator import 
     ActionSpecEvaluator
 from decision_making.src.planning.types import FrenetPoint, FP_SX, LAT_CELL, FP_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from mapping.src.service.map_service import MapService
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
@@ -82,7 +82,7 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
 
         ego = behavioral_state.ego_state
         lane_id = ego.map_state.lane_id
-        lane_frenet = MapService.get_instance().get_lane_frenet(lane_id)
+        lane_frenet = MapUtils.get_lane_frenet(lane_id)
         ego_fpoint = behavioral_state.ego_state.map_state.lane_fstate[[FP_SX, FP_DX]]
 
         dist_to_backleft, safe_left_dist_behind_ego = RuleBasedActionSpecEvaluator._calc_safe_dist_behind_ego(

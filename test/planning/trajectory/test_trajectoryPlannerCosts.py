@@ -30,21 +30,21 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
     road_id = 20
     lane_width = MapService.get_instance().get_road(road_id).lane_width
     s = 0
-    init_d = lane_width/2
+    init_d = 0
     end_d = init_d + lane_width
     v = 10
     T = 8
-    T_d = np.array([T-4, T-3, T])
+    T_d = np.array([T-4, T-2, T])
     # Ego has 3 lane-change trajectories (from right to left) with same init/end constraints but different
     # T_d = [4, 6, 8]. Ego moves with constant longitudinal velocity 10 m/s during 8 seconds.
-    init_fstate = np.array([s, v, 0, 0, 0, 0])
+    init_fstate = np.array([s, v, 0, init_d, 0, 0])
     init_fstates = np.tile(init_fstate, 3).reshape(3, 6)
     target_fstate = np.array([s + T * v, v, 0, end_d, 0, 0])
     target_fstates = np.tile(target_fstate, 3).reshape(3, 6)
 
     # Dynamic object is static, located on the right lane, such that ego reaches it longitudinally at time t = 4.
     lane_id = MapService().get_instance()._lane_by_address[(road_id, 0)]
-    obj_map_state = MapState(np.array([s + T_d[0] * v, EPS, 0, 0, 0, 0]), lane_id)
+    obj_map_state = MapState(np.array([s + T_d[0] * v, EPS, 0, init_d, 0, 0]), lane_id)
     obj_size = ObjectSize(4, 1.8, 0)
     time_points = np.arange(0, T + EPS, 0.1)
 
@@ -68,7 +68,7 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
     for i in range(poly_coefs_s.shape[0]):
         samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
                                                           T_s=T, T_d=T_d[i],
-                                                          frenet_frame=MapUtils.get_road_rhs_frenet(ego),
+                                                          frenet_frame=MapUtils.get_lane_frenet(ego.map_state.lane_id),
                                                           poly_s_coefs=poly_coefs_s[i], poly_d_coefs=poly_coefs_d[i])
         ctrajectory = samplable_trajectory.sample(time_points)
         ctrajectories.append(ctrajectory)

@@ -12,7 +12,6 @@ from decision_making.src.planning.types import FS_SX
 from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.service.map_service import MapService
 
 
 class DynamicObjectWithRoadSemantics:
@@ -75,8 +74,8 @@ class BehavioralGridState(BehavioralState):
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
                                                                          state.ego_state)
 
-        right_lane_id = MapService.get_instance().get_adjacent_lane(lane_id, RelativeLane.RIGHT_LANE)
-        left_lane_id = MapService.get_instance().get_adjacent_lane(lane_id, RelativeLane.LEFT_LANE)
+        right_lane_id = MapUtils.get_adjacent_lane(lane_id, RelativeLane.RIGHT_LANE)
+        left_lane_id = MapUtils.get_adjacent_lane(lane_id, RelativeLane.LEFT_LANE)
         return cls(multi_object_grid, state.ego_state, right_lane_id, left_lane_id)
 
     def get_relative_lane_id(self, relative_lane: RelativeLane) -> int:
@@ -101,9 +100,9 @@ class BehavioralGridState(BehavioralState):
         :param ego_state:
         :return: list of object of type DynamicObjectWithRoadSemantics
         """
-        map_api = MapService().get_instance()
         # TODO: if the lanes belong to different roads, we can't subtract their indices
-        lat_diffs = [map_api.get_lane_index(obj.map_state.lane_id) - map_api.get_lane_index(ego_state.map_state.lane_id)
+        lat_diffs = [MapUtils.get_lane_index(obj.map_state.lane_id) -
+                     MapUtils.get_lane_index(ego_state.map_state.lane_id)
                      for obj in dynamic_objects]
         # for objects on non-adjacent lanes set relative_lanes[i] = None
         relative_lanes = [RelativeLane(diff) if abs(diff) <= 1 else None for diff in lat_diffs]

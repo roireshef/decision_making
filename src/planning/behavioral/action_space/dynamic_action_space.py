@@ -17,8 +17,6 @@ from decision_making.src.planning.types import LIMIT_MAX, FS_SV, FS_SX, LIMIT_MI
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.service.map_service import MapService
 
 
 class DynamicActionSpace(ActionSpace):

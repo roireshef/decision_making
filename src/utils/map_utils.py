@@ -1,52 +1,111 @@
 import numpy as np
 
-from decision_making.src.planning.types import C_X, C_Y, CartesianExtendedState, FS_DX, FS_SX
-from decision_making.src.state.map_state import MapState
-from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.planning.types import FP_DX
 from mapping.src.service.map_service import MapService
+from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
 class MapUtils:
     # TODO: replace with navigation plan aware function from map API
-    @staticmethod
-    def get_road_rhs_frenet(obj):
-        map_api = MapService().get_instance()
-        return map_api._rhs_roads_frenet[map_api.get_road_by_lane(obj.map_state.lane_id)]
 
     @staticmethod
-    def convert_cartesian_to_map_state(cartesian_state: CartesianExtendedState):
-        # type: (CartesianExtendedState) -> MapState
-        # TODO: replace with query that returns only the relevant road id
+    def get_closest_lane_id(x, y):
+        # type: (float, float) -> int
+        """
+        given cartesian coordinates, find the closest lane to the point
+        :param x: X cartesian coordinate
+        :param y: Y cartesian coordinate
+        :return: closest lane id
+        """
         map_api = MapService.get_instance()
-
-        relevant_road_ids = map_api._find_roads_containing_point(cartesian_state[C_X], cartesian_state[C_Y])
-        closest_road_id = map_api._find_closest_road(cartesian_state[C_X], cartesian_state[C_Y], relevant_road_ids)
-        # TODO: MapService
-        closest_lane_id = map_api.find_closest_lane(closest_road_id, cartesian_state[C_X], cartesian_state[C_Y])
-
-        lane_frenet = map_api.get_lane_frenet(closest_lane_id)
-
-        obj_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
-
-        return MapState(obj_fstate, closest_lane_id)
+        # TODO: replace with query that returns only the relevant road_id or lane_id
+        relevant_road_ids = map_api._find_roads_containing_point(x, y)
+        closest_road_id = map_api._find_closest_road(x, y, relevant_road_ids)
+        return MapUtils.find_closest_lane(closest_road_id, x, y)
 
     @staticmethod
-    def convert_map_to_cartesian_state(map_state):
-        # type: (MapState) -> CartesianExtendedState
-        # TODO: MapService
-        lane_frenet = MapService.get_instance().get_lane_frenet(map_state.lane_id)
-        return lane_frenet.fstate_to_cstate(map_state.lane_fstate)
+    def get_road_by_lane(lane_id):
+        return MapService().get_instance()._lane_address[lane_id][0]
 
     @staticmethod
-    def is_object_on_road(map_state):
-        # type: (MapState) -> bool
+    def get_lane_index(lane_id):
+        return MapService().get_instance()._lane_address[lane_id][1]
+
+    @staticmethod
+    def get_lane_frenet(lane_id):
+        return MapService().get_instance()._lane_frenet[lane_id]
+
+    @staticmethod
+    def get_lane_length(lane_id):
+        return MapService().get_instance()._lane_frenet[lane_id].s_max
+
+    @staticmethod
+    def get_adjacent_lane(lane_id, relative_lane):
+        # type: (int, RelativeLane) -> int
+        map_api = MapService().get_instance()
+        road_id, lane_idx = map_api._lane_address[lane_id]
+        adjacent_idx = lane_idx + relative_lane.value
+        return map_api._lane_by_address[(road_id, adjacent_idx)] \
+            if (road_id, adjacent_idx) in map_api._lane_by_address else None
+
+    @staticmethod
+    def find_closest_lane(road_id, x, y):
+        # type: (int, float, float) -> int
+        map_api = MapService().get_instance()
+        num_lanes = map_api.get_road(road_id).lanes_num
+        # convert the given cpoint to fpoints w.r.t. to each lane's frenet frame
+        fpoints = {}
+        for lane_idx in range(num_lanes):
+            lane_id = map_api._lane_by_address[(road_id, lane_idx)]
+            fpoints[lane_id] = map_api._lane_frenet[lane_id].cpoint_to_fpoint(np.array([x, y]))
+        # find frenet points with minimal absolute latitude
+        return min(fpoints.items(), key=lambda p: abs(p[1][FP_DX]))[0]
+
+    @staticmethod
+    def dist_from_lane_borders(lane_id, longitude):
+        # type: (int, float) -> (float, float)
+        lane_width = MapService().get_instance().get_road(MapUtils.get_road_by_lane(lane_id)).lane_width
+        return lane_width/2, lane_width/2
+
+    @staticmethod
+    def dist_from_road_borders(lane_id, longitude):
+        # type: (int, float) -> (float, float)
+        # TODO: this implementation assumes constant lane width (ignores longitude)
+        map_api = MapService().get_instance()
+        road_id = MapUtils.get_road_by_lane(lane_id)
+        lane_width = map_api.get_road(road_id).lane_width
+        num_lanes = map_api.get_road(road_id).lanes_num
+        lane_idx = MapUtils.get_lane_index(lane_id)
+        return (lane_idx + 0.5)*lane_width, (num_lanes - lane_idx - 0.5)*lane_width
+
+    # TODO: assumes constant lane width
+    @staticmethod
+    def get_lane_width(lane_id):
+        # type: (int) -> float
+        dist_from_right, dist_from_left = MapUtils.dist_from_lane_borders(lane_id, longitude=0)
+        return dist_from_right + dist_from_left
+
+    @staticmethod
+    def get_uniform_path_lookahead(lane_id: int, lane_lat_shift: float, starting_lon: float, lon_step: float,
+                                   steps_num: int, navigation_plan: NavigationPlanMsg):
         """
-        Returns true of the object is on the road. False otherwise.
-        Note! This function is valid only when the frenet reference frame is from the right side of the road
-        :param map_state: the map state to check
-        :return: Returns true of the object is on the road. False otherwise.
+        Create array of uniformly distributed points along a given road, shifted laterally by by lat_shift.
+        When some road finishes, it automatically continues to the next road, according to the navigation plan.
+        The distance between consecutive points is lon_step.
+        :param lane_id: starting lane_id
+        :param lane_lat_shift: lateral shift from right side of the lane [m]
+        :param starting_lon: starting longitude [m]
+        :param lon_step: distance between consecutive points [m]
+        :param steps_num: output points number
+        :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
+        :return: uniform sampled points array (Nx2)
         """
-        dist_from_right, dist_from_left = MapService.get_instance().dist_from_lane_borders(
-            map_state.lane_id, map_state.lane_fstate[FS_SX])
-        is_on_road = -dist_from_right - ROAD_SHOULDERS_WIDTH < map_state.lane_fstate[FS_DX] < dist_from_left + ROAD_SHOULDERS_WIDTH
-        return is_on_road
+        map_api = MapService().get_instance()
+        road_id = MapUtils.get_road_by_lane(lane_id)
+        road_lat_shift, _ = MapUtils.dist_from_road_borders(lane_id, starting_lon)
+        road_lat_shift += lane_lat_shift
+        shifted, _ = map_api.get_lookahead_points(road_id, starting_lon, lon_step * steps_num, road_lat_shift, navigation_plan)
+        # TODO change to precise resampling
+        _, resampled, _ = CartesianFrame.resample_curve(curve=shifted, step_size=lon_step)
+        return resampled

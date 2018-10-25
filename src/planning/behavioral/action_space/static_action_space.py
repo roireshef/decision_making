@@ -14,8 +14,6 @@ from decision_making.src.planning.behavioral.filtering.recipe_filtering import R
 from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FS_SV, FS_SA, FS_DX, FS_DA, FS_DV, FS_SX
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
-from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.service.map_service import MapService
 
 
 class StaticActionSpace(ActionSpace):
