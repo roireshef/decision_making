@@ -176,7 +176,7 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
 class TrajectoryParams(PUBSUB_MSG_IMPL):
     """ Members annotations for python 2 compliant classes """
     strategy = TrajectoryPlanningStrategy
-    reference_route = np.ndarray
+    reference_route = FrenetSerret2DFrame
     target_state = np.ndarray
     cost_params = TrajectoryCostParams
     time = float
