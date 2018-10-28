@@ -103,9 +103,15 @@ class MapUtils:
         """
         map_api = MapService.get_instance()
         road_id = MapUtils.get_road_by_lane(lane_id)
+        # convert starting lane fpoint to starting road fpoint
         starting_cpoint = MapUtils.get_lane_frenet(lane_id).fpoint_to_cpoint(np.array([starting_lon, lane_lat_shift]))
-        road_fpoint = map_api._rhs_roads_frenet[road_id].cpoint_to_fpoint(starting_cpoint)
-        shifted, _ = map_api.get_lookahead_points(road_id, road_fpoint[FP_SX], lon_step * steps_num, road_fpoint[FP_DX], navigation_plan)
+        starting_road_fpoint = map_api._rhs_roads_frenet[road_id].cpoint_to_fpoint(starting_cpoint)
+        # use old get_lookahead_points by the road coordinates
+        shifted, _ = map_api.get_lookahead_points(initial_road_id=road_id,
+                                                  initial_lon=starting_road_fpoint[FP_SX],
+                                                  lookahead_dist=lon_step * steps_num,
+                                                  desired_lat=starting_road_fpoint[FP_DX],
+                                                  navigation_plan=navigation_plan)
         # TODO change to precise resampling
         _, resampled, _ = CartesianFrame.resample_curve(curve=shifted, step_size=lon_step)
         return resampled
