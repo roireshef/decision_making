@@ -1,7 +1,7 @@
 import numpy as np
 
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.planning.types import FP_DX
+from decision_making.src.planning.types import FP_DX, FP_SX
 from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
@@ -103,9 +103,9 @@ class MapUtils:
         """
         map_api = MapService.get_instance()
         road_id = MapUtils.get_road_by_lane(lane_id)
-        road_lat_shift, _ = MapUtils.dist_from_road_borders(lane_id, starting_lon)
-        road_lat_shift += lane_lat_shift
-        shifted, _ = map_api.get_lookahead_points(road_id, starting_lon, lon_step * steps_num, road_lat_shift, navigation_plan)
+        starting_cpoint = MapUtils.get_lane_frenet(lane_id).fpoint_to_cpoint(np.array([starting_lon, lane_lat_shift]))
+        road_fpoint = map_api._rhs_roads_frenet[road_id].cpoint_to_fpoint(starting_cpoint)
+        shifted, _ = map_api.get_lookahead_points(road_id, road_fpoint[FP_SX], lon_step * steps_num, road_fpoint[FP_DX], navigation_plan)
         # TODO change to precise resampling
         _, resampled, _ = CartesianFrame.resample_curve(curve=shifted, step_size=lon_step)
         return resampled
