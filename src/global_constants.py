@@ -25,7 +25,7 @@ REFERENCE_ROUTE_MARGINS = PLANNING_LOOKAHEAD_DIST
 # When retrieving the lookahead path of a given dynamic object, we will multiply the path length
 # by the following ratio in order to avoid extrapolation when resampling the path (due to path sampling
 # and linearization errors)
-PREDICTION_LOOKAHEAD_COMPENSATION_RATIO = 1.1
+PREDICTION_LOOKAHEAD_COMPENSATION_RATIO = 1.2
 
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
