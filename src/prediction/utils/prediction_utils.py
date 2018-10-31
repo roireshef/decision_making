@@ -29,7 +29,7 @@ class PredictionUtils:
         obj_init_fstate = object_state.map_state.lane_fstate
 
         # Calculate object's initial state in Frenet frame according to model
-        lane_width = MapUtils.get_lane_width(lane_id)
+        lane_width = MapUtils.get_lane_width(lane_id, s=0)
 
         s_x_final, s_v_final = PredictionUtils.compute_distance_from_average_acceleration(ended_maneuver_params.T_s,
                                                                                           ended_maneuver_params.avg_s_a,

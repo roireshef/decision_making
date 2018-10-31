@@ -10,21 +10,6 @@ class MapUtils:
     # TODO: replace with navigation plan aware function from map API
 
     @staticmethod
-    def get_closest_lane_id(x, y):
-        # type: (float, float) -> int
-        """
-        given cartesian coordinates, find the closest lane to the point
-        :param x: X cartesian coordinate
-        :param y: Y cartesian coordinate
-        :return: closest lane id
-        """
-        map_api = MapService.get_instance()
-        # TODO: replace with query that returns only the relevant road_id or lane_id
-        relevant_road_ids = map_api._find_roads_containing_point(x, y)
-        closest_road_id = map_api._find_closest_road(x, y, relevant_road_ids)
-        return MapUtils.find_closest_lane(closest_road_id, x, y)
-
-    @staticmethod
     def get_road_by_lane(lane_id):
         return MapService.get_instance()._lane_address[lane_id][0]
 
@@ -50,7 +35,21 @@ class MapUtils:
             if (road_id, adjacent_idx) in map_api._lane_by_address else None
 
     @staticmethod
-    def find_closest_lane(road_id, x, y):
+    def get_closest_lane(x, y):
+        # type: (float, float) -> int
+        """
+        given cartesian coordinates, find the closest lane to the point
+        :param x: X cartesian coordinate
+        :param y: Y cartesian coordinate
+        :return: closest lane id
+        """
+        map_api = MapService.get_instance()
+        relevant_road_ids = map_api._find_roads_containing_point(x, y)
+        closest_road_id = map_api._find_closest_road(x, y, relevant_road_ids)
+        return MapUtils.get_closest_lane_on_road(closest_road_id, x, y)
+
+    @staticmethod
+    def get_closest_lane_on_road(road_id, x, y):
         # type: (int, float, float) -> int
         map_api = MapService.get_instance()
         num_lanes = map_api.get_road(road_id).lanes_num
@@ -63,15 +62,28 @@ class MapUtils:
         return min(fpoints.items(), key=lambda p: abs(p[1][FP_DX]))[0]
 
     @staticmethod
-    def dist_from_lane_borders(lane_id, longitude):
+    def get_dist_from_lane_borders(lane_id, s):
         # type: (int, float) -> (float, float)
+        """
+        get distance from the lane center to the lane borders at given longitude from the lane's origin
+        :param lane_id:
+        :param s: longitude of the lane center point (w.r.t. the lane Frenet frame)
+        :return: distance from the right lane border, distance from the left lane border
+        """
+        # this implementation assumes constant lane width (ignores the argument s)
         lane_width = MapService.get_instance().get_road(MapUtils.get_road_by_lane(lane_id)).lane_width
         return lane_width/2, lane_width/2
 
     @staticmethod
-    def dist_from_road_borders(lane_id, longitude):
+    def get_dist_from_road_borders(lane_id, s):
         # type: (int, float) -> (float, float)
-        # TODO: this implementation assumes constant lane width (ignores longitude)
+        """
+        get distance from the lane center to the road borders at given longitude from the lane's origin
+        :param lane_id:
+        :param s: longitude of the lane center point (w.r.t. the lane Frenet frame)
+        :return: distance from the right road border, distance from the left road border
+        """
+        # this implementation assumes constant lane width (ignores the argument s), the same width of all road's lanes
         map_api = MapService.get_instance()
         road_id = MapUtils.get_road_by_lane(lane_id)
         lane_width = map_api.get_road(road_id).lane_width
@@ -79,11 +91,16 @@ class MapUtils:
         lane_idx = MapUtils.get_lane_index(lane_id)
         return (lane_idx + 0.5)*lane_width, (num_lanes - lane_idx - 0.5)*lane_width
 
-    # TODO: assumes constant lane width
     @staticmethod
-    def get_lane_width(lane_id):
+    def get_lane_width(lane_id, s):
         # type: (int) -> float
-        dist_from_right, dist_from_left = MapUtils.dist_from_lane_borders(lane_id, longitude=0)
+        """
+        get lane width at given longitude from the lane's origin
+        :param lane_id:
+        :param s: longitude of the lane center point (w.r.t. the lane Frenet frame)
+        :return: lane width
+        """
+        dist_from_right, dist_from_left = MapUtils.get_dist_from_lane_borders(lane_id, s)
         return dist_from_right + dist_from_left
 
     @staticmethod

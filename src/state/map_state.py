@@ -25,7 +25,7 @@ class MapState(PUBSUB_MSG_IMPL):
     @classmethod
     def from_cartesian_state(cls, cartesian_state: CartesianExtendedState):
         # type: (CartesianExtendedState) -> MapState
-        closest_lane_id = MapUtils.get_closest_lane_id(cartesian_state[C_X], cartesian_state[C_Y])
+        closest_lane_id = MapUtils.get_closest_lane(cartesian_state[C_X], cartesian_state[C_Y])
         lane_frenet = MapUtils.get_lane_frenet(closest_lane_id)
         obj_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
         return cls(obj_fstate, closest_lane_id)
@@ -41,7 +41,7 @@ class MapState(PUBSUB_MSG_IMPL):
         Returns true of the object is on the road. False otherwise.
         :return: Returns true of the object is on the road. False otherwise.
         """
-        dist_from_right, dist_from_left = MapUtils.dist_from_lane_borders(self.lane_id, self.lane_fstate[FS_SX])
+        dist_from_right, dist_from_left = MapUtils.get_dist_from_lane_borders(self.lane_id, self.lane_fstate[FS_SX])
         return -dist_from_right - ROAD_SHOULDERS_WIDTH < self.lane_fstate[FS_DX] < dist_from_left + ROAD_SHOULDERS_WIDTH
 
     def serialize(self):
