@@ -16,16 +16,16 @@ class GoalStatus(Enum):
 
 
 class NavigationGoal:
-    def __init__(self, road_id: int, lon: float, lanes: List[int]):
+    def __init__(self, road_id: int, lon: float, lane_indices: List[int]):
         """
         Holds parameters of a navigation goal: road id, longitude, list of lanes.
         :param road_id: road id from the map
         :param lon: [m] longitude of the goal relatively to the road's beginning
-        :param lanes: list of lane indices of the goal
+        :param lane_indices: list of lane indices of the goal
         """
         self.road_id = road_id
         self.lon = lon
-        self.lanes = lanes
+        self.lane_indices = lane_indices
 
     def validate(self, state: State) -> GoalStatus:
         """
@@ -37,7 +37,7 @@ class NavigationGoal:
         map_state = state.ego_state.map_state
         road_id = MapUtils.get_road_by_lane(map_state.lane_id)
         if road_id == self.road_id and map_state.lane_fstate[FS_SX] >= self.lon:
-            if map_state.lane_num in self.lanes:
+            if map_state.lane_index in self.lane_indices:
                 return GoalStatus.REACHED
             else:
                 return GoalStatus.MISSED

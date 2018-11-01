@@ -18,7 +18,7 @@ class MapState(PUBSUB_MSG_IMPL):
         self.lane_id = lane_id
 
     @property
-    def lane_num(self):
+    def lane_index(self):
         # type: (int) -> int
         return MapUtils.get_lane_index(self.lane_id)
 
