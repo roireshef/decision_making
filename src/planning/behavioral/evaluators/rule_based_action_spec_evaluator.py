@@ -66,7 +66,9 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         is_forward_right_fast = right_lane_action_ind is not None and \
                                 desired_vel - action_specs[right_lane_action_ind].v < MIN_OVERTAKE_VEL
         # boolean whether the right cell near ego is occupied
-        is_right_occupied = behavioral_state.right_lane_id is None or \
+        ego = behavioral_state.ego_state
+        lane_id = ego.map_state.lane_id
+        is_right_occupied = MapUtils.get_adjacent_lane(lane_id, RelativeLane.RIGHT_LANE) is None or \
                             (RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.PARALLEL) in \
                             behavioral_state.road_occupancy_grid
 
@@ -80,9 +82,7 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
                                   action_specs[left_lane_action_ind].v - action_specs[current_lane_action_ind].v >=
                                   MIN_OVERTAKE_VEL)
 
-        ego = behavioral_state.ego_state
-        lane_id = ego.map_state.lane_id
-        lane_frenet = MapUtils.get_lane_frenet(lane_id)
+        lane_frenet = MapUtils.get_lane_frenet_frame(lane_id)
         ego_fpoint = behavioral_state.ego_state.map_state.lane_fstate[[FP_SX, FP_DX]]
 
         dist_to_backleft, safe_left_dist_behind_ego = RuleBasedActionSpecEvaluator._calc_safe_dist_behind_ego(
@@ -96,7 +96,7 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
                           safe_right_dist_behind_ego)
 
         # boolean whether the left cell near ego is occupied
-        is_left_occupied = behavioral_state.left_lane_id is None or \
+        is_left_occupied = MapUtils.get_adjacent_lane(lane_id, RelativeLane.LEFT_LANE) is None or \
                            (RelativeLane.LEFT_LANE, RelativeLongitudinalPosition.PARALLEL) in \
                            behavioral_state.road_occupancy_grid
         costs = np.ones(len(action_recipes))

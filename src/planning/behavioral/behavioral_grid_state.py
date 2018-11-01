@@ -39,12 +39,9 @@ RoadSemanticOccupancyGrid = Dict[SemanticGridCell, List[DynamicObjectWithRoadSem
 
 
 class BehavioralGridState(BehavioralState):
-    def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState,
-                 right_lane_id: int, left_lane_id: int):
+    def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState):
         self.road_occupancy_grid = road_occupancy_grid
         self.ego_state = ego_state
-        self.right_lane_id = right_lane_id
-        self.left_lane_id = left_lane_id
 
     @classmethod
     @prof.ProfileFunction()
@@ -60,8 +57,6 @@ class BehavioralGridState(BehavioralState):
          ego front).
         :return: road semantic occupancy grid
         """
-        lane_id = state.ego_state.map_state.lane_id
-
         # TODO: the relative localization calculated here assumes that all objects are located on the same road.
         # TODO: Fix after demo and calculate longitudinal difference properly in the general case
         # navigation_plan = MapService.get_instance().get_road_based_navigation_plan(current_road_id=road_id)
@@ -73,20 +68,7 @@ class BehavioralGridState(BehavioralState):
 
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
                                                                          state.ego_state)
-
-        right_lane_id = MapUtils.get_adjacent_lane(lane_id, RelativeLane.RIGHT_LANE)
-        left_lane_id = MapUtils.get_adjacent_lane(lane_id, RelativeLane.LEFT_LANE)
-        return cls(multi_object_grid, state.ego_state, right_lane_id, left_lane_id)
-
-    def get_relative_lane_id(self, relative_lane: RelativeLane) -> int:
-        if relative_lane == RelativeLane.SAME_LANE:
-            return self.ego_state.map_state.lane_id
-        elif relative_lane == RelativeLane.RIGHT_LANE:
-            return self.right_lane_id
-        elif relative_lane == RelativeLane.LEFT_LANE:
-            return self.left_lane_id
-        else:
-            return None
+        return cls(multi_object_grid, state.ego_state)
 
     @staticmethod
     @prof.ProfileFunction()

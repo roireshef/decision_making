@@ -20,13 +20,13 @@ def test_generateTrajectory_sampleParameters_resultPrecise(werling_trajectory_ge
     target_obj = state.dynamic_objects[0]
 
     lane_id = target_obj.map_state.lane_id
-    lane_frenet_frame = MapUtils.get_lane_frenet(lane_id)
+    lane_frenet_frame = MapUtils.get_lane_frenet_frame(lane_id)
 
     obj_init_fstate = target_obj.map_state.lane_fstate
 
     # Set final state to advance 20[m] in lon and the width of a road lane in lat
     obj_final_fstate = np.array(obj_init_fstate)
-    obj_final_fstate[FS_DX] = obj_init_fstate[FS_DX] + MapUtils.get_lane_width(lane_id)
+    obj_final_fstate[FS_DX] = obj_init_fstate[FS_DX] + MapUtils.get_lane_width(lane_id, 0)
     obj_final_fstate[FS_SX] = obj_init_fstate[FS_SX] + 20.0
 
     predicted_maneuver_spec = ManeuverSpec(init_state=obj_init_fstate,

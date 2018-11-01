@@ -12,6 +12,7 @@ from decision_making.src.planning.utils.file_utils import BinaryReadWrite, TextR
 
 # DynamicActionRecipe Filters
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
@@ -164,9 +165,12 @@ class FilterNonCalmActions(RecipeFilter):
 
 class FilterIfNoLane(RecipeFilter):
     def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
+        lane_id = behavioral_state.ego_state.map_state.lane_id
         return (recipe.relative_lane == RelativeLane.SAME_LANE or
-                (recipe.relative_lane == RelativeLane.RIGHT_LANE and behavioral_state.right_lane_id is not None) or
-                (recipe.relative_lane == RelativeLane.LEFT_LANE and behavioral_state.left_lane_id is not None))
+                (recipe.relative_lane == RelativeLane.RIGHT_LANE and
+                 MapUtils.get_adjacent_lane(lane_id, RelativeLane.RIGHT_LANE) is not None) or
+                (recipe.relative_lane == RelativeLane.LEFT_LANE and
+                 MapUtils.get_adjacent_lane(lane_id, RelativeLane.LEFT_LANE) is not None))
 
 
 class FilterIfAggressive(RecipeFilter):

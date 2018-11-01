@@ -68,7 +68,7 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
     for i in range(poly_coefs_s.shape[0]):
         samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
                                                           T_s=T, T_d=T_d[i],
-                                                          frenet_frame=MapUtils.get_lane_frenet(ego.map_state.lane_id),
+                                                          frenet_frame=MapUtils.get_lane_frenet_frame(ego.map_state.lane_id),
                                                           poly_s_coefs=poly_coefs_s[i], poly_d_coefs=poly_coefs_d[i])
         ctrajectory = samplable_trajectory.sample(time_points)
         ctrajectories.append(ctrajectory)

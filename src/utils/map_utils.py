@@ -1,5 +1,6 @@
 import numpy as np
 
+from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_DX, FP_SX
@@ -32,7 +33,7 @@ class MapUtils:
         return MapService.get_instance()._lane_address[lane_id][1]
 
     @staticmethod
-    def get_lane_frenet(lane_id):
+    def get_lane_frenet_frame(lane_id):
         # type: (int) -> FrenetSerret2DFrame
         """
         get Frenet frame of the whole center-lane for the given lane
@@ -54,6 +55,12 @@ class MapUtils:
     @staticmethod
     def get_adjacent_lane(lane_id, relative_lane):
         # type: (int, RelativeLane) -> int
+        """
+        get adjacent (right/left) lane to the given lane segment (if exists)
+        :param lane_id:
+        :param relative_lane: either right or left
+        :return: adjacent lane id or None if it does not exist
+        """
         map_api = MapService.get_instance()
         road_id, lane_idx = map_api._lane_address[lane_id]
         adjacent_idx = lane_idx + relative_lane.value
@@ -61,28 +68,30 @@ class MapUtils:
             if (road_id, adjacent_idx) in map_api._lane_by_address else None
 
     @staticmethod
-    def get_closest_lane(x, y):
-        # type: (float, float) -> int
+    def get_closest_lane(x, y, road_segment_id=None):
+        # type: (float, float, int) -> int
         """
         given cartesian coordinates, find the closest lane to the point
         :param x: X cartesian coordinate
         :param y: Y cartesian coordinate
-        :return: closest lane id
+        :param road_segment_id: optional argument for road_segment_id closest to the given point
+        :return: closest lane segment id
         """
         map_api = MapService.get_instance()
-        relevant_road_ids = map_api._find_roads_containing_point(x, y)
-        closest_road_id = map_api._find_closest_road(x, y, relevant_road_ids)
-        return MapUtils.get_closest_lane_on_road(closest_road_id, x, y)
+        if road_segment_id is None:
+            # find the closest road segment
+            map_api = MapService.get_instance()
+            relevant_road_ids = map_api._find_roads_containing_point(x, y)
+            closest_road_id = map_api._find_closest_road(x, y, relevant_road_ids)
+        else:
+            closest_road_id = road_segment_id
 
-    @staticmethod
-    def get_closest_lane_on_road(road_id, x, y):
-        # type: (int, float, float) -> int
-        map_api = MapService.get_instance()
-        num_lanes = map_api.get_road(road_id).lanes_num
+        # find the closest lane segment, given the closest road segment
+        num_lanes = map_api.get_road(closest_road_id).lanes_num
         # convert the given cpoint to fpoints w.r.t. to each lane's frenet frame
         fpoints = {}
         for lane_idx in range(num_lanes):
-            lane_id = map_api._lane_by_address[(road_id, lane_idx)]
+            lane_id = map_api._lane_by_address[(closest_road_id, lane_idx)]
             fpoints[lane_id] = map_api._lane_frenet[lane_id].cpoint_to_fpoint(np.array([x, y]))
         # find frenet points with minimal absolute latitude
         return min(fpoints.items(), key=lambda p: abs(p[1][FP_DX]))[0]
@@ -111,9 +120,9 @@ class MapUtils:
         """
         # this implementation assumes constant lane width (ignores the argument s), the same width of all road's lanes
         map_api = MapService.get_instance()
-        road_id = MapUtils.get_road_by_lane(lane_id)
-        lane_width = map_api.get_road(road_id).lane_width
-        num_lanes = map_api.get_road(road_id).lanes_num
+        road_segment_id = MapUtils.get_road_by_lane(lane_id)
+        lane_width = map_api.get_road(road_segment_id).lane_width
+        num_lanes = map_api.get_road(road_segment_id).lanes_num
         lane_idx = MapUtils.get_lane_index(lane_id)
         return (lane_idx + 0.5)*lane_width, (num_lanes - lane_idx - 0.5)*lane_width
 
@@ -130,31 +139,35 @@ class MapUtils:
         return dist_from_right + dist_from_left
 
     @staticmethod
-    def get_uniform_path_lookahead(lane_id: int, lane_lat_shift: float, starting_lon: float, lon_step: float,
-                                   steps_num: int, navigation_plan: NavigationPlanMsg):
+    def get_lookahead_frenet_frame(lane_id: int, starting_lon: float, lookahead_dist: float,
+                                   navigation_plan: NavigationPlanMsg):
         """
-        Create array of uniformly distributed points along a given road, shifted laterally by by lat_shift.
-        When some road finishes, it automatically continues to the next road, according to the navigation plan.
-        The distance between consecutive points is lon_step.
+        Get Frenet frame of a given length along lane center, starting from given lane's longitude (may be negative).
+        When some lane finishes, it automatically continues to the next lane, according to the navigation plan.
         :param lane_id: starting lane_id
-        :param lane_lat_shift: lateral shift from right side of the lane [m]
-        :param starting_lon: starting longitude [m]
-        :param lon_step: distance between consecutive points [m]
-        :param steps_num: output points number
+        :param starting_lon: starting longitude (may be negative) [m]
+        :param lookahead_dist: lookahead distance for the output frame [m]
         :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
-        :return: uniform sampled points array (Nx2)
+        :return: Frenet frame for the given route part
         """
+        # in current implementation: if starting_lon < 0, extract Frenet frame with only positive longitudes
+        if starting_lon < 0:
+            lookahead_dist += starting_lon
+            starting_lon = 0
+
         map_api = MapService.get_instance()
-        road_id = MapUtils.get_road_by_lane(lane_id)
+        road_segment_id = MapUtils.get_road_by_lane(lane_id)
         # convert starting lane fpoint to starting road fpoint
-        starting_cpoint = MapUtils.get_lane_frenet(lane_id).fpoint_to_cpoint(np.array([starting_lon, lane_lat_shift]))
-        starting_road_fpoint = map_api._rhs_roads_frenet[road_id].cpoint_to_fpoint(starting_cpoint)
+        starting_cpoint = MapUtils.get_lane_frenet_frame(lane_id).fpoint_to_cpoint(np.array([starting_lon, 0]))
+        starting_road_fpoint = map_api._rhs_roads_frenet[road_segment_id].cpoint_to_fpoint(starting_cpoint)
         # use old get_lookahead_points by the road coordinates
-        shifted, _ = map_api.get_lookahead_points(initial_road_id=road_id,
+        shifted, _ = map_api.get_lookahead_points(initial_road_id=road_segment_id,
                                                   initial_lon=starting_road_fpoint[FP_SX],
-                                                  lookahead_dist=lon_step * steps_num,
+                                                  lookahead_dist=lookahead_dist,
                                                   desired_lat=starting_road_fpoint[FP_DX],
                                                   navigation_plan=navigation_plan)
         # TODO change to precise resampling
-        _, resampled, _ = CartesianFrame.resample_curve(curve=shifted, step_size=lon_step)
-        return resampled
+        _, resampled, _ = CartesianFrame.resample_curve(curve=shifted, step_size=TRAJECTORY_ARCLEN_RESOLUTION)
+
+        center_lane_reference_route = FrenetSerret2DFrame.fit(resampled)
+        return center_lane_reference_route

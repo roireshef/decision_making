@@ -157,17 +157,17 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
     @property
     def map_state(self):
-        return self._get_map_state(RelativeLane.SAME_LANE)
+        return self._get_adjacent_map_state(RelativeLane.SAME_LANE)
 
     @property
     def right_map_state(self):
-        return self._get_map_state(RelativeLane.RIGHT_LANE)
+        return self._get_adjacent_map_state(RelativeLane.RIGHT_LANE)
 
     @property
     def left_map_state(self):
-        return self._get_map_state(RelativeLane.LEFT_LANE)
+        return self._get_adjacent_map_state(RelativeLane.LEFT_LANE)
 
-    def _get_map_state(self, relative_lane):
+    def _get_adjacent_map_state(self, relative_lane):
         # type: (RelativeLane) -> MapState
         if self._cached_map_states[relative_lane] is None:
             if relative_lane == RelativeLane.SAME_LANE:
@@ -175,7 +175,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
             else:
                 adjacent_lane_id = MapUtils.get_adjacent_lane(self.map_state.lane_id, relative_lane)
                 if adjacent_lane_id is not None:
-                    frenet = MapUtils.get_lane_frenet(adjacent_lane_id)
+                    frenet = MapUtils.get_lane_frenet_frame(adjacent_lane_id)
                     # TODO: the current implementation of cstate_to_fstate is very slow
                     fstate = frenet.cstate_to_fstate(self.cartesian_state)
                     self._cached_map_states[relative_lane] = MapState(fstate, adjacent_lane_id)

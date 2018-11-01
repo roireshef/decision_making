@@ -17,6 +17,7 @@ from decision_making.src.planning.types import LIMIT_MAX, FS_SV, FS_SX, LIMIT_MI
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class DynamicActionSpace(ActionSpace):
@@ -106,7 +107,8 @@ class DynamicActionSpace(ActionSpace):
         # Absolute longitudinal position of target
         target_s = distance_s + ego_init_fstates[:, FS_SX]
 
-        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, behavioral_state.get_relative_lane_id(relative_lanes[i]))
+        lane_id = ego.map_state.lane_id
+        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, MapUtils.get_adjacent_lane(lane_id, relative_lanes[i]))
                         if ~np.isnan(t) else None
                         for i, t in enumerate(T)]
 
