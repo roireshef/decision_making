@@ -1,7 +1,9 @@
 import numpy as np
 
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_DX, FP_SX
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
@@ -11,18 +13,42 @@ class MapUtils:
 
     @staticmethod
     def get_road_by_lane(lane_id):
+        # type: (int) -> int
+        """
+        get road_id containing the lane
+        :param lane_id:
+        :return: road_id
+        """
         return MapService.get_instance()._lane_address[lane_id][0]
 
     @staticmethod
     def get_lane_index(lane_id):
+        # type: (int) -> int
+        """
+        get lane index of the lane on the road (the rightest lane's index is 0)
+        :param lane_id:
+        :return: lane index
+        """
         return MapService.get_instance()._lane_address[lane_id][1]
 
     @staticmethod
     def get_lane_frenet(lane_id):
+        # type: (int) -> FrenetSerret2DFrame
+        """
+        get Frenet frame of the whole center-lane for the given lane
+        :param lane_id:
+        :return: Frenet frame
+        """
         return MapService.get_instance()._lane_frenet[lane_id]
 
     @staticmethod
     def get_lane_length(lane_id):
+        # type: (int) -> float
+        """
+        get the whole lane's length
+        :param lane_id:
+        :return: lane's length
+        """
         return MapService.get_instance()._lane_frenet[lane_id].s_max
 
     @staticmethod
