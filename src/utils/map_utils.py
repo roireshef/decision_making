@@ -1,3 +1,5 @@
+from typing import List
+
 import numpy as np
 
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION
@@ -10,11 +12,9 @@ from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
 class MapUtils:
-    # TODO: replace with navigation plan aware function from map API
 
     @staticmethod
-    def get_road_by_lane(lane_id):
-        # type: (int) -> int
+    def get_road_by_lane(lane_id: int) -> int:
         """
         get road_id containing the lane
         :param lane_id:
@@ -23,8 +23,7 @@ class MapUtils:
         return MapService.get_instance()._lane_address[lane_id][0]
 
     @staticmethod
-    def get_lane_index(lane_id):
-        # type: (int) -> int
+    def get_lane_index(lane_id: int) -> int:
         """
         get lane index of the lane on the road (the rightest lane's index is 0)
         :param lane_id:
@@ -33,8 +32,7 @@ class MapUtils:
         return MapService.get_instance()._lane_address[lane_id][1]
 
     @staticmethod
-    def get_lane_frenet_frame(lane_id):
-        # type: (int) -> FrenetSerret2DFrame
+    def get_lane_frenet_frame(lane_id: int) -> FrenetSerret2DFrame:
         """
         get Frenet frame of the whole center-lane for the given lane
         :param lane_id:
@@ -43,8 +41,7 @@ class MapUtils:
         return MapService.get_instance()._lane_frenet[lane_id]
 
     @staticmethod
-    def get_lane_length(lane_id):
-        # type: (int) -> float
+    def get_lane_length(lane_id: int) -> float:
         """
         get the whole lane's length
         :param lane_id:
@@ -53,8 +50,7 @@ class MapUtils:
         return MapService.get_instance()._lane_frenet[lane_id].s_max
 
     @staticmethod
-    def get_adjacent_lane(lane_id, relative_lane):
-        # type: (int, RelativeLane) -> int
+    def get_adjacent_lane(lane_id: int, relative_lane: RelativeLane) -> int:
         """
         get adjacent (right/left) lane to the given lane segment (if exists)
         :param lane_id:
@@ -68,8 +64,7 @@ class MapUtils:
             if (road_id, adjacent_idx) in map_api._lane_by_address else None
 
     @staticmethod
-    def get_closest_lane(x, y, road_segment_id=None):
-        # type: (float, float, int) -> int
+    def get_closest_lane(x: float, y: float, road_segment_id: int=None) -> int:
         """
         given cartesian coordinates, find the closest lane to the point
         :param x: X cartesian coordinate
@@ -97,8 +92,7 @@ class MapUtils:
         return min(fpoints.items(), key=lambda p: abs(p[1][FP_DX]))[0]
 
     @staticmethod
-    def get_dist_from_lane_borders(lane_id, s):
-        # type: (int, float) -> (float, float)
+    def get_dist_from_lane_borders(lane_id: int, s: float) -> (float, float):
         """
         get distance from the lane center to the lane borders at given longitude from the lane's origin
         :param lane_id:
@@ -110,8 +104,7 @@ class MapUtils:
         return lane_width/2, lane_width/2
 
     @staticmethod
-    def get_dist_from_road_borders(lane_id, s):
-        # type: (int, float) -> (float, float)
+    def get_dist_from_road_borders(lane_id: int, s: float) -> (float, float):
         """
         get distance from the lane center to the road borders at given longitude from the lane's origin
         :param lane_id:
@@ -127,8 +120,7 @@ class MapUtils:
         return (lane_idx + 0.5)*lane_width, (num_lanes - lane_idx - 0.5)*lane_width
 
     @staticmethod
-    def get_lane_width(lane_id, s):
-        # type: (int) -> float
+    def get_lane_width(lane_id: int, s: float) -> float:
         """
         get lane width at given longitude from the lane's origin
         :param lane_id:
@@ -171,3 +163,21 @@ class MapUtils:
 
         center_lane_reference_route = FrenetSerret2DFrame.fit(resampled)
         return center_lane_reference_route
+
+    @staticmethod
+    def get_upstream_lanes(lane_id: int) -> List[int]:
+        """
+        get upstream lanes of the given lane
+        :param lane_id:
+        :return: list of upstream lanes
+        """
+        pass
+
+    @staticmethod
+    def get_downstream_lanes(lane_id: int) -> List[int]:
+        """
+        get downstream lanes of the given lane
+        :param lane_id:
+        :return: list of downstream lanes
+        """
+        pass
