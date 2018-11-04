@@ -181,3 +181,12 @@ class MapUtils:
         :return: list of downstream lanes
         """
         pass
+
+    @staticmethod
+    def is_main_lane(lane_id: int) -> bool:
+        """
+        check if there is another lane with higher priority, having the same upstream lane
+        :param lane_id:
+        :return: True if there is no another lane with higher priority, having the same upstream lane
+        """
+        pass
