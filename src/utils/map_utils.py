@@ -5,7 +5,7 @@ import numpy as np
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import FP_DX, FP_SX
+from decision_making.src.planning.types import FP_DX, FP_SX, C_X, C_Y
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
@@ -14,7 +14,7 @@ from mapping.src.transformations.geometry_utils import CartesianFrame
 class MapUtils:
 
     @staticmethod
-    def get_road_by_lane(lane_id: int) -> int:
+    def get_road_segment_by_lane(lane_id: int) -> int:
         """
         get road_id containing the lane
         :param lane_id:
@@ -100,7 +100,7 @@ class MapUtils:
         :return: distance from the right lane border, distance from the left lane border
         """
         # this implementation assumes constant lane width (ignores the argument s)
-        lane_width = MapService.get_instance().get_road(MapUtils.get_road_by_lane(lane_id)).lane_width
+        lane_width = MapService.get_instance().get_road(MapUtils.get_road_segment_by_lane(lane_id)).lane_width
         return lane_width/2, lane_width/2
 
     @staticmethod
@@ -113,7 +113,7 @@ class MapUtils:
         """
         # this implementation assumes constant lane width (ignores the argument s), the same width of all road's lanes
         map_api = MapService.get_instance()
-        road_segment_id = MapUtils.get_road_by_lane(lane_id)
+        road_segment_id = MapUtils.get_road_segment_by_lane(lane_id)
         lane_width = map_api.get_road(road_segment_id).lane_width
         num_lanes = map_api.get_road(road_segment_id).lanes_num
         lane_idx = MapUtils.get_lane_index(lane_id)
@@ -148,7 +148,7 @@ class MapUtils:
             starting_lon = 0
 
         map_api = MapService.get_instance()
-        road_segment_id = MapUtils.get_road_by_lane(lane_id)
+        road_segment_id = MapUtils.get_road_segment_by_lane(lane_id)
         # convert starting lane fpoint to starting road fpoint
         starting_cpoint = MapUtils.get_lane_frenet_frame(lane_id).fpoint_to_cpoint(np.array([starting_lon, 0]))
         starting_road_fpoint = map_api._rhs_roads_frenet[road_segment_id].cpoint_to_fpoint(starting_cpoint)
@@ -190,3 +190,57 @@ class MapUtils:
         :return: True if there is no another lane with higher priority, having the same upstream lane
         """
         pass
+
+    @staticmethod
+    def get_lanes_by_road_segment(road_segment_id: int) -> List[int]:
+        """
+        Get sorted list of lanes for given road segment. The output lanes are ordered by the lanes' index,
+        i.e. from the rightest lane to the most left.
+        :param road_segment_id:
+        :return: sorted list of lane segments' IDs
+        """
+        map_api = MapService.get_instance()
+        # find the closest lane segment, given the closest road segment
+        num_lanes = map_api.get_road(road_segment_id).lanes_num
+        lanes_list = []
+        for lane_idx in range(num_lanes):
+            lane_id = map_api._lane_by_address[(road_segment_id, lane_idx)]
+            lanes_list.append(lane_id)
+        return lanes_list
+
+    @staticmethod
+    def convert_from_lane_to_map_coordinates(lane_id: int, lon_on_lane: float, lat_on_lane: float,
+                                             relative_yaw: float=0) -> [float, float, float]:
+        """
+        convert a point from lane coordinates to map (global) coordinates
+        :param lane_id:
+        :param lon_on_lane: longitude w.r.t. the lane
+        :param lat_on_lane: latitude w.r.t. the lane
+        :param relative_yaw: intra-lane yaw (optional)
+        :return: map coordinates: x, y, yaw (tangent to the lane in the given point)
+        """
+        lane_frenet = MapUtils.get_lane_frenet_frame(lane_id)
+        cpoint = lane_frenet.fpoint_to_cpoint(np.array([lon_on_lane, lat_on_lane]))
+        global_yaw = relative_yaw + lane_frenet.get_yaw(np.array([lon_on_lane]))[0]
+        return cpoint[C_X], cpoint[C_Y], global_yaw
+
+    @staticmethod
+    def convert_from_map_to_lane_coordinates(x: float, y: float, global_yaw: float) -> [int, float, float, float, bool]:
+        """
+        convert a point from map (global) coordinates to lane coordinates, by searching for the nearest lane and
+        projecting it onto this lane
+        :param x: X map coordinate
+        :param y: Y map coordinate
+        :param global_yaw: yaw in map coordinates
+        :return: lane_id, longitude on the lane, latitude on the lane, intra_lane_yaw (rad),
+                    is object within the road latitudes
+        """
+        lane_id = MapUtils.get_closest_lane(x, y)
+        lane_frenet = MapUtils.get_lane_frenet_frame(lane_id)
+        fpoint = lane_frenet.cpoint_to_fpoint(np.array([x, y]))  # frenet coordinates w.r.t. the lane
+        relative_yaw = global_yaw - lane_frenet.get_yaw(fpoint[FP_SX])  # yaw w.r.t. the lane
+        # check if the point is on road
+        dist_to_right_border, dist_to_left_border = MapUtils.get_dist_from_road_borders(lane_id, fpoint[FP_SX])
+        is_on_road = bool(-dist_to_right_border <= fpoint[FP_DX] <= dist_to_left_border)
+
+        return lane_id, fpoint[FP_SX], fpoint[FP_DX], relative_yaw, is_on_road
