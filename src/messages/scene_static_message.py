@@ -2,7 +2,8 @@ from enum import Enum
 from typing import List
 
 from Rte_Types.sub_structures import TsSYSAdjacentLane, TsSYSLaneManeuver, TsSYSBoundaryPoint, TsSYSLaneCoupling, \
-    TsSYSNominalPathPoint, TsSYSStaticTrafficFlowControl, TsSYSDynamicStatus, TsSYSDynamicTrafficFlowControl
+    TsSYSNominalPathPoint, TsSYSStaticTrafficFlowControl, TsSYSDynamicStatus, TsSYSDynamicTrafficFlowControl, \
+    TsSYSSceneLaneSegment
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 
@@ -147,15 +148,6 @@ class TrafficSignalState(Enum):
     PEDISTRIAN_PERP_DIR_CROSS     = 120
     UNKNOWN                       = 121
     OFF                           = 122
-
-
-
-
-
-
-
-
-
 
 
 class AdjacentLane(PUBSUB_MSG_IMPL):
@@ -514,4 +506,44 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         self.e_i_downstream_road_intersection_id = e_i_downstream_road_intersection_id
         self.e_Cnt_lane_coupling_count = e_Cnt_lane_coupling_count
         self.as_lane_coupling = as_lane_coupling
-    
+
+    def serialize(self):
+        # type: () -> TsSYSSceneLaneSegment
+        pubsub_msg = TsSYSSceneLaneSegment()
+
+        pubsub_msg.e_i_lane_segment_id = self.e_i_lane_segment_id
+        pubsub_msg.e_i_road_segment_id = self.e_i_road_segment_id
+        pubsub_msg.e_e_lane_type = self.e_e_lane_type
+        pubsub_msg.e_Cnt_static_traffic_flow_control_count = self.e_Cnt_static_traffic_flow_control_count
+        pubsub_msg.as_static_traffic_flow_control = self.as_static_traffic_flow_control
+        pubsub_msg.e_Cnt_dynamic_traffic_flow_control_count = self.e_Cnt_dynamic_traffic_flow_control_count
+        pubsub_msg.as_dynamic_traffic_flow_control = self.as_dynamic_traffic_flow_control
+        pubsub_msg.e_Cnt_left_adjacent_lane_count = self.e_Cnt_left_adjacent_lane_count
+        pubsub_msg.as_left_adjacent_lanes = self.as_left_adjacent_lanes
+        pubsub_msg.e_Cnt_right_adjacent_lane_count = self.e_Cnt_right_adjacent_lane_count
+        pubsub_msg.as_right_adjacent_lanes = self.as_right_adjacent_lanes
+        pubsub_msg.e_Cnt_downstream_lane_count = self.e_Cnt_downstream_lane_count
+        pubsub_msg.as_downstream_lanes = self.as_downstream_lanes
+        pubsub_msg.e_Cnt_upstream_lane_count = self.e_Cnt_upstream_lane_count
+        pubsub_msg.as_upstream_lanes = self.as_upstream_lanes
+        pubsub_msg.e_v_nominal_speed = self.e_v_nominal_speed
+        pubsub_msg.e_Cnt_nominal_path_point_count = self.e_Cnt_nominal_path_point_count
+        pubsub_msg.a_nominal_path_points = self.a_nominal_path_points
+        pubsub_msg.e_Cnt_left_boundary_points_count = self.e_Cnt_left_boundary_points_count
+        pubsub_msg.as_left_boundary_points = self.as_left_boundary_points
+        pubsub_msg.e_Cnt_right_boundary_points_count = self.e_Cnt_right_boundary_points_count
+        pubsub_msg.as_right_boundary_points = self.as_right_boundary_points
+        pubsub_msg.e_i_downstream_road_intersection_id = self.e_i_downstream_road_intersection_id
+        pubsub_msg.e_Cnt_lane_coupling_count = self.e_Cnt_lane_coupling_count
+        pubsub_msg.as_lane_coupling = self.as_lane_coupling
+
+        return pubsub_msg
+
+    @classmethod
+    def deserialize(cls, pubsubMsg):
+        # type: (TsSYSSceneLaneSegment) -> SceneLaneSegment
+        dynamic_statuses = list()
+        for i in range(pubsubMsg.e_Cnt_dynamic_status_count):
+            dynamic_statuses.append(DynamicTrafficFlowControl.deserialize(pubsubMsg.as_dynamic_status[i]))
+        return cls(pubsubMsg.e_e_road_object_type, pubsubMsg.e_l_station, pubsubMsg.e_Cnt_dynamic_status_count,
+                   dynamic_statuses)
