@@ -36,11 +36,13 @@ class MapLaneType(Enum):
     HOVLane = 10
     BidirectionalLane = 11
 
+
 class MapRoadSegmentType(Enum):
    e_MapRoadType_Normal = 0,
    e_MapRoadType_Intersection = 1,
    e_MapRoadType_TurnOnly = 2,
    e_MapRoadType_Unknown = 3
+
 
 class MovingDirection(Enum):
     Adjacent_or_same_dir = 1
@@ -110,6 +112,18 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
                  e_e_road_segment_type, e_Cnt_upstream_segment_count, a_Cnt_upstream_road_segment_id,
                  e_Cnt_downstream_segment_count, a_Cnt_downstream_road_segment_id):
         # type: (int, int, int, List[int], MapRoadSegmentType, int, List[int], int, List[int]) -> None
+        """
+        Road-segment information
+        :param e_Cnt_road_segment_id: ID of this Road-segment
+        :param e_Cnt_road_id: Not relevant for M0
+        :param e_Cnt_lane_segment_id_count: Total number of all lane-segments contained within this road-segment
+        :param a_Cnt_lane_segment_id: Lane-segments contained within this road-segment
+        :param e_e_road_segment_type:
+        :param e_Cnt_upstream_segment_count: Total number of upstream road-segments from this road-segment
+        :param a_Cnt_upstream_road_segment_id: Upstream road-segments from this road-segment
+        :param e_Cnt_downstream_segment_count: Total number of downstream road-segments from this road-segment
+        :param a_Cnt_downstream_road_segment_id: Downstream road-segments from this road-segment
+        """
         self.e_Cnt_road_segment_id = e_Cnt_road_segment_id
         self.e_Cnt_road_id = e_Cnt_road_id
         self.e_Cnt_lane_segment_id_count = e_Cnt_lane_segment_id_count
@@ -185,6 +199,17 @@ class SceneRoadIntersection(PUBSUB_MSG_IMPL):
     def __init__(self, e_i_road_intersection_id, e_Cnt_lane_coupling_count, a_i_lane_coupling_segment_ids,
                  e_Cnt_intersection_road_segment_count, a_i_intersection_road_segment_ids):
         # type (int, int, List[int], int, List[int]) -> None
+        """
+        Road-intersection information
+        :param e_i_road_intersection_id: ID of this road-intersection
+        :param e_Cnt_lane_coupling_count: Total number of lane-couplings inside this road-intersection
+        :param a_i_lane_coupling_segment_ids: Lane-couplings inside this road-intersection: all lane-couplings inside
+        a road-intersection are non-virtual, and are equivalent to lane-segments.
+        :param e_Cnt_intersection_road_segment_count: Total number of road-segments inside this road-intersection
+        :param a_i_intersection_road_segment_ids: Road-segments inside this road-intersection. A road-intersection
+        contains all the road-segments going through it, e.g. in a 4-way intersection, the road-intersection will
+        contain both the North/South and East/West road-segments.
+        """
         self.e_i_road_intersection_id = e_i_road_intersection_id
         self.e_Cnt_lane_coupling_count = e_Cnt_lane_coupling_count
         self.a_i_lane_coupling_segment_ids = a_i_lane_coupling_segment_ids
@@ -780,6 +805,19 @@ class DataSceneStatic(PUBSUB_MSG_IMPL):
                  e_Cnt_num_lane_segments, as_scene_lane_segment, e_Cnt_num_road_intersections,
                  as_scene_road_intersection, e_Cnt_num_road_segments, as_scene_road_segment):
         # type: (bool, Timestamp, float, float, int, List[SceneLaneSegment], int, List[SceneRoadIntersection], int, List[SceneRoadSegment]) -> None
+        """
+        Scene provider's static scene information
+        :param e_b_Valid:
+        :param s_ComputeTimestamp:
+        :param e_l_perception_horizon_front: (Not relevant for M0)
+        :param e_l_perception_horizon_rear: (Not relevant for M0)
+        :param e_Cnt_num_lane_segments: Total number of lane-segments in the static scene
+        :param as_scene_lane_segment: All lane-segments in the static scene
+        :param e_Cnt_num_road_intersections: Total number of road-intersections in the static scene
+        :param as_scene_road_intersection: All road-intersections in the static scene
+        :param e_Cnt_num_road_segments: Total number of road-segments in the static scene
+        :param as_scene_road_segment: All road-segments in the static scene
+        """
         self.e_b_Valid = e_b_Valid
         self.s_ComputeTimestamp = s_ComputeTimestamp
         self.e_l_perception_horizon_front = e_l_perception_horizon_front
