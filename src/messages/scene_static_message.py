@@ -1,19 +1,20 @@
 from enum import Enum
 from typing import List
-from numpy import np
 
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_SceneRoadIntersection import \
-    TsSYSSceneRoadIntersection
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_SceneRoadSegment import \
-    TsSYSSceneRoadSegment
 from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
-from common_data.interface.py.idl_generated_files.Rte_Types.TsSYS_SceneStatic import TsSYSSceneStatic
-from decision_making.src.messages.scene_dynamic_message import Timestamp
+from numpy import np
 
 from Rte_Types.sub_structures import TsSYSAdjacentLane, TsSYSLaneManeuver, TsSYSBoundaryPoint, TsSYSLaneCoupling, \
     TsSYSNominalPathPoint, TsSYSStaticTrafficFlowControl, TsSYSDynamicStatus, TsSYSDynamicTrafficFlowControl, \
     TsSYSSceneLaneSegment
+from common_data.interface.py.idl_generated_files.Rte_Types.TsSYS_SceneStatic import TsSYSSceneStatic
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_SceneRoadIntersection import \
+    TsSYSSceneRoadIntersection
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_SceneRoadSegment import \
+    TsSYSSceneRoadSegment
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.messages.scene_dynamic_message import Timestamp
+
 
 # MAX_SCENE_LANE_SEGMENTS = 128
 # MAX_SCENE_ROAD_INTERSECTIONS = 64
