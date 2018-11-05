@@ -75,7 +75,6 @@ class MapUtils:
         map_api = MapService.get_instance()
         if road_segment_id is None:
             # find the closest road segment
-            map_api = MapService.get_instance()
             relevant_road_ids = map_api._find_roads_containing_point(x, y)
             closest_road_id = map_api._find_closest_road(x, y, relevant_road_ids)
         else:
