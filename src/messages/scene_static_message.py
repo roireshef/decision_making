@@ -2,7 +2,6 @@ from enum import Enum
 from typing import List
 
 import numpy as np
-from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmNumpyArray
 
 from Rte_Types.sub_structures import TsSYSAdjacentLane, TsSYSLaneManeuver, TsSYSBoundaryPoint, TsSYSLaneCoupling, \
     TsSYSNominalPathPoint, TsSYSStaticTrafficFlowControl, TsSYSDynamicStatus, TsSYSDynamicTrafficFlowControl, \
