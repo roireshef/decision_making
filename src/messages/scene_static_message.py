@@ -720,6 +720,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         pubsub_msg.e_i_lane_segment_id = self.e_i_lane_segment_id
         pubsub_msg.e_i_road_segment_id = self.e_i_road_segment_id
         pubsub_msg.e_e_lane_type = self.e_e_lane_type
+
         pubsub_msg.e_Cnt_static_traffic_flow_control_count = self.e_Cnt_static_traffic_flow_control_count
         pubsub_msg.as_static_traffic_flow_control = list()
         for i in range(pubsub_msg.e_Cnt_static_traffic_flow_control_count):
@@ -780,13 +781,68 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSSceneLaneSegment) -> SceneLaneSegment
 
-        dynamic_statuses = list()
-        for i in range(pubsubMsg.e_Cnt_dynamic_status_count):
-            dynamic_statuses.append(DynamicTrafficFlowControl.deserialize(pubsubMsg.as_dynamic_status[i]))
 
 
-        return cls(pubsubMsg.e_e_road_object_type, pubsubMsg.e_l_station, pubsubMsg.e_Cnt_dynamic_status_count,
-                   dynamic_statuses)
+        pubsub_msg.as_lane_coupling = list()
+        for i in range(pubsub_msg.e_Cnt_lane_coupling_count):
+            pubsub_msg.as_lane_coupling.append(self.as_lane_coupling[i].serialize())
+
+
+
+
+        as_static_traffic_flow_control = list()
+        for i in range(pubsubMsg.e_Cnt_static_traffic_flow_control_count):
+            as_static_traffic_flow_control.append(StaticTrafficFlowControl.deserialize(pubsubMsg.as_static_traffic_flow_control[i]))
+
+        as_dynamic_traffic_flow_control = list()
+        for i in range(pubsubMsg.e_Cnt_dynamic_traffic_flow_control_count):
+            as_dynamic_traffic_flow_control.append(DynamicTrafficFlowControl.deserialize(pubsubMsg.as_dynamic_traffic_flow_control[i]))
+
+        as_left_adjacent_lanes = list()
+        for i in range(pubsubMsg.e_Cnt_left_adjacent_lane_count):
+            as_left_adjacent_lanes.append(AdjacentLane.deserialize(pubsubMsg.as_left_adjacent_lanes[i]))
+
+        as_right_adjacent_lanes = list()
+        for i in range(pubsubMsg.e_Cnt_right_adjacent_lane_count):
+            as_right_adjacent_lanes.append(AdjacentLane.deserialize(pubsubMsg.as_right_adjacent_lanes[i]))
+
+        as_downstream_lanes = list()
+        for i in range(pubsubMsg.e_Cnt_downstream_lane_count):
+            as_downstream_lanes.append(LaneManeuver.deserialize(pubsubMsg.as_downstream_lanes[i]))
+
+        as_upstream_lanes = list()
+        for i in range(pubsubMsg.e_Cnt_upstream_lane_count):
+            as_upstream_lanes.append(LaneManeuver.deserialize(pubsubMsg.as_upstream_lanes[i]))
+
+        a_nominal_path_points = list()
+        for i in range(pubsubMsg.e_Cnt_nominal_path_point_count):
+            a_nominal_path_points.append(NominalPathPoint.deserialize(pubsubMsg.a_nominal_path_points[i]))
+
+        as_left_boundary_points = list()
+        for i in range(pubsubMsg.e_Cnt_left_boundary_points_count):
+            as_left_boundary_points.append(BoundaryPoint.deserialize(pubsubMsg.as_left_boundary_points[i]))
+
+        as_right_boundary_points = list()
+        for i in range(pubsubMsg.e_Cnt_right_boundary_points_count):
+            as_right_boundary_points.append(BoundaryPoint.deserialize(pubsubMsg.as_right_boundary_points[i]))
+
+        as_lane_coupling = list()
+        for i in range(pubsubMsg.e_Cnt_lane_coupling_count):
+            as_lane_coupling.append(LaneCoupling.deserialize(pubsubMsg.as_lane_coupling[i]))
+
+        return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_i_road_segment_id, pubsubMsg.e_e_lane_type,
+                   pubsubMsg.e_Cnt_static_traffic_flow_control_count, as_static_traffic_flow_control,
+                   pubsubMsg.e_Cnt_dynamic_traffic_flow_control_count, as_dynamic_traffic_flow_control,
+                   pubsubMsg.e_Cnt_left_adjacent_lane_count, as_left_adjacent_lanes,
+                   pubsubMsg.e_Cnt_right_adjacent_lane_count, as_right_adjacent_lanes,
+                   pubsubMsg.e_Cnt_downstream_lane_count, as_downstream_lanes,
+                   pubsubMsg.e_Cnt_upstream_lane_count, as_upstream_lanes,
+                   pubsubMsg.e_v_nominal_speed,
+                   pubsubMsg.e_Cnt_nominal_path_point_count, a_nominal_path_points,
+                   pubsubMsg.e_Cnt_left_boundary_points_count, as_left_boundary_points,
+                   pubsubMsg.e_Cnt_right_boundary_points_count, as_right_boundary_points,
+                   pubsubMsg.e_i_downstream_road_intersection_id,
+                   pubsubMsg.e_Cnt_lane_coupling_count, as_lane_coupling)
 
 
 class DataSceneStatic(PUBSUB_MSG_IMPL):
