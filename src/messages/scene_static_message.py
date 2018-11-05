@@ -38,10 +38,10 @@ class MapLaneType(Enum):
 
 
 class MapRoadSegmentType(Enum):
-   Normal = 0,
-   Intersection = 1,
-   TurnOnly = 2,
-   Unknown = 3
+    Normal = 0
+    Intersection = 1
+    TurnOnly = 2
+    Unknown = 3
 
 
 class MovingDirection(Enum):
@@ -224,7 +224,7 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
         pubsub_msg.a_Cnt_lane_segment_id.length = self.a_Cnt_lane_segment_id.size
         pubsub_msg.a_Cnt_lane_segment_id.data = self.a_Cnt_lane_segment_id.flat.__array__().tolist()
 
-        pubsub_msg.e_e_road_segment_type = self.e_e_road_segment_type
+        pubsub_msg.e_e_road_segment_type = self.e_e_road_segment_type.value
 
         pubsub_msg.e_Cnt_upstream_segment_count = self.e_Cnt_upstream_segment_count
         pubsub_msg.a_Cnt_upstream_road_segment_id = LcmNumpyArray()
@@ -345,8 +345,8 @@ class AdjacentLane(PUBSUB_MSG_IMPL):
         pubsub_msg = TsSYSAdjacentLane()
 
         pubsub_msg.e_Cnt_lane_segment_id = self.e_Cnt_lane_segment_id
-        pubsub_msg.e_e_moving_direction = self.e_e_moving_direction
-        pubsub_msg.e_e_lane_type = self.e_e_lane_type
+        pubsub_msg.e_e_moving_direction = self.e_e_moving_direction.value
+        pubsub_msg.e_e_lane_type = self.e_e_lane_type.value
 
         return pubsub_msg
 
@@ -370,7 +370,7 @@ class LaneManeuver(PUBSUB_MSG_IMPL):
         pubsub_msg = TsSYSLaneManeuver()
 
         pubsub_msg.e_Cnt_lane_segment_id = self.e_Cnt_lane_segment_id
-        pubsub_msg.e_e_maneuver_type = self.e_e_maneuver_type
+        pubsub_msg.e_e_maneuver_type = self.e_e_maneuver_type.value
 
         return pubsub_msg
 
@@ -395,7 +395,7 @@ class BoundaryPoint(PUBSUB_MSG_IMPL):
         # type: () -> TsSYSBoundaryPoint
         pubsub_msg = TsSYSBoundaryPoint()
 
-        pubsub_msg.e_e_lane_marker_type = self.e_e_lane_marker_type
+        pubsub_msg.e_e_lane_marker_type = self.e_e_lane_marker_type.value
         pubsub_msg.e_l_s_start = self.e_l_s_start
         pubsub_msg.e_l_s_end = self.e_l_s_end
 
@@ -442,7 +442,7 @@ class LaneCoupling(PUBSUB_MSG_IMPL):
         pubsub_msg.e_i_road_intersection_id = self.e_i_road_intersection_id
         pubsub_msg.e_i_downstream_lane_segment_id = self.e_i_downstream_lane_segment_id
         pubsub_msg.e_i_upstream_lane_segment_id = self.e_i_upstream_lane_segment_id
-        pubsub_msg.e_e_maneuver_type = self.e_e_maneuver_type
+        pubsub_msg.e_e_maneuver_type = self.e_e_maneuver_type.value
 
         return pubsub_msg
 
@@ -539,7 +539,7 @@ class StaticTrafficFlowControl(PUBSUB_MSG_IMPL):
         # type: () -> TsSYSStaticTrafficFlowControl
         pubsub_msg = TsSYSStaticTrafficFlowControl()
 
-        pubsub_msg.e_e_road_object_type = self.e_e_road_object_type
+        pubsub_msg.e_e_road_object_type = self.e_e_road_object_type.value
         pubsub_msg.e_l_station = self.e_l_station
         pubsub_msg.e_Pct_confidence = self.e_Pct_confidence
 
@@ -570,7 +570,7 @@ class DynamicStatus(PUBSUB_MSG_IMPL):
         # type: () -> TsSYSDynamicStatus
         pubsub_msg = TsSYSDynamicStatus()
 
-        pubsub_msg.e_e_status = self.e_e_status
+        pubsub_msg.e_e_status = self.e_e_status.value
         pubsub_msg.e_Pct_confidence = self.e_Pct_confidence
 
         return pubsub_msg
@@ -605,13 +605,12 @@ class DynamicTrafficFlowControl(PUBSUB_MSG_IMPL):
         # type: () -> TsSYSDynamicTrafficFlowControl
         pubsub_msg = TsSYSDynamicTrafficFlowControl()
 
-        pubsub_msg.e_e_road_object_type = self.e_e_road_object_type
+        pubsub_msg.e_e_road_object_type = self.e_e_road_object_type.value
         pubsub_msg.e_l_station = self.e_l_station
         pubsub_msg.e_Cnt_dynamic_status_count = self.e_Cnt_dynamic_status_count
 
-        pubsub_msg.as_dynamic_status = list()
         for i in range(pubsub_msg.e_Cnt_dynamic_status_count):
-            pubsub_msg.as_dynamic_status.append(self.as_dynamic_status[i].serialize())
+            pubsub_msg.as_dynamic_status[i] = self.as_dynamic_status[i].serialize()
 
         return pubsub_msg
 
@@ -721,61 +720,51 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
 
         pubsub_msg.e_i_lane_segment_id = self.e_i_lane_segment_id
         pubsub_msg.e_i_road_segment_id = self.e_i_road_segment_id
-        pubsub_msg.e_e_lane_type = self.e_e_lane_type
+        pubsub_msg.e_e_lane_type = self.e_e_lane_type.value
 
         pubsub_msg.e_Cnt_static_traffic_flow_control_count = self.e_Cnt_static_traffic_flow_control_count
-        pubsub_msg.as_static_traffic_flow_control = list()
         for i in range(pubsub_msg.e_Cnt_static_traffic_flow_control_count):
-            pubsub_msg.as_static_traffic_flow_control.append(self.as_static_traffic_flow_control[i].serialize())
+            pubsub_msg.as_static_traffic_flow_control[i] = self.as_static_traffic_flow_control[i].serialize()
 
         pubsub_msg.e_Cnt_dynamic_traffic_flow_control_count = self.e_Cnt_dynamic_traffic_flow_control_count
-        pubsub_msg.as_dynamic_traffic_flow_control = list()
         for i in range(pubsub_msg.e_Cnt_dynamic_traffic_flow_control_count):
-            pubsub_msg.as_dynamic_traffic_flow_control.append(self.as_dynamic_traffic_flow_control[i].serialize())
+            pubsub_msg.as_dynamic_traffic_flow_control[i] = self.as_dynamic_traffic_flow_control[i].serialize()
 
         pubsub_msg.e_Cnt_left_adjacent_lane_count = self.e_Cnt_left_adjacent_lane_count
-        pubsub_msg.as_left_adjacent_lanes = list()
         for i in range(pubsub_msg.e_Cnt_left_adjacent_lane_count):
-            pubsub_msg.as_left_adjacent_lanes.append(self.as_left_adjacent_lanes[i].serialize())
+            pubsub_msg.as_left_adjacent_lanes[i] = self.as_left_adjacent_lanes[i].serialize()
 
         pubsub_msg.e_Cnt_right_adjacent_lane_count = self.e_Cnt_right_adjacent_lane_count
-        pubsub_msg.as_right_adjacent_lanes = list()
         for i in range(pubsub_msg.e_Cnt_right_adjacent_lane_count):
-            pubsub_msg.as_right_adjacent_lanes.append(self.as_right_adjacent_lanes[i].serialize())
+            pubsub_msg.as_right_adjacent_lanes[i] = self.as_right_adjacent_lanes[i].serialize()
 
         pubsub_msg.e_Cnt_downstream_lane_count = self.e_Cnt_downstream_lane_count
-        pubsub_msg.as_downstream_lanes = list()
         for i in range(pubsub_msg.e_Cnt_downstream_lane_count):
-            pubsub_msg.as_downstream_lanes.append(self.as_downstream_lanes[i].serialize())
+            pubsub_msg.as_downstream_lanes[i] = self.as_downstream_lanes[i].serialize()
 
         pubsub_msg.e_Cnt_upstream_lane_count = self.e_Cnt_upstream_lane_count
-        pubsub_msg.as_upstream_lanes = list()
         for i in range(pubsub_msg.e_Cnt_upstream_lane_count):
-            pubsub_msg.as_upstream_lanes.append(self.as_upstream_lanes[i].serialize())
+            pubsub_msg.as_upstream_lanes[i] = self.as_upstream_lanes[i].serialize()
 
         pubsub_msg.e_v_nominal_speed = self.e_v_nominal_speed
 
         pubsub_msg.e_Cnt_nominal_path_point_count = self.e_Cnt_nominal_path_point_count
-        pubsub_msg.a_nominal_path_points = list()
         for i in range(pubsub_msg.e_Cnt_nominal_path_point_count):
-            pubsub_msg.a_nominal_path_points.append(self.a_nominal_path_points[i].serialize())
+            pubsub_msg.a_nominal_path_points[i] = self.a_nominal_path_points[i].serialize()
 
         pubsub_msg.e_Cnt_left_boundary_points_count = self.e_Cnt_left_boundary_points_count
-        pubsub_msg.as_left_boundary_points = list()
         for i in range(pubsub_msg.e_Cnt_left_boundary_points_count):
-            pubsub_msg.as_left_boundary_points.append(self.as_left_boundary_points[i].serialize())
+            pubsub_msg.as_left_boundary_points[i] = self.as_left_boundary_points[i].serialize()
 
         pubsub_msg.e_Cnt_right_boundary_points_count = self.e_Cnt_right_boundary_points_count
-        pubsub_msg.as_right_boundary_points = list()
         for i in range(pubsub_msg.e_Cnt_right_boundary_points_count):
-            pubsub_msg.as_right_boundary_points.append(self.as_right_boundary_points[i].serialize())
+            pubsub_msg.as_right_boundary_points[i] = self.as_right_boundary_points[i].serialize()
 
         pubsub_msg.e_i_downstream_road_intersection_id = self.e_i_downstream_road_intersection_id
 
         pubsub_msg.e_Cnt_lane_coupling_count = self.e_Cnt_lane_coupling_count
-        pubsub_msg.as_lane_coupling = list()
         for i in range(pubsub_msg.e_Cnt_lane_coupling_count):
-            pubsub_msg.as_lane_coupling.append(self.as_lane_coupling[i].serialize())
+            pubsub_msg.as_lane_coupling[i] = self.as_lane_coupling[i].serialize()
 
         return pubsub_msg
 
@@ -888,19 +877,16 @@ class DataSceneStatic(PUBSUB_MSG_IMPL):
         pubsub_msg.e_l_perception_horizon_rear = self.e_l_perception_horizon_rear
 
         pubsub_msg.e_Cnt_num_lane_segments = self.e_Cnt_num_lane_segments
-        pubsub_msg.as_scene_lane_segment = list()
         for i in range(pubsub_msg.e_Cnt_num_lane_segments):
-            pubsub_msg.as_scene_lane_segment.append(self.as_scene_lane_segment[i].serialize())
+            pubsub_msg.as_scene_lane_segment[i] = self.as_scene_lane_segment[i].serialize()
 
         pubsub_msg.e_Cnt_num_road_intersections = self.e_Cnt_num_road_intersections
-        pubsub_msg.as_scene_road_intersection = list()
         for i in range(pubsub_msg.e_Cnt_num_road_intersections):
-            pubsub_msg.as_scene_road_intersection.append(self.as_scene_road_intersection[i].serialize())
+            pubsub_msg.as_scene_road_intersection[i] = self.as_scene_road_intersection[i].serialize()
 
         pubsub_msg.e_Cnt_num_road_segments = self.e_Cnt_num_road_segments
-        pubsub_msg.as_scene_road_segment = list()
         for i in range(pubsub_msg.e_Cnt_num_road_segments):
-            pubsub_msg.as_scene_road_segment.append(self.as_scene_road_segment[i].serialize())
+            pubsub_msg.as_scene_road_segment[i] = self.as_scene_road_segment[i].serialize()
 
         return pubsub_msg
 

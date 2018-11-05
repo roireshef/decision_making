@@ -22,6 +22,31 @@ from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 
+class ObjectTrackDynamicProperty(Enum):
+    """"
+    Track Dynamic Property ENUM
+    """
+    CeSYS_e_ObjectTrackDynProp_Unknown = 0  # Unknown
+    CeSYS_e_ObjectTrackDynProp_HasNeverMoved = 1  # Has Never Moved
+    CeSYS_e_ObjectTrackDynProp_HasMovedButCurrentlyStopped = 2  # Has Moved but now stopped
+    CeSYS_e_ObjectTrackDynProp_MovingInSameDirAsHost = 3  # Moving in same direction as host
+    CeSYS_e_ObjectTrackDynProp_MovingInOppDir = 4  # Moving in opposite direction as host
+
+
+class ObjectClassification(Enum):
+    """"
+    Detections type ENUM
+    """
+    CeSYS_e_ObjectClassification_Car = 0
+    CeSYS_e_ObjectClassification_Truck = 1
+    CeSYS_e_ObjectClassification_Bike = 2
+    CeSYS_e_ObjectClassification_Bicycle = 3
+    CeSYS_e_ObjectClassification_Pedestrian = 4
+    CeSYS_e_ObjectClassification_GeneralObject = 5
+    CeSYS_e_ObjectClassification_Animal = 6
+    CeSYS_e_ObjectClassification_UNKNOWN = 7
+
+
 class Timestamp(PUBSUB_MSG_IMPL):
     e_Cnt_Secs = int
     # TODO: why fractions are int?
@@ -289,31 +314,6 @@ class BoundingBoxSize(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_l_length, pubsubMsg.e_l_width, pubsubMsg.e_l_height)
 
 
-class ObjectTrackDynamicProperty(Enum):
-    """"
-    Track Dynamic Property ENUM
-    """
-    CeSYS_e_ObjectTrackDynProp_Unknown = 0  # Unknown
-    CeSYS_e_ObjectTrackDynProp_HasNeverMoved = 1  # Has Never Moved
-    CeSYS_e_ObjectTrackDynProp_HasMovedButCurrentlyStopped = 2  # Has Moved but now stopped
-    CeSYS_e_ObjectTrackDynProp_MovingInSameDirAsHost = 3  # Moving in same direction as host
-    CeSYS_e_ObjectTrackDynProp_MovingInOppDir = 4  # Moving in opposite direction as host
-
-
-class ObjectClassification(Enum):
-    """"
-    Detections type ENUM
-    """
-    CeSYS_e_ObjectClassification_Car = 0,
-    CeSYS_e_ObjectClassification_Truck = 1,
-    CeSYS_e_ObjectClassification_Bike = 2,
-    CeSYS_e_ObjectClassification_Bicycle = 3,
-    CeSYS_e_ObjectClassification_Pedestrian = 4,
-    CeSYS_e_ObjectClassification_GeneralObject = 5,
-    CeSYS_e_ObjectClassification_Animal = 6,
-    CeSYS_e_ObjectClassification_UNKNOWN = 7
-
-
 class ObjectHypothesis(PUBSUB_MSG_IMPL):
     e_r_probability = float
     e_Cnt_lane_segment_id = int
@@ -360,7 +360,7 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
 
         pubsub_msg.e_r_probability = self.e_r_probability
         pubsub_msg.e_Cnt_lane_segment_id = self.e_Cnt_lane_segment_id
-        pubsub_msg.e_e_dynamic_status = self.e_e_dynamic_status
+        pubsub_msg.e_e_dynamic_status = self.e_e_dynamic_status.value
         pubsub_msg.e_Pct_location_uncertainty_x = self.e_Pct_location_uncertainty_x
         pubsub_msg.e_Pct_location_uncertainty_y = self.e_Pct_location_uncertainty_y
         pubsub_msg.e_Pct_location_uncertainty_yaw = self.e_Pct_location_uncertainty_yaw
@@ -374,7 +374,7 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
     @classmethod
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSObjectHypothesis)->ObjectHypothesis
-        return cls(pubsubMsg.e_r_probability, pubsubMsg.e_Cnt_lane_segment_id, pubsubMsg.e_e_dynamic_status,
+        return cls(pubsubMsg.e_r_probability, pubsubMsg.e_Cnt_lane_segment_id, ObjectTrackDynamicProperty(pubsubMsg.e_e_dynamic_status),
                    pubsubMsg.e_Pct_location_uncertainty_x, pubsubMsg.e_Pct_location_uncertainty_y,
                    pubsubMsg.e_Pct_location_uncertainty_yaw, pubsubMsg.e_Cnt_host_lane_frenet_id,
                    CartesianPose.deserialize(pubsubMsg.s_cartesian_pose),
@@ -410,12 +410,11 @@ class ObjectLocalization(PUBSUB_MSG_IMPL):
         pubsub_msg = TsSYSObjectLocalization()
 
         pubsub_msg.e_Cnt_object_id = self.e_Cnt_object_id
-        pubsub_msg.e_e_object_type = self.e_e_object_type
+        pubsub_msg.e_e_object_type = self.e_e_object_type.value
         pubsub_msg.s_bounding_box = self.s_bounding_box.serialize()
         pubsub_msg.e_Cnt_obj_hypothesis_count = self.e_Cnt_obj_hypothesis_count
-        pubsub_msg.as_object_hypothesis = list()
         for i in range(pubsub_msg.e_Cnt_obj_hypothesis_count):
-            pubsub_msg.as_object_hypothesis.append(self.as_object_hypothesis[i].serialize())
+            pubsub_msg.as_object_hypothesis[i] = self.as_object_hypothesis[i].serialize()
 
         return pubsub_msg
 
@@ -427,7 +426,7 @@ class ObjectLocalization(PUBSUB_MSG_IMPL):
         for i in range(pubsubMsg.e_Cnt_obj_hypothesis_count):
             obj_hypotheses.append(ObjectHypothesis.deserialize(pubsubMsg.as_object_hypothesis[i]))
 
-        return cls(pubsubMsg.e_Cnt_object_id, pubsubMsg.e_e_object_type, BoundingBoxSize.deserialize(pubsubMsg.s_bounding_box),
+        return cls(pubsubMsg.e_Cnt_object_id, ObjectClassification(pubsubMsg.e_e_object_type), BoundingBoxSize.deserialize(pubsubMsg.s_bounding_box),
                    pubsubMsg.e_Cnt_obj_hypothesis_count, obj_hypotheses)
 
 
@@ -457,14 +456,12 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
     def serialize(self):
         # type: () -> TsSYSDataSceneDynamic
         pubsub_msg = TsSYSDataSceneDynamic()
-
         pubsub_msg.e_b_Valid = self.e_b_Valid
         pubsub_msg.s_ComputeTimestamp = self.s_ComputeTimestamp.serialize()
         pubsub_msg.e_Cnt_num_objects = self.e_Cnt_num_objects
 
-        pubsub_msg.as_object_localization = list()
         for i in range(pubsub_msg.e_Cnt_num_objects):
-            pubsub_msg.as_object_localization.append(self.as_object_localization[i].serialize())
+            pubsub_msg.as_object_localization[i] = self.as_object_localization[i].serialize()
 
         pubsub_msg.s_host_localization = self.s_host_localization.serialize()
 
