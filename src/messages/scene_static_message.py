@@ -1,8 +1,6 @@
 from enum import Enum
 from typing import List
 
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_DataSceneStatic import \
-    TsSYSDataSceneStatic
 from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
 from numpy import np
 
@@ -10,6 +8,8 @@ from Rte_Types.sub_structures import TsSYSAdjacentLane, TsSYSLaneManeuver, TsSYS
     TsSYSNominalPathPoint, TsSYSStaticTrafficFlowControl, TsSYSDynamicStatus, TsSYSDynamicTrafficFlowControl, \
     TsSYSSceneLaneSegment
 from common_data.interface.py.idl_generated_files.Rte_Types.TsSYS_SceneStatic import TsSYSSceneStatic
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_DataSceneStatic import \
+    TsSYSDataSceneStatic
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_SceneRoadIntersection import \
     TsSYSSceneRoadIntersection
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_SceneRoadSegment import \
@@ -634,6 +634,34 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
                  e_Cnt_left_boundary_points_count, as_left_boundary_points, e_Cnt_right_boundary_points_count,
                  as_right_boundary_points, e_i_downstream_road_intersection_id, e_Cnt_lane_coupling_count,
                  as_lane_coupling):
+        """
+        Lane-segment information
+        :param e_i_lane_segment_id: ID of this lane-segment
+        :param e_i_road_segment_id: ID of the road-segment that this lane-segment belongs to
+        :param e_e_lane_type: Type of lane-segment
+        :param e_Cnt_static_traffic_flow_control_count: Total number of static traffic-flow-control devices in this lane-segment (not relevant for M0)
+        :param as_static_traffic_flow_control: Static traffic-flow-control devices in this lane-segment (not relevant for M0)
+        :param e_Cnt_dynamic_traffic_flow_control_count: Total number of dynamic traffic-flow-control devices in this lane-segment (not relevant for M0)
+        :param as_dynamic_traffic_flow_control: Dynamic traffic-flow-control devices in this lane-segment (not relevant for M0)
+        :param e_Cnt_left_adjacent_lane_count: Total number of lane-segments to the left of this lane-segment
+        :param as_left_adjacent_lanes: Lane-segments to the left of this lane-segment
+        :param e_Cnt_right_adjacent_lane_count: Total number of lane-segments to the right of this lane-segment
+        :param as_right_adjacent_lanes: Lane-segments to the right of this lane-segment
+        :param e_Cnt_downstream_lane_count: Total number of lane-segments downstream of this lane-segment
+        :param as_downstream_lanes: Lane-segments downstream of this lane-segment
+        :param e_Cnt_upstream_lane_count: Total number of lane-segments upstream of this lane-segment
+        :param as_upstream_lanes: Lane-segments upstream of this lane-segment
+        :param e_v_nominal_speed: Nominal speed (i.e. speed limit) of this lane-segment
+        :param e_Cnt_nominal_path_point_count: Total number of points that specify the nominal-path (i.e. center of lane) for this lane-segment
+        :param a_nominal_path_points: Points that specify the nominal-path (i.e. center of lane) for this lane-segment
+        :param e_Cnt_left_boundary_points_count: Total number of points that specify the left-boundary for this lane-segment
+        :param as_left_boundary_points: Points that specify the left-boundary for this lane-segment
+        :param e_Cnt_right_boundary_points_count: Total number of points that specify the right-boundary for this lane-segment
+        :param as_right_boundary_points: Points that specify the right-boundary for this lane-segment
+        :param e_i_downstream_road_intersection_id: ID of the Road-Intersection that is immediately downstream from this lane-segment (0 if not applicable)
+        :param e_Cnt_lane_coupling_count: Total number of lane-couplings for this lane-segment
+        :param as_lane_coupling: Lane-couplings for this lane-segment
+        """
         self.e_i_lane_segment_id = e_i_lane_segment_id
         self.e_i_road_segment_id = e_i_road_segment_id
         self.e_e_lane_type = e_e_lane_type
@@ -688,25 +716,38 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
             pubsub_msg.as_right_adjacent_lanes.append(self.as_right_adjacent_lanes[i].serialize())
 
         pubsub_msg.e_Cnt_downstream_lane_count = self.e_Cnt_downstream_lane_count
-        pubsub_msg.as_downstream_lanes = self.as_downstream_lanes
+        pubsub_msg.as_downstream_lanes = list()
+        for i in range(pubsub_msg.e_Cnt_downstream_lane_count):
+            pubsub_msg.as_downstream_lanes.append(self.as_downstream_lanes[i].serialize())
 
         pubsub_msg.e_Cnt_upstream_lane_count = self.e_Cnt_upstream_lane_count
-        pubsub_msg.as_upstream_lanes = self.as_upstream_lanes
+        pubsub_msg.as_upstream_lanes = list()
+        for i in range(pubsub_msg.e_Cnt_upstream_lane_count):
+            pubsub_msg.as_upstream_lanes.append(self.as_upstream_lanes[i].serialize())
 
         pubsub_msg.e_v_nominal_speed = self.e_v_nominal_speed
+
         pubsub_msg.e_Cnt_nominal_path_point_count = self.e_Cnt_nominal_path_point_count
-        pubsub_msg.a_nominal_path_points = self.a_nominal_path_points
+        pubsub_msg.a_nominal_path_points = list()
+        for i in range(pubsub_msg.e_Cnt_nominal_path_point_count):
+            pubsub_msg.a_nominal_path_points.append(self.a_nominal_path_points[i].serialize())
 
         pubsub_msg.e_Cnt_left_boundary_points_count = self.e_Cnt_left_boundary_points_count
-        pubsub_msg.as_left_boundary_points = self.as_left_boundary_points
+        pubsub_msg.as_left_boundary_points = list()
+        for i in range(pubsub_msg.e_Cnt_left_boundary_points_count):
+            pubsub_msg.as_left_boundary_points.append(self.as_left_boundary_points[i].serialize())
 
         pubsub_msg.e_Cnt_right_boundary_points_count = self.e_Cnt_right_boundary_points_count
-        pubsub_msg.as_right_boundary_points = self.as_right_boundary_points
+        pubsub_msg.as_right_boundary_points = list()
+        for i in range(pubsub_msg.e_Cnt_right_boundary_points_count):
+            pubsub_msg.as_right_boundary_points.append(self.as_right_boundary_points[i].serialize())
 
         pubsub_msg.e_i_downstream_road_intersection_id = self.e_i_downstream_road_intersection_id
-        pubsub_msg.e_Cnt_lane_coupling_count = self.e_Cnt_lane_coupling_count
-        pubsub_msg.as_lane_coupling = self.as_lane_coupling
 
+        pubsub_msg.e_Cnt_lane_coupling_count = self.e_Cnt_lane_coupling_count
+        pubsub_msg.as_lane_coupling = list()
+        for i in range(pubsub_msg.e_Cnt_lane_coupling_count):
+            pubsub_msg.as_lane_coupling.append(self.as_lane_coupling[i].serialize())
 
         return pubsub_msg
 
@@ -718,6 +759,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
             dynamic_statuses.append(DynamicTrafficFlowControl.deserialize(pubsubMsg.as_dynamic_status[i]))
         return cls(pubsubMsg.e_e_road_object_type, pubsubMsg.e_l_station, pubsubMsg.e_Cnt_dynamic_status_count,
                    dynamic_statuses)
+
 
 class DataSceneStatic(PUBSUB_MSG_IMPL):
     e_b_Valid = bool
