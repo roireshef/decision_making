@@ -226,81 +226,6 @@ class SceneRoadIntersection(PUBSUB_MSG_IMPL):
                               , dtype=int))
 
 
-class SceneStatic(PUBSUB_MSG_IMPL):
-    e_b_Valid = bool
-    s_ComputeTimestamp = Timestamp
-    e_l_perception_horizon_front = float
-    e_l_perception_horizon_rear = float
-    e_Cnt_num_lane_segments = int
-    as_scene_lane_segment = List[SceneLaneSegment]
-    e_Cnt_num_road_intersections = int
-    as_scene_road_intersection = List[SceneRoadIntersection]
-    e_Cnt_num_road_segments = int
-    as_scene_road_segment = List[SceneRoadSegment]
-
-    def __init__(self, e_b_Valid, s_ComputeTimestamp, e_l_perception_horizon_front, e_l_perception_horizon_rear,
-                 e_Cnt_num_lane_segments, as_scene_lane_segment, e_Cnt_num_road_intersections,
-                 as_scene_road_intersection, e_Cnt_num_road_segments, as_scene_road_segment):
-        # type: (bool, Timestamp, float, float, int, List[SceneLaneSegment], int, List[SceneRoadIntersection], int, List[SceneRoadSegment]) -> None
-        self.e_b_Valid = e_b_Valid
-        self.s_ComputeTimestamp = s_ComputeTimestamp
-        self.e_l_perception_horizon_front = e_l_perception_horizon_front
-        self.e_l_perception_horizon_rear = e_l_perception_horizon_rear
-        self.e_Cnt_num_lane_segments = e_Cnt_num_lane_segments
-        self.as_scene_lane_segment = as_scene_lane_segment
-        self.e_Cnt_num_road_intersections = e_Cnt_num_road_intersections
-        self.as_scene_road_intersection = as_scene_road_intersection
-        self.e_Cnt_num_road_segments = e_Cnt_num_road_segments
-        self.as_scene_road_segment = as_scene_road_segment
-
-    def serialize(self):
-        # type: () -> TsSYSSceneStatic
-        pubsub_msg = TsSYSSceneStatic()
-
-        pubsub_msg.e_b_Valid = self.e_b_Valid
-        pubsub_msg.s_ComputeTimestamp = self.s_ComputeTimestamp.serialize()
-        pubsub_msg.e_l_perception_horizon_front = self.e_l_perception_horizon_front
-        pubsub_msg.e_l_perception_horizon_rear = self.e_l_perception_horizon_rear
-
-        pubsub_msg.e_Cnt_num_lane_segments = self.e_Cnt_num_lane_segments
-        pubsub_msg.as_scene_lane_segment = list()
-        for i in range(pubsub_msg.e_Cnt_num_lane_segments):
-            pubsub_msg.as_scene_lane_segment.append(self.as_scene_lane_segment[i].serialize())
-
-        pubsub_msg.e_Cnt_num_road_intersections = self.e_Cnt_num_road_intersections
-        pubsub_msg.as_scene_road_intersection = list()
-        for i in range(pubsub_msg.e_Cnt_num_road_intersections):
-            pubsub_msg.as_scene_road_intersection.append(self.as_scene_road_intersection[i].serialize())
-
-        pubsub_msg.e_Cnt_num_road_segments = self.e_Cnt_num_road_segments
-        pubsub_msg.as_scene_road_segment = list()
-        for i in range(pubsub_msg.e_Cnt_num_road_segments):
-            pubsub_msg.as_scene_road_segment.append(self.as_scene_road_segment[i].serialize())
-
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSSceneStatic) -> SceneStatic
-
-        lane_segments = list()
-        for i in range(pubsubMsg.e_Cnt_num_lane_segments):
-            lane_segments.append(SceneLaneSegment.deserialize(pubsubMsg.as_scene_lane_segment[i]))
-
-        road_intersections = list()
-        for i in range(pubsubMsg.e_Cnt_num_road_intersections):
-            road_intersections.append(SceneRoadIntersection.deserialize(pubsubMsg.as_scene_road_intersection[i]))
-
-        road_segments = list()
-        for i in range(pubsubMsg.e_Cnt_num_road_segments):
-            road_segments.append(SceneRoadSegment.deserialize(pubsubMsg.as_scene_road_segment[i]))
-
-        return cls(pubsubMsg.e_b_Valid, Timestamp.deserialize(pubsubMsg.s_ComputeTimestamp),
-                   pubsubMsg.e_l_perception_horizon_front, pubsubMsg.e_l_perception_horizon_rear,
-                   pubsubMsg.e_Cnt_num_lane_segments, lane_segments,
-                   pubsubMsg.e_Cnt_num_road_intersections, road_intersections,
-                   pubsubMsg.e_Cnt_num_road_segments, road_segments)
-
 class RoadObjectType(Enum):
 
     Yield                                               =  0
@@ -741,27 +666,45 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         pubsub_msg.e_i_road_segment_id = self.e_i_road_segment_id
         pubsub_msg.e_e_lane_type = self.e_e_lane_type
         pubsub_msg.e_Cnt_static_traffic_flow_control_count = self.e_Cnt_static_traffic_flow_control_count
-        pubsub_msg.as_static_traffic_flow_control = self.as_static_traffic_flow_control
+        pubsub_msg.as_static_traffic_flow_control = list()
+        for i in range(pubsub_msg.e_Cnt_static_traffic_flow_control_count):
+            pubsub_msg.as_static_traffic_flow_control.append(self.as_static_traffic_flow_control[i].serialize())
+
         pubsub_msg.e_Cnt_dynamic_traffic_flow_control_count = self.e_Cnt_dynamic_traffic_flow_control_count
-        pubsub_msg.as_dynamic_traffic_flow_control = self.as_dynamic_traffic_flow_control
+        pubsub_msg.as_dynamic_traffic_flow_control = list()
+        for i in range(pubsub_msg.e_Cnt_dynamic_traffic_flow_control_count):
+            pubsub_msg.as_dynamic_traffic_flow_control.append(self.as_dynamic_traffic_flow_control[i].serialize())
+
         pubsub_msg.e_Cnt_left_adjacent_lane_count = self.e_Cnt_left_adjacent_lane_count
-        pubsub_msg.as_left_adjacent_lanes = self.as_left_adjacent_lanes
+        pubsub_msg.as_left_adjacent_lanes = list()
+        for i in range(pubsub_msg.e_Cnt_left_adjacent_lane_count):
+            pubsub_msg.as_left_adjacent_lanes.append(self.as_left_adjacent_lanes[i].serialize())
+
         pubsub_msg.e_Cnt_right_adjacent_lane_count = self.e_Cnt_right_adjacent_lane_count
-        pubsub_msg.as_right_adjacent_lanes = self.as_right_adjacent_lanes
+        pubsub_msg.as_right_adjacent_lanes = list()
+        for i in range(pubsub_msg.e_Cnt_right_adjacent_lane_count):
+            pubsub_msg.as_right_adjacent_lanes.append(self.as_right_adjacent_lanes[i].serialize())
+
         pubsub_msg.e_Cnt_downstream_lane_count = self.e_Cnt_downstream_lane_count
         pubsub_msg.as_downstream_lanes = self.as_downstream_lanes
+
         pubsub_msg.e_Cnt_upstream_lane_count = self.e_Cnt_upstream_lane_count
         pubsub_msg.as_upstream_lanes = self.as_upstream_lanes
+
         pubsub_msg.e_v_nominal_speed = self.e_v_nominal_speed
         pubsub_msg.e_Cnt_nominal_path_point_count = self.e_Cnt_nominal_path_point_count
         pubsub_msg.a_nominal_path_points = self.a_nominal_path_points
+
         pubsub_msg.e_Cnt_left_boundary_points_count = self.e_Cnt_left_boundary_points_count
         pubsub_msg.as_left_boundary_points = self.as_left_boundary_points
+
         pubsub_msg.e_Cnt_right_boundary_points_count = self.e_Cnt_right_boundary_points_count
         pubsub_msg.as_right_boundary_points = self.as_right_boundary_points
+
         pubsub_msg.e_i_downstream_road_intersection_id = self.e_i_downstream_road_intersection_id
         pubsub_msg.e_Cnt_lane_coupling_count = self.e_Cnt_lane_coupling_count
         pubsub_msg.as_lane_coupling = self.as_lane_coupling
+
 
         return pubsub_msg
 
@@ -773,3 +716,79 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
             dynamic_statuses.append(DynamicTrafficFlowControl.deserialize(pubsubMsg.as_dynamic_status[i]))
         return cls(pubsubMsg.e_e_road_object_type, pubsubMsg.e_l_station, pubsubMsg.e_Cnt_dynamic_status_count,
                    dynamic_statuses)
+
+
+class SceneStatic(PUBSUB_MSG_IMPL):
+    e_b_Valid = bool
+    s_ComputeTimestamp = Timestamp
+    e_l_perception_horizon_front = float
+    e_l_perception_horizon_rear = float
+    e_Cnt_num_lane_segments = int
+    as_scene_lane_segment = List[SceneLaneSegment]
+    e_Cnt_num_road_intersections = int
+    as_scene_road_intersection = List[SceneRoadIntersection]
+    e_Cnt_num_road_segments = int
+    as_scene_road_segment = List[SceneRoadSegment]
+
+    def __init__(self, e_b_Valid, s_ComputeTimestamp, e_l_perception_horizon_front, e_l_perception_horizon_rear,
+                 e_Cnt_num_lane_segments, as_scene_lane_segment, e_Cnt_num_road_intersections,
+                 as_scene_road_intersection, e_Cnt_num_road_segments, as_scene_road_segment):
+        # type: (bool, Timestamp, float, float, int, List[SceneLaneSegment], int, List[SceneRoadIntersection], int, List[SceneRoadSegment]) -> None
+        self.e_b_Valid = e_b_Valid
+        self.s_ComputeTimestamp = s_ComputeTimestamp
+        self.e_l_perception_horizon_front = e_l_perception_horizon_front
+        self.e_l_perception_horizon_rear = e_l_perception_horizon_rear
+        self.e_Cnt_num_lane_segments = e_Cnt_num_lane_segments
+        self.as_scene_lane_segment = as_scene_lane_segment
+        self.e_Cnt_num_road_intersections = e_Cnt_num_road_intersections
+        self.as_scene_road_intersection = as_scene_road_intersection
+        self.e_Cnt_num_road_segments = e_Cnt_num_road_segments
+        self.as_scene_road_segment = as_scene_road_segment
+
+    def serialize(self):
+        # type: () -> TsSYSSceneStatic
+        pubsub_msg = TsSYSSceneStatic()
+
+        pubsub_msg.e_b_Valid = self.e_b_Valid
+        pubsub_msg.s_ComputeTimestamp = self.s_ComputeTimestamp.serialize()
+        pubsub_msg.e_l_perception_horizon_front = self.e_l_perception_horizon_front
+        pubsub_msg.e_l_perception_horizon_rear = self.e_l_perception_horizon_rear
+
+        pubsub_msg.e_Cnt_num_lane_segments = self.e_Cnt_num_lane_segments
+        pubsub_msg.as_scene_lane_segment = list()
+        for i in range(pubsub_msg.e_Cnt_num_lane_segments):
+            pubsub_msg.as_scene_lane_segment.append(self.as_scene_lane_segment[i].serialize())
+
+        pubsub_msg.e_Cnt_num_road_intersections = self.e_Cnt_num_road_intersections
+        pubsub_msg.as_scene_road_intersection = list()
+        for i in range(pubsub_msg.e_Cnt_num_road_intersections):
+            pubsub_msg.as_scene_road_intersection.append(self.as_scene_road_intersection[i].serialize())
+
+        pubsub_msg.e_Cnt_num_road_segments = self.e_Cnt_num_road_segments
+        pubsub_msg.as_scene_road_segment = list()
+        for i in range(pubsub_msg.e_Cnt_num_road_segments):
+            pubsub_msg.as_scene_road_segment.append(self.as_scene_road_segment[i].serialize())
+
+        return pubsub_msg
+
+    @classmethod
+    def deserialize(cls, pubsubMsg):
+        # type: (TsSYSSceneStatic) -> SceneStatic
+
+        lane_segments = list()
+        for i in range(pubsubMsg.e_Cnt_num_lane_segments):
+            lane_segments.append(SceneLaneSegment.deserialize(pubsubMsg.as_scene_lane_segment[i]))
+
+        road_intersections = list()
+        for i in range(pubsubMsg.e_Cnt_num_road_intersections):
+            road_intersections.append(SceneRoadIntersection.deserialize(pubsubMsg.as_scene_road_intersection[i]))
+
+        road_segments = list()
+        for i in range(pubsubMsg.e_Cnt_num_road_segments):
+            road_segments.append(SceneRoadSegment.deserialize(pubsubMsg.as_scene_road_segment[i]))
+
+        return cls(pubsubMsg.e_b_Valid, Timestamp.deserialize(pubsubMsg.s_ComputeTimestamp),
+                   pubsubMsg.e_l_perception_horizon_front, pubsubMsg.e_l_perception_horizon_rear,
+                   pubsubMsg.e_Cnt_num_lane_segments, lane_segments,
+                   pubsubMsg.e_Cnt_num_road_intersections, road_intersections,
+                   pubsubMsg.e_Cnt_num_road_segments, road_segments)
