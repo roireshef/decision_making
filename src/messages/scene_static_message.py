@@ -1,6 +1,8 @@
 from enum import Enum
 from typing import List
 
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_DataSceneStatic import \
+    TsSYSDataSceneStatic
 from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
 from numpy import np
 
@@ -13,7 +15,7 @@ from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_SceneRoadSegment import \
     TsSYSSceneRoadSegment
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.messages.scene_dynamic_message import Timestamp
+from decision_making.src.messages.scene_dynamic_message import Timestamp, MapOrigin, Header
 
 
 # MAX_SCENE_LANE_SEGMENTS = 128
@@ -717,8 +719,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_e_road_object_type, pubsubMsg.e_l_station, pubsubMsg.e_Cnt_dynamic_status_count,
                    dynamic_statuses)
 
-
-class SceneStatic(PUBSUB_MSG_IMPL):
+class DataSceneStatic(PUBSUB_MSG_IMPL):
     e_b_Valid = bool
     s_ComputeTimestamp = Timestamp
     e_l_perception_horizon_front = float
@@ -746,8 +747,8 @@ class SceneStatic(PUBSUB_MSG_IMPL):
         self.as_scene_road_segment = as_scene_road_segment
 
     def serialize(self):
-        # type: () -> TsSYSSceneStatic
-        pubsub_msg = TsSYSSceneStatic()
+        # type: () -> TsSYSDataSceneStatic
+        pubsub_msg = TsSYSDataSceneStatic()
 
         pubsub_msg.e_b_Valid = self.e_b_Valid
         pubsub_msg.s_ComputeTimestamp = self.s_ComputeTimestamp.serialize()
@@ -773,7 +774,7 @@ class SceneStatic(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg):
-        # type: (TsSYSSceneStatic) -> SceneStatic
+        # type: (TsSYSDataSceneStatic) -> DataSceneStatic
 
         lane_segments = list()
         for i in range(pubsubMsg.e_Cnt_num_lane_segments):
@@ -792,3 +793,31 @@ class SceneStatic(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_Cnt_num_lane_segments, lane_segments,
                    pubsubMsg.e_Cnt_num_road_intersections, road_intersections,
                    pubsubMsg.e_Cnt_num_road_segments, road_segments)
+
+
+class SceneStatic(PUBSUB_MSG_IMPL):
+    s_Header = Header
+    s_MapOrigin = MapOrigin
+    s_Data = DataSceneStatic
+
+    def __init__(self, s_Header, s_MapOrigin, s_Data):
+        # type: (Header, MapOrigin, DataSceneStatic) -> None
+        self.s_Header = s_Header
+        self.s_MapOrigin = s_MapOrigin
+        self.s_Data = s_Data
+
+    def serialize(self):
+        # type: () -> TsSYSSceneStatic
+        pubsub_msg = TsSYSSceneStatic()
+        pubsub_msg.s_Header = self.s_Header.serialize()
+        pubsub_msg.s_MapOrigin = self.s_MapOrigin.serialize()
+        pubsub_msg.s_Data = self.s_Data.serialize()
+        return pubsub_msg
+
+    @classmethod
+    def deserialize(cls, pubsubMsg):
+        # type: (TsSYSSceneStatic) -> SceneStatic
+        return cls(Header.deserialize(pubsubMsg.s_Header),
+                   MapOrigin.deserialize(pubsubMsg.s_MapOrigin),
+                   DataSceneStatic.deserialize(pubsubMsg.s_Data))
+
