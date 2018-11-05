@@ -1,8 +1,8 @@
 from enum import Enum
 from typing import List
 
+import numpy as np
 from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
-from numpy import np
 
 from Rte_Types.sub_structures import TsSYSAdjacentLane, TsSYSLaneManeuver, TsSYSBoundaryPoint, TsSYSLaneCoupling, \
     TsSYSNominalPathPoint, TsSYSStaticTrafficFlowControl, TsSYSDynamicStatus, TsSYSDynamicTrafficFlowControl, \
@@ -754,9 +754,12 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
     @classmethod
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSSceneLaneSegment) -> SceneLaneSegment
+
         dynamic_statuses = list()
         for i in range(pubsubMsg.e_Cnt_dynamic_status_count):
             dynamic_statuses.append(DynamicTrafficFlowControl.deserialize(pubsubMsg.as_dynamic_status[i]))
+
+
         return cls(pubsubMsg.e_e_road_object_type, pubsubMsg.e_l_station, pubsubMsg.e_Cnt_dynamic_status_count,
                    dynamic_statuses)
 
