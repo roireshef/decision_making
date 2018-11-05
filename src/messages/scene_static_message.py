@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import List
 
-from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
+from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmNumpyArray
 from numpy import np
 
 from Rte_Types.sub_structures import TsSYSAdjacentLane, TsSYSLaneManeuver, TsSYSBoundaryPoint, TsSYSLaneCoupling, \
