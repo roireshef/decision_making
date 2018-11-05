@@ -3,7 +3,8 @@ from typing import Tuple
 import numpy as np
 from scipy.interpolate.fitpack2 import UnivariateSpline
 
-from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray, LcmFrenetFrame
+from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmFrenetSerret2DFrame
+from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmNumpyArray
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_SPLINE_FIT_ORDER, \
     TINY_CURVATURE
@@ -425,8 +426,8 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         return T, N, np.c_[k], np.c_[k_tag]
 
     def serialize(self):
-        # type: () -> LcmFrenetFrame
-        lcm_msg = LcmFrenetFrame()
+        # type: () -> LcmFrenetSerret2DFrame
+        lcm_msg = LcmFrenetSerret2DFrame()
 
         lcm_msg.points = LcmNumpyArray()
         lcm_msg.points.num_dimensions = len(self.O.shape)
@@ -464,7 +465,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, lcmMsg):
-        # type: (LcmFrenetFrame)->FrenetSerret2DFrame
+        # type: (LcmFrenetSerret2DFrame)->FrenetSerret2DFrame
 
         return cls(
             np.ndarray(shape=tuple(lcmMsg.points.shape[:lcmMsg.points.num_dimensions])
