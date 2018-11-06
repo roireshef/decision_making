@@ -184,10 +184,10 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
     e_Cnt_downstream_segment_count = int
     a_Cnt_downstream_road_segment_id = np.ndarray
 
-    def __init__(self, e_Cnt_road_segment_id, e_Cnt_road_id, e_Cnt_lane_segment_id_count, a_Cnt_lane_segment_id,
-                 e_e_road_segment_type, e_Cnt_upstream_segment_count, a_Cnt_upstream_road_segment_id,
-                 e_Cnt_downstream_segment_count, a_Cnt_downstream_road_segment_id):
-        # type: (int, int, int, np.ndarray, MapRoadSegmentType, int, np.ndarray, int, np.ndarray) -> None
+    def __init__(self, e_Cnt_road_segment_id: int, e_Cnt_road_id: int, e_Cnt_lane_segment_id_count: int,
+                 a_Cnt_lane_segment_id: np.ndarray, e_e_road_segment_type: MapRoadSegmentType,
+                 e_Cnt_upstream_segment_count: int, a_Cnt_upstream_road_segment_id: np.ndarray,
+                 e_Cnt_downstream_segment_count: int, a_Cnt_downstream_road_segment_id: np.ndarray) -> None:
         """
         Road-segment information
         :param e_Cnt_road_segment_id: ID of this Road-segment
@@ -210,8 +210,7 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
         self.e_Cnt_downstream_segment_count = e_Cnt_downstream_segment_count
         self.a_Cnt_downstream_road_segment_id = a_Cnt_downstream_road_segment_id
 
-    def serialize(self):
-        # type: () -> TsSYSSceneRoadSegment
+    def serialize(self) -> TsSYSSceneRoadSegment:
         pubsub_msg = TsSYSSceneRoadSegment()
 
         pubsub_msg.e_Cnt_road_segment_id = self.e_Cnt_road_segment_id
@@ -243,8 +242,7 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSSceneRoadSegment)-> SceneRoadSegment
+    def deserialize(cls, pubsubMsg: TsSYSSceneRoadSegment):
         return cls(pubsubMsg.e_Cnt_road_segment_id,
                    pubsubMsg.e_Cnt_road_id,
                    pubsubMsg.e_Cnt_lane_segment_id_count,
@@ -272,9 +270,9 @@ class SceneRoadIntersection(PUBSUB_MSG_IMPL):
     e_Cnt_intersection_road_segment_count = int
     a_i_intersection_road_segment_ids = np.ndarray
 
-    def __init__(self, e_i_road_intersection_id, e_Cnt_lane_coupling_count, a_i_lane_coupling_segment_ids,
-                 e_Cnt_intersection_road_segment_count, a_i_intersection_road_segment_ids):
-        # type: (int, int, np.ndarray, int, np.ndarray) -> None
+    def __init__(self, e_i_road_intersection_id: int,
+                 e_Cnt_lane_coupling_count: int, a_i_lane_coupling_segment_ids: np.ndarray,
+                 e_Cnt_intersection_road_segment_count: int, a_i_intersection_road_segment_ids: np.ndarray) -> None:
         """
         Road-intersection information
         :param e_i_road_intersection_id: ID of this road-intersection
@@ -292,8 +290,7 @@ class SceneRoadIntersection(PUBSUB_MSG_IMPL):
         self.e_Cnt_intersection_road_segment_count = e_Cnt_intersection_road_segment_count
         self.a_i_intersection_road_segment_ids = a_i_intersection_road_segment_ids
 
-    def serialize(self):
-        # type: () -> TsSYSSceneRoadIntersection
+    def serialize(self) -> TsSYSSceneRoadIntersection:
         pubsub_msg = TsSYSSceneRoadIntersection()
 
         pubsub_msg.e_i_road_intersection_id = self.e_i_road_intersection_id
@@ -314,8 +311,7 @@ class SceneRoadIntersection(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSSceneRoadIntersection) -> SceneRoadIntersection
+    def deserialize(cls, pubsubMsg: TsSYSSceneRoadIntersection):
         return cls(pubsubMsg.e_i_road_intersection_id,
                    pubsubMsg.e_Cnt_lane_coupling_count,
                    np.ndarray(shape=tuple(pubsubMsg.a_i_lane_coupling_segment_ids.shape[
@@ -334,14 +330,12 @@ class AdjacentLane(PUBSUB_MSG_IMPL):
     e_e_moving_direction = MovingDirection
     e_e_lane_type = MapLaneType
 
-    def __init__(self, e_Cnt_lane_segment_id, e_e_moving_direction, e_e_lane_type):
-        # type: (int, MovingDirection, MapLaneType) -> None
+    def __init__(self, e_Cnt_lane_segment_id: int, e_e_moving_direction: MovingDirection, e_e_lane_type: MapLaneType):
         self.e_Cnt_lane_segment_id = e_Cnt_lane_segment_id
         self.e_e_moving_direction = e_e_moving_direction
         self.e_e_lane_type = e_e_lane_type
 
-    def serialize(self):
-        # type: () -> TsSYSAdjacentLane
+    def serialize(self) -> TsSYSAdjacentLane:
         pubsub_msg = TsSYSAdjacentLane()
 
         pubsub_msg.e_Cnt_lane_segment_id = self.e_Cnt_lane_segment_id
@@ -351,8 +345,7 @@ class AdjacentLane(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSAdjacentLane)->AdjacentLane
+    def deserialize(cls, pubsubMsg: TsSYSAdjacentLane):
         return cls(pubsubMsg.e_Cnt_lane_segment_id, pubsubMsg.e_e_moving_direction, pubsubMsg.e_e_lane_type)
 
 
@@ -360,13 +353,11 @@ class LaneManeuver(PUBSUB_MSG_IMPL):
     e_Cnt_lane_segment_id = int
     e_e_maneuver_type = ManeuverType
 
-    def __init__(self, e_Cnt_lane_segment_id, e_e_maneuver_type):
-        # type: (int, ManeuverType) -> None
+    def __init__(self, e_Cnt_lane_segment_id: int, e_e_maneuver_type: ManeuverType):
         self.e_Cnt_lane_segment_id = e_Cnt_lane_segment_id
         self.e_e_maneuver_type = e_e_maneuver_type
 
-    def serialize(self):
-        # type: () -> TsSYSLaneManeuver
+    def serialize(self) -> TsSYSLaneManeuver:
         pubsub_msg = TsSYSLaneManeuver()
 
         pubsub_msg.e_Cnt_lane_segment_id = self.e_Cnt_lane_segment_id
@@ -375,8 +366,7 @@ class LaneManeuver(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSLaneManeuver)->LaneManeuver
+    def deserialize(cls, pubsubMsg: TsSYSLaneManeuver):
         return cls(pubsubMsg.e_Cnt_lane_segment_id, pubsubMsg.e_e_maneuver_type)
 
 
@@ -385,14 +375,12 @@ class BoundaryPoint(PUBSUB_MSG_IMPL):
     e_l_s_start = float
     e_l_s_end = float
 
-    def __init__(self, e_e_lane_marker_type, e_l_s_start, e_l_s_end):
-        # type: (MapLaneMarkerType, float, float) -> None
+    def __init__(self, e_e_lane_marker_type: MapLaneMarkerType, e_l_s_start: float, e_l_s_end: float):
         self.e_e_lane_marker_type = e_e_lane_marker_type
         self.e_l_s_start = e_l_s_start
         self.e_l_s_end = e_l_s_end
 
-    def serialize(self):
-        # type: () -> TsSYSBoundaryPoint
+    def serialize(self) -> TsSYSBoundaryPoint:
         pubsub_msg = TsSYSBoundaryPoint()
 
         pubsub_msg.e_e_lane_marker_type = self.e_e_lane_marker_type.value
@@ -402,8 +390,7 @@ class BoundaryPoint(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSBoundaryPoint)->BoundaryPoint
+    def deserialize(cls, pubsubMsg: TsSYSBoundaryPoint):
         return cls(pubsubMsg.e_e_lane_marker_type, pubsubMsg.e_l_s_start, pubsubMsg.e_l_s_end)
 
 
@@ -415,9 +402,8 @@ class LaneCoupling(PUBSUB_MSG_IMPL):
     e_i_upstream_lane_segment_id = int
     e_e_maneuver_type = ManeuverType
 
-    def __init__(self, e_i_lane_segment_id, e_i_road_intersection_id, e_i_downstream_lane_segment_id,
-                 e_i_upstream_lane_segment_id, e_e_maneuver_type):
-        # type: (int, int, int, int, ManeuverType) -> None
+    def __init__(self, e_i_lane_segment_id: int, e_i_road_intersection_id: int, e_i_downstream_lane_segment_id: int,
+                 e_i_upstream_lane_segment_id: int, e_e_maneuver_type: ManeuverType):
         """
         Lane-coupling information. Generally, a lane-coupling connects two lane-segments with the same moving direction.
         'Virtual' lane-couplings (e.g. between two lane-segments on a straight road) have ID's of 0.
@@ -434,8 +420,7 @@ class LaneCoupling(PUBSUB_MSG_IMPL):
         self.e_i_upstream_lane_segment_id = e_i_upstream_lane_segment_id
         self.e_e_maneuver_type = e_e_maneuver_type
 
-    def serialize(self):
-        # type: () -> TsSYSLaneCoupling
+    def serialize(self) -> TsSYSLaneCoupling:
         pubsub_msg = TsSYSLaneCoupling()
 
         pubsub_msg.e_i_lane_segment_id = self.e_i_lane_segment_id
@@ -447,8 +432,7 @@ class LaneCoupling(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSLaneCoupling)->LaneCoupling
+    def deserialize(cls, pubsubMsg: TsSYSLaneCoupling):
         return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_i_road_intersection_id,
                    pubsubMsg.e_i_downstream_lane_segment_id, pubsubMsg.e_i_upstream_lane_segment_id,
                    pubsubMsg.e_e_maneuver_type)
@@ -466,9 +450,9 @@ class NominalPathPoint(PUBSUB_MSG_IMPL):
     e_l_left_offset = float
     e_l_right_offset = float
 
-    def __init__(self, e_l_EastX, e_l_NorthY, e_phi_heading, e_il_curvature, e_il2_curvature_rate, e_phi_cross_slope,
-                 e_phi_along_slope, e_l_s, e_l_left_offset, e_l_right_offset):
-        # type: (float, float, float, float, float, float, float, float, float, float) -> None
+    def __init__(self, e_l_EastX: float, e_l_NorthY: float, e_phi_heading: float, e_il_curvature: float,
+                 e_il2_curvature_rate: float, e_phi_cross_slope: float, e_phi_along_slope: float, e_l_s: float,
+                 e_l_left_offset: float, e_l_right_offset: float):
         """
         Nominal (i.e. center of lane) path-point information
         :param e_l_EastX: East-X Position
@@ -493,8 +477,7 @@ class NominalPathPoint(PUBSUB_MSG_IMPL):
         self.e_l_left_offset = e_l_left_offset
         self.e_l_right_offset = e_l_right_offset
 
-    def serialize(self):
-        # type: () -> TsSYSNominalPathPoint
+    def serialize(self) -> TsSYSNominalPathPoint:
         pubsub_msg = TsSYSNominalPathPoint()
 
         pubsub_msg.e_l_EastX = self.e_l_EastX
@@ -511,8 +494,7 @@ class NominalPathPoint(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSNominalPathPoint)->NominalPathPoint
+    def deserialize(cls, pubsubMsg: TsSYSNominalPathPoint):
         return cls(pubsubMsg.e_l_EastX, pubsubMsg.e_l_NorthY, pubsubMsg.e_phi_heading, pubsubMsg.e_il_curvature,
                    pubsubMsg.e_il2_curvature_rate, pubsubMsg.e_phi_cross_slope, pubsubMsg.e_phi_along_slope,
                    pubsubMsg.e_l_s, pubsubMsg.e_l_left_offset, pubsubMsg.e_l_right_offset)
@@ -523,8 +505,7 @@ class StaticTrafficFlowControl(PUBSUB_MSG_IMPL):
     e_l_station = float
     e_Pct_confidence = float
 
-    def __init__(self, e_e_road_object_type, e_l_station, e_Pct_confidence):
-        # type: (RoadObjectType, float, float) -> None
+    def __init__(self, e_e_road_object_type: RoadObjectType, e_l_station: float, e_Pct_confidence: float):
         """
         Static traffic-flow-control device, eg. Stop Signs (not relevant for M0)
         :param e_e_road_object_type:
@@ -535,8 +516,7 @@ class StaticTrafficFlowControl(PUBSUB_MSG_IMPL):
         self.e_l_station = e_l_station
         self.e_Pct_confidence = e_Pct_confidence
 
-    def serialize(self):
-        # type: () -> TsSYSStaticTrafficFlowControl
+    def serialize(self) -> TsSYSStaticTrafficFlowControl:
         pubsub_msg = TsSYSStaticTrafficFlowControl()
 
         pubsub_msg.e_e_road_object_type = self.e_e_road_object_type.value
@@ -546,8 +526,7 @@ class StaticTrafficFlowControl(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSStaticTrafficFlowControl)->StaticTrafficFlowControl
+    def deserialize(cls, pubsubMsg: TsSYSStaticTrafficFlowControl):
         return cls(pubsubMsg.e_e_road_object_type, pubsubMsg.e_l_station,
                    pubsubMsg.e_Pct_confidence)
 
@@ -556,8 +535,7 @@ class DynamicStatus(PUBSUB_MSG_IMPL):
     e_e_status = TrafficSignalState
     e_Pct_confidence = float
 
-    def __init__(self, e_e_status, e_Pct_confidence):
-        # type:(TrafficSignalState, float) -> None
+    def __init__(self, e_e_status: TrafficSignalState, e_Pct_confidence: float):
         """
         Status of Dynamic traffic-flow-control device, eg. red-yellow-green (not relevant for M0)
         :param e_e_status:
@@ -566,8 +544,7 @@ class DynamicStatus(PUBSUB_MSG_IMPL):
         self.e_e_status = e_e_status
         self.e_Pct_confidence = e_Pct_confidence
 
-    def serialize(self):
-        # type: () -> TsSYSDynamicStatus
+    def serialize(self) -> TsSYSDynamicStatus:
         pubsub_msg = TsSYSDynamicStatus()
 
         pubsub_msg.e_e_status = self.e_e_status.value
@@ -576,8 +553,7 @@ class DynamicStatus(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSDynamicStatus)->DynamicStatus
+    def deserialize(cls, pubsubMsg: TsSYSDynamicStatus):
         return cls(pubsubMsg.e_e_status, pubsubMsg.e_Pct_confidence)
 
 
@@ -587,8 +563,8 @@ class DynamicTrafficFlowControl(PUBSUB_MSG_IMPL):
     e_Cnt_dynamic_status_count = int
     as_dynamic_status = List[DynamicStatus]
 
-    def __init__(self, e_e_road_object_type, e_l_station, e_Cnt_dynamic_status_count, as_dynamic_status):
-        # type: (RoadObjectType, float, int, List[DynamicStatus]) -> None
+    def __init__(self, e_e_road_object_type: RoadObjectType, e_l_station: float,
+                 e_Cnt_dynamic_status_count: int, as_dynamic_status: List[DynamicStatus]):
         """
         Dynamic traffic-flow-control device, e.g. Traffic lights (not relevant for M0)
         :param e_e_road_object_type:
@@ -601,8 +577,7 @@ class DynamicTrafficFlowControl(PUBSUB_MSG_IMPL):
         self.e_Cnt_dynamic_status_count = e_Cnt_dynamic_status_count
         self.as_dynamic_status = as_dynamic_status
 
-    def serialize(self):
-        # type: () -> TsSYSDynamicTrafficFlowControl
+    def serialize(self) -> TsSYSDynamicTrafficFlowControl:
         pubsub_msg = TsSYSDynamicTrafficFlowControl()
 
         pubsub_msg.e_e_road_object_type = self.e_e_road_object_type.value
@@ -615,8 +590,7 @@ class DynamicTrafficFlowControl(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSDynamicTrafficFlowControl) -> DynamicTrafficFlowControl
+    def deserialize(cls, pubsubMsg: TsSYSDynamicTrafficFlowControl):
         dynamic_statuses = list()
         for i in range(pubsubMsg.e_Cnt_dynamic_status_count):
             dynamic_statuses.append(DynamicTrafficFlowControl.deserialize(pubsubMsg.as_dynamic_status[i]))
@@ -651,15 +625,17 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
     e_Cnt_lane_coupling_count = int
     as_lane_coupling = List[LaneCoupling]
 
-    def __init__(self, e_i_lane_segment_id, e_i_road_segment_id, e_e_lane_type, e_Cnt_static_traffic_flow_control_count,
-                 as_static_traffic_flow_control, e_Cnt_dynamic_traffic_flow_control_count, as_dynamic_traffic_flow_control,
-                 e_Cnt_left_adjacent_lane_count, as_left_adjacent_lanes, e_Cnt_right_adjacent_lane_count,
-                 as_right_adjacent_lanes, e_Cnt_downstream_lane_count, as_downstream_lanes, e_Cnt_upstream_lane_count,
-                 as_upstream_lanes, e_v_nominal_speed, e_Cnt_nominal_path_point_count, a_nominal_path_points,
-                 e_Cnt_left_boundary_points_count, as_left_boundary_points, e_Cnt_right_boundary_points_count,
-                 as_right_boundary_points, e_i_downstream_road_intersection_id, e_Cnt_lane_coupling_count,
-                 as_lane_coupling):
-        # type: (int, int, MapLaneType, int, List[StaticTrafficFlowControl], int, List[DynamicTrafficFlowControl], int, List[AdjacentLane], int, List[AdjacentLane], int, List[LaneManeuver], int, List[LaneManeuver], float, int, List[NominalPathPoint], int, List[BoundaryPoint], int, List[BoundaryPoint], int, int, List[LaneCoupling]) -> None
+    def __init__(self, e_i_lane_segment_id: int, e_i_road_segment_id: int, e_e_lane_type: MapLaneType,
+                 e_Cnt_static_traffic_flow_control_count: int, as_static_traffic_flow_control: List[StaticTrafficFlowControl],
+                 e_Cnt_dynamic_traffic_flow_control_count: int, as_dynamic_traffic_flow_control: List[DynamicTrafficFlowControl],
+                 e_Cnt_left_adjacent_lane_count: int, as_left_adjacent_lanes: List[AdjacentLane],
+                 e_Cnt_right_adjacent_lane_count: int, as_right_adjacent_lanes: List[AdjacentLane],
+                 e_Cnt_downstream_lane_count: int, as_downstream_lanes: List[LaneManeuver],
+                 e_Cnt_upstream_lane_count: int, as_upstream_lanes: List[LaneManeuver],
+                 e_v_nominal_speed: float, e_Cnt_nominal_path_point_count: int, a_nominal_path_points: List[NominalPathPoint],
+                 e_Cnt_left_boundary_points_count: int, as_left_boundary_points: List[BoundaryPoint],
+                 e_Cnt_right_boundary_points_count: int, as_right_boundary_points: List[BoundaryPoint],
+                 e_i_downstream_road_intersection_id: int, e_Cnt_lane_coupling_count: int, as_lane_coupling: List[LaneCoupling]):
         """
         Lane-segment information
         :param e_i_lane_segment_id: ID of this lane-segment
@@ -714,8 +690,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         self.e_Cnt_lane_coupling_count = e_Cnt_lane_coupling_count
         self.as_lane_coupling = as_lane_coupling
 
-    def serialize(self):
-        # type: () -> TsSYSSceneLaneSegment
+    def serialize(self) -> TsSYSSceneLaneSegment:
         pubsub_msg = TsSYSSceneLaneSegment()
 
         pubsub_msg.e_i_lane_segment_id = self.e_i_lane_segment_id
@@ -769,8 +744,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSSceneLaneSegment) -> SceneLaneSegment
+    def deserialize(cls, pubsubMsg: TsSYSSceneLaneSegment):
 
         as_static_traffic_flow_control = list()
         for i in range(pubsubMsg.e_Cnt_static_traffic_flow_control_count):
@@ -839,10 +813,11 @@ class DataSceneStatic(PUBSUB_MSG_IMPL):
     e_Cnt_num_road_segments = int
     as_scene_road_segment = List[SceneRoadSegment]
 
-    def __init__(self, e_b_Valid, s_ComputeTimestamp, e_l_perception_horizon_front, e_l_perception_horizon_rear,
-                 e_Cnt_num_lane_segments, as_scene_lane_segment, e_Cnt_num_road_intersections,
-                 as_scene_road_intersection, e_Cnt_num_road_segments, as_scene_road_segment):
-        # type: (bool, Timestamp, float, float, int, List[SceneLaneSegment], int, List[SceneRoadIntersection], int, List[SceneRoadSegment]) -> None
+    def __init__(self, e_b_Valid: bool, s_ComputeTimestamp: Timestamp, e_l_perception_horizon_front: float,
+                 e_l_perception_horizon_rear: float,
+                 e_Cnt_num_lane_segments: int, as_scene_lane_segment: List[SceneLaneSegment],
+                 e_Cnt_num_road_intersections: int, as_scene_road_intersection: List[SceneRoadIntersection],
+                 e_Cnt_num_road_segments: int, as_scene_road_segment: List[SceneRoadSegment]):
         """
         Scene provider's static scene information
         :param e_b_Valid:
@@ -867,8 +842,7 @@ class DataSceneStatic(PUBSUB_MSG_IMPL):
         self.e_Cnt_num_road_segments = e_Cnt_num_road_segments
         self.as_scene_road_segment = as_scene_road_segment
 
-    def serialize(self):
-        # type: () -> TsSYSDataSceneStatic
+    def serialize(self) -> TsSYSDataSceneStatic:
         pubsub_msg = TsSYSDataSceneStatic()
 
         pubsub_msg.e_b_Valid = self.e_b_Valid
@@ -891,8 +865,7 @@ class DataSceneStatic(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSDataSceneStatic) -> DataSceneStatic
+    def deserialize(cls, pubsubMsg: TsSYSDataSceneStatic):
 
         lane_segments = list()
         for i in range(pubsubMsg.e_Cnt_num_lane_segments):
@@ -918,14 +891,12 @@ class SceneStatic(PUBSUB_MSG_IMPL):
     s_MapOrigin = MapOrigin
     s_Data = DataSceneStatic
 
-    def __init__(self, s_Header, s_MapOrigin, s_Data):
-        # type: (Header, MapOrigin, DataSceneStatic) -> None
+    def __init__(self, s_Header: Header, s_MapOrigin: MapOrigin, s_Data: DataSceneStatic):
         self.s_Header = s_Header
         self.s_MapOrigin = s_MapOrigin
         self.s_Data = s_Data
 
-    def serialize(self):
-        # type: () -> TsSYSSceneStatic
+    def serialize(self) -> TsSYSSceneStatic:
         pubsub_msg = TsSYSSceneStatic()
         pubsub_msg.s_Header = self.s_Header.serialize()
         pubsub_msg.s_MapOrigin = self.s_MapOrigin.serialize()
@@ -933,9 +904,7 @@ class SceneStatic(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSSceneStatic) -> SceneStatic
+    def deserialize(cls, pubsubMsg: TsSYSSceneStatic):
         return cls(Header.deserialize(pubsubMsg.s_Header),
                    MapOrigin.deserialize(pubsubMsg.s_MapOrigin),
                    DataSceneStatic.deserialize(pubsubMsg.s_Data))
-
