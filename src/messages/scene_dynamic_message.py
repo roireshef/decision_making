@@ -214,8 +214,8 @@ class HostLocalization(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSHostLocalization)->HostLocalization
         return cls(pubsubMsg.e_Cnt_road_segment_id, pubsubMsg.e_Cnt_lane_segment_id,
-                   TsSYSCartesianPose.deserialize(pubsubMsg.s_cartesian_pose),
-                   TsSYSLaneFrenetPose.deserialize(pubsubMsg.s_lane_frenet_pose))
+                   CartesianPose.deserialize(pubsubMsg.s_cartesian_pose),
+                   LaneFrenetPose.deserialize(pubsubMsg.s_lane_frenet_pose))
 
 
 class DataSceneHost(PUBSUB_MSG_IMPL):

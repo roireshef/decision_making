@@ -250,7 +250,7 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
                                           :pubsubMsg.a_Cnt_lane_segment_id.num_dimensions])
                               , buffer=np.array(pubsubMsg.a_Cnt_lane_segment_id.data)
                               , dtype=int),
-                   pubsubMsg.e_e_road_segment_type,
+                   MapRoadSegmentType(pubsubMsg.e_e_road_segment_type),
                    pubsubMsg.e_Cnt_upstream_segment_count,
                    np.ndarray(shape=tuple(pubsubMsg.a_Cnt_upstream_road_segment_id.shape[
                                           :pubsubMsg.a_Cnt_upstream_road_segment_id.num_dimensions])
@@ -346,7 +346,7 @@ class AdjacentLane(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSAdjacentLane):
-        return cls(pubsubMsg.e_Cnt_lane_segment_id, pubsubMsg.e_e_moving_direction, pubsubMsg.e_e_lane_type)
+        return cls(pubsubMsg.e_Cnt_lane_segment_id, MovingDirection(pubsubMsg.e_e_moving_direction), MapLaneType(pubsubMsg.e_e_lane_type))
 
 
 class LaneManeuver(PUBSUB_MSG_IMPL):
@@ -367,7 +367,7 @@ class LaneManeuver(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSLaneManeuver):
-        return cls(pubsubMsg.e_Cnt_lane_segment_id, pubsubMsg.e_e_maneuver_type)
+        return cls(pubsubMsg.e_Cnt_lane_segment_id, ManeuverType(pubsubMsg.e_e_maneuver_type))
 
 
 class BoundaryPoint(PUBSUB_MSG_IMPL):
@@ -391,7 +391,7 @@ class BoundaryPoint(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSBoundaryPoint):
-        return cls(pubsubMsg.e_e_lane_marker_type, pubsubMsg.e_l_s_start, pubsubMsg.e_l_s_end)
+        return cls(MapLaneMarkerType(pubsubMsg.e_e_lane_marker_type), pubsubMsg.e_l_s_start, pubsubMsg.e_l_s_end)
 
 
 class LaneCoupling(PUBSUB_MSG_IMPL):
@@ -435,7 +435,7 @@ class LaneCoupling(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg: TsSYSLaneCoupling):
         return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_i_road_intersection_id,
                    pubsubMsg.e_i_downstream_lane_segment_id, pubsubMsg.e_i_upstream_lane_segment_id,
-                   pubsubMsg.e_e_maneuver_type)
+                   ManeuverType(pubsubMsg.e_e_maneuver_type))
 
 
 class NominalPathPoint(PUBSUB_MSG_IMPL):
@@ -527,7 +527,7 @@ class StaticTrafficFlowControl(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSStaticTrafficFlowControl):
-        return cls(pubsubMsg.e_e_road_object_type, pubsubMsg.e_l_station,
+        return cls(RoadObjectType(pubsubMsg.e_e_road_object_type), pubsubMsg.e_l_station,
                    pubsubMsg.e_Pct_confidence)
 
 
@@ -554,7 +554,7 @@ class DynamicStatus(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSDynamicStatus):
-        return cls(pubsubMsg.e_e_status, pubsubMsg.e_Pct_confidence)
+        return cls(TrafficSignalState(pubsubMsg.e_e_status), pubsubMsg.e_Pct_confidence)
 
 
 class DynamicTrafficFlowControl(PUBSUB_MSG_IMPL):
@@ -594,7 +594,7 @@ class DynamicTrafficFlowControl(PUBSUB_MSG_IMPL):
         dynamic_statuses = list()
         for i in range(pubsubMsg.e_Cnt_dynamic_status_count):
             dynamic_statuses.append(DynamicTrafficFlowControl.deserialize(pubsubMsg.as_dynamic_status[i]))
-        return cls(pubsubMsg.e_e_road_object_type, pubsubMsg.e_l_station, pubsubMsg.e_Cnt_dynamic_status_count,
+        return cls(RoadObjectType(pubsubMsg.e_e_road_object_type), pubsubMsg.e_l_station, pubsubMsg.e_Cnt_dynamic_status_count,
                    dynamic_statuses)
 
 
@@ -786,7 +786,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         for i in range(pubsubMsg.e_Cnt_lane_coupling_count):
             as_lane_coupling.append(LaneCoupling.deserialize(pubsubMsg.as_lane_coupling[i]))
 
-        return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_i_road_segment_id, pubsubMsg.e_e_lane_type,
+        return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_i_road_segment_id, MapLaneType(pubsubMsg.e_e_lane_type),
                    pubsubMsg.e_Cnt_static_traffic_flow_control_count, as_static_traffic_flow_control,
                    pubsubMsg.e_Cnt_dynamic_traffic_flow_control_count, as_dynamic_traffic_flow_control,
                    pubsubMsg.e_Cnt_left_adjacent_lane_count, as_left_adjacent_lanes,
