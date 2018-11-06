@@ -176,9 +176,9 @@ class MapUtils:
     @staticmethod
     def is_main_lane(lane_id: int) -> bool:
         """
-        check if there is another lane with higher priority, having the same upstream lane
+        check if there is another lane with higher priority, having the same downstream lane
         :param lane_id:
-        :return: True if there is no another lane with higher priority, having the same upstream lane
+        :return: True if there is no another lane with higher priority, having the same downstream lane
         """
         pass
 
@@ -299,16 +299,16 @@ class MapUtils:
         roads_ids = navigation_plan.road_ids[current_road_idx_in_plan:]
 
         # collect relevant lane_ids with their lengths
-        upstream_lanes = MapUtils.get_upstream_lanes(initial_lane_id)
+        downstream_lanes = MapUtils.get_downstream_lanes(initial_lane_id)
         lane_lengths = [MapUtils.get_lane_length(initial_lane_id)]
         lane_ids = [initial_lane_id]
         for road_id in roads_ids[1:]:
-            next_lane = [lid for lid in upstream_lanes if MapUtils.get_road_segment_by_lane(lid) == road_id]
+            next_lane = [lid for lid in downstream_lanes if MapUtils.get_road_segment_by_lane(lid) == road_id]
             if len(next_lane) < 1:
-                raise RoadNotFound("Upstream lane was not found in navigation plan")
+                raise RoadNotFound("Downstream lane was not found in navigation plan")
             lane_ids.append(next_lane[0])
             lane_lengths.append(MapUtils.get_lane_length(next_lane[0]))
-            upstream_lanes = MapUtils.get_upstream_lanes(next_lane[0])
+            downstream_lanes = MapUtils.get_downstream_lanes(next_lane[0])
 
         # distance to roads-ends
         lanes_dist_to_end = np.cumsum(np.append([lane_lengths[0] - initial_lon], lane_lengths[1:]))
