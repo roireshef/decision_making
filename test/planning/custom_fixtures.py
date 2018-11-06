@@ -197,7 +197,7 @@ def state():
     v = np.linalg.norm([v_x, v_y])
     dyn1 = DynamicObject.create_from_cartesian_state(obj_id=1, timestamp=34, cartesian_state=np.array([0.5, 0.1, np.pi / 8.0, v, 0.0, 0.0]),
                                                      size=ObjectSize(1, 1, 1), confidence=1.0)
-    dyn2 = DynamicObject.create_from_cartesian_state(obj_id=1, timestamp=35, cartesian_state=np.array([10.0, 0.0, np.pi / 8.0, v, 0.0, 0.0]),
+    dyn2 = DynamicObject.create_from_cartesian_state(obj_id=2, timestamp=35, cartesian_state=np.array([10.0, 0.0, np.pi / 8.0, v, 0.0, 0.0]),
                                                      size=ObjectSize(1, 1, 1), confidence=1.0)
     dynamic_objects = [dyn1, dyn2]
     size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
