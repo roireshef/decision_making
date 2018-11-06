@@ -2,7 +2,7 @@ from typing import List
 
 import numpy as np
 
-from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION
+from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, EPS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_DX, FP_SX, C_X, C_Y
@@ -148,9 +148,9 @@ class MapUtils:
         :return: Frenet frame for the given route part
         """
         # in current implementation: if starting_lon < 0, extract Frenet frame with only positive longitudes
-        if starting_lon < 0:
+        if starting_lon < EPS:
             lookahead_dist += starting_lon
-            starting_lon = 0
+            starting_lon = EPS
 
         shifted, _ = MapUtils._get_lookahead_points(lane_id, starting_lon, lookahead_dist, desired_lat=0,
                                                     navigation_plan=navigation_plan)
