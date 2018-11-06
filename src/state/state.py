@@ -173,12 +173,12 @@ class DynamicObject(PUBSUB_MSG_IMPL):
             if relative_lane == RelativeLane.SAME_LANE:
                 self._cached_map_states[relative_lane] = MapState.from_cartesian_state(self._cached_cartesian_state)
             else:
-                adjacent_lane_id = MapUtils.get_adjacent_lane(self.map_state.lane_id, relative_lane)
-                if adjacent_lane_id is not None:
-                    frenet = MapUtils.get_lane_frenet_frame(adjacent_lane_id)
+                adjacent_lane_ids = MapUtils.get_adjacent_lanes(self.map_state.lane_id, relative_lane)
+                if len(adjacent_lane_ids) > 0:
+                    frenet = MapUtils.get_lane_frenet_frame(adjacent_lane_ids[0])
                     # TODO: the current implementation of cstate_to_fstate is very slow
                     fstate = frenet.cstate_to_fstate(self.cartesian_state)
-                    self._cached_map_states[relative_lane] = MapState(fstate, adjacent_lane_id)
+                    self._cached_map_states[relative_lane] = MapState(fstate, adjacent_lane_ids[0])
                 else:  # distinguish between not cached and non-existing lane
                     self._cached_map_states[relative_lane] = MapState(None, None)
         return self._cached_map_states[relative_lane]

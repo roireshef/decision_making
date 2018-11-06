@@ -168,9 +168,9 @@ class FilterIfNoLane(RecipeFilter):
         lane_id = behavioral_state.ego_state.map_state.lane_id
         return (recipe.relative_lane == RelativeLane.SAME_LANE or
                 (recipe.relative_lane == RelativeLane.RIGHT_LANE and
-                 MapUtils.get_adjacent_lane(lane_id, RelativeLane.RIGHT_LANE) is not None) or
+                 len(MapUtils.get_adjacent_lanes(lane_id, RelativeLane.RIGHT_LANE)) > 0) or
                 (recipe.relative_lane == RelativeLane.LEFT_LANE and
-                 MapUtils.get_adjacent_lane(lane_id, RelativeLane.LEFT_LANE) is not None))
+                 len(MapUtils.get_adjacent_lanes(lane_id, RelativeLane.LEFT_LANE)) > 0))
 
 
 class FilterIfAggressive(RecipeFilter):

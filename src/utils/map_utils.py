@@ -51,19 +51,24 @@ class MapUtils:
         return MapService.get_instance()._lane_frenet[lane_id].s_max
 
     @staticmethod
-    def get_adjacent_lane(lane_id: int, relative_lane: RelativeLane) -> int:
+    def get_adjacent_lanes(lane_id: int, relative_lane: RelativeLane) -> List[int]:
         """
-        get adjacent (right/left) lane to the given lane segment (if exists)
+        get sorted adjacent (right/left) lanes relative to the given lane segment
         :param lane_id:
         :param relative_lane: either right or left
-        :return: adjacent lane id or None if it does not exist
+        :return: adjacent lanes ids sorted by their distance from the given lane
         """
         map_api = MapService.get_instance()
         road_id, lane_idx = map_api._lane_address[lane_id]
-        adjacent_idx = lane_idx + relative_lane.value
-        return map_api._lane_by_address[(road_id, adjacent_idx)] \
-            if (road_id, adjacent_idx) in map_api._lane_by_address else None
+        num_lanes = map_api.get_num_lanes(road_id)
+        if relative_lane == RelativeLane.RIGHT_LANE:
+            return [map_api._lane_by_address[(road_id, idx)] for idx in range(lane_idx-1, -1, -1)
+                    if (road_id, idx) in map_api._lane_by_address]
+        else:
+            return [map_api._lane_by_address[(road_id, idx)] for idx in range(lane_idx+1, num_lanes)
+                    if (road_id, idx) in map_api._lane_by_address]
 
+    # TODO: remove it after introduction of the new mapping module
     @staticmethod
     def get_closest_lane(x: float, y: float, road_segment_id: int=None) -> int:
         """
@@ -158,7 +163,7 @@ class MapUtils:
     @staticmethod
     def get_upstream_lanes(lane_id: int) -> List[int]:
         """
-        get upstream lanes of the given lane
+        get upstream lanes (previous) of the given lane
         :param lane_id:
         :return: list of upstream lanes
         """
@@ -167,7 +172,7 @@ class MapUtils:
     @staticmethod
     def get_downstream_lanes(lane_id: int) -> List[int]:
         """
-        get downstream lanes of the given lane
+        get downstream lanes (upcoming) of the given lane
         :param lane_id:
         :return: list of downstream lanes
         """
@@ -200,8 +205,8 @@ class MapUtils:
         return lanes_list
 
     @staticmethod
-    def convert_from_lane_to_map_coordinates(lane_id: int, lon_on_lane: float, lat_on_lane: float,
-                                             relative_yaw: float=0) -> [float, float, float]:
+    def _convert_from_lane_to_map_coordinates(lane_id: int, lon_on_lane: float, lat_on_lane: float,
+                                              relative_yaw: float=0) -> [float, float, float]:
         """
         convert a point from lane coordinates to map (global) coordinates
         :param lane_id:
@@ -214,27 +219,6 @@ class MapUtils:
         cpoint = lane_frenet.fpoint_to_cpoint(np.array([lon_on_lane, lat_on_lane]))
         global_yaw = relative_yaw + lane_frenet.get_yaw(np.array([lon_on_lane]))[0]
         return cpoint[C_X], cpoint[C_Y], global_yaw
-
-    @staticmethod
-    def convert_from_map_to_lane_coordinates(x: float, y: float, global_yaw: float) -> [int, float, float, float, bool]:
-        """
-        convert a point from map (global) coordinates to lane coordinates, by searching for the nearest lane and
-        projecting it onto this lane
-        :param x: X map coordinate
-        :param y: Y map coordinate
-        :param global_yaw: yaw in map coordinates
-        :return: lane_id, longitude on the lane, latitude on the lane, intra_lane_yaw (rad),
-                    is object within the road latitudes
-        """
-        lane_id = MapUtils.get_closest_lane(x, y)
-        lane_frenet = MapUtils.get_lane_frenet_frame(lane_id)
-        fpoint = lane_frenet.cpoint_to_fpoint(np.array([x, y]))  # frenet coordinates w.r.t. the lane
-        relative_yaw = global_yaw - lane_frenet.get_yaw(fpoint[FP_SX])  # yaw w.r.t. the lane
-        # check if the point is on road
-        dist_to_right_border, dist_to_left_border = MapUtils.get_dist_from_road_borders(lane_id, fpoint[FP_SX])
-        is_on_road = bool(-dist_to_right_border <= fpoint[FP_DX] <= dist_to_left_border)
-
-        return lane_id, fpoint[FP_SX], fpoint[FP_DX], relative_yaw, is_on_road
 
     @staticmethod
     @raises(RoadNotFound, LongitudeOutOfRoad)
@@ -256,9 +240,9 @@ class MapUtils:
         lane_ids, final_lon = MapUtils._advance_on_plan(initial_lane_id, initial_lon, lookahead_dist, navigation_plan)
 
         # exact projection of the initial point and final point on the road
-        init_x, init_y, init_yaw = MapUtils.convert_from_lane_to_map_coordinates(initial_lane_id, initial_lon, desired_lat)
+        init_x, init_y, init_yaw = MapUtils._convert_from_lane_to_map_coordinates(initial_lane_id, initial_lon, desired_lat)
         init_pos = np.array([init_x, init_y])
-        final_x, final_y, _ = MapUtils.convert_from_lane_to_map_coordinates(lane_ids[-1], final_lon, desired_lat)
+        final_x, final_y, _ = MapUtils._convert_from_lane_to_map_coordinates(lane_ids[-1], final_lon, desired_lat)
         final_pos = np.array([final_x, final_y])
 
         # shift points (laterally) and concatenate all points of all relevant roads
