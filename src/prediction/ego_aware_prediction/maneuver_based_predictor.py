@@ -101,6 +101,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
             predicted_maneuver_spec = self._maneuver_classifier.classify_maneuver(state=state, object_id=obj_id,
                                                                                   maneuver_horizon=horizon)
 
+            # TODO: treat the case when we are close to the end of the segment
             frenet_frame = MapUtils.get_lane_frenet_frame(dynamic_object.map_state.lane_id)
 
             init_time = dynamic_object.timestamp_in_sec

@@ -146,6 +146,7 @@ class MapUtils:
         :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
         :return: Frenet frame for the given route part
         """
+        # TODO: deal with starting_lon < 0, when get_upstream_lanes() is implemented
         # in current implementation: if starting_lon < 0, extract Frenet frame with only positive longitudes
         if starting_lon < EPS:
             lookahead_dist += starting_lon
