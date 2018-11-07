@@ -8,14 +8,26 @@ The purpose of the file is to demonstrate basic usage of the C++ API, and provid
 #include <cmath>
 
 #include <array>
+
+
+#include <iostream>
+#include <chrono>
+
+
+#include <complex>
+#include <cstdlib>
+#include <iostream>
+#include <map>
+#include <string>
+
+#include "cnpy.h"
+
 // Include the exposed API for the module.
 #include "FrenetSerretAPI.h"
 
 #include "injectionData.h"
 
-#include <iostream>
-#include <chrono>
-
+#include "FakeSegments.h"
 
 // Names aliasing:
 using Single = float;
@@ -55,6 +67,9 @@ bool caseStateCFC(FrenetSerret2D<T>* frame, int numberSamples);
 
 int main()
 {
+	/*********************************** Data injection ********************************************/
+
+
 	// Inject points_in
 	std::uint32_t pointsInDims[2U] = {5U, 2U};
 	std::uint32_t statesInDims[2U] = {5U, 6U};
@@ -92,11 +107,15 @@ int main()
 	Points2DSingleLocation fPoints(fPointsData, pointsInDims);
 
 
+	/*************************************** Frenet frame instances creation ***************************************************/
 
 
 
 	using Frame2DCharacteristics = GM::UC::FrenetSerret::Points<float, 2U, 8U>;
 	
+	/********************* Example use of hard coded data , in order to construct a Fernet frame 2D object. ******/
+
+
 	std::uint32_t numberOfCharecteristicPoints = sizeof(KintejctionData) / sizeof(KintejctionData[0]);
 	auto characteristic2DFramData = new Single[Frame2DCharacteristics::m_numberComponentsInMainAxis * numberOfCharecteristicPoints];
 
@@ -149,6 +168,68 @@ int main()
 
 
 	FrenetSerret2D<float> frame2D(characteristicsFor2DFrame);
+
+	/********************* Example use of Numpy serialized data, in order to construct a Fernet frame 2D object. ******/
+
+	// Types that are used to fill the data base of segments.
+	SegmentBank<float> segmentBank;
+	decltype(segmentBank)::KeyType keyToRetrieve;
+	// Add some segments.
+	auto addedSegment = segmentBank.addSegment("W:/tmp/vs_sandbox/fernet/Project1/x64/Debug/data/testSegmentData000");
+	keyToRetrieve = addedSegment.getKey();
+
+	/*
+
+	Add more segments, just keep the keys you'd like to use later.
+
+	*/
+
+
+	// Note: No one prevents you from changing the characteristics of the key, if you really want to do it, you are strongly advised to just create a new segment.
+
+	// use the key.
+	const auto segment = segmentBank.findSegment(keyToRetrieve);
+	if (!segment.isValid())
+	{
+		// handle error.
+	}
+	// Imitate builder pattern:
+	const auto ds = segment.getDs();
+	const auto ts = segment.getT();
+	const auto ns = segment.getN();
+	const auto ks = segment.getK();
+	const auto kTags = segment.getKTag();
+	const auto oPoints = segment.getO();
+
+	const auto numberOfCharacteristicSamples = segment.getNumberOfSamples();
+	auto characteristic2DFramDataFromNumpy = new Single[Frame2DCharacteristics::m_numberComponentsInMainAxis * numberOfCharecteristicPoints];
+	
+	
+	memcpy(characteristic2DFramDataFromNumpy, oPoints.data(), oPoints.size() * sizeof(Single));
+	auto offsetInElements = oPoints.size();
+
+	memcpy(characteristic2DFramDataFromNumpy + offsetInElements, ts.data(), ts.size() * sizeof(Single));
+	offsetInElements += ts.size();
+
+	memcpy(characteristic2DFramDataFromNumpy + offsetInElements, ns.data(), ns.size() * sizeof(Single));
+	offsetInElements += ns.size();
+
+	memcpy(characteristic2DFramDataFromNumpy + offsetInElements, ks.data(), ks.size() * sizeof(Single));
+	offsetInElements += ks.size();
+
+	memcpy(characteristic2DFramDataFromNumpy + offsetInElements, kTags.data(), kTags.size() * sizeof(Single));
+	offsetInElements += kTags.size();
+
+
+	std::array<uint32_t, 2U> characteresticDimsFromNumpy = { numberOfCharacteristicSamples, 8U };
+	Frame2DCharacteristics characteristicsFor2DFrameFromNumpy(characteristic2DFramDataFromNumpy, characteresticDimsFromNumpy.data());
+	FrenetSerret2D<float> frame2DFromNumpy(characteristicsFor2DFrameFromNumpy);
+
+	// Just check if both frames are identical:
+	std::cout << "\nCMP characteristic data of frames " << memcmp(characteristic2DFramDataFromNumpy, characteristic2DFramData, sizeof(float) * numberOfCharacteristicSamples * 8U) << std::endl;
+
+
+	/****************************************************************************************************************************/
 
 
 	auto start = std::chrono::high_resolution_clock::now();
