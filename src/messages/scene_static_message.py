@@ -4,9 +4,9 @@ from typing import List
 import numpy as np
 from gm_lcm import LcmNumpyArray
 
-from Rte_Types.sub_structures import TsSYSAdjacentLane, TsSYSLaneManeuver, TsSYSBoundaryPoint, TsSYSLaneCoupling, \
+from Rte_Types.sub_structures import TsSYSAdjacentLane, TsSYSBoundaryPoint, TsSYSLaneCoupling, \
     TsSYSNominalPathPoint, TsSYSStaticTrafficFlowControl, TsSYSDynamicStatus, TsSYSDynamicTrafficFlowControl, \
-    TsSYSSceneLaneSegment
+    TsSYSSceneLaneSegment, TsSYSLaneSegmentConnectivity
 from common_data.interface.py.idl_generated_files.Rte_Types.TsSYS_SceneStatic import TsSYSSceneStatic
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_DataSceneStatic import \
     TsSYSDataSceneStatic
@@ -246,19 +246,16 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_Cnt_road_segment_id,
                    pubsubMsg.e_Cnt_road_id,
                    pubsubMsg.e_Cnt_lane_segment_id_count,
-                   np.ndarray(shape=tuple(pubsubMsg.a_Cnt_lane_segment_id.shape[
-                                          :pubsubMsg.a_Cnt_lane_segment_id.num_dimensions])
+                   np.ndarray(shape=tuple(pubsubMsg.a_Cnt_lane_segment_id.shape)
                               , buffer=np.array(pubsubMsg.a_Cnt_lane_segment_id.data)
                               , dtype=int),
                    MapRoadSegmentType(pubsubMsg.e_e_road_segment_type),
                    pubsubMsg.e_Cnt_upstream_segment_count,
-                   np.ndarray(shape=tuple(pubsubMsg.a_Cnt_upstream_road_segment_id.shape[
-                                          :pubsubMsg.a_Cnt_upstream_road_segment_id.num_dimensions])
+                   np.ndarray(shape=tuple(pubsubMsg.a_Cnt_upstream_road_segment_id.shape)
                               , buffer=np.array(pubsubMsg.a_Cnt_upstream_road_segment_id.data)
                               , dtype=int),
                    pubsubMsg.e_Cnt_downstream_segment_count,
-                   np.ndarray(shape=tuple(pubsubMsg.a_Cnt_downstream_road_segment_id.shape[
-                                          :pubsubMsg.a_Cnt_downstream_road_segment_id.num_dimensions])
+                   np.ndarray(shape=tuple(pubsubMsg.a_Cnt_downstream_road_segment_id.shape)
                               , buffer=np.array(pubsubMsg.a_Cnt_downstream_road_segment_id.data)
                               , dtype=int))
 
@@ -312,15 +309,14 @@ class SceneRoadIntersection(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSSceneRoadIntersection):
+        # TODO: talk to Efrat about making it work in new LCMNumpyArray object (shape is 6-dim etc.)
         return cls(pubsubMsg.e_i_road_intersection_id,
                    pubsubMsg.e_Cnt_lane_coupling_count,
-                   np.ndarray(shape=tuple(pubsubMsg.a_i_lane_coupling_segment_ids.shape[
-                                          :pubsubMsg.a_i_lane_coupling_segment_ids.num_dimensions])
+                   np.ndarray(shape=tuple(pubsubMsg.a_i_lane_coupling_segment_ids.shape)
                               , buffer=np.array(pubsubMsg.a_i_lane_coupling_segment_ids.data)
                               , dtype=int),
                    pubsubMsg.e_Cnt_intersection_road_segment_count,
-                   np.ndarray(shape=tuple(pubsubMsg.a_i_intersection_road_segment_ids.shape[
-                                          :pubsubMsg.a_i_intersection_road_segment_ids.num_dimensions])
+                   np.ndarray(shape=tuple(pubsubMsg.a_i_intersection_road_segment_ids.shape)
                               , buffer=np.array(pubsubMsg.a_i_intersection_road_segment_ids.data)
                               , dtype=int))
 
@@ -349,7 +345,7 @@ class AdjacentLane(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_Cnt_lane_segment_id, MovingDirection(pubsubMsg.e_e_moving_direction), MapLaneType(pubsubMsg.e_e_lane_type))
 
 
-class LaneManeuver(PUBSUB_MSG_IMPL):
+class LaneSegmentConnectivity(PUBSUB_MSG_IMPL):
     e_Cnt_lane_segment_id = int
     e_e_maneuver_type = ManeuverType
 
@@ -357,8 +353,8 @@ class LaneManeuver(PUBSUB_MSG_IMPL):
         self.e_Cnt_lane_segment_id = e_Cnt_lane_segment_id
         self.e_e_maneuver_type = e_e_maneuver_type
 
-    def serialize(self) -> TsSYSLaneManeuver:
-        pubsub_msg = TsSYSLaneManeuver()
+    def serialize(self) -> TsSYSLaneSegmentConnectivity:
+        pubsub_msg = TsSYSLaneSegmentConnectivity()
 
         pubsub_msg.e_Cnt_lane_segment_id = self.e_Cnt_lane_segment_id
         pubsub_msg.e_e_maneuver_type = self.e_e_maneuver_type.value
@@ -366,7 +362,7 @@ class LaneManeuver(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg: TsSYSLaneManeuver):
+    def deserialize(cls, pubsubMsg: TsSYSLaneSegmentConnectivity):
         return cls(pubsubMsg.e_Cnt_lane_segment_id, ManeuverType(pubsubMsg.e_e_maneuver_type))
 
 
@@ -593,7 +589,7 @@ class DynamicTrafficFlowControl(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg: TsSYSDynamicTrafficFlowControl):
         dynamic_statuses = list()
         for i in range(pubsubMsg.e_Cnt_dynamic_status_count):
-            dynamic_statuses.append(DynamicTrafficFlowControl.deserialize(pubsubMsg.as_dynamic_status[i]))
+            dynamic_statuses.append(DynamicStatus.deserialize(pubsubMsg.as_dynamic_status[i]))
         return cls(RoadObjectType(pubsubMsg.e_e_road_object_type), pubsubMsg.e_l_station, pubsubMsg.e_Cnt_dynamic_status_count,
                    dynamic_statuses)
 
@@ -611,9 +607,9 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
     e_Cnt_right_adjacent_lane_count = int
     as_right_adjacent_lanes = List[AdjacentLane]
     e_Cnt_downstream_lane_count = int
-    as_downstream_lanes = List[LaneManeuver]
+    as_downstream_lanes = List[LaneSegmentConnectivity]
     e_Cnt_upstream_lane_count = int
-    as_upstream_lanes = List[LaneManeuver]
+    as_upstream_lanes = List[LaneSegmentConnectivity]
     e_v_nominal_speed = float
     e_Cnt_nominal_path_point_count = int
     a_nominal_path_points = List[NominalPathPoint]
@@ -630,8 +626,8 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
                  e_Cnt_dynamic_traffic_flow_control_count: int, as_dynamic_traffic_flow_control: List[DynamicTrafficFlowControl],
                  e_Cnt_left_adjacent_lane_count: int, as_left_adjacent_lanes: List[AdjacentLane],
                  e_Cnt_right_adjacent_lane_count: int, as_right_adjacent_lanes: List[AdjacentLane],
-                 e_Cnt_downstream_lane_count: int, as_downstream_lanes: List[LaneManeuver],
-                 e_Cnt_upstream_lane_count: int, as_upstream_lanes: List[LaneManeuver],
+                 e_Cnt_downstream_lane_count: int, as_downstream_lanes: List[LaneSegmentConnectivity],
+                 e_Cnt_upstream_lane_count: int, as_upstream_lanes: List[LaneSegmentConnectivity],
                  e_v_nominal_speed: float, e_Cnt_nominal_path_point_count: int, a_nominal_path_points: List[NominalPathPoint],
                  e_Cnt_left_boundary_points_count: int, as_left_boundary_points: List[BoundaryPoint],
                  e_Cnt_right_boundary_points_count: int, as_right_boundary_points: List[BoundaryPoint],
@@ -764,11 +760,11 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
 
         as_downstream_lanes = list()
         for i in range(pubsubMsg.e_Cnt_downstream_lane_count):
-            as_downstream_lanes.append(LaneManeuver.deserialize(pubsubMsg.as_downstream_lanes[i]))
+            as_downstream_lanes.append(LaneSegmentConnectivity.deserialize(pubsubMsg.as_downstream_lanes[i]))
 
         as_upstream_lanes = list()
         for i in range(pubsubMsg.e_Cnt_upstream_lane_count):
-            as_upstream_lanes.append(LaneManeuver.deserialize(pubsubMsg.as_upstream_lanes[i]))
+            as_upstream_lanes.append(LaneSegmentConnectivity.deserialize(pubsubMsg.as_upstream_lanes[i]))
 
         a_nominal_path_points = list()
         for i in range(pubsubMsg.e_Cnt_nominal_path_point_count):

@@ -127,12 +127,12 @@ class CartesianPose(PUBSUB_MSG_IMPL):
 
 
 class LaneFrenetPose(PUBSUB_MSG_IMPL):
-    e_l_EastX = float
-    e_l_NorthY = float
-    e_phi_heading = float
-    e_v_velocity = float
-    e_a_acceleration = float
-    e_il_curvature = float
+    e_l_s = float
+    e_v_s_dot = float
+    e_a_s_dotdot = float
+    e_l_d = float
+    e_v_d_dot = float
+    e_a_d_dotdot = float
 
     def __init__(self, e_l_s, e_v_s_dot, e_a_s_dotdot, e_l_d, e_v_d_dot, e_a_d_dotdot):
         # type: (float, float, float, float, float, float)->None
