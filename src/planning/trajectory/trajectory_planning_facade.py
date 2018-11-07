@@ -16,10 +16,11 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
-from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
+from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg, \
+    GoalVisualization, ObjectVisualization
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories
+from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, C_Y
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.planning.utils.transformations import Transformations
@@ -127,7 +128,8 @@ class TrajectoryPlanningFacade(DmModule):
 
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
-                state_aligned, params.reference_route, ctrajectories, costs,
+                state_aligned, params.target_state, lon_plan_horizon,
+                params.reference_route, ctrajectories,
                 params.time - state.ego_state.timestamp_in_sec, self._strategy_handlers[params.strategy].predictor)
 
             self._publish_debug(debug_results)
@@ -207,34 +209,20 @@ class TrajectoryPlanningFacade(DmModule):
         return updated_state
 
     @staticmethod
-    def _prepare_visualization_msg(state: State, reference_route: FrenetSerret2DFrame,
-                                   ctrajectories: CartesianTrajectories, costs: np.ndarray,
+    def _prepare_visualization_msg(state: State, cartesian_goal: CartesianExtendedState, plan_horizon: float,
+                                   reference_route: FrenetSerret2DFrame,
+                                   ctrajectories: CartesianTrajectories,
                                    planning_horizon: float, predictor: EgoAwarePredictor):
         """
         prepares visualization message for visualization purposes
         :param state: short-term prediction aligned state
         :param reference_route: the reference route got from BP (frenet frame)
         :param ctrajectories: alternative trajectories in cartesian-frame
-        :param costs: costs computed for each alternative trajectory
         :param planning_horizon: [sec] the (relative) planning-horizon used for planning
         :return:
         """
-        # this assumes the state is already aligned by short time prediction
-        most_recent_timestamp = state.ego_state.timestamp_in_sec
-        prediction_timestamps = np.arange(most_recent_timestamp, most_recent_timestamp + planning_horizon,
-                                          VISUALIZATION_PREDICTION_RESOLUTION, float)
-
-        # TODO: move this to visualizer!
-        # Currently we are predicting the state at ego's timestamp and at the end of the traj execution time.
-        # predicted_states[0] is the current state
-        # predicted_states[1] is the predicted state in the end of the execution of traj.
-        # TODO: Hack! We need a prediction method for this case which: 1. creates states,
-        # TODO: 2.predicts for more than one timestamp, 3. ego can't be None because LCM doesn't like it.
-        predicted_states_without_ego = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps,
-                                                               action_trajectory=None)
-        predicted_states = [State(occupancy_state=predicted_state.occupancy_state,
-                                  dynamic_objects=predicted_state.dynamic_objects,
-                                  ego_state=state.ego_state) for predicted_state in predicted_states_without_ego]
+        # TODO: add recipe to trajectory_params for goal's description
+        goal_vis = GoalVisualization(plan_horizon, cartesian_goal[:(C_Y+1)], cartesian_goal[C_V], "")
 
         # downsample reference route for visualization
         downsample_skip_factor = max(1, int(DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION // reference_route.ds))
@@ -246,12 +234,23 @@ class TrajectoryPlanningFacade(DmModule):
 
         # slice alternative trajectories by skipping indices - for visualization
         sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
-        sliced_costs = costs[alternative_ids_skip_range]
 
-        return TrajectoryVisualizationMsg(downsampled_reference_points,
-                                          sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]),
-                                          :C_V],
-                                          sliced_costs,
-                                          predicted_states[0],
-                                          predicted_states[1:],
-                                          planning_horizon)
+        # this assumes the state is already aligned by short time prediction
+        most_recent_timestamp = state.ego_state.timestamp_in_sec
+        prediction_timestamps = np.arange(most_recent_timestamp, most_recent_timestamp + planning_horizon,
+                                          VISUALIZATION_PREDICTION_RESOLUTION, float)
+
+        objects_visualizations = []
+        for i, obj in enumerate(state.dynamic_objects):
+            wrapped_fstate = np.array([obj.map_state.road_fstate])
+            if obj.cartesian_state[C_V] > 0:  # calculate predictions only for moving objects
+                object_predictions = predictor.predict_frenet_states(wrapped_fstate, prediction_timestamps)[0]
+            else:  # leave only current fstate
+                object_predictions = wrapped_fstate
+            objects_visualizations.append(ObjectVisualization(obj.obj_id, obj.size, object_predictions))
+
+        return TrajectoryVisualizationMsg(state.ego_state.cartesian_state,
+                                          goal_vis,
+                                          downsampled_reference_points,
+                                          sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :(C_Y+1)],
+                                          objects_visualizations)
