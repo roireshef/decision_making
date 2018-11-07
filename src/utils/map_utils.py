@@ -23,11 +23,11 @@ class MapUtils:
         return MapService.get_instance()._lane_address[lane_id][0]
 
     @staticmethod
-    def get_lane_index(lane_id: int) -> int:
+    def get_lane_ordinal(lane_id: int) -> int:
         """
-        get lane index of the lane on the road (the rightest lane's index is 0)
+        get lane ordinal of the lane on the road (the rightest lane's ordinal is 0)
         :param lane_id:
-        :return: lane index
+        :return: lane's ordinal
         """
         return MapService.get_instance()._lane_address[lane_id][1]
 
@@ -60,12 +60,12 @@ class MapUtils:
         map_api = MapService.get_instance()
         road_id, lane_idx = map_api._lane_address[lane_id]
         num_lanes = map_api.get_num_lanes(road_id)
-        if relative_lane == RelativeLane.RIGHT_LANE:
-            return [map_api._lane_by_address[(road_id, idx)] for idx in range(lane_idx-1, -1, -1)
-                    if (road_id, idx) in map_api._lane_by_address]
-        else:
-            return [map_api._lane_by_address[(road_id, idx)] for idx in range(lane_idx+1, num_lanes)
-                    if (road_id, idx) in map_api._lane_by_address]
+
+        idxs = {RelativeLane.RIGHT_LANE: range(lane_idx - 1, -1, -1),
+                RelativeLane.SAME_LANE: range(lane_idx, lane_idx+1),
+                RelativeLane.LEFT_LANE: range(lane_idx + 1, num_lanes)}[relative_lane]
+
+        return [map_api._lane_by_address[(road_id, idx)] for idx in idxs if (road_id, idx) in map_api._lane_by_address]
 
     # TODO: remove it after introduction of the new mapping module
     @staticmethod
@@ -120,7 +120,7 @@ class MapUtils:
         road_segment_id = MapUtils.get_road_segment_by_lane(lane_id)
         lane_width = map_api.get_road(road_segment_id).lane_width
         num_lanes = map_api.get_road(road_segment_id).lanes_num
-        lane_idx = MapUtils.get_lane_index(lane_id)
+        lane_idx = MapUtils.get_lane_ordinal(lane_id)
         return (lane_idx + 0.5)*lane_width, (num_lanes - lane_idx - 0.5)*lane_width
 
     @staticmethod
@@ -198,7 +198,7 @@ class MapUtils:
     @staticmethod
     def get_lanes_by_road_segment(road_segment_id: int) -> List[int]:
         """
-        Get sorted list of lanes for given road segment. The output lanes are ordered by the lanes' index,
+        Get sorted list of lanes for given road segment. The output lanes are ordered by the lanes' ordinal,
         i.e. from the rightest lane to the most left.
         :param road_segment_id:
         :return: sorted list of lane segments' IDs
