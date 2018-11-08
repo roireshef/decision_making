@@ -5,16 +5,15 @@ import numpy as np
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNumpyArray import LcmNumpyArray
-from common_data.interface.py.idl_generated_files.dm import TsSYS_TrajectoryVisualizationMsg
 
 
-class ObjectVisualization(PUBSUB_MSG_IMPL):
+class PredictionsVisualization(PUBSUB_MSG_IMPL):
     def __init__(self, e_object_id: int, a_predictions: np.array):
         self.e_object_id = e_object_id
         self.a_predictions = a_predictions
 
-    def serialize(self) -> TsSYS_ObjectVisualization:
-        pubsub_msg = TsSYS_ObjectVisualization()
+    def serialize(self) -> TsSYS_PredictionsVisualization:
+        pubsub_msg = TsSYS_PredictionsVisualization()
 
         pubsub_msg.e_object_id = self.e_object_id
 
@@ -27,14 +26,14 @@ class ObjectVisualization(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg: TsSYS_ObjectVisualization):
+    def deserialize(cls, pubsubMsg: TsSYS_PredictionsVisualization):
         return cls(pubsubMsg.e_object_id,
                    pubsubMsg.a_predictions.data.reshape(
                        tuple(pubsubMsg.a_predictions.shape[:pubsubMsg.a_predictions.num_dimensions])))
 
 
 class TrajectoryVisualizationMsg(PUBSUB_MSG_IMPL):
-    def __init__(self, trajectories: np.ndarray, actors: List[ObjectVisualization], e_recipe_description: str):
+    def __init__(self, trajectories: np.ndarray, actors: List[PredictionsVisualization], e_recipe_description: str):
         """
         Message that holds debug results of WerlingPlanner to be broadcasted to the visualizer
         :param trajectories: 3D array of additional trajectories: num_trajectories x trajectory_length x 2
@@ -65,5 +64,6 @@ class TrajectoryVisualizationMsg(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg: TsSYS_TrajectoryVisualizationMsg):
         return cls(pubsubMsg.trajectories.data.reshape(
                        tuple(pubsubMsg.trajectories.shape[:pubsubMsg.trajectories.num_dimensions])),
-                   [ObjectVisualization.deserialize(pubsubMsg.actors[i]) for i in range(pubsubMsg.pubsub_msg.num_actors)],
+                   [PredictionsVisualization.deserialize(pubsubMsg.actors[i])
+                    for i in range(pubsubMsg.pubsub_msg.num_actors)],
                    pubsubMsg.e_recipe_description)
