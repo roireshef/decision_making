@@ -27,9 +27,9 @@ class PredictionsVisualization(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYS_PredictionsVisualization):
-        return cls(pubsubMsg.e_object_id,
-                   pubsubMsg.a_predictions.data.reshape(
-                       tuple(pubsubMsg.a_predictions.shape[:pubsubMsg.a_predictions.num_dimensions])))
+        predictions_shape = pubsubMsg.a_predictions.shape[:pubsubMsg.a_predictions.num_dimensions]
+        predictions_size = np.prod(predictions_shape)
+        return cls(pubsubMsg.e_object_id, pubsubMsg.a_predictions.data[:predictions_size].reshape(tuple(predictions_shape)))
 
 
 class TrajectoryVisualizationMsg(PUBSUB_MSG_IMPL):
@@ -62,8 +62,9 @@ class TrajectoryVisualizationMsg(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYS_TrajectoryVisualizationMsg):
-        return cls(pubsubMsg.trajectories.data.reshape(
-                       tuple(pubsubMsg.trajectories.shape[:pubsubMsg.trajectories.num_dimensions])),
+        trajectories_shape = pubsubMsg.trajectories.shape[:pubsubMsg.trajectories.num_dimensions]
+        trajectories_size = np.prod(trajectories_shape)
+        return cls(pubsubMsg.trajectories.data[:trajectories_size].reshape(tuple(trajectories_shape)),
                    [PredictionsVisualization.deserialize(pubsubMsg.actors[i])
                     for i in range(pubsubMsg.pubsub_msg.num_actors)],
                    pubsubMsg.e_recipe_description)
