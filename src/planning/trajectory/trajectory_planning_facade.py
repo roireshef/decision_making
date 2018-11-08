@@ -128,9 +128,8 @@ class TrajectoryPlanningFacade(DmModule):
 
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
-                state_aligned, params.target_state, lon_plan_horizon,
-                params.reference_route, ctrajectories,
-                params.time - state.ego_state.timestamp_in_sec, self._strategy_handlers[params.strategy].predictor)
+                state_aligned, ctrajectories, params.time - state.ego_state.timestamp_in_sec,
+                self._strategy_handlers[params.strategy].predictor)
 
             self._publish_debug(debug_results)
 
@@ -209,9 +208,7 @@ class TrajectoryPlanningFacade(DmModule):
         return updated_state
 
     @staticmethod
-    def _prepare_visualization_msg(state: State, cartesian_goal: CartesianExtendedState, plan_horizon: float,
-                                   reference_route: FrenetSerret2DFrame,
-                                   ctrajectories: CartesianTrajectories,
+    def _prepare_visualization_msg(state: State, ctrajectories: CartesianTrajectories,
                                    planning_horizon: float, predictor: EgoAwarePredictor):
         """
         prepares visualization message for visualization purposes
@@ -222,16 +219,9 @@ class TrajectoryPlanningFacade(DmModule):
         :return:
         """
         # TODO: add recipe to trajectory_params for goal's description
-        goal_vis = GoalVisualization(plan_horizon, cartesian_goal[:(C_Y+1)], cartesian_goal[C_V], "")
-
-        # downsample reference route for visualization
-        downsample_skip_factor = max(1, int(DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION // reference_route.ds))
-        downsampled_reference_points = reference_route.points[::downsample_skip_factor]
-
         # slice alternative trajectories by skipping indices - for visualization
         alternative_ids_skip_range = range(0, len(ctrajectories),
                                            max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
-
         # slice alternative trajectories by skipping indices - for visualization
         sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
 
@@ -247,10 +237,7 @@ class TrajectoryPlanningFacade(DmModule):
                 object_predictions = predictor.predict_frenet_states(wrapped_fstate, prediction_timestamps)[0]
             else:  # leave only current fstate
                 object_predictions = wrapped_fstate
-            objects_visualizations.append(ObjectVisualization(obj.obj_id, obj.size, object_predictions))
+            objects_visualizations.append(ObjectVisualization(obj.obj_id, object_predictions))
 
-        return TrajectoryVisualizationMsg(state.ego_state.cartesian_state,
-                                          goal_vis,
-                                          downsampled_reference_points,
-                                          sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :(C_Y+1)],
-                                          objects_visualizations)
+        return TrajectoryVisualizationMsg(sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :(C_Y+1)],
+                                          objects_visualizations, "")
