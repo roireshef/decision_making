@@ -6,7 +6,7 @@ from Rte_Types.sub_structures import TsSYSDataTrajectoryVisualization
 from Rte_Types.sub_structures.TsSYS_PredictionsVisualization import TsSYSPredictionsVisualization
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
-from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNumpyArray import LcmNumpyArray
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNonTypedNumpyArray import LcmNonTypedNumpyArray
 
 
 class PredictionsVisualization(PUBSUB_MSG_IMPL):
@@ -20,7 +20,7 @@ class PredictionsVisualization(PUBSUB_MSG_IMPL):
         pubsub_msg.e_object_id = self.e_object_id
 
         pubsub_msg.e_Cnt_num_predictions = self.a_predictions.shape[0]
-        pubsub_msg.a_predictions = LcmNumpyArray()
+        pubsub_msg.a_predictions = LcmNonTypedNumpyArray()
         pubsub_msg.a_predictions.num_dimensions = len(self.a_predictions.shape)
         pubsub_msg.a_predictions.shape = list(self.a_predictions.shape)
         pubsub_msg.a_predictions.length = self.a_predictions.size
@@ -52,7 +52,7 @@ class TrajectoryVisualizationMsg(PUBSUB_MSG_IMPL):
         pubsub_msg = TsSYSDataTrajectoryVisualization()
 
         pubsub_msg.e_Cnt_num_trajectories = self.a_trajectories.shape[0]
-        pubsub_msg.a_trajectories = LcmNumpyArray()
+        pubsub_msg.a_trajectories = LcmNonTypedNumpyArray()
         pubsub_msg.a_trajectories.num_dimensions = len(self.a_trajectories.shape)
         pubsub_msg.a_trajectories.shape = list(self.a_trajectories.shape)
         pubsub_msg.a_trajectories.length = self.a_trajectories.size
