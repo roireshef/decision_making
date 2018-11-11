@@ -12,22 +12,22 @@ public:
 		m_isValid = false;
 		m_numberOfSamples = decltype(m_numberOfSamples)();
 		// Points path
-		cnpy::NpyArray os = cnpy::npy_load(directory + "/self.O.npy");
+		cnpy::NpyArray os = cnpy::npy_load(directory + "/O.npy");
 		const auto oData = os.data<double>();
 		// T
-		cnpy::NpyArray ts = cnpy::npy_load(directory + "/self.T.npy");
+		cnpy::NpyArray ts = cnpy::npy_load(directory + "/T.npy");
 		const auto tData = ts.data<double>();
 		// N
-		cnpy::NpyArray ns = cnpy::npy_load(directory + "/self.N.npy");
+		cnpy::NpyArray ns = cnpy::npy_load(directory + "/N.npy");
 		const auto nData = ns.data<double>();
 		// K
-		cnpy::NpyArray ks = cnpy::npy_load(directory + "/self.k.npy");
+		cnpy::NpyArray ks = cnpy::npy_load(directory + "/k.npy");
 		const auto kData = ks.data<double>();
 		// K'
-		cnpy::NpyArray kTags = cnpy::npy_load(directory + "/self.k_tag.npy");
+		cnpy::NpyArray kTags = cnpy::npy_load(directory + "/k_tag.npy");
 		const auto kTagData = kTags.data<double>();
 		// ds
-		cnpy::NpyArray ds = cnpy::npy_load(directory + "/self.ds.npy");
+		cnpy::NpyArray ds = cnpy::npy_load(directory + "/ds.npy");
 		const auto dsData = ds.data<double>();
 
 		// Points path
@@ -56,7 +56,7 @@ public:
 		m_ds = float(dsData[0]);
 
 		m_isValid = true;
-		m_numberOfSamples = numberOfComponents;
+		m_numberOfSamples = numberOfPoints;
 		return true;
 	}
 
@@ -123,8 +123,8 @@ public:
 		segment.fillFromDirectory(directory);
 
 
-		m_segments[segment.getO()] = segment;
-		return m_segments[segment.getO()];
+		m_segments[segment.getKey()] = segment;
+		return m_segments[segment.getKey()];
 	}
 
 	SegmentType findSegment(const KeyType& oContainer) {

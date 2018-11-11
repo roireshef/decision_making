@@ -175,7 +175,7 @@ int main()
 	SegmentBank<float> segmentBank;
 	decltype(segmentBank)::KeyType keyToRetrieve;
 	// Add some segments.
-	auto addedSegment = segmentBank.addSegment("W:/tmp/vs_sandbox/fernet/Project1/x64/Debug/data/testSegmentData000");
+	auto addedSegment = segmentBank.addSegment("./data/testSegmentData000");
 	keyToRetrieve = addedSegment.getKey();
 
 	/*
@@ -234,8 +234,8 @@ int main()
 
 	auto start = std::chrono::high_resolution_clock::now();
 	///// Start of f to c to f trajectories '{'
-	const auto pointsCartesianFromFrenet = frame2D.toCartesianPoints(fPoints);
-	const auto pointsFrenetFromCartesian = frame2D.toFrenetPoints(pointsCartesianFromFrenet);
+	const auto pointsCartesianFromFrenet = frame2DFromNumpy.toCartesianPoints(fPoints);
+	const auto pointsFrenetFromCartesian = frame2DFromNumpy.toFrenetPoints(pointsCartesianFromFrenet);
 	///// '}' End of f to c to f trajectories
 	auto finish = std::chrono::high_resolution_clock::now();
 	std::cout << "high_resolution_clock: toCartesianPoints + toFrenetPoints " << __FILE__ << ' ' << __LINE__ << " took " << std::chrono::duration_cast<micro>(finish - start).count() << std::endl;
@@ -264,7 +264,7 @@ int main()
 
 	start = std::chrono::high_resolution_clock::now();
 	///// Start of c to f trajectories '{'
-	auto frenetState = frame2D.toFrenetStateVectors(posPoints);
+	auto frenetState = frame2DFromNumpy.toFrenetStateVectors(posPoints);
 	///// '}' End of c to f trajectories
 	finish = std::chrono::high_resolution_clock::now();
 	std::cout << "high_resolution_clock: toFrenetStateVectors " << __FILE__ << ' ' << __LINE__ << " took " << std::chrono::duration_cast<micro>(finish - start).count() << std::endl;
@@ -294,7 +294,7 @@ int main()
 
 	start = std::chrono::high_resolution_clock::now();
 	///// Start of f to c trajectories '{'
-	auto cartesianState = frame2D.toCartesianStateVectors(posFrenetPoints);
+	auto cartesianState = frame2DFromNumpy.toCartesianStateVectors(posFrenetPoints);
 	///// '}' End of f to c trajectories
 	finish = std::chrono::high_resolution_clock::now();
 	std::cout << "high_resolution_clock: toCartesianStateVectors " << __FILE__ << ' ' << __LINE__ << " took " << std::chrono::duration_cast<micro>(finish - start).count() << std::endl;
