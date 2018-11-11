@@ -17,7 +17,7 @@ from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg, \
-    GoalVisualization, ObjectVisualization
+    PredictionsVisualization
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, C_Y
@@ -237,7 +237,7 @@ class TrajectoryPlanningFacade(DmModule):
                 object_predictions = predictor.predict_frenet_states(wrapped_fstate, prediction_timestamps)[0]
             else:  # leave only current fstate
                 object_predictions = wrapped_fstate
-            objects_visualizations.append(ObjectVisualization(obj.obj_id, object_predictions))
+            objects_visualizations.append(PredictionsVisualization(obj.obj_id, object_predictions))
 
         return TrajectoryVisualizationMsg(sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :(C_Y+1)],
                                           objects_visualizations, "")
