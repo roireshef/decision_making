@@ -58,7 +58,7 @@ class DataTrajectoryVisualization(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSDataTrajectoryVisualization):
-        return cls(pubsubMsg.a_trajectories[:pubsubMsg.e_Cnt_num_trajectories][:pubsubMsg.e_Cnt_num_points_in_trajectory],
+        return cls(pubsubMsg.a_trajectories[:pubsubMsg.e_Cnt_num_trajectories, :pubsubMsg.e_Cnt_num_points_in_trajectory],
                    [PredictionsVisualization.deserialize(pubsubMsg.as_actors_predictions[i])
                     for i in range(pubsubMsg.e_Cnt_num_actors)],
                    pubsubMsg.e_recipe_description)
