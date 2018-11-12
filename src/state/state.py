@@ -160,11 +160,11 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         return self._get_adjacent_map_state(RelativeLane.SAME_LANE)
 
     @property
-    def right_map_state(self):
+    def right_lane_map_state(self):
         return self._get_adjacent_map_state(RelativeLane.RIGHT_LANE)
 
     @property
-    def left_map_state(self):
+    def left_lane_map_state(self):
         return self._get_adjacent_map_state(RelativeLane.LEFT_LANE)
 
     def _get_adjacent_map_state(self, relative_lane):
@@ -257,8 +257,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :return: list of frenet-states of size len(relative_lanes)
         """
         return [self.map_state.lane_fstate if relative_lane == RelativeLane.SAME_LANE
-                else self.left_map_state.lane_fstate if relative_lane == RelativeLane.LEFT_LANE
-                else self.right_map_state.lane_fstate if relative_lane == RelativeLane.RIGHT_LANE else None
+                else self.left_lane_map_state.lane_fstate if relative_lane == RelativeLane.LEFT_LANE
+                else self.right_lane_map_state.lane_fstate if relative_lane == RelativeLane.RIGHT_LANE else None
                 for relative_lane in relative_lanes]
 
     def serialize(self):
