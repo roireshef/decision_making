@@ -17,7 +17,7 @@ from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg, \
-    PredictionsVisualization
+    PredictionsVisualization, DataTrajectoryVisualization, Header, Timestamp
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, C_Y
@@ -239,5 +239,9 @@ class TrajectoryPlanningFacade(DmModule):
                 object_predictions = wrapped_fstate
             objects_visualizations.append(PredictionsVisualization(obj.obj_id, object_predictions))
 
-        return TrajectoryVisualizationMsg(sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :(C_Y+1)],
-                                          objects_visualizations, "")
+        ego_time = state.ego_state.timestamp_in_sec
+        header = Header(0, Timestamp(int(np.floor(ego_time)), int((ego_time % 1) * 2**32)), 0)
+        visualization_data = DataTrajectoryVisualization(
+            sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :(C_Y+1)],
+            objects_visualizations, "")
+        return TrajectoryVisualizationMsg(header, visualization_data)
