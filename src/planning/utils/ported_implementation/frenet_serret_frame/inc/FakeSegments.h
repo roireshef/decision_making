@@ -119,7 +119,7 @@ public:
 
 	auto addSegment(const std::string& directory) {
 
-		Segment<float> segment;
+		Segment<TDataType> segment;
 		segment.fillFromDirectory(directory);
 
 
@@ -141,14 +141,14 @@ private:
 
 
 
-template<typename TdataType>
-void fillWithData(std::vector<float>& destContainer, const TdataType* srcData, int numberOfComponents, int numberOfPoints)
+template<typename TdataType, typename TDestDataType>
+void fillWithData(std::vector<TDestDataType>& destContainer, const TdataType* srcData, int numberOfComponents, int numberOfPoints)
 {
 	for (auto component = int(); component < numberOfComponents; ++component)
 	{
 		for (auto element = int(); element < numberOfPoints; ++element)
 		{
-			destContainer.push_back(float(srcData[numberOfComponents * element + component]));
+			destContainer.push_back(TDestDataType(srcData[numberOfComponents * element + component]));
 		}
 	}
 }

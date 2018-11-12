@@ -412,16 +412,16 @@ namespace GM
 
 					for (auto pointIterator = int(); pointIterator < numberOfElementsInTrajectory; ++pointIterator)
 					{
-						const auto& s = posPoints.m_data[pointIterator];
-						const auto& sv = posPoints.m_data[pointIterator + static_cast<int>(TrajectoriesFrenet::FS_SV) * posPoints.m_dimensions[0U]];
-						const auto& dx = posPoints.m_data[pointIterator + static_cast<int>(TrajectoriesFrenet::FS_DX) * posPoints.m_dimensions[0U]];
-						const auto& dv = posPoints.m_data[pointIterator + static_cast<int>(TrajectoriesFrenet::FS_DV) * posPoints.m_dimensions[0U]];
-						const auto& da = posPoints.m_data[pointIterator + static_cast<int>(TrajectoriesFrenet::FS_DA) * posPoints.m_dimensions[0U]];
-						const auto& sa = posPoints.m_data[pointIterator + static_cast<int>(TrajectoriesFrenet::FS_SA) * posPoints.m_dimensions[0U]];
+						const auto& s = posPoints.m_data[pointIterator /**  /*((TinputTransposed == true) ? posPoints.m_dimensions[1U]/* : 1)*/];
+						const auto& sv = posPoints.m_data[pointIterator /** posPoints.m_dimensions[1U]*/ + static_cast<int>(TrajectoriesFrenet::FS_SV) * posPoints.m_dimensions[0U]];
+						const auto& dx = posPoints.m_data[pointIterator /** posPoints.m_dimensions[1U]*/ + static_cast<int>(TrajectoriesFrenet::FS_DX) * posPoints.m_dimensions[0U]];
+						const auto& dv = posPoints.m_data[pointIterator /** posPoints.m_dimensions[1U]*/ + static_cast<int>(TrajectoriesFrenet::FS_DV) * posPoints.m_dimensions[0U]];
+						const auto& da = posPoints.m_data[pointIterator /** posPoints.m_dimensions[1U]*/ + static_cast<int>(TrajectoriesFrenet::FS_DA) * posPoints.m_dimensions[0U]];
+						const auto& sa = posPoints.m_data[pointIterator /** posPoints.m_dimensions[1U]*/ + static_cast<int>(TrajectoriesFrenet::FS_SA) * posPoints.m_dimensions[0U]];
 
 						auto taylor = GM::UC::FrenetSerret::MATH_UTILITIES::taylorInterp2D(s, m_ds, m_pathPointsIn, m_k, m_kTag, m_t, m_n);
 
-						const auto thetaR = atan2(taylor.m_t[static_cast<int>(TrajectoriesCartesian::C_Y)], taylor.m_t[static_cast<int>(TrajectoriesCartesian::C_X)]);
+						const auto thetaR = std::atan2(taylor.m_t[static_cast<int>(TrajectoriesCartesian::C_Y)], taylor.m_t[static_cast<int>(TrajectoriesCartesian::C_X)]);
 						const auto radiusRatio = TdataType(1.0f) - taylor.m_k * dx;
 
 						const auto dTag = TdataType() == sv ? TdataType() : dv / sv;
@@ -429,9 +429,9 @@ namespace GM
 
 						const auto tanDeltaTheta = dTag / radiusRatio;
 
-						const auto deltaTheta = atan2(dTag, radiusRatio);
+						const auto deltaTheta = std::atan2(dTag, radiusRatio);
 						// Note: Uses (1 + x^2) ^ -0.5 == cos(atan(x)) in order to achieve higher precision.
-						const auto cosDeltaTheta = TdataType(1.0f) / sqrtf(1.0f + tanDeltaTheta * tanDeltaTheta);
+						const auto cosDeltaTheta = TdataType(1.0f) / std::sqrt(TdataType(1.0f) + tanDeltaTheta * tanDeltaTheta);
 
 						const auto v = (sv * radiusRatio) / cosDeltaTheta;
 
@@ -460,12 +460,12 @@ namespace GM
 						const auto thetaX = thetaR + deltaTheta;
 
 						// Write back: {posX[0], posx[1], thetaX, v, a, k}
-						cartesianStateData[TnumberComponentsPerElement * pointIterator]     = posX[0U];
-						cartesianStateData[TnumberComponentsPerElement * pointIterator + 1] = posX[1U];
-						cartesianStateData[TnumberComponentsPerElement * pointIterator + 2] = thetaX;
-						cartesianStateData[TnumberComponentsPerElement * pointIterator + 3] = v;
-						cartesianStateData[TnumberComponentsPerElement * pointIterator + 4] = a;
-						cartesianStateData[TnumberComponentsPerElement * pointIterator + 5] = k;
+						cartesianStateData[pointIterator]     = posX[0U];
+						cartesianStateData[pointIterator + 1 * dims2Dpoints[0]] = posX[1U];
+						cartesianStateData[pointIterator + 2 * dims2Dpoints[0]] = thetaX;
+						cartesianStateData[pointIterator + 3 * dims2Dpoints[0]] = v;
+						cartesianStateData[pointIterator + 4 * dims2Dpoints[0]] = a;
+						cartesianStateData[pointIterator + 5 * dims2Dpoints[0]] = k;
 
 					}
 
@@ -564,12 +564,12 @@ namespace GM
 
 						const auto dA = dTag2 * (sV * sV) + dTag * sA;
 						// write back
-						frenetStateData[TnumberComponentsPerElement * pointIterator]     = prjct[pointIterator].m_s;
-						frenetStateData[TnumberComponentsPerElement * pointIterator + 1] = sV;
-						frenetStateData[TnumberComponentsPerElement * pointIterator + 2] = sA;
-						frenetStateData[TnumberComponentsPerElement * pointIterator + 3] = distancePointVal;
-						frenetStateData[TnumberComponentsPerElement * pointIterator + 4] = dV;
-						frenetStateData[TnumberComponentsPerElement * pointIterator + 5] = dA;
+						frenetStateData[pointIterator] = prjct[pointIterator].m_s;
+						frenetStateData[pointIterator + 1 * dims2Dpoints[0]] = sV;
+						frenetStateData[pointIterator + 2 * dims2Dpoints[0]] = sA;
+						frenetStateData[pointIterator + 3 * dims2Dpoints[0]] = distancePointVal;
+						frenetStateData[pointIterator + 4 * dims2Dpoints[0]] = dV;
+						frenetStateData[pointIterator + 5 * dims2Dpoints[0]] = dA;
 						++pointIterator;
 					}
 
@@ -601,6 +601,14 @@ namespace GM
 				{
 					m_cartesianPoints.swap(decltype(m_cartesianPoints)());
 				}
+
+				/**************************************** Not required ******************************************************/
+				template<int TnumberComponentsPerElement>
+				std::vector<GM::UC::FrenetSerret::MATH_UTILITIES::ProjectedCartesianPoint<TdataType>> projectCartesianPoints(const Points<TnumberComponentsPerElement>& fromPoints)
+				{
+					return GM::UC::FrenetSerret::MATH_UTILITIES::projectCartesianPoints<TdataType>(fromPoints, m_pathPointsIn, m_k, m_kTag, m_t, m_n, m_ds);
+				}
+
 
 			private:
 				bool	  m_isValid = true;
@@ -663,7 +671,7 @@ namespace GM
 					//assert(inSValue > m_sLimits.m_min && inSValue < m_sLimits.m_max);
 					Taylor2DResult<TdataType> rv;
 					const auto progressDs = inSValue / m_ds;
-					const auto  OindexFloat = roundf(progressDs);
+					const auto  OindexFloat = std::round(progressDs);
 					const auto deltaS = (progressDs - OindexFloat) * m_ds;
 
 					const auto OindexInt = int(OindexFloat);
@@ -873,10 +881,10 @@ namespace GM
 					{
 						auto sApprox = (prjct.m_clippedProgress[pointItr] + prjct.m_indexOfSegment[pointItr]) * ds;
 						auto taylor = GM::UC::FrenetSerret::MATH_UTILITIES::taylorInterp2D(sApprox, ds, pathPoints, m_k, m_kTag, m_t, m_N);
-						const auto isCurvatureBigEnough = fabsf(taylor.m_k) > TINY_CURVATURE;
+						const auto isCurvatureBigEnough = std::abs(taylor.m_k) > TINY_CURVATURE;
 						if (isCurvatureBigEnough)
 						{
-							const auto signedRadius = 1.0f / taylor.m_k;
+							const auto signedRadius = TdataType(1.0) / taylor.m_k;
 							// vector from the circle center to the input point
 							TdataType centerToPoint[2U]; //////
 							auto distanceCenterToPointSqr = TdataType();
@@ -895,12 +903,12 @@ namespace GM
 							}
 				
 							const auto cosCenterToPoint =
-											std::min(fabsf(unNormalizedAngleToPoint / sqrt(distanceCenterToPointSqr)), TdataType(1.0f));
+											std::min(std::abs(unNormalizedAngleToPoint / std::sqrt(distanceCenterToPointSqr)), TdataType(1.0f));
 				
 							// arc length from a_s to the new guess point
-							const auto stepMagnitude = acos(cosCenterToPoint) * fabsf(signedRadius);
+							const auto stepMagnitude = std::acos(cosCenterToPoint) * std::abs(signedRadius);
 							// get sign from norm.
-							const auto step = copysignf(stepMagnitude, stepNorm);
+							const auto step = TdataType(std::copysign(stepMagnitude, stepNorm));
 							sApprox += step;
 							taylor = GM::UC::FrenetSerret::MATH_UTILITIES::taylorInterp2D(sApprox, ds, pathPoints, m_k, m_kTag, m_t, m_N);
 						}
