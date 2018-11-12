@@ -1,0 +1,17 @@
+Current status:    
+    "Fake segments" instead of fit method:
+        user.cpp shows how one can use a third party library, to read python serialized files for the fake functionality.
+        This code is not intended for production, and a fit method shall be provided once ready.
+    Resource leaking not checked, but functionality check was conducted.
+
+How to integrate:
+    The following library allows one to read ".npy" files (Numpy serialized files):
+        third_party/cnpy
+    Once the cnpy is compiled, the following application example can provide a reference:
+        src/user.cpp 
+        The application demonstrates loading "Fitted segments", storing them in a data base, as using it as demanded.
+        Code for the heavy lifting of using cnpy and preparing the data for the API to use is provided in: inc/FakeSegments.h
+    Data to be used by the example application: /data/testSegmentData000/*.npy In the same format as agreed upon with the primary client.
+
+All code requires c++11 or later in order to compile.
+There are no dependencies that were not provided in this package.
