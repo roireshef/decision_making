@@ -1,4 +1,4 @@
-from decision_making.src.planning.types import FS_DX
+from decision_making.src.planning.types import FS_DX, FS_SX
 from decision_making.src.prediction.ego_aware_prediction.ended_maneuver_params import EndedManeuverParams
 from decision_making.src.prediction.ego_aware_prediction.maneuver_recognition.manuever_classifier import \
     ManeuverClassifier
@@ -29,7 +29,7 @@ class ConstantVelocityManeuverClassifier(ManeuverClassifier):
         map_state = object_state.map_state
 
         # Calculate object's initial state in Frenet frame according to model
-        lane_width = MapUtils.get_lane_width(map_state.lane_id, s=0)
+        lane_width = MapUtils.get_lane_width(map_state.lane_id, s=map_state.lane_fstate[FS_SX])
 
         # Fetch trajectory parameters
         avg_s_a = 0.0

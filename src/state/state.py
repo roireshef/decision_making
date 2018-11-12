@@ -178,10 +178,11 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def _get_adjacent_map_state(self, relative_lane):
         # type: (RelativeLane) -> MapState
         """
-        if relative_lane == RelativeLane.SAME_LANE, then get the same lane's map_state;
-        otherwise project the map_state on an adjacent lane's Frenet frame (use caching);
-        if the adjacent lane does not exist, return empty MapState(None, None)
-        :return: projected map_state
+        If relative_lane == RelativeLane.SAME_LANE, then get the same lane's map_state.
+        Otherwise project the map_state on an adjacent lane's Frenet frame (use caching).
+        If the adjacent lane does not exist, return empty MapState(None, None).
+        :param relative_lane: either SAME_LANE or RIGHT_LANE or LEFT_LANE
+        :return: projected map_state on the adjacent lane
         """
         if self._cached_map_states[relative_lane] is None:
             if relative_lane == RelativeLane.SAME_LANE:
