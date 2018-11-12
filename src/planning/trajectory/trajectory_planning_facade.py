@@ -14,10 +14,11 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
     LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
     TRAJECTORY_PLANNING_NAME_FOR_METRICS
 from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.messages.common_message import Header, Timestamp
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg, \
-    PredictionsVisualization, DataTrajectoryVisualization, Header, Timestamp
+    PredictionsVisualization, DataTrajectoryVisualization
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, C_Y
@@ -209,14 +210,14 @@ class TrajectoryPlanningFacade(DmModule):
 
     @staticmethod
     def _prepare_visualization_msg(state: State, ctrajectories: CartesianTrajectories,
-                                   planning_horizon: float, predictor: EgoAwarePredictor):
+                                   planning_horizon: float, predictor: EgoAwarePredictor) -> TrajectoryVisualizationMsg:
         """
         prepares visualization message for visualization purposes
         :param state: short-term prediction aligned state
-        :param reference_route: the reference route got from BP (frenet frame)
         :param ctrajectories: alternative trajectories in cartesian-frame
         :param planning_horizon: [sec] the (relative) planning-horizon used for planning
-        :return:
+        :param predictor: predictor for the actors' predictions
+        :return: trajectory visualization message
         """
         # TODO: add recipe to trajectory_params for goal's description
         # slice alternative trajectories by skipping indices - for visualization
