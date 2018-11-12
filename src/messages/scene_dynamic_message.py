@@ -239,9 +239,9 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
     e_Pct_location_uncertainty_y = float
     e_Pct_location_uncertainty_yaw = float
     e_Cnt_host_lane_frenet_id = int
-    s_cartesian_pose = np.ndarray
-    s_lane_frenet_pose = np.ndarray
-    s_host_lane_frenet_pose = np.ndarray
+    a_cartesian_pose = np.ndarray
+    a_lane_frenet_pose = np.ndarray
+    a_host_lane_frenet_pose = np.ndarray
 
     def __init__(self, e_r_probability, e_Cnt_lane_segment_id, e_e_dynamic_status, e_Pct_location_uncertainty_x,
                  e_Pct_location_uncertainty_y, e_Pct_location_uncertainty_yaw, e_Cnt_host_lane_frenet_id,
