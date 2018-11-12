@@ -9,8 +9,8 @@ from common_data.interface.py.pubsub import dm_pubsub_topics as pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
-    VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION, \
-    NUM_ALTERNATIVE_TRAJECTORIES, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
+    VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, \
+    MAX_VIS_TRAJECTORIES_NUMBER, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
     TRAJECTORY_PLANNING_NAME_FOR_METRICS
 from decision_making.src.infra.dm_module import DmModule
@@ -21,8 +21,7 @@ from decision_making.src.messages.visualization.trajectory_visualization_message
     PredictionsVisualization, DataTrajectoryVisualization
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, C_Y
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, C_Y, FS_SX, FS_DX
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.planning.utils.transformations import Transformations
 from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
@@ -221,8 +220,8 @@ class TrajectoryPlanningFacade(DmModule):
         """
         # TODO: add recipe to trajectory_params for goal's description
         # slice alternative trajectories by skipping indices - for visualization
-        alternative_ids_skip_range = range(0, len(ctrajectories),
-                                           max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
+        alternative_ids_skip_range = \
+            range(0, len(ctrajectories), max(int(len(ctrajectories) / MAX_VIS_TRAJECTORIES_NUMBER), 1))[:MAX_VIS_TRAJECTORIES_NUMBER]
         # slice alternative trajectories by skipping indices - for visualization
         sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
 
@@ -235,9 +234,9 @@ class TrajectoryPlanningFacade(DmModule):
         for i, obj in enumerate(state.dynamic_objects):
             wrapped_fstate = np.array([obj.map_state.road_fstate])
             if obj.cartesian_state[C_V] > 0:  # calculate predictions only for moving objects
-                object_predictions = predictor.predict_frenet_states(wrapped_fstate, prediction_timestamps)[0]
+                object_predictions = predictor.predict_frenet_states(wrapped_fstate, prediction_timestamps)[0][:, [FS_SX, FS_DX]]
             else:  # leave only current fstate
-                object_predictions = wrapped_fstate
+                object_predictions = wrapped_fstate[..., [FS_SX, FS_DX]]
             objects_visualizations.append(PredictionsVisualization(obj.obj_id, object_predictions))
 
         ego_time = state.ego_state.timestamp_in_sec
