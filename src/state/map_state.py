@@ -50,5 +50,4 @@ class MapState(PUBSUB_MSG_IMPL):
     @classmethod
     def deserialize(cls, lcm_msg):
         # type: (LcmMapState) -> MapState
-        return cls(np.ndarray(shape=tuple(lcm_msg.road_fstate.shape)
-                              , buffer=np.array(lcm_msg.road_fstate.data), dtype=float), lcm_msg.road_id)
+        return cls(lcm_msg.road_fstate.data, lcm_msg.road_id)

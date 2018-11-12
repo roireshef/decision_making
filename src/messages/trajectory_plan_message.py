@@ -2,6 +2,7 @@ import numpy as np
 
 from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNumpyArray import LcmNumpyArray
 from common_data.interface.py.idl_generated_files.dm import LcmTrajectoryData
+from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 
@@ -33,12 +34,7 @@ class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
         lcm_msg = LcmTrajectoryData()
 
         lcm_msg.timestamp = self.timestamp
-        lcm_msg.trajectory = LcmNumpyArray()
-        lcm_msg.trajectory.num_dimensions = len(self.trajectory.shape)
-        lcm_msg.trajectory.shape = list(self.trajectory.shape)
-        lcm_msg.trajectory.length = self.trajectory.size
-        lcm_msg.trajectory.data = self.trajectory.flat.__array__().tolist()
-
+        lcm_msg.trajectory = SerializationUtils.serialize_array(self.trajectory)
         lcm_msg.current_speed = self.current_speed
 
         return lcm_msg
@@ -48,7 +44,5 @@ class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
         # type: (LcmTrajectoryData) -> TrajectoryPlanMsg
 
         return cls(lcmMsg.timestamp,
-                   np.ndarray(shape=tuple(lcmMsg.trajectory.shape[:lcmMsg.trajectory.num_dimensions])
-                              , buffer=np.array(lcmMsg.trajectory.data)
-                              , dtype=float)
-                   , lcmMsg.current_speed)
+                   SerializationUtils.deserialize_any_array(lcmMsg.trajectory),
+                   lcmMsg.current_speed)
