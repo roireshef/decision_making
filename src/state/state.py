@@ -161,14 +161,28 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
     @property
     def right_lane_map_state(self):
+        """
+        project the map_state on the right lane's Frenet frame (use caching)
+        :return: projected map_state
+        """
         return self._get_adjacent_map_state(RelativeLane.RIGHT_LANE)
 
     @property
     def left_lane_map_state(self):
+        """
+        project the map_state on the left lane's Frenet frame (use caching)
+        :return: projected map_state
+        """
         return self._get_adjacent_map_state(RelativeLane.LEFT_LANE)
 
     def _get_adjacent_map_state(self, relative_lane):
         # type: (RelativeLane) -> MapState
+        """
+        if relative_lane == RelativeLane.SAME_LANE, then get the same lane's map_state;
+        otherwise project the map_state on an adjacent lane's Frenet frame (use caching);
+        if the adjacent lane does not exist, return empty MapState(None, None)
+        :return: projected map_state
+        """
         if self._cached_map_states[relative_lane] is None:
             if relative_lane == RelativeLane.SAME_LANE:
                 self._cached_map_states[relative_lane] = MapState.from_cartesian_state(self._cached_cartesian_state)
@@ -176,7 +190,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
                 adjacent_lane_ids = MapUtils.get_adjacent_lanes(self.map_state.lane_id, relative_lane)
                 if len(adjacent_lane_ids) > 0:
                     frenet = MapUtils.get_lane_frenet_frame(adjacent_lane_ids[0])
-                    # TODO: the current implementation of cstate_to_fstate is very slow
+                    # TODO: replace with faster implementation of cstate_to_fstate
                     fstate = frenet.cstate_to_fstate(self.cartesian_state)
                     self._cached_map_states[relative_lane] = MapState(fstate, adjacent_lane_ids[0])
                 else:  # distinguish between not cached and non-existing lane
