@@ -14,7 +14,7 @@ from mapping.src.transformations.geometry_utils import CartesianFrame
 class MapUtils:
 
     @staticmethod
-    def get_road_segment_by_lane(lane_id: int) -> int:
+    def get_road_segment_id_from_lane_id(lane_id: int) -> int:
         """
         get road_id containing the lane
         :param lane_id:
@@ -104,7 +104,7 @@ class MapUtils:
         :return: distance from the right lane border, distance from the left lane border
         """
         # this implementation assumes constant lane width (ignores the argument s)
-        lane_width = MapService.get_instance().get_road(MapUtils.get_road_segment_by_lane(lane_id)).lane_width
+        lane_width = MapService.get_instance().get_road(MapUtils.get_road_segment_id_from_lane_id(lane_id)).lane_width
         return lane_width/2, lane_width/2
 
     @staticmethod
@@ -117,7 +117,7 @@ class MapUtils:
         """
         # this implementation assumes constant lane width (ignores the argument s), the same width of all road's lanes
         map_api = MapService.get_instance()
-        road_segment_id = MapUtils.get_road_segment_by_lane(lane_id)
+        road_segment_id = MapUtils.get_road_segment_id_from_lane_id(lane_id)
         lane_width = map_api.get_road(road_segment_id).lane_width
         num_lanes = map_api.get_road(road_segment_id).lanes_num
         lane_ordinal = MapUtils.get_lane_ordinal(lane_id)
@@ -153,7 +153,7 @@ class MapUtils:
             starting_lon = EPS
 
         map_api = MapService.get_instance()
-        road_segment_id = MapUtils.get_road_segment_by_lane(lane_id)
+        road_segment_id = MapUtils.get_road_segment_id_from_lane_id(lane_id)
         # convert starting lane fpoint to starting road fpoint
         starting_cpoint = MapUtils.get_lane_frenet_frame(lane_id).fpoint_to_cpoint(np.array([starting_lon, 0]))
         starting_road_fpoint = map_api._rhs_roads_frenet[road_segment_id].cpoint_to_fpoint(starting_cpoint)
@@ -217,17 +217,17 @@ class MapUtils:
     def get_longitudinal_distance(lane_id1: int, lane_id2: int, longitude1: float, longitude2: float) -> Optional[float]:
         """
         Get longitudinal distance between two points located on lane centers, along lanes path starting from lane_id1.
-        lane_id2 must not be down/upstream of lane_id1, but the road segment containing lane_id2 must be subsequent
-        downstream or upstream of lane_id1.
+        lane_id2 must be down/upstream of lane_id1.
         :param lane_id1: lane segment of the first point
         :param lane_id2: lane segment of the second point
         :param longitude1: longitude of the first point relative to lane_id1
         :param longitude2: longitude of the second point relative to lane_id2
-        :return: longitudinal difference between the second point and the first point; if lane_id1 is ahead of lane_id2,
-         then return negative distance
+        :return: longitudinal difference between the second point and the first point;
+        if lane_id1 is ahead of lane_id2, then return negative distance;
+        if lane_id2 is not down/upstream of lane_id1, then return None
         """
-        connecting_lanes, is_forward = MapUtils._get_lane_segments_path(lane_id1, MapUtils.get_road_segment_by_lane(lane_id2))
-        if len(connecting_lanes) == 0:
+        connecting_lanes, is_forward = MapUtils._get_lane_segments_path(lane_id1, MapUtils.get_road_segment_id_from_lane_id(lane_id2))
+        if len(connecting_lanes) == 0 or connecting_lanes[-1] != lane_id2:
             return None
         sign = 1 if is_forward else -1
         lanes_excluding_front_lane = connecting_lanes[:-1] if is_forward else connecting_lanes[1:]
@@ -241,10 +241,10 @@ class MapUtils:
         For example, if one of the given lanes is subsequent downstream/upstream of another lane, return 0.
         :param lane_id1:
         :param lane_id2:
-        :return: Difference between lane ordinal of the subsequent downstream of the back lane
-                 and the front lane's ordinal. If the given lanes are not in subsequent road segments, return None.
+        :return: Difference between lane ordinal of lane_id2 and subsequent downstream/upstream of lane_id1.
+        If the given lanes are not in subsequent road segments, return None.
         """
-        connecting_lanes, _ = MapUtils._get_lane_segments_path(lane_id1, MapUtils.get_road_segment_by_lane(lane_id2))
+        connecting_lanes, _ = MapUtils._get_lane_segments_path(lane_id1, MapUtils.get_road_segment_id_from_lane_id(lane_id2))
         if len(connecting_lanes) == 0:
             return None
         return MapUtils.get_lane_ordinal(lane_id2) - MapUtils.get_lane_ordinal(connecting_lanes[-1])
@@ -256,14 +256,18 @@ class MapUtils:
         final_road_segment_id (either forward or backward).
         :param starting_lane_id: initial lane segment
         :param final_road_segment_id: road segment id, containing the subsequent downstream/upstream of starting_lane_id
-        :return: Return list of lane segments connecting between starting_lane_id and final_road_segment_id
-            (including both the first lane and the last lanes).
-            First return value: If final_road_segment_id is NOT subsequent downstream/upstream of starting_lane_id,
+        :return: First return value: Return list of lane segments connecting between starting_lane_id and
+            final_road_segment_id (including both the first lane and the last lanes).
+            If final_road_segment_id is NOT subsequent downstream/upstream of starting_lane_id,
             then return empty list.
             The second return value is whether the path direction is forward: True if final_road_segment_id is ahead of
             starting_lane_id.
         """
-        pass
+        starting_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(starting_lane_id)
+        if starting_road_segment_id == final_road_segment_id:
+            return [starting_road_segment_id], True
+        else:  # TODO: support multi-road case!!!
+            return [], True
 
     @staticmethod
     def _convert_from_lane_to_map_coordinates(lane_id: int, lon_on_lane: float, lat_on_lane: float,
