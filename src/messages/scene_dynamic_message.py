@@ -1,24 +1,24 @@
 from enum import Enum
 from typing import List
 
+import numpy as np
+
 from common_data.interface.py.idl_generated_files.Rte_Types.TsSYS_SceneDynamic import TsSYSSceneDynamic
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_BoundingBoxSize import \
     TsSYSBoundingBoxSize
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_CartesianPose import TsSYSCartesianPose
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_DataSceneDynamic import \
     TsSYSDataSceneDynamic
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_DataSceneHost import TsSYSDataSceneHost
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_Header import TsSYSHeader
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_HostLocalization import \
     TsSYSHostLocalization
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_LaneFrenetPose import \
-    TsSYSLaneFrenetPose
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_MapOrigin import TsSYSMapOrigin
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_ObjectHypothesis import \
     TsSYSObjectHypothesis
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_ObjectLocalization import \
     TsSYSObjectLocalization
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_Timestamp import TsSYSTimestamp
+from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 
@@ -45,6 +45,24 @@ class ObjectClassification(Enum):
     CeSYS_e_ObjectClassification_GeneralObject = 5
     CeSYS_e_ObjectClassification_Animal = 6
     CeSYS_e_ObjectClassification_UNKNOWN = 7
+
+
+class CartesianPose(Enum):
+    CeSYS_CartesianPose_e_l_EastX = 0
+    CeSYS_CartesianPose_e_l_NorthY = 1
+    CeSYS_CartesianPose_e_phi_heading = 2
+    CeSYS_CartesianPose_e_v_velocity = 3
+    CeSYS_CartesianPose_e_a_acceleration = 4
+    CeSYS_CartesianPose_e_il_curvature = 5
+
+
+class LaneFrenetPose(Enum):
+    CeSYS_LaneFrenetPose_e_l_s = 0
+    CeSYS_LaneFrenetPose_e_v_s_dot = 1
+    CeSYS_LaneFrenetPose_e_a_s_dotdot = 2
+    CeSYS_LaneFrenetPose_e_l_d = 3
+    CeSYS_LaneFrenetPose_e_v_d_dot = 4
+    CeSYS_LaneFrenetPose_e_a_d_dotdot = 5
 
 
 class Timestamp(PUBSUB_MSG_IMPL):
@@ -77,127 +95,25 @@ class Timestamp(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_Cnt_Secs, pubsubMsg.e_Cnt_FractionSecs)
 
 
-class CartesianPose(PUBSUB_MSG_IMPL):
-    e_l_EastX = float
-    e_l_NorthY = float
-    e_phi_heading = float
-    e_v_velocity = float
-    e_a_acceleration = float
-    e_il_curvature = float
-
-    def __init__(self, e_l_EastX, e_l_NorthY, e_phi_heading, e_v_velocity, e_a_acceleration, e_il_curvature):
-        # type: (float, float, float, float, float, float)->None
-        """
-        Pose information in Cartesian (ENU) frame
-        :param e_l_EastX: East-X in the ENU Frame. Eastwards is positive.
-        :param e_l_NorthY: North-Y in the ENU Frame. Northwards is positive.
-        :param e_phi_heading: ISO-8855 heading (a.k.a yaw)
-        The yaw angle is between the forward direction of the vehicle,projected in to the horizontal plane and the East.
-        The range of the yaw angle is from -180 to +180 degrees, where positive rotation is from the East and
-        counter-clockwise when looking from above, about the up direction axis of the vehicle.
-        :param e_v_velocity: Ego. along the longitudinal-axis. Positive is forward.
-        :param e_a_acceleration: Ego. along the longitudinal-axis. Positive is forward.
-        :param e_il_curvature: Ego. Positive means vehicle is turning left
-        """
-        self.e_l_EastX = e_l_EastX
-        self.e_l_NorthY = e_l_NorthY
-        self.e_phi_heading = e_phi_heading
-        self.e_v_velocity = e_v_velocity
-        self.e_a_acceleration = e_a_acceleration
-        self.e_il_curvature = e_il_curvature
-
-    def serialize(self):
-        # type: () -> TsSYSCartesianPose
-        pubsub_msg = TsSYSCartesianPose()
-
-        pubsub_msg.e_l_EastX = self.e_l_EastX
-        pubsub_msg.e_l_NorthY = self.e_l_NorthY
-        pubsub_msg.e_phi_heading = self.e_phi_heading
-        pubsub_msg.e_v_velocity = self.e_v_velocity
-        pubsub_msg.e_a_acceleration = self.e_a_acceleration
-        pubsub_msg.e_il_curvature = self.e_il_curvature
-
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSCartesianPose)->CartesianPose
-        return cls(pubsubMsg.e_l_EastX, pubsubMsg.e_l_NorthY, pubsubMsg.e_phi_heading,
-                   pubsubMsg.e_v_velocity, pubsubMsg.e_a_acceleration, pubsubMsg.e_il_curvature)
-
-
-class LaneFrenetPose(PUBSUB_MSG_IMPL):
-    e_l_s = float
-    e_v_s_dot = float
-    e_a_s_dotdot = float
-    e_l_d = float
-    e_v_d_dot = float
-    e_a_d_dotdot = float
-
-    def __init__(self, e_l_s, e_v_s_dot, e_a_s_dotdot, e_l_d, e_v_d_dot, e_a_d_dotdot):
-        # type: (float, float, float, float, float, float)->None
-        """
-        Pose information in Frenet-Serret frame.
-        :param e_l_s: Pose information in Frenet-Serret frame
-        s, station (a.k.a. arc-length, a.k.a. progress) along the curve of the Frenet-Serret frame.
-        Forward (downstream) of the curve is positive.
-        The curve's origin is located at the center and start of the lane-segment.
-        The curve runs downstream along the center of the lane-segment.
-        Each lane-segment has its own Frenet-Serret frame.
-        :param e_v_s_dot: s-velocity
-        :param e_a_s_dotdot: s-acceleration
-        :param e_l_d: d, displacement, a.k.a. offset on the normal to the curve of the Frenet-Serret Frame.
-        Leftside of the curve is positive. The curve's origin is located at the center and start of the lane-segment.
-        The curve runs downstream along the center of the lane-segment.Each lane-segment has its own Frenet-Serret frame.
-        :param e_v_d_dot: d-velocity
-        :param e_a_d_dotdot: d-acceleration
-        """
-        self.e_l_s = e_l_s
-        self.e_v_s_dot = e_v_s_dot
-        self.e_a_s_dotdot = e_a_s_dotdot
-        self.e_l_d = e_l_d
-        self.e_v_d_dot = e_v_d_dot
-        self.e_a_d_dotdot = e_a_d_dotdot
-
-    def serialize(self):
-        # type: () -> TsSYSLaneFrenetPose
-        pubsub_msg = TsSYSLaneFrenetPose()
-
-        pubsub_msg.e_l_s = self.e_l_s
-        pubsub_msg.e_v_s_dot = self.e_v_s_dot
-        pubsub_msg.e_a_s_dotdot = self.e_a_s_dotdot
-        pubsub_msg.e_l_d = self.e_l_d
-        pubsub_msg.e_v_d_dot = self.e_v_d_dot
-        pubsub_msg.e_a_d_dotdot = self.e_a_d_dotdot
-
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSLaneFrenetPose)->LaneFrenetPose
-        return cls(pubsubMsg.e_l_s, pubsubMsg.e_v_s_dot, pubsubMsg.e_a_s_dotdot,
-                   pubsubMsg.e_l_d, pubsubMsg.e_v_d_dot, pubsubMsg.e_a_d_dotdot)
-
-
 class HostLocalization(PUBSUB_MSG_IMPL):
     e_Cnt_road_segment_id = int
     e_Cnt_lane_segment_id = int
-    s_cartesian_pose = CartesianPose
-    s_lane_frenet_pose = LaneFrenetPose
+    a_cartesian_pose = np.ndarray
+    a_lane_frenet_pose = np.ndarray
 
-    def __init__(self, e_Cnt_road_segment_id, e_Cnt_lane_segment_id, s_cartesian_pose, s_lane_frenet_pose):
-        # type: (int, int, CartesianPose, LaneFrenetPose)->None
+    def __init__(self, e_Cnt_road_segment_id, e_Cnt_lane_segment_id, a_cartesian_pose, a_lane_frenet_pose):
+        # type: (int, int, np.ndarray, np.ndarray)->None
         """
         Host-localization information
         :param e_Cnt_road_segment_id: The ID of the road-segment that the host is in
         :param e_Cnt_lane_segment_id: The ID of the lane-segment that the host is in
-        :param s_cartesian_pose: The host's pose, expressed in the Map (ENU) frame
-        :param s_lane_frenet_pose: The host's pose, expressed in the the Frenet-Serret frame of the host's lane-segment
+        :param a_cartesian_pose: The host's pose, expressed in the Map (ENU) frame
+        :param a_lane_frenet_pose: The host's pose, expressed in the the Frenet-Serret frame of the host's lane-segment
         """
         self.e_Cnt_road_segment_id = e_Cnt_road_segment_id
         self.e_Cnt_lane_segment_id = e_Cnt_lane_segment_id
-        self.s_cartesian_pose = s_cartesian_pose
-        self.s_lane_frenet_pose = s_lane_frenet_pose
+        self.a_cartesian_pose = a_cartesian_pose
+        self.a_lane_frenet_pose = a_lane_frenet_pose
 
     def serialize(self):
         # type: () -> TsSYSHostLocalization
@@ -205,8 +121,9 @@ class HostLocalization(PUBSUB_MSG_IMPL):
 
         pubsub_msg.e_Cnt_road_segment_id = self.e_Cnt_road_segment_id
         pubsub_msg.e_Cnt_lane_segment_id = self.e_Cnt_lane_segment_id
-        pubsub_msg.s_cartesian_pose = self.s_cartesian_pose.serialize()
-        pubsub_msg.s_lane_frenet_pose = self.s_lane_frenet_pose.serialize()
+
+        pubsub_msg.a_cartesian_pose = SerializationUtils.serialize_array(self.a_cartesian_pose)
+        pubsub_msg.a_lane_frenet_pose = SerializationUtils.serialize_array(self.a_lane_frenet_pose)
 
         return pubsub_msg
 
@@ -214,8 +131,8 @@ class HostLocalization(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSHostLocalization)->HostLocalization
         return cls(pubsubMsg.e_Cnt_road_segment_id, pubsubMsg.e_Cnt_lane_segment_id,
-                   CartesianPose.deserialize(pubsubMsg.s_cartesian_pose),
-                   LaneFrenetPose.deserialize(pubsubMsg.s_lane_frenet_pose))
+                   SerializationUtils.deserialize_any_array(pubsubMsg.a_cartesian_pose),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.a_lane_frenet_pose))
 
 
 class DataSceneHost(PUBSUB_MSG_IMPL):
@@ -322,14 +239,14 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
     e_Pct_location_uncertainty_y = float
     e_Pct_location_uncertainty_yaw = float
     e_Cnt_host_lane_frenet_id = int
-    s_cartesian_pose = CartesianPose
-    s_lane_frenet_pose = LaneFrenetPose
-    s_host_lane_frenet_pose = LaneFrenetPose
+    s_cartesian_pose = np.ndarray
+    s_lane_frenet_pose = np.ndarray
+    s_host_lane_frenet_pose = np.ndarray
 
     def __init__(self, e_r_probability, e_Cnt_lane_segment_id, e_e_dynamic_status, e_Pct_location_uncertainty_x,
                  e_Pct_location_uncertainty_y, e_Pct_location_uncertainty_yaw, e_Cnt_host_lane_frenet_id,
-                 s_cartesian_pose, s_lane_frenet_pose, s_host_lane_frenet_pose):
-        # type: (float, int, ObjectTrackDynamicProperty, float, float, float, int, CartesianPose, LaneFrenetPose, LaneFrenetPose) -> None
+                 a_cartesian_pose, a_lane_frenet_pose, a_host_lane_frenet_pose):
+        # type: (float, int, ObjectTrackDynamicProperty, float, float, float, int, np.ndarray, np.ndarray, np.ndarray) -> None
         """
         Actors-hypotheses information
         :param e_r_probability: Probability of this hypothesis (not relevant for M0)
@@ -339,9 +256,9 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         :param e_Pct_location_uncertainty_y: Not relevant for M0
         :param e_Pct_location_uncertainty_yaw: Not relevant for M0
         :param e_Cnt_host_lane_frenet_id: The ID of the lane-segment that the host is in
-        :param s_cartesian_pose: The pose of this actor-hypothesis, expressed in the Map (ENU) frame
-        :param s_lane_frenet_pose: The pose of this actor-hypothesis, expressed in the Frenet-Serret frame of its own lane-segment
-        :param s_host_lane_frenet_pose: The pose of this actor-hypothesis, expressed in the Frenet-Serret frame of the host's lane-segment
+        :param a_cartesian_pose: The pose of this actor-hypothesis, expressed in the Map (ENU) frame
+        :param a_lane_frenet_pose: The pose of this actor-hypothesis, expressed in the Frenet-Serret frame of its own lane-segment
+        :param a_host_lane_frenet_pose: The pose of this actor-hypothesis, expressed in the Frenet-Serret frame of the host's lane-segment
         """
         self.e_r_probability = e_r_probability
         self.e_Cnt_lane_segment_id = e_Cnt_lane_segment_id
@@ -350,9 +267,9 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         self.e_Pct_location_uncertainty_y = e_Pct_location_uncertainty_y
         self.e_Pct_location_uncertainty_yaw = e_Pct_location_uncertainty_yaw
         self.e_Cnt_host_lane_frenet_id = e_Cnt_host_lane_frenet_id
-        self.s_cartesian_pose = s_cartesian_pose
-        self.s_lane_frenet_pose = s_lane_frenet_pose
-        self.s_host_lane_frenet_pose = s_host_lane_frenet_pose
+        self.a_cartesian_pose = a_cartesian_pose
+        self.a_lane_frenet_pose = a_lane_frenet_pose
+        self.a_host_lane_frenet_pose = a_host_lane_frenet_pose
 
     def serialize(self):
         # type: () -> TsSYSObjectHypothesis
@@ -365,9 +282,10 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         pubsub_msg.e_Pct_location_uncertainty_y = self.e_Pct_location_uncertainty_y
         pubsub_msg.e_Pct_location_uncertainty_yaw = self.e_Pct_location_uncertainty_yaw
         pubsub_msg.e_Cnt_host_lane_frenet_id = self.e_Cnt_host_lane_frenet_id
-        pubsub_msg.s_cartesian_pose = self.s_cartesian_pose.serialize()
-        pubsub_msg.s_lane_frenet_pose = self.s_lane_frenet_pose.serialize()
-        pubsub_msg.s_host_lane_frenet_pose = self.s_host_lane_frenet_pose.serialize()
+
+        pubsub_msg.a_cartesian_pose = SerializationUtils.serialize_array(self.a_cartesian_pose)
+        pubsub_msg.a_lane_frenet_pose = SerializationUtils.serialize_array(self.a_lane_frenet_pose)
+        pubsub_msg.a_host_lane_frenet_pose = SerializationUtils.serialize_array(self.a_host_lane_frenet_pose)
 
         return pubsub_msg
 
@@ -377,9 +295,9 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_r_probability, pubsubMsg.e_Cnt_lane_segment_id, ObjectTrackDynamicProperty(pubsubMsg.e_e_dynamic_status),
                    pubsubMsg.e_Pct_location_uncertainty_x, pubsubMsg.e_Pct_location_uncertainty_y,
                    pubsubMsg.e_Pct_location_uncertainty_yaw, pubsubMsg.e_Cnt_host_lane_frenet_id,
-                   CartesianPose.deserialize(pubsubMsg.s_cartesian_pose),
-                   LaneFrenetPose.deserialize(pubsubMsg.s_lane_frenet_pose),
-                   LaneFrenetPose.deserialize(pubsubMsg.s_host_lane_frenet_pose))
+                   SerializationUtils.deserialize_any_array(pubsubMsg.a_cartesian_pose),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.a_lane_frenet_pose),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.a_host_lane_frenet_pose))
 
 
 class ObjectLocalization(PUBSUB_MSG_IMPL):

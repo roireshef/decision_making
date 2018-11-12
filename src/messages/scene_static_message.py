@@ -2,10 +2,9 @@ from enum import Enum
 from typing import List
 
 import numpy as np
-from gm_lcm import LcmNumpyArray
 
 from Rte_Types.sub_structures import TsSYSAdjacentLane, TsSYSBoundaryPoint, TsSYSLaneCoupling, \
-    TsSYSNominalPathPoint, TsSYSStaticTrafficFlowControl, TsSYSDynamicStatus, TsSYSDynamicTrafficFlowControl, \
+    TsSYSStaticTrafficFlowControl, TsSYSDynamicStatus, TsSYSDynamicTrafficFlowControl, \
     TsSYSSceneLaneSegment, TsSYSLaneSegmentConnectivity
 from common_data.interface.py.idl_generated_files.Rte_Types.TsSYS_SceneStatic import TsSYSSceneStatic
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_DataSceneStatic import \
@@ -14,6 +13,7 @@ from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS
     TsSYSSceneRoadIntersection
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_SceneRoadSegment import \
     TsSYSSceneRoadSegment
+from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_dynamic_message import Timestamp, MapOrigin, Header
 
@@ -67,110 +67,119 @@ class ManeuverType(Enum):
 
 
 class MapLaneMarkerType(Enum):
-
-    MapLaneMarkerType_None                                         = 0
-    MapLaneMarkerType_ThinDashed_SingleLine                        = 1
-    MapLaneMarkerType_ThickDashed_SingleLine                       = 2
-    MapLaneMarkerType_ThinSolid_SingleLine                         = 3
-    MapLaneMarkerType_ThickSolid_SingleLine                        = 4
-    MapLaneMarkerType_ThinDashed_DoubleLine                        = 5
-    MapLaneMarkerType_ThickDashed_DoubleLine                       = 6
-    MapLaneMarkerType_ThinSolid_DoubleLine                         = 7
-    MapLaneMarkerType_ThickSolid_DoubleLine                        = 8
-    MapLaneMarkerType_ThinDoubleLeftSolid_RightDashedLine          = 9
-    MapLaneMarkerType_ThickDoubleLefSolid_RightDashedLine          = 10
-    MapLaneMarkerType_ThinDoubleLeftDashed_RightSolidLine          = 11
-    MapLaneMarkerType_ThickDoubleLeftDashed_RightSolidLine         = 12
-    MapLaneMarkerType_ThinDashed_TripleLine                        = 13
-    MapLaneMarkerType_ThickDashed_TripleLine                       = 14
-    MapLaneMarkerType_ThinSolid_TripleLine                         = 15
-    MapLaneMarkerType_ThickSolid_TripleLine                        = 16
-    MapLaneMarkerType_DashedSingleLine_BottsDots                   = 17
-    MapLaneMarkerType_SolidSingleLine_BottsDots                    = 18
-    MapLaneMarkerType_DashedDoubleLine_BottsDots                   = 19
-    MapLaneMarkerType_SolidDoubleLine_BottsDots                    = 20
-    MapLaneMarkerType_DoubleLeftSolid_RightDashedLine_BottsDots    = 21
-    MapLaneMarkerType_DoubleLeftDashed_RightSolidLine_BottsDots    = 22
-    MapLaneMarkerType_DashedTripleLine_BottsDots                   = 23
-    MapLaneMarkerType_SolidTripleLine_BottsDots                    = 24
-    MapLaneMarkerType_VirtualInferredLine                          = 25
-    MapLaneMarkerType_Unknown                                      = 255
-
+    MapLaneMarkerType_None = 0
+    MapLaneMarkerType_ThinDashed_SingleLine = 1
+    MapLaneMarkerType_ThickDashed_SingleLine = 2
+    MapLaneMarkerType_ThinSolid_SingleLine = 3
+    MapLaneMarkerType_ThickSolid_SingleLine = 4
+    MapLaneMarkerType_ThinDashed_DoubleLine = 5
+    MapLaneMarkerType_ThickDashed_DoubleLine = 6
+    MapLaneMarkerType_ThinSolid_DoubleLine = 7
+    MapLaneMarkerType_ThickSolid_DoubleLine = 8
+    MapLaneMarkerType_ThinDoubleLeftSolid_RightDashedLine = 9
+    MapLaneMarkerType_ThickDoubleLefSolid_RightDashedLine = 10
+    MapLaneMarkerType_ThinDoubleLeftDashed_RightSolidLine = 11
+    MapLaneMarkerType_ThickDoubleLeftDashed_RightSolidLine = 12
+    MapLaneMarkerType_ThinDashed_TripleLine = 13
+    MapLaneMarkerType_ThickDashed_TripleLine = 14
+    MapLaneMarkerType_ThinSolid_TripleLine = 15
+    MapLaneMarkerType_ThickSolid_TripleLine = 16
+    MapLaneMarkerType_DashedSingleLine_BottsDots = 17
+    MapLaneMarkerType_SolidSingleLine_BottsDots = 18
+    MapLaneMarkerType_DashedDoubleLine_BottsDots = 19
+    MapLaneMarkerType_SolidDoubleLine_BottsDots = 20
+    MapLaneMarkerType_DoubleLeftSolid_RightDashedLine_BottsDots = 21
+    MapLaneMarkerType_DoubleLeftDashed_RightSolidLine_BottsDots = 22
+    MapLaneMarkerType_DashedTripleLine_BottsDots = 23
+    MapLaneMarkerType_SolidTripleLine_BottsDots = 24
+    MapLaneMarkerType_VirtualInferredLine = 25
+    MapLaneMarkerType_Unknown = 255
 
 
 class RoadObjectType(Enum):
-
-    Yield                                               =  0
-    StopSign                                            =  1
-    VerticalStack_RYG_TrafficLight                      =  2
-    HorizontalStack_RYG_TrafficLight                    =  3
-    YieldVerticalStack_RYG_TrafficLight_WithInd         =  4
-    HorizontalStack_RYG_TrafficLight_WithInd            =  5
-    Red_TrafficLight                                    =  6
-    Yellow_TrafficLight                                 =  7
-    StopBar_Left                                        =  8
-    StopBar_Right                                       =  9
-    LaneLeftTurnMarker_Start                            =  10
-    LaneLeftTurnMarker_End                              =  11
-    LaneRightTurnMarker_Start                           =  12
-    LaneRightTurnMarker_End                             =  13
-    LaneStraightLeftTurnMarker_Start                    =  14
-    LaneStraightLeftTurnMarker_End                      =  15
-    LaneStraightRightTurnMarker_Start                   =  16
-    LaneStraightRightTurnMarker_End                     =  17
-    LaneStopMarker_MidLeft                              =  18
-    LaneStopMarker_MidRight                             =  19
-    LaneStopMarker_Diamond_Start                        =  20
-    LaneStopMarker_Diamond_end                          =  21
-    LightPost                                           =  22
-    Dashed_LaneMarker_MidStart                          =  23
-    Dashed_LaneMarker_MidEnd                            =  24
+    Yield = 0
+    StopSign = 1
+    VerticalStack_RYG_TrafficLight = 2
+    HorizontalStack_RYG_TrafficLight = 3
+    YieldVerticalStack_RYG_TrafficLight_WithInd = 4
+    HorizontalStack_RYG_TrafficLight_WithInd = 5
+    Red_TrafficLight = 6
+    Yellow_TrafficLight = 7
+    StopBar_Left = 8
+    StopBar_Right = 9
+    LaneLeftTurnMarker_Start = 10
+    LaneLeftTurnMarker_End = 11
+    LaneRightTurnMarker_Start = 12
+    LaneRightTurnMarker_End = 13
+    LaneStraightLeftTurnMarker_Start = 14
+    LaneStraightLeftTurnMarker_End = 15
+    LaneStraightRightTurnMarker_Start = 16
+    LaneStraightRightTurnMarker_End = 17
+    LaneStopMarker_MidLeft = 18
+    LaneStopMarker_MidRight = 19
+    LaneStopMarker_Diamond_Start = 20
+    LaneStopMarker_Diamond_end = 21
+    LightPost = 22
+    Dashed_LaneMarker_MidStart = 23
+    Dashed_LaneMarker_MidEnd = 24
 
 
 class TrafficSignalState(Enum):
+    NO_DETECTION = 0
+    RED = 1
+    YELLOW = 2
+    RED_YELLOW = 3
+    GREEN = 4
+    GREEN_YELLOW = 6
+    FLASHING_BIT = 8  # (flashing modifier, not valid by itself)
+    FLASHING_RED = 9
+    FLASHING_YELLOW = 10
+    FLASHING_GREEN = 12
+    UP_DOWN_ARROW_BIT = 16  # (up/down arrow modifier, not valid by itself)
+    STRAIGHT_ARROW_RED = 17
+    STRAIGHT_ARROW_YELLOW = 18
+    STRAIGHT_ARROW_GREEN = 20
+    LEFT_ARROW_BIT = 32  # (left arrow modifier, not valid by itself)
+    LEFT_ARROW_RED = 33
+    LEFT_ARROW_YELLOW = 34
+    LEFT_ARROW_GREEN = 36
+    FLASHING_LEFT_ARROW_RED = 41
+    FLASHING_LEFT_ARROW_YELLOW = 42
+    FLASHING_LEFT_ARROW_GREEN = 44
+    RIGHT_ARROW_BIT = 64  # (right arrow modifier, not valid by itself)
+    RIGHT_ARROW_RED = 65
+    RIGHT_ARROW_YELLOW = 66
+    RIGHT_ARROW_GREEN = 68
+    FLASHING_RIGHT_ARROW_RED = 73
+    FLASHING_RIGHT_ARROW_YELLOW = 74
+    FLASHING_RIGHT_ARROW_GREEN = 76
+    RAILROAD_CROSSING_UNKNOWN = 96
+    RAILROAD_CROSSING_RED = 97
+    RAILROAD_CROSSING_CLEAR = 100
+    RAILROAD_CROSSING_BLOCKED = 104
+    PEDISTRIAN_SAME_DIR_UNKNOWN = 108
+    PEDISTRIAN_SAME_DIR_STOPPED = 109
+    PEDISTRIAN_SAME_DIR_WARNING = 110
+    PEDISTRIAN_SAME_DIR_CROSS = 112
+    PEDISTRIAN_PERP_DIR_UNKNOWN = 116
+    PEDISTRIAN_PERP_DIR_STOPPED = 117
+    PEDISTRIAN_PERP_DIR_WARNING = 118
+    PEDISTRIAN_PERP_DIR_CROSS = 120
+    UNKNOWN = 121
+    OFF = 122
 
-    NO_DETECTION                 = 0
-    RED                          = 1
-    YELLOW                       = 2
-    RED_YELLOW                   = 3
-    GREEN                        = 4
-    GREEN_YELLOW                 = 6
-    FLASHING_BIT                 = 8  # (flashing modifier, not valid by itself)
-    FLASHING_RED                 = 9
-    FLASHING_YELLOW              = 10
-    FLASHING_GREEN               = 12
-    UP_DOWN_ARROW_BIT            = 16 # (up/down arrow modifier, not valid by itself)
-    STRAIGHT_ARROW_RED           = 17
-    STRAIGHT_ARROW_YELLOW        = 18
-    STRAIGHT_ARROW_GREEN         = 20
-    LEFT_ARROW_BIT               = 32 # (left arrow modifier, not valid by itself)
-    LEFT_ARROW_RED               = 33
-    LEFT_ARROW_YELLOW            = 34
-    LEFT_ARROW_GREEN             = 36
-    FLASHING_LEFT_ARROW_RED      = 41
-    FLASHING_LEFT_ARROW_YELLOW   = 42
-    FLASHING_LEFT_ARROW_GREEN    = 44
-    RIGHT_ARROW_BIT              = 64 # (right arrow modifier, not valid by itself)
-    RIGHT_ARROW_RED              = 65
-    RIGHT_ARROW_YELLOW           = 66
-    RIGHT_ARROW_GREEN            = 68
-    FLASHING_RIGHT_ARROW_RED     = 73
-    FLASHING_RIGHT_ARROW_YELLOW  = 74
-    FLASHING_RIGHT_ARROW_GREEN   = 76
-    RAILROAD_CROSSING_UNKNOWN    = 96
-    RAILROAD_CROSSING_RED        = 97
-    RAILROAD_CROSSING_CLEAR      = 100
-    RAILROAD_CROSSING_BLOCKED    = 104
-    PEDISTRIAN_SAME_DIR_UNKNOWN   = 108
-    PEDISTRIAN_SAME_DIR_STOPPED   = 109
-    PEDISTRIAN_SAME_DIR_WARNING   = 110
-    PEDISTRIAN_SAME_DIR_CROSS     = 112
-    PEDISTRIAN_PERP_DIR_UNKNOWN   = 116
-    PEDISTRIAN_PERP_DIR_STOPPED   = 117
-    PEDISTRIAN_PERP_DIR_WARNING   = 118
-    PEDISTRIAN_PERP_DIR_CROSS     = 120
-    UNKNOWN                       = 121
-    OFF                           = 122
+
+class NominalPathPoint(Enum):
+    CeSYS_NominalPathPoint_e_l_EastX = 0
+    CeSYS_NominalPathPoint_e_l_NorthY = 1
+    CeSYS_NominalPathPoint_e_phi_heading = 2
+    CeSYS_NominalPathPoint_e_il_curvature = 3
+    CeSYS_NominalPathPoint_e_il2_curvature_rate = 4
+    CeSYS_NominalPathPoint_e_phi_cross_slope = 5
+    CeSYS_NominalPathPoint_e_phi_along_slope = 6
+    CeSYS_NominalPathPoint_e_l_s = 7
+    CeSYS_NominalPathPoint_e_l_left_offset = 8
+    CeSYS_NominalPathPoint_e_l_right_offset = 9
 
 
 class SceneRoadSegment(PUBSUB_MSG_IMPL):
@@ -217,27 +226,15 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
         pubsub_msg.e_Cnt_road_id = self.e_Cnt_road_id
 
         pubsub_msg.e_Cnt_lane_segment_id_count = self.e_Cnt_lane_segment_id_count
-        pubsub_msg.a_Cnt_lane_segment_id = LcmNumpyArray()
-        pubsub_msg.a_Cnt_lane_segment_id.num_dimensions = len(self.a_Cnt_lane_segment_id.shape)
-        pubsub_msg.a_Cnt_lane_segment_id.shape = list(self.a_Cnt_lane_segment_id.shape)
-        pubsub_msg.a_Cnt_lane_segment_id.length = self.a_Cnt_lane_segment_id.size
-        pubsub_msg.a_Cnt_lane_segment_id.data = self.a_Cnt_lane_segment_id.flat.__array__().tolist()
+        pubsub_msg.a_Cnt_lane_segment_id = SerializationUtils.serialize_array(self.a_Cnt_lane_segment_id)
 
         pubsub_msg.e_e_road_segment_type = self.e_e_road_segment_type.value
 
         pubsub_msg.e_Cnt_upstream_segment_count = self.e_Cnt_upstream_segment_count
-        pubsub_msg.a_Cnt_upstream_road_segment_id = LcmNumpyArray()
-        pubsub_msg.a_Cnt_upstream_road_segment_id.num_dimensions = len(self.a_Cnt_upstream_road_segment_id.shape)
-        pubsub_msg.a_Cnt_upstream_road_segment_id.shape = list(self.a_Cnt_upstream_road_segment_id.shape)
-        pubsub_msg.a_Cnt_upstream_road_segment_id.length = self.a_Cnt_upstream_road_segment_id.size
-        pubsub_msg.a_Cnt_upstream_road_segment_id.data = self.a_Cnt_upstream_road_segment_id.flat.__array__().tolist()
+        pubsub_msg.a_Cnt_upstream_road_segment_id = SerializationUtils.serialize_array(self.a_Cnt_upstream_road_segment_id)
 
         pubsub_msg.e_Cnt_downstream_segment_count = self.e_Cnt_downstream_segment_count
-        pubsub_msg.a_Cnt_downstream_road_segment_id = LcmNumpyArray()
-        pubsub_msg.a_Cnt_downstream_road_segment_id.num_dimensions = len(self.a_Cnt_upstream_road_segment_id.shape)
-        pubsub_msg.a_Cnt_downstream_road_segment_id.shape = list(self.a_Cnt_upstream_road_segment_id.shape)
-        pubsub_msg.a_Cnt_downstream_road_segment_id.length = self.a_Cnt_upstream_road_segment_id.size
-        pubsub_msg.a_Cnt_downstream_road_segment_id.data = self.a_Cnt_upstream_road_segment_id.flat.__array__().tolist()
+        pubsub_msg.a_Cnt_downstream_road_segment_id = SerializationUtils.serialize_array(self.a_Cnt_downstream_road_segment_id)
 
         return pubsub_msg
 
@@ -246,18 +243,12 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_Cnt_road_segment_id,
                    pubsubMsg.e_Cnt_road_id,
                    pubsubMsg.e_Cnt_lane_segment_id_count,
-                   np.ndarray(shape=tuple(pubsubMsg.a_Cnt_lane_segment_id.shape)
-                              , buffer=np.array(pubsubMsg.a_Cnt_lane_segment_id.data)
-                              , dtype=int),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.a_Cnt_lane_segment_id),
                    MapRoadSegmentType(pubsubMsg.e_e_road_segment_type),
                    pubsubMsg.e_Cnt_upstream_segment_count,
-                   np.ndarray(shape=tuple(pubsubMsg.a_Cnt_upstream_road_segment_id.shape)
-                              , buffer=np.array(pubsubMsg.a_Cnt_upstream_road_segment_id.data)
-                              , dtype=int),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.a_Cnt_upstream_road_segment_id),
                    pubsubMsg.e_Cnt_downstream_segment_count,
-                   np.ndarray(shape=tuple(pubsubMsg.a_Cnt_downstream_road_segment_id.shape)
-                              , buffer=np.array(pubsubMsg.a_Cnt_downstream_road_segment_id.data)
-                              , dtype=int))
+                   SerializationUtils.deserialize_any_array(pubsubMsg.a_Cnt_downstream_road_segment_id))
 
 
 class SceneRoadIntersection(PUBSUB_MSG_IMPL):
@@ -291,34 +282,23 @@ class SceneRoadIntersection(PUBSUB_MSG_IMPL):
         pubsub_msg = TsSYSSceneRoadIntersection()
 
         pubsub_msg.e_i_road_intersection_id = self.e_i_road_intersection_id
+
         pubsub_msg.e_Cnt_lane_coupling_count = self.e_Cnt_lane_coupling_count
-        pubsub_msg.a_i_lane_coupling_segment_ids = LcmNumpyArray()
-        pubsub_msg.a_i_lane_coupling_segment_ids.num_dimensions = len(self.a_i_lane_coupling_segment_ids.shape)
-        pubsub_msg.a_i_lane_coupling_segment_ids.shape = list(self.a_i_lane_coupling_segment_ids.shape)
-        pubsub_msg.a_i_lane_coupling_segment_ids.length = self.a_i_lane_coupling_segment_ids.size
-        pubsub_msg.a_i_lane_coupling_segment_ids.data = self.a_i_lane_coupling_segment_ids.flat.__array__().tolist()
+        pubsub_msg.a_i_lane_coupling_segment_ids = SerializationUtils.serialize_array(self.a_i_lane_coupling_segment_ids)
 
         pubsub_msg.e_Cnt_intersection_road_segment_count = self.e_Cnt_intersection_road_segment_count
-        pubsub_msg.a_i_intersection_road_segment_ids = LcmNumpyArray()
-        pubsub_msg.a_i_intersection_road_segment_ids.num_dimensions = len(self.a_i_intersection_road_segment_ids.shape)
-        pubsub_msg.a_i_intersection_road_segment_ids.shape = list(self.a_i_intersection_road_segment_ids.shape)
-        pubsub_msg.a_i_intersection_road_segment_ids.length = self.a_i_intersection_road_segment_ids.size
-        pubsub_msg.a_i_intersection_road_segment_ids.data = self.a_i_intersection_road_segment_ids.flat.__array__().tolist()
+        pubsub_msg.a_i_intersection_road_segment_ids = SerializationUtils.serialize_array(
+            self.a_i_intersection_road_segment_ids)
 
         return pubsub_msg
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSSceneRoadIntersection):
-        # TODO: talk to Efrat about making it work in new LCMNumpyArray object (shape is 6-dim etc.)
         return cls(pubsubMsg.e_i_road_intersection_id,
                    pubsubMsg.e_Cnt_lane_coupling_count,
-                   np.ndarray(shape=tuple(pubsubMsg.a_i_lane_coupling_segment_ids.shape)
-                              , buffer=np.array(pubsubMsg.a_i_lane_coupling_segment_ids.data)
-                              , dtype=int),
+                   SerializationUtils.deserialize_any_array(pubsubMsg.a_i_lane_coupling_segment_ids),
                    pubsubMsg.e_Cnt_intersection_road_segment_count,
-                   np.ndarray(shape=tuple(pubsubMsg.a_i_intersection_road_segment_ids.shape)
-                              , buffer=np.array(pubsubMsg.a_i_intersection_road_segment_ids.data)
-                              , dtype=int))
+                   SerializationUtils.deserialize_any_array(pubsubMsg.a_i_intersection_road_segment_ids))
 
 
 class AdjacentLane(PUBSUB_MSG_IMPL):
@@ -342,7 +322,8 @@ class AdjacentLane(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSAdjacentLane):
-        return cls(pubsubMsg.e_Cnt_lane_segment_id, MovingDirection(pubsubMsg.e_e_moving_direction), MapLaneType(pubsubMsg.e_e_lane_type))
+        return cls(pubsubMsg.e_Cnt_lane_segment_id, MovingDirection(pubsubMsg.e_e_moving_direction),
+                   MapLaneType(pubsubMsg.e_e_lane_type))
 
 
 class LaneSegmentConnectivity(PUBSUB_MSG_IMPL):
@@ -391,7 +372,6 @@ class BoundaryPoint(PUBSUB_MSG_IMPL):
 
 
 class LaneCoupling(PUBSUB_MSG_IMPL):
-
     e_i_lane_segment_id = int
     e_i_road_intersection_id = int
     e_i_downstream_lane_segment_id = int
@@ -432,68 +412,6 @@ class LaneCoupling(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_i_road_intersection_id,
                    pubsubMsg.e_i_downstream_lane_segment_id, pubsubMsg.e_i_upstream_lane_segment_id,
                    ManeuverType(pubsubMsg.e_e_maneuver_type))
-
-
-class NominalPathPoint(PUBSUB_MSG_IMPL):
-    e_l_EastX = float
-    e_l_NorthY = float
-    e_phi_heading = float
-    e_il_curvature = float
-    e_il2_curvature_rate = float
-    e_phi_cross_slope = float
-    e_phi_along_slope = float
-    e_l_s = float
-    e_l_left_offset = float
-    e_l_right_offset = float
-
-    def __init__(self, e_l_EastX: float, e_l_NorthY: float, e_phi_heading: float, e_il_curvature: float,
-                 e_il2_curvature_rate: float, e_phi_cross_slope: float, e_phi_along_slope: float, e_l_s: float,
-                 e_l_left_offset: float, e_l_right_offset: float):
-        """
-        Nominal (i.e. center of lane) path-point information
-        :param e_l_EastX: East-X Position
-        :param e_l_NorthY: North-Y Position
-        :param e_phi_heading: eading/yaw of this nominal path-point, i.e. the downstream direction.
-        :param e_il_curvature: Not relevant for M0
-        :param e_il2_curvature_rate: Not relevant for M0
-        :param e_phi_cross_slope: Not relevant for M0
-        :param e_phi_along_slope: Not relevant for M0
-        :param e_l_s: s-position of this nominal path-point
-        :param e_l_left_offset: d-position of the left-boundary (i.e. lane edge) from this nominal path-point.
-        :param e_l_right_offset: d-position of the right-boundary (i.e. lane edge) from this nominal path-point.
-        """
-        self.e_l_EastX = e_l_EastX
-        self.e_l_NorthY = e_l_NorthY
-        self.e_phi_heading = e_phi_heading
-        self.e_il_curvature = e_il_curvature
-        self.e_il2_curvature_rate = e_il2_curvature_rate
-        self.e_phi_cross_slope = e_phi_cross_slope
-        self.e_phi_along_slope = e_phi_along_slope
-        self.e_l_s = e_l_s
-        self.e_l_left_offset = e_l_left_offset
-        self.e_l_right_offset = e_l_right_offset
-
-    def serialize(self) -> TsSYSNominalPathPoint:
-        pubsub_msg = TsSYSNominalPathPoint()
-
-        pubsub_msg.e_l_EastX = self.e_l_EastX
-        pubsub_msg.e_l_NorthY = self.e_l_NorthY
-        pubsub_msg.e_phi_heading = self.e_phi_heading
-        pubsub_msg.e_il_curvature = self.e_il_curvature
-        pubsub_msg.e_il2_curvature_rate = self.e_il2_curvature_rate
-        pubsub_msg.e_phi_cross_slope = self.e_phi_cross_slope
-        pubsub_msg.e_phi_along_slope = self.e_phi_along_slope
-        pubsub_msg.e_l_s = self.e_l_s
-        pubsub_msg.e_l_left_offset = self.e_l_left_offset
-        pubsub_msg.e_l_right_offset = self.e_l_right_offset
-
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg: TsSYSNominalPathPoint):
-        return cls(pubsubMsg.e_l_EastX, pubsubMsg.e_l_NorthY, pubsubMsg.e_phi_heading, pubsubMsg.e_il_curvature,
-                   pubsubMsg.e_il2_curvature_rate, pubsubMsg.e_phi_cross_slope, pubsubMsg.e_phi_along_slope,
-                   pubsubMsg.e_l_s, pubsubMsg.e_l_left_offset, pubsubMsg.e_l_right_offset)
 
 
 class StaticTrafficFlowControl(PUBSUB_MSG_IMPL):
@@ -590,7 +508,8 @@ class DynamicTrafficFlowControl(PUBSUB_MSG_IMPL):
         dynamic_statuses = list()
         for i in range(pubsubMsg.e_Cnt_dynamic_status_count):
             dynamic_statuses.append(DynamicStatus.deserialize(pubsubMsg.as_dynamic_status[i]))
-        return cls(RoadObjectType(pubsubMsg.e_e_road_object_type), pubsubMsg.e_l_station, pubsubMsg.e_Cnt_dynamic_status_count,
+        return cls(RoadObjectType(pubsubMsg.e_e_road_object_type), pubsubMsg.e_l_station,
+                   pubsubMsg.e_Cnt_dynamic_status_count,
                    dynamic_statuses)
 
 
@@ -612,7 +531,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
     as_upstream_lanes = List[LaneSegmentConnectivity]
     e_v_nominal_speed = float
     e_Cnt_nominal_path_point_count = int
-    a_nominal_path_points = List[NominalPathPoint]
+    a_nominal_path_points = np.ndarray
     e_Cnt_left_boundary_points_count = int
     as_left_boundary_points = List[BoundaryPoint]
     e_Cnt_right_boundary_points_count = int
@@ -622,16 +541,19 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
     as_lane_coupling = List[LaneCoupling]
 
     def __init__(self, e_i_lane_segment_id: int, e_i_road_segment_id: int, e_e_lane_type: MapLaneType,
-                 e_Cnt_static_traffic_flow_control_count: int, as_static_traffic_flow_control: List[StaticTrafficFlowControl],
-                 e_Cnt_dynamic_traffic_flow_control_count: int, as_dynamic_traffic_flow_control: List[DynamicTrafficFlowControl],
+                 e_Cnt_static_traffic_flow_control_count: int,
+                 as_static_traffic_flow_control: List[StaticTrafficFlowControl],
+                 e_Cnt_dynamic_traffic_flow_control_count: int,
+                 as_dynamic_traffic_flow_control: List[DynamicTrafficFlowControl],
                  e_Cnt_left_adjacent_lane_count: int, as_left_adjacent_lanes: List[AdjacentLane],
                  e_Cnt_right_adjacent_lane_count: int, as_right_adjacent_lanes: List[AdjacentLane],
                  e_Cnt_downstream_lane_count: int, as_downstream_lanes: List[LaneSegmentConnectivity],
                  e_Cnt_upstream_lane_count: int, as_upstream_lanes: List[LaneSegmentConnectivity],
-                 e_v_nominal_speed: float, e_Cnt_nominal_path_point_count: int, a_nominal_path_points: List[NominalPathPoint],
+                 e_v_nominal_speed: float, e_Cnt_nominal_path_point_count: int, a_nominal_path_points: np.ndarray,
                  e_Cnt_left_boundary_points_count: int, as_left_boundary_points: List[BoundaryPoint],
                  e_Cnt_right_boundary_points_count: int, as_right_boundary_points: List[BoundaryPoint],
-                 e_i_downstream_road_intersection_id: int, e_Cnt_lane_coupling_count: int, as_lane_coupling: List[LaneCoupling]):
+                 e_i_downstream_road_intersection_id: int, e_Cnt_lane_coupling_count: int,
+                 as_lane_coupling: List[LaneCoupling]):
         """
         Lane-segment information
         :param e_i_lane_segment_id: ID of this lane-segment
@@ -720,8 +642,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         pubsub_msg.e_v_nominal_speed = self.e_v_nominal_speed
 
         pubsub_msg.e_Cnt_nominal_path_point_count = self.e_Cnt_nominal_path_point_count
-        for i in range(pubsub_msg.e_Cnt_nominal_path_point_count):
-            pubsub_msg.a_nominal_path_points[i] = self.a_nominal_path_points[i].serialize()
+        pubsub_msg.a_nominal_path_points = SerializationUtils.serialize_array(self.a_nominal_path_points)
 
         pubsub_msg.e_Cnt_left_boundary_points_count = self.e_Cnt_left_boundary_points_count
         for i in range(pubsub_msg.e_Cnt_left_boundary_points_count):
@@ -744,11 +665,13 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
 
         as_static_traffic_flow_control = list()
         for i in range(pubsubMsg.e_Cnt_static_traffic_flow_control_count):
-            as_static_traffic_flow_control.append(StaticTrafficFlowControl.deserialize(pubsubMsg.as_static_traffic_flow_control[i]))
+            as_static_traffic_flow_control.append(
+                StaticTrafficFlowControl.deserialize(pubsubMsg.as_static_traffic_flow_control[i]))
 
         as_dynamic_traffic_flow_control = list()
         for i in range(pubsubMsg.e_Cnt_dynamic_traffic_flow_control_count):
-            as_dynamic_traffic_flow_control.append(DynamicTrafficFlowControl.deserialize(pubsubMsg.as_dynamic_traffic_flow_control[i]))
+            as_dynamic_traffic_flow_control.append(
+                DynamicTrafficFlowControl.deserialize(pubsubMsg.as_dynamic_traffic_flow_control[i]))
 
         as_left_adjacent_lanes = list()
         for i in range(pubsubMsg.e_Cnt_left_adjacent_lane_count):
@@ -766,9 +689,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         for i in range(pubsubMsg.e_Cnt_upstream_lane_count):
             as_upstream_lanes.append(LaneSegmentConnectivity.deserialize(pubsubMsg.as_upstream_lanes[i]))
 
-        a_nominal_path_points = list()
-        for i in range(pubsubMsg.e_Cnt_nominal_path_point_count):
-            a_nominal_path_points.append(NominalPathPoint.deserialize(pubsubMsg.a_nominal_path_points[i]))
+        a_nominal_path_points = SerializationUtils.deserialize_any_array(pubsubMsg.a_nominal_path_points)
 
         as_left_boundary_points = list()
         for i in range(pubsubMsg.e_Cnt_left_boundary_points_count):
