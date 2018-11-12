@@ -17,11 +17,6 @@ class MapState(PUBSUB_MSG_IMPL):
         self.lane_fstate = lane_fstate
         self.lane_id = lane_id
 
-    @property
-    def lane_index(self):
-        # type: (int) -> int
-        return MapUtils.get_lane_index(self.lane_id)
-
     @classmethod
     def from_cartesian_state(cls, cartesian_state: CartesianExtendedState):
         # type: (CartesianExtendedState) -> MapState

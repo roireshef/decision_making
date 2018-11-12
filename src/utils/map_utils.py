@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 
@@ -24,11 +24,11 @@ class MapUtils:
         return MapService.get_instance()._lane_address[lane_id][0]
 
     @staticmethod
-    def get_lane_index(lane_id: int) -> int:
+    def get_lane_ordinal(lane_id: int) -> int:
         """
-        get lane index of the lane on the road (the rightest lane's index is 0)
+        get lane ordinal of the lane on the road (the rightest lane's ordinal is 0)
         :param lane_id:
-        :return: lane index
+        :return: lane's ordinal
         """
         return MapService.get_instance()._lane_address[lane_id][1]
 
@@ -61,12 +61,12 @@ class MapUtils:
         map_api = MapService.get_instance()
         road_id, lane_idx = map_api._lane_address[lane_id]
         num_lanes = map_api.get_num_lanes(road_id)
-        if relative_lane == RelativeLane.RIGHT_LANE:
-            return [map_api._lane_by_address[(road_id, idx)] for idx in range(lane_idx-1, -1, -1)
-                    if (road_id, idx) in map_api._lane_by_address]
-        else:
-            return [map_api._lane_by_address[(road_id, idx)] for idx in range(lane_idx+1, num_lanes)
-                    if (road_id, idx) in map_api._lane_by_address]
+
+        idxs = {RelativeLane.RIGHT_LANE: range(lane_idx - 1, -1, -1),
+                RelativeLane.SAME_LANE: range(lane_idx, lane_idx+1),
+                RelativeLane.LEFT_LANE: range(lane_idx + 1, num_lanes)}[relative_lane]
+
+        return [map_api._lane_by_address[(road_id, idx)] for idx in idxs if (road_id, idx) in map_api._lane_by_address]
 
     # TODO: remove it after introduction of the new mapping module
     @staticmethod
@@ -121,7 +121,7 @@ class MapUtils:
         road_segment_id = MapUtils.get_road_segment_by_lane(lane_id)
         lane_width = map_api.get_road(road_segment_id).lane_width
         num_lanes = map_api.get_road(road_segment_id).lanes_num
-        lane_idx = MapUtils.get_lane_index(lane_id)
+        lane_idx = MapUtils.get_lane_ordinal(lane_id)
         return (lane_idx + 0.5)*lane_width, (num_lanes - lane_idx - 0.5)*lane_width
 
     @staticmethod
@@ -147,6 +147,7 @@ class MapUtils:
         :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
         :return: Frenet frame for the given route part
         """
+        # TODO: deal with starting_lon < 0, when get_upstream_lanes() is implemented
         # in current implementation: if starting_lon < 0, extract Frenet frame with only positive longitudes
         if starting_lon < EPS:
             lookahead_dist += starting_lon
@@ -190,7 +191,7 @@ class MapUtils:
     @staticmethod
     def get_lanes_by_road_segment(road_segment_id: int) -> List[int]:
         """
-        Get sorted list of lanes for given road segment. The output lanes are ordered by the lanes' index,
+        Get sorted list of lanes for given road segment. The output lanes are ordered by the lanes' ordinal,
         i.e. from the rightest lane to the most left.
         :param road_segment_id:
         :return: sorted list of lane segments' IDs
@@ -203,6 +204,58 @@ class MapUtils:
             lane_id = map_api._lane_by_address[(road_segment_id, lane_idx)]
             lanes_list.append(lane_id)
         return lanes_list
+
+    @staticmethod
+    def get_longitudinal_distance(lane_id1: int, lane_id2: int, longitude1: float, longitude2: float) -> Optional[float]:
+        """
+        Get longitudinal distance between two points located on lane centers, along lanes path starting from lane_id1.
+        lane_id2 must not be down/upstream of lane_id1, but the road segment containing lane_id2 must be subsequent
+        downstream or upstream of lane_id1.
+        :param lane_id1: lane segment of the first point
+        :param lane_id2: lane segment of the second point
+        :param longitude1: longitude of the first point relative to lane_id1
+        :param longitude2: longitude of the second point relative to lane_id2
+        :return: longitudinal difference between the second point and the first point; if lane_id1 is ahead of lane_id2,
+         then return negative distance
+        """
+        connecting_lanes, is_forward = MapUtils._get_lane_segments_path(lane_id1, MapUtils.get_road_segment_by_lane(lane_id2))
+        if len(connecting_lanes) == 0:
+            return None
+        sign = 1 if is_forward else -1
+        lanes_excluding_front_lane = connecting_lanes[:-1] if is_forward else connecting_lanes[1:]
+        connecting_lengths = [MapUtils.get_lane_length(lid) for lid in lanes_excluding_front_lane]
+        return sign * sum(connecting_lengths) + longitude2 - longitude1
+
+    @staticmethod
+    def get_lateral_distance_in_lanes(lane_id1: int, lane_id2: int) -> Optional[int]:
+        """
+        Get lateral distance in lanes (difference between relative ordinals) between two lane segments.
+        For example, if one of the given lanes is subsequent downstream/upstream of another lane, return 0.
+        :param lane_id1:
+        :param lane_id2:
+        :return: Difference between lane ordinal of the subsequent downstream of the back lane
+                 and the front lane's ordinal. If the given lanes are not in subsequent road segments, return None.
+        """
+        connecting_lanes, _ = MapUtils._get_lane_segments_path(lane_id1, MapUtils.get_road_segment_by_lane(lane_id2))
+        if len(connecting_lanes) == 0:
+            return None
+        return MapUtils.get_lane_ordinal(lane_id2) - MapUtils.get_lane_ordinal(connecting_lanes[-1])
+
+    @staticmethod
+    def _get_lane_segments_path(starting_lane_id: int, final_road_segment_id: int) -> (List[int], bool):
+        """
+        Get ordered list of lane segments (starting from starting_lane_id), connecting between starting_lane_id and
+        final_road_segment_id (either forward or backward).
+        :param starting_lane_id: initial lane segment
+        :param final_road_segment_id: road segment id, containing the subsequent downstream/upstream of starting_lane_id
+        :return: Return list of lane segments connecting between starting_lane_id and final_road_segment_id
+            (including both the first lane and the last lanes).
+            First return value: If final_road_segment_id is NOT subsequent downstream/upstream of starting_lane_id,
+            then return empty list.
+            The second return value is whether the path direction is forward: True if final_road_segment_id is ahead of
+            starting_lane_id.
+        """
+        pass
 
     @staticmethod
     def _convert_from_lane_to_map_coordinates(lane_id: int, lon_on_lane: float, lat_on_lane: float,
