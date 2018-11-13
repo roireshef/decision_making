@@ -5,17 +5,19 @@ from typing import Dict
 
 import numpy as np
 
-from common_data.interface.py.pubsub import dm_pubsub_topics as pubsub_topics
+from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import TRAJECTORY_PLAN
+from common_data.lcm.config import pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION, \
     NUM_ALTERNATIVE_TRAJECTORIES, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
-    TRAJECTORY_PLANNING_NAME_FOR_METRICS
+    TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
-from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
+from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan, DataTrajectoryPlan, Header, Timestamp, \
+    MapOrigin
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -54,12 +56,12 @@ class TrajectoryPlanningFacade(DmModule):
         self._last_trajectory = last_trajectory
 
     def _start_impl(self):
-        self.pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_LCM, None)
-        self.pubsub.subscribe(pubsub_topics.STATE_LCM, None)
+        self.pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, None)
+        self.pubsub.subscribe(pubsub_topics.STATE_TOPIC, None)
 
     def _stop_impl(self):
-        self.pubsub.unsubscribe(pubsub_topics.TRAJECTORY_PARAMS_LCM)
-        self.pubsub.unsubscribe(pubsub_topics.STATE_LCM)
+        self.pubsub.unsubscribe(pubsub_topics.TRAJECTORY_PARAMS_TOPIC)
+        self.pubsub.unsubscribe(pubsub_topics.STATE_TOPIC)
 
     def _periodic_action_impl(self):
         """
@@ -117,10 +119,19 @@ class TrajectoryPlanningFacade(DmModule):
                 center_vehicle_trajectory_points, direction=1)
 
             # publish results to the lower DM level (Control)
-            # TODO: remove ego_state.v_x from the message in version 2.0
-            trajectory_msg = TrajectoryPlanMsg(timestamp=state.ego_state.timestamp,
-                                               trajectory=vehicle_origin_trajectory_points,
-                                               current_speed=state_aligned.ego_state.velocity)
+            # TODO: put real values in tolerance and maximal velocity fields
+            waypoints = np.vstack((np.hstack((vehicle_origin_trajectory_points,
+                                              np.zeros(shape=[TRAJECTORY_NUM_POINTS,
+                                                              TRAJECTORY_WAYPOINT_SIZE-vehicle_origin_trajectory_points.shape[1]]))),
+                                  np.zeros(shape=[MAX_TRAJECTORY_WAYPOINTS-TRAJECTORY_NUM_POINTS, TRAJECTORY_WAYPOINT_SIZE])))
+
+            timestamp = Timestamp(e_Cnt_Secs=state.ego_state.timestamp, e_Cnt_FractionSecs=0)
+            map_origin = MapOrigin(e_phi_latitude=0, e_phi_longitude=0, e_l_altitude=0, s_Timestamp=timestamp)
+
+            trajectory_msg = TrajectoryPlan(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp, e_Cnt_version=0),
+                                            s_Data=DataTrajectoryPlan(s_Timestamp=timestamp, s_MapOrigin=map_origin,
+                                                                      a_TrajectoryWaypoints=waypoints,
+                                                                      e_Cnt_NumValidTrajectoryWaypoints=TRAJECTORY_NUM_POINTS))
 
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
@@ -162,10 +173,10 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received state.
         :return: deserialized State
         """
-        is_success, input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_LCM, timeout=1)
+        input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
         if input_state is None:
             raise MsgDeserializationError('LCM message queue for %s topic is empty or topic isn\'t subscribed',
-                                          pubsub_topics.STATE_LCM)
+                                          pubsub_topics.STATE_TOPIC)
         object_state = State.deserialize(input_state)
         self.logger.debug('%s: %s' % (LOG_MSG_RECEIVED_STATE, object_state))
         return object_state
@@ -177,16 +188,19 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-        is_success, input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_LCM, timeout=1)
+        input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_TOPIC, timeout=1)
         object_params = TrajectoryParams.deserialize(input_params)
         self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, object_params)
         return object_params
 
-    def _publish_trajectory(self, results: TrajectoryPlanMsg) -> None:
-        self.pubsub.publish(pubsub_topics.TRAJECTORY_LCM, results.serialize())
+    def _publish_trajectory(self, results: TrajectoryPlan) -> None:
+
+        self.pubsub.publish(TRAJECTORY_PLAN, results)
+
+        self.pubsub.publish(pubsub_topics.TRAJECTORY_TOPIC, results.serialize())
 
     def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
-        self.pubsub.publish(pubsub_topics.TRAJECTORY_VISUALIZATION_LCM, debug_msg.serialize())
+        self.pubsub.publish(pubsub_topics.TRAJECTORY_VISUALIZATION_TOPIC, debug_msg.serialize())
 
     def _get_state_with_expected_ego(self, state: State) -> State:
         """
