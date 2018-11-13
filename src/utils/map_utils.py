@@ -7,7 +7,7 @@ from decision_making.src.messages.navigation_plan_message import NavigationPlanM
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_DX, FP_SX, C_X, C_Y, CartesianPoint2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from mapping.src.exceptions import raises, LongitudeOutOfRoad, RoadNotFound
+from mapping.src.exceptions import raises, LongitudeOutOfRoad, RoadNotFound, NextRoadNotFound
 from mapping.src.service.map_service import MapService
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
@@ -164,29 +164,40 @@ class MapUtils:
     @staticmethod
     def get_upstream_lanes(lane_id: int) -> List[int]:
         """
-        get upstream lanes (previous) of the given lane
+        get upstream lanes (incoming) of the given lane
         :param lane_id:
         :return: list of upstream lanes
         """
-        pass
+        map_api = MapService.get_instance()
+        try:
+            prev_road_id = map_api._cached_map_model.get_prev_road(MapUtils.get_road_segment_id_from_lane_id(lane_id))
+            prev_lanes = MapUtils.get_lanes_by_road_segment(prev_road_id)
+            # find the closest previous lane: first point of the current lane to last point of prev lane
+            first_curr_lane_point = MapUtils.get_lane_frenet_frame(lane_id).points[0]
+            distances = [np.linalg.norm(MapUtils.get_lane_frenet_frame(lid).points[-1] - first_curr_lane_point)
+                         for lid in prev_lanes]
+            return [prev_lanes[np.argmin(distances)]]
+        except NextRoadNotFound:
+            return []
 
     @staticmethod
     def get_downstream_lanes(lane_id: int) -> List[int]:
         """
-        get downstream lanes (upcoming) of the given lane
+        get downstream lanes (outgoing) of the given lane
         :param lane_id:
         :return: list of downstream lanes
         """
-        pass
-
-    @staticmethod
-    def is_main_lane(lane_id: int) -> bool:
-        """
-        check if there is another lane with higher priority, having the same downstream lane
-        :param lane_id:
-        :return: True if there is no another lane with higher priority, having the same downstream lane
-        """
-        pass
+        map_api = MapService.get_instance()
+        try:
+            next_road_id = map_api._cached_map_model.get_next_road(MapUtils.get_road_segment_id_from_lane_id(lane_id))
+            next_lanes = MapUtils.get_lanes_by_road_segment(next_road_id)
+            # find the closest next lane: last point of the current lane to first point of next lane
+            last_curr_lane_point = MapUtils.get_lane_frenet_frame(lane_id).points[-1]
+            distances = [np.linalg.norm(MapUtils.get_lane_frenet_frame(lid).points[0] - last_curr_lane_point)
+                         for lid in next_lanes]
+            return [next_lanes[np.argmin(distances)]]
+        except NextRoadNotFound:
+            return []
 
     @staticmethod
     def get_lanes_by_road_segment(road_segment_id: int) -> List[int]:
@@ -218,7 +229,7 @@ class MapUtils:
         if lane_id1 is ahead of lane_id2, then return negative distance;
         if lane_id2 is not down/upstream of lane_id1, then return None
         """
-        connecting_lanes, is_forward = MapUtils._get_lane_segments_path(lane_id1, MapUtils.get_road_segment_id_from_lane_id(lane_id2))
+        connecting_lanes, is_forward = MapUtils._get_lane_segments_path(lane_id1, lane_id2)
         if len(connecting_lanes) == 0 or connecting_lanes[-1] != lane_id2:
             return None
         sign = 1 if is_forward else -1
@@ -236,18 +247,18 @@ class MapUtils:
         :return: Difference between lane ordinal of lane_id2 and subsequent downstream/upstream of lane_id1.
         If the given lanes are not in subsequent road segments, return None.
         """
-        connecting_lanes, _ = MapUtils._get_lane_segments_path(lane_id1, MapUtils.get_road_segment_id_from_lane_id(lane_id2))
+        connecting_lanes, _ = MapUtils._get_lane_segments_path(lane_id1, lane_id2)
         if len(connecting_lanes) == 0:
             return None
         return MapUtils.get_lane_ordinal(lane_id2) - MapUtils.get_lane_ordinal(connecting_lanes[-1])
 
     @staticmethod
-    def _get_lane_segments_path(starting_lane_id: int, final_road_segment_id: int) -> (List[int], bool):
+    def _get_lane_segments_path(starting_lane_id: int, final_lane_id: int) -> (List[int], bool):
         """
         Get ordered list of lane segments (starting from starting_lane_id), connecting between starting_lane_id and
         final_road_segment_id (either forward or backward).
         :param starting_lane_id: initial lane segment
-        :param final_road_segment_id: road segment id, containing the subsequent downstream/upstream of starting_lane_id
+        :param final_lane_id: road segment id, containing the subsequent downstream/upstream of starting_lane_id
         :return: First return value: Return list of lane segments connecting between starting_lane_id and
             final_road_segment_id (including both the first lane and the last lanes).
             If final_road_segment_id is NOT subsequent downstream/upstream of starting_lane_id,
@@ -256,10 +267,36 @@ class MapUtils:
             starting_lane_id.
         """
         starting_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(starting_lane_id)
+        final_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(final_lane_id)
         if starting_road_segment_id == final_road_segment_id:
             return [starting_lane_id], True
-        else:  # TODO: support multi-road case!!!
-            return [], True
+        else:  # different road segments
+            # TODO: 1. in case of road split the following implementation takes the first exit
+            # TODO: 2. assume no more than 3 road segments between the starting and final segments
+            # search forward
+            path = [starting_lane_id]
+            next_lane = starting_lane_id
+            for _ in range(3):
+                next_lanes = MapUtils.get_downstream_lanes(next_lane)
+                if len(next_lanes) == 0:
+                    break
+                next_lane = next_lanes[0]
+                path.append(next_lane)
+                if MapUtils.get_road_segment_id_from_lane_id(next_lane) == final_road_segment_id:
+                    return path, True
+            # search backward
+            path = [starting_lane_id]
+            prev_lane = starting_lane_id
+            for _ in range(3):
+                prev_lanes = MapUtils.get_upstream_lanes(prev_lane)
+                if len(prev_lanes) == 0:
+                    break
+                prev_lane = prev_lanes[0]
+                path.append(prev_lane)
+                if MapUtils.get_road_segment_id_from_lane_id(prev_lane) == final_road_segment_id:
+                    return path, False
+
+            return [], True  # the path not found
 
     @staticmethod
     def _convert_from_lane_to_map_coordinates(lane_id: int, lon_on_lane: float, lat_on_lane: float,
