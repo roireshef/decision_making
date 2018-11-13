@@ -18,9 +18,10 @@ from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_ObjectLocalization import \
     TsSYSObjectLocalization
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_Timestamp import TsSYSTimestamp
-from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
+MAX_CARTESIANPOSE_FIELDS = 6
+MAX_LANEFRENETPOSE_FIELDS = 6
 
 class ObjectTrackDynamicProperty(Enum):
     """"
@@ -122,8 +123,8 @@ class HostLocalization(PUBSUB_MSG_IMPL):
         pubsub_msg.e_Cnt_road_segment_id = self.e_Cnt_road_segment_id
         pubsub_msg.e_Cnt_lane_segment_id = self.e_Cnt_lane_segment_id
 
-        pubsub_msg.a_cartesian_pose = SerializationUtils.serialize_array(self.a_cartesian_pose)
-        pubsub_msg.a_lane_frenet_pose = SerializationUtils.serialize_array(self.a_lane_frenet_pose)
+        pubsub_msg.a_cartesian_pose = self.a_cartesian_pose
+        pubsub_msg.a_lane_frenet_pose = self.a_lane_frenet_pose
 
         return pubsub_msg
 
@@ -131,8 +132,8 @@ class HostLocalization(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSHostLocalization)->HostLocalization
         return cls(pubsubMsg.e_Cnt_road_segment_id, pubsubMsg.e_Cnt_lane_segment_id,
-                   SerializationUtils.deserialize_any_array(pubsubMsg.a_cartesian_pose),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.a_lane_frenet_pose))
+                   pubsubMsg.a_cartesian_pose[:MAX_CARTESIANPOSE_FIELDS],
+                   pubsubMsg.a_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS])
 
 
 class DataSceneHost(PUBSUB_MSG_IMPL):
@@ -283,9 +284,9 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         pubsub_msg.e_Pct_location_uncertainty_yaw = self.e_Pct_location_uncertainty_yaw
         pubsub_msg.e_Cnt_host_lane_frenet_id = self.e_Cnt_host_lane_frenet_id
 
-        pubsub_msg.a_cartesian_pose = SerializationUtils.serialize_array(self.a_cartesian_pose)
-        pubsub_msg.a_lane_frenet_pose = SerializationUtils.serialize_array(self.a_lane_frenet_pose)
-        pubsub_msg.a_host_lane_frenet_pose = SerializationUtils.serialize_array(self.a_host_lane_frenet_pose)
+        pubsub_msg.a_cartesian_pose = self.a_cartesian_pose
+        pubsub_msg.a_lane_frenet_pose = self.a_lane_frenet_pose
+        pubsub_msg.a_host_lane_frenet_pose = self.a_host_lane_frenet_pose
 
         return pubsub_msg
 
@@ -295,9 +296,9 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_r_probability, pubsubMsg.e_Cnt_lane_segment_id, ObjectTrackDynamicProperty(pubsubMsg.e_e_dynamic_status),
                    pubsubMsg.e_Pct_location_uncertainty_x, pubsubMsg.e_Pct_location_uncertainty_y,
                    pubsubMsg.e_Pct_location_uncertainty_yaw, pubsubMsg.e_Cnt_host_lane_frenet_id,
-                   SerializationUtils.deserialize_any_array(pubsubMsg.a_cartesian_pose),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.a_lane_frenet_pose),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.a_host_lane_frenet_pose))
+                   (pubsubMsg.a_cartesian_pose[:MAX_CARTESIANPOSE_FIELDS]),
+                   pubsubMsg.a_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS],
+                   pubsubMsg.a_host_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS])
 
 
 class ObjectLocalization(PUBSUB_MSG_IMPL):
