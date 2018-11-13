@@ -265,7 +265,7 @@ class MapUtils:
         """
         starting_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(starting_lane_id)
         if starting_road_segment_id == final_road_segment_id:
-            return [starting_road_segment_id], True
+            return [starting_lane_id], True
         else:  # TODO: support multi-road case!!!
             return [], True
 
