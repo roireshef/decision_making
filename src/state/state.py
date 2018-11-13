@@ -160,15 +160,30 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         return self._get_adjacent_map_state(RelativeLane.SAME_LANE)
 
     @property
-    def right_map_state(self):
+    def right_lane_map_state(self):
+        """
+        project the map_state on the right lane's Frenet frame (use caching)
+        :return: projected map_state
+        """
         return self._get_adjacent_map_state(RelativeLane.RIGHT_LANE)
 
     @property
-    def left_map_state(self):
+    def left_lane_map_state(self):
+        """
+        project the map_state on the left lane's Frenet frame (use caching)
+        :return: projected map_state
+        """
         return self._get_adjacent_map_state(RelativeLane.LEFT_LANE)
 
     def _get_adjacent_map_state(self, relative_lane):
         # type: (RelativeLane) -> MapState
+        """
+        If relative_lane == RelativeLane.SAME_LANE, then get the same lane's map_state.
+        Otherwise project the map_state on an adjacent lane's Frenet frame (use caching).
+        If the adjacent lane does not exist, return empty MapState(None, None).
+        :param relative_lane: either SAME_LANE or RIGHT_LANE or LEFT_LANE
+        :return: projected map_state on the adjacent lane
+        """
         if self._cached_map_states[relative_lane] is None:
             if relative_lane == RelativeLane.SAME_LANE:
                 self._cached_map_states[relative_lane] = MapState.from_cartesian_state(self._cached_cartesian_state)
@@ -176,7 +191,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
                 adjacent_lane_ids = MapUtils.get_adjacent_lanes(self.map_state.lane_id, relative_lane)
                 if len(adjacent_lane_ids) > 0:
                     frenet = MapUtils.get_lane_frenet_frame(adjacent_lane_ids[0])
-                    # TODO: the current implementation of cstate_to_fstate is very slow
+                    # TODO: replace with faster implementation of cstate_to_fstate
                     fstate = frenet.cstate_to_fstate(self.cartesian_state)
                     self._cached_map_states[relative_lane] = MapState(fstate, adjacent_lane_ids[0])
                 else:  # distinguish between not cached and non-existing lane
@@ -257,8 +272,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :return: list of frenet-states of size len(relative_lanes)
         """
         return [self.map_state.lane_fstate if relative_lane == RelativeLane.SAME_LANE
-                else self.left_map_state.lane_fstate if relative_lane == RelativeLane.LEFT_LANE
-                else self.right_map_state.lane_fstate if relative_lane == RelativeLane.RIGHT_LANE else None
+                else self.left_lane_map_state.lane_fstate if relative_lane == RelativeLane.LEFT_LANE
+                else self.right_lane_map_state.lane_fstate if relative_lane == RelativeLane.RIGHT_LANE else None
                 for relative_lane in relative_lanes]
 
     def serialize(self):

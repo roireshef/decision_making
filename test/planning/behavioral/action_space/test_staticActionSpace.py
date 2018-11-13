@@ -29,6 +29,7 @@ def test_specifyGoals_closeToTargetVelocity_specifyNotFail():
 
     state = State(None, [], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, logger)
+    # ego is located on the rightest lane, so filter recipes to the right
     filtered_recipes = [recipe for recipe in action_space.recipes if recipe.relative_lane != RelativeLane.RIGHT_LANE]
 
     action_specs = action_space.specify_goals(filtered_recipes, behavioral_state)

@@ -35,7 +35,7 @@ class NavigationGoal:
         """
         # TODO: use route planner to check whether current road_id != goal.road means MISSED or NOT_YET
         map_state = state.ego_state.map_state
-        road_id = MapUtils.get_road_segment_by_lane(map_state.lane_id)
+        road_id = MapUtils.get_road_segment_id_from_lane_id(map_state.lane_id)
         if road_id == self.road_id and map_state.lane_fstate[FS_SX] >= self.lon:
             if MapUtils.get_lane_ordinal(map_state.lane_id) in self.lane_indices:
                 return GoalStatus.REACHED

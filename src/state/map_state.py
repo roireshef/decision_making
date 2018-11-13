@@ -20,7 +20,7 @@ class MapState(PUBSUB_MSG_IMPL):
     @classmethod
     def from_cartesian_state(cls, cartesian_state: CartesianExtendedState):
         # type: (CartesianExtendedState) -> MapState
-        closest_lane_id = MapUtils.get_closest_lane(cartesian_state[C_X], cartesian_state[C_Y])
+        closest_lane_id = MapUtils.get_closest_lane(cartesian_state[:(C_Y+1)])
         lane_frenet = MapUtils.get_lane_frenet_frame(closest_lane_id)
         obj_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
         return cls(obj_fstate, closest_lane_id)
@@ -36,18 +36,18 @@ class MapState(PUBSUB_MSG_IMPL):
         Returns true of the object is on the road. False otherwise.
         :return: Returns true of the object is on the road. False otherwise.
         """
-        dist_from_right, dist_from_left = MapUtils.get_dist_from_lane_borders(self.lane_id, self.lane_fstate[FS_SX])
+        dist_from_right, dist_from_left = MapUtils.get_dist_from_lane_center_to_lane_borders(self.lane_id, self.lane_fstate[FS_SX])
         return -dist_from_right - ROAD_SHOULDERS_WIDTH < self.lane_fstate[FS_DX] < dist_from_left + ROAD_SHOULDERS_WIDTH
 
     def serialize(self):
         # type: () -> LcmMapState
         lcm_msg = LcmMapState()
-        lcm_msg.road_fstate = LCMUtils.numpy_array_to_lcm_non_typed_numpy_array(self.lane_fstate)
-        lcm_msg.road_id = self.lane_id
+        lcm_msg.lane_fstate = LCMUtils.numpy_array_to_lcm_non_typed_numpy_array(self.lane_fstate)
+        lcm_msg.lane_id = self.lane_id
         return lcm_msg
 
     @classmethod
     def deserialize(cls, lcm_msg):
         # type: (LcmMapState) -> MapState
-        return cls(np.ndarray(shape=tuple(lcm_msg.road_fstate.shape)
-                              , buffer=np.array(lcm_msg.road_fstate.data), dtype=float), lcm_msg.road_id)
+        return cls(np.ndarray(shape=tuple(lcm_msg.lane_fstate.shape)
+                              , buffer=np.array(lcm_msg.lane_fstate.data), dtype=float), lcm_msg._id)

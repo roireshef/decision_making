@@ -140,7 +140,6 @@ class CostBasedBehavioralPlanner:
         ego = behavioral_state.ego_state
 
         ego_init_fstate = ego.project_on_relative_lanes([action_recipe.relative_lane])[0]
-        assert ego_init_fstate is not None
         goal_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
 
         # set the reference route to start with a margin before the current longitudinal position of the vehicle
@@ -194,7 +193,6 @@ class CostBasedBehavioralPlanner:
 
         # project ego on target lane frenet_frame
         ego_init_fstate = ego.project_on_relative_lanes([action_recipe.relative_lane])[0]
-        assert ego_init_fstate is not None
 
         target_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
 
@@ -223,9 +221,9 @@ class CostBasedBehavioralPlanner:
         """
         # TODO: here we assume a constant lane width from the current state to the goal
         dist_from_right_lane_border, dist_from_left_lane_border = \
-            MapUtils.get_dist_from_lane_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
+            MapUtils.get_dist_from_lane_center_to_lane_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
         dist_from_right_road_border, dist_from_left_road_border = \
-            MapUtils.get_dist_from_road_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
+            MapUtils.get_dist_from_lane_center_to_road_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
 
         # lateral distance in [m] from ref. path to rightmost edge of lane
         right_lane_offset = dist_from_right_lane_border - ego_size.width / 2

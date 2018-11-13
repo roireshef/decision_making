@@ -83,8 +83,7 @@ class BehavioralGridState(BehavioralState):
         :return: list of object of type DynamicObjectWithRoadSemantics
         """
         # TODO: if the lanes belong to different roads, we can't subtract their indices
-        lat_diffs = [MapUtils.get_lane_ordinal(obj.map_state.lane_id) -
-                     MapUtils.get_lane_ordinal(ego_state.map_state.lane_id)
+        lat_diffs = [MapUtils.get_lateral_distance_in_lanes(ego_state.map_state.lane_id, obj.map_state.lane_id)
                      for obj in dynamic_objects]
         # for objects on non-adjacent lanes set relative_lanes[i] = None
         relative_lanes = [RelativeLane(diff) if abs(diff) <= 1 else None for diff in lat_diffs]
@@ -92,6 +91,7 @@ class BehavioralGridState(BehavioralState):
         ego_init_fstates = ego_state.project_on_relative_lanes(relative_lanes)
 
         # compute the relative longitudinal distance between object and ego (positive means object is in front)
+        # TODO: use MapUtils.get_longitudinal_distance !!!
         return [DynamicObjectWithRoadSemantics(obj, obj.map_state.lane_fstate[FS_SX] - ego_init_fstates[i][FS_SX],
                                                relative_lanes[i])
                 for i, obj in enumerate(dynamic_objects)
