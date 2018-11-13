@@ -1,5 +1,6 @@
 from os import getpid
 
+from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 
 from common_data.lcm.config import config_defs
@@ -31,8 +32,7 @@ class DmMockInitialization:
     @staticmethod
     def create_trajectory_planner() -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(config_file=config_defs.LCM_SOCKET_CONFIG, pubSubType=LcmPubSub)
-
+        pubsub = create_pubsub(PubSubMessageTypes)
         # Init map
         MapService.initialize()
         predictor = RoadFollowingPredictor(logger)

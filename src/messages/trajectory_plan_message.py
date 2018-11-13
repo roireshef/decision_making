@@ -4,10 +4,13 @@ from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
 from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryData
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
+class Header
 
 class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
     ''' Members annotations for python 2 compliant classes '''
-    timestamp = int
+    header = Header
+    data_trajectory_plan = DataTrajectoryPlan
+
     trajectory = np.ndarray
     current_speed = float
 

@@ -5,6 +5,8 @@ from typing import Dict
 
 import numpy as np
 
+from common_data.interface.py.idl_generated_files.Rte_Types import TsSYS_TrajectoryPlan
+from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import TRAJECTORY_PLAN
 from common_data.lcm.config import pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
@@ -183,6 +185,10 @@ class TrajectoryPlanningFacade(DmModule):
         return object_params
 
     def _publish_trajectory(self, results: TrajectoryPlanMsg) -> None:
+
+        traj_plan = TsSYS_TrajectoryPlan()
+        self.pubsub.publish(TRAJECTORY_PLAN,traj_plan)
+
         self.pubsub.publish(pubsub_topics.TRAJECTORY_TOPIC, results.serialize())
 
     def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:

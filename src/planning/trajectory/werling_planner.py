@@ -23,6 +23,7 @@ from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class WerlingPlanner(TrajectoryPlanner):
@@ -38,6 +39,8 @@ class WerlingPlanner(TrajectoryPlanner):
              cost_params: TrajectoryCostParams)-> Tuple[SamplableTrajectory, CartesianTrajectories, np.ndarray]:
         """ see base class """
         T_s = time_horizon
+        print(state.ego_state.map_state.lane_fstate[FS_SX]/
+              float(MapUtils.get_lane_length(state.ego_state.map_state.lane_id)))
 
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
         # The vehicle doesn't need to lay parallel to the road.

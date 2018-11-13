@@ -10,9 +10,11 @@ from decision_making.src.global_constants import NEGLIGIBLE_DISPOSITION_LON, NEG
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.types import C_V, \
-    CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D
+    CartesianExtendedState, CartesianTrajectories, CartesianPath2D, CartesianExtendedTrajectory, CartesianPoint2D, C_Y, \
+    C_X
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
+from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.exceptions import NotTriggeredException
 
 
@@ -31,6 +33,9 @@ class FixedSamplableTrajectory(SamplableTrajectory):
         """
         indices_of_closest_time_points = np.round((time_points - self.timestamp_in_sec) / WERLING_TIME_RESOLUTION).astype(int)
 
+        """debug"""
+        first_point = self._fixed_trajectory[-1]
+        print(MapUtils.get_closest_lane(first_point[C_X], first_point[C_Y]))
         return self._fixed_trajectory[indices_of_closest_time_points]
 
 
