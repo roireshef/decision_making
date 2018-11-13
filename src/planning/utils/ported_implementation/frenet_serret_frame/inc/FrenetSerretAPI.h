@@ -1,18 +1,28 @@
 #ifndef FRENET_SERRET_API_H_
 #define FRENET_SERRET_API_H_
-// For types
+
+/*
+ * Copyright (C) General Motors Company. All rights reserved.
+ * This information is confidential and proprietary to GM Company and may not be used, modified, copied or distributed.
+ * Author:      Uzi Meirov (uzi.meirov@gm.com)
+ * Author:      Oren Hyatt (oren.hyatt@gm.com)
+ */
+
+
+// For types.
 #include <cstdint>
-// For smart pointers and std::allocator
+// For smart pointers and std::allocator.
 #include <memory>
+// For compile time policies (SFINAE e.g.).
 #include <type_traits>
 
 
 /***************************/
-namespace GM
+namespace gm
 {
-	namespace UC
+	namespace planning
 	{
-		namespace FrenetSerret
+		namespace frenetserret
 		{
 			/*************************************** Auxilary types ************************************************/
 			template<typename TdataType, std::uint32_t TnumberDimensions, std::uint32_t TcomponentInMainAxis>
@@ -62,7 +72,7 @@ namespace GM
 				uint32_t m_dimensions[TnumberDimensions]; // in elements of sizeof(TdataType);
 				TdataType *m_data; // implementation detail: custom destructor, assignment,  
 								   //noexcept move.
-			}; // Used to allow sets of coordinates of points as parameters. Layout for 2D is: x0..xn-1,y0,yn-1
+			}; // Used to allow sets of coordinates of points as parameters. Layout for 2D is: x0..xn-1,y0,yn-1.
 
 			template <typename Tdata>
 			struct MinMaxStruct
@@ -110,7 +120,6 @@ namespace GM
 				FRENET
 			};
 
-			// trajectoriesToFrenet
 			enum class TrajectoriesCartesian : std::int32_t
 			{
 				C_X,
@@ -134,7 +143,7 @@ namespace GM
 			};
 
 			/*************************************** Auxilary values *************************************************/
-
+			// Used only as an outside parameter, so explicit type is OK.
 			static float TRAJECTORY_ARCLEN_RESOLUTION = 0.5000634237895241f;
 			// Policy check for meeting predefined set of configuations '{'
 			template<std::uint32_t Tdimensions, std::uint32_t TnumberOfComponentInMainAxis>
@@ -152,7 +161,9 @@ namespace GM
 			template<typename TdataType, std::uint32_t Tdimensions, std::uint32_t TnumberOfComponentsInMainAxis>
 			struct is_supported_frame_points_configuration
 			{
-				static const bool value = is_supported_data_type<TdataType>::value && is_supported_dimension_for_points<Tdimensions, TnumberOfComponentsInMainAxis>::value;
+				static const bool value = is_supported_data_type<TdataType>::value 
+												&& 
+										  is_supported_dimension_for_points<Tdimensions, TnumberOfComponentsInMainAxis>::value;
 			};
 
 			template<std::uint32_t Tdimensions, std::uint32_t TnumberOfComponentInMainAxis>
@@ -164,16 +175,18 @@ namespace GM
 			template<typename TdataType, std::uint32_t Tdimensions, std::uint32_t TnumberOfComponentsInMainAxis>
 			struct is_supported_frame_state_configuration
 			{
-				static const bool value = is_supported_data_type<TdataType>::value && is_supported_dimension_for_state<Tdimensions, TnumberOfComponentsInMainAxis>::value;
+				static const bool value = is_supported_data_type<TdataType>::value 
+											&& 
+										  is_supported_dimension_for_state<Tdimensions, TnumberOfComponentsInMainAxis>::value;
 			};
 
 			namespace MATH_UTILITIES
 			{
-				template<typename TdataType>
-				using Points2DLocation = GM::UC::FrenetSerret::Points<TdataType, 2U, 2U>; // Note that other configurations may not be supported (compile time indication.).
+				template<typename TdataType> // Note that other configurations may not be supported (compile time indication.).
+				using Points2DLocation = gm::planning::frenetserret::Points<TdataType, 2U, 2U>; 
 
 				template<typename TdataType>
-				using Taylor2DResult = GM::UC::FrenetSerret::TaylorResult<TdataType, 2U>;
+				using Taylor2DResult = gm::planning::frenetserret::TaylorResult<TdataType, 2U>;
 
 				template<typename TdataType>
 				struct ProjectedCartesianPointSt
@@ -194,13 +207,30 @@ namespace GM
 
 
 				template<typename TdataType>
-				Taylor2DResult<TdataType> taylorInterp2D(const TdataType& inSValue, TdataType m_ds, const Points2DLocation<TdataType>& pathPoints, const TdataType* k, const TdataType* kTag, const TdataType* t, const TdataType* N);
+				Taylor2DResult<TdataType> taylorInterp2D(const TdataType& inSValue, TdataType m_ds, 
+														 const Points2DLocation<TdataType>& pathPoints, 
+														 const TdataType* k, 
+														 const TdataType* kTag, 
+														 const TdataType* t, 
+														 const TdataType* N
+				);
 
 				template<typename TdataType>
-				ClosestSegments<TdataType> projectOnPiecewiseLinearCurve(const Points2DLocation<TdataType>& points, const Points2DLocation<TdataType>& pathPoints);
-				// Note: std::vector is exposed here. This should not be directly linked without compilation into an external compilation unit.
+				ClosestSegments<TdataType> projectOnPiecewiseLinearCurve(const Points2DLocation<TdataType>& points, 
+																		 const Points2DLocation<TdataType>& pathPoints
+				);
+				// Note: std::vector is exposed here. 
+				// This should not be directly linked without compilation into an external compilation unit.
 				template<typename TdataType>
-				std::vector<ProjectedCartesianPoint<TdataType>> projectCartesianPoints(const Points<TdataType, 2U, 2U>& points, const Points<TdataType, 2U, 2U>& pathPoints, const TdataType* k, const TdataType* kTag, const TdataType* t, const TdataType* m_N, TdataType ds);
+				std::vector<ProjectedCartesianPoint<TdataType>> projectCartesianPoints(
+																	const Points<TdataType, 2U, 2U>& points, 
+																	const Points<TdataType, 2U, 2U>& pathPoints, 
+																	const TdataType* k, 
+																	const TdataType* kTag, 
+																	const TdataType* t, 
+																	const TdataType* m_N, 
+																	TdataType ds
+				);
 
 
 				template<typename TdataType>
@@ -226,11 +256,11 @@ namespace GM
 }
 
 /***************************/
-namespace GM
+namespace gm
 {
-	namespace UC
+	namespace planning
 	{
-		namespace FrenetSerret
+		namespace frenetserret
 		{
 			///*************************************** Auxilary types ************************************************/
 
@@ -247,8 +277,9 @@ namespace GM
 				public:
 
 				template<std::uint32_t TnumberComponentsInMainAxis>
-				using Points = GM::UC::FrenetSerret::Points<TdataType, Tdimensions, TnumberComponentsInMainAxis>;
-				Frame(const Points<8U>& curveSamples, TdataType ds = TRAJECTORY_ARCLEN_RESOLUTION) noexcept(false) : m_ds(ds), m_isValid(false)
+				using Points = gm::planning::frenetserret::Points<TdataType, Tdimensions, TnumberComponentsInMainAxis>;
+				Frame(const Points<8U>& curveSamples, TdataType ds = TRAJECTORY_ARCLEN_RESOLUTION) noexcept(false) : 
+					m_ds(ds), m_isValid(false)
 				{
 					const auto numberOfElements = curveSamples.m_dimensions[0];
 					TdataType* ptrCaracteristicsData = new TdataType[numberOfElements * curveSamples.m_dimensions[1]];
@@ -258,68 +289,25 @@ namespace GM
 					
 					auto componentOffset = 0;
 					auto numberOfDestinationComponents = int(m_pathPointsIn.m_dimensions[1U]);
-					// fill position of points.
-					/*MATH_UTILITIES::Transpose2D(
-						m_pathPointsIn.m_data, 
-						curveSamples.m_data + componentOffset,
-						numberOfDestinationComponents, 
-						curveSamples.m_numberComponentsInMainAxis, 
-						numberOfElements
-					);*/
-					memcpy(m_pathPointsIn.m_data, curveSamples.m_data + componentOffset, curveSamples.m_numberComponentsInMainAxis * numberOfElements * sizeof(TdataType));
 
+					// fill position of points.
+					memcpy(m_pathPointsIn.m_data, 
+						   curveSamples.m_data + componentOffset, 
+						   curveSamples.m_numberComponentsInMainAxis * numberOfElements * sizeof(TdataType)
+					);
 					// fill T of points.
 					componentOffset += numberOfDestinationComponents;
 					m_t = m_pathPointsIn.m_data + numberOfElements * componentOffset;
-				/*	MATH_UTILITIES::Transpose2D(
-						m_t,
-						curveSamples.m_data + componentOffset,
-						numberOfDestinationComponents,
-						curveSamples.m_numberComponentsInMainAxis,
-						numberOfElements
-					);*/
 					// fill N of points.
 					componentOffset += numberOfDestinationComponents;
 					m_n = m_pathPointsIn.m_data + numberOfElements * componentOffset;
-					/*MATH_UTILITIES::Transpose2D(
-						m_n,
-						curveSamples.m_data + componentOffset,
-						numberOfDestinationComponents,
-						curveSamples.m_numberComponentsInMainAxis,
-						numberOfElements
-					);*/
 					// fill K of points.
 					componentOffset += numberOfDestinationComponents;
 					m_k = m_pathPointsIn.m_data + numberOfElements * componentOffset;
 					numberOfDestinationComponents = 1;
-			/*		MATH_UTILITIES::Transpose2D(
-						m_k,
-						curveSamples.m_data + componentOffset,
-						numberOfDestinationComponents,
-						curveSamples.m_numberComponentsInMainAxis,
-						numberOfElements
-					);*/
 					// fill K' of points.
 					componentOffset += numberOfDestinationComponents;
 					m_kTag = m_pathPointsIn.m_data + numberOfElements * componentOffset;
-			/*		MATH_UTILITIES::Transpose2D(
-						m_kTag,
-						curveSamples.m_data + componentOffset,
-						numberOfDestinationComponents,
-						curveSamples.m_numberComponentsInMainAxis,
-						numberOfElements
-					);*/
-					/*
-					for (auto elementIterator = int(); elementIterator < numberOfElements; ++elementIterator)
-					{
-						for (auto componentIterator = int(); componentIterator < numberOfDestinationComponents; ++componentIterator)
-						{
-							m_pathPointsIn.m_data[elementIterator * m_pathPointsIn.m_dimensions[1U]]
-								= curveSamples[elementIterator * curveSamples.m_numberComponentsInMainAxis + (componentIterator + componentOffset)];
-						}
-					}
-					*/
-
 				}
 
 				// Factories, builders and other generating patterns may be placed here.
@@ -333,8 +321,12 @@ namespace GM
 				/*************************************** Conversions methods *****************************************************/
 
 				// Conversions of sets of points.
-				template<typename Ttype = TdataType, std::uint32_t Dim = Tdimensions, std::uint32_t TnumberComponentsPerElement = TnumberOfElementsInMainAxis,
-					typename std::enable_if<is_supported_frame_points_configuration<Ttype, Dim, TnumberComponentsPerElement>::value, int >::type = 0
+				template<
+					typename Ttype = TdataType, 
+					std::uint32_t Dim = Tdimensions, 
+					std::uint32_t TnumberComponentsPerElement = TnumberOfElementsInMainAxis,
+					typename std::enable_if<
+						is_supported_frame_points_configuration<Ttype, Dim, TnumberComponentsPerElement>::value, int >::type = 0
 				>
 				Points<TnumberComponentsPerElement> toCartesianPoints
 				(
@@ -343,28 +335,31 @@ namespace GM
 				) noexcept(false)
 				{
 					TdataType* cartesianPointsData = new TdataType[fromPoints.m_dimensions[0U] * 2U];
+					std::uint32_t dims[Tdimensions] = {fromPoints.m_dimensions[0U], 2U};
+					Points<TnumberComponentsPerElement> rvGuard(cartesianPointsData, dims);
 
 					for (auto pointIterator = int(); pointIterator < int(fromPoints.m_dimensions[0U]); ++pointIterator)
 					{
-						auto taylor = GM::UC::FrenetSerret::MATH_UTILITIES::taylorInterp2D<TdataType>
+						auto taylor = gm::planning::frenetserret::MATH_UTILITIES::taylorInterp2D<TdataType>
 											(fromPoints.m_data[pointIterator], m_ds, m_pathPointsIn, m_k, m_kTag, m_t, m_n);
 
 						for (auto i = int(); i < int(TnumberComponentsPerElement); ++i)
 						{
-							const auto cartesianComponent = taylor.m_a[i] + taylor.m_n[i] * fromPoints.m_data[pointIterator + fromPoints.m_dimensions[0U]];
+							const auto cartesianComponent = taylor.m_a[i] + 
+															taylor.m_n[i] * fromPoints.m_data[pointIterator + fromPoints.m_dimensions[0U]];
 							cartesianPointsData[i * fromPoints.m_dimensions[0U] + pointIterator] = cartesianComponent;
 						}
 					}
-
-
-
-					TdataType* ptr = nullptr;
-					std::uint32_t dims[Tdimensions] = {fromPoints.m_dimensions[0U], 2U};
+					rvGuard.m_data = nullptr;
 					return Points<TnumberComponentsPerElement>(cartesianPointsData, dims);
 				}
 
-				template<typename Ttype = TdataType, std::uint32_t Dim = Tdimensions, std::uint32_t TnumberComponentsPerElement = TnumberOfElementsInMainAxis,
-					typename std::enable_if<is_supported_frame_points_configuration<Ttype, Dim, TnumberComponentsPerElement>::value, int >::type = 0
+				template<
+					typename Ttype = TdataType, 
+					std::uint32_t Dim = Tdimensions, 
+					std::uint32_t TnumberComponentsPerElement = TnumberOfElementsInMainAxis,
+					typename std::enable_if<
+						is_supported_frame_points_configuration<Ttype, Dim, TnumberComponentsPerElement>::value, int >::type = 0
 				>
 				Points<TnumberComponentsPerElement> toFrenetPoints
 				(
@@ -373,30 +368,45 @@ namespace GM
 				) noexcept(false)
 				{
 
-					auto projectedPoints = GM::UC::FrenetSerret::MATH_UTILITIES::projectCartesianPoints<TdataType>(fromPoints, m_pathPointsIn, m_k, m_kTag, m_t, m_n, m_ds);
+					auto projectedPoints = gm::planning::frenetserret::MATH_UTILITIES::projectCartesianPoints<TdataType>(fromPoints, 
+																														 m_pathPointsIn, 
+																														 m_k, 
+																														 m_kTag, 
+																														 m_t, 
+																														 m_n, 
+																														 m_ds
+					);
 					const auto numberOfPoints= int(fromPoints.m_dimensions[0U]);
 
 					auto frenetPointsData = new TdataType[2U * numberOfPoints];
+					std::uint32_t dims[Tdimensions] = { std::uint32_t(numberOfPoints), 2U };
+					Points<TnumberComponentsPerElement> rvGuard(frenetPointsData, dims);
 
 					for (auto pointIterator = int(); pointIterator < numberOfPoints; ++pointIterator)
 					{
 						auto dPointVal = TdataType();
 						for (auto i = int(); i < int(fromPoints.m_dimensions[1U]); ++i)
 						{
-							dPointVal += (fromPoints.m_data[pointIterator + fromPoints.m_dimensions[0U] * i] - projectedPoints[pointIterator].m_taylor2DResult.m_a[i]) * projectedPoints[pointIterator].m_taylor2DResult.m_n[i];
+							dPointVal += (fromPoints.m_data[pointIterator + fromPoints.m_dimensions[0U] * i] - 
+											projectedPoints[pointIterator].m_taylor2DResult.m_a[i]) 
+												* 
+											projectedPoints[pointIterator].m_taylor2DResult.m_n[i];
 						}
 
 						frenetPointsData[pointIterator] = projectedPoints[pointIterator].m_s;
 						frenetPointsData[pointIterator + numberOfPoints] = dPointVal;
 					}
 
-
-					std::uint32_t dims[Tdimensions] = {std::uint32_t(numberOfPoints), 2U};
+					rvGuard.m_data = nullptr;
 					return Points<TnumberComponentsPerElement>(frenetPointsData, dims);
 				}
 
-				template<typename Ttype = TdataType, std::uint32_t Dim = Tdimensions, std::uint32_t TnumberComponentsPerElement = TnumberOfElementsInMainAxis,
-					typename std::enable_if<is_supported_frame_state_configuration<Ttype, Dim, TnumberComponentsPerElement>::value, int >::type = 0
+				template<
+					typename Ttype = TdataType, 
+					std::uint32_t Dim = Tdimensions, 
+					std::uint32_t TnumberComponentsPerElement = TnumberOfElementsInMainAxis,
+					typename std::enable_if<
+						is_supported_frame_state_configuration<Ttype, Dim, TnumberComponentsPerElement>::value, int >::type = 0
 				>
 				Points<TnumberComponentsPerElement> toCartesianStateVectors(
 					const				Points<TnumberComponentsPerElement>& posPoints,
@@ -407,21 +417,35 @@ namespace GM
 					Points2DLocation pointsInFrenret(posPoints.m_data, dims2Dpoints);
 					auto numberOfElementsInTrajectory = int(posPoints.m_dimensions[0]);
 					auto cartesianStateData = new TdataType[TnumberComponentsPerElement * numberOfElementsInTrajectory];
-
+					Points<TnumberComponentsPerElement> rvGuard(cartesianStateData, dims2Dpoints);
 					auto fTrajectories = posPoints.m_data;
 
 					for (auto pointIterator = int(); pointIterator < numberOfElementsInTrajectory; ++pointIterator)
 					{
-						const auto& s = posPoints.m_data[pointIterator /**  /*((TinputTransposed == true) ? posPoints.m_dimensions[1U]/* : 1)*/];
-						const auto& sv = posPoints.m_data[pointIterator /** posPoints.m_dimensions[1U]*/ + static_cast<int>(TrajectoriesFrenet::FS_SV) * posPoints.m_dimensions[0U]];
-						const auto& dx = posPoints.m_data[pointIterator /** posPoints.m_dimensions[1U]*/ + static_cast<int>(TrajectoriesFrenet::FS_DX) * posPoints.m_dimensions[0U]];
-						const auto& dv = posPoints.m_data[pointIterator /** posPoints.m_dimensions[1U]*/ + static_cast<int>(TrajectoriesFrenet::FS_DV) * posPoints.m_dimensions[0U]];
-						const auto& da = posPoints.m_data[pointIterator /** posPoints.m_dimensions[1U]*/ + static_cast<int>(TrajectoriesFrenet::FS_DA) * posPoints.m_dimensions[0U]];
-						const auto& sa = posPoints.m_data[pointIterator /** posPoints.m_dimensions[1U]*/ + static_cast<int>(TrajectoriesFrenet::FS_SA) * posPoints.m_dimensions[0U]];
+						const auto& s = posPoints.m_data[pointIterator];
+						const auto& sv = posPoints.m_data[pointIterator + 
+															static_cast<int>(TrajectoriesFrenet::FS_SV) * numberOfElementsInTrajectory];
+						const auto& dx = posPoints.m_data[pointIterator + 
+															static_cast<int>(TrajectoriesFrenet::FS_DX) * numberOfElementsInTrajectory];
+						const auto& dv = posPoints.m_data[pointIterator + 
+															static_cast<int>(TrajectoriesFrenet::FS_DV) * numberOfElementsInTrajectory];
+						const auto& da = posPoints.m_data[pointIterator + 
+															static_cast<int>(TrajectoriesFrenet::FS_DA) * numberOfElementsInTrajectory];
+						const auto& sa = posPoints.m_data[pointIterator + 
+															static_cast<int>(TrajectoriesFrenet::FS_SA) * numberOfElementsInTrajectory];
 
-						auto taylor = GM::UC::FrenetSerret::MATH_UTILITIES::taylorInterp2D(s, m_ds, m_pathPointsIn, m_k, m_kTag, m_t, m_n);
+						auto taylor = gm::planning::frenetserret::MATH_UTILITIES::taylorInterp2D(	s, 
+																									m_ds, 
+																									m_pathPointsIn, 
+																									m_k, 
+																									m_kTag, 
+																									m_t, 
+																									m_n
+						);
 
-						const auto thetaR = std::atan2(taylor.m_t[static_cast<int>(TrajectoriesCartesian::C_Y)], taylor.m_t[static_cast<int>(TrajectoriesCartesian::C_X)]);
+						const auto thetaR = std::atan2(	taylor.m_t[static_cast<int>(TrajectoriesCartesian::C_Y)], 
+														taylor.m_t[static_cast<int>(TrajectoriesCartesian::C_X)]
+						);
 						const auto radiusRatio = TdataType(1.0f) - taylor.m_k * dx;
 
 						const auto dTag = TdataType() == sv ? TdataType() : dv / sv;
@@ -470,12 +494,16 @@ namespace GM
 					}
 
 					pointsInFrenret.m_data = nullptr;
-
+					rvGuard.m_data = nullptr;
 					return Points<TnumberComponentsPerElement>(cartesianStateData, dims2Dpoints);
 				}
 				
-				template<typename Ttype = TdataType, std::uint32_t Dim = Tdimensions, std::uint32_t TnumberComponentsPerElement = TnumberOfElementsInMainAxis,
-					typename std::enable_if<is_supported_frame_state_configuration<Ttype, Dim, TnumberComponentsPerElement>::value, int >::type = 0
+				template<
+					typename Ttype = TdataType, 
+					std::uint32_t Dim = Tdimensions, 
+					std::uint32_t TnumberComponentsPerElement = TnumberOfElementsInMainAxis,
+					typename std::enable_if<
+						is_supported_frame_state_configuration<Ttype, Dim, TnumberComponentsPerElement>::value, int >::type = 0
 				>
 				Points<TnumberComponentsPerElement> toFrenetStateVectors(
 						const				Points<TnumberComponentsPerElement>& posPoints,
@@ -486,11 +514,18 @@ namespace GM
 					Points2DLocation pointsInFrenret(posPoints.m_data, dims2Dpoints);
 					auto numberOfElementsInTrajectory = int(posPoints.m_dimensions[0]);
 					auto frenetStateData = new TdataType[TnumberComponentsPerElement * numberOfElementsInTrajectory];
-					
+					Points<TnumberComponentsPerElement> rvGuard(frenetStateData, dims2Dpoints);
 					auto cTrajectories = posPoints.m_data;
 
 
-					const auto prjct = GM::UC::FrenetSerret::MATH_UTILITIES::projectCartesianPoints(pointsInFrenret, m_pathPointsIn, m_k, m_kTag, m_t, m_n, m_ds);
+					const auto prjct = gm::planning::frenetserret::MATH_UTILITIES::projectCartesianPoints(	pointsInFrenret, 
+																											m_pathPointsIn, 
+																											m_k, 
+																											m_kTag, 
+																											m_t, 
+																											m_n,
+																											m_ds
+					);
 
 					auto pointIterator = int();
 					for (auto& elementItr : prjct)
@@ -499,7 +534,12 @@ namespace GM
 						auto distancePointVal = TdataType();
 						for (auto i = int(); i < pointsInFrenret.m_numberComponentsInMainAxis; ++i)
 						{
-							distancePointVal += (pointsInFrenret.m_data[pointIterator + pointsInFrenret.m_dimensions[0U] * i] - elementItr.m_taylor2DResult.m_a[i]) * elementItr.m_taylor2DResult.m_n[i];
+							distancePointVal += (pointsInFrenret.m_data[pointIterator + pointsInFrenret.m_dimensions[0U] * i]
+													-
+												 elementItr.m_taylor2DResult.m_a[i]
+												) 
+													* 
+												 elementItr.m_taylor2DResult.m_n[i];
 						}
 
 						const auto radiusRatio = TdataType(1.0f) - distancePointVal * elementItr.m_taylor2DResult.m_k;
@@ -510,33 +550,58 @@ namespace GM
 							elementItr.m_taylor2DResult.m_t[static_cast<int>(TrajectoriesCartesian::C_X)]
 						);
 
-						const auto deltaTheta = cTrajectories[pointIterator + static_cast<int>(TrajectoriesCartesian::C_YAW) * numberOfElementsInTrajectory] - thetaR;
+						const auto deltaTheta = cTrajectories[pointIterator
+																+ 
+															  static_cast<int>(TrajectoriesCartesian::C_YAW) * numberOfElementsInTrajectory
+															 ] - thetaR;
 
-						// hint the compiler to use sincos / sincosf
+						// Hint the compiler to use sincos / sincosf.
 						const auto cosDeltaTheta = std::cos(deltaTheta);
 						const auto sinDeltaTheta = std::sin(deltaTheta);
 						const auto tanDeltaTheta = sinDeltaTheta / cosDeltaTheta;
 
 
-						const auto sV = cTrajectories[pointIterator + static_cast<int>(TrajectoriesCartesian::C_V) * numberOfElementsInTrajectory] * cosDeltaTheta / radiusRatio;
-						const auto dV = cTrajectories[pointIterator + static_cast<int>(TrajectoriesCartesian::C_V) * numberOfElementsInTrajectory] * sinDeltaTheta;
+						const auto sV = cTrajectories[pointIterator
+															+ 
+													  static_cast<int>(TrajectoriesCartesian::C_V) * numberOfElementsInTrajectory
+													 ] * cosDeltaTheta / radiusRatio;
+						const auto dV = cTrajectories[pointIterator
+															+ 
+													  static_cast<int>(TrajectoriesCartesian::C_V) * numberOfElementsInTrajectory
+													 ] * sinDeltaTheta;
 
-						// derivative of delta_theta(via chain rule : d(sx)->d(t)->d(s))
-						const auto deltaThetaTag = radiusRatio / cosDeltaTheta * cTrajectories[pointIterator + static_cast<int>(TrajectoriesCartesian::C_K) * numberOfElementsInTrajectory] - elementItr.m_taylor2DResult.m_k;
+						// Derivative of delta_theta(via chain rule : d(sx)->d(t)->d(s)).
+						const auto deltaThetaTag =	radiusRatio 
+														/
+													cosDeltaTheta 
+														* 
+													cTrajectories[	pointIterator 
+																		+ 
+																	static_cast<int>(TrajectoriesCartesian::C_K) 
+																		* 
+																	numberOfElementsInTrajectory
+													]	
+														- 
+													elementItr.m_taylor2DResult.m_k;
 
 
 
 						const auto dTag = radiusRatio * tanDeltaTheta;  // invalid: (radius_ratio * np.sin(delta_theta)) ** 2
-						const auto dTag2 = -(elementItr.m_taylor2DResult.m_kTag * distancePointVal + elementItr.m_taylor2DResult.m_k * dTag) * tanDeltaTheta
-							+
+						const auto dTag2 = 
+								-(elementItr.m_taylor2DResult.m_kTag * distancePointVal + elementItr.m_taylor2DResult.m_k * dTag)
+									* 
+								tanDeltaTheta
+									+
 							(
 								radiusRatio / (cosDeltaTheta * cosDeltaTheta)
 								*
 								(
-									cTrajectories[pointIterator + static_cast<int>(TrajectoriesCartesian::C_K) * numberOfElementsInTrajectory]
-									*
+									cTrajectories[
+										pointIterator + static_cast<int>(TrajectoriesCartesian::C_K) * numberOfElementsInTrajectory
+									]
+										*
 									radiusRatio / cosDeltaTheta
-									-
+										-
 									elementItr.m_taylor2DResult.m_k
 								)
 							);
@@ -544,26 +609,26 @@ namespace GM
 						const auto sA =
 							(
 								cTrajectories[pointIterator + static_cast<int>(TrajectoriesCartesian::C_A) * numberOfElementsInTrajectory]
-								-
+									-
 								(sV * sV)
-								/
+									/
 								cosDeltaTheta
-								*
+									*
 								(
 									radiusRatio * tanDeltaTheta * deltaThetaTag
 									-
 									(
 										elementItr.m_taylor2DResult.m_kTag * distancePointVal + elementItr.m_taylor2DResult.m_k * dTag
-										)
 									)
 								)
+							)
 							*
 							(
 								cosDeltaTheta / radiusRatio
-								);
+							);
 
 						const auto dA = dTag2 * (sV * sV) + dTag * sA;
-						// write back
+						// Write back.
 						frenetStateData[pointIterator] = prjct[pointIterator].m_s;
 						frenetStateData[pointIterator + 1 * dims2Dpoints[0]] = sV;
 						frenetStateData[pointIterator + 2 * dims2Dpoints[0]] = sA;
@@ -577,7 +642,7 @@ namespace GM
 					pointsInFrenret.m_data = nullptr;
 
 
-
+					rvGuard.m_data = nullptr;
 					return Points<TnumberComponentsPerElement>(frenetStateData, dims2Dpoints);
 				}
 
@@ -604,9 +669,17 @@ namespace GM
 
 				/**************************************** Not required ******************************************************/
 				template<int TnumberComponentsPerElement>
-				std::vector<GM::UC::FrenetSerret::MATH_UTILITIES::ProjectedCartesianPoint<TdataType>> projectCartesianPoints(const Points<TnumberComponentsPerElement>& fromPoints)
+				std::vector<gm::planning::frenetserret::MATH_UTILITIES::ProjectedCartesianPoint<TdataType>> 
+					projectCartesianPoints(const Points<TnumberComponentsPerElement>& fromPoints) const
 				{
-					return GM::UC::FrenetSerret::MATH_UTILITIES::projectCartesianPoints<TdataType>(fromPoints, m_pathPointsIn, m_k, m_kTag, m_t, m_n, m_ds);
+					return gm::planning::frenetserret::MATH_UTILITIES::projectCartesianPoints<TdataType>(	fromPoints, 
+																											m_pathPointsIn,
+																											m_k, 
+																											m_kTag, 
+																											m_t, 
+																											m_n, 
+																											m_ds
+					);
 				}
 
 
@@ -616,7 +689,8 @@ namespace GM
 				MinMaxLimits<TdataType> m_sLimits = { TdataType(0.0f), TdataType(100.0f)};
 
 				/**************************************** Characteristics for the FrenetFrame ********************************/
-				using Points2DLocation = GM::UC::FrenetSerret::Points<TdataType, 2U, 2U>; // Note that other configurations may not be supported (compile time indication.).
+				// Note that other configurations may not be supported (compile time indication.).
+				using Points2DLocation = gm::planning::frenetserret::Points<TdataType, 2U, 2U>; 
 				Points2DLocation m_pathPointsIn = Points2DLocation();
 				TdataType* m_k = nullptr;
 				TdataType* m_kTag = nullptr;
@@ -635,7 +709,8 @@ namespace GM
 
 
 template<typename TdataType, std::uint32_t Tdimensions, class Allocator = std::allocator<TdataType> >
-std::unique_ptr<GM::UC::FrenetSerret::Frame<TdataType, Tdimensions, Allocator>> GM::UC::FrenetSerret::Frame<TdataType, Tdimensions, Allocator>::fit
+std::unique_ptr<gm::planning::frenetserret::Frame<TdataType, Tdimensions, Allocator>> 
+	gm::planning::frenetserret::Frame<TdataType, Tdimensions, Allocator>::fit
 (
 	Points<2U>&& cartesianPoints, 
 	TdataType ds,
@@ -648,25 +723,32 @@ std::unique_ptr<GM::UC::FrenetSerret::Frame<TdataType, Tdimensions, Allocator>> 
 
 /********************** Utility functions *********/
 
-namespace GM
+namespace gm
 {
-	namespace UC
+	namespace planning
 	{
-		namespace FrenetSerret
+		namespace frenetserret
 		{
 			namespace MATH_UTILITIES
 			{
-				template<typename TdataType>
-				using Points2DLocation = GM::UC::FrenetSerret::Points<TdataType, 2U, 2U>; // Note that other configurations may not be supported (compile time indication.).
+				template<typename TdataType> // Note that other configurations may not be supported (compile time indication.).
+				using Points2DLocation = gm::planning::frenetserret::Points<TdataType, 2U, 2U>;
 
 				template<typename TdataType>
-				using Taylor2DResult = GM::UC::FrenetSerret::TaylorResult<TdataType, 2U>;
+				using Taylor2DResult = gm::planning::frenetserret::TaylorResult<TdataType, 2U>;
 
 				template<typename TdataType>
 				using ProjectedCartesianPoint = ProjectedCartesianPointSt<TdataType>;
 
 				template<typename TdataType>
-				Taylor2DResult<TdataType> taylorInterp2D(const TdataType& inSValue, TdataType m_ds, const Points2DLocation<TdataType>& pathPoints, const TdataType* m_k, const TdataType* m_kTag, const TdataType* m_t, const TdataType* m_N)
+				Taylor2DResult<TdataType> taylorInterp2D(	const TdataType& inSValue, 
+															TdataType m_ds, 
+															const Points2DLocation<TdataType>& pathPoints, 
+															const TdataType* m_k, 
+															const TdataType* m_kTag, 
+															const TdataType* m_t, 
+															const TdataType* m_N
+				)
 				{
 					//assert(inSValue > m_sLimits.m_min && inSValue < m_sLimits.m_max);
 					Taylor2DResult<TdataType> rv;
@@ -734,16 +816,28 @@ namespace GM
 				}
 
 				template<typename TdataType>
-				ClosestSegments<TdataType> projectOnPiecewiseLinearCurve(const Points2DLocation<TdataType>& points, const Points2DLocation<TdataType>& pathPoints)
+				ClosestSegments<TdataType> projectOnPiecewiseLinearCurve(
+												const Points2DLocation<TdataType>& points, 
+												const Points2DLocation<TdataType>& pathPoints
+				)
 				{
 					using PointsMatrixType = std::remove_const<std::remove_reference<decltype(points)>::type>::type;
 
 					std::uint32_t segmentsVecDims[2U] = { pathPoints.m_dimensions[0] - 1U, pathPoints.m_dimensions[1] };
+					std::uint32_t singleComponentVecDims[2U] = { pathPoints.m_dimensions[0] - 1U, 1U };
+					std::uint32_t progressMatrixDims[2U] = { pathPoints.m_dimensions[0] - 1U, points.m_dimensions[0U] };
+
 					auto segmentsVecData = new TdataType[segmentsVecDims[0U] * segmentsVecDims[1U]];
+					PointsMatrixType segmentsVec(segmentsVecData, segmentsVecDims);
+
 					auto segmentsVecLenSqr = new TdataType[segmentsVecDims[0U]];
+					PointsMatrixType segmentsVecLenSqrGuard(segmentsVecLenSqr, singleComponentVecDims);
 
 					auto progressMatrixData = new TdataType[(int(pathPoints.m_dimensions[0U]) - 1) * points.m_dimensions[0U]];
+					PointsMatrixType progressMatrix(progressMatrixData, progressMatrixDims);
+
 					auto progressMatrixClippedData = new TdataType[(int(pathPoints.m_dimensions[0U]) - 1) * points.m_dimensions[0U]];
+					PointsMatrixType progressMatrixClipped(progressMatrixClippedData, progressMatrixDims);
 
 
 					ClosestSegments<TdataType> closestSegments;
@@ -765,7 +859,6 @@ namespace GM
 						closestSegments.m_indexOfSegment.emplace_back(-1);
 					}
 
-					PointsMatrixType segmentsVec(segmentsVecData, segmentsVecDims);
 					const int segmentsLength = int(pathPoints.m_dimensions[0U]) - 1;
 
 					// diff + length of diff
@@ -782,7 +875,11 @@ namespace GM
 							segmentsVecData[segmentItr + offsetToElementBaseAddressWrite] = diffVal;
 							currentSampleElement = nextSampleElement;
 
-							segmentsVecLenSqr[segmentItr] = (0 == elementItr) ? diffVal * diffVal : (diffVal * diffVal + segmentsVecLenSqr[segmentItr]);
+							segmentsVecLenSqr[segmentItr] = (0 == elementItr) 
+																? 
+															diffVal * diffVal 
+																: 
+															(diffVal * diffVal + segmentsVecLenSqr[segmentItr]);
 						}
 					}
 
@@ -796,9 +893,19 @@ namespace GM
 						for (auto segmentItr = int(); segmentItr < decltype(segmentItr)(segmentsVec.m_dimensions[0U]); ++segmentItr)
 						{
 							auto sum = TdataType();
-							for (auto segmentComponentIter = int(); segmentComponentIter < decltype(segmentComponentIter)(segmentsVec.m_dimensions[1U]); ++segmentComponentIter)
+							for (	auto segmentComponentIter = int(); 
+									segmentComponentIter < decltype(segmentComponentIter)(segmentsVec.m_dimensions[1U]); 
+									++segmentComponentIter
+							)
 							{
-								sum += (points.m_data[segmentComponentIter * points.m_dimensions[0U] + pointI] - segmentsStart.m_data[segmentComponentIter * segmentsStart.m_dimensions[0U] + segmentItr]) * segmentsVec.m_data[segmentComponentIter * segmentsVec.m_dimensions[0U] + segmentItr];
+								sum +=	(points.m_data[segmentComponentIter * points.m_dimensions[0U] + pointI] 
+											- 
+										segmentsStart.m_data[segmentComponentIter 
+											* 
+										segmentsStart.m_dimensions[0U] + segmentItr]
+										)
+											* 
+										segmentsVec.m_data[segmentComponentIter * segmentsVec.m_dimensions[0U] + segmentItr];
 							}
 							const auto progressValue = sum / segmentsVecLenSqr[segmentItr];
 							progressMatrixData[pointI + points.m_dimensions[0U] * segmentItr] = progressValue;
@@ -808,13 +915,20 @@ namespace GM
 
 							auto distanceSqrToClippedProjection = TdataType();
 							// Fused into this is the creation of clippedProjections 3D matrix.
-							for (auto i = decltype(segmentItr)(); i < decltype(segmentItr)(points.m_numberComponentsInMainAxis/*.m_dimensions[1U]*/); ++i)
+							for (auto i = decltype(segmentItr)(); i < decltype(segmentItr)(points.m_numberComponentsInMainAxis); ++i)
 							{
 								auto clippedProjectionsValue =
-									clippedProgressValue * segmentsVec.m_data[segmentItr + segmentsLength * i] + segmentsStart.m_data[segmentItr + segmentsStart.m_dimensions[0U] * i];
+									clippedProgressValue * segmentsVec.m_data[segmentItr + segmentsLength * i]
+										+
+									segmentsStart.m_data[segmentItr + segmentsStart.m_dimensions[0U] * i];
 
-								const auto distanceOfCurrentComponentPointToSegment = points.m_data[i * points.m_dimensions[0U] + pointI] - clippedProjectionsValue;
-								distanceSqrToClippedProjection += distanceOfCurrentComponentPointToSegment * distanceOfCurrentComponentPointToSegment;
+								const auto distanceOfCurrentComponentPointToSegment = 
+												points.m_data[i * points.m_dimensions[0U] + pointI]
+													-
+												clippedProjectionsValue;
+								distanceSqrToClippedProjection +=	distanceOfCurrentComponentPointToSegment 
+																		* 
+																	distanceOfCurrentComponentPointToSegment;
 
 							}
 
@@ -825,7 +939,8 @@ namespace GM
 							}
 
 						}
-						closestSegments.m_clippedProgress[pointI] = progressMatrixClippedData[pointI + points.m_dimensions[0U] * closestSegments.m_indexOfSegment[pointI]];
+						closestSegments.m_clippedProgress[pointI] = 
+								progressMatrixClippedData[pointI + points.m_dimensions[0U] * closestSegments.m_indexOfSegment[pointI]];
 					}
 
 					auto isPointInFrontOfCurve = false;
@@ -841,8 +956,10 @@ namespace GM
 								);
 						if (isPointInFrontOfCurve)
 						{
-							std::cout << "Can't project point " << closestSegments.m_indexOfSegment[pointI] << " on curve [" << pathPoints.m_data[0U] << ", " << pathPoints.m_data[pathPoints.m_dimensions[0U]] <<
-								"..., " << pathPoints.m_data[pathPoints.m_dimensions[0U] - 1U] << ", " << pathPoints.m_data[2U * pathPoints.m_dimensions[0U] - 1U] << "]\n";
+							std::cout << "Can't project point " << closestSegments.m_indexOfSegment[pointI] << " on curve [" <<
+										pathPoints.m_data[0U] << ", " << pathPoints.m_data[pathPoints.m_dimensions[0U]] <<
+										"..., " << pathPoints.m_data[pathPoints.m_dimensions[0U] - 1U] << ", " << 
+										pathPoints.m_data[2U * pathPoints.m_dimensions[0U] - 1U] << "]\n";
 						}
 					}
 
@@ -859,8 +976,10 @@ namespace GM
 								);
 						if (isPointInBackOfCurve)
 						{
-							std::cout << "Can't project point " << closestSegments.m_indexOfSegment[pointI] << " on curve [" << pathPoints.m_data[0U] << ", " << pathPoints.m_data[pathPoints.m_dimensions[0U]] <<
-								"..., " << pathPoints.m_data[pathPoints.m_dimensions[0U] - 1U] << ", " << pathPoints.m_data[2U * pathPoints.m_dimensions[0U] - 1U] << "]\n";
+							std::cout << "Can't project point " << closestSegments.m_indexOfSegment[pointI] << " on curve [" << 
+										pathPoints.m_data[0U] << ", " << pathPoints.m_data[pathPoints.m_dimensions[0U]] <<
+										"..., " << pathPoints.m_data[pathPoints.m_dimensions[0U] - 1U] << ", " << 
+										pathPoints.m_data[2U * pathPoints.m_dimensions[0U] - 1U] << "]\n";
 						}
 					}
 					segmentsStart.m_data = nullptr; // make sure convient class does not delete the data.
@@ -869,18 +988,32 @@ namespace GM
 				}
 
 				template<typename TdataType>
-				std::vector<ProjectedCartesianPoint<TdataType>> projectCartesianPoints(const Points<TdataType, 2U, 2U>& points, const Points<TdataType, 2U, 2U>& pathPoints, const TdataType* m_k, const TdataType* m_kTag, const TdataType* m_t, const TdataType* m_N, TdataType ds)
+				std::vector<ProjectedCartesianPoint<TdataType>> projectCartesianPoints(	const Points<TdataType, 2U, 2U>& points, 
+																						const Points<TdataType, 2U, 2U>& pathPoints, 
+																						const TdataType* m_k, 
+																						const TdataType* m_kTag, 
+																						const TdataType* m_t, 
+																						const TdataType* m_N, 
+																						TdataType ds
+				)
 				{
 					static const TdataType TINY_CURVATURE = TdataType(0.0001f);
 				
-					std::vector<GM::UC::FrenetSerret::MATH_UTILITIES::ProjectedCartesianPoint<TdataType>> rv;
+					std::vector<gm::planning::frenetserret::MATH_UTILITIES::ProjectedCartesianPoint<TdataType>> rv;
 					rv.reserve(points.m_dimensions[0U]);
 				
 					const auto prjct = projectOnPiecewiseLinearCurve(points, pathPoints);
 					for (auto pointItr = 0; pointItr < int(points.m_dimensions[0U]); ++pointItr)
 					{
 						auto sApprox = (prjct.m_clippedProgress[pointItr] + prjct.m_indexOfSegment[pointItr]) * ds;
-						auto taylor = GM::UC::FrenetSerret::MATH_UTILITIES::taylorInterp2D(sApprox, ds, pathPoints, m_k, m_kTag, m_t, m_N);
+						auto taylor = gm::planning::frenetserret::MATH_UTILITIES::taylorInterp2D(	sApprox, 
+																									ds, 
+																									pathPoints, 
+																									m_k, 
+																									m_kTag,
+																									m_t, 
+																									m_N
+						);
 						const auto isCurvatureBigEnough = std::abs(taylor.m_k) > TINY_CURVATURE;
 						if (isCurvatureBigEnough)
 						{
@@ -890,7 +1023,7 @@ namespace GM
 							auto distanceCenterToPointSqr = TdataType();
 							auto stepNorm = TdataType();
 							auto unNormalizedAngleToPoint = TdataType();
-							for (auto dimension = int(); dimension < int(points.m_numberComponentsInMainAxis/*.m_dimensions[1U]*/); ++dimension)
+							for (auto dimension = int(); dimension < int(points.m_numberComponentsInMainAxis); ++dimension)
 							{
 								const auto pointComponentVal = points.m_data[pointItr + points.m_dimensions[0U] * dimension];
 								const auto aComponentVal = taylor.m_a[dimension];
@@ -903,14 +1036,24 @@ namespace GM
 							}
 				
 							const auto cosCenterToPoint =
-											std::min(std::abs(unNormalizedAngleToPoint / std::sqrt(distanceCenterToPointSqr)), TdataType(1.0f));
+											std::min(std::abs(	unNormalizedAngleToPoint 
+																	/ 
+																std::sqrt(distanceCenterToPointSqr)
+													 ), TdataType(1.0f));
 				
 							// arc length from a_s to the new guess point
 							const auto stepMagnitude = std::acos(cosCenterToPoint) * std::abs(signedRadius);
 							// get sign from norm.
 							const auto step = TdataType(std::copysign(stepMagnitude, stepNorm));
 							sApprox += step;
-							taylor = GM::UC::FrenetSerret::MATH_UTILITIES::taylorInterp2D(sApprox, ds, pathPoints, m_k, m_kTag, m_t, m_N);
+							taylor = gm::planning::frenetserret::MATH_UTILITIES::taylorInterp2D(sApprox,
+																								ds, 
+																								pathPoints, 
+																								m_k, 
+																								m_kTag, 
+																								m_t, 
+																								m_N
+							);
 						}
 						rv.emplace_back(taylor, sApprox);
 					}

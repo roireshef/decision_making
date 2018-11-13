@@ -1,6 +1,17 @@
-/* This file is not meant for production.
-The purpose of the file is to demonstrate basic usage of the C++ API, and provide some sanity check.
+/*
+* Copyright (C) General Motors Company. All rights reserved.
+* This information is confidential and proprietary to GM Company and may not be used, modified, copied or distributed.
+* Author:      Uzi Meirov (uzi.meirov@gm.com)
+* Author:      Oren Hyatt (oren.hyatt@gm.com)
 */
+
+/* This file is not meant for production.
+ * The purpose of the file is to demonstrate basic usage of the C++ API, and provide some sanity check.
+ * Please focus on the last part of the main function: calling use/test cases.
+ * Other logic includes convinient functionality, and data preparation that can be used as a refernce by the user.
+ */
+
+
 
 #include <algorithm>
 #include <vector>
@@ -32,11 +43,11 @@ The purpose of the file is to demonstrate basic usage of the C++ API, and provid
 // Names aliasing:
 using Single = float;
 template<typename T>					  
-using FrenetSerret2D		 = GM::UC::FrenetSerret::Frame<T, 2U, std::allocator<T>>;
+using FrenetSerret2D		 = gm::planning::frenetserret::Frame<T, 2U, std::allocator<T>>;
 template<std::uint32_t TnumberDimensions, std::uint32_t TnumberComponensInMainAxis> 
-using PointsSingle			 = GM::UC::FrenetSerret::Points<float, TnumberDimensions, TnumberComponensInMainAxis>;
-using Points2DSingleLocation = GM::UC::FrenetSerret::Points<float, 2U, 2U>; // Note that other configurations may not be supported (compile time indication.).
-using Points2DDoubleState    = GM::UC::FrenetSerret::Points<double, 2U, 6U>; // Note that other configurations may not be supported (compile time indication.).
+using PointsSingle			 = gm::planning::frenetserret::Points<float, TnumberDimensions, TnumberComponensInMainAxis>;
+using Points2DSingleLocation = gm::planning::frenetserret::Points<float, 2U, 2U>; // Note that other configurations may not be supported (compile time indication.).
+using Points2DDoubleState    = gm::planning::frenetserret::Points<double, 2U, 6U>; // Note that other configurations may not be supported (compile time indication.).
 
 using Single2D = std::array<Single, 2U>;
 
@@ -48,7 +59,7 @@ using micro = std::chrono::microseconds;
 
 
 template<typename TdataType>
-using ProjectedCartesianPoint = GM::UC::FrenetSerret::MATH_UTILITIES::ProjectedCartesianPoint<TdataType>;
+using ProjectedCartesianPoint = gm::planning::frenetserret::MATH_UTILITIES::ProjectedCartesianPoint<TdataType>;
 
 
 /*
@@ -72,12 +83,15 @@ bool caseStateFCF(FrenetSerret2D<T>& frame);
 
 template<typename T>
 bool caseProjectCartesianPointFivePointsProjectionAccurate(FrenetSerret2D<T>& frame);
-
+// Test not implemented: shall be supported when fit functionality is ready.
 template<typename T>
 bool casefitFrenetOriginalRoutePointsAreProjectedErrorsAreLowEnough(FrenetSerret2D<T>& frame);
 
+
+
 int main()
 {
+
 	/*********************************** Data injection ********************************************/
 
 
@@ -122,7 +136,7 @@ int main()
 
 
 
-	using Frame2DCharacteristics = GM::UC::FrenetSerret::Points<double, 2U, 8U>;
+	using Frame2DCharacteristics = gm::planning::frenetserret::Points<double, 2U, 8U>;
 	
 	/********************* Example use of hard coded data , in order to construct a Fernet frame 2D object. ******/
 
@@ -253,7 +267,7 @@ int main()
 	
 
 	// Prepare input cartesian trajectories '{'
-	using TrajectoriesCartesian = GM::UC::FrenetSerret::TrajectoriesCartesian;
+	using TrajectoriesCartesian = gm::planning::frenetserret::TrajectoriesCartesian;
 
 	auto cTrajectories = new Single[sizeof(CTrajectories) / sizeof(CTrajectories[0U])];
 	const int numberOfElementsInTrajectory = (sizeof(CTrajectories) / sizeof(CTrajectories[0U])) / static_cast<int>(TrajectoriesCartesian::NUMBER_OF_COMPONENTS);
@@ -282,7 +296,7 @@ int main()
 
 	// Prepare input frenet trajectories '{'
 
-	using TrajectoriesFrenet = GM::UC::FrenetSerret::TrajectoriesFrenet;
+	using TrajectoriesFrenet = gm::planning::frenetserret::TrajectoriesFrenet;
 
 
 	auto fTrajectories = new Single[sizeof(FTrajectories) / sizeof(FTrajectories[0U])];
@@ -310,33 +324,37 @@ int main()
 	finish = std::chrono::high_resolution_clock::now();
 	std::cout << "high_resolution_clock: toCartesianStateVectors " << __FILE__ << ' ' << __LINE__ << " took " << std::chrono::duration_cast<micro>(finish - start).count() << std::endl;
 
-
+	// Focus on this part: Test/Use case.
 
 	auto testResult = casePointsCFC(frame2DFromNumpy);
 	if (!testResult)
 	{
 		std::cerr << std::endl;
 	}
+
 	testResult = casePointFCF(frame2DFromNumpy);
 	if (!testResult)
 	{
 		std::cerr << std::endl;
 	}
+
 	testResult = caseStateCFC(frame2DFromNumpy);
 	if (!testResult)
 	{
 		std::cerr << std::endl;
 	}
+
 	testResult = caseStateFCF(frame2DFromNumpy);
 	if (!testResult)
 	{
 		std::cerr << std::endl;
 	}
+
 	testResult = caseProjectCartesianPointFivePointsProjectionAccurate(frame2DFromNumpy);
+	if (!testResult)
 	{
 		std::cerr << std::endl;
 	}
-
 	return 0;
 }
 
@@ -350,19 +368,19 @@ bool casePointsCFC(FrenetSerret2D<T>& frame)
 	std::uint32_t pointsInDims[2U] = {kNumberOfControlPoints, kNumberComponentsPerPoint};
 
 	T* cPointsData = new T[kNumberOfControlPoints * kNumberComponentsPerPoint];
+	using Points2DLocation = gm::planning::frenetserret::Points<T, 2U, 2U>;
+	Points2DLocation cPoints(cPointsData, pointsInDims);
 	// Cartesian points data in.
 	cPointsData[0] = T(220.0); cPointsData[1] = T(150.0); cPointsData[2] = T(280.0);
 	cPointsData[3] = T(320.0); cPointsData[4] = T(370.0); cPointsData[5] = T(0.0);
 	cPointsData[6] = T(0.0); cPointsData[7] = T(40.0); cPointsData[8] = T(60.0);
 	cPointsData[9] = T(0.0);
 
-	using Points2DLocation = GM::UC::FrenetSerret::Points<T, 2U, 2U>;
 
-	Points2DLocation cPoints(cPointsData, pointsInDims);
 
 	const auto pointsFrenetFromCartesian = frame.toFrenetPoints(cPoints);
 	const auto pointsCartesianFromFrenet = frame.toCartesianPoints(pointsFrenetFromCartesian);
-	
+
 	auto rv = true;
 
 	for (auto point = 0; point < kNumberOfControlPoints; ++point)
@@ -400,7 +418,7 @@ bool casePointFCF(FrenetSerret2D<T>& frame)
 	fPointsData[6] = T(0.0); fPointsData[7] = T(40.0); fPointsData[8] = T(60.0);
 	fPointsData[9] = T(0.0);
 
-	using Points2DLocation = GM::UC::FrenetSerret::Points<T, 2U, 2U>;
+	using Points2DLocation = gm::planning::frenetserret::Points<T, 2U, 2U>;
 
 	Points2DLocation fPoints(fPointsData, pointsInDims);
 
@@ -429,7 +447,6 @@ bool casePointFCF(FrenetSerret2D<T>& frame)
 	return rv;
 }
 
-
 template<typename T>
 bool caseStateCFC(FrenetSerret2D<T>& frame)
 {
@@ -454,7 +471,7 @@ bool caseStateCFC(FrenetSerret2D<T>& frame)
 
 	Points2DDoubleState cartesianState(cTrajectories, statesInDims);
 
-	using Points2DLocation = GM::UC::FrenetSerret::Points<T, 2U, 2U>;
+	using Points2DLocation = gm::planning::frenetserret::Points<T, 2U, 2U>;
 
 	auto frenetState = frame.toFrenetStateVectors(cartesianState);
 	auto cartesianStateFromFrenet = frame.toCartesianStateVectors(frenetState);
@@ -539,7 +556,7 @@ bool caseStateFCF(FrenetSerret2D<T>& frame)
 
 	Points2DDoubleState frenetState(fTrajectories, statesInDims);
 
-	using Points2DLocation = GM::UC::FrenetSerret::Points<T, 2U, 2U>;
+	using Points2DLocation = gm::planning::frenetserret::Points<T, 2U, 2U>;
 
 	auto cartesianState = frame.toCartesianStateVectors(frenetState);
 	auto frenetStateFromCartesian = frame.toFrenetStateVectors(cartesianState);
@@ -615,7 +632,7 @@ bool caseProjectCartesianPointFivePointsProjectionAccurate(FrenetSerret2D<T>& fr
 	fPointsData[6] = T(0.0); fPointsData[7] = T(40.0); fPointsData[8] = T(60.0);
 	fPointsData[9] = T(0.0);
 
-	using Points2DLocation = GM::UC::FrenetSerret::Points<T, 2U, 2U>;
+	using Points2DLocation = gm::planning::frenetserret::Points<T, 2U, 2U>;
 
 	Points2DLocation fPoints(fPointsData, pointsInDims);
 	
@@ -641,9 +658,6 @@ bool caseProjectCartesianPointFivePointsProjectionAccurate(FrenetSerret2D<T>& fr
 }
 
 
-
-
-
 template<typename T>
 bool caseCtrajectoryToFtrajectoryToCtrajectoryZeroVelocityTwoWayConversionAccuratePoseAndVelocity(FrenetSerret2D<T>& frame)
 {
@@ -667,7 +681,7 @@ bool caseCtrajectoryToFtrajectoryToCtrajectoryZeroVelocityTwoWayConversionAccura
 
 	Points2DDoubleState cartesianState(cTrajectories, statesInDims);
 
-	using Points2DLocation = GM::UC::FrenetSerret::Points<T, 2U, 2U>;
+	using Points2DLocation = gm::planning::frenetserret::Points<T, 2U, 2U>;
 
 	auto frenetState = frame.toFrenetStateVectors(cartesianState);
 	auto cartesianStateFromFrenet = frame.toCartesianStateVectors(frenetState);
