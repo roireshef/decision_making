@@ -257,7 +257,7 @@ class MapUtils:
         """
         starting_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(starting_lane_id)
         if starting_road_segment_id == final_road_segment_id:
-            return [starting_road_segment_id], True
+            return [starting_lane_id], True
         else:  # TODO: support multi-road case!!!
             return [], True
 
@@ -335,7 +335,7 @@ class MapUtils:
         :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
         :return: (road_id, longitudinal distance [m] from the beginning of <road_id>)
         """
-        initial_road_id = MapUtils.get_road_segment_by_lane(initial_lane_id)
+        initial_road_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
         current_road_idx_in_plan = navigation_plan.get_road_index_in_plan(initial_road_id)
         roads_ids = navigation_plan.road_ids[current_road_idx_in_plan:]
 
@@ -344,7 +344,7 @@ class MapUtils:
         lane_lengths = [MapUtils.get_lane_length(initial_lane_id)]
         lane_ids = [initial_lane_id]
         for road_id in roads_ids[1:]:
-            next_lane = [lid for lid in downstream_lanes if MapUtils.get_road_segment_by_lane(lid) == road_id]
+            next_lane = [lid for lid in downstream_lanes if MapUtils.get_road_segment_id_from_lane_id(lid) == road_id]
             if len(next_lane) < 1:
                 raise RoadNotFound("Downstream lane was not found in navigation plan")
             lane_ids.append(next_lane[0])
