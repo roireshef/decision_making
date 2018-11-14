@@ -2,7 +2,7 @@ from typing import List
 
 import numpy as np
 
-from decision_making.src.planning.types import CartesianPath2D, FrenetState2D
+from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, FrenetStates2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 
 
@@ -27,7 +27,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         self.sub_segments = sub_segments
 
     @classmethod
-    def create_generalized_frenet_frame(cls, frenet_frames: List[FrenetSerret2DFrame], sub_segments: List[FrenetSubSegment]):
+    def build(cls, frenet_frames: List[FrenetSerret2DFrame], sub_segments: List[FrenetSubSegment]):
         """
         Create a generalized frenet frame, which is a concatenation of some frenet frames or a part of them.
         A special case might be a sub segment of a single frenet frame.
@@ -84,7 +84,12 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         closest_ind = np.argmin(np.linalg.norm(frame.points - cartesian_point, axis=1))
         return closest_ind[0]
 
-    def convert_from_fstate(self, frenet_state: FrenetState2D, segment_id: int) -> FrenetState2D:
+    # TODO: replace with vectorized operations
+    def convert_from_segment_states(self, frenet_states: FrenetStates2D, segment_ids: List[int]) -> FrenetStates2D:
+        return np.array([self.convert_from_segment_state(frenet_state, segment_id)
+                         for frenet_state, segment_id in zip(frenet_states, segment_ids)])
+
+    def convert_from_segment_state(self, frenet_state: FrenetState2D, segment_id: int) -> FrenetState2D:
         """
         Converts a frenet_state on a frenet_frame to a frenet_state on the generalized frenet frame.
         :param frenet_state: a frenet_state on another frenet_frame which was part in building the generalized frenet frame.
@@ -93,7 +98,12 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         """
         pass
 
-    def convert_to_fstate(self, frenet_state: FrenetState2D) -> (int, FrenetState2D):
+    # TODO: replace with vectorized operations
+    def convert_to_segment_states(self, frenet_states: FrenetStates2D) -> (List[int], FrenetStates2D):
+        segment_ids, states = zip(*[self.convert_to_segment_state(state) for state in frenet_states])
+        return list(segment_ids), np.array(states)
+
+    def convert_to_segment_state(self, frenet_state: FrenetState2D) -> (int, FrenetState2D):
         """
         Converts a frenet_state on the generalized frenet frame to a frenet_state on a frenet_frame it's built from.
         :param frenet_state: a frenet_state on the generalized frenet frame.
