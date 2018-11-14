@@ -36,7 +36,53 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         the frenet_frames parameter.
         :return: A new GeneralizedFrenetSerretFrame built out of different other frenet frames.
         """
-        pass
+        # TODO: should we handle concatenation of frenet frames with different ds?
+        assert len(set([frame.ds for frame in frenet_frames])) == 1
+        ds = frenet_frames[0].ds
+
+        # Check that all sub_segments limits are multiples of ds and raise a warning otherwise
+        limits = np.array([[sub_segment.lon_start, sub_segment.lon_end] for sub_segment in sub_segments])
+        if not np.isclose(limits % ds, np.around(limits % ds)):
+            raise Warning('one or more of the frames\' limits is not a multiple of ds, inaccurate calculations'
+                          ' may occur')
+
+        points = []
+        T = []
+        N = []
+        k = []
+        k_tag = []
+
+        for i in range(len(frenet_frames)):
+            frame = frenet_frames[i]
+            if sub_segments[i].lon_start == 0:
+                start_ind = 0
+            else:
+                start_ind = GeneralizedFrenetSerretFrame.get_point_index_closest_to_lon(frame, sub_segments[i].lon_start)
+            # if this is not the last frame then the next already has this frame's last point as its first - omit it.
+            if sub_segments[i].lon_end == frame.s_max and i < len(frenet_frames)-1:
+                end_ind = frame.points.shape[0] - 2
+            else:
+                end_ind = GeneralizedFrenetSerretFrame.get_point_index_closest_to_lon(frame, sub_segments[i].lon_end)
+
+            points.append(frame.points[start_ind:end_ind, :])
+            T.append(frame.T[start_ind:end_ind, :])
+            N.append(frame.N[start_ind:end_ind, :])
+            k.append(frame.k[start_ind:end_ind, :])
+            k_tag.append(frame.k_tag[start_ind:end_ind, :])
+
+        return cls(points, np.array(T), np.array(N), np.array(k), np.array(k_tag), ds, sub_segments)
+
+    @staticmethod
+    def get_point_index_closest_to_lon(frame: FrenetSerret2DFrame, longitude: float) -> int:
+        """
+        given a longitude, get the point index in frame.points which is the closest to this longitude.
+        :param frame: frenet frame
+        :param longitude: longitude in frenet
+        :return:the index of the closest point in frame.points
+        """
+        cartesian_point = frame.fpoint_to_cpoint(np.array([longitude, 0]))
+        closest_ind = np.argmin(np.linalg.norm(frame.points - cartesian_point, axis=1))
+        return closest_ind[0]
 
     def convert_from_fstate(self, frenet_state: FrenetState2D, segment_id: int) -> FrenetState2D:
         """
