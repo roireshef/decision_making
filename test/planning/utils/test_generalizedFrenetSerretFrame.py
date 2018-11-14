@@ -1,14 +1,10 @@
 import numpy as np
 
-from decision_making.src.global_constants import TRAJECTORY_CURVE_SPLINE_FIT_ORDER, ROAD_MAP_REQUIRED_RES
-from decision_making.src.planning.types import C_A, C_V, C_K, FP_SX, FS_SX, FS_DX, FS_DV, FS_SV, FS_DA, FS_SA, FP_DX, \
-    C_YAW
+from decision_making.src.planning.types import C_A, C_V, C_K
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
 from decision_making.test.planning.trajectory.utils import RouteFixture
-from mapping.src.service.map_service import MapService
-from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
 def test_cpointsToFpointsToCpoints_pointTwoWayConversionExactSegmentationSameDs_accurate():
