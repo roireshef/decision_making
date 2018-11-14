@@ -153,12 +153,10 @@ class MapUtils:
             lookahead_dist += starting_lon
             starting_lon = EPS
 
-        shifted, _ = MapUtils._get_lookahead_points(lane_id, starting_lon, lookahead_dist, desired_lat=0,
-                                                    navigation_plan=navigation_plan)
-        # TODO: change to precise resampling
-        _, resampled, _ = CartesianFrame.resample_curve(curve=shifted, step_size=TRAJECTORY_ARCLEN_RESOLUTION)
+        points, _ = MapUtils._get_lookahead_points(lane_id, starting_lon, lookahead_dist, desired_lat=0,
+                                                   navigation_plan=navigation_plan)
 
-        center_lane_reference_route = FrenetSerret2DFrame.fit(resampled)
+        center_lane_reference_route = FrenetSerret2DFrame.fit(points)
         return center_lane_reference_route
 
     @staticmethod
@@ -274,9 +272,10 @@ class MapUtils:
             # TODO: 1. in case of road split the following implementation takes the first exit
             # TODO: 2. assume no more than 3 road segments between the starting and final segments
             # search forward
+            max_depth = 3
             path = [starting_lane_id]
             next_lane = starting_lane_id
-            for _ in range(3):
+            for _ in range(max_depth):
                 next_lanes = MapUtils.get_downstream_lanes(next_lane)
                 if len(next_lanes) == 0:
                     break
@@ -287,7 +286,7 @@ class MapUtils:
             # search backward
             path = [starting_lane_id]
             prev_lane = starting_lane_id
-            for _ in range(3):
+            for _ in range(max_depth):
                 prev_lanes = MapUtils.get_upstream_lanes(prev_lane)
                 if len(prev_lanes) == 0:
                     break
@@ -370,7 +369,7 @@ class MapUtils:
         :param initial_lon: initial longitude along <initial_lane_id>
         :param lookahead_dist: the desired distance of lookahead in [m].
         :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
-        :return: (road_id, longitudinal distance [m] from the beginning of <road_id>)
+        :return: (list of lane_ids, longitudinal distance [m] from the beginning of the last lane in lane_ids)
         """
         initial_road_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
         current_road_idx_in_plan = navigation_plan.get_road_index_in_plan(initial_road_id)
