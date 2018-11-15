@@ -4,7 +4,7 @@ from multiprocessing import Process
 
 import time
 
-from common_data.interface.py.pubsub.dm_pubsub_topics import PubSubMessageTypes
+from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
 from common_data.lcm.config import config_defs
 from common_data.lcm.config.pubsub_topics import PERCEIVED_SELF_LOCALIZATION_TOPIC, TRAJECTORY_TOPIC
 from common_data.interface.py.idl_generated_files.dm import LcmPerceivedSelfLocalization

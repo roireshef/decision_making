@@ -2,7 +2,7 @@ from os import getpid
 
 import numpy as np
 
-from common_data.interface.py.pubsub.dm_pubsub_topics import PubSubMessageTypes
+from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
 from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from decision_making.src import global_constants
 from decision_making.src.dm_main import DmInitialization
