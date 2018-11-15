@@ -41,10 +41,11 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         ds = frenet_frames[0].ds
 
         # Check that all sub_segments limits are multiples of ds and raise a warning otherwise
-        limits = np.array([[sub_segment.lon_start, sub_segment.lon_end] for sub_segment in sub_segments])
-        if not np.isclose(limits % ds, np.around(limits % ds)):
-            raise Warning('one or more of the frames\' limits is not a multiple of ds, inaccurate calculations'
-                          ' may occur')
+        limits = [[sub_segment.lon_start, sub_segment.lon_end] for sub_segment in sub_segments]
+
+        # if not np.isclose(limits % ds, np.around(limits % ds)):
+        #     raise Warning('one or more of the frames\' limits is not a multiple of ds, inaccurate calculations'
+        #                   ' may occur')
 
         points = []
         T = []
@@ -70,7 +71,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
             k.append(frame.k[start_ind:end_ind, :])
             k_tag.append(frame.k_tag[start_ind:end_ind, :])
 
-        return cls(points, np.array(T), np.array(N), np.array(k), np.array(k_tag), ds, sub_segments)
+        return cls(np.concatenate(points), np.concatenate(T), np.concatenate(N), np.concatenate(k),
+                   np.concatenate(k_tag), ds, sub_segments)
 
     @staticmethod
     def get_point_index_closest_to_lon(frame: FrenetSerret2DFrame, longitude: float) -> int:
@@ -82,7 +84,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         """
         cartesian_point = frame.fpoint_to_cpoint(np.array([longitude, 0]))
         closest_ind = np.argmin(np.linalg.norm(frame.points - cartesian_point, axis=1))
-        return closest_ind[0]
+        return closest_ind
 
     # TODO: replace with vectorized operations
     def convert_from_segment_states(self, frenet_states: FrenetStates2D, segment_ids: List[int]) -> FrenetStates2D:
@@ -96,7 +98,15 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         :param segment_id: a segment_id, usually lane_id, of one of the frenet frames which were used in building the generalized frenet frame.
         :return: a frenet state on the generalized frenet frame.
         """
-        pass
+        generalized_frenet_state = 0
+        segment_index = [sub_segment.segment_id for sub_segment in self.sub_segments].index(segment_id)
+        for i in range(segment_index+1):
+            if i < segment_index:
+                generalized_frenet_state +=
+                break
+            else:
+                generalized_frenet_state +=
+
 
     # TODO: replace with vectorized operations
     def convert_to_segment_states(self, frenet_states: FrenetStates2D) -> (List[int], FrenetStates2D):
