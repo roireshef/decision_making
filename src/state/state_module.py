@@ -6,7 +6,7 @@ from typing import Optional, List, Dict
 import numpy as np
 
 import rte.python.profiler as prof
-from common_data.interface.py.pubsub import dm_pubsub_topics as pubsub_topics
+from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
 from common_data.interface.py.idl_generated_files.dm import LcmPerceivedDynamicObjectList
 from common_data.interface.py.idl_generated_files.dm import LcmPerceivedSelfLocalization
 from common_data.src.communication.pubsub.pubsub import PubSub

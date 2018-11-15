@@ -3,7 +3,7 @@ from os import getpid
 import os
 import numpy as np
 
-from common_data.interface.py.pubsub.dm_pubsub_topics import PubSubMessageTypes
+from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
 from common_data.lcm.config import config_defs
 from common_data.lcm.python.Communication.lcmpubsub import LcmPubSub
 from common_data.src.communication.pubsub.pubsub import PubSub
@@ -46,8 +46,8 @@ from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 
 # TODO: move this into config?
-NAVIGATION_PLAN = NavigationPlanMsg(np.array([1]))  # 20 for Ayalon PG
-MAP_FILE = os.environ['AVCODE_PATH'] + '/spav/common_data/maps/OvalMilford.bin'  # None for Ayalon PG
+NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))  # 20 for Ayalon PG
+MAP_FILE = None #os.environ['AVCODE_PATH'] + '/spav/common_data/maps/OvalMilford.bin'  # None for Ayalon PG
 
 
 class NavigationFacadeMock(NavigationFacade):
