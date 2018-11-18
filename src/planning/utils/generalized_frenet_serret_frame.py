@@ -40,16 +40,16 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         the frenet_frames parameter.
         :return: A new GeneralizedFrenetSerretFrame built out of different other frenet frames.
         """
-        # TODO: should we handle concatenation of frenet frames with different ds?
-        assert len(set([frame.ds for frame in frenet_frames])) == 1
-        ds = frenet_frames[0].ds
+        # TODO: Handle concatenation of frenet frames with different ds?
+        # assert len(set([frame.ds for frame in frenet_frames])) == 1
 
-        # Check that all sub_segments limits are multiples of ds and raise a warning otherwise
-        limits = [[sub_segment.lon_start, sub_segment.lon_end] for sub_segment in sub_segments]
+        min_ds = min([frame.ds for frame in frenet_frames])
+        for i in range(len(frenet_frames)):
+            if frenet_frames[i].ds != min_ds:
+                frenet_frames[i] = FrenetSerret2DFrame.fit(frenet_frames[i].points, min_ds)
 
-        # if not np.isclose(limits % ds, np.around(limits % ds)):
-        #     raise Warning('one or more of the frames\' limits is not a multiple of ds, inaccurate calculations'
-        #                   ' may occur')
+        # TODO: Check that all sub_segments limits are multiples of ds and raise a warning otherwise
+        # np.all(np.isclose(np.fmod(np.array( [frame.ds for frame in frenet_frames]), 0.5), 0,atol=1e-4))
 
         points = []
         T = []
@@ -59,15 +59,15 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
 
         for i in range(len(frenet_frames)):
             frame = frenet_frames[i]
-            if sub_segments[i].lon_start == 0:
+            if sub_segments[i].s_start == 0:
                 start_ind = 0
             else:
-                start_ind = GeneralizedFrenetSerretFrame.get_point_index_closest_to_lon(frame, sub_segments[i].lon_start)
+                start_ind = GeneralizedFrenetSerretFrame.get_point_index_closest_to_lon(frame, sub_segments[i].s_start)
             # if this is not the last frame then the next already has this frame's last point as its first - omit it.
-            if sub_segments[i].lon_end == frame.s_max and i < len(frenet_frames)-1:
+            if sub_segments[i].s_end == frame.s_max and i < len(frenet_frames)-1:
                 end_ind = frame.points.shape[0] - 2
             else:
-                end_ind = GeneralizedFrenetSerretFrame.get_point_index_closest_to_lon(frame, sub_segments[i].lon_end)
+                end_ind = GeneralizedFrenetSerretFrame.get_point_index_closest_to_lon(frame, sub_segments[i].s_end)
 
             points.append(frame.points[start_ind:end_ind, :])
             T.append(frame.T[start_ind:end_ind, :])
@@ -76,7 +76,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
             k_tag.append(frame.k_tag[start_ind:end_ind, :])
 
         return cls(np.concatenate(points), np.concatenate(T), np.concatenate(N), np.concatenate(k),
-                   np.concatenate(k_tag), ds, sub_segments)
+                   np.concatenate(k_tag), min_ds, sub_segments)
 
     @staticmethod
     def get_point_index_closest_to_lon(frame: FrenetSerret2DFrame, longitude: float) -> int:
@@ -97,7 +97,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         segment_idxs = self._get_segment_idxs_from_ids(segment_ids)
         s_offset = self.segments_offsets[segment_idxs]
         new_frenet_states = frenet_states.copy()
-        new_frenet_states[..., FS_SX] = s_offset
+        new_frenet_states[..., FS_SX] += s_offset
         return new_frenet_states
 
     # TODO: not validated to work
@@ -110,10 +110,15 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         """
         return self.convert_from_segment_states(frenet_state[np.newaxis, ...], [segment_id])[0]
 
-    # TODO: replace with vectorized operations
+    # TODO: not validated to work
     def convert_to_segment_states(self, frenet_states: FrenetStates2D) -> (List[int], FrenetStates2D):
-        segment_ids, states = zip(*[self.convert_to_segment_state(state) for state in frenet_states])
-        return list(segment_ids), np.array(states)
+        # segment_ids, states = zip(*[self.convert_to_segment_state(state) for state in frenet_states])
+        # return list(segment_ids), np.array(states)
+        # Find the closest greater segment offset for each frenet state longitudinal
+        s_offset = self.segments_offsets[np.searchsorted(self.segments_offsets, frenet_states[:, FS_SX])-1]
+        new_frenet_states = frenet_states.copy()
+        new_frenet_states[..., FS_SX] -= s_offset
+        return new_frenet_states
 
     def convert_to_segment_state(self, frenet_state: FrenetState2D) -> (int, FrenetState2D):
         """
