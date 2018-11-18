@@ -160,6 +160,9 @@ class TrajectoryPlan(PUBSUB_MSG_IMPL):
 
         pubsub_msg.s_Header = self.s_Header.serialize()
         pubsub_msg.s_Data = self.s_Data.serialize()
+        print("before serialize: " + str(self.s_Data.a_TrajectoryWaypoints[1,0]))
+        print("after serialize: " + str(pubsub_msg.s_Data.a_TrajectoryWaypoints[1,0]))
+
 
         return pubsub_msg
 

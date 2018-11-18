@@ -2,6 +2,7 @@ from logging import Logger
 from os import getpid
 import os
 import numpy as np
+import time
 
 from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
 from common_data.lcm.config import config_defs
@@ -167,6 +168,14 @@ def main():
     finally:
         manager.stop_modules()
 
+def main___():
+
+    while True:
+        a = TsSYSTrajectoryPlan()
+        a.s_Data.a_TrajectoryWaypoints[0][0] = 1000.0
+        a.s_Data.e_Cnt_NumValidTrajectoryWaypoints = int(100)
+        a.send()
+        time.sleep(1)
 
 if __name__ == '__main__':
     main()
