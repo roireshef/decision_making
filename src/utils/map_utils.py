@@ -217,7 +217,7 @@ class MapUtils:
     def get_longitudinal_distance(lane_id1: int, lane_id2: int, longitude1: float, longitude2: float) -> Optional[float]:
         """
         Get longitudinal distance between two points located on lane centers, along lanes path starting from lane_id1.
-        lane_id2 must be down/upstream of lane_id1.
+        lane_id2 must be down/upstream of lane_id1 or parallel to lane_id1.
         :param lane_id1: lane segment of the first point
         :param lane_id2: lane segment of the second point
         :param longitude1: longitude of the first point relative to lane_id1
@@ -235,7 +235,7 @@ class MapUtils:
         return sign * sum(connecting_lengths) + longitude2 - longitude1
 
     @staticmethod
-    def get_lateral_distance_in_lanes(lane_id1: int, lane_id2: int) -> Optional[int]:
+    def get_lateral_distance_in_lane_units(lane_id1: int, lane_id2: int) -> Optional[int]:
         """
         Get lateral distance in lanes (difference between relative ordinals) between two lane segments.
         For example, if one of the given lanes is subsequent downstream/upstream of another lane, return 0.
