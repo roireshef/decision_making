@@ -2,14 +2,14 @@ from typing import List, Optional
 
 import numpy as np
 
-from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, EPS
+from decision_making.src.global_constants import EPS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_DX, FP_SX, C_X, C_Y, CartesianPoint2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from mapping.src.exceptions import raises, LongitudeOutOfRoad, RoadNotFound, NextRoadNotFound
+from mapping.src.exceptions import raises, LongitudeOutOfRoad, RoadNotFound, UpstreamLaneNotFound, \
+    DownstreamLaneNotFound
 from mapping.src.service.map_service import MapService
-from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
 class MapUtils:
@@ -168,14 +168,15 @@ class MapUtils:
         """
         map_api = MapService.get_instance()
         try:
-            prev_road_id = map_api._cached_map_model.get_prev_road(MapUtils.get_road_segment_id_from_lane_id(lane_id))
-            prev_lanes = MapUtils.get_lanes_by_road_segment(prev_road_id)
-            # find the closest previous lane: first point of the current lane to last point of prev lane
+            prev_road_segment_id = map_api._cached_map_model.get_prev_road(
+                MapUtils.get_road_segment_id_from_lane_id(lane_id))
+            prev_lanes = MapUtils.get_lanes_by_road_segment(prev_road_segment_id)
+            # find the closest previous lane: distance from first point of the current lane to last point of prev lane
             first_curr_lane_point = MapUtils.get_lane_frenet_frame(lane_id).points[0]
             distances = [np.linalg.norm(MapUtils.get_lane_frenet_frame(lid).points[-1] - first_curr_lane_point)
                          for lid in prev_lanes]
             return [prev_lanes[np.argmin(distances)]]
-        except NextRoadNotFound:
+        except UpstreamLaneNotFound:
             return []
 
     @staticmethod
@@ -187,14 +188,15 @@ class MapUtils:
         """
         map_api = MapService.get_instance()
         try:
-            next_road_id = map_api._cached_map_model.get_next_road(MapUtils.get_road_segment_id_from_lane_id(lane_id))
-            next_lanes = MapUtils.get_lanes_by_road_segment(next_road_id)
-            # find the closest next lane: last point of the current lane to first point of next lane
+            next_road_segment_id = map_api._cached_map_model.get_next_road(
+                MapUtils.get_road_segment_id_from_lane_id(lane_id))
+            next_lanes = MapUtils.get_lanes_by_road_segment(next_road_segment_id)
+            # find the closest next lane: distance from last point of the current lane to first point of next lane
             last_curr_lane_point = MapUtils.get_lane_frenet_frame(lane_id).points[-1]
             distances = [np.linalg.norm(MapUtils.get_lane_frenet_frame(lid).points[0] - last_curr_lane_point)
                          for lid in next_lanes]
             return [next_lanes[np.argmin(distances)]]
-        except NextRoadNotFound:
+        except DownstreamLaneNotFound:
             return []
 
     @staticmethod
