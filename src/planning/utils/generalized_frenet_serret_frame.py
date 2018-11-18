@@ -1,30 +1,34 @@
 from typing import List
 
 import numpy as np
+import numpy_indexed as npi
 
-from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, FrenetStates2D
+from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, FrenetStates2D, NumpyIndicesArray, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 
 
 class FrenetSubSegment:
-    def __init__(self, segment_id: int, lon_start: float, lon_end: float):
+    def __init__(self, segment_id: int, s_start: float, s_end: float):
         """
         An object containing information on a partial lane segment, used for concatenating or splitting of frenet frames
         :param segment_id:usually lane_id, indicating which lanes are taken to build the generalized frenet frames.
-        :param lon_start: starting longitudinal s to be taken into account when segmenting frenet frames.
-        :param lon_end: ending longitudinal s to be taken into account when segmenting frenet frames.
+        :param s_start: starting longitudinal s to be taken into account when segmenting frenet frames.
+        :param s_end: ending longitudinal s to be taken into account when segmenting frenet frames.
         """
         self.segment_id = segment_id
-        self.lon_start = lon_start
-        self.lon_end = lon_end
+        self.s_start = s_start
+        self.s_end = s_end
 
 
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
-
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
                  ds: float, sub_segments: List[FrenetSubSegment]):
         super().__init__(points, T, N, k, k_tag, ds)
         self.sub_segments = sub_segments
+
+    @property
+    def segments_offsets(self):
+        return np.insert(np.cumsum([seg.s_end - seg.s_start for seg in self.sub_segments]), 0, 0., axis=0)
 
     @classmethod
     def build(cls, frenet_frames: List[FrenetSerret2DFrame], sub_segments: List[FrenetSubSegment]):
@@ -86,11 +90,17 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         closest_ind = np.argmin(np.linalg.norm(frame.points - cartesian_point, axis=1))
         return closest_ind
 
-    # TODO: replace with vectorized operations
+    # TODO: not validated to work
     def convert_from_segment_states(self, frenet_states: FrenetStates2D, segment_ids: List[int]) -> FrenetStates2D:
-        return np.array([self.convert_from_segment_state(frenet_state, segment_id)
-                         for frenet_state, segment_id in zip(frenet_states, segment_ids)])
+        # return np.array([self.convert_from_segment_state(frenet_state, segment_id)
+        #                  for frenet_state, segment_id in zip(frenet_states, segment_ids)])
+        segment_idxs = self._get_segment_idxs_from_ids(segment_ids)
+        s_offset = self.segments_offsets[segment_idxs]
+        new_frenet_states = frenet_states.copy()
+        new_frenet_states[..., FS_SX] = s_offset
+        return new_frenet_states
 
+    # TODO: not validated to work
     def convert_from_segment_state(self, frenet_state: FrenetState2D, segment_id: int) -> FrenetState2D:
         """
         Converts a frenet_state on a frenet_frame to a frenet_state on the generalized frenet frame.
@@ -98,15 +108,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         :param segment_id: a segment_id, usually lane_id, of one of the frenet frames which were used in building the generalized frenet frame.
         :return: a frenet state on the generalized frenet frame.
         """
-        generalized_frenet_state = 0
-        segment_index = [sub_segment.segment_id for sub_segment in self.sub_segments].index(segment_id)
-        for i in range(segment_index+1):
-            if i < segment_index:
-                generalized_frenet_state +=
-                break
-            else:
-                generalized_frenet_state +=
-
+        return self.convert_from_segment_states(frenet_state[np.newaxis, ...], [segment_id])[0]
 
     # TODO: replace with vectorized operations
     def convert_to_segment_states(self, frenet_states: FrenetStates2D) -> (List[int], FrenetStates2D):
@@ -120,3 +122,9 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         :return: a tuple: (the segment_id, usually lane_id, this frenet_state will land on after the conversion, the resulted frenet state)
         """
         pass
+
+    # TODO: not validated to work
+    def _get_segment_idxs_from_ids(self, segment_ids: NumpyIndicesArray):
+        all_ids = np.array([seg.segment_id for seg in self.sub_segments], dtype=np.int)
+        return npi.indices(all_ids, segment_ids)
+
