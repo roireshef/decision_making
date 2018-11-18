@@ -9,6 +9,7 @@ from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNonTypedS
 from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmObjectSize import LcmObjectSize
 from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmOccupancyState import LcmOccupancyState
 from common_data.interface.py.idl_generated_files.dm.LcmState import LcmState
+from common_data.interface.py.utils.serialization_utils import SerializationUtils
 
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
@@ -39,28 +40,16 @@ class OccupancyState(PUBSUB_MSG_IMPL):
         # type: () -> LcmOccupancyState
         lcm_msg = LcmOccupancyState()
         lcm_msg.timestamp = self.timestamp
-        lcm_msg.free_space = LcmNonTypedSmallNumpyArray()
-        lcm_msg.free_space.num_dimensions = len(self.free_space.shape)
-        lcm_msg.free_space.shape = list(self.free_space.shape)
-        lcm_msg.free_space.length = self.free_space.size
-        lcm_msg.free_space.data = self.free_space.flat.__array__().tolist()
-        lcm_msg.confidence = LcmNonTypedSmallNumpyArray()
-        lcm_msg.confidence.num_dimensions = len(self.confidence.shape)
-        lcm_msg.confidence.shape = list(self.confidence.shape)
-        lcm_msg.confidence.length = self.confidence.size
-        lcm_msg.confidence.data = self.confidence.flat.__array__().tolist()
+        lcm_msg.free_space = SerializationUtils.serialize_non_typed_small_array(self.free_space)
+        lcm_msg.confidence = SerializationUtils.serialize_non_typed_small_array(self.confidence)
         return lcm_msg
 
     @classmethod
     def deserialize(cls, lcmMsg):
         # type: (LcmOccupancyState) -> OccupancyState
-        return cls(lcmMsg.timestamp
-                   , np.ndarray(shape=tuple(lcmMsg.free_space.shape[:lcmMsg.free_space.num_dimensions])
-                                , buffer=np.array(lcmMsg.free_space.data)
-                                , dtype=float)
-                   , np.ndarray(shape=tuple(lcmMsg.confidence.shape[:lcmMsg.confidence.num_dimensions])
-                                , buffer=np.array(lcmMsg.confidence.data)
-                                , dtype=float))
+        return cls(lcmMsg.timestamp,
+                   SerializationUtils.deserialize_any_array(lcmMsg.free_space),
+                   SerializationUtils.deserialize_any_array(lcmMsg.confidence))
 
 
 class ObjectSize(PUBSUB_MSG_IMPL):
@@ -241,9 +230,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmDynamicObject) -> DynamicObject
         return cls(lcmMsg.obj_id, lcmMsg.timestamp
-                   , np.ndarray(shape=tuple(lcmMsg._cached_cartesian_state.shape)
-                                , buffer=np.array(lcmMsg._cached_cartesian_state.data)
-                                , dtype=float)
+                   , lcmMsg._cached_cartesian_state.data
                    , MapState.deserialize(lcmMsg._cached_map_state)
                    , ObjectSize.deserialize(lcmMsg.size)
                    , lcmMsg.confidence)

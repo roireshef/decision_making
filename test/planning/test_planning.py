@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from common_data.interface.py.pubsub import dm_pubsub_topics as pubsub_topics
+from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace

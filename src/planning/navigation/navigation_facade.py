@@ -4,7 +4,7 @@ from decision_making.src.planning.navigation.navigation_planner import Navigatio
 from logging import Logger
 
 from common_data.src.communication.pubsub.pubsub import PubSub
-from common_data.interface.py.pubsub import dm_pubsub_topics as pubsub_topics
+from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
 
 
 # TODO - must think about what the input to the navigation computation is, and where it comes from

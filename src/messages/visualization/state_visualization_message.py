@@ -1,8 +1,9 @@
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.state.state import State
 from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmStateVisualizationMsg
 
 
-class StateVisualizationMsg:
+class StateVisualizationMsg(PUBSUB_MSG_IMPL):
     def __init__(self, state):
         # type: (State) -> None
         """
@@ -14,9 +15,7 @@ class StateVisualizationMsg:
 
     def serialize(self) -> LcmStateVisualizationMsg:
         lcm_msg = LcmStateVisualizationMsg()
-
         lcm_msg.state = self.state.serialize()
-
         return lcm_msg
 
     @classmethod

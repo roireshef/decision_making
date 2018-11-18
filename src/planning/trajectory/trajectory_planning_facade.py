@@ -5,7 +5,7 @@ from typing import Dict
 
 import numpy as np
 
-from common_data.interface.py.pubsub import dm_pubsub_topics as pubsub_topics
+from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
