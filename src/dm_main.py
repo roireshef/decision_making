@@ -68,7 +68,6 @@ class DmInitialization:
     def create_state_module() -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
-        MapService.initialize(MAP_FILE)
         # TODO: figure out if we want to use OccupancyState at all
         default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
                                                  np.array([0.1], dtype=np.float))
@@ -76,19 +75,17 @@ class DmInitialization:
         return state_module
 
     @staticmethod
-    def create_navigation_planner() -> NavigationFacade:
+    def create_navigation_planner(nav_plan: NavigationPlanMsg=NAVIGATION_PLAN) -> NavigationFacade:
         logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
 
-        navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, plan=NAVIGATION_PLAN)
+        navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, plan=nav_plan)
         return navigation_module
 
     @staticmethod
     def create_behavioral_planner() -> BehavioralPlanningFacade:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
-        # Init map
-        MapService.initialize(MAP_FILE)
 
         predictor = RoadFollowingPredictor(logger)
 
@@ -116,8 +113,6 @@ class DmInitialization:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
 
-        # Init map
-        MapService.initialize(MAP_FILE)
         predictor = RoadFollowingPredictor(logger)
         short_time_predictor = PhysicalTimeAlignmentPredictor(logger)
 
@@ -137,6 +132,7 @@ def main():
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
     logger.debug('%d: (DM main) registered signal handler', getpid())
     catch_interrupt_signals()
+    MapService.initialize(MAP_FILE)
 
     modules_list = \
         [
