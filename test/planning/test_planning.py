@@ -48,7 +48,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
                                                           strategy_handlers=strategy_handlers,
                                                           short_time_predictor=short_time_predictor)
 
-    pubsub.subscribe(pubsub_topics.TRAJECTORY_LCM, trajectory_publish_mock)
+    pubsub.subscribe(pubsub_topics.TRAJECTORY_PLAN, trajectory_publish_mock)
 
     state_module.periodic_action()
     trajectory_planning_module.start()
