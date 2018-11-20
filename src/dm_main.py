@@ -67,6 +67,7 @@ class DmInitialization:
     def create_state_module(map_file: str) -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
+        # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
         # TODO: figure out if we want to use OccupancyState at all
         default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
@@ -78,6 +79,7 @@ class DmInitialization:
     def create_navigation_planner(map_file: str, nav_plan: NavigationPlanMsg=NAVIGATION_PLAN) -> NavigationFacade:
         logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
+        # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
 
         navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, plan=nav_plan)
@@ -87,6 +89,7 @@ class DmInitialization:
     def create_behavioral_planner(map_file: str) -> BehavioralPlanningFacade:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
+        # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
 
         predictor = RoadFollowingPredictor(logger)
@@ -114,6 +117,7 @@ class DmInitialization:
     def create_trajectory_planner(map_file: str) -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
+        # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
 
         predictor = RoadFollowingPredictor(logger)
