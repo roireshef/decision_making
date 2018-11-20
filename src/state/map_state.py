@@ -1,5 +1,5 @@
 import numpy as np
-from common_data.lcm.generatedFiles.gm_lcm import LcmMapState
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmMapState import LcmMapState
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import FrenetState2D, CartesianExtendedState, C_X, C_Y, FS_SX, FS_DX
@@ -42,12 +42,11 @@ class MapState(PUBSUB_MSG_IMPL):
     def serialize(self):
         # type: () -> LcmMapState
         lcm_msg = LcmMapState()
-        lcm_msg.lane_fstate = LCMUtils.numpy_array_to_lcm_non_typed_numpy_array(self.lane_fstate)
+        lcm_msg.lane_fstate = self.lane_fstate
         lcm_msg.lane_id = self.lane_id
         return lcm_msg
 
     @classmethod
     def deserialize(cls, lcm_msg):
         # type: (LcmMapState) -> MapState
-        return cls(np.ndarray(shape=tuple(lcm_msg.lane_fstate.shape)
-                              , buffer=np.array(lcm_msg.lane_fstate.data), dtype=float), lcm_msg.lane_id)
+        return cls(lcm_msg.lane_fstate.data, lcm_msg.lane_id)

@@ -7,7 +7,7 @@ from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, 
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
-from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
+from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -19,8 +19,12 @@ from decision_making.test.planning.behavioral.mock_behavioral_facade import Beha
 from decision_making.test.planning.navigation.mock_navigation_facade import NavigationFacadeMock
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.state.mock_state_module import StateModuleMock
-from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedDynamicObjectList, LcmPerceivedDynamicObject, LcmObjectLocation, \
-    LcmObjectBbox, LcmObjectVelocity, LcmObjectTrackingStatus
+from common_data.interface.py.idl_generated_files.dm import LcmPerceivedDynamicObjectList
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmPerceivedDynamicObject import LcmPerceivedDynamicObject
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmObjectLocation import LcmObjectLocation
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmObjectBbox import LcmObjectBbox
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmObjectVelocity import LcmObjectVelocity
+from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmObjectTrackingStatus import LcmObjectTrackingStatus
 
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
@@ -46,7 +50,6 @@ def dynamic_objects_in_fov():
     objects = LcmPerceivedDynamicObjectList()
 
     objects.timestamp = 1
-    objects.dynamic_objects = []
 
     dyn_obj = LcmPerceivedDynamicObject()
     dyn_obj.id = 1
@@ -73,7 +76,8 @@ def dynamic_objects_in_fov():
     dyn_obj.tracking_status.in_fov = True
     dyn_obj.tracking_status.is_predicted = False
 
-    objects.dynamic_objects.append(dyn_obj)
+    objects.num_objects = 1
+    objects.dynamic_objects[0] = dyn_obj
 
     yield objects
 
@@ -83,7 +87,6 @@ def dynamic_objects_not_in_fov():
     objects = LcmPerceivedDynamicObjectList()
 
     objects.timestamp = 3
-    objects.dynamic_objects = []
 
     dyn_obj = LcmPerceivedDynamicObject()
     dyn_obj.id = 1
@@ -110,7 +113,8 @@ def dynamic_objects_not_in_fov():
     dyn_obj.tracking_status.in_fov = False
     dyn_obj.tracking_status.is_predicted = False
 
-    objects.dynamic_objects.append(dyn_obj)
+    objects.num_objects = 1
+    objects.dynamic_objects[0] = dyn_obj
 
     yield objects
 
@@ -120,7 +124,6 @@ def dynamic_objects_not_on_road():
     objects = LcmPerceivedDynamicObjectList()
 
     objects.timestamp = 3
-    objects.dynamic_objects = []
 
     dyn_obj = LcmPerceivedDynamicObject()
     dyn_obj.id = 1
@@ -147,7 +150,8 @@ def dynamic_objects_not_on_road():
     dyn_obj.tracking_status.in_fov = True
     dyn_obj.tracking_status.is_predicted = False
 
-    objects.dynamic_objects.append(dyn_obj)
+    objects.num_objects = 1
+    objects.dynamic_objects[0] = dyn_obj
 
     yield objects
 
@@ -157,7 +161,6 @@ def dynamic_objects_negative_velocity():
     objects = LcmPerceivedDynamicObjectList()
 
     objects.timestamp = 3
-    objects.dynamic_objects = []
 
     dyn_obj = LcmPerceivedDynamicObject()
     dyn_obj.id = 1
@@ -184,7 +187,8 @@ def dynamic_objects_negative_velocity():
     dyn_obj.tracking_status.in_fov = True
     dyn_obj.tracking_status.is_predicted = False
 
-    objects.dynamic_objects.append(dyn_obj)
+    objects.num_objects = 1
+    objects.dynamic_objects[0] = dyn_obj
 
     yield objects
 
@@ -277,7 +281,7 @@ def trajectory():
         [[1.0, 0.0, 0.0, 0.0], [2.0, -0.33, 0.0, 0.0], [3.0, -0.66, 0.0, 0.0], [4.0, -1.0, 0.0, 0.0],
          [5.0, -1.33, 0.0, 0.0], [6.0, -1.66, 0.0, 0.0], [7.0, -2.0, 0.0, 0.0], [8.0, -2.0, 0.0, 0.0],
          [9.0, -2.0, 0.0, 0.0], [10.0, -2.0, 0.0, 0.0], [11.0, -2.0, 0.0, 0.0]])
-    yield TrajectoryPlanMsg(timestamp=0, trajectory=chosen_trajectory, current_speed=5.0)
+    yield TrajectoryPlan(timestamp=0, trajectory=chosen_trajectory, current_speed=5.0)
 
 
 ### VIZ MESSAGES ###

@@ -3,7 +3,7 @@ import json
 
 from decision_making.src.messages.class_serialization import ClassSerializer
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
-from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
+from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan
 from decision_making.src.planning.types import C_V
 
 from decision_making.src.state.state import State
@@ -77,7 +77,7 @@ def main():
         for tp_plan_message_index in range(len(tp_plans)):
             # Convert log messages to dict
             plan_msg = ClassSerializer.convert_message_to_dict(tp_plans[tp_plan_message_index])
-            plan = ClassSerializer.deserialize(class_type=TrajectoryPlanMsg, message=plan_msg)
+            plan = ClassSerializer.deserialize(class_type=TrajectoryPlan, message=plan_msg)
             plan_serialized = plan.to_dict()
             plan_serialized['msg_type'] = "tp_plan"
             plan_serialized['log_timestamp'] = tp_plan_log_timestamp[tp_plan_message_index]

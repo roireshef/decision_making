@@ -6,7 +6,7 @@ from decision_making.src.planning.types import FS_SV
 from decision_making.src.state.state import OccupancyState, EgoState
 from decision_making.src.state.state_module import StateModule
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH, FILTER_OBJECT_OFF_ROAD_PATH
-from gm_lcm import LcmPerceivedDynamicObjectList
+from common_data.interface.py.idl_generated_files.dm import LcmPerceivedDynamicObjectList
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.planning.custom_fixtures import dynamic_objects_not_in_fov, dynamic_objects_in_fov,\
     dynamic_objects_not_on_road, ego_state_fix, pubsub, dynamic_objects_negative_velocity

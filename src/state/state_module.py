@@ -6,9 +6,9 @@ from typing import Optional, List, Dict
 import numpy as np
 
 import rte.python.profiler as prof
-from common_data.lcm.config import pubsub_topics
-from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedDynamicObjectList
-from common_data.lcm.generatedFiles.gm_lcm import LcmPerceivedSelfLocalization
+from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
+from common_data.interface.py.idl_generated_files.dm import LcmPerceivedDynamicObjectList
+from common_data.interface.py.idl_generated_files.dm import LcmPerceivedSelfLocalization
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, EGO_ID, \
     UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS, LOG_MSG_STATE_MODULE_PUBLISH_STATE, VELOCITY_MINIMAL_THRESHOLD
@@ -54,9 +54,9 @@ class StateModule(DmModule):
         """
         When starting the State Module, subscribe to dynamic objects, ego state and occupancy state services.
         """
-        self.pubsub.subscribe(pubsub_topics.PERCEIVED_DYNAMIC_OBJECTS_TOPIC
+        self.pubsub.subscribe(pubsub_topics.PERCEIVED_DYNAMIC_OBJECTS_LCM
                               , self._dynamic_obj_callback)
-        self.pubsub.subscribe(pubsub_topics.PERCEIVED_SELF_LOCALIZATION_TOPIC
+        self.pubsub.subscribe(pubsub_topics.PERCEIVED_SELF_LOCALIZATION_LCM
                               , self._self_localization_callback)
 
     # TODO - implement unsubscribe only when logic is fixed in LCM
@@ -69,7 +69,7 @@ class StateModule(DmModule):
         pass
 
     @prof.ProfileFunction()
-    def _dynamic_obj_callback(self, objects: LcmPerceivedDynamicObjectList):
+    def _dynamic_obj_callback(self, objects: LcmPerceivedDynamicObjectList, args):
         """
         Deserialize dynamic objects message and replace pointer reference to dynamic object list under lock
         :param objects: Serialized dynamic object list
@@ -96,8 +96,9 @@ class StateModule(DmModule):
 
         timestamp = dyn_obj_list.timestamp
         lcm_dyn_obj_list = dyn_obj_list.dynamic_objects
-        dyn_obj_list = []
-        for lcm_dyn_obj in lcm_dyn_obj_list:
+        objects_list = []
+        for obj_idx in range(dyn_obj_list.num_objects):
+            lcm_dyn_obj = lcm_dyn_obj_list[obj_idx]
             ''' lcm_dyn_obj is an instance of LcmPerceivedDynamicObject class '''
             in_fov = lcm_dyn_obj.tracking_status.in_fov
             id = lcm_dyn_obj.id
@@ -151,7 +152,7 @@ class StateModule(DmModule):
                                                    lane_id=dyn_obj.map_state.lane_id))
 
                         self._dynamic_objects_memory_map[id] = dyn_obj
-                        dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
+                        objects_list.append(dyn_obj)  # update the list of dynamic objects
                     else:
                         continue
 
@@ -165,13 +166,13 @@ class StateModule(DmModule):
                 # object is out of FOV, using its last known location and timestamp.
                 dyn_obj = self._dynamic_objects_memory_map.get(id)
                 if dyn_obj is not None:
-                    dyn_obj_list.append(dyn_obj)  # update the list of dynamic objects
+                    objects_list.append(dyn_obj)  # update the list of dynamic objects
                 else:
                     self.logger.warning("received out of FOV object which is not in memory.")
-        return dyn_obj_list
+        return objects_list
 
     @prof.ProfileFunction()
-    def _self_localization_callback(self, self_localization: LcmPerceivedSelfLocalization) -> None:
+    def _self_localization_callback(self, self_localization: LcmPerceivedSelfLocalization, args) -> None:
         """
         Deserialize localization information, convert to road coordinates and update state information.
         :param self_localization: Serialized self localization message.
@@ -221,4 +222,4 @@ class StateModule(DmModule):
             state = State(self._occupancy_state, self._dynamic_objects, self._ego_state)
         self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
 
-        self.pubsub.publish(pubsub_topics.STATE_TOPIC, state.serialize())
+        self.pubsub.publish(pubsub_topics.STATE_LCM, state.serialize())
