@@ -4,7 +4,7 @@ import numpy as np
 from multiprocessing import Process
 from unittest.mock import MagicMock
 
-from common_data.interface.py.idl_generated_files.dm import LcmPerceivedSelfLocalization
+from common_data.interface.py.idl_generated_files.Rte_Types import LcmPerceivedSelfLocalization
 from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes, PERCEIVED_SELF_LOCALIZATION_LCM, \
     TRAJECTORY_PLAN
 from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
