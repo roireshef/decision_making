@@ -1,11 +1,9 @@
 from logging import Logger
 from os import getpid
-import os
+
 import numpy as np
 
 from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
-from common_data.lcm.config import config_defs
-from common_data.lcm.python.Communication.lcmpubsub import LcmPubSub
 from common_data.src.communication.pubsub.pubsub import PubSub
 from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \

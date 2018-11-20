@@ -7,7 +7,7 @@ from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, 
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
-from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
+from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -281,7 +281,7 @@ def trajectory():
         [[1.0, 0.0, 0.0, 0.0], [2.0, -0.33, 0.0, 0.0], [3.0, -0.66, 0.0, 0.0], [4.0, -1.0, 0.0, 0.0],
          [5.0, -1.33, 0.0, 0.0], [6.0, -1.66, 0.0, 0.0], [7.0, -2.0, 0.0, 0.0], [8.0, -2.0, 0.0, 0.0],
          [9.0, -2.0, 0.0, 0.0], [10.0, -2.0, 0.0, 0.0], [11.0, -2.0, 0.0, 0.0]])
-    yield TrajectoryPlanMsg(timestamp=0, trajectory=chosen_trajectory, current_speed=5.0)
+    yield TrajectoryPlan(timestamp=0, trajectory=chosen_trajectory, current_speed=5.0)
 
 
 ### VIZ MESSAGES ###
