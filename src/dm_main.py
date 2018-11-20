@@ -65,9 +65,10 @@ class DmInitialization:
     """
 
     @staticmethod
-    def create_state_module() -> StateModule:
+    def create_state_module(map_file: str) -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
+        MapService.initialize(map_file)
         # TODO: figure out if we want to use OccupancyState at all
         default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
                                                  np.array([0.1], dtype=np.float))
@@ -75,17 +76,19 @@ class DmInitialization:
         return state_module
 
     @staticmethod
-    def create_navigation_planner(nav_plan: NavigationPlanMsg=NAVIGATION_PLAN) -> NavigationFacade:
+    def create_navigation_planner(map_file: str, nav_plan: NavigationPlanMsg=NAVIGATION_PLAN) -> NavigationFacade:
         logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
+        MapService.initialize(map_file)
 
         navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, plan=nav_plan)
         return navigation_module
 
     @staticmethod
-    def create_behavioral_planner() -> BehavioralPlanningFacade:
+    def create_behavioral_planner(map_file: str) -> BehavioralPlanningFacade:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
+        MapService.initialize(map_file)
 
         predictor = RoadFollowingPredictor(logger)
 
@@ -109,9 +112,10 @@ class DmInitialization:
         return behavioral_module
 
     @staticmethod
-    def create_trajectory_planner() -> TrajectoryPlanningFacade:
+    def create_trajectory_planner(map_file: str) -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
+        MapService.initialize(map_file)
 
         predictor = RoadFollowingPredictor(logger)
         short_time_predictor = PhysicalTimeAlignmentPredictor(logger)
@@ -132,23 +136,22 @@ def main():
     logger = AV_Logger.get_logger(DM_MANAGER_NAME_FOR_LOGGING)
     logger.debug('%d: (DM main) registered signal handler', getpid())
     catch_interrupt_signals()
-    MapService.initialize(MAP_FILE)
 
     modules_list = \
         [
-            DmProcess(DmInitialization.create_navigation_planner,
+            DmProcess(lambda: DmInitialization.create_navigation_planner(MAP_FILE),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
-            DmProcess(DmInitialization.create_state_module,
+            DmProcess(lambda: DmInitialization.create_state_module(MAP_FILE),
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={}),
 
-            DmProcess(DmInitialization.create_behavioral_planner,
+            DmProcess(lambda: DmInitialization.create_behavioral_planner(MAP_FILE),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
-            DmProcess(DmInitialization.create_trajectory_planner,
+            DmProcess(lambda: DmInitialization.create_trajectory_planner(MAP_FILE),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD})
         ]

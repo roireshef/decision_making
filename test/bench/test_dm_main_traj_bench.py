@@ -19,7 +19,7 @@ test_fixed_trajectory_file = Paths.get_resource_absolute_path_filename(
 
 
 def test_DMMainTraj_Bench_SingleLocalizationMessage_TrajectoryOutput():
-    MapService.initialize(None)
+    #MapService.initialize(None)
 
     #Read first point in the test trajectory to accommodate trigger condition
     f = open(file=test_fixed_trajectory_file, mode='r')
@@ -39,7 +39,7 @@ def test_DMMainTraj_Bench_SingleLocalizationMessage_TrajectoryOutput():
 
     #load dm_main_trajectory_bench with the test trajectory file and wait for it to load
     dm_main_process = Process(target=dm_main_trajectory_bench.main, name='traj_bench_test',
-                              args=tuple([test_fixed_trajectory_file, NavigationPlanMsg(np.array([20]))]))
+                              args=tuple([test_fixed_trajectory_file, None, NavigationPlanMsg(np.array([20]))]))
     dm_main_process.start()
     time.sleep(2)
 

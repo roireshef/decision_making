@@ -5,7 +5,7 @@ import numpy as np
 from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
 from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from decision_making.src import global_constants
-from decision_making.src.dm_main import DmInitialization, NAVIGATION_PLAN
+from decision_making.src.dm_main import DmInitialization, NAVIGATION_PLAN, MAP_FILE
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
     DM_MANAGER_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_TIME_RESOLUTION, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, \
@@ -43,10 +43,10 @@ class DmMockInitialization:
     #The purpose of this initialization is to generate a state module holding an initial empty list of dyanmic object.
     #The purpose here is to continuousely publish localization (as long as it is available from the IMU) wihtout waiting
     #for a dynamic object update.
-    def create_state_module() -> StateModule:
+    def create_state_module(map_file: str) -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
-        MapService.initialize()
+        MapService.initialize(map_file)
         #TODO: figure out if we want to use OccupancyState at all
         default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
                                                  np.array([0.1], dtype=np.float))
@@ -55,12 +55,11 @@ class DmMockInitialization:
         return state_module
 
     @staticmethod
-    def create_trajectory_planner(fixed_trajectory_file: str = None) -> TrajectoryPlanningFacade:
+    def create_trajectory_planner(map_file: str, fixed_trajectory_file: str = None) -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
+        MapService.initialize(map_file)
 
-        # Init map
-        MapService.initialize()
         predictor = RoadFollowingPredictor(logger)
 
         if fixed_trajectory_file is None:
@@ -86,26 +85,26 @@ class DmMockInitialization:
 
 
 
-def main(fixed_trajectory_file: str = None, nav_plan: NavigationPlanMsg = NAVIGATION_PLAN):
+def main(fixed_trajectory_file: str = None, map_file: str = MAP_FILE, nav_plan: NavigationPlanMsg = NAVIGATION_PLAN):
     """
     initializes DM planning pipeline. for switching between BP/TP impl./mock make sure to comment out the relevant
     instantiation in modules_list.
     """
     modules_list = \
         [
-            DmProcess(lambda: DmInitialization.create_navigation_planner(nav_plan),
+            DmProcess(lambda: DmInitialization.create_navigation_planner(map_file, nav_plan),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
-            DmProcess(DmMockInitialization.create_state_module,
+            DmProcess(lambda: DmMockInitialization.create_state_module(map_file),
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={}),
 
-            DmProcess(DmInitialization.create_behavioral_planner,
+            DmProcess(lambda: DmInitialization.create_behavioral_planner(map_file),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
-            DmProcess(lambda: DmMockInitialization.create_trajectory_planner(fixed_trajectory_file=fixed_trajectory_file),
+            DmProcess(lambda: DmMockInitialization.create_trajectory_planner(map_file, fixed_trajectory_file),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD})
         ]
