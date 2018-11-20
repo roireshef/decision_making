@@ -1,5 +1,5 @@
 import numpy as np
-from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmMapState import LcmMapState
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmMapState import LcmMapState
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import FrenetState2D, FS_DX
