@@ -1,6 +1,7 @@
 from logging import Logger
 from os import getpid
 
+import os
 import numpy as np
 
 from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
