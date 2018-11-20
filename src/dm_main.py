@@ -1,12 +1,9 @@
 from logging import Logger
 from os import getpid
-import os
+
 import numpy as np
-import time
 
 from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
-from common_data.lcm.config import config_defs
-from common_data.lcm.python.Communication.lcmpubsub import LcmPubSub
 from common_data.src.communication.pubsub.pubsub import PubSub
 from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
@@ -41,7 +38,6 @@ from decision_making.src.prediction.action_unaware_prediction.physical_time_alig
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import OccupancyState
 from decision_making.src.state.state_module import StateModule
-from mapping.src.global_constants import DEFAULT_MAP_FILE
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
@@ -167,15 +163,6 @@ def main():
         pass
     finally:
         manager.stop_modules()
-
-def main___():
-
-    while True:
-        a = TsSYSTrajectoryPlan()
-        a.s_Data.a_TrajectoryWaypoints[0][0] = 1000.0
-        a.s_Data.e_Cnt_NumValidTrajectoryWaypoints = int(100)
-        a.send()
-        time.sleep(1)
 
 if __name__ == '__main__':
     main()

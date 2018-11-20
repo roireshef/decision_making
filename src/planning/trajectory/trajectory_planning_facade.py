@@ -135,8 +135,6 @@ class TrajectoryPlanningFacade(DmModule):
                                                                       a_TrajectoryWaypoints=waypoints,
                                                                       e_Cnt_NumValidTrajectoryWaypoints=TRAJECTORY_NUM_POINTS))
 
-            print('traj_facade: waypoint[0]=%s' % (waypoints[1][0]))
-
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
 
