@@ -2,7 +2,7 @@ from typing import Optional
 
 import numpy as np
 
-from common_data.interface.py.idl_generated_files.dm import LcmNavigationPlan
+from common_data.interface.py.idl_generated_files.Rte_Types import LcmNavigationPlan
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmNonTypedIntNumpyArray import LcmNonTypedIntNumpyArray
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
