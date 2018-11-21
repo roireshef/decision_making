@@ -217,27 +217,6 @@ class MapUtils:
         return lanes_list
 
     @staticmethod
-    def get_longitudinal_distance(lane_id1: int, lane_id2: int, longitude1: float, longitude2: float) -> Optional[float]:
-        """
-        Get longitudinal distance between two points located on lane centers, along lanes path starting from lane_id1.
-        lane_id2 must be down/upstream of lane_id1 or parallel to lane_id1.
-        :param lane_id1: lane segment of the first point
-        :param lane_id2: lane segment of the second point
-        :param longitude1: longitude of the first point relative to lane_id1
-        :param longitude2: longitude of the second point relative to lane_id2
-        :return: longitudinal difference between the second point and the first point;
-        if lane_id1 is ahead of lane_id2, then return negative distance;
-        if lane_id2 is not down/upstream of lane_id1, then return None
-        """
-        connecting_lanes, is_forward = MapUtils._get_lane_segments_path(lane_id1, lane_id2)
-        if len(connecting_lanes) == 0 or connecting_lanes[-1] != lane_id2:
-            return None
-        sign = 1 if is_forward else -1
-        lanes_excluding_front_lane = connecting_lanes[:-1] if is_forward else connecting_lanes[1:]
-        connecting_lengths = [MapUtils.get_lane_length(lid) for lid in lanes_excluding_front_lane]
-        return sign * sum(connecting_lengths) + longitude2 - longitude1
-
-    @staticmethod
     def get_lateral_distance_in_lane_units(lane_id1: int, lane_id2: int) -> Optional[int]:
         """
         Get lateral distance in lanes (difference between relative ordinals) between two lane segments.
@@ -341,7 +320,7 @@ class MapUtils:
         final_pos = np.array([final_x, final_y])
 
         # shift points (laterally) and concatenate all points of all relevant roads
-        shifted_points = np.concatenate([MapUtils._shift_lane_points_to_latitude(lid, desired_lat) for lid in lane_ids])
+        shifted_points = np.concatenate([MapUtils._shift_lane_points_by_latitude(lid, desired_lat) for lid in lane_ids])
 
         # calculate accumulate longitudinal distance for all points
         longitudes = np.cumsum(np.concatenate([np.append([0], np.diff(map_api._longitudes[lid])) for lid in lane_ids]))
@@ -407,7 +386,7 @@ class MapUtils:
                                      .format(lanes_leftovers[-1], lookahead_dist))
 
     @staticmethod
-    def _shift_lane_points_to_latitude(lane_id: int, lateral_shift: float) -> np.array:
+    def _shift_lane_points_by_latitude(lane_id: int, lateral_shift: float) -> np.array:
         """
         Given points list along a lane, shift them laterally by lat_shift [m]
         :param lane_id: lane id

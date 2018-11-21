@@ -63,7 +63,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
     @property
     def s_max(self):
-        return self.ds * len(self.O)
+        return self.ds * (len(self.O) - 1)
 
     @property
     def points(self):
