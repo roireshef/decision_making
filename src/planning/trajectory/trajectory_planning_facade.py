@@ -30,6 +30,7 @@ from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predic
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State
+from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger import MetricLogger
 
 
@@ -246,12 +247,14 @@ class TrajectoryPlanningFacade(DmModule):
 
         objects_visualizations = []
         for i, obj in enumerate(state.dynamic_objects):
-            wrapped_fstate = np.array([obj.map_state.road_fstate])
+            wrapped_fstate = np.array([obj.map_state.lane_fstate])
             if obj.cartesian_state[C_V] > 0:  # calculate predictions only for moving objects
-                object_predictions = predictor.predict_frenet_states(wrapped_fstate, prediction_timestamps)[0][:, [FS_SX, FS_DX]]
+                object_fpredictions = predictor.predict_frenet_states(wrapped_fstate, prediction_timestamps)[0][:, [FS_SX, FS_DX]]
             else:  # leave only current fstate
-                object_predictions = wrapped_fstate[..., [FS_SX, FS_DX]]
-            objects_visualizations.append(PredictionsVisualization(obj.obj_id, object_predictions))
+                object_fpredictions = wrapped_fstate[..., [FS_SX, FS_DX]]
+            frenet = MapUtils.get_lane_frenet_frame(obj.map_state.lane_id)
+            object_cpredictions = frenet.fpoints_to_cpoints(object_fpredictions)
+            objects_visualizations.append(PredictionsVisualization(obj.obj_id, object_cpredictions))
 
         ego_time = state.ego_state.timestamp_in_sec
         header = Header(0, Timestamp(int(np.floor(ego_time)), int((ego_time % 1) * 2**32)), 0)

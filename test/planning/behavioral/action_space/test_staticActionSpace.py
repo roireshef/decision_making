@@ -1,5 +1,6 @@
 from logging import Logger
 
+import numpy as np
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, RelativeLane
@@ -24,7 +25,7 @@ def test_specifyGoals_closeToTargetVelocity_specifyNotFail():
     ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon,
                                                                                        road_mid_lat - lane_width)
     ego = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
-                                               cartesian_state=[ego_cpoint[0], ego_cpoint[1], ego_yaw, ego_vel, 0, 0],
+                                               cartesian_state=np.array([ego_cpoint[0], ego_cpoint[1], ego_yaw, ego_vel, 0, 0]),
                                                size=size, confidence=0)
 
     state = State(None, [], ego)
