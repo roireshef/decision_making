@@ -41,7 +41,6 @@ def test_cpointsToFpointsToCpoints_pointTwoWayConversionExactSegmentationSameDs_
 
     np.testing.assert_array_less(errors, ACCURACY_TH, 'FrenetMovingFrame point conversions aren\'t accurate enough')
 
-
 def test_cpointsToFpointsToCpoints_pointTwoWayConversionNonExactSegmentationSameDs_accurate():
     ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
 

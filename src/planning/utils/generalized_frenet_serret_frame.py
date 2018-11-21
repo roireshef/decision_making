@@ -3,9 +3,7 @@ from typing import List
 import numpy as np
 import numpy_indexed as npi
 
-from decision_making.src.global_constants import TINY_CURVATURE
-from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, FrenetStates2D, NumpyIndicesArray, FS_SX, \
-    CartesianPointsTensor2D, CartesianVectorsTensor2D
+from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, FrenetStates2D, NumpyIndicesArray, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from mapping.src.transformations.geometry_utils import Euclidean
 
@@ -38,8 +36,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
 
     @property
     def segments_points_offset(self):
-        # TODO: Explain this +1/+0
-        return np.insert(np.array([seg.num_points_so_far + 0 for seg in self.sub_segments]), 0, 0., axis=0)
+        return np.insert(np.array([seg.num_points_so_far for seg in self.sub_segments]), 0, 0., axis=0)
 
     @classmethod
     def build(cls, frenet_frames: List[FrenetSerret2DFrame], sub_segments: List[FrenetSubSegment]):
@@ -54,34 +51,32 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
 
         exact_sub_segments = sub_segments
 
-        points = []
-        T = []
-        N = []
-        k = []
-        k_tag = []
+        points = np.empty(shape=[0, 2])
+        T = np.empty(shape=[0, 2])
+        N = np.empty(shape=[0, 2])
+        k = np.empty(shape=[0, 1])
+        k_tag = np.empty(shape=[0, 1])
 
         for i in range(len(frenet_frames)):
             frame = frenet_frames[i]
-            if exact_sub_segments[i].s_start == 0:
-                start_ind = 0
-            else:
-                start_ind = int(np.floor(exact_sub_segments[i].s_start / exact_sub_segments[i].ds))
+            start_ind = int(np.floor(exact_sub_segments[i].s_start / exact_sub_segments[i].ds))
             # if this is not the last frame then the next already has this frame's last point as its first - omit it.
-            if exact_sub_segments[i].s_end == frame.s_max and i < len(frenet_frames) - 1:
+            if i < len(frenet_frames) - 1:
+                # if this frame is not the last frame, it must end in s_max
+                assert exact_sub_segments[i].s_end == frame.s_max
                 end_ind = frame.points.shape[0] - 1
             else:
                 end_ind = int(np.ceil(exact_sub_segments[i].s_end / exact_sub_segments[i].ds))
 
-            points.append(frame.points[start_ind:end_ind, :])
-            T.append(frame.T[start_ind:end_ind, :])
-            N.append(frame.N[start_ind:end_ind, :])
-            k.append(frame.k[start_ind:end_ind, :])
-            k_tag.append(frame.k_tag[start_ind:end_ind, :])
+            points = np.vstack((points, frame.points[start_ind:end_ind, :]))
+            T = np.vstack((T, frame.T[start_ind:end_ind, :]))
+            N = np.vstack((N, frame.N[start_ind:end_ind, :]))
+            k = np.vstack((k, frame.k[start_ind:end_ind, :]))
+            k_tag = np.vstack((k_tag, frame.k_tag[start_ind:end_ind, :]))
 
-            exact_sub_segments[i].num_points_so_far = np.concatenate(points).shape[0]
+            exact_sub_segments[i].num_points_so_far = points.shape[0]
 
-        return cls(np.concatenate(points), np.concatenate(T), np.concatenate(N), np.concatenate(k),
-                   np.concatenate(k_tag), None, exact_sub_segments)
+        return cls(points, T, N, k, k_tag, None, exact_sub_segments)
 
     # TODO: not validated to work
     def convert_from_segment_states(self, frenet_states: FrenetStates2D, segment_ids: List[int]) -> FrenetStates2D:
@@ -135,106 +130,33 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
     def s_max(self):
         return self.segments_s_offsets[-1]
 
-    def _project_cartesian_points(self, points: np.ndarray) -> \
-            (np.ndarray, CartesianPointsTensor2D, CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray,
-             np.ndarray):
-        """Given a tensor (any shape) of 2D points in cartesian frame (same origin as self.O),
-        this function uses taylor approximation to return
-        s*, a(s*), T(s*), N(s*), k(s*), k'(s*), where:
-        s* is the progress along the curve where the point is projected
-        a(s*) is the Cartesian-coordinates (x,y) of the projections on the curve,
-        T(s*) is the tangent unit vector (dx,dy) of the projections on the curve
-        N(s*) is the normal unit vector (dx,dy) of the projections on the curve
-        k(s*) is the curvatures (scalars) - assumed to be constant in the neighborhood of the points in self.O and thus
-        taken from the nearest point in self.O
-        k'(s*) is the derivatives of the curvatures (by distance d(s))
+    def _approximate_s_from_points_idxs(self, points: np.ndarray):
         """
-        # perform gradient decent to find s_approx
+        given cartesian points, this method approximates the s longitudinal values of these points.
+        :param points: a tensor (any shape) of 2D points in cartesian frame (same origin as self.O)
+        :return: approximate s value on the frame that will be created using self.O
+        """
         O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O)
-
-        # s_approx = np.add(O_idx, delta_s) * self.sub_segments[0].ds
-
-        subsegments_ds = np.array([segment.ds for segment in self.sub_segments])
-
         segment_idx_per_point = np.searchsorted(self.segments_points_offset, np.add(O_idx, delta_s)) - 1
+        subsegments_ds = np.array([segment.ds for segment in self.sub_segments])
         ds = subsegments_ds[segment_idx_per_point]
         s_approx = self.segments_s_offsets[segment_idx_per_point] + \
                    (((O_idx - self.segments_points_offset[segment_idx_per_point]) + delta_s) * ds)
 
-        a_s, T_s, N_s, k_s, _ = self._taylor_interp(s_approx)
+        return s_approx
 
-        is_curvature_big_enough = np.greater(np.abs(k_s), TINY_CURVATURE)
-
-        # don't enable zero curvature to prevent numerical problems with infinite radius
-        k_s[np.logical_not(is_curvature_big_enough)] = TINY_CURVATURE
-
-        # signed circle radius according to the curvature
-        signed_radius = np.divide(1, k_s)
-
-        # vector from the circle center to the input point
-        center_to_point = points - a_s - N_s * signed_radius[..., np.newaxis]
-
-        # sign of the step (sign of the inner product between the position error and the tangent of all samples)
-        step_sign = np.sign(np.einsum('...ik,...ik->...i', points - a_s, T_s))
-
-        # cos(angle between N_s and this vector)
-        cos = np.abs(np.einsum('...ik,...ik->...i', N_s, center_to_point) / np.linalg.norm(center_to_point, axis=-1))
-
-        # prevent illegal (greater than 1) argument for arccos()
-        # don't enable zero curvature to prevent numerical problems with infinite radius
-        cos[np.logical_or(np.logical_not(is_curvature_big_enough), cos > 1.0)] = 1.0
-
-        # arc length from a_s to the new guess point
-        step = step_sign * np.arccos(cos) * np.abs(signed_radius)
-        s_approx[is_curvature_big_enough] += step[is_curvature_big_enough]  # next s_approx of the current point
-
-        a_s, T_s, N_s, k_s, k_s_tag = self._taylor_interp(s_approx)
-
-        return s_approx, a_s, T_s, N_s, k_s, k_s_tag
-
-    def _taylor_interp(self, s: np.ndarray) -> \
-            (CartesianPointsTensor2D, CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray, np.ndarray):
-        """Given arbitrary s tensor (of shape D) of progresses along the curve (in the range [0, self.s_max]),
-        this function uses taylor approximation to return curve parameters at each progress. For derivations of
-        formulas, see: http://www.cnbc.cmu.edu/~samondjm/papers/Zucker2005.pdf (page 4). Curve parameters are:
-        a(s) is the map to Cartesian-frame (a point on the curve. will have shape of Dx2),
-        T(s) is the tangent unit vector (will have shape of Dx2)
-        N(s) is the normal unit vector (will have shape of Dx2)
-        k(s) is the curvature (scalar) - assumed to be constant in the neighborhood of the points in self.O and thus
-        taken from the nearest point in self.O (will have shape of D)
-        k'(s) is the derivative of the curvature (by distance d(s))
+    def _get_closest_index_on_frame(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
         """
-        assert np.all(np.bitwise_and(0 <= s, s <= self.s_max)), \
-            "Cannot extrapolate, desired progress (%s) is out of the curve." % s
-
+        from s, a vector of longitudinal progress on the frame, return the closest index on the frame and
+        the residue fractional value.
+        :param s: a vector of longitudinal progress on the frame
+        :return: a tuple of: a vector of closest indices, a vector of fractional residues
+        """
         segment_idxs = self._get_segment_idxs_from_s(s)
         subsegments_ds = np.array([segment.ds for segment in self.sub_segments])
         s_in_segment = s - self.segments_s_offsets[segment_idxs]
         points_offset = self.segments_points_offset[segment_idxs]
-        # progress_ds = s / self.sub_segments[0].ds
         progress_ds = np.divide(s_in_segment, subsegments_ds[segment_idxs]) + points_offset
-
         O_idx = np.round(progress_ds).astype(np.int)
-        # delta_s = np.expand_dims((progress_ds - O_idx) * self.sub_segments[0].ds, axis=len(s.shape))
         delta_s = np.expand_dims((progress_ds - O_idx) * subsegments_ds[segment_idxs], axis=len(s.shape))
-
-        a_s = self.O[O_idx] + \
-              delta_s * self.T[O_idx] + \
-              delta_s ** 2 / 2 * self.k[O_idx] * self.N[O_idx] - \
-              delta_s ** 3 / 6 * self.k[O_idx] ** 2 * self.T[O_idx]
-
-        T_s = self.T[O_idx] + \
-              delta_s * self.k[O_idx] * self.N[O_idx] - \
-              delta_s ** 2 / 2 * self.k[O_idx] ** 2 * self.T[O_idx]
-
-        N_s = self.N[O_idx] - \
-              delta_s * self.k[O_idx] * self.T[O_idx] - \
-              delta_s ** 2 / 2 * self.k[O_idx] ** 2 * self.N[O_idx]
-
-        k_s = self.k[O_idx] + \
-              delta_s * self.k_tag[O_idx]
-        # delta_s ** 2 / 2 * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
-
-        k_s_tag = self.k_tag[O_idx]  # + delta_s * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
-
-        return a_s, T_s, N_s, k_s[..., 0], k_s_tag[..., 0]
+        return O_idx, delta_s

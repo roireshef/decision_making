@@ -61,7 +61,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
     @property
     def s_max(self):
-        return self.ds * len(self.O)
+        return self.ds * (len(self.O) - 1)
 
     @property
     def points(self):
@@ -249,6 +249,28 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
     ## UTILITIES ##
 
+    def _approximate_s_from_points_idxs(self, points: np.ndarray) -> np.ndarray:
+        """
+        :param points: a tensor (any shape) of 2D points in cartesian frame (same origin as self.O)
+        :return: approximate s value on the frame that will be created using self.O
+        """
+        # perform gradient decent to find s_approx
+        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O)
+        s_approx = np.add(O_idx, delta_s) * self.ds
+        return s_approx
+
+    def _get_closest_index_on_frame(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
+        """
+        from s, a vector of longitudinal progress on the frame, return the closest index on the frame and
+        the residue fractional value.
+        :param s: a vector of longitudinal progress on the frame
+        :return: a tuple of: a vector of closest indices, a vector of fractional residues
+        """
+        progress_ds = s / self.ds
+        O_idx = np.round(progress_ds).astype(np.int)
+        delta_s = np.expand_dims((progress_ds - O_idx) * self.ds, axis=len(s.shape))
+        return O_idx, delta_s
+
     def _project_cartesian_points(self, points: np.ndarray) -> \
             (np.ndarray, CartesianPointsTensor2D, CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray, np.ndarray):
         """Given a tensor (any shape) of 2D points in cartesian frame (same origin as self.O),
@@ -263,9 +285,8 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         k'(s*) is the derivatives of the curvatures (by distance d(s))
         """
         # perform gradient decent to find s_approx
-        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O)
 
-        s_approx = np.add(O_idx, delta_s) * self.ds
+        s_approx = self._approximate_s_from_points_idxs(points)
 
         a_s, T_s, N_s, k_s, _ = self._taylor_interp(s_approx)
 
@@ -313,9 +334,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         assert np.all(np.bitwise_and(0 <= s, s <= self.s_max)), \
             "Cannot extrapolate, desired progress (%s) is out of the curve." % s
 
-        progress_ds = s / self.ds
-        O_idx = np.round(progress_ds).astype(np.int)
-        delta_s = np.expand_dims((progress_ds - O_idx) * self.ds, axis=len(s.shape))
+        O_idx, delta_s = self._get_closest_index_on_frame(s)
 
         a_s = self.O[O_idx] + \
               delta_s * self.T[O_idx] + \
