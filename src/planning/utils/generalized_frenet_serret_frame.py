@@ -26,8 +26,8 @@ class FrenetSubSegment:
 
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
-                 ds: float, sub_segments: List[FrenetSubSegment]):
-        super().__init__(points, T, N, k, k_tag, ds)
+                 sub_segments: List[FrenetSubSegment]):
+        super().__init__(points, T, N, k, k_tag, None)
         self.sub_segments = sub_segments
 
     @property
@@ -76,19 +76,15 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
 
             exact_sub_segments[i].num_points_so_far = points.shape[0]
 
-        return cls(points, T, N, k, k_tag, None, exact_sub_segments)
+        return cls(points, T, N, k, k_tag, exact_sub_segments)
 
-    # TODO: not validated to work
     def convert_from_segment_states(self, frenet_states: FrenetStates2D, segment_ids: List[int]) -> FrenetStates2D:
-        # return np.array([self.convert_from_segment_state(frenet_state, segment_id)
-        #                  for frenet_state, segment_id in zip(frenet_states, segment_ids)])
         segment_idxs = self._get_segment_idxs_from_ids(segment_ids)
         s_offset = self.segments_s_offsets[segment_idxs]
         new_frenet_states = frenet_states.copy()
         new_frenet_states[..., FS_SX] += s_offset
         return new_frenet_states
 
-    # TODO: not validated to work
     def convert_from_segment_state(self, frenet_state: FrenetState2D, segment_id: int) -> FrenetState2D:
         """
         Converts a frenet_state on a frenet_frame to a frenet_state on the generalized frenet frame.
@@ -98,10 +94,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         """
         return self.convert_from_segment_states(frenet_state[np.newaxis, ...], [segment_id])[0]
 
-    # TODO: not validated to work
     def convert_to_segment_states(self, frenet_states: FrenetStates2D) -> (List[int], FrenetStates2D):
-        # segment_ids, states = zip(*[self.convert_to_segment_state(state) for state in frenet_states])
-        # return list(segment_ids), np.array(states)
         # Find the closest greater segment offset for each frenet state longitudinal
         s_offset = self.segments_s_offsets[self._get_segment_idxs_from_s(frenet_states[:, FS_SX])]
         new_frenet_states = frenet_states.copy()
@@ -114,7 +107,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         :param frenet_state: a frenet_state on the generalized frenet frame.
         :return: a tuple: (the segment_id, usually lane_id, this frenet_state will land on after the conversion, the resulted frenet state)
         """
-        pass
+        return self.convert_to_segment_states(frenet_state[np.newaxis, ...])[0]
 
     # TODO: not validated to work
     def _get_segment_idxs_from_ids(self, segment_ids: NumpyIndicesArray):
@@ -159,4 +152,5 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         progress_ds = np.divide(s_in_segment, subsegments_ds[segment_idxs]) + points_offset
         O_idx = np.round(progress_ds).astype(np.int)
         delta_s = np.expand_dims((progress_ds - O_idx) * subsegments_ds[segment_idxs], axis=len(s.shape))
+
         return O_idx, delta_s

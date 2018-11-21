@@ -1,6 +1,6 @@
 import numpy as np
 
-from decision_making.src.planning.types import C_A, C_V, C_K
+from decision_making.src.planning.types import C_A, C_V, C_K, C_X, C_Y
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
@@ -159,7 +159,94 @@ def test_ctrajectoryToFtrajectoryToCtrajectory_pointTwoWayConversionTwoFullFrene
                                  err_msg='FrenetMovingFrame curvature conversions aren\'t accurate enough')
 
 
+def test_ctrajectoriesToFtrajectoriesToCtrajectories_pointTwoWayConversionTwoFullFrenetFramesDifferentDs_accuratePoseAndVelocity():
+    POSITION_ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
+    VEL_ACCURACY_TH = 1e-3  # up to 1 [mm/sec] error in velocity
+    ACC_ACCURACY_TH = 1e-3  # up to 1 [mm/sec^2] error in acceleration
+    CURV_ACCURACY_TH = 1e-4  # up to 0.0001 [m] error in curvature which accounts to radius of 10,000[m]
+
+    route_points = RouteFixture.get_route(lng=200, k=0.05, step=40, lat=100, offset=-50.0)
+    c_trajectory = np.array([[2.94, 0.003, -np.pi / 8, 10.0, 1.0, 1e-2], [250.0, 0.0, np.pi / 6, 20.0, 1.1, -1e-2],
+                        [280.0, 40.0, np.pi / 7, 10.0, -0.9, -5 * 1e-2], [320.0, 60.0, np.pi / 7, 3, -0.5, -5 * 1e-2],
+                        [370.0, 0.0, np.pi / 9, 2.5, -2.0, 0.0]
+                        ])
+    c_trajectories = np.array([c_trajectory, c_trajectory, c_trajectory])
+
+    # split into two frenet frames that coincide in their last and first points
+    full_frenet = FrenetSerret2DFrame.fit(route_points)
+    n = (len(full_frenet.points) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+                                          full_frenet.N[:(n + 1)],
+                                          full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
+                                            full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
+
+    upstream_s_start = 0
+    upstream_s_end = upstream_frenet.s_max
+    downstream_s_start = 0
+    downstream_s_end = downstream_frenet.s_max
+
+    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end, full_frenet.ds),
+                    FrenetSubSegment(1, downstream_s_start, downstream_s_end, full_frenet.ds * 2)]
+    generalized_frenet = GeneralizedFrenetSerretFrame.build(frenet_frames=[upstream_frenet, downstream_frenet],
+                                                            sub_segments=segmentation)
+
+    f_trajectories = generalized_frenet.ctrajectories_to_ftrajectories(c_trajectories)
+    new_c_trajectories = generalized_frenet.ftrajectories_to_ctrajectories(f_trajectories)
+
+    position_errors = np.linalg.norm(c_trajectories[:, :, C_X:C_Y] - new_c_trajectories[:, :, C_X:C_Y])
+    vel_errors = np.abs(c_trajectories[:, :, C_V] - new_c_trajectories[:, :, C_V])
+    acc_errors = np.abs(c_trajectories[:, :, C_A] - new_c_trajectories[:, :, C_A])
+    curv_errors = np.abs(c_trajectories[:, :, C_K] - new_c_trajectories[:, :, C_K])
+
+    np.testing.assert_array_less(position_errors, POSITION_ACCURACY_TH,
+                                 err_msg='FrenetMovingFrame position conversions aren\'t accurate enough')
+    np.testing.assert_array_less(vel_errors, VEL_ACCURACY_TH,
+                                 err_msg='FrenetMovingFrame velocity conversions aren\'t accurate enough')
+    np.testing.assert_array_less(acc_errors, ACC_ACCURACY_TH,
+                                 err_msg='FrenetMovingFrame acceleration conversions aren\'t accurate enough')
+    np.testing.assert_array_less(curv_errors, CURV_ACCURACY_TH,
+                                 err_msg='FrenetMovingFrame curvature conversions aren\'t accurate enough')
+
+
 def test_convertFromSegmentState_x_y():
+    ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
+    route_points = RouteFixture.get_route(lng=200, k=0.05, step=1, lat=100, offset=-50.0)
+    cstate = np.array([460.0, 50.0, np.pi / 9, 0.1, -2, 0])
+
+    # split into two frenet frames that coincide in their last and first points
+    full_frenet = FrenetSerret2DFrame.fit(route_points)
+    n = (len(full_frenet.points) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+                                          full_frenet.N[:(n + 1)],
+                                          full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
+                                            full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
+
+    upstream_s_start = 0
+    upstream_s_end = upstream_frenet.s_max
+    downstream_s_start = 0
+    downstream_s_end = downstream_frenet.s_max
+
+    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end, full_frenet.ds),
+                    FrenetSubSegment(1, downstream_s_start, downstream_s_end, full_frenet.ds * 2)]
+    generalized_frenet = GeneralizedFrenetSerretFrame.build(frenet_frames=[upstream_frenet, downstream_frenet],
+                                                            sub_segments=segmentation)
+
+    fstate = downstream_frenet.cstate_to_fstate(cstate)
+
+    gen_fstate = generalized_frenet.convert_from_segment_state(fstate, 1)
+
+    new_cstate = generalized_frenet.fstate_to_cstate(gen_fstate)
+
+    errors = np.abs(cstate - new_cstate)
+
+    np.testing.assert_array_less(errors, ACCURACY_TH,
+                                 'FrenetMovingFrame point conversions aren\'t accurate enough')
+
+
+
+def test_convertFromSegmentStates_x_y():
     ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
     route_points = RouteFixture.get_route(lng=200, k=0.05, step=1, lat=100, offset=-50.0)
     cpoints = np.array([[100.0, 0.0, -np.pi / 8, 0.1, 1.0, 1e-2], [130.0, 0.0, np.pi / 6, 0.1, 1.1, 1e-2],
