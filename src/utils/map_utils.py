@@ -8,7 +8,7 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_DX, FP_SX, C_X, C_Y, CartesianPoint2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from mapping.src.exceptions import raises, LongitudeOutOfRoad, RoadNotFound, UpstreamLaneNotFound, \
-    DownstreamLaneNotFound
+    DownstreamLaneNotFound, NextRoadNotFound
 from mapping.src.service.map_service import MapService
 
 
@@ -196,7 +196,7 @@ class MapUtils:
             distances = [np.linalg.norm(MapUtils.get_lane_frenet_frame(lid).points[0] - last_curr_lane_point)
                          for lid in next_lanes]
             return [next_lanes[np.argmin(distances)]]
-        except DownstreamLaneNotFound:
+        except NextRoadNotFound:
             return []
 
     @staticmethod
@@ -380,13 +380,18 @@ class MapUtils:
         # collect relevant lane_ids with their lengths
         downstream_lanes = MapUtils.get_downstream_lanes(initial_lane_id)
         lane_lengths = [MapUtils.get_lane_length(initial_lane_id)]
+        cumulative_length = lane_lengths[0] - initial_lon
         lane_ids = [initial_lane_id]
         for road_id in roads_ids[1:]:
             next_lane = [lid for lid in downstream_lanes if MapUtils.get_road_segment_id_from_lane_id(lid) == road_id]
+            if cumulative_length > lookahead_dist:
+                break
             if len(next_lane) < 1:
                 raise RoadNotFound("Downstream lane was not found in navigation plan")
             lane_ids.append(next_lane[0])
-            lane_lengths.append(MapUtils.get_lane_length(next_lane[0]))
+            current_lane_length = MapUtils.get_lane_length(next_lane[0])
+            cumulative_length += current_lane_length
+            lane_lengths.append(current_lane_length)
             downstream_lanes = MapUtils.get_downstream_lanes(next_lane[0])
 
         # distance to roads-ends
