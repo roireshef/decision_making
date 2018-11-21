@@ -3,8 +3,8 @@ from typing import Tuple
 import numpy as np
 from scipy.interpolate.fitpack2 import UnivariateSpline
 
-from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmFrenetSerret2DFrame
-from common_data.interface.py.idl_generated_files.dm.sub_structures import LcmNonTypedNumpyArray
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import LcmFrenetSerret2DFrame
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import LcmNonTypedNumpyArray
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_SPLINE_FIT_ORDER, \

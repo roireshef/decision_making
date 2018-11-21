@@ -6,8 +6,8 @@ from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import CartesianPath2D, CartesianExtendedTrajectories
 from decision_making.src.state.state import State
 
-from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNonTypedSmallNumpyArray import LcmNonTypedSmallNumpyArray
-from common_data.interface.py.idl_generated_files.dm import LcmTrajectoryVisualizationMsg
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmNonTypedSmallNumpyArray import LcmNonTypedSmallNumpyArray
+from common_data.interface.py.idl_generated_files.Rte_Types import LcmTrajectoryVisualizationMsg
 
 
 class TrajectoryVisualizationMsg(PUBSUB_MSG_IMPL):

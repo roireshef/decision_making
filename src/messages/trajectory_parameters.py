@@ -1,9 +1,9 @@
 import numpy as np
 
-from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNonTypedNumpyArray import LcmNonTypedNumpyArray
-from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmSigmoidFunctionParams import LcmSigmoidFunctionParams
-from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmTrajectoryCostParams import LcmTrajectoryCostParams
-from common_data.interface.py.idl_generated_files.dm import LcmTrajectoryParameters
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmNonTypedNumpyArray import LcmNonTypedNumpyArray
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmSigmoidFunctionParams import LcmSigmoidFunctionParams
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmTrajectoryCostParams import LcmTrajectoryCostParams
+from common_data.interface.py.idl_generated_files.Rte_Types import LcmTrajectoryParameters
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_V, Limits

@@ -3,12 +3,12 @@ from typing import List, Optional, Dict
 
 import numpy as np
 
-from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmDynamicObject import LcmDynamicObject
-from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmEgoState import LcmEgoState
-from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmNonTypedSmallNumpyArray import LcmNonTypedSmallNumpyArray
-from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmObjectSize import LcmObjectSize
-from common_data.interface.py.idl_generated_files.dm.sub_structures.LcmOccupancyState import LcmOccupancyState
-from common_data.interface.py.idl_generated_files.dm.LcmState import LcmState
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmDynamicObject import LcmDynamicObject
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmEgoState import LcmEgoState
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmNonTypedSmallNumpyArray import LcmNonTypedSmallNumpyArray
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectSize import LcmObjectSize
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmOccupancyState import LcmOccupancyState
+from common_data.interface.py.idl_generated_files.Rte_Types.LcmState import LcmState
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
