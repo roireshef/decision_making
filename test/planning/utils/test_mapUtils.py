@@ -7,7 +7,8 @@ from mapping.src.service.map_service import MapService
 
 def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate():
     """
-    test method get_adjacent_lanes for any map
+    test method get_adjacent_lanes for the current map;
+    check adjacent lanes of the rightest and the second-from-right lanes
     """
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_by_road_segment(road_ids[0])
@@ -25,7 +26,9 @@ def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate():
 
 def test_getDistFromLaneCenterToLaneBorders_rightLane_equalToHalfLaneWidth():
     """
-    test method get_dist_from_lane_center_to_lane_borders; it should return half lane width
+    test method get_dist_from_lane_center_to_lane_borders:
+        in the current map the lanes have a constant lane width and all lanes have the same width;
+        therefore it should return half lane width
     """
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_by_road_segment(road_ids[0])
@@ -36,7 +39,8 @@ def test_getDistFromLaneCenterToLaneBorders_rightLane_equalToHalfLaneWidth():
 
 def test_getDistFromLaneCenterToRoadBorders_rightLane_equalToDistFromRoadBorder():
     """
-    test method get_dist_from_lane_center_to_road_borders; we suppose the same and constant width of all lanes
+    test method get_dist_from_lane_center_to_road_borders:
+        in the current map the lanes have a constant lane width and all lanes have the same width
     """
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_by_road_segment(road_ids[0])
@@ -48,8 +52,9 @@ def test_getDistFromLaneCenterToRoadBorders_rightLane_equalToDistFromRoadBorder(
 
 def test_getLateralDistanceInLaneUnits_rightestFromLeftmost_equalToLanesNumMinusOne():
     """
-    test method get_lateral_distance_in_lane_units; the distance from the rightest to the leftmost
-    should be equal to num_lanes - 1
+    test method get_lateral_distance_in_lane_units:
+        in the current map the lanes have a constant lane width and all lanes have the same width;
+    the distance from the rightest to the leftmost should be equal to num_lanes - 1
     """
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_by_road_segment(road_ids[0])
@@ -58,8 +63,10 @@ def test_getLateralDistanceInLaneUnits_rightestFromLeftmost_equalToLanesNumMinus
 
 def test_getLookaheadFrenetFrame_frenetStartsAndEndsInArbitraryPoint_accurateFrameStartAndLength():
     """
-    test method get_lookahead_frenet_frame; the frame starts and ends on arbitrary points
-    verify that it's starting point and the final length are accurate
+    test method get_lookahead_frenet_frame:
+        the current map has only one road segment;
+        the frame starts and ends on arbitrary points.
+    verify that its starting point and the final length are accurate
     """
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_by_road_segment(road_ids[0])
