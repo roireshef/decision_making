@@ -21,6 +21,17 @@ class Timestamp(PUBSUB_MSG_IMPL):
         self.e_Cnt_Secs = e_Cnt_Secs
         self.e_Cnt_FractionSecs = e_Cnt_FractionSecs
 
+    @classmethod
+    def from_seconds(cls, timestamp_in_sec: float):
+        """
+        wraps a timestamp (float, seconds) in a Timestamp message object
+        :param timestamp_in_sec:
+        :return:
+        """
+        timestamp_secs = int(timestamp_in_sec)
+        timestamp_frac = int((timestamp_in_sec % 1) * (1 << 32))
+        return cls(e_Cnt_Secs=timestamp_secs, e_Cnt_FractionSecs=timestamp_frac)
+
     def serialize(self):
         # type: () -> TsSYSTimestamp
         pubsub_msg = TsSYSTimestamp()
