@@ -31,12 +31,28 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         self.sub_segments = sub_segments
 
     @property
-    def segments_s_offsets(self):
+    def _segments_s_offsets(self):
+        """
+        :return: The accumulated longitudinal progress on the generalized frenet frame for each segment in self.sub_segments,
+        e.g.  segments_s_offsets[2] contains the length of (subsegment #0+ subsegment #1)
+        """
         return np.insert(np.cumsum([seg.s_end - seg.s_start for seg in self.sub_segments]), 0, 0., axis=0)
 
     @property
-    def segments_points_offset(self):
+    def _segments_points_offset(self):
+        """
+        :return: The accumulated number of points participating in the generation of the generalized frenet frame
+         for each segment in self.sub_segments, e.g.  segments_points_offset[2] contains the number of points
+          taken from subsegment #0 + the number of points taken from subsegment #1
+        """
         return np.insert(np.array([seg.num_points_so_far for seg in self.sub_segments]), 0, 0., axis=0)
+
+    @property
+    def s_max(self):
+        """
+        :return: the largest longitudinal value of the generalized frenet frame (end of curve).
+        """
+        return self._segments_s_offsets[-1]
 
     @classmethod
     def build(cls, frenet_frames: List[FrenetSerret2DFrame], sub_segments: List[FrenetSubSegment]):
@@ -79,8 +95,14 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         return cls(points, T, N, k, k_tag, exact_sub_segments)
 
     def convert_from_segment_states(self, frenet_states: FrenetStates2D, segment_ids: List[int]) -> FrenetStates2D:
+        """
+        Converts frenet_states on a frenet_frame to frenet_states on the generalized frenet frame.
+        :param frenet_states: frenet_states on another frenet_frame which was part in building the generalized frenet frame.
+        :param segment_ids: segment_ids, usually lane_ids, of one of the frenet frames which were used in building the generalized frenet frame.
+        :return: frenet states on the generalized frenet frame.
+        """
         segment_idxs = self._get_segment_idxs_from_ids(segment_ids)
-        s_offset = self.segments_s_offsets[segment_idxs]
+        s_offset = self._segments_s_offsets[segment_idxs]
         new_frenet_states = frenet_states.copy()
         new_frenet_states[..., FS_SX] += s_offset
         return new_frenet_states
@@ -89,17 +111,25 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         """
         Converts a frenet_state on a frenet_frame to a frenet_state on the generalized frenet frame.
         :param frenet_state: a frenet_state on another frenet_frame which was part in building the generalized frenet frame.
-        :param segment_id: a segment_id, usually lane_id, of one of the frenet frames which were used in building the generalized frenet frame.
+        :param segment_id: a segment_id, usually lane_id, of one of the frenet frames which were used in building the
+        generalized frenet frame.
         :return: a frenet state on the generalized frenet frame.
         """
         return self.convert_from_segment_states(frenet_state[np.newaxis, ...], [segment_id])[0]
 
     def convert_to_segment_states(self, frenet_states: FrenetStates2D) -> (List[int], FrenetStates2D):
+        """
+        Converts frenet_states on the generalized frenet frame to frenet_states on a frenet_frame it's built from.
+        :param frenet_states: frenet_states on the generalized frenet frame.
+        :return: a tuple: ((segment_ids, usually lane_ids, these frenet_states will land on after the conversion),
+        (the resulted frenet states))
+        """
         # Find the closest greater segment offset for each frenet state longitudinal
-        s_offset = self.segments_s_offsets[self._get_segment_idxs_from_s(frenet_states[:, FS_SX])]
+        segment_idxs = self._get_segment_idxs_from_s(frenet_states[:, FS_SX])
+        s_offset = self._segments_s_offsets[segment_idxs]
         new_frenet_states = frenet_states.copy()
         new_frenet_states[..., FS_SX] -= s_offset
-        return new_frenet_states
+        return list(segment_idxs), new_frenet_states
 
     def convert_to_segment_state(self, frenet_state: FrenetState2D) -> (int, FrenetState2D):
         """
@@ -109,48 +139,67 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         """
         return self.convert_to_segment_states(frenet_state[np.newaxis, ...])[0]
 
-    # TODO: not validated to work
     def _get_segment_idxs_from_ids(self, segment_ids: NumpyIndicesArray):
+        """
+        Given an array of segment_ids, this method returns the indices of these segment_ids in self.sub_segments
+        :param segment_ids:
+        :return:
+        """
         all_ids = np.array([seg.segment_id for seg in self.sub_segments], dtype=np.int)
         return npi.indices(all_ids, segment_ids)
 
     def _get_segment_idxs_from_s(self, s_values: np.ndarray):
-        segments_idxs = np.searchsorted(self.segments_s_offsets, s_values) - 1
+        """
+        for each longitudinal progress on the curve, s, return the index of the segment it belonged to
+        from self.sub_segments (the index of the frame it was on before the concatenation into a generalized frenet frame)
+        :param s_values: an np.array object containing longitudinal progresses on the generalized frenet curve.
+        :return: the indices of the respective frames in self.sub_segments
+        """
+        segments_idxs = np.searchsorted(self._segments_s_offsets, s_values) - 1
         segments_idxs[s_values == 0] = 0
         return segments_idxs
 
-    @property
-    def s_max(self):
-        return self.segments_s_offsets[-1]
-
     def _approximate_s_from_points_idxs(self, points: np.ndarray):
         """
-        given cartesian points, this method approximates the s longitudinal values of these points.
+        Given cartesian points, this method approximates the s longitudinal progress of these points on
+        the frenet frame.
         :param points: a tensor (any shape) of 2D points in cartesian frame (same origin as self.O)
         :return: approximate s value on the frame that will be created using self.O
         """
+        # Find the index of closest point on curve, and a fractional value representing the projection on this point.
         O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O)
-        segment_idx_per_point = np.searchsorted(self.segments_points_offset, np.add(O_idx, delta_s)) - 1
-        subsegments_ds = np.array([segment.ds for segment in self.sub_segments])
-        ds = subsegments_ds[segment_idx_per_point]
-        s_approx = self.segments_s_offsets[segment_idx_per_point] + \
-                   (((O_idx - self.segments_points_offset[segment_idx_per_point]) + delta_s) * ds)
+        # given the fractional index of the point (O_idx+delta_s), find which segment it belongs to based
+        # on the points offset of each segment
+        segment_idx_per_point = np.searchsorted(self._segments_points_offset, np.add(O_idx, delta_s)) - 1
+        # get ds of every point based on the ds of the segment
+        ds = np.array([segment.ds for segment in self.sub_segments])[segment_idx_per_point]
+        # The approximate longitudinal progress is the longitudinal offset of the segment plus the in-segment-index
+        #  times the segment ds.
+        s_approx = self._segments_s_offsets[segment_idx_per_point] + \
+                   (((O_idx - self._segments_points_offset[segment_idx_per_point]) + delta_s) * ds)
 
         return s_approx
 
     def _get_closest_index_on_frame(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
         """
-        from s, a vector of longitudinal progress on the frame, return the closest index on the frame and
-        the residue fractional value.
+        from s, a vector of longitudinal progress on the frame, return the index of the closest point on the frame and
+        a normalized fractional value in the range [0,1] representing the projection on this closest point.
+        The returned values, if summed, represent a "fractional index" on the curve.
         :param s: a vector of longitudinal progress on the frame
-        :return: a tuple of: a vector of closest indices, a vector of fractional residues
+        :return: a tuple of: indices of closest points, a vector of normalized projections on these points.
         """
+        # get the index of the segment that contains each s value
         segment_idxs = self._get_segment_idxs_from_s(s)
-        subsegments_ds = np.array([segment.ds for segment in self.sub_segments])
-        s_in_segment = s - self.segments_s_offsets[segment_idxs]
-        points_offset = self.segments_points_offset[segment_idxs]
-        progress_ds = np.divide(s_in_segment, subsegments_ds[segment_idxs]) + points_offset
-        O_idx = np.round(progress_ds).astype(np.int)
-        delta_s = np.expand_dims((progress_ds - O_idx) * subsegments_ds[segment_idxs], axis=len(s.shape))
+        # get ds of every point based on the ds of the segment
+        ds = np.array([segment.ds for segment in self.sub_segments])[segment_idxs]
+        # subtracting the s offset, we get the s value in the associated segment.
+        s_in_segment = s - self._segments_s_offsets[segment_idxs]
+        # get the points offset of the segment that each longitudinal value resides in.
+        segment_points_offset = self._segments_points_offset[segment_idxs]
+        # get the progress in index units (progress_in_points is a "floating-point index")
+        progress_in_points = np.divide(s_in_segment, ds) + segment_points_offset
+        # calculate and return the integer and fractional parts of the index
+        O_idx = np.round(progress_in_points).astype(np.int)
+        delta_s = np.expand_dims((progress_in_points - O_idx) * ds, axis=len(s.shape))
 
         return O_idx, delta_s

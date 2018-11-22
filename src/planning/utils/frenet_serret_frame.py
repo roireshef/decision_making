@@ -251,6 +251,8 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
     def _approximate_s_from_points_idxs(self, points: np.ndarray) -> np.ndarray:
         """
+        Given cartesian points, this method approximates the s longitudinal progress of these points on
+        the frenet frame.
         :param points: a tensor (any shape) of 2D points in cartesian frame (same origin as self.O)
         :return: approximate s value on the frame that will be created using self.O
         """
@@ -261,10 +263,11 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
     def _get_closest_index_on_frame(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
         """
-        from s, a vector of longitudinal progress on the frame, return the closest index on the frame and
-        the residue fractional value.
+        from s, a vector of longitudinal progress on the frame, return the index of the closest point on the frame and
+        a normalized fractional value in the range [0,1] representing the projection on this closest point.
+        The returned values, if summed, represent a "fractional index" on the curve.
         :param s: a vector of longitudinal progress on the frame
-        :return: a tuple of: a vector of closest indices, a vector of fractional residues
+        :return: a tuple of: indices of closest points, a vector of normalized projections on these points.
         """
         progress_ds = s / self.ds
         O_idx = np.round(progress_ds).astype(np.int)
