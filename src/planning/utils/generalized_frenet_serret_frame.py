@@ -137,7 +137,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         :param frenet_state: a frenet_state on the generalized frenet frame.
         :return: a tuple: (the segment_id, usually lane_id, this frenet_state will land on after the conversion, the resulted frenet state)
         """
-        return self.convert_to_segment_states(frenet_state[np.newaxis, ...])[0]
+        ids, fstates = self.convert_to_segment_states(frenet_state[np.newaxis, ...])
+        return ids[0], fstates[0]
 
     def _get_segment_idxs_from_ids(self, segment_ids: NumpyIndicesArray):
         """
