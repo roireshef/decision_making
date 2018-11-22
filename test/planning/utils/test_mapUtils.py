@@ -61,23 +61,22 @@ def test_getLateralDistanceInLaneUnits_rightestFromLeftmost_equalToLanesNumMinus
     assert MapUtils.get_lateral_distance_in_lane_units(lane_ids[0], lane_ids[-1]) == len(lane_ids)-1
 
 
-def test_getLookaheadFrenetFrame_frenetStartsAndEndsInArbitraryPoint_accurateFrameStartAndLength():
+def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_accurateFrameStartAndLength():
     """
     test method get_lookahead_frenet_frame:
         the current map has only one road segment;
         the frame starts and ends on arbitrary points.
-    verify that its starting point and the final length are accurate
+    verify that final length and offset of GFF are accurate
     """
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
-    lane_ids = MapUtils.get_lanes_by_road_segment(road_ids[0])
+    lane_ids = MapUtils.get_lanes_by_road_segment(road_ids[3])
     lane_id = lane_ids[0]
-    starting_lon = 100
-    lookahead_dist = 200
+    starting_lon = -200
+    lookahead_dist = 500
     small_dist_err = 0.1
-    frenet_lookahead = MapUtils.get_lookahead_frenet_frame(lane_id, starting_lon, lookahead_dist,
-                                                           NavigationPlanMsg(np.array(road_ids[0:1])))
-    assert abs(frenet_lookahead.s_max - lookahead_dist) < small_dist_err
-    cpoint = frenet_lookahead.fpoint_to_cpoint(np.array([0, 0]))
-    lane_frenet = MapUtils.get_lane_frenet_frame(lane_id)
-    lane_fpoint = lane_frenet.cpoint_to_fpoint(cpoint)
-    assert abs(lane_fpoint[0] - starting_lon) < small_dist_err and abs(lane_fpoint[1]) < small_dist_err
+    gff = MapUtils.get_lookahead_frenet_frame(lane_id, starting_lon, lookahead_dist, NavigationPlanMsg(np.array(road_ids)))
+    assert abs(gff.s_max - lookahead_dist) < small_dist_err
+    # calculate the origin of lane_id using GFF and using its own frenet
+    gff_cpoint = gff.fpoint_to_cpoint(np.array([-starting_lon, 0]))
+    ff_cpoint = MapUtils.get_lane_frenet_frame(lane_id).fpoint_to_cpoint(np.array([0, 0]))
+    assert np.linalg.norm(gff_cpoint - ff_cpoint) < small_dist_err

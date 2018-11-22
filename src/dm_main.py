@@ -45,7 +45,7 @@ from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 
 # TODO: move this into config?
-NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))  # 20 for Ayalon PG
+NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))  # 20 for Ayalon PG
 MAP_FILE = None  # os.environ['AVCODE_PATH'] + '/spav/common_data/maps/OvalMilford.bin'  # None for Ayalon PG
 
 

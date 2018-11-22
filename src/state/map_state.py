@@ -3,7 +3,6 @@ from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmMa
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import FrenetState2D, CartesianExtendedState, C_X, C_Y, FS_SX, FS_DX
-from common_data.lcm.python.utils.lcm_utils import LCMUtils
 from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 
