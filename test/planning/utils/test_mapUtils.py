@@ -11,7 +11,7 @@ def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate():
     check adjacent lanes of the rightest and the second-from-right lanes
     """
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
-    lane_ids = MapUtils.get_lanes_by_road_segment(road_ids[0])
+    lane_ids = MapUtils.get_lanes_by_road_segment_id(road_ids[0])
     right_to_rightest = MapUtils.get_adjacent_lanes(lane_ids[0], RelativeLane.RIGHT_LANE)
     assert len(right_to_rightest) == 0
     left_to_rightest = MapUtils.get_adjacent_lanes(lane_ids[0], RelativeLane.LEFT_LANE)
@@ -29,7 +29,7 @@ def test_getDistFromLaneCenterToLaneBorders_rightLane_equalToHalfLaneWidth():
         therefore it should return half lane width
     """
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
-    lane_ids = MapUtils.get_lanes_by_road_segment(road_ids[0])
+    lane_ids = MapUtils.get_lanes_by_road_segment_id(road_ids[0])
     dist_to_right, dist_to_left = MapUtils.get_dist_from_lane_center_to_lane_borders(lane_ids[0], 0)
     assert dist_to_right == dist_to_left
     assert dist_to_right == MapService.get_instance().get_road(road_ids[0]).lane_width/2
@@ -41,7 +41,7 @@ def test_getDistFromLaneCenterToRoadBorders_rightLane_equalToDistFromRoadBorder(
         in the current map the lanes have a constant lane width and all lanes have the same width
     """
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
-    lane_ids = MapUtils.get_lanes_by_road_segment(road_ids[0])
+    lane_ids = MapUtils.get_lanes_by_road_segment_id(road_ids[0])
     dist_to_right, dist_to_left = MapUtils.get_dist_from_lane_center_to_road_borders(lane_ids[0], 0)
     lane_width = MapService.get_instance().get_road(road_ids[0]).lane_width
     assert dist_to_right == lane_width/2
@@ -56,14 +56,16 @@ def test_getLookaheadFrenetFrame_frenetStartsAndEndsInArbitraryPoint_accurateFra
     verify that its starting point and the final length are accurate
     """
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
-    lane_ids = MapUtils.get_lanes_by_road_segment(road_ids[0])
+    lane_ids = MapUtils.get_lanes_by_road_segment_id(road_ids[0])
     lane_id = lane_ids[0]
     starting_lon = 100
-    lookahead_dist = 200
-    small_dist_err = 0.1
+    lookahead_dist = 100
+    small_dist_err = 0.01
     frenet_lookahead = MapUtils.get_lookahead_frenet_frame(lane_id, starting_lon, lookahead_dist,
-                                                           NavigationPlanMsg(np.array(road_ids[0:1])))
+                                                           NavigationPlanMsg(np.array([road_ids[0]])))
     assert abs(frenet_lookahead.s_max - lookahead_dist) < small_dist_err
+    # Calculate cartesian point of origin of the frenet_lookahead frame, and convert it to frenet point
+    # w.r.t. the original lane frenet frame. The resulting longitude should be equal to starting_lon.
     cpoint = frenet_lookahead.fpoint_to_cpoint(np.array([0, 0]))
     lane_frenet = MapUtils.get_lane_frenet_frame(lane_id)
     lane_fpoint = lane_frenet.cpoint_to_fpoint(cpoint)

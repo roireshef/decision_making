@@ -28,7 +28,7 @@ def state_with_sorrounding_objects():
 
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
-    lanes_list = MapUtils.get_lanes_by_road_segment(road_id)
+    lanes_list = MapUtils.get_lanes_by_road_segment_id(road_id)
 
     # Ego state
     ego_lon = 50.0
@@ -76,7 +76,7 @@ def state_with_objects_for_filtering_tracking_mode():
 
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
-    lanes_list = MapUtils.get_lanes_by_road_segment(road_id)
+    lanes_list = MapUtils.get_lanes_by_road_segment_id(road_id)
 
     # Ego state
     ego_lon = 50.0
@@ -118,7 +118,7 @@ def state_with_objects_for_filtering_negative_sT():
 
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
-    lanes_list = MapUtils.get_lanes_by_road_segment(road_id)
+    lanes_list = MapUtils.get_lanes_by_road_segment_id(road_id)
 
     # Ego state
     ego_lon = 50.0
@@ -160,7 +160,7 @@ def state_with_objects_for_filtering_too_aggressive(pg_map_api: MapAPI):
 
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
-    lanes_list = MapUtils.get_lanes_by_road_segment(road_id)
+    lanes_list = MapUtils.get_lanes_by_road_segment_id(road_id)
 
     # Ego state
     ego_lon = 50.0

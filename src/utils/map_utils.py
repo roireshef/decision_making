@@ -186,7 +186,7 @@ class MapUtils:
             return []
 
     @staticmethod
-    def get_lanes_by_road_segment(road_segment_id: int) -> List[int]:
+    def get_lanes_by_road_segment_id(road_segment_id: int) -> List[int]:
         """
         Get sorted list of lanes for given road segment. The output lanes are ordered by the lanes' ordinal,
         i.e. from the rightest lane to the most left.
