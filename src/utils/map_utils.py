@@ -195,7 +195,7 @@ class MapUtils:
 
     @staticmethod
     def get_lookahead_frenet_frame(lane_id: int, starting_lon: float, lookahead_dist: float,
-                                   navigation_plan: NavigationPlanMsg) -> FrenetSerret2DFrame:
+                                   navigation_plan: NavigationPlanMsg) -> GeneralizedFrenetSerretFrame:
         """
         Create Generalized Frenet frame of a given length along lane center, starting from given lane's longitude
         (may be negative).
