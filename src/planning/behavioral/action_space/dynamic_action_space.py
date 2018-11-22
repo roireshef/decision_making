@@ -56,17 +56,22 @@ class DynamicActionSpace(ActionSpace):
         ego_init_fstates = np.array(ego.project_on_relative_lanes(relative_lanes))
 
         target_length = np.array([target.dynamic_object.size.length for target in targets])
-        target_fstate = np.array([target.dynamic_object.map_state.lane_fstate for target in targets])
+        target_lane_ids = np.array([target.dynamic_object.map_state.lane_id for target in targets])
+        target_fstates = np.array([target.dynamic_object.map_state.lane_fstate for target in targets])
 
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
         weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness]
 
         # get desired terminal velocity
-        v_T = target_fstate[:, FS_SV]
+        v_T = target_fstates[:, FS_SV]
 
+        adjacent_lanes_dict = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
         # longitudinal difference between object and ego at t=0 (positive if obj in front of ego)
-        init_longitudinal_difference = target_fstate[:, FS_SX] - ego_init_fstates[:, FS_SX]
+        init_longitudinal_difference = np.array([MapUtils.get_longitudinal_distance(
+            adjacent_lanes_dict[relative_lanes[i]], target_lane_ids[i], ego_init_fstates[i, FS_SX], target_fstate[FS_SX])
+                                                 for i, target_fstate in enumerate(target_fstates)])
+
         # margin_sign is -1 for FOLLOW_VEHICLE (behind target) and +1 for OVER_TAKE_VEHICLE (in front of target)
         margin_sign = np.array([-1 if action_recipe.action_type == ActionType.FOLLOW_VEHICLE else +1
                                 for action_recipe in action_recipes])
@@ -107,14 +112,7 @@ class DynamicActionSpace(ActionSpace):
         # Absolute longitudinal position of target
         target_s = distance_s + ego_init_fstates[:, FS_SX]
 
-        lane_id = ego.map_state.lane_id
-        right_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.RIGHT_LANE)
-        left_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.LEFT_LANE)
-        adjacent_lanes = {RelativeLane.RIGHT_LANE: right_lanes[0] if len(right_lanes) > 0 else None,
-                          RelativeLane.SAME_LANE: lane_id,
-                          RelativeLane.LEFT_LANE: left_lanes[0] if len(left_lanes) > 0 else None}
-
-        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, adjacent_lanes[relative_lanes[i]])
+        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, adjacent_lanes_dict[relative_lanes[i]])
                         if ~np.isnan(t) else None
                         for i, t in enumerate(T)]
 

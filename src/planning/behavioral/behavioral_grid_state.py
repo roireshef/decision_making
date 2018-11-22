@@ -1,5 +1,6 @@
 from collections import defaultdict
 from enum import Enum
+import numpy as np
 from logging import Logger
 from typing import Dict, List, Tuple, Optional
 
@@ -87,13 +88,20 @@ class BehavioralGridState(BehavioralState):
                      for obj in dynamic_objects]
         # for objects on non-adjacent lanes set relative_lanes[i] = None
         relative_lanes = [RelativeLane(diff) if abs(diff) <= 1 else None for diff in lat_diffs]
+        target_lane_ids = [obj.map_state.lane_id for obj in dynamic_objects]
+        target_fstates = [obj.map_state.lane_fstate for obj in dynamic_objects]
 
+        ego_lane_id = ego_state.map_state.lane_id
         ego_init_fstates = ego_state.project_on_relative_lanes(relative_lanes)
 
+        adjacent_lanes_dict = MapUtils.get_relative_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
+
         # compute the relative longitudinal distance between object and ego (positive means object is in front)
-        # TODO: use MapUtils.get_longitudinal_distance !!!
-        return [DynamicObjectWithRoadSemantics(obj, obj.map_state.lane_fstate[FS_SX] - ego_init_fstates[i][FS_SX],
-                                               relative_lanes[i])
+        longitudinal_differences = [MapUtils.get_longitudinal_distance(
+            adjacent_lanes_dict[relative_lanes[i]], lid, ego_init_fstates[i][FS_SX], target_fstates[i][FS_SX])
+                                    for i, lid in enumerate(target_lane_ids)]
+
+        return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i], relative_lanes[i])
                 for i, obj in enumerate(dynamic_objects)
                 if relative_lanes[i] is not None and ego_init_fstates[i] is not None]
 

@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 import numpy as np
 
@@ -69,6 +69,19 @@ class MapUtils:
 
         return [map_api._lane_by_address[(road_id, ordinal)]
                 for ordinal in ordinals if (road_id, ordinal) in map_api._lane_by_address]
+
+    @staticmethod
+    def get_relative_lane_ids(lane_id: int) -> Dict[RelativeLane, int]:
+        """
+        get dictionary that given lane_id maps from RelativeLane to lane_id of the immediate neighbor lane
+        :param lane_id:
+        :return: dictionary from RelativeLane to the immediate neighbor lane ids (or None if the neighbor does not exist)
+        """
+        right_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.RIGHT_LANE)
+        left_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.LEFT_LANE)
+        return {RelativeLane.RIGHT_LANE: right_lanes[0] if len(right_lanes) > 0 else None,
+                RelativeLane.SAME_LANE: lane_id,
+                RelativeLane.LEFT_LANE: left_lanes[0] if len(left_lanes) > 0 else None}
 
     # TODO: remove it after introduction of the new mapping module
     @staticmethod
