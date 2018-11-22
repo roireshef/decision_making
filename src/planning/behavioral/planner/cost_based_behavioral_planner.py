@@ -139,6 +139,8 @@ class CostBasedBehavioralPlanner:
         ego = behavioral_state.ego_state
 
         ego_init_fstate = ego.project_on_relative_lanes([action_recipe.relative_lane])[0]
+
+        #TODO: goal_fstate should be expressed in the GFF terms (relative to the original lane_id)
         goal_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
 
         # set the reference route to start with a margin before the current longitudinal position of the vehicle
@@ -159,14 +161,16 @@ class CostBasedBehavioralPlanner:
             lane_id=action_spec.lane_id, starting_lon=ref_route_start, lookahead_dist=ref_route_length,
             navigation_plan=navigation_plan)
 
+        segment_goal_fstate = center_lane_reference_route.convert_from_segment_state(frenet_state=goal_fstate,
+                                                                                     segment_id=ego.map_state.lane_id)
         cost_params = CostBasedBehavioralPlanner._generate_cost_params(
-            map_state=MapState(goal_fstate, action_spec.lane_id),
+            map_state=MapState(segment_goal_fstate, action_spec.lane_id),
             ego_size=ego.size
         )
 
         # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)
         # TODO: remove it, when TP will obtain frenet frame
-        goal_cstate = MapUtils.get_lane_frenet_frame(action_spec.lane_id).fstate_to_cstate(goal_fstate)
+        goal_cstate = center_lane_reference_route.fstate_to_cstate(goal_fstate)
 
         trajectory_parameters = TrajectoryParams(reference_route=center_lane_reference_route,
                                                  time=action_spec.t + ego.timestamp_in_sec,
