@@ -4,7 +4,6 @@ import numpy as np
 from scipy.interpolate.fitpack2 import UnivariateSpline
 
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import LcmFrenetSerret2DFrame
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import LcmNonTypedNumpyArray
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_SPLINE_FIT_ORDER, \
@@ -21,7 +20,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
                  ds: float):
         """
-        This is an object used for paramterizing a curve given discrete set of points in some "global" cartesian frame,
+        This is an object used for parametrizing a curve given discrete set of points in some "global" cartesian frame,
         and then for transforming from the "global" frame to the curve's frenet frame and back.
         :param points: 2D numpy array of points sampled from a smooth curve (x,y axes; ideally a spline of high order)
         :param T: 2D numpy array of tangent unit vectors (x,y axes) of <points>
@@ -251,6 +250,28 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
     ## UTILITIES ##
 
+    def _approximate_s_from_points_idxs(self, points: np.ndarray) -> np.ndarray:
+        """
+        :param points: a tensor (any shape) of 2D points in cartesian frame (same origin as self.O)
+        :return: approximate s value on the frame that will be created using self.O
+        """
+        # perform gradient decent to find s_approx
+        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O)
+        s_approx = np.add(O_idx, delta_s) * self.ds
+        return s_approx
+
+    def _get_closest_index_on_frame(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
+        """
+        from s, a vector of longitudinal progress on the frame, return the closest index on the frame and
+        the residue fractional value.
+        :param s: a vector of longitudinal progress on the frame
+        :return: a tuple of: a vector of closest indices, a vector of fractional residues
+        """
+        progress_ds = s / self.ds
+        O_idx = np.round(progress_ds).astype(np.int)
+        delta_s = np.expand_dims((progress_ds - O_idx) * self.ds, axis=len(s.shape))
+        return O_idx, delta_s
+
     def _project_cartesian_points(self, points: np.ndarray) -> \
             (np.ndarray, CartesianPointsTensor2D, CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray, np.ndarray):
         """Given a tensor (any shape) of 2D points in cartesian frame (same origin as self.O),
@@ -265,9 +286,8 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         k'(s*) is the derivatives of the curvatures (by distance d(s))
         """
         # perform gradient decent to find s_approx
-        O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O)
 
-        s_approx = np.add(O_idx, delta_s) * self.ds
+        s_approx = self._approximate_s_from_points_idxs(points)
 
         a_s, T_s, N_s, k_s, _ = self._taylor_interp(s_approx)
 
@@ -302,7 +322,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
     def _taylor_interp(self, s: np.ndarray) -> \
             (CartesianPointsTensor2D, CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray, np.ndarray):
-        """Given arbitrary s tensor (of shape D) of progresses alonge the curve (in the range [0, self.s_max]),
+        """Given arbitrary s tensor (of shape D) of progresses along the curve (in the range [0, self.s_max]),
         this function uses taylor approximation to return curve parameters at each progress. For derivations of
         formulas, see: http://www.cnbc.cmu.edu/~samondjm/papers/Zucker2005.pdf (page 4). Curve parameters are:
         a(s) is the map to Cartesian-frame (a point on the curve. will have shape of Dx2),
@@ -315,9 +335,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         assert np.all(np.bitwise_and(0 <= s, s <= self.s_max)), \
             "Cannot extrapolate, desired progress (%s) is out of the curve." % s
 
-        progress_ds = s / self.ds
-        O_idx = np.round(progress_ds).astype(np.int)
-        delta_s = np.expand_dims((progress_ds - O_idx) * self.ds, axis=len(s.shape))
+        O_idx, delta_s = self._get_closest_index_on_frame(s)
 
         a_s = self.O[O_idx] + \
               delta_s * self.T[O_idx] + \
@@ -363,7 +381,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         y_dot = y.derivative(1)
         y_dotdot = y.derivative(2)
 
-        # parameterization of progress on the curve (in meters)
+        # parametrization of progress on the curve (in meters)
         s = np.arange(start, stop, step)
 
         dxy = np.c_[x_dot(s), y_dot(s)]
@@ -383,46 +401,6 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
         # derivative of curvature (by ds)
         k_tag = np.divide(np.gradient(k), step)
-
-        return T, N, np.c_[k], np.c_[k_tag]
-
-    @staticmethod
-    def _fit_frenet(xy: CartesianPath2D, ds: float) -> (CartesianVectorsTensor2D, CartesianVectorsTensor2D, np.ndarray,
-                                                        np.ndarray):
-        """
-        THIS METHOD IS DEPRECATED. USE _fit_frenet_from_splines INSTEAD!
-
-        Utility for the construction of the Frenet-Serret frame. Given a set of 2D points in cartesian-frame, it fits
-        a curve and returns its parameters at the given points (Tangent, Normal, curvature, etc.).
-        Formulas are similar to: dipy.tracking.metrics.frenet_serret() but modified for 2D (rather than 3D), for
-        signed-curvature and for continuity of the Normal vector regardless of the curvature-sign.
-        :param xy: a set of 2D points in cartesian-frame
-        :param ds: resolution parameters (in meters)
-        :return: tuple of (Tangents, Normals, curvatures, curvature-derivatives) - each has number of elements
-        corresponding to number of given points in <xy>
-        """
-        if xy.shape[0] == 0:
-            raise ValueError('xyz array cannot be empty')
-
-        dxy = np.divide(np.gradient(xy)[0], ds)
-        ddxy = np.divide(np.gradient(dxy)[0], ds)
-
-        # magintudes
-        dxy_norm = np.linalg.norm(dxy, axis=1)
-
-        # Tangent
-        T = np.divide(dxy, np.c_[dxy_norm])
-
-        # Normal - robust to zero-curvature
-        N = NumpyUtils.row_wise_normal(T)
-
-        # SIGNED (!) Curvature
-        cross_norm = np.sum(NumpyUtils.row_wise_normal(dxy) * ddxy, axis=1)
-        k = np.zeros(len(T))
-        k[dxy_norm > 0] = cross_norm[dxy_norm > 0] / (dxy_norm[dxy_norm > 0] ** 3)
-
-        # derivative of curvature (by ds)
-        k_tag = np.divide(np.gradient(k), ds)
 
         return T, N, np.c_[k], np.c_[k_tag]
 
