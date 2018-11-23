@@ -3,11 +3,15 @@ import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD_DIST
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
+from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import C_YAW, C_Y, C_X, C_A, C_K, C_V, CartesianExtendedTrajectories, \
     FrenetTrajectories2D, FS_DX
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
+from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.transformations.geometry_utils import CartesianFrame
@@ -18,7 +22,8 @@ class TrajectoryPlannerCosts:
     @staticmethod
     def compute_pointwise_costs(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D,
                                 state: State, params: TrajectoryCostParams,
-                                global_time_samples: np.ndarray, predictor: EgoAwarePredictor, dt: float) -> \
+                                global_time_samples: np.ndarray, predictor: EgoAwarePredictor, dt: float,
+                                reference_route: FrenetSerret2DFrame) -> \
             [np.ndarray, np.ndarray, np.ndarray]:
         """
         Compute obstacle, deviation and jerk costs for every trajectory point separately.
@@ -35,7 +40,8 @@ class TrajectoryPlannerCosts:
         """
         ''' OBSTACLES (Sigmoid cost from bounding-box) '''
         obstacles_costs = TrajectoryPlannerCosts.compute_obstacle_costs(ctrajectories, state, params,
-                                                                        global_time_samples, predictor)
+                                                                        global_time_samples, predictor,
+                                                                        reference_route)
 
         ''' DEVIATIONS FROM LANE/SHOULDER/ROAD '''
         deviations_costs = TrajectoryPlannerCosts.compute_deviation_costs(ftrajectories, params)
@@ -48,7 +54,7 @@ class TrajectoryPlannerCosts:
     @staticmethod
     def compute_obstacle_costs(ctrajectories: CartesianExtendedTrajectories, state: State,
                                params: TrajectoryCostParams, global_time_samples: np.ndarray,
-                               predictor: RoadFollowingPredictor):
+                               predictor: RoadFollowingPredictor, reference_route: FrenetSerret2DFrame):
         """
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
         :param state: the state object (that includes obstacles, etc.)
@@ -65,16 +71,18 @@ class TrajectoryPlannerCosts:
             if len(close_objects) == 0:
                 return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
 
-            # TODO: this assumes everybody on the same road!
-            ego_lane_frenet = MapUtils.get_lane_frenet_frame(state.ego_state.map_state.lane_id)
-            # TODO: objects' frenet states relative to ego should be part of Scene Provider!!
-            objects_relative_fstates = np.array([ego_lane_frenet.cstate_to_fstate(obj.cartesian_state)
-                                                 for obj in close_objects])
+            # calculate objects' map_state
+            for obj in close_objects:
+                obj._cached_map_states[RelativeLane.SAME_LANE] = \
+                    MapState(lane_fstate=reference_route.cstate_to_fstate(obj.cartesian_state), lane_id=0)
+            objects_relative_fstates = np.array([obj.map_state.lane_fstate for obj in close_objects
+                                                 if obj.map_state.lane_fstate is not None])
 
             # Predict objects' future movement, then project predicted objects' states to Cartesian frame
+            # TODO: if an object is located on another road than reference_route, its prediction may be wrong
             objects_predicted_ftrajectories = predictor.predict_frenet_states(
                 objects_relative_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
-            objects_predicted_ctrajectories = ego_lane_frenet.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
+            objects_predicted_ctrajectories = reference_route.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
 
             objects_sizes = np.array([[obs.size.length, obs.size.width] for obs in close_objects])
             ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])

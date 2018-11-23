@@ -20,9 +20,12 @@ class MapState(PUBSUB_MSG_IMPL):
     def from_cartesian_state(cls, cartesian_state: CartesianExtendedState):
         # type: (CartesianExtendedState) -> MapState
         closest_lane_id = MapUtils.get_closest_lane(cartesian_state[:(C_Y+1)])
-        lane_frenet = MapUtils.get_lane_frenet_frame(closest_lane_id)
-        obj_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
-        return cls(obj_fstate, closest_lane_id)
+        if closest_lane_id:
+            lane_frenet = MapUtils.get_lane_frenet_frame(closest_lane_id)
+            obj_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
+            return cls(obj_fstate, closest_lane_id)
+        else:
+            return cls(None, None)
 
     def to_cartesian_state(self):
         # type: () -> CartesianExtendedState
@@ -35,6 +38,8 @@ class MapState(PUBSUB_MSG_IMPL):
         Returns true of the object is on the road. False otherwise.
         :return: Returns true of the object is on the road. False otherwise.
         """
+        if self.lane_id is None:
+            return False
         dist_from_right, dist_from_left = MapUtils.get_dist_from_lane_center_to_lane_borders(self.lane_id, self.lane_fstate[FS_SX])
         return -dist_from_right - ROAD_SHOULDERS_WIDTH < self.lane_fstate[FS_DX] < dist_from_left + ROAD_SHOULDERS_WIDTH
 

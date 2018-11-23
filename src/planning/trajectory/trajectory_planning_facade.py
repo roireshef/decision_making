@@ -20,14 +20,18 @@ from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan,
     MapOrigin
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg, \
     PredictionsVisualization, DataTrajectoryVisualization
+from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, C_Y, FS_SX, FS_DX
+from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, C_Y, FS_SX, FS_DX, \
+    FP_SX
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.planning.utils.transformations import Transformations
 from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
+from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger import MetricLogger
@@ -103,6 +107,15 @@ class TrajectoryPlanningFacade(DmModule):
             else:
                 updated_state = state_aligned
 
+            # # calculate objects' lane_fstate to be w.r.t. the reference route
+            # # TODO: if an object is located on another road than reference_route, the following conversion is irrelevant
+            # for obj in updated_state.dynamic_objects:
+            #     try:
+            #         obj._cached_map_states[RelativeLane.SAME_LANE] = \
+            #             MapState(lane_fstate=params.reference_route.cstate_to_fstate(obj.cartesian_state), lane_id=0)
+            #     except:  # the object is outside of the reference_route
+            #         obj._cached_map_states[RelativeLane.SAME_LANE] = MapState(None, None)
+
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
             # plan a trajectory according to specification from upper DM level
@@ -141,7 +154,7 @@ class TrajectoryPlanningFacade(DmModule):
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
                 state_aligned, ctrajectories, params.time - state.ego_state.timestamp_in_sec,
-                self._strategy_handlers[params.strategy].predictor)
+                self._strategy_handlers[params.strategy].predictor, params.reference_route)
 
             self._publish_debug(debug_results)
 
@@ -221,7 +234,8 @@ class TrajectoryPlanningFacade(DmModule):
 
     @staticmethod
     def _prepare_visualization_msg(state: State, ctrajectories: CartesianTrajectories,
-                                   planning_horizon: float, predictor: EgoAwarePredictor) -> TrajectoryVisualizationMsg:
+                                   planning_horizon: float, predictor: EgoAwarePredictor,
+                                   reference_route: FrenetSerret2DFrame) -> TrajectoryVisualizationMsg:
         """
         prepares visualization message for visualization purposes
         :param state: short-term prediction aligned state
@@ -242,16 +256,17 @@ class TrajectoryPlanningFacade(DmModule):
         prediction_timestamps = np.arange(most_recent_timestamp, most_recent_timestamp + planning_horizon,
                                           VISUALIZATION_PREDICTION_RESOLUTION, float)
 
+        # calculate objects' predictions
         objects_visualizations = []
         for i, obj in enumerate(state.dynamic_objects):
-            wrapped_fstate = np.array([obj.map_state.lane_fstate])
-            if obj.cartesian_state[C_V] > 0:  # calculate predictions only for moving objects
-                object_fpredictions = predictor.predict_frenet_states(wrapped_fstate, prediction_timestamps)[0][:, [FS_SX, FS_DX]]
-            else:  # leave only current fstate
-                object_fpredictions = wrapped_fstate[..., [FS_SX, FS_DX]]
-            frenet = MapUtils.get_lane_frenet_frame(obj.map_state.lane_id)
-            object_cpredictions = frenet.fpoints_to_cpoints(object_fpredictions)
-            objects_visualizations.append(PredictionsVisualization(obj.obj_id, object_cpredictions))
+            # calculate predictions only for moving objects, whose map_state was w.r.t. the reference_route (lane_id=0)
+            if obj.map_state.lane_id == 0 and obj.map_state.lane_fstate is not None and obj.cartesian_state[C_V] > 0:
+                obj_fstate = np.array([obj.map_state.lane_fstate])  # w.r.t. the reference_route
+                object_fpredictions = predictor.predict_frenet_states(obj_fstate, prediction_timestamps)[0][:, [FS_SX, FS_DX]]
+                # visualize object's predictions only if they fully lay inside the reference_route range
+                if np.all(object_fpredictions[:, FP_SX] > 0) and np.all(object_fpredictions[:, FP_SX] < reference_route.s_max):
+                    object_cpredictions = reference_route.fpoints_to_cpoints(object_fpredictions)
+                    objects_visualizations.append(PredictionsVisualization(obj.obj_id, object_cpredictions))
 
         ego_time = state.ego_state.timestamp_in_sec
         header = Header(0, Timestamp(int(np.floor(ego_time)), int((ego_time % 1) * 2**32)), 0)

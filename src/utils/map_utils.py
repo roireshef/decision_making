@@ -84,7 +84,7 @@ class MapUtils:
 
     # TODO: remove it after introduction of the new mapping module
     @staticmethod
-    def get_closest_lane(cartesian_point: CartesianPoint2D, road_segment_id: int=None) -> int:
+    def get_closest_lane(cartesian_point: CartesianPoint2D, road_segment_id: int=None) -> Optional[int]:
         """
         given cartesian coordinates, find the closest lane to the point
         :param cartesian_point: 2D cartesian coordinates
@@ -101,13 +101,16 @@ class MapUtils:
 
         # find the closest lane segment, given the closest road segment
         num_lanes = map_api.get_road(closest_road_id).lanes_num
-        # convert the given cpoint to fpoints w.r.t. to each lane's frenet frame
-        fpoints = {}
-        for lane_ordinal in range(num_lanes):
-            lane_id = map_api._lane_by_address[(closest_road_id, lane_ordinal)]
-            fpoints[lane_id] = map_api._lane_frenet[lane_id].cpoint_to_fpoint(cartesian_point)
-        # find frenet points with minimal absolute latitude
-        return min(fpoints.items(), key=lambda p: abs(p[1][FP_DX]))[0]
+        try:
+            # convert the given cpoint to fpoints w.r.t. to each lane's frenet frame
+            fpoints = {}
+            for lane_ordinal in range(num_lanes):
+                lane_id = map_api._lane_by_address[(closest_road_id, lane_ordinal)]
+                fpoints[lane_id] = map_api._lane_frenet[lane_id].cpoint_to_fpoint(cartesian_point)
+            # find frenet points with minimal absolute latitude
+            return min(fpoints.items(), key=lambda p: abs(p[1][FP_DX]))[0]
+        except:
+            return None
 
     @staticmethod
     def get_dist_from_lane_center_to_lane_borders(lane_id: int, s: float) -> (float, float):
