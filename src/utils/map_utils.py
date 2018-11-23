@@ -8,8 +8,7 @@ from decision_making.src.planning.types import FP_DX, C_X, C_Y, CartesianPoint2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
-from mapping.src.exceptions import raises, LongitudeOutOfRoad, RoadNotFound, UpstreamLaneNotFound, \
-    NextRoadNotFound
+from mapping.src.exceptions import raises, LongitudeOutOfRoad, RoadNotFound, NextRoadNotFound
 from mapping.src.service.map_service import MapService
 
 
@@ -166,7 +165,7 @@ class MapUtils:
             distances = [np.linalg.norm(MapUtils.get_lane_frenet_frame(lid).points[-1] - first_curr_lane_point)
                          for lid in prev_lanes]
             return [prev_lanes[np.argmin(distances)]]
-        except UpstreamLaneNotFound:
+        except NextRoadNotFound:
             return []
 
     @staticmethod

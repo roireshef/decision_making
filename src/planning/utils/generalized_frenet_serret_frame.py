@@ -3,25 +3,41 @@ from typing import List
 import numpy as np
 import numpy_indexed as npi
 
+from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, FrenetStates2D, NumpyIndicesArray, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from mapping.src.transformations.geometry_utils import Euclidean
 
 
 class FrenetSubSegment:
-    def __init__(self, segment_id: int, s_start: float, s_end: float, ds: float):
+    def __init__(self, segment_id: int, s_start: float, s_end: float, ds: float, num_points_so_far: int=None):
         """
         An object containing information on a partial lane segment, used for concatenating or splitting of frenet frames
         :param segment_id:usually lane_id, indicating which lanes are taken to build the generalized frenet frames.
         :param s_start: starting longitudinal s to be taken into account when segmenting frenet frames.
         :param s_end: ending longitudinal s to be taken into account when segmenting frenet frames.
         :param ds: sampling interval on curve
+        :param num_points_so_far: accumulated number of points participating in the generation of the generalized
+        frenet frame for each segment
         """
         self.segment_id = segment_id
         self.s_start = s_start
         self.s_end = s_end
         self.ds = ds
-        self.num_points_so_far = None
+        self.num_points_so_far = num_points_so_far
+
+    # def serialize(self) -> LcmFrenetSubSegment:
+    #     lcm_msg = LcmFrenetSubSegment()
+    #     lcm_msg.segment_id = self.segment_id
+    #     lcm_msg.s_start = self.s_start
+    #     lcm_msg.s_end = self.s_end
+    #     lcm_msg.ds = self.ds
+    #     lcm_msg.num_points_so_far = self.num_points_so_far
+    #     return lcm_msg
+    #
+    # @classmethod
+    # def deserialize(cls, lcmMsg: LcmFrenetSubSegment):
+    #     return cls(lcmMsg.segment_id, lcmMsg.s_start, lcmMsg.s_end, lcmMsg.ds, lcmMsg.num_points_so_far)
 
 
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
@@ -129,7 +145,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         s_offset = self._segments_s_offsets[segment_idxs]
         new_frenet_states = frenet_states.copy()
         new_frenet_states[..., FS_SX] -= s_offset
-        return list(segment_idxs), new_frenet_states
+        segment_ids = [self.sub_segments[idx].segment_id for idx in segment_idxs]
+        return segment_ids, new_frenet_states
 
     def convert_to_segment_state(self, frenet_state: FrenetState2D) -> (int, FrenetState2D):
         """
@@ -204,3 +221,27 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         delta_s = np.expand_dims((progress_in_points - O_idx) * ds, axis=len(s.shape))
 
         return O_idx, delta_s
+
+    # def serialize(self) -> LcmGeneralizedFrenetSerretFrame:
+    #     lcm_msg = LcmGeneralizedFrenetSerretFrame()
+    #     lcm_msg.points = SerializationUtils.serialize_non_typed_array(self.O)
+    #     lcm_msg.T = SerializationUtils.serialize_non_typed_array(self.T)
+    #     lcm_msg.N = SerializationUtils.serialize_non_typed_array(self.N)
+    #     lcm_msg.k = SerializationUtils.serialize_non_typed_array(self.k)
+    #     lcm_msg.k_tag = SerializationUtils.serialize_non_typed_array(self.k_tag)
+    #     lcm_msg.num_sub_segments = len(self.sub_segments)
+    #     for i in range(lcm_msg.num_sub_segments):
+    #         lcm_msg.sub_segments[i] = self.sub_segments[i].serialize()
+    #     return lcm_msg
+    #
+    # @classmethod
+    # def deserialize(cls, lcmMsg: LcmGeneralizedFrenetSerretFrame):
+    #     sub_segments = list()
+    #     for i in range(lcmMsg.num_sub_segments):
+    #         sub_segments.append(FrenetSubSegment.deserialize(lcmMsg.sub_segments[i]))
+    #     return cls(SerializationUtils.deserialize_any_array(lcmMsg.points),
+    #                SerializationUtils.deserialize_any_array(lcmMsg.T),
+    #                SerializationUtils.deserialize_any_array(lcmMsg.N),
+    #                SerializationUtils.deserialize_any_array(lcmMsg.k),
+    #                SerializationUtils.deserialize_any_array(lcmMsg.k_tag),
+    #                sub_segments)
