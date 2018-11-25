@@ -11,11 +11,12 @@ from mapping.src.service.map_service import MapService
 
 
 class MapUtils:
-    # TODO: replace with navigation plan aware function from map API
+    # TODO: remove this on Lane-based planner PR
     @staticmethod
     def get_road_rhs_frenet(obj):
         return MapService.get_instance()._rhs_roads_frenet[obj.map_state.road_id]
 
+    # TODO: remove this on Lane-based planner PR
     @staticmethod
     def convert_cartesian_to_map_state(cartesian_state: CartesianExtendedState):
         # type: (CartesianExtendedState) -> MapState
@@ -31,6 +32,7 @@ class MapUtils:
 
         return MapState(obj_fstate, closest_road_id)
 
+    # TODO: remove this on Lane-based planner PR
     @staticmethod
     def convert_map_to_cartesian_state(map_state):
         # type: (MapState) -> CartesianExtendedState
@@ -40,6 +42,7 @@ class MapUtils:
 
         return road_frenet.fstate_to_cstate(map_state.road_fstate)
 
+    # TODO: remove this on Lane-based planner PR
     # TODO: Note! This function is only valid when the frenet reference frame is from the right side of the road
     @staticmethod
     def is_object_on_road(map_state):
