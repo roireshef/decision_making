@@ -28,7 +28,7 @@ def state_with_sorrounding_objects():
 
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
-    lanes_list = MapUtils.get_lanes_by_road_segment(road_id)
+    lanes_list = MapUtils.get_lanes_by_road_segment_id(road_id)
 
     # Ego state
     ego_lon = 50.0
@@ -37,10 +37,10 @@ def state_with_sorrounding_objects():
     ego_vel = 10
     lane_width = MapUtils.get_lane_width(ego_lane_id, 0)
 
-    ego_x, ego_y, ego_yaw = MapUtils._convert_from_lane_to_map_coordinates(ego_lane_id, ego_lon, ego_lat)
+    ego_pos, ego_yaw = MapUtils._convert_from_lane_to_map_coordinates(ego_lane_id, np.array([ego_lon, ego_lat]))
 
     ego_state = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
-                                                     cartesian_state=np.array([ego_x, ego_y, ego_yaw, ego_vel, 0.0, 0.0]),
+                                                     cartesian_state=np.array([ego_pos[0], ego_pos[1], ego_yaw, ego_vel, 0.0, 0.0]),
                                                      size=car_size, confidence=1.0)
 
     # Generate objects at the following locations, relative to the ego lane frame:
@@ -56,10 +56,10 @@ def state_with_sorrounding_objects():
                 # Don't create an object where the ego is
                 continue
 
-            obj_x, obj_y, obj_yaw = MapUtils._convert_from_lane_to_map_coordinates(ego_lane_id, obj_lon, obj_lat)
+            obj_pos, obj_yaw = MapUtils._convert_from_lane_to_map_coordinates(ego_lane_id, np.array([obj_lon, obj_lat]))
 
             dynamic_object = DynamicObject.create_from_cartesian_state(obj_id=obj_id, timestamp=0,
-                                                                       cartesian_state=np.array([obj_x, obj_y, obj_yaw, ego_vel, 0.0, 0.0]),
+                                                                       cartesian_state=np.array([obj_pos[0], obj_pos[1], obj_yaw, ego_vel, 0.0, 0.0]),
                                                                        size=car_size, confidence=1.0)
             dynamic_objects.append(dynamic_object)
             obj_id += 1
@@ -76,7 +76,7 @@ def state_with_objects_for_filtering_tracking_mode():
 
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
-    lanes_list = MapUtils.get_lanes_by_road_segment(road_id)
+    lanes_list = MapUtils.get_lanes_by_road_segment_id(road_id)
 
     # Ego state
     ego_lon = 50.0
@@ -84,10 +84,10 @@ def state_with_objects_for_filtering_tracking_mode():
     ego_lane_id = lanes_list[1]
     ego_vel = 10
 
-    ego_x, ego_y, ego_yaw = MapUtils._convert_from_lane_to_map_coordinates(ego_lane_id, ego_lon, ego_lat)
+    ego_pos, ego_yaw = MapUtils._convert_from_lane_to_map_coordinates(ego_lane_id, np.array([ego_lon, ego_lat]))
 
     ego_state = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
-                                                     cartesian_state=np.array([ego_x, ego_y, ego_yaw, ego_vel, 0.0, 0.0]),
+                                                     cartesian_state=np.array([ego_pos[0], ego_pos[1], ego_yaw, ego_vel, 0.0, 0.0]),
                                                      size=car_size, confidence=1.0)
 
     # Generate objects at the following locations, relative to the ego lane frame:
@@ -98,10 +98,10 @@ def state_with_objects_for_filtering_tracking_mode():
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
 
-    obj_x, obj_y, obj_yaw = MapUtils._convert_from_lane_to_map_coordinates(ego_lane_id, obj_lon, obj_lat)
+    obj_pos, obj_yaw = MapUtils._convert_from_lane_to_map_coordinates(ego_lane_id, np.array([obj_lon, obj_lat]))
 
     dynamic_object = DynamicObject.create_from_cartesian_state(obj_id=obj_id, timestamp=0,
-                                                               cartesian_state=np.array([obj_x, obj_y, obj_yaw, obj_vel, 0.0, 0.0]),
+                                                               cartesian_state=np.array([obj_pos[0], obj_pos[1], obj_yaw, obj_vel, 0.0, 0.0]),
                                                                size=car_size, confidence=1.0)
 
     dynamic_objects.append(dynamic_object)
@@ -118,7 +118,7 @@ def state_with_objects_for_filtering_negative_sT():
 
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
-    lanes_list = MapUtils.get_lanes_by_road_segment(road_id)
+    lanes_list = MapUtils.get_lanes_by_road_segment_id(road_id)
 
     # Ego state
     ego_lon = 50.0
@@ -126,10 +126,10 @@ def state_with_objects_for_filtering_negative_sT():
     ego_lane_id = lanes_list[1]
     ego_vel = 10
 
-    ego_x, ego_y, ego_yaw = MapUtils._convert_from_lane_to_map_coordinates(ego_lane_id, ego_lon, ego_lat)
+    ego_pos, ego_yaw = MapUtils._convert_from_lane_to_map_coordinates(ego_lane_id, np.array([ego_lon, ego_lat]))
 
     ego_state = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
-                                                     cartesian_state=np.array([ego_x, ego_y, ego_yaw, ego_vel, 0.0, 0.0]),
+                                                     cartesian_state=np.array([ego_pos[0], ego_pos[1], ego_yaw, ego_vel, 0.0, 0.0]),
                                                      size=car_size, confidence=1.0)
 
     # Generate objects at the following locations, relative to the ego lane frame:
@@ -140,10 +140,10 @@ def state_with_objects_for_filtering_negative_sT():
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
 
-    obj_x, obj_y, obj_yaw = MapUtils._convert_from_lane_to_map_coordinates(ego_lane_id, obj_lon, obj_lat)
+    obj_pos, obj_yaw = MapUtils._convert_from_lane_to_map_coordinates(ego_lane_id, np.array([obj_lon, obj_lat]))
 
     dynamic_object = DynamicObject.create_from_cartesian_state(obj_id=obj_id, timestamp=0,
-                                                               cartesian_state=np.array([obj_x, obj_y, obj_yaw, obj_vel, 0.0, 0.0]),
+                                                               cartesian_state=np.array([obj_pos[0], obj_pos[1], obj_yaw, obj_vel, 0.0, 0.0]),
                                                                size=car_size, confidence=1.0)
 
     dynamic_objects.append(dynamic_object)
@@ -160,7 +160,7 @@ def state_with_objects_for_filtering_too_aggressive(pg_map_api: MapAPI):
 
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
-    lanes_list = MapUtils.get_lanes_by_road_segment(road_id)
+    lanes_list = MapUtils.get_lanes_by_road_segment_id(road_id)
 
     # Ego state
     ego_lon = 50.0
@@ -168,10 +168,10 @@ def state_with_objects_for_filtering_too_aggressive(pg_map_api: MapAPI):
     ego_lane_id = lanes_list[1]
     ego_vel = 10
 
-    ego_x, ego_y, ego_yaw = MapUtils._convert_from_lane_to_map_coordinates(ego_lane_id, ego_lon, ego_lat)
+    ego_pos, ego_yaw = MapUtils._convert_from_lane_to_map_coordinates(ego_lane_id, np.array([ego_lon, ego_lat]))
 
     ego_state = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
-                                                     cartesian_state=np.array([ego_x, ego_y, ego_yaw, ego_vel, 0.0, 0.0]),
+                                                     cartesian_state=np.array([ego_pos[0], ego_pos[1], ego_yaw, ego_vel, 0.0, 0.0]),
                                                      size=car_size, confidence=1.0)
 
     # Generate objects at the following locations:
@@ -182,10 +182,10 @@ def state_with_objects_for_filtering_too_aggressive(pg_map_api: MapAPI):
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
 
-    obj_x, obj_y, obj_yaw = MapUtils._convert_from_lane_to_map_coordinates(ego_lane_id, obj_lon, obj_lat)
+    obj_pos, obj_yaw = MapUtils._convert_from_lane_to_map_coordinates(ego_lane_id, np.array([obj_lon, obj_lat]))
 
     dynamic_object = DynamicObject.create_from_cartesian_state(obj_id=obj_id, timestamp=0,
-                                                               cartesian_state=np.array([obj_x, obj_y, obj_yaw, obj_vel, 0.0, 0.0]),
+                                                               cartesian_state=np.array([obj_pos[0], obj_pos[1], obj_yaw, obj_vel, 0.0, 0.0]),
                                                                size=car_size, confidence=1.0)
 
     dynamic_objects.append(dynamic_object)
