@@ -106,6 +106,10 @@ class TrajectoryPlanningFacade(DmModule):
 
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
+            print('TP: time=%f ego=%s\nBP: goal=%s' % (state.ego_state.timestamp_in_sec, state.ego_state.cartesian_state, params.target_state))
+            print('TP state_aligned: time=%f ego=%s' % (state_aligned.ego_state.timestamp_in_sec, state_aligned.ego_state.cartesian_state))
+            print('TP updated_state: ego=%s' % (updated_state.ego_state.cartesian_state))
+
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,

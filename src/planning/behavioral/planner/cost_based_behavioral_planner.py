@@ -140,13 +140,13 @@ class CostBasedBehavioralPlanner:
         """
         ego = behavioral_state.ego_state
         # ego Frenet state projected on the target lane segment (adjacent to ego or lane of ego)
-        ego_segment_fstate = ego.project_on_relative_lanes([action_recipe.relative_lane])[0]
+        ego_spec_fstate = ego.project_on_relative_lanes([action_recipe.relative_lane])[0]
 
         # goal Frenet state w.r.t. the target lane segment
         goal_spec_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
 
         # set the reference route to start with a margin before the current longitudinal position of the vehicle
-        ref_route_start = ego_segment_fstate[FS_SX] - REFERENCE_ROUTE_MARGINS
+        ref_route_start = ego_spec_fstate[FS_SX] - REFERENCE_ROUTE_MARGINS
 
         forward_lookahead = action_spec.s - ref_route_start + REFERENCE_ROUTE_MARGINS
         # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
@@ -163,10 +163,11 @@ class CostBasedBehavioralPlanner:
             lane_id=action_spec.lane_id, starting_lon=ref_route_start, lookahead_dist=ref_route_length,
             navigation_plan=navigation_plan)
 
-        ego_reference_fstate = center_lane_reference_route.convert_from_segment_state(frenet_state=ego_segment_fstate,
+        ego_reference_fstate = center_lane_reference_route.convert_from_segment_state(frenet_state=ego_spec_fstate,
                                                                                       segment_id=action_spec.lane_id)
         goal_reference_fstate = center_lane_reference_route.convert_from_segment_state(frenet_state=goal_spec_fstate,
                                                                                        segment_id=action_spec.lane_id)
+
         goal_segment_id, goal_segment_fstate = center_lane_reference_route.convert_to_segment_state(goal_reference_fstate)
 
         cost_params = CostBasedBehavioralPlanner._generate_cost_params(
@@ -174,6 +175,8 @@ class CostBasedBehavioralPlanner:
 
         # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)
         goal_cstate = center_lane_reference_route.fstate_to_cstate(goal_reference_fstate)
+
+        print('BP: time=%f\nego=%s\nBP: goal=%s' % (ego.timestamp_in_sec, ego.cartesian_state, goal_cstate))
 
         # TODO: use GFF center_lane_reference_route after changing Rte_Types.pubpub
         reference_frenet_frame = FrenetSerret2DFrame.fit(center_lane_reference_route.points)
