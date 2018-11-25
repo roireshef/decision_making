@@ -159,7 +159,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
         segments_idxs[s_values == 0] = 0
         return segments_idxs
 
-    def _approximate_s_from_points_idxs(self, points: np.ndarray):
+    def _approximate_s_from_points(self, points: np.ndarray):
         """
         Given cartesian points, this method approximates the s longitudinal progress of these points on
         the frenet frame.

@@ -249,7 +249,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
     ## UTILITIES ##
 
-    def _approximate_s_from_points_idxs(self, points: np.ndarray) -> np.ndarray:
+    def _approximate_s_from_points(self, points: np.ndarray) -> np.ndarray:
         """
         Given cartesian points, this method approximates the s longitudinal progress of these points on
         the frenet frame.
@@ -267,7 +267,8 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         a normalized fractional value in the range [0,1] representing the projection on this closest point.
         The returned values, if summed, represent a "fractional index" on the curve.
         :param s: a vector of longitudinal progress on the frame
-        :return: a tuple of: indices of closest points, a vector of normalized projections on these points.
+        :return: a tuple of: (indices of closest points, (signed) distance on s axis between the given s coordinate and
+                             the closest point chosen (can be negative))
         """
         progress_ds = s / self.ds
         O_idx = np.round(progress_ds).astype(np.int)
@@ -289,7 +290,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         """
         # perform gradient decent to find s_approx
 
-        s_approx = self._approximate_s_from_points_idxs(points)
+        s_approx = self._approximate_s_from_points(points)
 
         a_s, T_s, N_s, k_s, _ = self._taylor_interp(s_approx)
 
