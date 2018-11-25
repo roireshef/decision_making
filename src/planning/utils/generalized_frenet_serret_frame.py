@@ -21,7 +21,6 @@ class FrenetSubSegment:
         self.s_start = s_start
         self.s_end = s_end
         self.ds = ds
-        self.num_points_so_far = None
 
 
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
