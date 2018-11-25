@@ -253,7 +253,7 @@ class MapUtils:
         # Build path
         path = np.concatenate(([init_pos], shifted_points, [final_pos]))
 
-        # Remove duplicate points (start of next road == end of last road)
+        # Remove duplicate points (start of next road == end of current road)
         path = path[np.append(np.sum(np.diff(path, axis=0), axis=1) != 0.0, [True])]
 
         return path, init_yaw
