@@ -10,6 +10,7 @@ def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate():
     test method get_adjacent_lanes for the current map;
     check adjacent lanes of the rightest and the second-from-right lanes
     """
+    MapService.initialize()
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_id_from_road_segment_id(road_ids[0])
     right_to_rightest = MapUtils.get_adjacent_lanes(lane_ids[0], RelativeLane.RIGHT_LANE)
@@ -28,6 +29,7 @@ def test_getDistFromLaneCenterToLaneBorders_rightLane_equalToHalfLaneWidth():
         in the current map the lanes have a constant lane width and all lanes have the same width;
         therefore it should return half lane width
     """
+    MapService.initialize()
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_id_from_road_segment_id(road_ids[0])
     dist_to_right, dist_to_left = MapUtils.get_dist_from_lane_center_to_lane_borders(lane_ids[0], 0)
@@ -40,6 +42,7 @@ def test_getDistFromLaneCenterToRoadBorders_rightLane_equalToDistFromRoadBorder(
     test method get_dist_from_lane_center_to_road_borders:
         in the current map the lanes have a constant lane width and all lanes have the same width
     """
+    MapService.initialize()
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_id_from_road_segment_id(road_ids[0])
     dist_to_right, dist_to_left = MapUtils.get_dist_from_lane_center_to_road_borders(lane_ids[0], 0)
@@ -55,6 +58,7 @@ def test_getLookaheadFrenetFrame_frenetStartsAndEndsInArbitraryPoint_accurateFra
         the frame starts and ends on arbitrary points.
     verify that its starting point and the final length are accurate
     """
+    MapService.initialize()
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_id_from_road_segment_id(road_ids[0])
     lane_id = lane_ids[0]
