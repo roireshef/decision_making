@@ -107,15 +107,6 @@ class TrajectoryPlanningFacade(DmModule):
             else:
                 updated_state = state_aligned
 
-            # # calculate objects' lane_fstate to be w.r.t. the reference route
-            # # TODO: if an object is located on another road than reference_route, the following conversion is irrelevant
-            # for obj in updated_state.dynamic_objects:
-            #     try:
-            #         obj._cached_map_states[RelativeLane.SAME_LANE] = \
-            #             MapState(lane_fstate=params.reference_route.cstate_to_fstate(obj.cartesian_state), lane_id=0)
-            #     except:  # the object is outside of the reference_route
-            #         obj._cached_map_states[RelativeLane.SAME_LANE] = MapState(None, None)
-
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
             # plan a trajectory according to specification from upper DM level
