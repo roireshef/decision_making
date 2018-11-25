@@ -181,7 +181,7 @@ class MapUtils:
             next_road_segment_id = map_api._cached_map_model.get_next_road(
                 MapUtils.get_road_segment_id_from_lane_id(lane_id))
             lane_ordinal = MapUtils.get_lane_ordinal(lane_id)
-            return [map_api._lane_by_address((next_road_segment_id, lane_ordinal))]
+            return [map_api._lane_by_address[(next_road_segment_id, lane_ordinal)]]
         except NextRoadNotFound:
             return []
 
