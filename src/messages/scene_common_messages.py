@@ -27,6 +27,10 @@ class Timestamp(PUBSUB_MSG_IMPL):
         timestamp_frac = int((timestamp_in_sec % 1) * (1 << 32))
         return cls(e_Cnt_Secs=timestamp_secs, e_Cnt_FractionSecs=timestamp_frac)
 
+    @property
+    def timestamp_in_seconds(self):
+        return self.e_Cnt_Secs + self.e_Cnt_FractionSecs*(1 >> 32)
+
     def serialize(self):
         # type: () -> TsSYSTimestamp
         pubsub_msg = TsSYSTimestamp()

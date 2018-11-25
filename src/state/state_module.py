@@ -12,6 +12,7 @@ from common_data.lcm.config import pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE
 from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.messages.scene_common_messages import Timestamp
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
     DynamicObject, EgoState
@@ -43,6 +44,7 @@ class StateModule(DmModule):
         """
         Unsubscribe from process communication services.
         """
+        pass
 
     def _periodic_action_impl(self) -> None:
         pass
@@ -52,8 +54,7 @@ class StateModule(DmModule):
         try:
             with self._scene_dynamic_lock:
                 self._scene_dynamic = SceneDynamic.deserialize(scene_dynamic)
-                # TODO: parse timestamp
-                timestamp = 0
+                timestamp = DynamicObject.sec_to_ticks(self._scene_dynamic.s_Data.s_ComputeTimestamp.timestamp_in_seconds)
                 occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
                 ego_state = EgoState(obj_id=0,
                                      timestamp=timestamp,

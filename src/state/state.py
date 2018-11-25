@@ -80,17 +80,19 @@ class ObjectSize(PUBSUB_MSG_IMPL):
 
 class DynamicObject(PUBSUB_MSG_IMPL):
     members_remapping = {'_cached_cartesian_state': 'cartesian_state',
-                         '_cached_map_state': 'map_state'}
+                         '_cached_map_state': 'map_state',
+                         '_cached_map_state_on_host_lane': 'map_state'}
 
     obj_id = int
     timestamp = int
     _cached_cartesian_state = CartesianExtendedState
     _cached_map_state = MapState
+    _cached_map_state_on_host_lane = MapState
     size = ObjectSize
     confidence = float
 
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
-        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float) -> DynamicObject
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, map_state_on_host_lane, size, confidence):
+        # type: (int, int, CartesianExtendedState, MapState, MapState, ObjectSize, float) -> None
         """
         Data object that hold
         :param obj_id: object id
@@ -104,6 +106,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         self.timestamp = timestamp
         self._cached_cartesian_state = cartesian_state
         self._cached_map_state = map_state
+        self._cached_map_state_on_host_lane = map_state_on_host_lane
         self.size = copy.copy(size)
         self.confidence = confidence
 
@@ -148,6 +151,13 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         if self._cached_map_state is None:
             self._cached_map_state = MapUtils.convert_cartesian_to_map_state(self._cached_cartesian_state)
         return self._cached_map_state
+
+    @property
+    def map_state_on_host_lane(self):
+        # type: () -> MapState
+        if self._cached_map_state_on_host_lane is None:
+            self._cached_map_state_on_host_lane = MapUtils.convert_cartesian_to_map_state(self._cached_cartesian_state)
+        return self._cached_map_state_on_host_lane
 
     @staticmethod
     def sec_to_ticks(time_in_seconds: float):
