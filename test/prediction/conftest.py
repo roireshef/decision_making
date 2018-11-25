@@ -286,7 +286,7 @@ def original_state_with_sorrounding_objects():
         ego_road_lon = 15.0
         ego_road_lat = 4.5
 
-        ego_pos, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id=ego_road_id,
+        ego_pos, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_segment_id=ego_road_id,
                                                                                         lon=ego_road_lon,
                                                                                         lat=ego_road_lat)
 
@@ -308,9 +308,10 @@ def original_state_with_sorrounding_objects():
                     # Don't create an object where the ego is
                     continue
 
-                obj_pos, obj_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id=obj_road_id,
-                                                                                                lon=obj_road_lon,
-                                                                                                lat=obj_road_lat)
+                obj_pos, obj_yaw = MapService.get_instance().convert_road_to_global_coordinates(
+                    road_segment_id=obj_road_id,
+                    lon=obj_road_lon,
+                    lat=obj_road_lat)
 
                 dynamic_object = DynamicObject.create_from_cartesian_state(obj_id=obj_id, timestamp=0,
                                                                            cartesian_state=np.array(
