@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import re
 
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD
-from decision_making.src.messages.trajectory_plan_message import TrajectoryPlanMsg
+from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan
 from decision_making.src.planning.behavioral.policies.semantic_actions_policy import SemanticActionType
 from decision_making.src.planning.types import C_V
 from decision_making.src.state.state import State

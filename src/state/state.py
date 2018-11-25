@@ -3,18 +3,18 @@ from typing import List, Optional
 
 import numpy as np
 
-from common_data.lcm.generatedFiles.gm_lcm import LcmDynamicObject
-from common_data.lcm.generatedFiles.gm_lcm import LcmEgoState
-from common_data.lcm.generatedFiles.gm_lcm import LcmNonTypedNumpyArray
-from common_data.lcm.generatedFiles.gm_lcm import LcmObjectSize
-from common_data.lcm.generatedFiles.gm_lcm import LcmOccupancyState
-from common_data.lcm.generatedFiles.gm_lcm import LcmState
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmDynamicObject import LcmDynamicObject
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmEgoState import LcmEgoState
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmNonTypedSmallNumpyArray import LcmNonTypedSmallNumpyArray
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectSize import LcmObjectSize
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmOccupancyState import LcmOccupancyState
+from common_data.interface.py.idl_generated_files.Rte_Types.LcmState import LcmState
+from common_data.interface.py.utils.serialization_utils import SerializationUtils
 
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K
 from decision_making.src.state.map_state import MapState
-from common_data.lcm.python.utils.lcm_utils import LCMUtils
 from decision_making.src.utils.map_utils import MapUtils
 
 
@@ -40,28 +40,16 @@ class OccupancyState(PUBSUB_MSG_IMPL):
         # type: () -> LcmOccupancyState
         lcm_msg = LcmOccupancyState()
         lcm_msg.timestamp = self.timestamp
-        lcm_msg.free_space = LcmNonTypedNumpyArray()
-        lcm_msg.free_space.num_dimensions = len(self.free_space.shape)
-        lcm_msg.free_space.shape = list(self.free_space.shape)
-        lcm_msg.free_space.length = self.free_space.size
-        lcm_msg.free_space.data = self.free_space.flat.__array__().tolist()
-        lcm_msg.confidence = LcmNonTypedNumpyArray()
-        lcm_msg.confidence.num_dimensions = len(self.confidence.shape)
-        lcm_msg.confidence.shape = list(self.confidence.shape)
-        lcm_msg.confidence.length = self.confidence.size
-        lcm_msg.confidence.data = self.confidence.flat.__array__().tolist()
+        lcm_msg.free_space = SerializationUtils.serialize_non_typed_small_array(self.free_space)
+        lcm_msg.confidence = SerializationUtils.serialize_non_typed_small_array(self.confidence)
         return lcm_msg
 
     @classmethod
     def deserialize(cls, lcmMsg):
         # type: (LcmOccupancyState) -> OccupancyState
-        return cls(lcmMsg.timestamp
-                   , np.ndarray(shape=tuple(lcmMsg.free_space.shape)
-                                , buffer=np.array(lcmMsg.free_space.data)
-                                , dtype=float)
-                   , np.ndarray(shape=tuple(lcmMsg.confidence.shape)
-                                , buffer=np.array(lcmMsg.confidence.data)
-                                , dtype=float))
+        return cls(lcmMsg.timestamp,
+                   SerializationUtils.deserialize_any_array(lcmMsg.free_space),
+                   SerializationUtils.deserialize_any_array(lcmMsg.confidence))
 
 
 class ObjectSize(PUBSUB_MSG_IMPL):
@@ -232,7 +220,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         lcm_msg = LcmDynamicObject()
         lcm_msg.obj_id = self.obj_id
         lcm_msg.timestamp = self.timestamp
-        lcm_msg._cached_cartesian_state = LCMUtils.numpy_array_to_lcm_non_typed_numpy_array(self.cartesian_state)
+        lcm_msg._cached_cartesian_state = self.cartesian_state
         lcm_msg._cached_map_state = self.map_state.serialize()
         lcm_msg.size = self.size.serialize()
         lcm_msg.confidence = self.confidence
@@ -242,9 +230,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmDynamicObject) -> DynamicObject
         return cls(lcmMsg.obj_id, lcmMsg.timestamp
-                   , np.ndarray(shape=tuple(lcmMsg._cached_cartesian_state.shape)
-                                , buffer=np.array(lcmMsg._cached_cartesian_state.data)
-                                , dtype=float)
+                   , lcmMsg._cached_cartesian_state.data
                    , MapState.deserialize(lcmMsg._cached_map_state)
                    , ObjectSize.deserialize(lcmMsg.size)
                    , lcmMsg.confidence)
@@ -317,9 +303,9 @@ class State(PUBSUB_MSG_IMPL):
         lcm_msg.occupancy_state = self.occupancy_state.serialize()
         ''' resize the list at once to the right length '''
         lcm_msg.num_obj = len(self.dynamic_objects)
-        lcm_msg.dynamic_objects = list()
+
         for i in range(lcm_msg.num_obj):
-            lcm_msg.dynamic_objects.append(self.dynamic_objects[i].serialize())
+            lcm_msg.dynamic_objects[i] = self.dynamic_objects[i].serialize()
         lcm_msg.ego_state = self.ego_state.serialize()
         return lcm_msg
 
