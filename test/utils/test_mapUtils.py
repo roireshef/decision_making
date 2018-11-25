@@ -12,7 +12,7 @@ def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate():
     """
     MapService.initialize()
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
-    lane_ids = MapUtils.get_lanes_id_from_road_segment_id(road_ids[0])
+    lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
     right_to_rightest = MapUtils.get_adjacent_lanes(lane_ids[0], RelativeLane.RIGHT_LANE)
     assert len(right_to_rightest) == 0
     left_to_rightest = MapUtils.get_adjacent_lanes(lane_ids[0], RelativeLane.LEFT_LANE)
@@ -31,7 +31,7 @@ def test_getDistFromLaneCenterToLaneBorders_rightLane_equalToHalfLaneWidth():
     """
     MapService.initialize()
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
-    lane_ids = MapUtils.get_lanes_id_from_road_segment_id(road_ids[0])
+    lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
     dist_to_right, dist_to_left = MapUtils.get_dist_from_lane_center_to_lane_borders(lane_ids[0], 0)
     assert dist_to_right == dist_to_left
     assert dist_to_right == MapService.get_instance().get_road(road_ids[0]).lane_width/2
@@ -44,7 +44,7 @@ def test_getDistFromLaneCenterToRoadBorders_rightLane_equalToDistFromRoadBorder(
     """
     MapService.initialize()
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
-    lane_ids = MapUtils.get_lanes_id_from_road_segment_id(road_ids[0])
+    lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
     dist_to_right, dist_to_left = MapUtils.get_dist_from_lane_center_to_road_borders(lane_ids[0], 0)
     lane_width = MapService.get_instance().get_road(road_ids[0]).lane_width
     assert dist_to_right == lane_width/2
@@ -60,7 +60,7 @@ def test_getLookaheadFrenetFrame_frenetStartsAndEndsInArbitraryPoint_accurateFra
     """
     MapService.initialize()
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
-    lane_ids = MapUtils.get_lanes_id_from_road_segment_id(road_ids[0])
+    lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
     lane_id = lane_ids[0]
     starting_lon = 100
     lookahead_dist = 100
