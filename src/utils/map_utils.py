@@ -71,7 +71,7 @@ class MapUtils:
 
     # TODO: remove it after introduction of the new mapping module
     @staticmethod
-    def get_closest_lane(cartesian_point: CartesianPoint2D, road_segment_id: int=None) -> int:
+    def get_closest_lane(cartesian_point: CartesianPoint2D, road_segment_id: int = None) -> int:
         """
         given cartesian coordinates, find the closest lane to the point
         :param cartesian_point: 2D cartesian coordinates
@@ -106,7 +106,7 @@ class MapUtils:
         """
         # this implementation assumes constant lane width (ignores the argument s)
         lane_width = MapService.get_instance().get_road(MapUtils.get_road_segment_id_from_lane_id(lane_id)).lane_width
-        return lane_width/2, lane_width/2
+        return lane_width / 2, lane_width / 2
 
     @staticmethod
     def get_dist_from_lane_center_to_road_borders(lane_id: int, s: float) -> (float, float):
@@ -122,7 +122,7 @@ class MapUtils:
         lane_width = map_api.get_road(road_segment_id).lane_width
         num_lanes = map_api.get_road(road_segment_id).lanes_num
         lane_ordinal = MapUtils.get_lane_ordinal(lane_id)
-        return (lane_ordinal + 0.5)*lane_width, (num_lanes - lane_ordinal - 0.5)*lane_width
+        return (lane_ordinal + 0.5) * lane_width, (num_lanes - lane_ordinal - 0.5) * lane_width
 
     @staticmethod
     def get_lane_width(lane_id: int, s: float) -> float:
@@ -203,7 +203,7 @@ class MapUtils:
         return lanes_list
 
     @staticmethod
-    def _convert_from_lane_to_map_coordinates(lane_id: int, frenet_point: FrenetPoint, relative_yaw: float=0) -> \
+    def _convert_from_lane_to_map_coordinates(lane_id: int, frenet_point: FrenetPoint, relative_yaw: float = 0) -> \
             [CartesianPoint2D, float]:
         """
         convert a point from lane coordinates to map (global) coordinates
@@ -237,7 +237,8 @@ class MapUtils:
         lane_ids, final_lon = MapUtils._advance_on_plan(initial_lane_id, initial_lon, lookahead_dist, navigation_plan)
 
         # exact projection of the initial point and final point on the road
-        init_pos, init_yaw = MapUtils._convert_from_lane_to_map_coordinates(initial_lane_id, np.array([initial_lon, desired_lat]))
+        init_pos, init_yaw = MapUtils._convert_from_lane_to_map_coordinates(initial_lane_id,
+                                                                            np.array([initial_lon, desired_lat]))
         final_pos, _ = MapUtils._convert_from_lane_to_map_coordinates(lane_ids[-1], np.array([final_lon, desired_lat]))
 
         # shift points (laterally) and concatenate all points of all relevant roads
@@ -283,7 +284,8 @@ class MapUtils:
         cumulative_length = lane_lengths[0] - initial_lon
         lane_ids = [initial_lane_id]
         for road_segment_id in road_segment_ids[1:]:
-            next_lane = [lid for lid in downstream_lanes if MapUtils.get_road_segment_id_from_lane_id(lid) == road_segment_id]
+            next_lane = [lid for lid in downstream_lanes if
+                         MapUtils.get_road_segment_id_from_lane_id(lid) == road_segment_id]
             if cumulative_length > lookahead_dist:
                 break
             if len(next_lane) < 1:
@@ -301,7 +303,7 @@ class MapUtils:
 
         try:
             target_lane_idx = np.where(lanes_leftovers < 0)[0][0]
-            return lane_ids[:(target_lane_idx+1)], lanes_leftovers[target_lane_idx] + lane_lengths[target_lane_idx]
+            return lane_ids[:(target_lane_idx + 1)], lanes_leftovers[target_lane_idx] + lane_lengths[target_lane_idx]
         except IndexError:
             raise LongitudeOutOfRoad("The specified navigation plan is short {} meters to advance {} in longitude"
                                      .format(lanes_leftovers[-1], lookahead_dist))
