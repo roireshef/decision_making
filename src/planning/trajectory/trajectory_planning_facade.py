@@ -12,7 +12,7 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
     VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, \
     MAX_VIS_TRAJECTORIES_NUMBER, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
-    TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE
+    TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE, REFERENCE_ROUTE_LANE_ID
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.common_message import Header, Timestamp
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
@@ -20,7 +20,6 @@ from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan,
     MapOrigin
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg, \
     PredictionsVisualization, DataTrajectoryVisualization
-from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, C_Y, FS_SX, FS_DX, \
@@ -31,9 +30,7 @@ from decision_making.src.planning.utils.transformations import Transformations
 from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
-from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State
-from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger import MetricLogger
 
 
@@ -251,7 +248,8 @@ class TrajectoryPlanningFacade(DmModule):
         objects_visualizations = []
         for i, obj in enumerate(state.dynamic_objects):
             # calculate predictions only for moving objects, whose map_state was w.r.t. the reference_route (lane_id=0)
-            if obj.map_state.lane_id == 0 and obj.map_state.lane_fstate is not None and obj.cartesian_state[C_V] > 0:
+            if obj.map_state.lane_id == REFERENCE_ROUTE_LANE_ID and obj.map_state.lane_fstate is not None \
+                    and obj.cartesian_state[C_V] > 0:
                 obj_fstate = np.array([obj.map_state.lane_fstate])  # w.r.t. the reference_route
                 object_fpredictions = predictor.predict_frenet_states(obj_fstate, prediction_timestamps)[0][:, [FS_SX, FS_DX]]
                 # visualize object's predictions only if they fully lay inside the reference_route range

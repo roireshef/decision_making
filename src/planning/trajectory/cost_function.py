@@ -1,7 +1,7 @@
 import numpy as np
 
 import rte.python.profiler as prof
-from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD_DIST
+from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD_DIST, REFERENCE_ROUTE_LANE_ID
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import C_YAW, C_Y, C_X, C_A, C_K, C_V, CartesianExtendedTrajectories, \
@@ -74,7 +74,7 @@ class TrajectoryPlannerCosts:
             # calculate objects' map_state
             for obj in close_objects:
                 obj._cached_map_states[RelativeLane.SAME_LANE] = \
-                    MapState(lane_fstate=reference_route.cstate_to_fstate(obj.cartesian_state), lane_id=0)
+                    MapState(lane_fstate=reference_route.cstate_to_fstate(obj.cartesian_state), lane_id=REFERENCE_ROUTE_LANE_ID)
             objects_relative_fstates = np.array([obj.map_state.lane_fstate for obj in close_objects
                                                  if obj.map_state.lane_fstate is not None])
 
