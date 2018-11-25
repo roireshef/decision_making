@@ -14,7 +14,7 @@ from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_SceneRoadSegment import \
     TsSYSSceneRoadSegment
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.messages.scene_dynamic_message import Timestamp, MapOrigin, Header
+from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header
 
 MAX_NOMINAL_PATH_POINT_FIELDS = 10
 
