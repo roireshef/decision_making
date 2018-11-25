@@ -4,7 +4,7 @@ from logging import Logger
 
 import numpy as np
 
-from common_data.lcm.config import pubsub_topics
+from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
@@ -42,8 +42,8 @@ class BehavioralPlanningFacade(DmModule):
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
 
     def _start_impl(self):
-        self.pubsub.subscribe(pubsub_topics.STATE_TOPIC, None)
-        self.pubsub.subscribe(pubsub_topics.NAVIGATION_PLAN_TOPIC, None)
+        self.pubsub.subscribe(pubsub_topics.STATE_LCM, None)
+        self.pubsub.subscribe(pubsub_topics.NAVIGATION_PLAN_LCM, None)
 
     # TODO: unsubscribe once logic is fixed in LCM
     def _stop_impl(self):
@@ -103,17 +103,17 @@ class BehavioralPlanningFacade(DmModule):
                                  e, traceback.format_exc())
 
     def _get_current_state(self) -> State:
-        input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
+        is_success, input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_LCM, timeout=1)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if input_state is None:
             raise MsgDeserializationError('LCM message queue for %s topic is empty or topic isn\'t subscribed',
-                                          pubsub_topics.STATE_TOPIC)
+                                          pubsub_topics.STATE_LCM)
         object_state = State.deserialize(input_state)
         self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, object_state))
         return object_state
 
     def _get_current_navigation_plan(self) -> NavigationPlanMsg:
-        input_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.NAVIGATION_PLAN_TOPIC, timeout=1)
+        is_success, input_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.NAVIGATION_PLAN_LCM, timeout=1)
         object_plan = NavigationPlanMsg.deserialize(input_plan)
         self.logger.debug('Received navigation plan: %s', object_plan)
         return object_plan
@@ -136,11 +136,11 @@ class BehavioralPlanningFacade(DmModule):
         return updated_state
 
     def _publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
-        self.pubsub.publish(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, trajectory_parameters.serialize())
+        self.pubsub.publish(pubsub_topics.TRAJECTORY_PARAMS_LCM, trajectory_parameters.serialize())
         self.logger.debug("{} {}".format(LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, trajectory_parameters))
 
     def _publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
-        self.pubsub.publish(pubsub_topics.VISUALIZATION_TOPIC, visualization_message.serialize())
+        self.pubsub.publish(pubsub_topics.VISUALIZATION_LCM, visualization_message.serialize())
 
     @property
     def planner(self):

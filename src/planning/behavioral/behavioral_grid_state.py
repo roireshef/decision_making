@@ -7,6 +7,7 @@ import rte.python.profiler as prof
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO
 from decision_making.src.global_constants import PLANNING_LOOKAHEAD_DIST
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
+from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
@@ -16,24 +17,6 @@ from mapping.src.service.map_service import MapService
 class SemanticActionType(Enum):
     FOLLOW_VEHICLE = 1
     FOLLOW_LANE = 2
-
-
-class RelativeLane(Enum):
-    """"
-    The lane associated with a certain Recipe, relative to ego
-    """
-    RIGHT_LANE = -1
-    SAME_LANE = 0
-    LEFT_LANE = 1
-
-
-class RelativeLongitudinalPosition(Enum):
-    """"
-    The high-level longitudinal position associated with a certain Recipe, relative to ego
-    """
-    REAR = -1
-    PARALLEL = 0
-    FRONT = 1
 
 
 class DynamicObjectWithRoadSemantics:

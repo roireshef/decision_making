@@ -13,14 +13,11 @@ from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS
     TsSYSSceneRoadIntersection
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_SceneRoadSegment import \
     TsSYSSceneRoadSegment
-from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.messages.scene_dynamic_message import Timestamp, MapOrigin, Header
+from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header
 
+MAX_NOMINAL_PATH_POINT_FIELDS = 10
 
-# MAX_SCENE_LANE_SEGMENTS = 128
-# MAX_SCENE_ROAD_INTERSECTIONS = 64
-# MAX_SCENE_ROAD_SEGMENTS = 64
 
 class MapLaneType(Enum):
     ControlledAccess_DividedRoadLane = 0
@@ -226,15 +223,15 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
         pubsub_msg.e_Cnt_road_id = self.e_Cnt_road_id
 
         pubsub_msg.e_Cnt_lane_segment_id_count = self.e_Cnt_lane_segment_id_count
-        pubsub_msg.a_Cnt_lane_segment_id = SerializationUtils.serialize_array(self.a_Cnt_lane_segment_id)
+        pubsub_msg.a_Cnt_lane_segment_id = self.a_Cnt_lane_segment_id
 
         pubsub_msg.e_e_road_segment_type = self.e_e_road_segment_type.value
 
         pubsub_msg.e_Cnt_upstream_segment_count = self.e_Cnt_upstream_segment_count
-        pubsub_msg.a_Cnt_upstream_road_segment_id = SerializationUtils.serialize_array(self.a_Cnt_upstream_road_segment_id)
+        pubsub_msg.a_Cnt_upstream_road_segment_id = self.a_Cnt_upstream_road_segment_id
 
         pubsub_msg.e_Cnt_downstream_segment_count = self.e_Cnt_downstream_segment_count
-        pubsub_msg.a_Cnt_downstream_road_segment_id = SerializationUtils.serialize_array(self.a_Cnt_downstream_road_segment_id)
+        pubsub_msg.a_Cnt_downstream_road_segment_id = self.a_Cnt_downstream_road_segment_id
 
         return pubsub_msg
 
@@ -243,12 +240,12 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_Cnt_road_segment_id,
                    pubsubMsg.e_Cnt_road_id,
                    pubsubMsg.e_Cnt_lane_segment_id_count,
-                   SerializationUtils.deserialize_any_array(pubsubMsg.a_Cnt_lane_segment_id),
+                   pubsubMsg.a_Cnt_lane_segment_id[:pubsubMsg.e_Cnt_lane_segment_id_count],
                    MapRoadSegmentType(pubsubMsg.e_e_road_segment_type),
                    pubsubMsg.e_Cnt_upstream_segment_count,
-                   SerializationUtils.deserialize_any_array(pubsubMsg.a_Cnt_upstream_road_segment_id),
+                   pubsubMsg.a_Cnt_upstream_road_segment_id[:pubsubMsg.e_Cnt_upstream_segment_count],
                    pubsubMsg.e_Cnt_downstream_segment_count,
-                   SerializationUtils.deserialize_any_array(pubsubMsg.a_Cnt_downstream_road_segment_id))
+                   pubsubMsg.a_Cnt_downstream_road_segment_id[:pubsubMsg.e_Cnt_downstream_segment_count])
 
 
 class SceneRoadIntersection(PUBSUB_MSG_IMPL):
@@ -284,11 +281,10 @@ class SceneRoadIntersection(PUBSUB_MSG_IMPL):
         pubsub_msg.e_i_road_intersection_id = self.e_i_road_intersection_id
 
         pubsub_msg.e_Cnt_lane_coupling_count = self.e_Cnt_lane_coupling_count
-        pubsub_msg.a_i_lane_coupling_segment_ids = SerializationUtils.serialize_array(self.a_i_lane_coupling_segment_ids)
+        pubsub_msg.a_i_lane_coupling_segment_ids = self.a_i_lane_coupling_segment_ids
 
         pubsub_msg.e_Cnt_intersection_road_segment_count = self.e_Cnt_intersection_road_segment_count
-        pubsub_msg.a_i_intersection_road_segment_ids = SerializationUtils.serialize_array(
-            self.a_i_intersection_road_segment_ids)
+        pubsub_msg.a_i_intersection_road_segment_ids = self.a_i_intersection_road_segment_ids
 
         return pubsub_msg
 
@@ -296,9 +292,9 @@ class SceneRoadIntersection(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg: TsSYSSceneRoadIntersection):
         return cls(pubsubMsg.e_i_road_intersection_id,
                    pubsubMsg.e_Cnt_lane_coupling_count,
-                   SerializationUtils.deserialize_any_array(pubsubMsg.a_i_lane_coupling_segment_ids),
+                   pubsubMsg.a_i_lane_coupling_segment_ids[:pubsubMsg.e_Cnt_lane_coupling_count],
                    pubsubMsg.e_Cnt_intersection_road_segment_count,
-                   SerializationUtils.deserialize_any_array(pubsubMsg.a_i_intersection_road_segment_ids))
+                   pubsubMsg.a_i_intersection_road_segment_ids[:pubsubMsg.e_Cnt_intersection_road_segment_count])
 
 
 class AdjacentLane(PUBSUB_MSG_IMPL):
@@ -642,7 +638,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         pubsub_msg.e_v_nominal_speed = self.e_v_nominal_speed
 
         pubsub_msg.e_Cnt_nominal_path_point_count = self.e_Cnt_nominal_path_point_count
-        pubsub_msg.a_nominal_path_points = SerializationUtils.serialize_array(self.a_nominal_path_points)
+        pubsub_msg.a_nominal_path_points = self.a_nominal_path_points
 
         pubsub_msg.e_Cnt_left_boundary_points_count = self.e_Cnt_left_boundary_points_count
         for i in range(pubsub_msg.e_Cnt_left_boundary_points_count):
@@ -689,7 +685,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         for i in range(pubsubMsg.e_Cnt_upstream_lane_count):
             as_upstream_lanes.append(LaneSegmentConnectivity.deserialize(pubsubMsg.as_upstream_lanes[i]))
 
-        a_nominal_path_points = SerializationUtils.deserialize_any_array(pubsubMsg.a_nominal_path_points)
+        a_nominal_path_points = pubsubMsg.a_nominal_path_points[:pubsubMsg.e_Cnt_nominal_path_point_count][:MAX_NOMINAL_PATH_POINT_FIELDS]
 
         as_left_boundary_points = list()
         for i in range(pubsubMsg.e_Cnt_left_boundary_points_count):

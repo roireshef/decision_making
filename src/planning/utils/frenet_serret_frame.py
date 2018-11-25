@@ -3,7 +3,9 @@ from typing import Tuple
 import numpy as np
 from scipy.interpolate.fitpack2 import UnivariateSpline
 
-from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray, LcmFrenetFrame
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import LcmFrenetSerret2DFrame
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import LcmNonTypedNumpyArray
+from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.global_constants import TRAJECTORY_ARCLEN_RESOLUTION, TRAJECTORY_CURVE_SPLINE_FIT_ORDER, \
     TINY_CURVATURE
@@ -425,38 +427,14 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         return T, N, np.c_[k], np.c_[k_tag]
 
     def serialize(self):
-        # type: () -> LcmFrenetFrame
-        lcm_msg = LcmFrenetFrame()
+        # type: () -> LcmFrenetSerret2DFrame
+        lcm_msg = LcmFrenetSerret2DFrame()
 
-        lcm_msg.points = LcmNumpyArray()
-        lcm_msg.points.num_dimensions = len(self.O.shape)
-        lcm_msg.points.shape = list(self.O.shape)
-        lcm_msg.points.length = self.O.size
-        lcm_msg.points.data = self.O.flat.__array__().tolist()
-
-        lcm_msg.T = LcmNumpyArray()
-        lcm_msg.T.num_dimensions = len(self.T.shape)
-        lcm_msg.T.shape = list(self.T.shape)
-        lcm_msg.T.length = self.T.size
-        lcm_msg.T.data = self.T.flat.__array__().tolist()
-
-        lcm_msg.N = LcmNumpyArray()
-        lcm_msg.N.num_dimensions = len(self.N.shape)
-        lcm_msg.N.shape = list(self.N.shape)
-        lcm_msg.N.length = self.N.size
-        lcm_msg.N.data = self.N.flat.__array__().tolist()
-
-        lcm_msg.k = LcmNumpyArray()
-        lcm_msg.k.num_dimensions = len(self.k.shape)
-        lcm_msg.k.shape = list(self.k.shape)
-        lcm_msg.k.length = self.k.size
-        lcm_msg.k.data = self.k.flat.__array__().tolist()
-
-        lcm_msg.k_tag = LcmNumpyArray()
-        lcm_msg.k_tag.num_dimensions = len(self.k_tag.shape)
-        lcm_msg.k_tag.shape = list(self.k_tag.shape)
-        lcm_msg.k_tag.length = self.k_tag.size
-        lcm_msg.k_tag.data = self.k_tag.flat.__array__().tolist()
+        lcm_msg.points = SerializationUtils.serialize_non_typed_array(self.O)
+        lcm_msg.T = SerializationUtils.serialize_non_typed_array(self.T)
+        lcm_msg.N = SerializationUtils.serialize_non_typed_array(self.N)
+        lcm_msg.k = SerializationUtils.serialize_non_typed_array(self.k)
+        lcm_msg.k_tag = SerializationUtils.serialize_non_typed_array(self.k_tag)
 
         lcm_msg.ds = self.ds
 
@@ -464,22 +442,10 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, lcmMsg):
-        # type: (LcmFrenetFrame)->FrenetSerret2DFrame
-
-        return cls(
-            np.ndarray(shape=tuple(lcmMsg.points.shape)
-                       , buffer=np.array(lcmMsg.points.data)
-                       , dtype=float)
-            , np.ndarray(shape=tuple(lcmMsg.T.shape)
-                         , buffer=np.array(lcmMsg.T.data)
-                         , dtype=float)
-            , np.ndarray(shape=tuple(lcmMsg.N.shape)
-                         , buffer=np.array(lcmMsg.N.data)
-                         , dtype=float)
-            , np.ndarray(shape=tuple(lcmMsg.k.shape)
-                         , buffer=np.array(lcmMsg.k.data)
-                         , dtype=float)
-            , np.ndarray(shape=tuple(lcmMsg.k_tag.shape)
-                         , buffer=np.array(lcmMsg.k_tag.data)
-                         , dtype=float)
-            , lcmMsg.ds)
+        # type: (LcmFrenetSerret2DFrame)->FrenetSerret2DFrame
+        return cls(SerializationUtils.deserialize_any_array(lcmMsg.points),
+                   SerializationUtils.deserialize_any_array(lcmMsg.T),
+                   SerializationUtils.deserialize_any_array(lcmMsg.N),
+                   SerializationUtils.deserialize_any_array(lcmMsg.k),
+                   SerializationUtils.deserialize_any_array(lcmMsg.k_tag),
+                   lcmMsg.ds)

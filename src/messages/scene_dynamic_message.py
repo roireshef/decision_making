@@ -9,17 +9,17 @@ from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_DataSceneDynamic import \
     TsSYSDataSceneDynamic
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_DataSceneHost import TsSYSDataSceneHost
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_Header import TsSYSHeader
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_HostLocalization import \
     TsSYSHostLocalization
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_MapOrigin import TsSYSMapOrigin
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_ObjectHypothesis import \
     TsSYSObjectHypothesis
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_ObjectLocalization import \
     TsSYSObjectLocalization
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_Timestamp import TsSYSTimestamp
-from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.messages.scene_common_messages import Timestamp, Header, MapOrigin
+
+MAX_CARTESIANPOSE_FIELDS = 6
+MAX_LANEFRENETPOSE_FIELDS = 6
 
 
 class ObjectTrackDynamicProperty(Enum):
@@ -65,36 +65,6 @@ class LaneFrenetPose(Enum):
     CeSYS_LaneFrenetPose_e_a_d_dotdot = 5
 
 
-class Timestamp(PUBSUB_MSG_IMPL):
-    e_Cnt_Secs = int
-    # TODO: why fractions are int?
-    e_Cnt_FractionSecs = int
-
-    def __init__(self, e_Cnt_Secs, e_Cnt_FractionSecs):
-        # type: (int, int)->None
-        """
-        A data class that corresponds to a parametrization of a sigmoid function
-        :param e_Cnt_Secs: Seconds since 1 January 1900
-        :param e_Cnt_FractionSecs: Fractional seconds
-        """
-        self.e_Cnt_Secs = e_Cnt_Secs
-        self.e_Cnt_FractionSecs = e_Cnt_FractionSecs
-
-    def serialize(self):
-        # type: () -> TsSYSTimestamp
-        pubsub_msg = TsSYSTimestamp()
-
-        pubsub_msg.e_Cnt_Secs = self.e_Cnt_Secs
-        pubsub_msg.e_Cnt_FractionSecs = self.e_Cnt_FractionSecs
-
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSTimestamp)->Timestamp
-        return cls(pubsubMsg.e_Cnt_Secs, pubsubMsg.e_Cnt_FractionSecs)
-
-
 class HostLocalization(PUBSUB_MSG_IMPL):
     e_Cnt_road_segment_id = int
     e_Cnt_lane_segment_id = int
@@ -122,8 +92,8 @@ class HostLocalization(PUBSUB_MSG_IMPL):
         pubsub_msg.e_Cnt_road_segment_id = self.e_Cnt_road_segment_id
         pubsub_msg.e_Cnt_lane_segment_id = self.e_Cnt_lane_segment_id
 
-        pubsub_msg.a_cartesian_pose = SerializationUtils.serialize_array(self.a_cartesian_pose)
-        pubsub_msg.a_lane_frenet_pose = SerializationUtils.serialize_array(self.a_lane_frenet_pose)
+        pubsub_msg.a_cartesian_pose = self.a_cartesian_pose
+        pubsub_msg.a_lane_frenet_pose = self.a_lane_frenet_pose
 
         return pubsub_msg
 
@@ -131,8 +101,8 @@ class HostLocalization(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSHostLocalization)->HostLocalization
         return cls(pubsubMsg.e_Cnt_road_segment_id, pubsubMsg.e_Cnt_lane_segment_id,
-                   SerializationUtils.deserialize_any_array(pubsubMsg.a_cartesian_pose),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.a_lane_frenet_pose))
+                   pubsubMsg.a_cartesian_pose[:MAX_CARTESIANPOSE_FIELDS],
+                   pubsubMsg.a_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS])
 
 
 class DataSceneHost(PUBSUB_MSG_IMPL):
@@ -168,40 +138,6 @@ class DataSceneHost(PUBSUB_MSG_IMPL):
         # type: (TsSYSDataSceneHost)->DataSceneHost
         return cls(pubsubMsg.e_b_Valid, Timestamp.deserialize(pubsubMsg.s_ComputeTimestamp),
                    HostLocalization.deserialize(pubsubMsg.s_host_localization))
-
-
-class Header(PUBSUB_MSG_IMPL):
-    e_Cnt_SeqNum = int
-    s_Timestamp = Timestamp
-    e_Cnt_version = int
-
-    def __init__(self, e_Cnt_SeqNum, s_Timestamp, e_Cnt_version):
-        # type: (int, Timestamp, int)->None
-        """
-        Header Information is controlled by Middleware
-        :param e_Cnt_SeqNum: Starts from 0 and increments at every update of this data structure
-        :param s_Timestamp: Timestamp in secs and nano seconds when the data was published
-        :param e_Cnt_version: Version of the topic/service used to identify interface compatability
-        :return:
-        """
-        self.e_Cnt_SeqNum = e_Cnt_SeqNum
-        self.s_Timestamp = s_Timestamp
-        self.e_Cnt_version = e_Cnt_version
-
-    def serialize(self):
-        # type: () -> TsSYSHeader
-        pubsub_msg = TsSYSHeader()
-
-        pubsub_msg.e_Cnt_SeqNum = self.e_Cnt_SeqNum
-        pubsub_msg.s_Timestamp = self.s_Timestamp.serialize()
-        pubsub_msg.e_Cnt_version = self.e_Cnt_version
-
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSHeader)->Header
-        return cls(pubsubMsg.e_Cnt_SeqNum, Timestamp.deserialize(pubsubMsg.s_Timestamp), pubsubMsg.e_Cnt_version)
 
 
 class BoundingBoxSize(PUBSUB_MSG_IMPL):
@@ -283,9 +219,9 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         pubsub_msg.e_Pct_location_uncertainty_yaw = self.e_Pct_location_uncertainty_yaw
         pubsub_msg.e_Cnt_host_lane_frenet_id = self.e_Cnt_host_lane_frenet_id
 
-        pubsub_msg.a_cartesian_pose = SerializationUtils.serialize_array(self.a_cartesian_pose)
-        pubsub_msg.a_lane_frenet_pose = SerializationUtils.serialize_array(self.a_lane_frenet_pose)
-        pubsub_msg.a_host_lane_frenet_pose = SerializationUtils.serialize_array(self.a_host_lane_frenet_pose)
+        pubsub_msg.a_cartesian_pose = self.a_cartesian_pose
+        pubsub_msg.a_lane_frenet_pose = self.a_lane_frenet_pose
+        pubsub_msg.a_host_lane_frenet_pose = self.a_host_lane_frenet_pose
 
         return pubsub_msg
 
@@ -295,9 +231,9 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_r_probability, pubsubMsg.e_Cnt_lane_segment_id, ObjectTrackDynamicProperty(pubsubMsg.e_e_dynamic_status),
                    pubsubMsg.e_Pct_location_uncertainty_x, pubsubMsg.e_Pct_location_uncertainty_y,
                    pubsubMsg.e_Pct_location_uncertainty_yaw, pubsubMsg.e_Cnt_host_lane_frenet_id,
-                   SerializationUtils.deserialize_any_array(pubsubMsg.a_cartesian_pose),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.a_lane_frenet_pose),
-                   SerializationUtils.deserialize_any_array(pubsubMsg.a_host_lane_frenet_pose))
+                   (pubsubMsg.a_cartesian_pose[:MAX_CARTESIANPOSE_FIELDS]),
+                   pubsubMsg.a_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS],
+                   pubsubMsg.a_host_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS])
 
 
 class ObjectLocalization(PUBSUB_MSG_IMPL):
@@ -395,37 +331,6 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
 
         return cls(pubsubMsg.e_b_Valid, Timestamp.deserialize(pubsubMsg.s_ComputeTimestamp), pubsubMsg.e_Cnt_num_objects,
                    obj_localizations, HostLocalization.deserialize(pubsubMsg.s_host_localization))
-
-
-class MapOrigin(PUBSUB_MSG_IMPL):
-    e_phi_latitude = float
-    e_phi_longitude = float
-    e_l_altitude = float
-    s_Timestamp = Timestamp
-
-    def __init__(self, e_phi_latitude, e_phi_longitude, e_l_altitude, s_Timestamp):
-        # type: (float, float, float, Timestamp) -> None
-        self.e_phi_latitude = e_phi_latitude
-        self.e_phi_longitude = e_phi_longitude
-        self.e_l_altitude = e_l_altitude
-        self.s_Timestamp = s_Timestamp
-
-    def serialize(self):
-        # type: () -> TsSYSMapOrigin
-        pubsub_msg = TsSYSMapOrigin()
-
-        pubsub_msg.e_phi_latitude = self.e_phi_latitude
-        pubsub_msg.e_phi_longitude = self.e_phi_longitude
-        pubsub_msg.e_l_altitude = self.e_l_altitude
-        pubsub_msg.s_Timestamp = self.s_Timestamp.serialize()
-
-        return pubsub_msg
-
-    @classmethod
-    def deserialize(cls, pubsubMsg):
-        # type: (TsSYSMapOrigin)->MapOrigin
-        return cls(pubsubMsg.e_phi_latitude, pubsubMsg.e_phi_longitude, pubsubMsg.e_l_altitude,
-                   Timestamp.deserialize(pubsubMsg.s_Timestamp))
 
 
 class SceneDynamic(PUBSUB_MSG_IMPL):

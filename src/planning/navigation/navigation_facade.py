@@ -4,7 +4,7 @@ from decision_making.src.planning.navigation.navigation_planner import Navigatio
 from logging import Logger
 
 from common_data.src.communication.pubsub.pubsub import PubSub
-from common_data.lcm.config import pubsub_topics
+from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
 
 
 # TODO - must think about what the input to the navigation computation is, and where it comes from
@@ -23,5 +23,5 @@ class NavigationFacade(DmModule):
         self._publish_navigation_plan(self.handler.plan())
 
     def _publish_navigation_plan(self, plan: NavigationPlanMsg):
-        self.pubsub.publish(pubsub_topics.NAVIGATION_PLAN_TOPIC, plan.serialize())
+        self.pubsub.publish(pubsub_topics.NAVIGATION_PLAN_LCM, plan.serialize())
 
