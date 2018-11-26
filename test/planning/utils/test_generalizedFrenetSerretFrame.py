@@ -29,8 +29,8 @@ def test_cpointsToFpointsToCpoints_pointTwoWayConversionExactSegmentationSameDs_
     upstream_s_end = upstream_frenet.s_max
     downstream_s_start = 0
     downstream_s_end = downstream_frenet.s_max - downstream_frenet.ds * 3
-    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end, full_frenet.ds),
-                    FrenetSubSegment(1, downstream_s_start, downstream_s_end, full_frenet.ds)]
+    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end),
+                    FrenetSubSegment(1, downstream_s_start, downstream_s_end)]
     generalized_frenet = GeneralizedFrenetSerretFrame.build(frenet_frames=[upstream_frenet, downstream_frenet],
                                                             sub_segments=segmentation)
 
@@ -63,8 +63,8 @@ def test_cpointsToFpointsToCpoints_pointTwoWayConversionNonExactSegmentationSame
     upstream_s_end = upstream_frenet.s_max
     downstream_s_start = 0
     downstream_s_end = downstream_frenet.s_max - downstream_frenet.ds * 2.7  # not an existing point
-    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end, full_frenet.ds),
-                    FrenetSubSegment(1, downstream_s_start, downstream_s_end, full_frenet.ds)]
+    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end),
+                    FrenetSubSegment(1, downstream_s_start, downstream_s_end)]
     generalized_frenet = GeneralizedFrenetSerretFrame.build(frenet_frames=[upstream_frenet, downstream_frenet],
                                                             sub_segments=segmentation)
 
@@ -98,8 +98,8 @@ def test_cpointsToFpointsToCpoints_pointTwoWayConversionNonExactSegmentationDiff
     upstream_s_end = upstream_frenet.s_max
     downstream_s_start = 0
     downstream_s_end = downstream_frenet.s_max - downstream_frenet.ds * 2.7  # not an existing point
-    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end, full_frenet.ds),
-                    FrenetSubSegment(1, downstream_s_start, downstream_s_end, full_frenet.ds * 2)]
+    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end),
+                    FrenetSubSegment(1, downstream_s_start, downstream_s_end)]
     generalized_frenet = GeneralizedFrenetSerretFrame.build(frenet_frames=[upstream_frenet, downstream_frenet],
                                                             sub_segments=segmentation)
 
@@ -136,8 +136,8 @@ def test_ctrajectoryToFtrajectoryToCtrajectory_pointTwoWayConversionTwoFullFrene
     downstream_s_start = 0
     downstream_s_end = downstream_frenet.s_max
 
-    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end, full_frenet.ds),
-                    FrenetSubSegment(1, downstream_s_start, downstream_s_end, full_frenet.ds * 2)]
+    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end),
+                    FrenetSubSegment(1, downstream_s_start, downstream_s_end)]
     generalized_frenet = GeneralizedFrenetSerretFrame.build(frenet_frames=[upstream_frenet, downstream_frenet],
                                                             sub_segments=segmentation)
 
@@ -186,8 +186,8 @@ def test_ctrajectoriesToFtrajectoriesToCtrajectories_pointTwoWayConversionTwoFul
     downstream_s_start = 0
     downstream_s_end = downstream_frenet.s_max
 
-    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end, full_frenet.ds),
-                    FrenetSubSegment(1, downstream_s_start, downstream_s_end, full_frenet.ds * 2)]
+    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end),
+                    FrenetSubSegment(1, downstream_s_start, downstream_s_end)]
     generalized_frenet = GeneralizedFrenetSerretFrame.build(frenet_frames=[upstream_frenet, downstream_frenet],
                                                             sub_segments=segmentation)
 
@@ -228,8 +228,8 @@ def test_convertFromSegmentState_x_y():
     downstream_s_start = 0
     downstream_s_end = downstream_frenet.s_max
 
-    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end, full_frenet.ds),
-                    FrenetSubSegment(1, downstream_s_start, downstream_s_end, full_frenet.ds * 2)]
+    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end),
+                    FrenetSubSegment(1, downstream_s_start, downstream_s_end)]
     generalized_frenet = GeneralizedFrenetSerretFrame.build(frenet_frames=[upstream_frenet, downstream_frenet],
                                                             sub_segments=segmentation)
 
@@ -268,8 +268,8 @@ def test_convertFromSegmentStates_x_y():
     downstream_s_start = 0
     downstream_s_end = downstream_frenet.s_max
 
-    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end, full_frenet.ds),
-                    FrenetSubSegment(1, downstream_s_start, downstream_s_end, full_frenet.ds * 2)]
+    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end),
+                    FrenetSubSegment(1, downstream_s_start, downstream_s_end)]
     generalized_frenet = GeneralizedFrenetSerretFrame.build(frenet_frames=[upstream_frenet, downstream_frenet],
                                                             sub_segments=segmentation)
 
@@ -316,8 +316,8 @@ def test_convertToAndFromSegmentStates_x_y():
     downstream_s_start = 0
     downstream_s_end = downstream_frenet.s_max
 
-    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end, full_frenet.ds),
-                    FrenetSubSegment(1, downstream_s_start, downstream_s_end, full_frenet.ds * 2)]
+    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end),
+                    FrenetSubSegment(1, downstream_s_start, downstream_s_end)]
     generalized_frenet = GeneralizedFrenetSerretFrame.build(frenet_frames=[upstream_frenet, downstream_frenet],
                                                             sub_segments=segmentation)
 
