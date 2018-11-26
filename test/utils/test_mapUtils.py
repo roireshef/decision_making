@@ -7,6 +7,7 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.state.state import DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
+from mapping.src.exceptions import NavigationPlanTooShort, DownstreamLaneNotFound
 from mapping.src.service.map_service import MapService
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from decision_making.test.planning.custom_fixtures import dyn_obj_outside_road, dyn_obj_on_road
@@ -158,6 +159,7 @@ def test_advanceOnPlan():
     test the method _advance_on_plan
         validate that total length of output sub segments == lookahead_dist;
         try lookahead_dist until end of the map
+        test two types of exceptions
     """
     MapService.initialize(MAP_SPLIT)
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
@@ -166,9 +168,8 @@ def test_advanceOnPlan():
     starting_lon = 20.
     lookahead_dist = 500.
     small_dist_err = 0.01
-    lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])
-    lane_id = lane_ids[current_ordinal]
-    sub_segments = MapUtils._advance_on_plan(lane_id, starting_lon, lookahead_dist, NavigationPlanMsg(np.array(road_ids)))
+    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
+    sub_segments = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist, NavigationPlanMsg(np.array(road_ids)))
     assert len(sub_segments) == 5
     for seg in sub_segments:
         assert MapUtils.get_lane_ordinal(seg[0]) == current_ordinal
@@ -176,7 +177,7 @@ def test_advanceOnPlan():
     assert np.isclose(tot_length, lookahead_dist)
 
     # test smaller navigation plan fitting the lookahead distance, and add non-existing road at the end of the plan
-    sub_segments = MapUtils._advance_on_plan(lane_id, starting_lon, lookahead_dist,
+    sub_segments = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist,
                                              NavigationPlanMsg(np.array(road_ids[:8] + [1234])))
     assert len(sub_segments) == 5
 
@@ -189,6 +190,22 @@ def test_advanceOnPlan():
     first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])[current_ordinal]
     sub_segments = MapUtils._advance_on_plan(first_lane_id, 0, lookahead_dist, NavigationPlanMsg(np.array(road_ids)))
     assert len(sub_segments) == len(road_ids)
+
+    # test the case when the navigation plan is too short
+    try:
+        sub_segments = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist,
+                                                 NavigationPlanMsg(np.array(road_ids[:7])))
+        assert False
+    except NavigationPlanTooShort:
+        pass
+
+    # test the case when the map is too short
+    try:
+        sub_segments = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_distance=1000,
+                                                 navigation_plan=NavigationPlanMsg(np.array(road_ids + [1234])))
+        assert False
+    except DownstreamLaneNotFound:
+        pass
 
 
 def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints():

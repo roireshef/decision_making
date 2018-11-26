@@ -8,7 +8,8 @@ from decision_making.src.planning.types import CartesianExtendedState, FS_DX
 from decision_making.src.planning.types import FP_DX, FP_SX, C_X, C_Y, CartesianPoint2D, FrenetPoint
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.state.map_state import MapState
-from mapping.src.exceptions import raises, LongitudeOutOfRoad, RoadNotFound, NextRoadNotFound, DownstreamLaneNotFound
+from mapping.src.exceptions import raises, LongitudeOutOfRoad, RoadNotFound, NextRoadNotFound, DownstreamLaneNotFound, \
+    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
@@ -422,7 +423,7 @@ class MapUtils:
 
             if current_road_idx_on_plan + 1 >= len(navigation_plan.road_ids):
                 cumulative_distance=cumulative_distance
-                raise DownstreamLaneNotFound("Cannot progress further on plan %s (leftover: %s [m])" %
+                raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m])" %
                                              (navigation_plan, lookahead_distance - cumulative_distance))
 
             # pull next road segment from the navigation plan, then look for the downstream lane segment on this
@@ -431,14 +432,15 @@ class MapUtils:
             downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
 
             if len(downstream_lanes_ids) == 0:
-                raise DownstreamLaneNotFound("Downstream lane not found for lane_id=%d" % (current_lane_id))
+                raise DownstreamLaneNotFound("MapUtils._advance_on_plan: Downstream lane not found for lane_id=%d" % (current_lane_id))
 
             downstream_lanes_ids_on_plan = [lid for lid in downstream_lanes_ids
                                             if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan]
 
             if len(downstream_lanes_ids_on_plan) == 0:
-                raise DownstreamLaneNotFound("Any downstream lane is not in the navigation plan %s", (navigation_plan))
-            assert len(downstream_lanes_ids_on_plan) == 1, "More than 1 downstream lanes according to the nav. plan"
+                raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan %s", (navigation_plan))
+            if len(downstream_lanes_ids_on_plan) > 1:
+                raise AmbiguousNavigationPlan("More than 1 downstream lanes according to the nav. plan %s", (navigation_plan))
 
             current_lane_id = downstream_lanes_ids_on_plan[0]
             current_segment_start_s = 0
