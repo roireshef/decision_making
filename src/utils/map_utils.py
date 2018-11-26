@@ -421,6 +421,7 @@ class MapUtils:
                 break
 
             if current_road_idx_on_plan + 1 >= len(navigation_plan.road_ids):
+                cumulative_distance=cumulative_distance
                 raise DownstreamLaneNotFound("Cannot progress further on plan %s (leftover: %s [m])" %
                                              (navigation_plan, lookahead_distance - cumulative_distance))
 
@@ -428,9 +429,15 @@ class MapUtils:
             # road segment. This assumes a single correct downstream segment.
             next_road_segment_id_on_plan = navigation_plan.road_ids[current_road_idx_on_plan + 1]
             downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
+
+            if len(downstream_lanes_ids) == 0:
+                raise DownstreamLaneNotFound("Downstream lane not found for lane_id=%d" % (current_lane_id))
+
             downstream_lanes_ids_on_plan = [lid for lid in downstream_lanes_ids
                                             if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan]
 
+            if len(downstream_lanes_ids_on_plan) == 0:
+                raise DownstreamLaneNotFound("Any downstream lane is not in the navigation plan %s", (navigation_plan))
             assert len(downstream_lanes_ids_on_plan) == 1, "More than 1 downstream lanes according to the nav. plan"
 
             current_lane_id = downstream_lanes_ids_on_plan[0]

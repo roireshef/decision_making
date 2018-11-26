@@ -153,6 +153,39 @@ def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_acc
     assert np.linalg.norm(gff_cpoint - ff_cpoint) < small_dist_err
 
 
+def test_advanceOnPlan():
+    """
+    test the method _advance_on_plan
+        validate that total length of output sub segments == lookahead_dist;
+        try lookahead_dist until end of the map
+    """
+    MapService.initialize(MAP_SPLIT)
+    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    current_road_idx = 3
+    current_ordinal = 1
+    starting_lon = 20.
+    lookahead_dist = 500.
+    small_dist_err = 0.01
+    lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])
+    lane_id = lane_ids[current_ordinal]
+    sub_segments = MapUtils._advance_on_plan(lane_id, starting_lon, lookahead_dist, NavigationPlanMsg(np.array(road_ids)))
+    assert len(sub_segments) == 5
+    for seg in sub_segments:
+        assert MapUtils.get_lane_ordinal(seg[0]) == current_ordinal
+    tot_length = sum([seg[2]-seg[1] for seg in sub_segments])
+    assert np.isclose(tot_length, lookahead_dist)
+
+    # test lookahead distance until the end of the map: verify no exception is thrown
+    cumulative_distance = 0
+    for rid in road_ids:
+        lane_id = MapUtils.get_lanes_ids_from_road_segment_id(rid)[current_ordinal]
+        cumulative_distance += MapUtils.get_lane_length(lane_id)
+    lookahead_dist = cumulative_distance
+    first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])[current_ordinal]
+    sub_segments = MapUtils._advance_on_plan(first_lane_id, 0, lookahead_dist, NavigationPlanMsg(np.array(road_ids)))
+    assert len(sub_segments) == len(road_ids)
+
+
 def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints():
     """
     test method get_closest_lane:
