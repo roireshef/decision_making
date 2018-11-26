@@ -35,7 +35,7 @@ def state_with_sorrounding_objects(pg_map_api: MapAPI):
     ego_road_lat = center_lanes_latitudes[1]
     ego_vel = 10
 
-    ego_pos, ego_yaw = pg_map_api.convert_road_to_global_coordinates(road_id=road_id, lon=ego_road_lon,
+    ego_pos, ego_yaw = pg_map_api.convert_road_to_global_coordinates(road_segment_id=road_id, lon=ego_road_lon,
                                                                      lat=ego_road_lat)
     ego_x, ego_y = ego_pos[0], ego_pos[1]
     ego_state = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
@@ -55,7 +55,7 @@ def state_with_sorrounding_objects(pg_map_api: MapAPI):
                 # Don't create an object where the ego is
                 continue
 
-            obj_pos, obj_yaw = pg_map_api.convert_road_to_global_coordinates(road_id=road_id,
+            obj_pos, obj_yaw = pg_map_api.convert_road_to_global_coordinates(road_segment_id=road_id,
                                                                              lon=obj_road_lon,
                                                                              lat=obj_road_lat)
 
@@ -85,7 +85,7 @@ def state_with_objects_for_filtering_tracking_mode(pg_map_api: MapAPI):
     ego_road_lat = center_lanes_latitudes[1]
     ego_vel = 10
 
-    ego_pos, ego_yaw = pg_map_api.convert_road_to_global_coordinates(road_id=road_id, lon=ego_road_lon,
+    ego_pos, ego_yaw = pg_map_api.convert_road_to_global_coordinates(road_segment_id=road_id, lon=ego_road_lon,
                                                                      lat=ego_road_lat)
 
     ego_x, ego_y = ego_pos[0], ego_pos[1]
@@ -101,7 +101,7 @@ def state_with_objects_for_filtering_tracking_mode(pg_map_api: MapAPI):
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
 
-    obj_pos, obj_yaw = pg_map_api.convert_road_to_global_coordinates(road_id=road_id,
+    obj_pos, obj_yaw = pg_map_api.convert_road_to_global_coordinates(road_segment_id=road_id,
                                                                      lon=obj_road_lon,
                                                                      lat=obj_road_lat)
 
@@ -131,7 +131,7 @@ def state_with_objects_for_filtering_negative_sT(pg_map_api: MapAPI):
     ego_road_lat = center_lanes_latitudes[1]
     ego_vel = 10
 
-    ego_pos, ego_yaw = pg_map_api.convert_road_to_global_coordinates(road_id=road_id, lon=ego_road_lon,
+    ego_pos, ego_yaw = pg_map_api.convert_road_to_global_coordinates(road_segment_id=road_id, lon=ego_road_lon,
                                                                      lat=ego_road_lat)
 
     ego_x, ego_y = ego_pos[0], ego_pos[1]
@@ -147,7 +147,7 @@ def state_with_objects_for_filtering_negative_sT(pg_map_api: MapAPI):
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
 
-    obj_pos, obj_yaw = pg_map_api.convert_road_to_global_coordinates(road_id=road_id,
+    obj_pos, obj_yaw = pg_map_api.convert_road_to_global_coordinates(road_segment_id=road_id,
                                                                      lon=obj_road_lon,
                                                                      lat=obj_road_lat)
 
@@ -177,7 +177,7 @@ def state_with_objects_for_filtering_too_aggressive(pg_map_api: MapAPI):
     ego_road_lat = center_lanes_latitudes[1]
     ego_vel = 10
 
-    ego_pos, ego_yaw = pg_map_api.convert_road_to_global_coordinates(road_id=road_id, lon=ego_road_lon,
+    ego_pos, ego_yaw = pg_map_api.convert_road_to_global_coordinates(road_segment_id=road_id, lon=ego_road_lon,
                                                                      lat=ego_road_lat)
 
     ego_x, ego_y = ego_pos[0], ego_pos[1]
@@ -193,7 +193,7 @@ def state_with_objects_for_filtering_too_aggressive(pg_map_api: MapAPI):
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
 
-    obj_pos, obj_yaw = pg_map_api.convert_road_to_global_coordinates(road_id=road_id,
+    obj_pos, obj_yaw = pg_map_api.convert_road_to_global_coordinates(road_segment_id=road_id,
                                                                      lon=obj_road_lon,
                                                                      lat=obj_road_lat)
 

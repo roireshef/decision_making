@@ -30,7 +30,7 @@ class ConstantVelocityManeuverClassifier(ManeuverClassifier):
         map_api = MapService.get_instance()
 
         # Calculate object's initial state in Frenet frame according to model
-        lane_width = map_api.get_road(road_id=map_state.road_id).lane_width
+        lane_width = map_api.get_road(road_segment_id=map_state.road_id).lane_width
 
         # Fetch trajectory parameters
         avg_s_a = 0.0

@@ -157,7 +157,7 @@ class CostBasedBehavioralPlanner:
         ref_route_length = min(max_road_longitude - ref_route_start, forward_lookahead * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO)
 
         center_lane_points = MapService.get_instance().get_uniform_path_lookahead(
-            road_id=road_id,
+            road_segment_id=road_id,
             lat_shift=action_spec.d,  # THIS ASSUMES THE GOAL ALWAYS FALLS ON THE REFERENCE ROUTE
             starting_lon=ref_route_start,
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,

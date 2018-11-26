@@ -12,6 +12,8 @@ from mapping.test.model.testable_map_fixtures import map_api_mock
 from decision_making.test.planning.custom_fixtures import dyn_obj_outside_road, dyn_obj_on_road
 from decision_making.src.planning.types import FS_SX, FS_DX, FP_SX, FP_DX
 
+MAP_SPLIT = "PG_split.bin"
+
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_isObjectOnRoad_objectOffOfRoad_False(dyn_obj_outside_road: DynamicObject):
@@ -38,7 +40,7 @@ def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate():
     test method get_adjacent_lanes for the current map;
     check adjacent lanes of the rightest and the second-from-right lanes
     """
-    MapService.initialize()
+    MapService.initialize(MAP_SPLIT)
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[2])
     right_to_rightest = MapUtils.get_adjacent_lanes(lane_ids[0], RelativeLane.RIGHT_LANE)
@@ -59,7 +61,7 @@ def test_getDistToLaneBorders_rightLane_equalToHalfLaneWidth():
         in the current map the lanes have a constant lane width and all lanes have the same width;
         therefore it should return half lane width
     """
-    MapService.initialize()
+    MapService.initialize(MAP_SPLIT)
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
     dist_to_right, dist_to_left = MapUtils.get_dist_to_lane_borders(lane_ids[0], 0)
@@ -72,7 +74,7 @@ def test_getDistToRoadBorders_rightLane_equalToDistFromRoadBorder():
     test method get_dist_from_lane_center_to_road_borders:
         in the current map the lanes have a constant lane width and all lanes have the same width
     """
-    MapService.initialize()
+    MapService.initialize(MAP_SPLIT)
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
     dist_to_right, dist_to_left = MapUtils.get_dist_to_road_borders(lane_ids[0], 0)
@@ -86,7 +88,7 @@ def test_getLongitudinalDistance():
     test method get_longitudinal_distance:
         validate distance between two points on different road segments
     """
-    MapService.initialize()
+    MapService.initialize(MAP_SPLIT)
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     road_idx1 = 1
     road_idx2 = 7
@@ -108,6 +110,7 @@ def test_getLateralDistanceInLaneUnits_lanesFromDifferentRoadSegments_accordingT
     test method get_lateral_distance_in_lane_units:
         the lateral distance in lane units between two lanes on different road segments
     """
+    MapService.initialize(MAP_SPLIT)
     road_idx1 = 1
     road_idx2 = 7
     ordinal1 = 0
@@ -126,6 +129,7 @@ def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_acc
         the frame starts and ends on arbitrary points.
     verify that final length, offset of GFF and conversion of an arbitrary point are accurate
     """
+    MapService.initialize(MAP_SPLIT)
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     current_road_idx = 3
     current_ordinal = 1
@@ -154,7 +158,7 @@ def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints():
     test method get_closest_lane:
         find the most left and the most right lanes by points inside these lanes
     """
-    MapService.initialize()
+    MapService.initialize(MAP_SPLIT)
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
     # find the rightest lane
@@ -176,7 +180,7 @@ def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency():
     test method get_lanes_ids_from_road_segment_id
         validate consistency between road segment ids and lane ids
     """
-    MapService.initialize()
+    MapService.initialize(MAP_SPLIT)
     road_segment_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     road_segment_id = road_segment_ids[0]
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
