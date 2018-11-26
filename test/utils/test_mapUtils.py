@@ -186,9 +186,8 @@ def test_advanceOnPlan():
     for rid in road_ids:
         lane_id = MapUtils.get_lanes_ids_from_road_segment_id(rid)[current_ordinal]
         cumulative_distance += MapUtils.get_lane_length(lane_id)
-    lookahead_dist = cumulative_distance
     first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])[current_ordinal]
-    sub_segments = MapUtils._advance_on_plan(first_lane_id, 0, lookahead_dist, NavigationPlanMsg(np.array(road_ids)))
+    sub_segments = MapUtils._advance_on_plan(first_lane_id, 0, cumulative_distance, NavigationPlanMsg(np.array(road_ids)))
     assert len(sub_segments) == len(road_ids)
 
     # test the case when the navigation plan is too short
