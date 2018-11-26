@@ -192,16 +192,15 @@ def test_advanceOnPlan():
 
     # test the case when the navigation plan is too short
     try:
-        sub_segments = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist,
-                                                 NavigationPlanMsg(np.array(road_ids[:7])))
+        MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist, NavigationPlanMsg(np.array(road_ids[:7])))
         assert False
     except NavigationPlanTooShort:
         pass
 
     # test the case when the map is too short
     try:
-        sub_segments = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_distance=1000,
-                                                 navigation_plan=NavigationPlanMsg(np.array(road_ids + [1234])))
+        MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_distance=1000,
+                                  navigation_plan=NavigationPlanMsg(np.array(road_ids + [1234])))
         assert False
     except DownstreamLaneNotFound:
         pass
