@@ -1,7 +1,7 @@
 from logging import Logger
 from threading import Lock
 from traceback import format_exc
-from typing import Optional
+from typing import Optional, Any
 
 import numpy as np
 
@@ -12,7 +12,6 @@ from common_data.lcm.config import pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE
 from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.messages.scene_common_messages import Timestamp
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
     DynamicObject, EgoState
@@ -50,7 +49,7 @@ class StateModule(DmModule):
         pass
 
     @prof.ProfileFunction()
-    def _scene_dynamic_callback(self, scene_dynamic: TsSYSSceneDynamic):
+    def _scene_dynamic_callback(self, scene_dynamic: TsSYSSceneDynamic, args: Any):
         try:
             with self._scene_dynamic_lock:
                 self._scene_dynamic = SceneDynamic.deserialize(scene_dynamic)
@@ -70,9 +69,10 @@ class StateModule(DmModule):
                                             timestamp=timestamp,
                                             cartesian_state=obj_loc.as_object_hypothesis[0].a_cartesian_pose,
                                             map_state=obj_loc.as_object_hypothesis[0].a_lane_frenet_pose,
-                                            size=ObjectSize(obj_loc.s_bounding_box.length,
-                                                            obj_loc.s_bounding_box.width,
-                                                            obj_loc.s_bounding_box.height),
+                                            map_state_on_host_lane=obj_loc.as_object_hypothesis[0].a_host_lane_frenet_pose,
+                                            size=ObjectSize(obj_loc.s_bounding_box.e_l_length,
+                                                            obj_loc.s_bounding_box.e_l_width,
+                                                            obj_loc.s_bounding_box.e_l_height),
                                             confidence=obj_loc.as_object_hypothesis[0].e_r_probability)
                     dynamic_objects.append(dyn_obj)
 
