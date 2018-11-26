@@ -3,14 +3,12 @@ from typing import List, Optional
 
 import numpy as np
 
+from common_data.interface.py.idl_generated_files.Rte_Types.LcmState import LcmState
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmDynamicObject import LcmDynamicObject
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmEgoState import LcmEgoState
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmNonTypedSmallNumpyArray import LcmNonTypedSmallNumpyArray
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectSize import LcmObjectSize
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmOccupancyState import LcmOccupancyState
-from common_data.interface.py.idl_generated_files.Rte_Types.LcmState import LcmState
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
-
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
 from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K
@@ -194,7 +192,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param size: class ObjectSize
         :param confidence: of object's existence
         """
-        return cls(obj_id, timestamp, cartesian_state, None, size, confidence)
+        return cls(obj_id, timestamp, cartesian_state, None, None, size, confidence)
 
     @classmethod
     def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence):
@@ -207,7 +205,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param size: class ObjectSize
         :param confidence: of object's existence
         """
-        return cls(obj_id, timestamp, None, map_state, size, confidence)
+        return cls(obj_id, timestamp, None, map_state, map_state, size, confidence)
 
     def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None):
         # type: (CartesianExtendedState, Optional[float]) -> DynamicObject
@@ -232,6 +230,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         lcm_msg.timestamp = self.timestamp
         lcm_msg._cached_cartesian_state = self.cartesian_state
         lcm_msg._cached_map_state = self.map_state.serialize()
+        lcm_msg._cached_map_state_on_host_lane = self.map_state.serialize()
         lcm_msg.size = self.size.serialize()
         lcm_msg.confidence = self.confidence
         return lcm_msg
@@ -241,6 +240,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         # type: (LcmDynamicObject) -> DynamicObject
         return cls(lcmMsg.obj_id, lcmMsg.timestamp
                    , lcmMsg._cached_cartesian_state.data
+                   , MapState.deserialize(lcmMsg._cached_map_state)
                    , MapState.deserialize(lcmMsg._cached_map_state)
                    , ObjectSize.deserialize(lcmMsg.size)
                    , lcmMsg.confidence)
@@ -261,7 +261,8 @@ class EgoState(DynamicObject):
         :param confidence: of object's existence
         """
         super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state,
-                                             map_state=map_state, size=size, confidence=confidence)
+                                             map_state=map_state, map_state_on_host_lane=map_state,
+                                             size=size, confidence=confidence)
 
     def serialize(self):
         # type: () -> LcmEgoState
