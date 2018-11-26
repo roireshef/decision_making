@@ -569,7 +569,8 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         :param as_upstream_lanes: Lane-segments upstream of this lane-segment
         :param e_v_nominal_speed: Nominal speed (i.e. speed limit) of this lane-segment
         :param e_Cnt_nominal_path_point_count: Total number of points that specify the nominal-path (i.e. center of lane) for this lane-segment
-        :param a_nominal_path_points: Points that specify the nominal-path (i.e. center of lane) for this lane-segment
+        :param a_nominal_path_points: Points that specify the nominal-path (i.e. center of lane) for this lane-segment.
+               Its shape has to be [e_Cnt_nominal_path_point_count X MAX_NOMINAL_PATH_POINT_FIELDS].
         :param e_Cnt_left_boundary_points_count: Total number of points that specify the left-boundary for this lane-segment
         :param as_left_boundary_points: Points that specify the left-boundary for this lane-segment
         :param e_Cnt_right_boundary_points_count: Total number of points that specify the right-boundary for this lane-segment
