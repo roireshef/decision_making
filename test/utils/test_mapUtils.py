@@ -82,7 +82,7 @@ def test_getDistFromLaneCenterToRoadBorders_rightLane_equalToDistFromRoadBorder(
 def test_getLongitudinalDistance():
     """
     test method get_longitudinal_distance:
-
+        validate distance between two points on different road segments
     """
     MapService.initialize()
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
@@ -93,11 +93,13 @@ def test_getLongitudinalDistance():
     lon2 = 20.
     lane_id1 = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[road_id1])[ordinal]
     lane_id2 = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[road_id2])[ordinal]
-    cumulative_distance = 0
+    cumulative_distance = -lon1 + lon2
     for rid in range(road_id1, road_id2):
-        cumulative_distance += MapUtils.get_lane_frenet_frame()
-    dist = MapUtils.get_longitudinal_distance(lane_id1, lane_id2, lon1, lon2, max_depth=6)
-    assert dist == dist
+        lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[rid])[ordinal]
+        cumulative_distance += MapUtils.get_lane_length(lane_id)
+    dist = MapUtils.get_longitudinal_distance(lane_id1, lane_id2, lon1, lon2, max_depth=road_id2-road_id1)
+    assert np.isclose(dist, cumulative_distance)
+
 
 def test_getLateralDistanceInLaneUnits_lanesFromDifferentRoadSegments_accordingToOrdinals():
     """
