@@ -175,6 +175,11 @@ def test_advanceOnPlan():
     tot_length = sum([seg[2]-seg[1] for seg in sub_segments])
     assert np.isclose(tot_length, lookahead_dist)
 
+    # test smaller navigation plan fitting the lookahead distance, and add non-existing road at the end of the plan
+    sub_segments = MapUtils._advance_on_plan(lane_id, starting_lon, lookahead_dist,
+                                             NavigationPlanMsg(np.array(road_ids[:8] + [1234])))
+    assert len(sub_segments) == 5
+
     # test lookahead distance until the end of the map: verify no exception is thrown
     cumulative_distance = 0
     for rid in road_ids:
