@@ -176,7 +176,8 @@ class CostBasedBehavioralPlanner:
         # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)
         goal_cstate = center_lane_reference_route.fstate_to_cstate(goal_reference_fstate)
 
-        print('BP: time=%f\nego=%s\nBP: goal=%s' % (ego.timestamp_in_sec, ego.cartesian_state, goal_cstate))
+        # np.set_printoptions(suppress=True)
+        # print('BP: time=%f\nego=%s\nBP: goal=%s' % (ego.timestamp_in_sec, ego.cartesian_state, goal_cstate))
 
         # TODO: use GFF center_lane_reference_route after changing Rte_Types.pubpub
         reference_frenet_frame = FrenetSerret2DFrame.fit(center_lane_reference_route.points)
