@@ -7,7 +7,7 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.state.state import DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from mapping.src.exceptions import NavigationPlanTooShort, DownstreamLaneNotFound
+from mapping.src.exceptions import NavigationPlanTooShort, DownstreamLaneNotFound, UpstreamLaneNotFound
 from mapping.src.service.map_service import MapService
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from decision_making.test.planning.custom_fixtures import dyn_obj_outside_road, dyn_obj_on_road
@@ -167,7 +167,6 @@ def test_advanceOnPlan():
     current_ordinal = 1
     starting_lon = 20.
     lookahead_dist = 500.
-    small_dist_err = 0.01
     starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
     sub_segments = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist, NavigationPlanMsg(np.array(road_ids)))
     assert len(sub_segments) == 5
@@ -203,6 +202,52 @@ def test_advanceOnPlan():
                                   navigation_plan=NavigationPlanMsg(np.array(road_ids + [1234])))
         assert False
     except DownstreamLaneNotFound:
+        pass
+
+
+def test_getUpstreamLanesFromDistance():
+    """
+     test the method _get_upstream_lanes_from_distance
+         validate that total length of output sub segments == lookahead_dist;
+         try lookahead_dist until start of the map
+         test exceptions
+     """
+    MapService.initialize(MAP_SPLIT)
+    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    current_road_idx = 7
+    current_ordinal = 1
+    starting_lon = 20.
+    backward_dist = 500.
+    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
+    lane_ids, final_lon = MapUtils._get_upstream_lanes_from_distance(starting_lane_id, starting_lon, backward_dist)
+    tot_length = starting_lon - final_lon
+    for lid in lane_ids[1:]:  # exclude the starting lane
+        assert MapUtils.get_lane_ordinal(lid) == current_ordinal
+        tot_length += MapUtils.get_lane_length(lid)
+    assert np.isclose(tot_length, backward_dist)
+    # test small backward_dist ending on the same lane
+    small_backward_dist = 1
+    lane_ids, final_lon = MapUtils._get_upstream_lanes_from_distance(starting_lane_id, starting_lon,
+                                                                     backward_dist=small_backward_dist)
+    assert lane_ids == [starting_lane_id]
+    assert final_lon == starting_lon - small_backward_dist
+
+    # test from the end until start of the map: verify no exception is thrown
+    cumulative_distance = 0
+    for rid in road_ids:
+        lane_id = MapUtils.get_lanes_ids_from_road_segment_id(rid)[current_ordinal]
+        cumulative_distance += MapUtils.get_lane_length(lane_id)
+    last_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[-1])[current_ordinal]
+    last_lane_length = MapUtils.get_lane_length(last_lane_id)
+    lane_ids, final_lon = MapUtils._get_upstream_lanes_from_distance(last_lane_id, last_lane_length, cumulative_distance)
+    assert len(lane_ids) == len(road_ids)
+    assert final_lon == 0
+
+    # test the case when the map is too short
+    try:
+        MapUtils._get_upstream_lanes_from_distance(starting_lane_id, starting_lon, backward_dist=1000)
+        assert False
+    except UpstreamLaneNotFound:
         pass
 
 

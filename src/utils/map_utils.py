@@ -9,7 +9,7 @@ from decision_making.src.planning.types import FP_DX, FP_SX, C_X, C_Y, Cartesian
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.state.map_state import MapState
 from mapping.src.exceptions import raises, LongitudeOutOfRoad, RoadNotFound, NextRoadNotFound, DownstreamLaneNotFound, \
-    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan
+    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
@@ -268,7 +268,7 @@ class MapUtils:
         """
         # find the starting point
         if starting_lon <= 0:  # the starting point is behind lane_id
-            lane_ids, init_lon = MapUtils._get_upstream_lanes_by_distance(lane_id, 0, -starting_lon)
+            lane_ids, init_lon = MapUtils._get_upstream_lanes_from_distance(lane_id, 0, -starting_lon)
             init_lane_id = lane_ids[-1]
         else:  # the starting point is within or after lane_id
             lane_subsegments = MapUtils._advance_on_plan(lane_id, 0, starting_lon, navigation_plan)
@@ -283,91 +283,6 @@ class MapUtils:
         # create GFF
         gff = GeneralizedFrenetSerretFrame.build(frenet_frames, frenet_sub_segments)
         return gff
-
-    @staticmethod
-    def get_longitudinal_distance(lane_id1: int, lane_id2: int, longitude1: float, longitude2: float,
-                                  max_depth: int = 3) -> Optional[float]:
-        """
-        Get longitudinal distance between two points located on lane centers, along lanes path starting from lane_id1.
-        lane_id2 must be down/upstream of lane_id1.
-        :param lane_id1: lane segment of the first point
-        :param lane_id2: lane segment of the second point
-        :param longitude1: longitude of the first point relative to lane_id1
-        :param longitude2: longitude of the second point relative to lane_id2
-        :return: longitudinal difference between the second point and the first point;
-        if lane_id1 is ahead of lane_id2, then return negative distance;
-        if lane_id2 is not down/upstream of lane_id1, then return None
-        """
-        connecting_lanes, is_forward = MapUtils._get_path_between_lane_segments(lane_id1, lane_id2, max_depth)
-        if len(connecting_lanes) == 0 or connecting_lanes[-1] != lane_id2:
-            return None
-        sign = 1 if is_forward else -1
-        lanes_excluding_front_lane = connecting_lanes[:-1] if is_forward else connecting_lanes[1:]
-        connecting_lengths = [MapUtils.get_lane_length(lid) for lid in lanes_excluding_front_lane]
-        return sign * sum(connecting_lengths) + longitude2 - longitude1
-
-    @staticmethod
-    def get_lateral_distance_in_lane_units(lane_id1: int, lane_id2: int, max_depth: int = 3) -> Optional[int]:
-        """
-        Get lateral distance in lanes (difference between relative ordinals) between two lane segments.
-        For example, if one of the given lanes is subsequent downstream/upstream of another lane, return 0.
-        :param lane_id1:
-        :param lane_id2:
-        :return: Difference between lane ordinal of lane_id2 and subsequent downstream/upstream of lane_id1.
-        If the given lanes are not in subsequent road segments, return None.
-        """
-        connecting_lanes, _ = MapUtils._get_path_between_lane_segments(lane_id1, lane_id2, max_depth)
-        if len(connecting_lanes) == 0:
-            return None
-        return MapUtils.get_lane_ordinal(lane_id2) - MapUtils.get_lane_ordinal(connecting_lanes[-1])
-
-    @staticmethod
-    def _get_path_between_lane_segments(starting_lane_id: int, final_lane_id: int, max_depth) -> \
-            (List[int], bool):
-        """
-        Get ordered list of lane segments (starting from starting_lane_id), connecting between starting_lane_id and
-        final_road_segment_id (either forward or backward).
-        :param starting_lane_id: initial lane segment
-        :param final_lane_id: road segment id, containing the subsequent downstream/upstream of starting_lane_id
-        :param max_depth: how many up/down-stream segments can separate between the given lane segments
-        :return: First return value: Return list of lane segments connecting between starting_lane_id and
-            final_road_segment_id (including both the first lane and the last lanes).
-            If final_road_segment_id is NOT subsequent downstream/upstream of starting_lane_id,
-            then return empty list.
-            The second return value is whether the path direction is forward: True if final_road_segment_id is ahead of
-            starting_lane_id.
-        """
-        starting_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(starting_lane_id)
-        final_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(final_lane_id)
-        if starting_road_segment_id == final_road_segment_id:
-            return [starting_lane_id], True
-        else:  # different road segments
-            # TODO: 1. in case of road split the following implementation takes the first exit
-            # TODO: 2. assume no more than 3 road segments between the starting and final segments
-            # search forward
-            path = [starting_lane_id]
-            next_lane = starting_lane_id
-            for _ in range(max_depth):
-                next_lanes = MapUtils.get_downstream_lanes(next_lane)
-                if len(next_lanes) == 0:
-                    break
-                next_lane = next_lanes[0]
-                path.append(next_lane)
-                if MapUtils.get_road_segment_id_from_lane_id(next_lane) == final_road_segment_id:
-                    return path, True
-            # search backward
-            path = [starting_lane_id]
-            prev_lane = starting_lane_id
-            for _ in range(max_depth):
-                prev_lanes = MapUtils.get_upstream_lanes(prev_lane)
-                if len(prev_lanes) == 0:
-                    break
-                prev_lane = prev_lanes[0]
-                path.append(prev_lane)
-                if MapUtils.get_road_segment_id_from_lane_id(prev_lane) == final_road_segment_id:
-                    return path, False
-
-            return [], True  # the path not found
 
     @staticmethod
     @raises(RoadNotFound, DownstreamLaneNotFound)
@@ -434,7 +349,8 @@ class MapUtils:
         return lane_subsegments
 
     @staticmethod
-    def _get_upstream_lanes_by_distance(starting_lane_id: int, starting_lon: float, backward_dist: float) -> (List[int], float):
+    def _get_upstream_lanes_from_distance(starting_lane_id: int, starting_lon: float, backward_dist: float) -> \
+            (List[int], float):
         """
         given starting point (lane + starting_lon) on the lane and backward_dist, get list of lanes backward
         until reaching total distance from the starting point at least backward_dist
@@ -444,34 +360,13 @@ class MapUtils:
         :return: list of lanes backward and longitude on the last lane
         """
         path = [starting_lane_id]
-        prev_lane = starting_lane_id
+        prev_lane_id = starting_lane_id
         total_dist = starting_lon
         while total_dist < backward_dist:
-            prev_lanes = MapUtils.get_upstream_lanes(prev_lane)
+            prev_lanes = MapUtils.get_upstream_lanes(prev_lane_id)
             if len(prev_lanes) == 0:
-                break
-            prev_lane = prev_lanes[0]
-            path.append(prev_lane)
-            total_dist += MapUtils.get_lane_length(prev_lane)
+                raise UpstreamLaneNotFound("MapUtils._advance_on_plan: Downstream lane not found for lane_id=%d" % (prev_lane_id))
+            prev_lane_id = prev_lanes[0]
+            path.append(prev_lane_id)
+            total_dist += MapUtils.get_lane_length(prev_lane_id)
         return path, max(0, total_dist - backward_dist)
-
-    @staticmethod
-    def _shift_lane_points_by_latitude(lane_id: int, lateral_shift: float) -> np.array:
-        """
-        Given a lane, shift its center-points laterally by <lateral_shift>.
-        :param lane_id: lane id
-        :param lateral_shift: [m] shift in meters
-        :return: shifted points array (Nx2)
-        """
-        points = MapService.get_instance()._lane_points[lane_id]
-        # calculate direction unit vectors
-        points_direction = np.diff(points, axis=0)
-        norms = np.linalg.norm(points_direction, axis=1)[np.newaxis].T
-        norms[np.where(norms == 0.0)] = 1.0
-        direction_unit_vec = np.divide(points_direction, norms)
-        # calculate normal unit vectors
-        normal_unit_vec = np.c_[-direction_unit_vec[:, 1], direction_unit_vec[:, 0]]
-        normal_unit_vec = np.concatenate((normal_unit_vec, normal_unit_vec[-1, np.newaxis]))
-        # shift points by lateral_shift
-        shifted_points = points + normal_unit_vec * lateral_shift
-        return shifted_points
