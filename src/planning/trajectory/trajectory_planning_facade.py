@@ -108,32 +108,9 @@ class TrajectoryPlanningFacade(DmModule):
                 plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
                      params.cost_params)
 
-            center_vehicle_trajectory_points = samplable_trajectory.sample(
-                np.linspace(start=0,
-                            stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
-                            num=TRAJECTORY_NUM_POINTS) + state_aligned.ego_state.timestamp_in_sec)
-            self._last_trajectory = samplable_trajectory
-
-            vehicle_origin_trajectory_points = Transformations.transform_trajectory_between_ego_center_and_ego_origin(
-                center_vehicle_trajectory_points, direction=1)
-
-            # publish results to the lower DM level (Control)
-            # TODO: put real values in tolerance and maximal velocity fields
-            waypoints = np.vstack((np.hstack((vehicle_origin_trajectory_points,
-                                              np.zeros(shape=[TRAJECTORY_NUM_POINTS,
-                                                              TRAJECTORY_WAYPOINT_SIZE-vehicle_origin_trajectory_points.shape[1]]))),
-                                  np.zeros(shape=[MAX_TRAJECTORY_WAYPOINTS-TRAJECTORY_NUM_POINTS, TRAJECTORY_WAYPOINT_SIZE])))
-
-            timestamp_secs = int(state.ego_state.timestamp_in_sec)
-            timestamp_frac = int((state.ego_state.timestamp_in_sec % 1) * (1 << 32))
-            timestamp = Timestamp(e_Cnt_Secs=timestamp_secs, e_Cnt_FractionSecs=timestamp_frac)
-            map_origin = MapOrigin(e_phi_latitude=0, e_phi_longitude=0, e_l_altitude=0, s_Timestamp=timestamp)
-
-            trajectory_msg = TrajectoryPlan(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp,
-                                                            e_Cnt_version=0),
-                                            s_Data=DataTrajectoryPlan(s_Timestamp=timestamp, s_MapOrigin=map_origin,
-                                                                      a_TrajectoryWaypoints=waypoints,
-                                                                      e_Cnt_NumValidTrajectoryWaypoints=TRAJECTORY_NUM_POINTS))
+            trajectory_msg = self.generate_trajectory_plan(timestamp=state_aligned.ego_state.timestamp_in_sec,
+                                                           map_origin=x,
+                                                           samplable_trajectory=samplable_trajectory)
 
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
@@ -160,6 +137,47 @@ class TrajectoryPlanningFacade(DmModule):
         except Exception:
             self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s",
                                  traceback.format_exc())
+
+    # TODO: add map_origin that is sent from the outside
+    def generate_trajectory_plan(self, timestamp: float, samplable_trajectory: SamplableTrajectory):
+        """
+
+        :param timestamp:
+        :param map_origin:
+        :param samplable_trajectory:
+        :return:
+        """
+        center_vehicle_trajectory_points = samplable_trajectory.sample(
+            np.linspace(start=0,
+                        stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
+                        num=TRAJECTORY_NUM_POINTS) + timestamp)
+        self._last_trajectory = samplable_trajectory
+
+        vehicle_origin_trajectory_points = Transformations.transform_trajectory_between_ego_center_and_ego_origin(
+            center_vehicle_trajectory_points, direction=1)
+
+        # publish results to the lower DM level (Control)
+        # TODO: put real values in tolerance and maximal velocity fields
+        # TODO: understand if padding with zeros is necessary
+        waypoints = np.vstack((np.hstack((vehicle_origin_trajectory_points,
+                                          np.zeros(shape=[TRAJECTORY_NUM_POINTS,
+                                                          TRAJECTORY_WAYPOINT_SIZE -
+                                                          vehicle_origin_trajectory_points.shape[1]]))),
+                               np.zeros(
+                                   shape=[MAX_TRAJECTORY_WAYPOINTS - TRAJECTORY_NUM_POINTS, TRAJECTORY_WAYPOINT_SIZE])))
+
+        timestamp_secs = int(timestamp)
+        timestamp_frac = int((timestamp % 1) * (1 << 32))
+        timestamp = Timestamp(e_Cnt_Secs=timestamp_secs, e_Cnt_FractionSecs=timestamp_frac)
+        map_origin = MapOrigin(e_phi_latitude=0, e_phi_longitude=0, e_l_altitude=0, s_Timestamp=timestamp)
+
+        trajectory_msg = TrajectoryPlan(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp,
+                                                        e_Cnt_version=0),
+                                        s_Data=DataTrajectoryPlan(s_Timestamp=timestamp, s_MapOrigin=map_origin,
+                                                                  a_TrajectoryWaypoints=waypoints,
+                                                                  e_Cnt_NumValidTrajectoryWaypoints=TRAJECTORY_NUM_POINTS))
+
+        return trajectory_msg
 
     def _validate_strategy_handlers(self) -> None:
         for elem in TrajectoryPlanningStrategy.__members__.values():
