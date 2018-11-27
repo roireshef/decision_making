@@ -387,7 +387,6 @@ def test_buildAndConvert_singleFrenetFrame_conversionsAreAccurate():
                         [460.0, 50.0, np.pi / 9, 0.1, -2, 0]
                         ])
 
-    # split into two frenet frames that coincide in their last and first points
     full_frenet = FrenetSerret2DFrame.fit(route_points)
     point_idx_start, point_idx_end = len(full_frenet.points)//10, 9*len(full_frenet.points)//10
     segmentation = [FrenetSubSegment(0, full_frenet.ds*point_idx_start, full_frenet.ds*point_idx_end)]
