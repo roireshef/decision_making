@@ -67,8 +67,8 @@ class ActionSpace:
         return self.specify_goals([action_recipe], behavioral_state)[0]
 
     @abstractmethod
-    def specify_goals(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralGridState,
-                      unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]) -> List[Optional[ActionSpec]]:
+    def specify_goals(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> \
+            List[Optional[ActionSpec]]:
         """
         This method's purpose is to specify the enumerated actions (recipes) that the agent can take.
         Each semantic action (ActionRecipe) is translated into a terminal state specification (ActionSpec).

@@ -38,8 +38,7 @@ class DynamicActionSpace(ActionSpace):
         return [DynamicActionRecipe]
 
     @prof.ProfileFunction()
-    def specify_goals(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState,
-                      unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]) -> \
+    def specify_goals(self, action_recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> \
             List[Optional[ActionSpec]]:
         """
         This method's purpose is to specify the enumerated actions (recipes) that the agent can take.
@@ -68,17 +67,15 @@ class DynamicActionSpace(ActionSpace):
         # get desired terminal velocity
         v_T = target_fstates[:, FS_SV]
 
-        adjacent_lanes_dict = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
-        # longitudinal difference between object and ego at t=0 (positive if obj in front of ego)
-        init_longitudinal_difference = np.array([MapUtils.get_longitudinal_distance(
-            adjacent_lanes_dict[relative_lanes[i]], target_lane_ids[i], ego_init_fstates[i, FS_SX], target_fstate[FS_SX])
-                                                 for i, target_fstate in enumerate(target_fstates)])
+        relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
+        # calculate initial longitudinal differences between all target objects and ego along target lanes
+        longitudinal_differences = behavioral_state.calculate_longitudinal_differences(target_lane_ids, target_fstates)
 
         # margin_sign is -1 for FOLLOW_VEHICLE (behind target) and +1 for OVER_TAKE_VEHICLE (in front of target)
         margin_sign = np.array([-1 if action_recipe.action_type == ActionType.FOLLOW_VEHICLE else +1
                                 for action_recipe in action_recipes])
 
-        ds = init_longitudinal_difference + margin_sign * (
+        ds = longitudinal_differences + margin_sign * (
             LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + ego.size.length / 2 + target_length / 2)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
@@ -114,7 +111,7 @@ class DynamicActionSpace(ActionSpace):
         # Absolute longitudinal position of target
         target_s = distance_s + ego_init_fstates[:, FS_SX]
 
-        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, adjacent_lanes_dict[relative_lanes[i]])
+        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, relative_lane_ids[relative_lanes[i]])
                         if ~np.isnan(t) else None
                         for i, t in enumerate(T)]
 

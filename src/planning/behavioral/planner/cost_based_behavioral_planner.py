@@ -55,8 +55,7 @@ class CostBasedBehavioralPlanner:
 
     @abstractmethod
     def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
-                      recipes_mask: List[bool], nav_plan: NavigationPlanMsg,
-                      unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]):
+                      recipes_mask: List[bool], nav_plan: NavigationPlanMsg):
         """
         upon receiving an input state, return an action specification and its respective index in the given list of
         action recipes.

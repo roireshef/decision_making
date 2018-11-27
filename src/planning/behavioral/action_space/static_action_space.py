@@ -34,8 +34,7 @@ class StaticActionSpace(ActionSpace):
         return [StaticActionRecipe]
 
     @prof.ProfileFunction()
-    def specify_goals(self, action_recipes: List[StaticActionRecipe], behavioral_state: BehavioralGridState,
-                      unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]) -> \
+    def specify_goals(self, action_recipes: List[StaticActionRecipe], behavioral_state: BehavioralGridState) -> \
             List[Optional[ActionSpec]]:
         """
         This method's purpose is to specify the enumerated actions (recipes) that the agent can take.

@@ -9,12 +9,12 @@ from decision_making.src.state.state import State
 
 class BehavioralState:
     @classmethod
-    def create_from_state(cls, state: State, unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame], logger: Logger):
+    def create_from_state(cls, state: State, nav_plan: NavigationPlanMsg, logger: Logger):
         """
         This method updates the behavioral state according to the new world state and navigation plan.
          It fetches relevant features that will be used for the decision-making process.
         :param state: new world state
-        :param unified_frames: dictionary from RelativeLane to the relevant generalized frenet frame
+        :param nav_plan: navigation plan message
         :param logger
         :return: a new and updated BehavioralState
         """
