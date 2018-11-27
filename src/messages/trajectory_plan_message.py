@@ -2,8 +2,7 @@ import numpy as np
 
 from Rte_Types import TsSYSTrajectoryPlan
 from Rte_Types.sub_structures import TsSYSHeader, TsSYSMapOrigin, TsSYSTimestamp, TsSYSDataTrajectoryPlan
-from common_data.interface.py.utils.serialization_utils import SerializationUtils
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TRAJECTORY_NUM_POINTS, TRAJECTORY_WAYPOINT_SIZE
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TRAJECTORY_WAYPOINT_SIZE
 
 
 class Timestamp(PUBSUB_MSG_IMPL):
@@ -171,9 +170,6 @@ class TrajectoryPlan(PUBSUB_MSG_IMPL):
 
         pubsub_msg.s_Header = self.s_Header.serialize()
         pubsub_msg.s_Data = self.s_Data.serialize()
-        print("before serialize: " + str(self.s_Data.a_TrajectoryWaypoints[1,0]))
-        print("after serialize: " + str(pubsub_msg.s_Data.a_TrajectoryWaypoints[1,0]))
-
 
         return pubsub_msg
 
