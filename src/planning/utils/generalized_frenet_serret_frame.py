@@ -123,7 +123,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         exists in self._segments_id
         """
         assert segment_ids.dtype == np.int, 'Array of indices should have int type'
-        return np.reshape(np.in1d(segment_ids, self._segments_id), segment_ids.shape)
+        return np.isin(segment_ids, self._segments_id)
 
     def convert_from_segment_states(self, frenet_states: FrenetStates2D, segment_ids: List[int]) -> FrenetStates2D:
         """
