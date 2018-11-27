@@ -1,9 +1,9 @@
 import time
+
+import numpy as np
 import traceback
 from logging import Logger
 from typing import Dict
-
-import numpy as np
 
 from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
@@ -15,8 +15,8 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
     TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
-from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan, DataTrajectoryPlan, Header, Timestamp, \
-    MapOrigin
+from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan, DataTrajectoryPlan, Header, MapOrigin, \
+    Timestamp
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -166,9 +166,7 @@ class TrajectoryPlanningFacade(DmModule):
                                np.zeros(
                                    shape=[MAX_TRAJECTORY_WAYPOINTS - TRAJECTORY_NUM_POINTS, TRAJECTORY_WAYPOINT_SIZE])))
 
-        timestamp_secs = int(timestamp)
-        timestamp_frac = int((timestamp % 1) * (1 << 32))
-        timestamp = Timestamp(e_Cnt_Secs=timestamp_secs, e_Cnt_FractionSecs=timestamp_frac)
+        timestamp = Timestamp.from_seconds(state.ego_state.timestamp_in_sec)
         map_origin = MapOrigin(e_phi_latitude=0, e_phi_longitude=0, e_l_altitude=0, s_Timestamp=timestamp)
 
         trajectory_msg = TrajectoryPlan(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp,
