@@ -271,11 +271,11 @@ class MapUtils:
             lane_ids, init_lon = MapUtils._get_upstream_lanes_from_distance(lane_id, 0, -starting_lon)
             init_lane_id = lane_ids[-1]
         else:  # the starting point is within or after lane_id
-            lane_subsegments = MapUtils._advance_on_plan(lane_id, 0, starting_lon, navigation_plan)
+            lane_subsegments = MapUtils.advance_on_plan(lane_id, 0, starting_lon, navigation_plan)
             init_lane_id, init_lon = lane_subsegments[-1][0], lane_subsegments[-1][2]
 
         # get the full lanes path
-        lane_subsegments = MapUtils._advance_on_plan(init_lane_id, init_lon, lookahead_dist, navigation_plan)
+        lane_subsegments = MapUtils.advance_on_plan(init_lane_id, init_lon, lookahead_dist, navigation_plan)
         # create sub-segments for GFF
         frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment[0]) for sub_segment in lane_subsegments]
         frenet_sub_segments = [FrenetSubSegment(seg[0], seg[1], seg[2], frenet_frames[i].ds)
@@ -286,7 +286,7 @@ class MapUtils:
 
     @staticmethod
     @raises(RoadNotFound, DownstreamLaneNotFound)
-    def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float,
+    def advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float,
                         navigation_plan: NavigationPlanMsg) -> List[Tuple[int, float, float]]:
         """
         Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
