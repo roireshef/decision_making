@@ -1,17 +1,16 @@
 from typing import List
+
 import numpy as np
 
 from decision_making.src.mapping.scene_model import SceneModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.scene_static_message import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import C_X, C_Y, CartesianPoint2D, FS_SX
-from decision_making.src.planning.types import CartesianExtendedState, FS_DX
+from decision_making.src.planning.types import CartesianPoint2D, FS_SX
+from decision_making.src.planning.types import FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import EgoState
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
-from mapping.src.service.map_service import MapService
 
 
 class MapUtils:
@@ -20,34 +19,13 @@ class MapUtils:
     # TODO: remove this on Lane-based planner PR
     @staticmethod
     def get_road_rhs_frenet(road_id : int) -> FrenetSerret2DFrame:
-        #returns frenet frame that is aligned to the right.
-        return MapService.get_instance()._rhs_roads_frenet[road_id]
+        rhs_lane_id = MapUtils.get_adjacent_lanes(road_id, RelativeLane.RIGHT_LANE)[0]
+        nominal_points = SceneModel.get_instance().get_lane(rhs_lane_id).a_nominal_path_points
+        return FrenetSerret2DFrame.fit(nominal_points[:,
+                                       (NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset,
+                                        NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY)])
 
-    # TODO: remove this on Lane-based planner PR
-    @staticmethod
-    def convert_cartesian_to_map_state(cartesian_state: CartesianExtendedState):
-        # type: (CartesianExtendedState) -> MapState
-        # TODO: replace with query that returns only the relevant road id
-        map_api = MapService.get_instance()
 
-        relevant_road_ids = map_api._find_roads_containing_point(cartesian_state[C_X], cartesian_state[C_Y])
-        closest_road_id = map_api._find_closest_road(cartesian_state[C_X], cartesian_state[C_Y], relevant_road_ids)
-
-        road_frenet = map_api._rhs_roads_frenet[closest_road_id]
-
-        obj_fstate = road_frenet.cstate_to_fstate(cartesian_state)
-
-        return MapState(obj_fstate, closest_road_id)
-
-    # TODO: remove this on Lane-based planner PR
-    @staticmethod
-    def convert_map_to_cartesian_state(map_state):
-        # type: (MapState) -> CartesianExtendedState
-        map_api = MapService.get_instance()
-
-        road_frenet = map_api._rhs_roads_frenet[map_state.road_id]
-
-        return road_frenet.fstate_to_cstate(map_state.road_fstate)
 
     @staticmethod
     def get_lookahead_frenet_frame(lane_id: int, starting_lon: float, lookahead_dist: float,
@@ -219,7 +197,7 @@ class MapUtils:
         :param s: longitude of the lane center point (w.r.t. the lane Frenet frame)
         :return: lane width
         """
-        return np.sum(MapUtils.get_dist_from_lane_center_to_lane_borders(lane_id, s))
+        return np.sum(np.abs(MapUtils.get_dist_from_lane_center_to_lane_borders(lane_id, s)))
 
 
 
