@@ -41,11 +41,15 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
                  segments_id: np.ndarray, segments_s_offsets: np.ndarray, segments_ds: np.ndarray,
                  segments_point_offset: np.ndarray):
         # TODO: figure out how to replace np.average which is hacky! (it is being called from outside this class!)
-        FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, np.average(segments_ds))
+        FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
         self._segments_id = segments_id
         self._segments_s_offsets = segments_s_offsets
         self._segments_ds = segments_ds
         self._segments_point_offset = segments_point_offset
+
+    @property
+    def ds(self):
+        raise NotImplementedError('GeneralizedFrenetSerretFrame doesn\'t have a single ds value.')
 
     @property
     def s_max(self):

@@ -248,9 +248,9 @@ class TrajectoryPlanningFacade(DmModule):
                                   dynamic_objects=predicted_state.dynamic_objects,
                                   ego_state=state.ego_state) for predicted_state in predicted_states_without_ego]
 
-        # downsample reference route for visualization
-        downsample_skip_factor = max(1, int(DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION // reference_route.ds))
-        downsampled_reference_points = reference_route.points[::downsample_skip_factor]
+        # # downsample reference route for visualization
+        # downsample_skip_factor = max(1, int(DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION // reference_route.ds))
+        # downsampled_reference_points = reference_route.points[::downsample_skip_factor]
 
         # slice alternative trajectories by skipping indices - for visualization
         alternative_ids_skip_range = range(0, len(ctrajectories),
@@ -260,7 +260,7 @@ class TrajectoryPlanningFacade(DmModule):
         sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
         sliced_costs = costs[alternative_ids_skip_range]
 
-        return TrajectoryVisualizationMsg(downsampled_reference_points,
+        return TrajectoryVisualizationMsg(reference_route.points,
                                           sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]),
                                           :C_V],
                                           sliced_costs,
