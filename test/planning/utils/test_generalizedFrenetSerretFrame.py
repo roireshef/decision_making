@@ -343,3 +343,38 @@ def test_convertToAndFromSegmentStates_x_y():
     np.testing.assert_array_equal(upstream_segment_idxs, new_upstream_segment_idxs, 'Segment indices came out wrong')
     np.testing.assert_array_equal(downstream_segment_idxs, new_downstream_segment_idxs, 'Segment indices came out wrong')
 
+def test_hasSegmentIds_testMultiDimnesionalArrayOfIndices_validResults():
+    ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
+    route_points = RouteFixture.get_route(lng=200, k=0.05, step=1, lat=100, offset=-50.0)
+    cpoints = np.array([[100.0, 0.0, -np.pi / 8, 0.1, 1.0, 1e-2], [130.0, 0.0, np.pi / 6, 0.1, 1.1, 1e-2],
+                        [150.0, 40.0, np.pi / 7, 10.0, -0.9, 1e-2], [450.0, 50.0, np.pi / 8, 3, -0.5, -5 * 1e-2],
+                        [460.0, 50.0, np.pi / 9, 0.1, -2, 0]
+                        ])
+
+    # split into two frenet frames that coincide in their last and first points
+    full_frenet = FrenetSerret2DFrame.fit(route_points)
+    n = (len(full_frenet.points) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+                                          full_frenet.N[:(n + 1)],
+                                          full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
+                                            full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
+
+    upstream_s_start = 0
+    upstream_s_end = upstream_frenet.s_max
+    downstream_s_start = 0
+    downstream_s_end = downstream_frenet.s_max
+
+    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end, full_frenet.ds),
+                    FrenetSubSegment(1, downstream_s_start, downstream_s_end, full_frenet.ds * 2)]
+    generalized_frenet = GeneralizedFrenetSerretFrame.build(frenet_frames=[upstream_frenet, downstream_frenet],
+                                                            sub_segments=segmentation)
+
+    segment_idxs_to_query = np.array([[[0, 1], [2, 3]], [[1, 3], [0, 2]]])
+    result = generalized_frenet.has_segment_ids(segment_idxs_to_query)
+    expectation = np.array([[[True, True], [False, False]], [[True, False], [True, False]]])
+
+    np.testing.assert_equal(result, expectation)
+
+    assert generalized_frenet.has_segment_id(0) == True
+    assert generalized_frenet.has_segment_id(2) == False
