@@ -370,21 +370,6 @@ class MapUtils:
             return [], True  # the path not found
 
     @staticmethod
-    def _convert_from_lane_to_map_coordinates(lane_id: int, frenet_point: FrenetPoint, relative_yaw: float = 0) -> \
-            [CartesianPoint2D, float]:
-        """
-        convert a point from lane coordinates to map (global) coordinates
-        :param lane_id:
-        :param frenet_point: frenet point w.r.t. the lane
-        :param relative_yaw: intra-lane yaw (optional)
-        :return: map coordinates: x, y, yaw (tangent to the lane in the given point)
-        """
-        lane_frenet = MapUtils.get_lane_frenet_frame(lane_id)
-        cpoint = lane_frenet.fpoint_to_cpoint(frenet_point)
-        global_yaw = relative_yaw + lane_frenet.get_yaw(np.array([frenet_point[FP_SX]]))[0]
-        return cpoint, global_yaw
-
-    @staticmethod
     @raises(RoadNotFound, DownstreamLaneNotFound)
     def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float,
                         navigation_plan: NavigationPlanMsg) -> List[Tuple[int, float, float]]:
