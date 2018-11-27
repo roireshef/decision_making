@@ -271,23 +271,20 @@ class MapUtils:
             lane_ids, init_lon = MapUtils._get_upstream_lanes_from_distance(lane_id, 0, -starting_lon)
             init_lane_id = lane_ids[-1]
         else:  # the starting point is within or after lane_id
-            lane_subsegments = MapUtils.advance_on_plan(lane_id, 0, starting_lon, navigation_plan)
-            init_lane_id, init_lon = lane_subsegments[-1][0], lane_subsegments[-1][2]
+            init_lane_id, init_lon = lane_id, starting_lon
 
         # get the full lanes path
-        lane_subsegments = MapUtils.advance_on_plan(init_lane_id, init_lon, lookahead_dist, navigation_plan)
+        sub_segments = MapUtils._advance_on_plan(init_lane_id, init_lon, lookahead_dist, navigation_plan)
         # create sub-segments for GFF
-        frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment[0]) for sub_segment in lane_subsegments]
-        frenet_sub_segments = [FrenetSubSegment(seg[0], seg[1], seg[2], frenet_frames[i].ds)
-                               for i, seg in enumerate(lane_subsegments)]
+        frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.segment_id) for sub_segment in sub_segments]
         # create GFF
-        gff = GeneralizedFrenetSerretFrame.build(frenet_frames, frenet_sub_segments)
+        gff = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments)
         return gff
 
     @staticmethod
     @raises(RoadNotFound, DownstreamLaneNotFound)
-    def advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float,
-                        navigation_plan: NavigationPlanMsg) -> List[Tuple[int, float, float]]:
+    def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float,
+                         navigation_plan: NavigationPlanMsg) -> List[FrenetSubSegment]:
         """
         Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
         further according to <navigation_plan>, and finally return a configuration of lane-subsegments.
@@ -315,20 +312,20 @@ class MapUtils:
                                         current_segment_start_s + lookahead_distance - cumulative_distance)
 
             # add subsegment to the list and add traveled distance to <cumulative_distance> sum
-            lane_subsegments.append((current_lane_id, current_segment_start_s, current_segment_end_s))
+            lane_subsegments.append(FrenetSubSegment(current_lane_id, current_segment_start_s, current_segment_end_s))
             cumulative_distance += current_segment_end_s - current_segment_start_s
 
             if cumulative_distance >= lookahead_distance:
                 break
 
-            if current_road_idx_on_plan + 1 >= len(navigation_plan.road_ids):
-                cumulative_distance=cumulative_distance
+            next_road_idx_on_plan = current_road_idx_on_plan + 1
+            if next_road_idx_on_plan > len(navigation_plan.road_ids) - 1:
                 raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m])" %
                                              (navigation_plan, lookahead_distance - cumulative_distance))
 
             # pull next road segment from the navigation plan, then look for the downstream lane segment on this
             # road segment. This assumes a single correct downstream segment.
-            next_road_segment_id_on_plan = navigation_plan.road_ids[current_road_idx_on_plan + 1]
+            next_road_segment_id_on_plan = navigation_plan.road_ids[next_road_idx_on_plan]
             downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
 
             if len(downstream_lanes_ids) == 0:
@@ -344,7 +341,7 @@ class MapUtils:
 
             current_lane_id = downstream_lanes_ids_on_plan[0]
             current_segment_start_s = 0
-            current_road_idx_on_plan += 1
+            current_road_idx_on_plan = next_road_idx_on_plan
 
         return lane_subsegments
 
@@ -363,10 +360,10 @@ class MapUtils:
         prev_lane_id = starting_lane_id
         total_dist = starting_lon
         while total_dist < backward_dist:
-            prev_lanes = MapUtils.get_upstream_lanes(prev_lane_id)
-            if len(prev_lanes) == 0:
+            prev_lane_ids = MapUtils.get_upstream_lanes(prev_lane_id)
+            if len(prev_lane_ids) == 0:
                 raise UpstreamLaneNotFound("MapUtils._advance_on_plan: Downstream lane not found for lane_id=%d" % (prev_lane_id))
-            prev_lane_id = prev_lanes[0]
+            prev_lane_id = prev_lane_ids[0]
             path.append(prev_lane_id)
             total_dist += MapUtils.get_lane_length(prev_lane_id)
-        return path, max(0, total_dist - backward_dist)
+        return path, total_dist - backward_dist
