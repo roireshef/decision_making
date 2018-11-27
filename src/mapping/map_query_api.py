@@ -5,7 +5,4 @@ class MapQueryAPI:
     def __init__(self):
         pass
 
-    @classmethod
-    def initialize(cls, SceneModel):
-        pass
 
