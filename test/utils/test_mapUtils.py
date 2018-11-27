@@ -30,7 +30,7 @@ def test_getDistFromLaneCenterToLaneBorders_rightLane_equalToHalfLaneWidth():
     """
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
-    dist_to_right, dist_to_left = MapUtils.get_dist_from_lane_center_to_lane_borders(lane_ids[0], 0)
+    dist_to_right, dist_to_left = MapUtils.get_dist_to_lane_borders(lane_ids[0], 0)
     assert dist_to_right == dist_to_left
     assert dist_to_right == MapService.get_instance().get_road(road_ids[0]).lane_width/2
 
@@ -42,7 +42,7 @@ def test_getDistFromLaneCenterToRoadBorders_rightLane_equalToDistFromRoadBorder(
     """
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
-    dist_to_right, dist_to_left = MapUtils.get_dist_from_lane_center_to_road_borders(lane_ids[0], 0)
+    dist_to_right, dist_to_left = MapUtils.get_dist_to_road_borders(lane_ids[0], 0)
     lane_width = MapService.get_instance().get_road(road_ids[0]).lane_width
     assert dist_to_right == lane_width/2
     assert dist_to_left == lane_width * (len(lane_ids) - 0.5)

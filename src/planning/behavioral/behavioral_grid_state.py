@@ -5,11 +5,11 @@ from logging import Logger
 from typing import Dict, List, Tuple, Optional
 
 import rte.python.profiler as prof
-from decision_making.src.global_constants import LON_MARGIN_FROM_EGO
-from decision_making.src.global_constants import PLANNING_LOOKAHEAD_DIST
+from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
@@ -83,6 +83,12 @@ class BehavioralGridState(BehavioralState):
         :param ego_state:
         :return: list of object of type DynamicObjectWithRoadSemantics
         """
+        ego_lane_id = ego_state.map_state.lane_id
+        MapUtils.advance_on_plan(initial_lane_id=ego_lane_id, initial_s=-PLANNING_LOOKAHEAD_DIST,
+                                 lookahead_distance=2*PLANNING_LOOKAHEAD_DIST, navigation_plan=navigation_plan)
+        same_lane_gff = GeneralizedFrenetSerretFrame.build()
+
+
         # TODO: if the lanes belong to different roads, we can't subtract their indices
         lat_diffs = [MapUtils.get_lateral_distance_in_lane_units(ego_state.map_state.lane_id, obj.map_state.lane_id)
                      for obj in dynamic_objects]
@@ -91,7 +97,6 @@ class BehavioralGridState(BehavioralState):
         target_lane_ids = [obj.map_state.lane_id for obj in dynamic_objects]
         target_fstates = [obj.map_state.lane_fstate for obj in dynamic_objects]
 
-        ego_lane_id = ego_state.map_state.lane_id
         ego_init_fstates = ego_state.project_on_relative_lanes(relative_lanes)
 
         adjacent_lanes_dict = MapUtils.get_relative_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
