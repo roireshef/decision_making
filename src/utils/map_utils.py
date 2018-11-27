@@ -79,9 +79,12 @@ class MapUtils:
         """
         right_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.RIGHT_LANE)
         left_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.LEFT_LANE)
-        return {RelativeLane.RIGHT_LANE: right_lanes[0] if len(right_lanes) > 0 else None,
-                RelativeLane.SAME_LANE: lane_id,
-                RelativeLane.LEFT_LANE: left_lanes[0] if len(left_lanes) > 0 else None}
+        rel_lane_dict = {RelativeLane.SAME_LANE: lane_id}
+        if len(right_lanes) > 0:
+            rel_lane_dict[RelativeLane.RIGHT_LANE] = right_lanes[0]
+        if len(left_lanes) > 0:
+            rel_lane_dict[RelativeLane.LEFT_LANE] = left_lanes[0]
+        return rel_lane_dict
 
     # TODO: Remove it after introduction of the new mapping module. Avoid using this function once SP output is available.
     @staticmethod
@@ -219,15 +222,14 @@ class MapUtils:
         :return: generalized Frenet frame for the given route part
         """
         # find the starting point
-        if starting_lon <= 0:  # the starting point is behind lane_id
+        if starting_lon < 0:  # the starting point is behind lane_id
             lane_ids, init_lon = MapUtils._get_upstream_lanes_from_distance(lane_id, 0, -starting_lon)
             init_lane_id = lane_ids[-1]
         else:  # the starting point is within or after lane_id
-            lane_subsegments = MapUtils.advance_on_plan(lane_id, 0, starting_lon, navigation_plan)
-            init_lane_id, init_lon = lane_subsegments[-1][0], lane_subsegments[-1][2]
+            init_lane_id, init_lon = lane_id, starting_lon
 
         # get the full lanes path
-        lane_subsegments = MapUtils.advance_on_plan(init_lane_id, init_lon, lookahead_dist, navigation_plan)
+        lane_subsegments = MapUtils._advance_on_plan(init_lane_id, init_lon, lookahead_dist, navigation_plan)
         # create sub-segments for GFF
         frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment[0]) for sub_segment in lane_subsegments]
         frenet_sub_segments = [FrenetSubSegment(seg[0], seg[1], seg[2], frenet_frames[i].ds)
@@ -238,8 +240,8 @@ class MapUtils:
 
     @staticmethod
     @raises(RoadNotFound, DownstreamLaneNotFound)
-    def advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float,
-                        navigation_plan: NavigationPlanMsg) -> List[Tuple[int, float, float]]:
+    def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float,
+                         navigation_plan: NavigationPlanMsg) -> List[Tuple[int, float, float]]:
         """
         Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
         further according to <navigation_plan>, and finally return a configuration of lane-subsegments.
@@ -468,4 +470,4 @@ class MapUtils:
             prev_lane_id = prev_lanes[0]
             path.append(prev_lane_id)
             total_dist += MapUtils.get_lane_length(prev_lane_id)
-        return path, max(0, total_dist - backward_dist)
+        return path, total_dist - backward_dist

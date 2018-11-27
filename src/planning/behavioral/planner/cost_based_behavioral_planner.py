@@ -1,6 +1,6 @@
 from abc import abstractmethod, ABCMeta
 from logging import Logger
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import numpy as np
 import six
@@ -17,7 +17,7 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParams,
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, RelativeLane
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator, \
     ActionRecipeEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
@@ -27,6 +27,7 @@ from decision_making.src.planning.trajectory.samplable_werling_trajectory import
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
@@ -54,7 +55,8 @@ class CostBasedBehavioralPlanner:
 
     @abstractmethod
     def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
-                      recipes_mask: List[bool]):
+                      recipes_mask: List[bool], nav_plan: NavigationPlanMsg,
+                      unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]):
         """
         upon receiving an input state, return an action specification and its respective index in the given list of
         action recipes.
@@ -82,7 +84,8 @@ class CostBasedBehavioralPlanner:
         pass
 
     @prof.ProfileFunction()
-    def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray) -> \
+    def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray,
+                                  navigation_plan: NavigationPlanMsg) -> \
             [BehavioralGridState]:
         """
         Given current state and action specifications, generate a corresponding list of future states using the
@@ -117,7 +120,7 @@ class CostBasedBehavioralPlanner:
             state.clone_with(dynamic_objects=terminal_dynamic_objects[i], ego_state=terminal_ego_states[i])
             for i in range(len(terminal_ego_states))]
 
-        valid_behavioral_grid_states = (BehavioralGridState.create_from_state(terminal_state, self.logger)
+        valid_behavioral_grid_states = (BehavioralGridState.create_from_state(terminal_state, navigation_plan, self.logger)
                                         for terminal_state in terminal_states)
         terminal_behavioral_states = [valid_behavioral_grid_states.__next__() if m else None for m in mask]
         return terminal_behavioral_states

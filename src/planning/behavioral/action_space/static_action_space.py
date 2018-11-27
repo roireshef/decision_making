@@ -1,4 +1,4 @@
-from typing import Optional, List, Type
+from typing import Optional, List, Type, Dict
 
 import numpy as np
 from sklearn.utils.extmath import cartesian
@@ -12,6 +12,7 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Sta
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import LIMIT_MAX, LIMIT_MIN, FS_SV, FS_SA, FS_DX, FS_DA, FS_DV, FS_SX
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.math import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, QuarticPoly1D
 from decision_making.src.utils.map_utils import MapUtils
@@ -33,7 +34,8 @@ class StaticActionSpace(ActionSpace):
         return [StaticActionRecipe]
 
     @prof.ProfileFunction()
-    def specify_goals(self, action_recipes: List[StaticActionRecipe], behavioral_state: BehavioralGridState) -> \
+    def specify_goals(self, action_recipes: List[StaticActionRecipe], behavioral_state: BehavioralGridState,
+                      unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]) -> \
             List[Optional[ActionSpec]]:
         """
         This method's purpose is to specify the enumerated actions (recipes) that the agent can take.

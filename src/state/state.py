@@ -145,7 +145,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
     @property
     def map_state(self):
-        return self._get_adjacent_map_state(RelativeLane.SAME_LANE)
+        return self.get_adjacent_map_state(RelativeLane.SAME_LANE)
 
     @property
     def right_lane_map_state(self):
@@ -153,7 +153,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         project the map_state on the right lane's Frenet frame (use caching)
         :return: projected map_state
         """
-        return self._get_adjacent_map_state(RelativeLane.RIGHT_LANE)
+        return self.get_adjacent_map_state(RelativeLane.RIGHT_LANE)
 
     @property
     def left_lane_map_state(self):
@@ -161,9 +161,9 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         project the map_state on the left lane's Frenet frame (use caching)
         :return: projected map_state
         """
-        return self._get_adjacent_map_state(RelativeLane.LEFT_LANE)
+        return self.get_adjacent_map_state(RelativeLane.LEFT_LANE)
 
-    def _get_adjacent_map_state(self, relative_lane):
+    def get_adjacent_map_state(self, relative_lane):
         # type: (RelativeLane) -> MapState
         """
         If relative_lane == RelativeLane.SAME_LANE, then get the same lane's map_state.

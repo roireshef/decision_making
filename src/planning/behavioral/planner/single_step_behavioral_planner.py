@@ -1,22 +1,26 @@
 import numpy as np
 from logging import Logger
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import rte.python.profiler as prof
+from decision_making.src.global_constants import PLANNING_LOOKAHEAD_DIST
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, ActionRecipe, \
-    ActionSpec
+    ActionSpec, RelativeLane
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionRecipeEvaluator, \
     ActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
     CostBasedBehavioralPlanner
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
+    FrenetSubSegment
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
@@ -36,7 +40,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
                          predictor, logger)
 
     def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
-                      recipes_mask: List[bool]) -> (int, ActionSpec):
+                      recipes_mask: List[bool], nav_plan: NavigationPlanMsg,
+                      unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame]) -> (int, ActionSpec):
         """
         upon receiving an input state, return an action specification and its respective index in the given list of
         action recipes.
@@ -52,7 +57,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         # TODO: replace numpy array with fast sparse-list implementation
         action_specs = np.full(len(action_recipes), None)
         valid_action_recipes = [action_recipe for i, action_recipe in enumerate(action_recipes) if recipes_mask[i]]
-        action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, behavioral_state)
+        action_specs[recipes_mask] = self.action_space.specify_goals(valid_action_recipes, behavioral_state,
+                                                                     unified_frames)
         action_specs = list(action_specs)
 
         # TODO: FOR DEBUG PURPOSES!
@@ -69,7 +75,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
 
         # approximate cost-to-go per terminal state
-        terminal_behavioral_states = self._generate_terminal_states(state, action_specs, action_specs_mask)
+        terminal_behavioral_states = self._generate_terminal_states(state, action_specs, action_specs_mask, nav_plan)
         # TODO: NavigationPlan is now None and should be meaningful when we have one
         terminal_states_values = np.array([self.value_approximator.approximate(state, None) if action_specs_mask[i] else np.nan
                                            for i, state in enumerate(terminal_behavioral_states)])
@@ -89,9 +95,11 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
         action_recipes = self.action_space.recipes
 
+        unified_frames = SingleStepBehavioralPlanner.create_generalized_frenet_frames(state, nav_plan)
+
         # create road semantic grid from the raw State object
         # behavioral_state contains road_occupancy_grid and ego_state
-        behavioral_state = BehavioralGridState.create_from_state(state=state, logger=self.logger)
+        behavioral_state = BehavioralGridState.create_from_state(state=state, unified_frames=unified_frames, logger=self.logger)
 
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
@@ -119,4 +127,21 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         return trajectory_parameters, baseline_trajectory, visualization_message
 
-
+    @staticmethod
+    def create_generalized_frenet_frames(state: State, nav_plan: NavigationPlanMsg) -> \
+            Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
+        """
+        For all available relative lanes create a relevant generalized frenet frame
+        :param state:
+        :param nav_plan:
+        :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
+        """
+        # calculate unified generalized frenet frames
+        ego_lane_id = state.ego_state.map_state.lane_id
+        adjacent_lanes_dict = MapUtils.get_relative_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
+        unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame] = {}
+        for rel_lane in adjacent_lanes_dict:
+            unified_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
+                lane_id=adjacent_lanes_dict[rel_lane], starting_lon = -PLANNING_LOOKAHEAD_DIST,
+                lookahead_dist = 2*PLANNING_LOOKAHEAD_DIST, navigation_plan=nav_plan)
+        return unified_frames
