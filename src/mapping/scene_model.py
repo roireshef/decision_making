@@ -3,7 +3,8 @@ from decision_making.src.messages.scene_static_message import SceneStatic, Scene
 
 class SceneModel:
     """
-    Data layer. Holds the data from SceneStatic. Currently only holds the message. Might be a <<Singleton>>
+    Data layer. Holds the data from SceneStatic (currently expecting a single message).
+     A <<Singleton>>
     """
     __instance = None
 
@@ -17,6 +18,8 @@ class SceneModel:
         self.messages.append(message)
 
     def get_scene_static(self) -> SceneStatic:
+        if len(self._messages)==0:
+            raise ValueError('Scene model is empty')
         return self._messages[-1]
 
     def get_lane(self, lane_id: int) -> SceneLaneSegment:
