@@ -93,6 +93,20 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame):
 
         return cls(points, T, N, k, k_tag, segments_id, segments_s_offsets, segments_ds, segments_point_offset)
 
+    def has_segment_id(self, segment_id: int) -> bool:
+        """see has_segment_ids"""
+        return self.has_segment_ids(np.array([segment_id]))[0]
+
+    def has_segment_ids(self, segment_ids: np.array) -> np.array:
+        """
+        returns boolean value indicating if segment id(s) is part of this generalized frame.
+        :param segment_ids:
+        :return: boolean multi-dimensional array of the same size of <segment_ids> that has True whenever segment_ids[.]
+        exists in self._segments_id
+        """
+        assert segment_ids.dtype == np.int, 'Array of indices should have int type'
+        return np.reshape(np.in1d(segment_ids, self._segments_id), segment_ids.shape)
+
     def convert_from_segment_states(self, frenet_states: FrenetStates2D, segment_ids: List[int]) -> FrenetStates2D:
         """
         Converts frenet_states on a frenet_frame to frenet_states on the generalized frenet frame.
