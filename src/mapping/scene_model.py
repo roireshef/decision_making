@@ -8,8 +8,13 @@ class SceneModel:
     """
     __instance = None
 
+    def __init__(self) -> None:
+        self._messages = []
+
+
+
     @classmethod
-    def get_instance(cls) -> 'SceneModel':
+    def get_instance(cls) -> None:
         """
         :return: The instance of SceneModel
         """
@@ -24,14 +29,14 @@ class SceneModel:
         :param message:  The SceneStatic message
         :return:
         """
-        self.messages.append(message)
+        self._messages.append(message)
 
     def get_scene_static(self) -> SceneStatic:
         """
         Gets the last message in list
         :return:  The SceneStatic message
         """
-        if len(self._messages)==0:
+        if len(self._messages) == 0:
             raise ValueError('Scene model is empty')
         return self._messages[-1]
 
