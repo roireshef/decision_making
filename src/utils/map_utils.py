@@ -41,13 +41,11 @@ class MapUtils:
         :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
         :return: Frenet frame for the given route part
         """
-        # TODO see usage in lines 93/104, need to get this value from Constants?
-        DS_VAL_FRENETSUBSEGMENT = 0.5   
-
+        
         scene_static = SceneModel.get_instance().get_scene_static()
 
         # TODO CHECK can SceneModel give us a larger horizon than s_Data.e_l_perception_horizon_*
-        if lookahead_dist > scene_static.s_Data.e_l_perception_horizon_front:
+        if (sarting_lon + lookahead_dist) > scene_static.s_Data.e_l_perception_horizon_front:
             raise ValueError('lookahead_dist greater than SceneStatic front horizon')
         if abs(starting_lon) < scene_static.s_Data.e_l_perception_horizon_rear:   
             raise ValueError('starting_lon greater than SceneStatic rear horizon')
@@ -64,7 +62,7 @@ class MapUtils:
             raise ValueError('Navigation plan includes lane IDs that are not part of SceneModel')
 
         # TODO ASSUMPTION starting_lon is limited to current lane id and previous, not >current <prev
-        start_lane_seg_id = lane_id if starting_lon >= 0 else scene_static.get_lane(lane_id).as_downstream_lanes[0].e_Cnt_lane_segment_id 
+        start_lane_seg_id = lane_id if starting_lon >= 0 else scene_static.get_lane(lane_id).as_upstream_lanes[0].e_Cnt_lane_segment_id 
         
         accumulated_s = 0
         final_nom_path_pt_idx = None
@@ -72,10 +70,73 @@ class MapUtils:
         frenet_frames = [], frenet_sub_segments = [] 
         
         curr_lane_id = start_lane_seg_id
+
+        #Find start point
+        if starting_lon < 0: 
+            start_lane = scene_static.get_lane(curr_lane_id)
+            seg_start_s = start_lane.a_nominal_path_points[start_lane.e_Cnt_nominal_path_point_count].CeSYS_NominalPathPoint_e_l_s + starting_lon
+        else:
+            seg_start_s = starting_lon 
+
+        
+        pt_idx = 0
+        while(start_lane.a_nominal_path_points[pt_idx].CeSYS_NominalPathPoint_e_l_s < seg_start_s)
+            pt_idx += 1
+        
+        start_idx = pt_idx
+
         while( accumulated_s < lookahead_dist ):
             curr_lane = scene_static.get_lane(curr_lane_id) 
+
+            # If the current lane segment is the starting segment and the length from start_idx to the end is less than the lookahead dist, add it to the list from start_idx to end
+            if curr_lane_id == start_lane_seg_id & (curr_lane.a_nominal_path_points[curr_lane.e_Cnt_nominal_path_point_count].CeSYS_NominalPathPoint_e_l_s - curr_lane.a_nominal_path_points[start_idx].CeSYS_NominalPathPoint_e_l_s) < lookahead_dist:
+                accumulated_s += curr_lane.a_nominal_path_points[curr_lane.e_Cnt_nominal_path_point_count].CeSYS_NominalPathPoint_e_l_s - curr_lane.a_nominal_path_points[start_idx].CeSYS_NominalPathPoint_e_l_s
+                frenet_frames += FrenetSerret2DFrame.fit(curr_lane.a_nominal_path_points[0:final_nom_path_pt_idx, 
+                                                        (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX, 
+                                                         NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY)]) 
+                frenet_sub_segments += FrenetSubSegment(curr_lane.e_i_lane_segment_id,
+                                                        curr_lane.a_nominal_path_points[start_idx].CeSYS_NominalPathPoint_e_l_s,
+                                                        curr_lane.a_nominal_path_points[curr_lane.e_Cnt_nominal_path_point_count].CeSYS_NominalPathPoint_e_l_s,
+                                                        frenet_frames[-1].ds)
+                curr_lane_id = curr_lane.as_downstream_lanes[0].e_Cnt_lane_segment_id
+            # Else if the current lane segment isn't the starting segment and the entire length (plus any previous segment length) is less than the lookahead dist, add it all to the list
+            elif accumulated_s + curr_lane.a_nominal_path_points[curr_lane.e_Cnt_nominal_path_point_count].CeSYS_NominalPathPoint_e_l_s < lookahead_dist:
+                accumulated_s += curr_lane.a_nominal_path_points[curr_lane.e_Cnt_nominal_path_point_count].CeSYS_NominalPathPoint_e_l_s
+                
+                frenet_frames += MapUtils.get_lane_frenet_frame(curr_lane.e_i_lane_segment_id)
+                frenet_sub_segments += FrenetSubSegment(curr_lane.e_i_lane_segment_id,
+                                                        curr_lane.a_nominal_path_points[0].CeSYS_NominalPathPoint_e_l_s,
+                                                        curr_lane.a_nominal_path_points[curr_lane.e_Cnt_nominal_path_point_count].CeSYS_NominalPathPoint_e_l_s,
+                                                        frenet_frames[-1].ds)
+                curr_lane_id = curr_lane.as_downstream_lanes[0].e_Cnt_lane_segment_id
+            #Else the end point is somewhere in the middle of the current segment. Find the endpoint and add the relevant portion to the list
+            else:
+                pt_idx = 0
+                while(accumulated_s + curr_lane.a_nominal_path_points[pt_idx].CeSYS_NominalPathPoint_e_l_s < lookahead_dist)
+                    pt_idx += 1
+                
+                accumulated_s += curr_lane.a_nominal_path_points[pt_idx].CeSYS_NominalPathPoint_e_l_s
+                final_nom_path_pt_idx = pt_idx
+                found_final_s = True
+
+                frenet_frames += FrenetSerret2DFrame.fit(curr_lane.a_nominal_path_points[0:final_nom_path_pt_idx, 
+                                                        (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX, 
+                                                         NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY)]) 
+                if curr_lane_id == start_lane_seg_id:
+                    frenet_sub_segments += FrenetSubSegment(curr_lane.e_i_lane_segment_id,
+                                                            curr_lane.a_nominal_path_points[start_idx].CeSYS_NominalPathPoint_e_l_s,
+                                                            curr_lane.a_nominal_path_points[final_nom_path_pt_idx].CeSYS_NominalPathPoint_e_l_s,
+                                                            frenet_frames[-1].ds)
+                else:
+                    frenet_sub_segments += FrenetSubSegment(curr_lane.e_i_lane_segment_id,
+                                                            curr_lane.a_nominal_path_points[0].CeSYS_NominalPathPoint_e_l_s,
+                                                            curr_lane.a_nominal_path_points[final_nom_path_pt_idx].CeSYS_NominalPathPoint_e_l_s,
+                                                            frenet_frames[-1].ds)
+
+                
             
-            for pt_idx in range(0, curr_lane.e_Cnt_nominal_path_point_count):
+            
+            """ for pt_idx in range(0, curr_lane.e_Cnt_nominal_path_point_count):
                 accumulated_s += curr_lane.a_nominal_path_points[pt_idx].CeSYS_NominalPathPoint_e_l_s
                 
                 if accumulated_s >= lookahead_dist:
@@ -90,7 +151,7 @@ class MapUtils:
                 frenet_sub_segments += FrenetSubSegment(curr_lane.e_i_lane_segment_id,
                                                         curr_lane.a_nominal_path_points[0],
                                                         curr_lane.a_nominal_path_points[curr_lane.e_Cnt_nominal_path_point_count],
-                                                        DS_VAL_FRENETSUBSEGMENT)
+                                                        frenet_frames[-1].ds)
             # Else when we have found the final path point, append to lists up to this path point for current lane
             else:
                 # TODO CHECK cannot use MapUtils.get_lane_frenet_frame, create frenet frame from pathpoints from 0 to final_nom_path_pt_idx
@@ -101,11 +162,11 @@ class MapUtils:
                 frenet_sub_segments += FrenetSubSegment(curr_lane.e_i_lane_segment_id, 
                                                         curr_lane.a_nominal_path_points[0], 
                                                         curr_lane.a_nominal_path_points[final_nom_path_pt_idx], 
-                                                        DS_VAL_FRENETSUBSEGMENT)
+                                                        frenet_frames[-1].ds)
                 break
             
             ## TODO VERIFY assumption that only 1 downstream lane
-            curr_lane_id = curr_lane.as_downstream_lanes[0].e_Cnt_lane_segment_id
+            curr_lane_id = curr_lane.as_downstream_lanes[0].e_Cnt_lane_segment_id """
 
         return GeneralizedFrenetSerretFrame.build(frenet_frames, frenet_sub_segments)
 
