@@ -18,7 +18,7 @@ class MapUtils:
 
     # TODO: remove this on Lane-based planner PR
     @staticmethod
-    def get_road_rhs_frenet(road_id : int) -> FrenetSerret2DFrame:
+    def get_road_rhs_frenet(road_id: int) -> FrenetSerret2DFrame:
         rhs_lane_id = MapUtils.get_adjacent_lanes(road_id, RelativeLane.RIGHT_LANE)[0]
         nominal_points = SceneModel.get_instance().get_lane(rhs_lane_id).a_nominal_path_points
         return FrenetSerret2DFrame.fit(nominal_points[:,
