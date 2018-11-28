@@ -1,9 +1,8 @@
+import numpy as np
+import six
 from abc import abstractmethod, ABCMeta
 from logging import Logger
 from typing import Optional, List
-
-import numpy as np
-import six
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, TRAJECTORY_ARCLEN_RESOLUTION, \
@@ -27,6 +26,8 @@ from decision_making.src.planning.trajectory.samplable_werling_trajectory import
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
+    FrenetSubSegment
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
@@ -145,18 +146,8 @@ class CostBasedBehavioralPlanner:
         # set the reference route to start with a margin before the current longitudinal position of the vehicle
         ref_route_start = ego_init_fstate[FS_SX] - REFERENCE_ROUTE_MARGINS
 
-        forward_lookahead = action_spec.s - ref_route_start + REFERENCE_ROUTE_MARGINS
-        # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
-        # caused by the curve linearization approximation in the resampling process
-        # The compensation here is multiplicative because of the different curve-fittings we use:
-        # in BP we use piecewise-linear and in TP we use cubic-fit.
-        # Due to that, a point's longitude-value will be different between the 2 curves.
-        # This error is accumulated depending on the actual length of the curvature -
-        # when it is long, the error will potentially be big.
-        ref_route_length = forward_lookahead * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
-
         # TODO: remove it, when TP will obtain frenet frame
-        center_lane_reference_route = MapUtils.get_lookahead_frenet_frame(
+        center_lane_frenet = MapUtils.get_lookahead_frenet_frame(
             lane_id=action_spec.lane_id, starting_lon=ref_route_start, lookahead_dist=ref_route_length,
             navigation_plan=navigation_plan)
 
@@ -169,7 +160,7 @@ class CostBasedBehavioralPlanner:
         # TODO: remove it, when TP will obtain frenet frame
         goal_cstate = MapUtils.get_lane_frenet_frame(action_spec.lane_id).fstate_to_cstate(goal_fstate)
 
-        trajectory_parameters = TrajectoryParams(reference_route=center_lane_reference_route,
+        trajectory_parameters = TrajectoryParams(reference_route=center_lane_gff,
                                                  time=action_spec.t + ego.timestamp_in_sec,
                                                  target_state=goal_cstate,
                                                  cost_params=cost_params,

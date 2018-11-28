@@ -1,13 +1,15 @@
 import numpy as np
 
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmNonTypedNumpyArray import LcmNonTypedNumpyArray
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmSigmoidFunctionParams import LcmSigmoidFunctionParams
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmTrajectoryCostParams import LcmTrajectoryCostParams
 from common_data.interface.py.idl_generated_files.Rte_Types import LcmTrajectoryParameters
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmSigmoidFunctionParams import \
+    LcmSigmoidFunctionParams
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmTrajectoryCostParams import \
+    LcmTrajectoryCostParams
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_V, Limits
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 
 
 class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
@@ -204,7 +206,7 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmTrajectoryParameters)->TrajectoryParams
         return cls(TrajectoryPlanningStrategy(lcmMsg.strategy)
-                 , FrenetSerret2DFrame.deserialize(lcmMsg.reference_route)
+                 , GeneralizedFrenetSerretFrame.deserialize(lcmMsg.reference_route)
                  , lcmMsg.target_state
                  , TrajectoryCostParams.deserialize(lcmMsg.cost_params)
                  , lcmMsg.time
