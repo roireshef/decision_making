@@ -9,6 +9,7 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import CartesianPoint2D, FS_SX
 from decision_making.src.planning.types import FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+#from decision_making.src.planning.utils.generalized_frenet_serret_frame import FrenetSubSegment, GeneralizedFrenetSerretFrame
 from decision_making.src.state.map_state import MapState
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 
@@ -30,6 +31,7 @@ class MapUtils:
     @staticmethod
     def get_lookahead_frenet_frame(lane_id: int, starting_lon: float, lookahead_dist: float,
                                    navigation_plan: NavigationPlanMsg):
+                                #    navigation_plan: NavigationPlanMsg) -> GeneralizedFrenetSerretFrame:
         """
         Get Frenet frame of a given length along lane center, starting from given lane's longitude (may be negative).
         When some lane finishes, it automatically continues to the next lane, according to the navigation plan.
@@ -39,6 +41,61 @@ class MapUtils:
         :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
         :return: Frenet frame for the given route part
         """
+        # scene_static = SceneModel.get_instance().get_scene_static()
+        ## Check lookahead_dist outside scene 
+        ## TODO CHECK can SceneModel give us a larger horizon than s_Data.e_l_perception_horizon_*
+        # if lookahead_dist >= 0 and lookahead_dist > scene_static.s_Data.e_l_perception_horizon_front:
+            # raise ValueError('Lookahead distance greater than SceneStatic front horizon')
+        # elif lookahead_dist < 0 and lookahead_dist < scene_static.s_Data.e_l_perception_horizon_rear:   
+            # raise ValueError('Lookahead distance greater than SceneStatic rear horizon')
+        
+        ## Iterate through navigation plan, ensure all lane segs in road seg list are in scene_static
+        # nav_plan_laneseg_ids = [MapUtils.get_lanes_id_from_road_segment_id(road_id) for road_id in navigation_plan.road_ids]
+        ## TODO CHECK can scenemodel have function to give list of all available lane segments
+        # if not set(nav_plan_laneseg_ids) < set(scene_static.laneseglist):
+            # raise ValueError('Navigation plan includes lane IDs that are not part of SceneModel')
+
+        ## Get starting lane seg, if lookahead dist < 0, get previous lane seg
+        ## TODO ASSUMPTION Are we positive lookahead distance is limited to current lane id and potentially previous? Never more than current?
+        # start_lane_seg_id = lane_id if lookahead_dist >= 0 else scene_static.get_lane(lane_id).as_downstream_lanes[0].e_Cnt_lane_segment_id 
+        
+        # curr_s = 0, prev_s = 0
+        # final_nom_path_pt_idx = -1
+        # found_final_s = False
+        # frenet_frames = [], frenet_sub_segments = [] 
+        # curr_lane_id = start_lane_seg_id
+        # while( curr_s < lookahead_dist ):
+            ## TODO VERIFY assumption that only 1 downstream lane
+            # curr_lane = scene_static.get_lane(curr_lane_id) 
+            ## Get curr_lane.as_downstream_lanes[0]
+            ## Iterate through curr lane's nominal path points (NPP)
+                # curr_s = NPP.s + prev_s
+                # if curr_s > lookahead_dist
+                    # final_nom_path_pt_idx = current NPP index
+                    # found_final_s = True
+                # prev_s = curr_s
+
+            ## If we haven't reached the lookahead distance, append to lists of FrenetSerret2DFrames and FrenetSubSegments
+            # if not found_final_s:
+                # frenet_frames += MapUtils.get_lane_frenet_frame(curr_lane.e_i_lane_segment_id) 
+                ## TODO ASK what is ds in this constructor? Do we have a default value to put in? Should FrenetSubSegment have this as a default param?
+                # frenet_sub_segments += FrenetSubSegment(curr_lane.e_i_lane_segment_id,
+                #                                         curr_lane.a_nominal_path_points[0],
+                #                                         curr_lane.a_nominal_path_points[curr_lane.e_Cnt_nominal_path_point_count],
+                #                                         ??)
+            ## Else when we have found the final path point, append to lists up to this path point for current lane
+            # else:
+                ## TODO CHECK cannot use MapUtils.get_lane_frenet_frame, create frenet frame from pathpoints from 0 to final_nom_path_pt_idx
+                # frenet_frames += FrenetSerret2DFrame.fit(curr_lane.a_nominal_path_points[0:final_nom_path_pt_idx, 
+                #                       (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX, 
+                #                        NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY)])
+                # frenet_sub_segments += FrenetSubSegment(curr_lane.e_i_lane_segment_id, 
+                #                                         curr_lane.a_nominal_path_points[0], 
+                #                                         curr_lane.a_nominal_path_points[final_nom_path_pt_idx], 
+                #                                         ??)
+
+        # Return GeneralizedFrenetSerretFrame made of frenet_frames
+        # return GeneralizedFrenetSerretFrame.build(frenet_frames, frenet_sub_segments)
         pass
 
     # TODO: remove this on Lane-based planner PR
