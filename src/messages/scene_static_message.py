@@ -3,7 +3,7 @@ from typing import List
 
 import numpy as np
 
-from Rte_Types.sub_structures import TsSYSAdjacentLane, TsSYSBoundaryPoint, TsSYSLaneCoupling, \
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import TsSYSAdjacentLane, TsSYSBoundaryPoint, TsSYSLaneCoupling, \
     TsSYSStaticTrafficFlowControl, TsSYSDynamicStatus, TsSYSDynamicTrafficFlowControl, \
     TsSYSSceneLaneSegment, TsSYSLaneSegmentConnectivity
 from common_data.interface.py.idl_generated_files.Rte_Types.TsSYS_SceneStatic import TsSYSSceneStatic
