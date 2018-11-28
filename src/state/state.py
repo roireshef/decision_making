@@ -154,6 +154,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def map_state_on_host_lane(self):
         # type: () -> MapState
         if self._cached_map_state_on_host_lane is None:
+            #TODO: call MapUtils 
             self._cached_map_state_on_host_lane = MapUtils.convert_cartesian_to_map_state(self._cached_cartesian_state)
         return self._cached_map_state_on_host_lane
 
