@@ -24,7 +24,7 @@ def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(pubsub: Pub
             (FOV).
     :param dynamic_objects_not_in_fov: Fixture of a serialized dynamic object with the same id as above but now it's located
                                         out of the field of view.
-    :param ego_state_fix: Fixture of an ego state compatible with the above two fixtures.
+    :param scene_dynamic_fix: Fixture of scene dynamic compatible with the above two fixtures.
 
     This test checks the memory functionality of the StateModule. It initially sends into the StateModule a dynamic object
     in the FOV followed by a message indicating that the object is out of FOV. The test then asserts that the last known
@@ -65,7 +65,7 @@ def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: P
                                                                        scene_dynamic_fix: SceneDynamic):
     """
     :param pubsub: Inter-process communication interface.
-    :param ego_state_fix: Fixture of an ego state.
+    :param scene_dynamic_fix: Fixture of scene dynamic
 
     Checking functionality of dynamic_object_callback for an object that is not on the road.
     """
@@ -84,7 +84,7 @@ def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: Pu
                                                                       scene_dynamic_fix: SceneDynamic):
     """
     :param pubsub: Inter-process communication interface.
-    :param ego_state_fix: Fixture of an ego state.
+    :param scene_dynamic_fix: Fixture of scene dynamic
 
     Checking functionality of dynamic_object_callback for an object that is not on the road.
     """
@@ -106,7 +106,7 @@ def test_dynamicObjCallbackWithFilter_objectOffRoad_stateWithoutObject(pubsub: P
                                                                        scene_dynamic_fix: SceneDynamic):
     """
     :param pubsub: Inter-process communication interface.
-    :param ego_state_fix: Fixture of an ego state.
+    :param scene_dynamic_fix: Fixture of scene dynamic
 
     Checking functionality of dynamic_object_callback for an object that is not on the road.
     """
