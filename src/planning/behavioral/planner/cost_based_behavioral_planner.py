@@ -212,9 +212,9 @@ class CostBasedBehavioralPlanner:
         """
         # TODO: here we assume a constant lane width from the current state to the goal
         dist_from_right_lane_border, dist_from_left_lane_border = \
-            MapUtils.get_dist_from_lane_center_to_lane_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
+            MapUtils.get_dist_to_lane_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
         dist_from_right_road_border, dist_from_left_road_border = \
-            MapUtils.get_dist_from_lane_center_to_road_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
+            MapUtils.get_dist_to_road_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
 
         # lateral distance in [m] from ref. path to rightmost edge of lane
         right_lane_offset = dist_from_right_lane_border - ego_size.width / 2

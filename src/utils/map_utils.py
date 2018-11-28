@@ -4,65 +4,16 @@ import numpy as np
 
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import CartesianExtendedState, FS_DX
-from decision_making.src.planning.types import FP_DX, FP_SX, C_X, C_Y, CartesianPoint2D, FrenetPoint
+from decision_making.src.planning.types import FP_DX, FP_SX, C_X, C_Y, CartesianPoint2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.state.map_state import MapState
-from mapping.src.exceptions import raises, LongitudeOutOfRoad, RoadNotFound, NextRoadNotFound, DownstreamLaneNotFound, \
+from mapping.src.exceptions import raises, RoadNotFound, NextRoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound
-from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 from mapping.src.service.map_service import MapService
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
 
 
 class MapUtils:
-    # TODO: remove this on Lane-based planner PR
-    @staticmethod
-    def get_road_rhs_frenet(obj):
-        return MapService.get_instance()._rhs_roads_frenet[obj.map_state.road_id]
-
-    # TODO: remove this on Lane-based planner PR
-    @staticmethod
-    def convert_cartesian_to_map_state(cartesian_state: CartesianExtendedState):
-        # type: (CartesianExtendedState) -> MapState
-        # TODO: replace with query that returns only the relevant road id
-        map_api = MapService.get_instance()
-
-        relevant_road_ids = map_api._find_roads_containing_point(cartesian_state[C_X], cartesian_state[C_Y])
-        closest_road_id = map_api._find_closest_road(cartesian_state[C_X], cartesian_state[C_Y], relevant_road_ids)
-
-        road_frenet = map_api._rhs_roads_frenet[closest_road_id]
-
-        obj_fstate = road_frenet.cstate_to_fstate(cartesian_state)
-
-        return MapState(obj_fstate, closest_road_id)
-
-    # TODO: remove this on Lane-based planner PR
-    @staticmethod
-    def convert_map_to_cartesian_state(map_state):
-        # type: (MapState) -> CartesianExtendedState
-        map_api = MapService.get_instance()
-
-        road_frenet = map_api._rhs_roads_frenet[map_state.road_id]
-
-        return road_frenet.fstate_to_cstate(map_state.road_fstate)
-
-    # TODO: remove this on Lane-based planner PR
-    # TODO: Note! This function is only valid when the frenet reference frame is from the right side of the road
-    @staticmethod
-    def is_object_on_road(map_state):
-        # type: (MapState) -> bool
-        """
-        Returns true of the object is on the road. False otherwise.
-        Note! This function is valid only when the frenet reference frame is from the right side of the road
-        :param map_state: the map state to check
-        :return: Returns true of the object is on the road. False otherwise.
-        """
-        road_width = MapService.get_instance().get_road(road_segment_id=map_state.road_id).road_width
-        is_on_road = road_width + ROAD_SHOULDERS_WIDTH > map_state.road_fstate[FS_DX] > -ROAD_SHOULDERS_WIDTH
-        return is_on_road
-
     @staticmethod
     def get_road_segment_id_from_lane_id(lane_id: int) -> int:
         """

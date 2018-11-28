@@ -36,7 +36,7 @@ class MapState(PUBSUB_MSG_IMPL):
         Returns true of the object is on the road. False otherwise.
         :return: Returns true of the object is on the road. False otherwise.
         """
-        dist_from_right, dist_from_left = MapUtils.get_dist_from_lane_center_to_lane_borders(self.lane_id, self.lane_fstate[FS_SX])
+        dist_from_right, dist_from_left = MapUtils.get_dist_to_lane_borders(self.lane_id, self.lane_fstate[FS_SX])
         return -dist_from_right - ROAD_SHOULDERS_WIDTH < self.lane_fstate[FS_DX] < dist_from_left + ROAD_SHOULDERS_WIDTH
 
     def serialize(self):
