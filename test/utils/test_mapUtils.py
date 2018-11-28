@@ -4,11 +4,12 @@ from decision_making.src.messages.navigation_plan_message import NavigationPlanM
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.exceptions import NavigationPlanTooShort, DownstreamLaneNotFound, UpstreamLaneNotFound, \
-    NavigationPlanDoesNotFitMap
+    NavigationPlanDoesNotFitMap, RoadNotFound
 from mapping.src.service.map_service import MapService
 from decision_making.src.planning.types import FS_SX, FS_DX, FP_SX, FP_DX
 
 MAP_SPLIT = "PG_split.bin"
+SMALL_DISTANCE_ERROR = 0.01
 
 
 def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate():
@@ -72,22 +73,24 @@ def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_acc
     current_ordinal = 1
     starting_lon = -200.
     lookahead_dist = 500.
-    small_dist_err = 0.01
+    arbitrary_fpoint = np.array([450., 1.])
+
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])
     lane_id = lane_ids[current_ordinal]
     gff = MapUtils.get_lookahead_frenet_frame(lane_id, starting_lon, lookahead_dist, NavigationPlanMsg(np.array(road_ids)))
+
     # validate the length of the obtained frenet frame
-    assert abs(gff.s_max - lookahead_dist) < small_dist_err
+    assert abs(gff.s_max - lookahead_dist) < SMALL_DISTANCE_ERROR
     # calculate cartesian state of the origin of lane_id using GFF and using original frenet of lane_id and compare them
     gff_cpoint = gff.fpoint_to_cpoint(np.array([-starting_lon, 0]))
     ff_cpoint = MapUtils.get_lane_frenet_frame(lane_id).fpoint_to_cpoint(np.array([0, 0]))
-    assert np.linalg.norm(gff_cpoint - ff_cpoint) < small_dist_err
+    assert np.linalg.norm(gff_cpoint - ff_cpoint) < SMALL_DISTANCE_ERROR
+
     # calculate cartesian state of some point using GFF and using original frenet (from the map) and compare them
-    fpoint = np.array([450., 1.])
-    gff_cpoint = gff.fpoint_to_cpoint(fpoint)
-    segment_id, segment_fstate = gff.convert_to_segment_state(np.array([fpoint[FP_SX], 0, 0, fpoint[FP_DX], 0, 0]))
+    gff_cpoint = gff.fpoint_to_cpoint(arbitrary_fpoint)
+    segment_id, segment_fstate = gff.convert_to_segment_state(np.array([arbitrary_fpoint[FP_SX], 0, 0, arbitrary_fpoint[FP_DX], 0, 0]))
     ff_cpoint = MapUtils.get_lane_frenet_frame(segment_id).fpoint_to_cpoint(segment_fstate[[FS_SX, FS_DX]])
-    assert np.linalg.norm(gff_cpoint - ff_cpoint) < small_dist_err
+    assert np.linalg.norm(gff_cpoint - ff_cpoint) < SMALL_DISTANCE_ERROR
 
 
 def test_advanceOnPlan_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal():
@@ -122,14 +125,16 @@ def test_advanceOnPlan_navPlanDoesNotFitMap_relevantException():
     starting_lon = 20.
     lookahead_dist = 600.
     starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
+    wrong_road_segment_id = 1234
+    nav_plan_length = 8
     # test navigation plan fitting the lookahead distance, and add non-existing road at the end of the plan
     # validate getting the relevant exception
     try:
         MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist,
-                                  NavigationPlanMsg(np.array(road_ids[:8] + [1234])))
+                                  NavigationPlanMsg(np.array(road_ids[:nav_plan_length] + [wrong_road_segment_id])))
         assert False
     except NavigationPlanDoesNotFitMap:
-        pass
+        assert True
 
 
 def test_advanceOnPlan_lookaheadCoversFullMap_validateNoException():
@@ -142,8 +147,8 @@ def test_advanceOnPlan_lookaheadCoversFullMap_validateNoException():
     current_ordinal = 1
     # test lookahead distance until the end of the map: verify no exception is thrown
     cumulative_distance = 0
-    for rid in road_ids:
-        lane_id = MapUtils.get_lanes_ids_from_road_segment_id(rid)[current_ordinal]
+    for road_id in road_ids:
+        lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
         cumulative_distance += MapUtils.get_lane_length(lane_id)
     first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])[current_ordinal]
     sub_segments = MapUtils._advance_on_plan(first_lane_id, 0, cumulative_distance, NavigationPlanMsg(np.array(road_ids)))
@@ -162,12 +167,14 @@ def test_advanceOnPlan_navPlanTooShort_validateRelevantException():
     starting_lon = 20.
     lookahead_dist = 500.
     starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
+    nav_plan_length = 7
     # test the case when the navigation plan is too short; validate the relevant exception
     try:
-        MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist, NavigationPlanMsg(np.array(road_ids[:7])))
+        MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist,
+                                  NavigationPlanMsg(np.array(road_ids[:nav_plan_length])))
         assert False
     except NavigationPlanTooShort:
-        pass
+        assert True
 
 
 def test_advanceOnPlan_lookAheadDistLongerThanMap_validateException():
@@ -181,13 +188,15 @@ def test_advanceOnPlan_lookAheadDistLongerThanMap_validateException():
     current_ordinal = 1
     starting_lon = 20.
     starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
+    wrong_road_id = 1234
+    lookadhead_dist = 1000
     # test the case when the map is too short; validate the relevant exception
     try:
-        MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_distance=1000,
-                                  navigation_plan=NavigationPlanMsg(np.array(road_ids + [1234])))
+        MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_distance=lookadhead_dist,
+                                  navigation_plan=NavigationPlanMsg(np.array(road_ids + [wrong_road_id])))
         assert False
     except DownstreamLaneNotFound:
-        pass
+        assert True
 
 
 def test_getUpstreamLanesFromDistance_upstreamFiveOutOfTenSegments_validateLength():
@@ -205,9 +214,9 @@ def test_getUpstreamLanesFromDistance_upstreamFiveOutOfTenSegments_validateLengt
     lane_ids, final_lon = MapUtils._get_upstream_lanes_from_distance(starting_lane_id, starting_lon, backward_dist)
     tot_length = starting_lon - final_lon
     # validate: total length of the segments equals to backward_dist and correctness of the segments' ordinal
-    for lid in lane_ids[1:]:  # exclude the starting lane
-        assert MapUtils.get_lane_ordinal(lid) == current_ordinal
-        tot_length += MapUtils.get_lane_length(lid)
+    for lane_id in lane_ids[1:]:  # exclude the starting lane
+        assert MapUtils.get_lane_ordinal(lane_id) == current_ordinal
+        tot_length += MapUtils.get_lane_length(lane_id)
     assert np.isclose(tot_length, backward_dist)
 
 
@@ -241,8 +250,8 @@ def test_getUpstreamLanesFromDistance_backwardDistForFullMap_validateSegmentsNum
     current_ordinal = 1
     # test from the end until start of the map: verify no exception is thrown
     cumulative_distance = 0
-    for rid in road_ids:
-        lane_id = MapUtils.get_lanes_ids_from_road_segment_id(rid)[current_ordinal]
+    for road_id in road_ids:
+        lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
         cumulative_distance += MapUtils.get_lane_length(lane_id)
     last_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[-1])[current_ordinal]
     last_lane_length = MapUtils.get_lane_length(last_lane_id)
@@ -263,12 +272,13 @@ def test_getUpstreamLanesFromDistance_tooLongBackwardDist_validateRelevantExcept
     current_ordinal = 1
     starting_lon = 20.
     starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
+    backward_dist = 1000
     # test the case when the map is too short
     try:
-        MapUtils._get_upstream_lanes_from_distance(starting_lane_id, starting_lon, backward_dist=1000)
+        MapUtils._get_upstream_lanes_from_distance(starting_lane_id, starting_lon, backward_dist=backward_dist)
         assert False
     except UpstreamLaneNotFound:
-        pass
+        assert True
 
 
 def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints():
@@ -291,6 +301,25 @@ def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints():
     assert lane_id == closest_lane_id
     closest_lane_id = MapUtils.get_closest_lane(frenet.points[-2], road_ids[0])
     assert lane_id == closest_lane_id
+
+
+def test_getClosestLane_multiLaneRoad_testExceptionOnWrongRoadId():
+    """
+    test method get_closest_lane:
+        validate relevant exception on wrong road_segment_id
+    """
+    MapService.initialize(MAP_SPLIT)
+    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
+    # find the rightest lane
+    lane_id = lane_ids[0]
+    frenet = MapUtils.get_lane_frenet_frame(lane_id)
+    wrong_road_segment_id = 28
+    try:
+        MapUtils.get_closest_lane(frenet.points[-2], wrong_road_segment_id)
+        assert False
+    except RoadNotFound:
+        assert True
 
 
 def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency():

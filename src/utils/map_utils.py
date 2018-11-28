@@ -84,6 +84,7 @@ class MapUtils:
 
     # TODO: Remove it after introduction of the new mapping module. Avoid using this function once SP output is available.
     @staticmethod
+    @raises(RoadNotFound)
     def get_closest_lane(cartesian_point: CartesianPoint2D, road_segment_id: int = None) -> int:
         """
         given cartesian coordinates, find the closest lane to the point
@@ -92,11 +93,13 @@ class MapUtils:
         :return: closest lane segment id
         """
         map_api = MapService.get_instance()
+        relevant_road_ids = map_api._find_roads_containing_point(cartesian_point[C_X], cartesian_point[C_Y])
         if road_segment_id is None:
             # find the closest road segment
-            relevant_road_ids = map_api._find_roads_containing_point(cartesian_point[C_X], cartesian_point[C_Y])
             closest_road_id = map_api._find_closest_road(cartesian_point[C_X], cartesian_point[C_Y], relevant_road_ids)
         else:
+            if road_segment_id not in relevant_road_ids:
+                raise RoadNotFound("road_segment_id=%d does not contain the given point", road_segment_id)
             closest_road_id = road_segment_id
 
         # find the closest lane segment, given the closest road segment
