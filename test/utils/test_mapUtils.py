@@ -15,6 +15,7 @@ from decision_making.test.planning.custom_fixtures import dyn_obj_outside_road, 
 from decision_making.src.planning.types import FS_SX, FS_DX, FP_SX, FP_DX
 
 MAP_SPLIT = "PG_split.bin"
+SMALL_DISTANCE_ERROR = 0.01
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
@@ -94,7 +95,6 @@ def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_acc
     current_ordinal = 1
     starting_lon = -200.
     lookahead_dist = 500.
-    small_dist_err = 0.01
     arbitrary_fpoint = np.array([450., 1.])
 
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])
@@ -102,17 +102,17 @@ def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_acc
     gff = MapUtils.get_lookahead_frenet_frame(lane_id, starting_lon, lookahead_dist, NavigationPlanMsg(np.array(road_ids)))
 
     # validate the length of the obtained frenet frame
-    assert abs(gff.s_max - lookahead_dist) < small_dist_err
+    assert abs(gff.s_max - lookahead_dist) < SMALL_DISTANCE_ERROR
     # calculate cartesian state of the origin of lane_id using GFF and using original frenet of lane_id and compare them
     gff_cpoint = gff.fpoint_to_cpoint(np.array([-starting_lon, 0]))
     ff_cpoint = MapUtils.get_lane_frenet_frame(lane_id).fpoint_to_cpoint(np.array([0, 0]))
-    assert np.linalg.norm(gff_cpoint - ff_cpoint) < small_dist_err
+    assert np.linalg.norm(gff_cpoint - ff_cpoint) < SMALL_DISTANCE_ERROR
 
     # calculate cartesian state of some point using GFF and using original frenet (from the map) and compare them
     gff_cpoint = gff.fpoint_to_cpoint(arbitrary_fpoint)
     segment_id, segment_fstate = gff.convert_to_segment_state(np.array([arbitrary_fpoint[FP_SX], 0, 0, arbitrary_fpoint[FP_DX], 0, 0]))
     ff_cpoint = MapUtils.get_lane_frenet_frame(segment_id).fpoint_to_cpoint(segment_fstate[[FS_SX, FS_DX]])
-    assert np.linalg.norm(gff_cpoint - ff_cpoint) < small_dist_err
+    assert np.linalg.norm(gff_cpoint - ff_cpoint) < SMALL_DISTANCE_ERROR
 
 
 def test_advanceOnPlan_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal():
