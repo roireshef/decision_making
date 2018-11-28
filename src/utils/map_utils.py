@@ -2,6 +2,7 @@ from typing import List, Dict, Tuple, Optional
 
 import numpy as np
 
+from decision_making.src.global_constants import EPS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_DX, FP_SX, C_X, C_Y, CartesianPoint2D
@@ -269,13 +270,15 @@ class MapUtils:
             lane_subsegments.append(FrenetSubSegment(current_lane_id, current_segment_start_s, current_segment_end_s))
             cumulative_distance += current_segment_end_s - current_segment_start_s
 
-            if cumulative_distance >= lookahead_distance:
+            if cumulative_distance > lookahead_distance - EPS:
                 break
 
             next_road_idx_on_plan = current_road_idx_on_plan + 1
             if next_road_idx_on_plan > len(navigation_plan.road_ids) - 1:
-                raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m])" %
-                                             (navigation_plan, lookahead_distance - cumulative_distance))
+                raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
+                                             "current_segment_end_s=%f lookahead_distance=%f" %
+                                             (navigation_plan, lookahead_distance - cumulative_distance,
+                                              current_segment_end_s, lookahead_distance))
 
             # pull next road segment from the navigation plan, then look for the downstream lane segment on this
             # road segment. This assumes a single correct downstream segment.
