@@ -92,7 +92,7 @@ class BehavioralGridState(BehavioralState):
         ego_init_fstates = ego_state.project_on_relative_lanes(relative_lanes)
 
         # compute the relative longitudinal distance between object and ego (positive means object is in front)
-        # TODO: use MapUtils.get_longitudinal_distance !!!
+        # TODO: for multi-segment maps use GFF for the calculation of longitudinal distance
         return [DynamicObjectWithRoadSemantics(obj, obj.map_state.lane_fstate[FS_SX] - ego_init_fstates[i][FS_SX],
                                                relative_lanes[i])
                 for i, obj in enumerate(dynamic_objects)

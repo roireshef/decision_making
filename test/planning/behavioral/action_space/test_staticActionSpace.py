@@ -35,10 +35,15 @@ def test_specifyGoals_closeToTargetVelocity_specifyNotFail():
 
     action_specs = action_space.specify_goals(filtered_recipes, behavioral_state)
 
-    specs = [action_specs[i] for i, recipe in enumerate(filtered_recipes)
-             if recipe.relative_lane == RelativeLane.SAME_LANE and recipe.aggressiveness == AggressivenessLevel.CALM
-             and recipe.velocity == target_vel]
-
     # check specification of CALM SAME_LANE static action
-    assert len(specs) > 0 and specs[0] is not None
+    same_lane_specs = [action_specs[i] for i, recipe in enumerate(filtered_recipes)
+                       if recipe.relative_lane == RelativeLane.SAME_LANE and recipe.aggressiveness == AggressivenessLevel.CALM
+                       and recipe.velocity == target_vel]
+    assert len(same_lane_specs) > 0 and same_lane_specs[0] is not None
+
+    # check specification of CALM LEFT_LANE static action
+    left_lane_specs = [action_specs[i] for i, recipe in enumerate(filtered_recipes)
+                       if recipe.relative_lane == RelativeLane.LEFT_LANE and recipe.aggressiveness == AggressivenessLevel.CALM
+                       and recipe.velocity == target_vel]
+    assert len(left_lane_specs) > 0 and left_lane_specs[0] is not None
 

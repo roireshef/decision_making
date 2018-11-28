@@ -16,17 +16,17 @@ class GoalStatus(Enum):
 
 
 class NavigationGoal:
-    def __init__(self, road_id: int, lon: float, lane_indices: List[int]):
+    def __init__(self, road_segment_id: int, lon: float, lanes_idxs: List[int]):
         """
         Holds parameters of a navigation goal: road id, longitude, list of lanes.
-        :param road_id: road id from the map
+        :param road_segment_id: road segment id from the map
         :param lon: [m] longitude of the goal relatively to the road's beginning
-        :param lane_indices: list of lane indices of the goal
+        :param lanes_idxs: list of lane indices of the goal
         """
         # TODO: replace road & lane_indices by list of lane_ids and lon will be per lane.
-        self.road_id = road_id
+        self.road_segment_id = road_segment_id
         self.lon = lon
-        self.lane_indices = lane_indices
+        self.lanes_idxs = lanes_idxs
 
     def validate(self, state: State) -> GoalStatus:
         """
@@ -36,10 +36,10 @@ class NavigationGoal:
         """
         # TODO: use route planner to check whether current road_id != goal.road means MISSED or NOT_YET
         map_state = state.ego_state.map_state
-        road_id = MapUtils.get_road_segment_id_from_lane_id(map_state.lane_id)
-        # TODO: decide whether self.lon is relative to the lane or to the road!!!
-        if road_id == self.road_id and map_state.lane_fstate[FS_SX] >= self.lon:
-            if MapUtils.get_lane_ordinal(map_state.lane_id) in self.lane_indices:
+        road_segment_id = MapUtils.get_road_segment_id_from_lane_id(map_state.lane_id)
+        # TODO: decide relatively to which lane self.lon is given
+        if road_segment_id == self.road_segment_id and map_state.lane_fstate[FS_SX] >= self.lon:
+            if MapUtils.get_lane_ordinal(map_state.lane_id) in self.lanes_idxs:
                 return GoalStatus.REACHED
             else:
                 return GoalStatus.MISSED

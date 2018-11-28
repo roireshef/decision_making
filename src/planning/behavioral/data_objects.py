@@ -20,11 +20,6 @@ class AggressivenessLevel(Enum):
     AGGRESSIVE = 2
 
 
-class SemanticActionType(Enum):
-    FOLLOW_VEHICLE = 1
-    FOLLOW_LANE = 2
-
-
 class RelativeLane(Enum):
     """"
     The lane associated with a certain Recipe, relative to ego

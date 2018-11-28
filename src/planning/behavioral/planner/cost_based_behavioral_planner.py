@@ -151,14 +151,15 @@ class CostBasedBehavioralPlanner:
         # if there is no long enough road behind ego, set ref_route_start = 0
         if ref_route_start < 0:
             try:
-                MapUtils._get_upstream_lanes_from_distance(action_spec.lane_id, 0, -ref_route_start)
+                backward_lane_ids, backward_lane_s = \
+                    MapUtils._get_upstream_lanes_from_distance(action_spec.lane_id, 0, -ref_route_start)
             except UpstreamLaneNotFound:
                 ref_route_start = 0
 
         forward_lookahead = action_spec.s - ref_route_start + REFERENCE_ROUTE_MARGINS
         ref_route_length = forward_lookahead * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
-        center_lane_gff = MapUtils.get_lookahead_frenet_frame(
+        action_lane_gff = MapUtils.get_lookahead_frenet_frame(
             lane_id=action_spec.lane_id, starting_lon=ref_route_start, lookahead_dist=ref_route_length,
             navigation_plan=navigation_plan)
 
@@ -171,7 +172,7 @@ class CostBasedBehavioralPlanner:
         # TODO: remove it, when TP will obtain frenet frame
         goal_cstate = MapUtils.get_lane_frenet_frame(action_spec.lane_id).fstate_to_cstate(goal_fstate)
 
-        trajectory_parameters = TrajectoryParams(reference_route=center_lane_gff,
+        trajectory_parameters = TrajectoryParams(reference_route=action_lane_gff,
                                                  time=action_spec.t + ego.timestamp_in_sec,
                                                  target_state=goal_cstate,
                                                  cost_params=cost_params,

@@ -33,16 +33,14 @@ def state_with_sorrounding_objects(pg_map_api: MapAPI):
 
     # Ego state
     ego_lane_lon = 50.0
-    ego_lane_lat = 0
     obj_vel = ego_vel = 10
     ego_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
-    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, ego_lane_lat, 0, 0]), ego_lane_id)
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), ego_lane_id)
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
 
     # Generate objects at the following locations:
     obj_lane_lons = [ego_lane_lon - 20, ego_lane_lon, ego_lane_lon + 20]
-    obj_lane_lat = 0
 
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
@@ -54,7 +52,7 @@ def state_with_sorrounding_objects(pg_map_api: MapAPI):
                 # Don't create an object where the ego is
                 continue
 
-            map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, obj_lane_lat, 0, 0]), obj_lane_id)
+            map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), obj_lane_id)
             dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
                                                             size=car_size, confidence=1.)
             dynamic_objects.append(dynamic_object)
@@ -74,22 +72,20 @@ def state_with_objects_for_filtering_tracking_mode(pg_map_api: MapAPI):
 
     # Ego state
     ego_lane_lon = 50.0
-    ego_lane_lat = 0
     ego_vel = 10
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
-    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, ego_lane_lat, 0, 0]), lane_id)
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
 
     # Generate objects at the following locations:
     obj_lane_lon = ego_lane_lon + 20
-    obj_lane_lat = ego_lane_lat
     obj_vel = 10.2
 
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
 
-    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, obj_lane_lat, 0, 0]), lane_id)
+    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), lane_id)
     dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
                                                     size=car_size, confidence=1.)
 
@@ -109,22 +105,20 @@ def state_with_objects_for_filtering_negative_sT(pg_map_api: MapAPI):
 
     # Ego state
     ego_lane_lon = 50.0
-    ego_lane_lat = 0
     ego_vel = 10
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
-    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, ego_lane_lat, 0, 0]), lane_id)
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
 
     # Generate objects at the following locations:
     obj_lane_lon = ego_lane_lon + 3.8
-    obj_lane_lat = ego_lane_lat
     obj_vel = 11
 
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
 
-    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, obj_lane_lat, 0, 0]), lane_id)
+    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), lane_id)
     dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
                                                     size=car_size, confidence=1.)
 
@@ -144,22 +138,20 @@ def state_with_objects_for_filtering_too_aggressive(pg_map_api: MapAPI):
 
     # Ego state
     ego_lane_lon = 50.0
-    ego_lane_lat = 0
     ego_vel = 10
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
-    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, ego_lane_lat, 0, 0]), lane_id)
+    map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), lane_id)
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
 
     # Generate objects at the following locations:
     obj_lane_lon = ego_lane_lon + 58
-    obj_lane_lat = ego_lane_lat
     obj_vel = 30
 
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
 
-    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, obj_lane_lat, 0, 0]), lane_id)
+    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), lane_id)
     dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
                                                     size=car_size, confidence=1.)
 

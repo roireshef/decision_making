@@ -5,7 +5,7 @@ import numpy as np
 from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
 from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from decision_making.src import global_constants
-from decision_making.src.dm_main import DmInitialization, NAVIGATION_PLAN, MAP_FILE
+from decision_making.src.dm_main import DmInitialization, NAVIGATION_PLAN, DEFAULT_MAP_FILE
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
     DM_MANAGER_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_TIME_RESOLUTION, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, \
@@ -85,7 +85,7 @@ class DmMockInitialization:
 
 
 
-def main(fixed_trajectory_file: str = None, map_file: str = MAP_FILE, nav_plan: NavigationPlanMsg = NAVIGATION_PLAN):
+def main(fixed_trajectory_file: str = None, map_file: str = DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg = NAVIGATION_PLAN):
     """
     initializes DM planning pipeline. for switching between BP/TP impl./mock make sure to comment out the relevant
     instantiation in modules_list.

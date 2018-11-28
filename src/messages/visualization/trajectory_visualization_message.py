@@ -3,14 +3,19 @@ from typing import List
 import numpy as np
 
 from Rte_Types import TsSYSTrajectoryVisualization
-from Rte_Types.sub_structures import TsSYSDataTrajectoryVisualization, TsSYSTimestamp, TsSYSHeader
+from Rte_Types.sub_structures import TsSYSDataTrajectoryVisualization
 from Rte_Types.sub_structures.TsSYS_PredictionsVisualization import TsSYSPredictionsVisualization
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.messages.common_message import Header
+from decision_making.src.messages.scene_common_messages import Header
 
 
 class PredictionsVisualization(PUBSUB_MSG_IMPL):
     def __init__(self, e_object_id: int, a_predictions: np.array):
+        """
+        The class contains predicted locations for single dynamic object
+        :param e_object_id:
+        :param a_predictions: predicted 2D locations of the object
+        """
         self.e_object_id = e_object_id
         self.a_predictions = a_predictions
 
@@ -33,9 +38,11 @@ class DataTrajectoryVisualization(PUBSUB_MSG_IMPL):
                  e_recipe_description: str):
         """
         Message that holds debug results of WerlingPlanner to be broadcasted to the visualizer
-        :param a_trajectories: 3D array of additional trajectories: num_trajectories x trajectory_length x 2
-        :param as_actors_predictions: list of predicted objects
-        :param e_recipe_description: String for semantic meaning of action
+        :param a_trajectories: 3D array of trajectories: num_trajectories x trajectory_length x 2
+        :param as_actors_predictions: list of classes of type PredictionsVisualization per dynamic object.
+                Each class instance contains predictions for the dynamic object.
+        :param e_recipe_description: String for semantic meaning of action. For example:
+                                                            "static action to the left with 50 km/h".
         """
         self.a_trajectories = a_trajectories
         self.as_actors_predictions = as_actors_predictions
