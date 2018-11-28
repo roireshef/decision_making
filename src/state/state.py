@@ -154,7 +154,9 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def map_state_on_host_lane(self):
         # type: () -> MapState
         if self._cached_map_state_on_host_lane is None:
-            #TODO: call MapUtils 
+            # TODO: Agree on the way for projecting dynamic object on host lane or on its continuation
+            # For now, if Dynamic object wasn't generated at StateModule,  map_state_on_host_lane is generated
+            # from the DynamicObject's lane instead
             self._cached_map_state_on_host_lane = MapUtils.convert_cartesian_to_map_state(self._cached_cartesian_state)
         return self._cached_map_state_on_host_lane
 
@@ -206,7 +208,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param size: class ObjectSize
         :param confidence: of object's existence
         """
-        return cls(obj_id, timestamp, None, map_state, map_state, size, confidence)
+        return cls(obj_id, timestamp, None, map_state, None, size, confidence)
 
     def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None):
         # type: (CartesianExtendedState, Optional[float]) -> DynamicObject
