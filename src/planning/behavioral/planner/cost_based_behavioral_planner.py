@@ -33,6 +33,7 @@ from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor imp
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, ObjectSize, EgoState
 from decision_making.src.utils.map_utils import MapUtils
+from mapping.src.exceptions import UpstreamLaneNotFound
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 
 
@@ -146,8 +147,18 @@ class CostBasedBehavioralPlanner:
         # set the reference route to start with a margin before the current longitudinal position of the vehicle
         ref_route_start = ego_init_fstate[FS_SX] - REFERENCE_ROUTE_MARGINS
 
-        # TODO: remove it, when TP will obtain frenet frame
-        center_lane_frenet = MapUtils.get_lookahead_frenet_frame(
+        # TODO: remove this hack when using a real map from SP
+        # if there is no long enough road behind ego, set ref_route_start = 0
+        if ref_route_start < 0:
+            try:
+                MapUtils._get_upstream_lanes_from_distance(action_spec.lane_id, 0, -ref_route_start)
+            except UpstreamLaneNotFound:
+                ref_route_start = 0
+
+        forward_lookahead = action_spec.s - ref_route_start + REFERENCE_ROUTE_MARGINS
+        ref_route_length = forward_lookahead * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
+
+        center_lane_gff = MapUtils.get_lookahead_frenet_frame(
             lane_id=action_spec.lane_id, starting_lon=ref_route_start, lookahead_dist=ref_route_length,
             navigation_plan=navigation_plan)
 

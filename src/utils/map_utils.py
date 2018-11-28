@@ -316,7 +316,7 @@ class MapUtils:
         while total_dist < backward_dist:
             prev_lane_ids = MapUtils.get_upstream_lanes(prev_lane_id)
             if len(prev_lane_ids) == 0:
-                raise UpstreamLaneNotFound("MapUtils._advance_on_plan: Downstream lane not found for lane_id=%d" % (prev_lane_id))
+                raise UpstreamLaneNotFound("MapUtils._advance_on_plan: Upstream lane not found for lane_id=%d" % (prev_lane_id))
             prev_lane_id = prev_lane_ids[0]
             path.append(prev_lane_id)
             total_dist += MapUtils.get_lane_length(prev_lane_id)
