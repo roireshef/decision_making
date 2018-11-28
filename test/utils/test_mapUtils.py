@@ -7,7 +7,8 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.state.state import DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from mapping.src.exceptions import NavigationPlanTooShort, DownstreamLaneNotFound, UpstreamLaneNotFound
+from mapping.src.exceptions import NavigationPlanTooShort, DownstreamLaneNotFound, UpstreamLaneNotFound, \
+    NavigationPlanDoesNotFitMap
 from mapping.src.service.map_service import MapService
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from decision_making.test.planning.custom_fixtures import dyn_obj_outside_road, dyn_obj_on_road
@@ -115,12 +116,10 @@ def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_acc
     assert np.linalg.norm(gff_cpoint - ff_cpoint) < small_dist_err
 
 
-def test_advanceOnPlan():
+def test_advanceOnPlan_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal():
     """
     test the method _advance_on_plan
         validate that total length of output sub segments == lookahead_dist;
-        try lookahead_dist until end of the map
-        test two types of exceptions
     """
     MapService.initialize(MAP_SPLIT)
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
@@ -136,11 +135,37 @@ def test_advanceOnPlan():
     tot_length = sum([seg.s_end - seg.s_start for seg in sub_segments])
     assert np.isclose(tot_length, lookahead_dist)
 
-    # test smaller navigation plan fitting the lookahead distance, and add non-existing road at the end of the plan
-    sub_segments = MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist,
-                                             NavigationPlanMsg(np.array(road_ids[:8] + [1234])))
-    assert len(sub_segments) == 5
 
+def test_advanceOnPlan_navPlanDoesNotFitMap_relevantException():
+    """
+    test the method _advance_on_plan
+        add additional segment to nav_plan that does not exist on the map; validate getting the relevant exception
+    """
+    MapService.initialize(MAP_SPLIT)
+    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    current_road_idx = 3
+    current_ordinal = 1
+    starting_lon = 20.
+    lookahead_dist = 600.
+    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
+    # test navigation plan fitting the lookahead distance, and add non-existing road at the end of the plan
+    # validate getting the relevant exception
+    try:
+        MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist,
+                                  NavigationPlanMsg(np.array(road_ids[:8] + [1234])))
+        assert False
+    except NavigationPlanDoesNotFitMap:
+        pass
+
+
+def test_advanceOnPlan_lookaheadCoversFullMap_validateNoException():
+    """
+    test the method _advance_on_plan
+        run lookahead_dist from the beginning until end of the map
+    """
+    MapService.initialize(MAP_SPLIT)
+    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    current_ordinal = 1
     # test lookahead distance until the end of the map: verify no exception is thrown
     cumulative_distance = 0
     for rid in road_ids:
@@ -150,14 +175,39 @@ def test_advanceOnPlan():
     sub_segments = MapUtils._advance_on_plan(first_lane_id, 0, cumulative_distance, NavigationPlanMsg(np.array(road_ids)))
     assert len(sub_segments) == len(road_ids)
 
-    # test the case when the navigation plan is too short
+
+def test_advanceOnPlan_navPlanTooShort_validateRelevantException():
+    """
+    test the method _advance_on_plan
+        test exception for too short nav plan; validate the relevant exception
+    """
+    MapService.initialize(MAP_SPLIT)
+    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    current_road_idx = 3
+    current_ordinal = 1
+    starting_lon = 20.
+    lookahead_dist = 500.
+    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
+    # test the case when the navigation plan is too short; validate the relevant exception
     try:
         MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist, NavigationPlanMsg(np.array(road_ids[:7])))
         assert False
     except NavigationPlanTooShort:
         pass
 
-    # test the case when the map is too short
+
+def test_advanceOnPlan_lookAheadDistLongerThanMap_validateException():
+    """
+    test the method _advance_on_plan
+        test exception for too short map but nav_plan is long enough; validate the relevant exception
+    """
+    MapService.initialize(MAP_SPLIT)
+    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    current_road_idx = 3
+    current_ordinal = 1
+    starting_lon = 20.
+    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
+    # test the case when the map is too short; validate the relevant exception
     try:
         MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_distance=1000,
                                   navigation_plan=NavigationPlanMsg(np.array(road_ids + [1234])))
@@ -166,12 +216,10 @@ def test_advanceOnPlan():
         pass
 
 
-def test_getUpstreamLanesFromDistance():
+def test_getUpstreamLanesFromDistance_upstreamFiveOutOfTenSegments_validateLength():
     """
      test the method _get_upstream_lanes_from_distance
-         validate that total length of output sub segments == lookahead_dist;
-         try lookahead_dist until start of the map
-         test exceptions
+         validate that total length of output sub segments == lookahead_dist; validate lanes' ordinal
      """
     MapService.initialize(MAP_SPLIT)
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
@@ -182,10 +230,25 @@ def test_getUpstreamLanesFromDistance():
     starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
     lane_ids, final_lon = MapUtils._get_upstream_lanes_from_distance(starting_lane_id, starting_lon, backward_dist)
     tot_length = starting_lon - final_lon
+    # validate: total length of the segments equals to backward_dist and correctness of the segments' ordinal
     for lid in lane_ids[1:]:  # exclude the starting lane
         assert MapUtils.get_lane_ordinal(lid) == current_ordinal
         tot_length += MapUtils.get_lane_length(lid)
     assert np.isclose(tot_length, backward_dist)
+
+
+def test_getUpstreamLanesFromDistance_smallBackwardDist_validateLaneIdAndLength():
+    """
+     test the method _get_upstream_lanes_from_distance
+        test small backward_dist ending on the same lane; validate the same lane_id and final longitude
+     """
+    MapService.initialize(MAP_SPLIT)
+    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    current_road_idx = 7
+    current_ordinal = 1
+    starting_lon = 20.
+    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
+
     # test small backward_dist ending on the same lane
     small_backward_dist = 1
     lane_ids, final_lon = MapUtils._get_upstream_lanes_from_distance(starting_lane_id, starting_lon,
@@ -193,6 +256,15 @@ def test_getUpstreamLanesFromDistance():
     assert lane_ids == [starting_lane_id]
     assert final_lon == starting_lon - small_backward_dist
 
+
+def test_getUpstreamLanesFromDistance_backwardDistForFullMap_validateSegmentsNumberAndFinalLon():
+    """
+     test the method _get_upstream_lanes_from_distance
+         try lookahead_dist until start of the map; validate there are no exceptions and segments number
+     """
+    MapService.initialize(MAP_SPLIT)
+    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    current_ordinal = 1
     # test from the end until start of the map: verify no exception is thrown
     cumulative_distance = 0
     for rid in road_ids:
@@ -201,9 +273,22 @@ def test_getUpstreamLanesFromDistance():
     last_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[-1])[current_ordinal]
     last_lane_length = MapUtils.get_lane_length(last_lane_id)
     lane_ids, final_lon = MapUtils._get_upstream_lanes_from_distance(last_lane_id, last_lane_length, cumulative_distance)
+    # validate the number of segments and final longitude
     assert len(lane_ids) == len(road_ids)
     assert final_lon == 0
 
+
+def test_getUpstreamLanesFromDistance_tooLongBackwardDist_validateRelevantException():
+    """
+     test the method _get_upstream_lanes_from_distance
+         validate the relevant exception
+     """
+    MapService.initialize(MAP_SPLIT)
+    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    current_road_idx = 7
+    current_ordinal = 1
+    starting_lon = 20.
+    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
     # test the case when the map is too short
     try:
         MapUtils._get_upstream_lanes_from_distance(starting_lane_id, starting_lon, backward_dist=1000)
