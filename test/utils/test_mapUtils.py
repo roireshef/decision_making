@@ -22,9 +22,7 @@ def test_isObjectOnRoad_objectOffOfRoad_False(dyn_obj_outside_road: DynamicObjec
     """
     Checking functionality of _is_object_on_road for an object that is off the road.
     """
-    actual_result = MapUtils.is_object_on_road(dyn_obj_outside_road.map_state)
-    expected_result = False
-    assert expected_result == actual_result
+    assert not MapUtils.is_object_on_road(dyn_obj_outside_road.map_state)
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
@@ -32,9 +30,7 @@ def test_isObjectOnRoad_objectOnRoad_True(dyn_obj_on_road: DynamicObject):
     """
     Checking functionality of _is_object_on_road for an object that is on the road.
     """
-    actual_result = MapUtils.is_object_on_road(dyn_obj_on_road.map_state)
-    expected_result = True
-    assert expected_result == actual_result
+    assert MapUtils.is_object_on_road(dyn_obj_on_road.map_state)
 
 
 def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate():
