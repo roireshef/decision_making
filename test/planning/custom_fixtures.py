@@ -1,10 +1,20 @@
-import pytest
 import numpy as np
+import pytest
 
+from common_data.interface.py.idl_generated_files.Rte_Types import LcmPerceivedDynamicObjectList
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectBbox import LcmObjectBbox
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectLocation import LcmObjectLocation
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectTrackingStatus import \
+    LcmObjectTrackingStatus
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectVelocity import LcmObjectVelocity
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmPerceivedDynamicObject import \
+    LcmPerceivedDynamicObject
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
-    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, TIMESTAMP_RESOLUTION_IN_SEC
+    VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.messages.scene_common_messages import Timestamp, Header, MapOrigin
+from decision_making.src.messages.scene_dynamic_message import SceneDynamic, DataSceneDynamic, HostLocalization
 from decision_making.src.messages.trajectory_parameters import SigmoidFunctionParams, TrajectoryCostParams, \
     TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan
@@ -14,20 +24,13 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, DynamicObject, EgoState
-from decision_making.test.pubsub.mock_pubsub import PubSubMock
+from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.test.planning.navigation.mock_navigation_facade import NavigationFacadeMock
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
+from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from decision_making.test.state.mock_state_module import StateModuleMock
-from common_data.interface.py.idl_generated_files.Rte_Types import LcmPerceivedDynamicObjectList
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmPerceivedDynamicObject import LcmPerceivedDynamicObject
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectLocation import LcmObjectLocation
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectBbox import LcmObjectBbox
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectVelocity import LcmObjectVelocity
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectTrackingStatus import LcmObjectTrackingStatus
-
 from rte.python.logger.AV_logger import AV_Logger
-from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 
 UPDATED_TIMESTAMP_PARAM = 'updated_timestamp'
 OLD_TIMESTAMP_PARAM = 'old_timestamp'
@@ -233,6 +236,19 @@ def state_with_old_object(request) -> State:
                                                      size=size, confidence=0)
 
     yield State(occupancy_state, dynamic_objects, ego_state)
+
+
+@pytest.fixture(scope='function')
+def scene_dynamic_fix():
+
+    timestamp = Timestamp.from_seconds(5.0)
+    ego_localization = HostLocalization(20, 0, np.array([0, 0, 0, 1.0, 0.0, 0]), None)
+    header = Header(0, timestamp, 0)
+    data = DataSceneDynamic(True, timestamp, 0, [], ego_localization)
+    map_origin = MapOrigin(0.0, 0.0, 0.0, timestamp)
+    scene_dynamic = SceneDynamic(s_Header=header, s_Data=data, s_MapOrigin=map_origin)
+
+    yield scene_dynamic
 
 
 @pytest.fixture(scope='function')
