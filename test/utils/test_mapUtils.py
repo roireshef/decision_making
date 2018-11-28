@@ -84,45 +84,6 @@ def test_getDistToRoadBorders_rightLane_equalToDistFromRoadBorder():
     assert dist_to_left == lane_width * (len(lane_ids) - 0.5)
 
 
-def test_getLongitudinalDistance():
-    """
-    test method get_longitudinal_distance:
-        validate distance between two points on different road segments
-    """
-    MapService.initialize(MAP_SPLIT)
-    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
-    road_idx1 = 1
-    road_idx2 = 7
-    ordinal = 1
-    lon1 = 10.
-    lon2 = 20.
-    lane_id1 = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[road_idx1])[ordinal]
-    lane_id2 = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[road_idx2])[ordinal]
-    cumulative_distance = -lon1 + lon2
-    for rid in range(road_idx1, road_idx2):
-        lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[rid])[ordinal]
-        cumulative_distance += MapUtils.get_lane_length(lane_id)
-    dist = MapUtils.get_longitudinal_distance(lane_id1, lane_id2, lon1, lon2, max_depth=road_idx2-road_idx1)
-    assert np.isclose(dist, cumulative_distance)
-
-
-def test_getLateralDistanceInLaneUnits_lanesFromDifferentRoadSegments_accordingToOrdinals():
-    """
-    test method get_lateral_distance_in_lane_units:
-        the lateral distance in lane units between two lanes on different road segments
-    """
-    MapService.initialize(MAP_SPLIT)
-    road_idx1 = 1
-    road_idx2 = 7
-    ordinal1 = 0
-    ordinal2 = 2
-    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
-    lane_id1 = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[road_idx1])[ordinal1]
-    lane_id2 = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[road_idx2])[ordinal2]
-    assert MapUtils.get_lateral_distance_in_lane_units(lane_id1, lane_id2, max_depth=road_idx2-road_idx1) == \
-           ordinal2 - ordinal1
-
-
 def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_accurateFrameStartAndLength():
     """
     test method get_lookahead_frenet_frame:
