@@ -142,6 +142,7 @@ class TrajectoryPlanningFacade(DmModule):
                 state_aligned, ctrajectories, params.time - state.ego_state.timestamp_in_sec,
                 self._strategy_handlers[params.strategy].predictor)
 
+            # TODO: uncomment this line when proper visualization messages integrate into the code
             # self._publish_debug(debug_results)
 
             self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
