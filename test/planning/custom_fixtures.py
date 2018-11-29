@@ -29,12 +29,14 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, DynamicObject, EgoState
 from decision_making.src.state.state_module import DynamicObjectsData
+from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.test.planning.navigation.mock_navigation_facade import NavigationFacadeMock
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from decision_making.test.state.mock_state_module import StateModuleMock
+from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
 UPDATED_TIMESTAMP_PARAM = 'updated_timestamp'
@@ -169,9 +171,14 @@ def state_with_old_object(request) -> State:
 
 @pytest.fixture(scope='function')
 def scene_dynamic_fix():
+    lane_id = 200
+    cstate = np.array([1100, 7, 0, 1.0, 0.0, 0])
+
+    frenet = MapUtils.get_lane_frenet_frame(lane_id)
+    fstate = frenet.cstate_to_fstate(cstate)
 
     timestamp = Timestamp.from_seconds(5.0)
-    ego_localization = HostLocalization(20, 0, np.array([0, 0, 0, 1.0, 0.0, 0]), None)
+    ego_localization = HostLocalization(lane_id, 0, cstate, fstate)
     header = Header(0, timestamp, 0)
     data = DataSceneDynamic(True, timestamp, 0, [], ego_localization)
     map_origin = MapOrigin(0.0, 0.0, 0.0, timestamp)
