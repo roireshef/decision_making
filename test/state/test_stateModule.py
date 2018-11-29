@@ -37,13 +37,14 @@ def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(pubsub: Pub
     state_module = StateModule(pubsub=pubsub, logger=logger,
                                scene_dynamic=scene_dynamic_fix)
     state_module.start()
-    #Inserting a object in_fov in order to remember it.
+    # Inserting an object in_fov in order to remember it.
     state_module.create_dyn_obj_list(dynamic_objects_in_fov)
     new_dyn_obj_list = state_module.create_dyn_obj_list(dynamic_objects_not_in_fov)
     assert len(new_dyn_obj_list) == 1
     assert new_dyn_obj_list[0].timestamp == dynamic_objects_in_fov.timestamp
 
-    # the object should be loaded from memory and this is why its location and speed remains the same as in in_fov fixture
+    # The object should be loaded from memory and this is why its location and speed remains the
+    #  same as in in_fov fixture
     assert new_dyn_obj_list[0].x == dynamic_objects_in_fov.dynamic_objects[0].location.x
     assert new_dyn_obj_list[0].y == dynamic_objects_in_fov.dynamic_objects[0].location.y
 
