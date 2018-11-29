@@ -164,22 +164,22 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
     @staticmethod
     def sec_to_ticks(time_in_seconds: float):
+        # type: float -> int
         """
         Convert seconds to ticks (nanoseconds)
         :param time_in_seconds:
         :return: time in ticks (nanoseconds)
         """
-        # type: float -> int
         return int(round(time_in_seconds / TIMESTAMP_RESOLUTION_IN_SEC))
 
     @staticmethod
     def ticks_to_sec(time_in_nanoseconds: int):
+        # type: int -> float
         """
         Convert ticks (nanoseconds) to seconds
         :param time_in_nanoseconds:
         :return: time in seconds
         """
-        # type: int -> float
         return time_in_nanoseconds * TIMESTAMP_RESOLUTION_IN_SEC
 
     @property
