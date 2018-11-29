@@ -1,20 +1,26 @@
 from logging import Logger
 from threading import Lock
 from traceback import format_exc
-from typing import Optional, Any, Dict
+from typing import Optional, Any, Dict, List
 
 import numpy as np
 
 import rte.python.profiler as prof
+from Rte_Types import LcmPerceivedDynamicObjectList
 from common_data.interface.py.idl_generated_files.Rte_Types.TsSYS_SceneDynamic import TsSYSSceneDynamic
 from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import SCENE_DYNAMIC
 from common_data.lcm.config import pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
-from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE
+from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE, \
+    DEFAULT_OBJECT_Z_VALUE, UNKNOWN_DEFAULT_VAL, FILTER_OFF_ROAD_OBJECTS, VELOCITY_MINIMAL_THRESHOLD
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
+from decision_making.src.planning.types import FS_SV
+from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
     DynamicObject, EgoState
+from decision_making.src.utils.map_utils import MapUtils
+from mapping.src.exceptions import MapCellNotFound, raises
 
 
 class StateModule(DmModule):
