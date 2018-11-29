@@ -9,8 +9,8 @@ from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_to
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
-    VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION, \
-    NUM_ALTERNATIVE_TRAJECTORIES, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
+    VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, MAX_VIS_TRAJECTORIES_NUMBER, \
+    REFERENCE_ROUTE_LANE_ID, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
     TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE
 from decision_making.src.infra.dm_module import DmModule
@@ -138,8 +138,8 @@ class TrajectoryPlanningFacade(DmModule):
 
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
-                state_aligned, params.reference_route, ctrajectories, costs,
-                params.time - state.ego_state.timestamp_in_sec, self._strategy_handlers[params.strategy].predictor)
+                state_aligned, ctrajectories, params.time - state.ego_state.timestamp_in_sec,
+                self._strategy_handlers[params.strategy].predictor, params.reference_route)
 
             self._publish_debug(debug_results)
 
@@ -188,7 +188,6 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-
         is_success, input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_LCM, timeout=1)
         object_params = TrajectoryParams.deserialize(input_params)
         self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, object_params)
@@ -219,51 +218,43 @@ class TrajectoryPlanningFacade(DmModule):
         return updated_state
 
     @staticmethod
-    def _prepare_visualization_msg(state: State, reference_route: FrenetSerret2DFrame,
-                                   ctrajectories: CartesianTrajectories, costs: np.ndarray,
-                                   planning_horizon: float, predictor: EgoAwarePredictor):
+    def _prepare_visualization_msg(state: State, ctrajectories: CartesianTrajectories,
+                                   planning_horizon: float, predictor: EgoAwarePredictor,
+                                   reference_route: FrenetSerret2DFrame) -> TrajectoryVisualizationMsg:
         """
         prepares visualization message for visualization purposes
         :param state: short-term prediction aligned state
-        :param reference_route: the reference route got from BP (frenet frame)
         :param ctrajectories: alternative trajectories in cartesian-frame
-        :param costs: costs computed for each alternative trajectory
         :param planning_horizon: [sec] the (relative) planning-horizon used for planning
-        :return:
+        :param predictor: predictor for the actors' predictions
+        :return: trajectory visualization message
         """
+        # TODO: add recipe to trajectory_params for goal's description
+        # slice alternative trajectories by skipping indices - for visualization
+        alternative_ids_skip_range = np.round(np.linspace(0, len(ctrajectories)-1, MAX_VIS_TRAJECTORIES_NUMBER)).astype(int)
+        # slice alternative trajectories by skipping indices - for visualization
+        sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
+
         # this assumes the state is already aligned by short time prediction
         most_recent_timestamp = state.ego_state.timestamp_in_sec
         prediction_timestamps = np.arange(most_recent_timestamp, most_recent_timestamp + planning_horizon,
                                           VISUALIZATION_PREDICTION_RESOLUTION, float)
 
-        # TODO: move this to visualizer!
-        # Currently we are predicting the state at ego's timestamp and at the end of the traj execution time.
-        # predicted_states[0] is the current state
-        # predicted_states[1] is the predicted state in the end of the execution of traj.
-        # TODO: Hack! We need a prediction method for this case which: 1. creates states,
-        # TODO: 2.predicts for more than one timestamp, 3. ego can't be None because LCM doesn't like it.
-        predicted_states_without_ego = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps,
-                                                               action_trajectory=None)
-        predicted_states = [State(occupancy_state=predicted_state.occupancy_state,
-                                  dynamic_objects=predicted_state.dynamic_objects,
-                                  ego_state=state.ego_state) for predicted_state in predicted_states_without_ego]
+        # calculate objects' predictions
+        objects_visualizations = []
+        for i, obj in enumerate(state.dynamic_objects):
+            # calculate predictions only for moving objects, whose map_state was w.r.t. the reference_route (lane_id=0)
+            if obj.map_state.lane_id == REFERENCE_ROUTE_LANE_ID and obj.map_state.lane_fstate is not None \
+                    and obj.cartesian_state[C_V] > 0:
+                obj_fstate = np.array([obj.map_state.lane_fstate])  # w.r.t. the reference_route
+                object_fpredictions = predictor.predict_frenet_states(obj_fstate, prediction_timestamps)[0][:, [FS_SX, FS_DX]]
+                # visualize object's predictions only if they fully lay inside the reference_route range
+                if np.all(object_fpredictions[:, FP_SX] > 0) and np.all(object_fpredictions[:, FP_SX] < reference_route.s_max):
+                    object_cpredictions = reference_route.fpoints_to_cpoints(object_fpredictions)
+                    objects_visualizations.append(PredictionsVisualization(obj.obj_id, object_cpredictions))
 
-        # # downsample reference route for visualization
-        # downsample_skip_factor = max(1, int(DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION // reference_route.ds))
-        # downsampled_reference_points = reference_route.points[::downsample_skip_factor]
-
-        # slice alternative trajectories by skipping indices - for visualization
-        alternative_ids_skip_range = range(0, len(ctrajectories),
-                                           max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
-
-        # slice alternative trajectories by skipping indices - for visualization
-        sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
-        sliced_costs = costs[alternative_ids_skip_range]
-
-        return TrajectoryVisualizationMsg(reference_route.points,
-                                          sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]),
-                                          :C_V],
-                                          sliced_costs,
-                                          predicted_states[0],
-                                          predicted_states[1:],
-                                          planning_horizon)
+        header = Header(0, Timestamp.from_seconds(state.ego_state.timestamp_in_sec), 0)
+        visualization_data = DataTrajectoryVisualization(
+            sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :(C_Y+1)],
+            objects_visualizations, "")
+        return TrajectoryVisualizationMsg(header, visualization_data)

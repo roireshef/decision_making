@@ -141,7 +141,7 @@ ROAD_MAP_REQUIRED_RES = 5
 EXP_CLIP_TH = 50.0
 
 # Number of (best) trajectories to publish to visualization
-NUM_ALTERNATIVE_TRAJECTORIES = 50
+MAX_VIS_TRAJECTORIES_NUMBER = 64
 
 # Number of points in trajectories for sending out to visualization (currently VizTool freezes when there are too much)
 MAX_NUM_POINTS_FOR_VIZ = 60
@@ -164,6 +164,9 @@ TRAJECTORY_NUM_POINTS = 16
 # Waypoints requirements from IDL
 TRAJECTORY_WAYPOINT_SIZE = 11
 MAX_TRAJECTORY_WAYPOINTS = 100
+
+# lane_id of reference route; used in map_state.lane_id of objects whose map_state is calculated w.r.t. reference_route
+REFERENCE_ROUTE_LANE_ID = 0
 
 # Werling Planner #
 
