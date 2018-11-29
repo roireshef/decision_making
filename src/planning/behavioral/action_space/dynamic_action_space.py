@@ -108,15 +108,8 @@ class DynamicActionSpace(ActionSpace):
         # Absolute longitudinal position of target
         target_s = distance_s + ego_init_fstates[:, FS_SX]
 
-        lane_id = ego.map_state.lane_id
-        right_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.RIGHT_LANE)
-        left_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.LEFT_LANE)
-        adjacent_lanes = {RelativeLane.RIGHT_LANE: right_lanes[0] if len(right_lanes) > 0 else None,
-                          RelativeLane.SAME_LANE: lane_id,
-                          RelativeLane.LEFT_LANE: left_lanes[0] if len(left_lanes) > 0 else None}
-
         # lane center has latitude = 0, i.e. spec.d = 0
-        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, adjacent_lanes[relative_lanes_per_action[i]])
+        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, relative_lanes_per_action[i])
                         if ~np.isnan(t) else None
                         for i, t in enumerate(T)]
 

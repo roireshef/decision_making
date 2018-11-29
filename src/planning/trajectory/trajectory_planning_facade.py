@@ -242,11 +242,11 @@ class TrajectoryPlanningFacade(DmModule):
 
         objects_visualizations = []
         for i, obj in enumerate(state.dynamic_objects):
-            wrapped_fstate = np.array([obj.map_state.lane_fstate])
+            fstates = np.array([obj.map_state.lane_fstate])
             if obj.cartesian_state[C_V] > 0:  # calculate predictions only for moving objects
-                object_fpredictions = predictor.predict_frenet_states(wrapped_fstate, prediction_timestamps)[0][:, [FS_SX, FS_DX]]
+                object_fpredictions = predictor.predict_frenet_states(fstates, prediction_timestamps)[0][:, [FS_SX, FS_DX]]
             else:  # leave only current fstate
-                object_fpredictions = wrapped_fstate[..., [FS_SX, FS_DX]]
+                object_fpredictions = fstates[..., [FS_SX, FS_DX]]
             object_frenet = MapUtils.get_lane_frenet_frame(obj.map_state.lane_id)
             object_cpredictions = object_frenet.fpoints_to_cpoints(object_fpredictions)
             objects_visualizations.append(PredictionsVisualization(obj.obj_id, object_cpredictions))
