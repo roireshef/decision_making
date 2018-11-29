@@ -48,7 +48,8 @@ class StaticActionSpace(ActionSpace):
         # get the relevant desired center lane latitude (from road's RHS)
         relative_lanes = [action_recipe.relative_lane for action_recipe in action_recipes]
         # project ego on target lane frenet_frame
-        ego_init_fstates = np.array(ego.project_on_relative_lanes(relative_lanes))
+        projected_fstates = ego.project_on_adjacent_lanes()
+        ego_init_fstates = np.array([projected_fstates[recipe.relative_lane] for recipe in action_recipes])
 
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
