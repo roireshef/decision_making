@@ -210,6 +210,20 @@ class MapUtils:
         return lanes_list
 
     @staticmethod
+    def does_map_exist_backward(lane_id: int, backward_dist: float):
+        """
+        check whether the map contains roads behind the given lane_id far enough (backward_dist)
+        :param lane_id: current lane_id
+        :param backward_dist: distance backward
+        :return: True if the map contains upstream roads for the distance backward_dist
+        """
+        try:
+            MapUtils._get_upstream_lanes_from_distance(lane_id, 0, backward_dist)
+            return True
+        except UpstreamLaneNotFound:
+            return False
+
+    @staticmethod
     def get_lookahead_frenet_frame(lane_id: int, starting_lon: float, lookahead_dist: float,
                                    navigation_plan: NavigationPlanMsg) -> GeneralizedFrenetSerretFrame:
         """
