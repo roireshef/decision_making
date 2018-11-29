@@ -51,317 +51,75 @@ def navigation_plan():
     yield NavigationPlanMsg(np.array([1, 2]))
 
 
-
-
-
-
-
-#
-# @pytest.fixture(scope='function')
-# def dynamic_objects_in_fov():
-#
-#     obj_id = 1
-#     confidence = 1.0
-#     bbox = BoundingBoxSize(2, 2, 2)
-#
-#     location_x = 5
-#     location_y = 1
-#     yaw = 1.107
-#     glob_v_x = 1
-#     glob_v_y = 2
-#
-#     # convert velocity from map coordinates to relative to its own yaw
-#     v_x = np.cos(yaw) * glob_v_x + np.sin(yaw) * glob_v_y
-#     v_y = -np.sin(yaw) * glob_v_x + np.cos(yaw) * glob_v_y
-#     total_v = np.linalg.norm([v_x, v_y])
-#     cartesian_state = np.array([location_x, location_y, yaw, total_v, 0, 0])
-#
-#     dyn_obj.tracking_status = LcmObjectTrackingStatus()
-#     dyn_obj.tracking_status.in_fov = True
-#     dyn_obj.tracking_status.is_predicted = False
-#
-#     objects_localization = [ObjectLocalization(e_Cnt_object_id=obj_id,
-#                                                e_e_object_type=ObjectClassification.CeSYS_e_ObjectClassification_Car,
-#                                                s_bounding_box=bbox, e_Cnt_obj_hypothesis_count=1,
-#                                                as_object_hypothesis=[ObjectHypothesis(e_r_probability=confidence,
-#                                                                                       e_Cnt_lane_segment_id=0,
-#                                                                                       e_e_dynamic_status=ObjectTrackDynamicProperty.CeSYS_e_ObjectTrackDynProp_Unknown,
-#                                                                                       e_Pct_location_uncertainty_x=0,
-#                                                                                       e_Pct_location_uncertainty_y=0,
-#                                                                                       e_Pct_location_uncertainty_yaw=0,
-#                                                                                       e_Cnt_host_lane_frenet_id=0,
-#                                                                                       a_cartesian_pose=cartesian_state,
-#                                                                                       a_lane_frenet_pose=None,
-#                                                                                       a_host_lane_frenet_pose=None)])]
-#     objects = DynamicObjectsData(num_objects=1, objects_localization=objects_localization, timestamp=1)
-#     yield objects
-#
-#
-# @pytest.fixture(scope='function')
-# def dynamic_objects_not_in_fov():
-#
-#     obj_id = 1
-#     confidence = 1.0
-#     bbox = BoundingBoxSize(2, 2, 2)
-#
-#     location_x = 5
-#     location_y = 1
-#     yaw = 0.982
-#     glob_v_x = 2
-#     glob_v_y = 3
-#
-#     # convert velocity from map coordinates to relative to its own yaw
-#     v_x = np.cos(yaw) * glob_v_x + np.sin(yaw) * glob_v_y
-#     v_y = -np.sin(yaw) * glob_v_x + np.cos(yaw) * glob_v_y
-#     total_v = np.linalg.norm([v_x, v_y])
-#     cartesian_state = np.array([location_x, location_y, yaw, total_v, 0, 0])
-#
-#     dyn_obj.tracking_status = LcmObjectTrackingStatus()
-#     dyn_obj.tracking_status.in_fov = True
-#     dyn_obj.tracking_status.is_predicted = False
-#
-#     objects_localization = [ObjectLocalization(e_Cnt_object_id=obj_id,
-#                                                e_e_object_type=ObjectClassification.CeSYS_e_ObjectClassification_Car,
-#                                                s_bounding_box=bbox, e_Cnt_obj_hypothesis_count=1,
-#                                                as_object_hypothesis=[ObjectHypothesis(e_r_probability=confidence,
-#                                                                                       e_Cnt_lane_segment_id=0,
-#                                                                                       e_e_dynamic_status=ObjectTrackDynamicProperty.CeSYS_e_ObjectTrackDynProp_Unknown,
-#                                                                                       e_Pct_location_uncertainty_x=0,
-#                                                                                       e_Pct_location_uncertainty_y=0,
-#                                                                                       e_Pct_location_uncertainty_yaw=0,
-#                                                                                       e_Cnt_host_lane_frenet_id=0,
-#                                                                                       a_cartesian_pose=cartesian_state,
-#                                                                                       a_lane_frenet_pose=None,
-#                                                                                       a_host_lane_frenet_pose=None)])]
-#     objects = DynamicObjectsData(num_objects=1, objects_localization=objects_localization, timestamp=3)
-#     yield objects
-#
-#
-# @pytest.fixture(scope='function')
-# def dynamic_objects_not_on_road():
-#
-#     obj_id = 1
-#     confidence = 1.0
-#     bbox = BoundingBoxSize(2, 2, 2)
-#
-#     location_x = 17
-#     location_y = 17
-#     yaw = 0.982
-#     glob_v_x = 2
-#     glob_v_y = 3
-#
-#     # convert velocity from map coordinates to relative to its own yaw
-#     v_x = np.cos(yaw) * glob_v_x + np.sin(yaw) * glob_v_y
-#     v_y = -np.sin(yaw) * glob_v_x + np.cos(yaw) * glob_v_y
-#     total_v = np.linalg.norm([v_x, v_y])
-#     cartesian_state = np.array([location_x, location_y, yaw, total_v, 0, 0])
-#
-#     dyn_obj.tracking_status = LcmObjectTrackingStatus()
-#     dyn_obj.tracking_status.in_fov = True
-#     dyn_obj.tracking_status.is_predicted = False
-#
-#     objects_localization = [ObjectLocalization(e_Cnt_object_id=obj_id,
-#                                                e_e_object_type=ObjectClassification.CeSYS_e_ObjectClassification_Car,
-#                                                s_bounding_box=bbox, e_Cnt_obj_hypothesis_count=1,
-#                                                as_object_hypothesis=[ObjectHypothesis(e_r_probability=confidence,
-#                                                                                       e_Cnt_lane_segment_id=0,
-#                                                                                       e_e_dynamic_status=ObjectTrackDynamicProperty.CeSYS_e_ObjectTrackDynProp_Unknown,
-#                                                                                       e_Pct_location_uncertainty_x=0,
-#                                                                                       e_Pct_location_uncertainty_y=0,
-#                                                                                       e_Pct_location_uncertainty_yaw=0,
-#                                                                                       e_Cnt_host_lane_frenet_id=0,
-#                                                                                       a_cartesian_pose=cartesian_state,
-#                                                                                       a_lane_frenet_pose=None,
-#                                                                                       a_host_lane_frenet_pose=None)])]
-#     objects = DynamicObjectsData(num_objects=1, objects_localization=objects_localization, timestamp=3)
-#     yield objects
-#
-#
-# @pytest.fixture(scope='function')
-# def dynamic_objects_negative_velocity():
-#
-#     obj_id = 1
-#     confidence = 1.0
-#     bbox = BoundingBoxSize(2, 2, 2)
-#
-#     location_x = 5
-#     location_y = 1
-#     yaw = 3.14
-#     glob_v_x = 1
-#     glob_v_y = 0
-#
-#     # convert velocity from map coordinates to relative to its own yaw
-#     v_x = np.cos(yaw) * glob_v_x + np.sin(yaw) * glob_v_y
-#     v_y = -np.sin(yaw) * glob_v_x + np.cos(yaw) * glob_v_y
-#     total_v = np.linalg.norm([v_x, v_y])
-#     cartesian_state = np.array([location_x, location_y, yaw, total_v, 0, 0])
-#
-#     dyn_obj.tracking_status = LcmObjectTrackingStatus()
-#     dyn_obj.tracking_status.in_fov = True
-#     dyn_obj.tracking_status.is_predicted = False
-#
-#     objects_localization = [ObjectLocalization(e_Cnt_object_id=obj_id,
-#                                                e_e_object_type=ObjectClassification.CeSYS_e_ObjectClassification_Car,
-#                                                s_bounding_box=bbox, e_Cnt_obj_hypothesis_count=1,
-#                                                as_object_hypothesis=[ObjectHypothesis(e_r_probability=confidence,
-#                                                                                       e_Cnt_lane_segment_id=0,
-#                                                                                       e_e_dynamic_status=ObjectTrackDynamicProperty.CeSYS_e_ObjectTrackDynProp_Unknown,
-#                                                                                       e_Pct_location_uncertainty_x=0,
-#                                                                                       e_Pct_location_uncertainty_y=0,
-#                                                                                       e_Pct_location_uncertainty_yaw=0,
-#                                                                                       e_Cnt_host_lane_frenet_id=0,
-#                                                                                       a_cartesian_pose=cartesian_state,
-#                                                                                       a_lane_frenet_pose=None,
-#                                                                                       a_host_lane_frenet_pose=None)])]
-#     objects = DynamicObjectsData(num_objects=1, objects_localization=objects_localization, timestamp=3)
-#     yield objects
-
-
-@pytest.fixture(scope='function')
-def dynamic_objects_in_fov():
-    objects = LcmPerceivedDynamicObjectList()
-
-    objects.timestamp = 1
-
-    dyn_obj = LcmPerceivedDynamicObject()
-    dyn_obj.id = 1
-
-    dyn_obj.location = LcmObjectLocation()
-    dyn_obj.location.x = 5
-    dyn_obj.location.y = 1
-    dyn_obj.location.confidence = 1.0
-
-    dyn_obj.bbox = LcmObjectBbox()
-
-    dyn_obj.bbox.yaw = 1.107
-    dyn_obj.bbox.length = 2
-    dyn_obj.bbox.width = 2
-    dyn_obj.bbox.height = 2
-
-    dyn_obj.velocity = LcmObjectVelocity()
-
-    dyn_obj.velocity.v_x = 1
-    dyn_obj.velocity.v_y = 2
-    dyn_obj.velocity.omega_yaw = 0
-
-    dyn_obj.tracking_status = LcmObjectTrackingStatus()
-    dyn_obj.tracking_status.in_fov = True
-    dyn_obj.tracking_status.is_predicted = False
-
-    objects.num_objects = 1
-    objects.dynamic_objects[0] = dyn_obj
-
-    yield objects
-
-
-@pytest.fixture(scope='function')
-def dynamic_objects_not_in_fov():
-    objects = LcmPerceivedDynamicObjectList()
-
-    objects.timestamp = 3
-
-    dyn_obj = LcmPerceivedDynamicObject()
-    dyn_obj.id = 1
-
-    dyn_obj.location = LcmObjectLocation()
-    dyn_obj.location.x = 5
-    dyn_obj.location.y = 1
-    dyn_obj.location.confidence = 1.0
-
-    dyn_obj.bbox = LcmObjectBbox()
-
-    dyn_obj.bbox.yaw = 0.982
-    dyn_obj.bbox.length = 2
-    dyn_obj.bbox.width = 2
-    dyn_obj.bbox.height = 2
-
-    dyn_obj.velocity = LcmObjectVelocity()
-
-    dyn_obj.velocity.v_x = 2
-    dyn_obj.velocity.v_y = 3
-    dyn_obj.velocity.omega_yaw = 0
-
-    dyn_obj.tracking_status = LcmObjectTrackingStatus()
-    dyn_obj.tracking_status.in_fov = False
-    dyn_obj.tracking_status.is_predicted = False
-
-    objects.num_objects = 1
-    objects.dynamic_objects[0] = dyn_obj
-
-    yield objects
-
-
 @pytest.fixture(scope='function')
 def dynamic_objects_not_on_road():
-    objects = LcmPerceivedDynamicObjectList()
 
-    objects.timestamp = 3
+    obj_id = 1
+    confidence = 1.0
+    bbox = BoundingBoxSize(2, 2, 2)
 
-    dyn_obj = LcmPerceivedDynamicObject()
-    dyn_obj.id = 1
+    location_x = 17
+    location_y = 17
+    yaw = 0.982
+    glob_v_x = 2
+    glob_v_y = 3
 
-    dyn_obj.location = LcmObjectLocation()
-    dyn_obj.location.x = 17
-    dyn_obj.location.y = 17
-    dyn_obj.location.confidence = 1.0
+    # convert velocity from map coordinates to relative to its own yaw
+    v_x = np.cos(yaw) * glob_v_x + np.sin(yaw) * glob_v_y
+    v_y = -np.sin(yaw) * glob_v_x + np.cos(yaw) * glob_v_y
+    total_v = np.linalg.norm([v_x, v_y])
+    cartesian_state = np.array([location_x, location_y, yaw, total_v, 0, 0])
 
-    dyn_obj.bbox = LcmObjectBbox()
-
-    dyn_obj.bbox.yaw = 0.982
-    dyn_obj.bbox.length = 2
-    dyn_obj.bbox.width = 2
-    dyn_obj.bbox.height = 2
-
-    dyn_obj.velocity = LcmObjectVelocity()
-
-    dyn_obj.velocity.v_x = 2
-    dyn_obj.velocity.v_y = 3
-    dyn_obj.velocity.omega_yaw = 0
-
-    dyn_obj.tracking_status = LcmObjectTrackingStatus()
-    dyn_obj.tracking_status.in_fov = True
-    dyn_obj.tracking_status.is_predicted = False
-
-    objects.num_objects = 1
-    objects.dynamic_objects[0] = dyn_obj
-
+    objects_localization = [ObjectLocalization(e_Cnt_object_id=obj_id,
+                                               e_e_object_type=ObjectClassification.CeSYS_e_ObjectClassification_Car,
+                                               s_bounding_box=bbox, e_Cnt_obj_hypothesis_count=1,
+                                               as_object_hypothesis=[ObjectHypothesis(e_r_probability=confidence,
+                                                                                      e_Cnt_lane_segment_id=0,
+                                                                                      e_e_dynamic_status=ObjectTrackDynamicProperty.CeSYS_e_ObjectTrackDynProp_Unknown,
+                                                                                      e_Pct_location_uncertainty_x=0,
+                                                                                      e_Pct_location_uncertainty_y=0,
+                                                                                      e_Pct_location_uncertainty_yaw=0,
+                                                                                      e_Cnt_host_lane_frenet_id=0,
+                                                                                      a_cartesian_pose=cartesian_state,
+                                                                                      a_lane_frenet_pose=None,
+                                                                                      a_host_lane_frenet_pose=None)])]
+    objects = DynamicObjectsData(num_objects=1, objects_localization=objects_localization, timestamp=3)
     yield objects
 
 
 @pytest.fixture(scope='function')
 def dynamic_objects_negative_velocity():
-    objects = LcmPerceivedDynamicObjectList()
 
-    objects.timestamp = 3
+    obj_id = 1
+    confidence = 1.0
+    bbox = BoundingBoxSize(2, 2, 2)
 
-    dyn_obj = LcmPerceivedDynamicObject()
-    dyn_obj.id = 1
+    location_x = 5
+    location_y = 1
+    yaw = 3.14
+    glob_v_x = 1
+    glob_v_y = 0
 
-    dyn_obj.location = LcmObjectLocation()
-    dyn_obj.location.x = 5
-    dyn_obj.location.y = 1
-    dyn_obj.location.confidence = 1.0
+    # convert velocity from map coordinates to relative to its own yaw
+    v_x = np.cos(yaw) * glob_v_x + np.sin(yaw) * glob_v_y
+    v_y = -np.sin(yaw) * glob_v_x + np.cos(yaw) * glob_v_y
+    total_v = np.linalg.norm([v_x, v_y])
+    cartesian_state = np.array([location_x, location_y, yaw, total_v, 0, 0])
 
-    dyn_obj.bbox = LcmObjectBbox()
-
-    dyn_obj.bbox.yaw = 3.14
-    dyn_obj.bbox.length = 2
-    dyn_obj.bbox.width = 2
-    dyn_obj.bbox.height = 2
-
-    dyn_obj.velocity = LcmObjectVelocity()
-
-    dyn_obj.velocity.v_x = 1
-    dyn_obj.velocity.v_y = 0
-    dyn_obj.velocity.omega_yaw = 0
-
-    dyn_obj.tracking_status = LcmObjectTrackingStatus()
-    dyn_obj.tracking_status.in_fov = True
-    dyn_obj.tracking_status.is_predicted = False
-
-    objects.num_objects = 1
-    objects.dynamic_objects[0] = dyn_obj
-
+    objects_localization = [ObjectLocalization(e_Cnt_object_id=obj_id,
+                                               e_e_object_type=ObjectClassification.CeSYS_e_ObjectClassification_Car,
+                                               s_bounding_box=bbox, e_Cnt_obj_hypothesis_count=1,
+                                               as_object_hypothesis=[ObjectHypothesis(e_r_probability=confidence,
+                                                                                      e_Cnt_lane_segment_id=0,
+                                                                                      e_e_dynamic_status=ObjectTrackDynamicProperty.CeSYS_e_ObjectTrackDynProp_Unknown,
+                                                                                      e_Pct_location_uncertainty_x=0,
+                                                                                      e_Pct_location_uncertainty_y=0,
+                                                                                      e_Pct_location_uncertainty_yaw=0,
+                                                                                      e_Cnt_host_lane_frenet_id=0,
+                                                                                      a_cartesian_pose=cartesian_state,
+                                                                                      a_lane_frenet_pose=None,
+                                                                                      a_host_lane_frenet_pose=None)])]
+    objects = DynamicObjectsData(num_objects=1, objects_localization=objects_localization, timestamp=3)
     yield objects
 
 
