@@ -103,11 +103,10 @@ class CostBasedBehavioralPlanner:
         # TODO: assumes everyone on the same road!
 
         # Create ego states, dynamic objects, states and finally behavioral states
-        terminal_ego_fstates = np.array([[spec.s, spec.v, 0, spec.d, 0, 0]
-                                         for i, spec in enumerate(action_specs) if mask[i]])
-        terminal_ego_states = [ego.clone_from_map_state(MapState(terminal_fstate, spec_lane_ids[i]),
+        terminal_ego_states = [ego.clone_from_map_state(MapState(np.array([spec.s, spec.v, 0, spec.d, 0, 0]),
+                                                                 spec_lane_ids[i]),
                                                         ego.timestamp_in_sec + actions_horizons[i])
-                               for i, terminal_fstate in enumerate(terminal_ego_fstates)]
+                               for i, spec in enumerate(action_specs) if mask[i]]
 
         objects_curr_fstates = np.array(
             [dynamic_object.map_state.lane_fstate for dynamic_object in state.dynamic_objects])
@@ -128,8 +127,7 @@ class CostBasedBehavioralPlanner:
 
     @staticmethod
     @prof.ProfileFunction()
-    def _generate_trajectory_specs(behavioral_state: BehavioralGridState,
-                                   action_recipe: ActionRecipe, action_spec: ActionSpec,
+    def _generate_trajectory_specs(behavioral_state: BehavioralGridState, action_spec: ActionSpec,
                                    navigation_plan: NavigationPlanMsg) -> TrajectoryParams:
         """
         Generate trajectory specification for trajectory planner given a SemanticActionSpec. This also
@@ -142,17 +140,20 @@ class CostBasedBehavioralPlanner:
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
         ego = behavioral_state.ego_state
-
+        # calculate adjacent lane_ids
         relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
+        # calculate adjacent lane_id matching to the action_spec
         spec_lane_id = relative_lane_ids[action_spec.relative_lane]
 
+        # calculate projected ego frenet state
         projected_fstates = BehavioralGridState.project_ego_on_adjacent_lanes(ego)
-        ego_init_fstate = projected_fstates[action_recipe.relative_lane]
+        projected_ego_fstate = projected_fstates[action_spec.relative_lane]  # ego projected on the relative lane
 
+        # goal frenet state relative to spec_lane_id
         goal_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
 
         # set the reference route to start with a margin before the current longitudinal position of the vehicle
-        ref_route_start = ego_init_fstate[FS_SX] - REFERENCE_ROUTE_MARGINS
+        ref_route_start = projected_ego_fstate[FS_SX] - REFERENCE_ROUTE_MARGINS
 
         # TODO: remove this hack when using a real map from SP
         # if there is no long enough road behind ego, set ref_route_start = 0
@@ -163,13 +164,17 @@ class CostBasedBehavioralPlanner:
             except UpstreamLaneNotFound:
                 ref_route_start = 0
 
+        # calculate reference route length
         forward_lookahead = action_spec.s - ref_route_start + REFERENCE_ROUTE_MARGINS
         ref_route_length = forward_lookahead * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
+        # create Generalized Frenet Frame (GFF) for TP, which is a part of TrajectoryParams
+        # TODO: this might request longitude that is out of road - figure out how to solve it.
         action_lane_gff = MapUtils.get_lookahead_frenet_frame(
             lane_id=spec_lane_id, starting_lon=ref_route_start, lookahead_dist=ref_route_length,
             navigation_plan=navigation_plan)
 
+        # create cost params, which are part of TrajectoryParams
         cost_params = CostBasedBehavioralPlanner._generate_cost_params(
             map_state=MapState(goal_fstate, spec_lane_id),
             ego_size=ego.size
@@ -179,6 +184,7 @@ class CostBasedBehavioralPlanner:
         # TODO: remove it, when TP will obtain frenet frame
         goal_cstate = MapUtils.get_lane_frenet_frame(spec_lane_id).fstate_to_cstate(goal_fstate)
 
+        # create TrajectoryParams for TP
         trajectory_parameters = TrajectoryParams(reference_route=action_lane_gff,
                                                  time=action_spec.t + ego.timestamp_in_sec,
                                                  target_state=goal_cstate,
@@ -203,7 +209,7 @@ class CostBasedBehavioralPlanner:
 
         # project ego on target lane frenet_frame
         projected_fstates = BehavioralGridState.project_ego_on_adjacent_lanes(ego)
-        ego_init_fstate = projected_fstates[action_recipe.relative_lane]
+        projected_ego_fstate = projected_fstates[action_recipe.relative_lane]  # ego projected on the relative lane
 
         relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
         spec_lane_id = relative_lane_ids[action_spec.relative_lane]
@@ -212,8 +218,8 @@ class CostBasedBehavioralPlanner:
 
         A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_matrix(action_spec.t))
 
-        constraints_s = np.concatenate((ego_init_fstate[FS_SX:(FS_SA + 1)], target_fstate[FS_SX:(FS_SA + 1)]))
-        constraints_d = np.concatenate((ego_init_fstate[FS_DX:(FS_DA + 1)], target_fstate[FS_DX:(FS_DA + 1)]))
+        constraints_s = np.concatenate((projected_ego_fstate[FS_SX:(FS_SA + 1)], target_fstate[FS_SX:(FS_SA + 1)]))
+        constraints_d = np.concatenate((projected_ego_fstate[FS_DX:(FS_DA + 1)], target_fstate[FS_DX:(FS_DA + 1)]))
 
         poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
         poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
