@@ -17,7 +17,7 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import b
     follow_vehicle_recipes_towards_front_cells, state_with_sorrounding_objects, pg_map_api
 
 
-# specifies follow actions for front vehicles in 3 lanes. longitudinal and latitudinal coordinates
+# specifies follow actions for front vehicles in 3 lanes. longitudinal and lateral coordinates
 # of terminal states in action specification should be as expected
 def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCellsWell(
         behavioral_grid_state: BehavioralGridState,
@@ -32,9 +32,8 @@ def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCel
                for recipe in follow_vehicle_recipes_towards_front_cells]
 
     # terminal action-spec latitude equals the current latitude of target vehicle
-    lane_latitudes = [(MapUtils.get_lane_ordinal(action.lane_id) + 0.5) * 3.6 for action in actions]
-    expected_latitudes = [1.8, 1.8, 1.8, 5.4, 5.4, 5.4, 9, 9, 9]
-    latitudes = [action.d + lane_latitudes[i] for i, action in enumerate(actions)]
+    expected_latitudes = [0]*9
+    latitudes = [action.d for i, action in enumerate(actions)]
     np.testing.assert_array_almost_equal(latitudes, expected_latitudes)
 
     # terminal action-spec longitude equals the terminal longitude of target vehicle

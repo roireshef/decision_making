@@ -16,22 +16,6 @@ class MapState(PUBSUB_MSG_IMPL):
         self.lane_fstate = lane_fstate
         self.lane_id = lane_id
 
-    @classmethod
-    def from_cartesian_state(cls, cartesian_state: CartesianExtendedState):
-        # type: (CartesianExtendedState) -> MapState
-        closest_lane_id = MapUtils.get_closest_lane(cartesian_state[:(C_Y+1)])
-        if closest_lane_id:
-            lane_frenet = MapUtils.get_lane_frenet_frame(closest_lane_id)
-            obj_fstate = lane_frenet.cstate_to_fstate(cartesian_state)
-            return cls(obj_fstate, closest_lane_id)
-        else:
-            return cls(None, None)
-
-    def to_cartesian_state(self):
-        # type: () -> CartesianExtendedState
-        lane_frenet = MapUtils.get_lane_frenet_frame(self.lane_id)
-        return lane_frenet.fstate_to_cstate(self.lane_fstate)
-
     def is_on_road(self):
         # type: () -> bool
         """

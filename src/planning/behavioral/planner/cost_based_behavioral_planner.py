@@ -95,14 +95,16 @@ class CostBasedBehavioralPlanner:
         """
         # create a new behavioral state at the action end
         ego = state.ego_state
-        terminal_lanes_id = [spec.lane_id for i, spec in enumerate(action_specs) if mask[i]]
+
+        relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
+        spec_lane_ids = [relative_lane_ids[spec.relative_lane] for i, spec in enumerate(action_specs) if mask[i]]
         actions_horizons = np.array([spec.t for i, spec in enumerate(action_specs) if mask[i]])
         # TODO: assumes everyone on the same road!
 
         # Create ego states, dynamic objects, states and finally behavioral states
         terminal_ego_fstates = np.array([[spec.s, spec.v, 0, spec.d, 0, 0]
                                          for i, spec in enumerate(action_specs) if mask[i]])
-        terminal_ego_states = [ego.clone_from_map_state(MapState(terminal_fstate, terminal_lanes_id[i]),
+        terminal_ego_states = [ego.clone_from_map_state(MapState(terminal_fstate, spec_lane_ids[i]),
                                                         ego.timestamp_in_sec + actions_horizons[i])
                                for i, terminal_fstate in enumerate(terminal_ego_fstates)]
 
@@ -112,7 +114,7 @@ class CostBasedBehavioralPlanner:
         terminal_dynamic_objects = [
             [dynamic_object.clone_from_map_state(MapState(objects_terminal_fstates[i][j], lane_id))
              for i, dynamic_object in enumerate(state.dynamic_objects)]
-            for j, lane_id in enumerate(terminal_lanes_id)]
+            for j, lane_id in enumerate(spec_lane_ids)]
 
         terminal_states = [
             state.clone_with(dynamic_objects=terminal_dynamic_objects[i], ego_state=terminal_ego_states[i])
@@ -140,8 +142,13 @@ class CostBasedBehavioralPlanner:
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
         ego = behavioral_state.ego_state
+
+        relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
+        spec_lane_id = relative_lane_ids[action_spec.relative_lane]
+
         # ego Frenet state projected on the target lane segment (adjacent to ego or lane of ego)
-        ego_spec_fstate = ego.project_on_relative_lanes([action_recipe.relative_lane])[0]
+        projected_fstates = BehavioralGridState.project_ego_on_adjacent_lanes(ego)
+        ego_spec_fstate = projected_fstates[action_recipe.relative_lane]
 
         # goal Frenet state w.r.t. the target lane segment
         goal_spec_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
@@ -154,7 +161,7 @@ class CostBasedBehavioralPlanner:
         if ref_route_start < 0:
             try:
                 backward_lane_ids, backward_lane_s = \
-                    MapUtils._get_upstream_lanes_from_distance(action_spec.lane_id, 0, -ref_route_start)
+                    MapUtils._get_upstream_lanes_from_distance(spec_lane_id, 0, -ref_route_start)
             except UpstreamLaneNotFound:
                 ref_route_start = 0
 
@@ -162,7 +169,7 @@ class CostBasedBehavioralPlanner:
         ref_route_length = forward_lookahead * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
         action_lane_gff = MapUtils.get_lookahead_frenet_frame(
-            lane_id=action_spec.lane_id, starting_lon=ref_route_start, lookahead_dist=ref_route_length,
+            lane_id=spec_lane_id, starting_lon=ref_route_start, lookahead_dist=ref_route_length,
             navigation_plan=navigation_plan)
 
         ego_reference_fstate = action_lane_gff.convert_from_segment_state(frenet_state=ego_spec_fstate,
@@ -173,7 +180,9 @@ class CostBasedBehavioralPlanner:
         goal_segment_id, goal_segment_fstate = action_lane_gff.convert_to_segment_state(goal_reference_fstate)
 
         cost_params = CostBasedBehavioralPlanner._generate_cost_params(
-            map_state=MapState(goal_segment_fstate, goal_segment_id), ego_size=ego.size)
+            map_state=MapState(goal_segment_fstate, spec_lane_id),
+            ego_size=ego.size
+        )
 
         # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)
         goal_cstate = action_lane_gff.fstate_to_cstate(goal_reference_fstate)

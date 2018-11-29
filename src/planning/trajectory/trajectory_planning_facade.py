@@ -148,7 +148,8 @@ class TrajectoryPlanningFacade(DmModule):
                 state_aligned, ctrajectories, params.time - state.ego_state.timestamp_in_sec,
                 self._strategy_handlers[params.strategy].predictor, params.reference_route)
 
-            self._publish_debug(debug_results)
+            # TODO: uncomment this line when proper visualization messages integrate into the code
+            # self._publish_debug(debug_results)
 
             self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
             MetricLogger.get_logger().report()
@@ -236,32 +237,4 @@ class TrajectoryPlanningFacade(DmModule):
         :param predictor: predictor for the actors' predictions
         :return: trajectory visualization message
         """
-        # TODO: add recipe to trajectory_params for goal's description
-        # slice alternative trajectories by skipping indices - for visualization
-        alternative_ids_skip_range = np.round(np.linspace(0, len(ctrajectories)-1, MAX_VIS_TRAJECTORIES_NUMBER)).astype(int)
-        # slice alternative trajectories by skipping indices - for visualization
-        sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
-
-        # this assumes the state is already aligned by short time prediction
-        most_recent_timestamp = state.ego_state.timestamp_in_sec
-        prediction_timestamps = np.arange(most_recent_timestamp, most_recent_timestamp + planning_horizon,
-                                          VISUALIZATION_PREDICTION_RESOLUTION, float)
-
-        # calculate objects' predictions
-        objects_visualizations = []
-        for i, obj in enumerate(state.dynamic_objects):
-            # calculate predictions only for moving objects, whose map_state was w.r.t. the reference_route (lane_id=0)
-            if obj.map_state.lane_id == REFERENCE_ROUTE_LANE_ID and obj.map_state.lane_fstate is not None \
-                    and obj.cartesian_state[C_V] > 0:
-                obj_fstate = np.array([obj.map_state.lane_fstate])  # w.r.t. the reference_route
-                object_fpredictions = predictor.predict_frenet_states(obj_fstate, prediction_timestamps)[0][:, [FS_SX, FS_DX]]
-                # visualize object's predictions only if they fully lay inside the reference_route range
-                if np.all(object_fpredictions[:, FP_SX] > 0) and np.all(object_fpredictions[:, FP_SX] < reference_route.s_max):
-                    object_cpredictions = reference_route.fpoints_to_cpoints(object_fpredictions)
-                    objects_visualizations.append(PredictionsVisualization(obj.obj_id, object_cpredictions))
-
-        header = Header(0, Timestamp.from_seconds(state.ego_state.timestamp_in_sec), 0)
-        visualization_data = DataTrajectoryVisualization(
-            sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :(C_Y+1)],
-            objects_visualizations, "")
-        return TrajectoryVisualizationMsg(header, visualization_data)
+        pass

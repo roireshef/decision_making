@@ -53,7 +53,7 @@ class DynamicActionSpace(ActionSpace):
 
         relative_lanes_per_action = [recipe.relative_lane for recipe in action_recipes]
         # project ego on target lane frenet_frame
-        projected_fstates = ego.project_on_adjacent_lanes()
+        projected_fstates = BehavioralGridState.project_ego_on_adjacent_lanes(ego)
         ego_init_fstates = np.array([projected_fstates[recipe.relative_lane] for recipe in action_recipes])
 
         target_length = np.array([target.dynamic_object.size.length for target in targets])
@@ -112,7 +112,7 @@ class DynamicActionSpace(ActionSpace):
         target_s = distance_s + ego_init_fstates[:, FS_SX]
 
         # lane center has latitude = 0, i.e. spec.d = 0
-        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, relative_lane_ids[relative_lanes_per_action[i]])
+        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, relative_lanes_per_action[i])
                         if ~np.isnan(t) else None
                         for i, t in enumerate(T)]
 

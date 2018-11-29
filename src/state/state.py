@@ -139,32 +139,18 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def cartesian_state(self):
         # type: () -> CartesianExtendedState
         if self._cached_cartesian_state is None:
-            self._cached_cartesian_state = self._cached_map_state.to_cartesian_state()
+            lane_frenet = MapUtils.get_lane_frenet_frame(self.map_state.lane_id)
+            self._cached_cartesian_state = lane_frenet.fstate_to_cstate(self.map_state.lane_fstate)
         return self._cached_cartesian_state
 
     @property
     def map_state(self):
         # type: () -> MapState
         if self._cached_map_state is None:
-            self._cached_map_state = MapState.from_cartesian_state(self._cached_cartesian_state)
+            closest_lane_id = MapUtils.get_closest_lane(self.cartesian_state[:(C_Y+1)])
+            lane_frenet = MapUtils.get_lane_frenet_frame(closest_lane_id)
+            self._cached_map_state = MapState(lane_frenet.cstate_to_fstate(self.cartesian_state), closest_lane_id)
         return self._cached_map_state
-
-    def project_on_adjacent_lanes(self) -> Dict[RelativeLane, FrenetState2D]:
-        """
-        project cartesian state on the existing adjacent lanes
-        :return: dictionary mapping between existing relative lane (adjacent to lane_id) to Frenet state
-                                                                        projected on the adjacent Frenet frame
-        """
-        projected_fstates: Dict[RelativeLane, FrenetState2D] = {}
-        for rel_lane in RelativeLane:
-            if rel_lane == RelativeLane.SAME_LANE:
-                projected_fstates[rel_lane] = self.map_state.lane_fstate
-            else:
-                adjacent_lane_ids = MapUtils.get_adjacent_lanes(self.map_state.lane_id, rel_lane)
-                if len(adjacent_lane_ids) > 0:
-                    adjacent_frenet = MapUtils.get_lane_frenet_frame(adjacent_lane_ids[0])
-                    projected_fstates[rel_lane] = adjacent_frenet.cstate_to_fstate(self.cartesian_state)
-        return projected_fstates
 
     @staticmethod
     def sec_to_ticks(time_in_seconds: float):

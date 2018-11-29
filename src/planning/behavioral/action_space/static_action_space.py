@@ -48,7 +48,7 @@ class StaticActionSpace(ActionSpace):
         # get the relevant desired center lane latitude (from road's RHS)
         relative_lanes = [action_recipe.relative_lane for action_recipe in action_recipes]
         # project ego on target lane frenet_frame
-        projected_fstates = ego.project_on_adjacent_lanes()
+        projected_fstates = BehavioralGridState.project_ego_on_adjacent_lanes(ego)
         ego_init_fstates = np.array([projected_fstates[recipe.relative_lane] for recipe in action_recipes])
 
         # get relevant aggressiveness weights for all actions
@@ -86,15 +86,8 @@ class StaticActionSpace(ActionSpace):
         # Absolute longitudinal position of target
         target_s = distance_s + ego_init_fstates[:, FS_SX]
 
-        lane_id = ego.map_state.lane_id
-        right_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.RIGHT_LANE)
-        left_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.LEFT_LANE)
-        adjacent_lanes = {RelativeLane.RIGHT_LANE: right_lanes[0] if len(right_lanes) > 0 else None,
-                          RelativeLane.SAME_LANE: lane_id,
-                          RelativeLane.LEFT_LANE: left_lanes[0] if len(left_lanes) > 0 else None}
-
         # lane center has latitude = 0, i.e. spec.d = 0
-        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, adjacent_lanes[relative_lanes[i]])
+        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, relative_lanes[i])
                         if ~np.isnan(t) else None
                         for i, t in enumerate(T)]
 

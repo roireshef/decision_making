@@ -54,10 +54,11 @@ class MapUtils:
     @staticmethod
     def get_adjacent_lanes(lane_id: int, relative_lane: RelativeLane) -> List[int]:
         """
-        get sorted adjacent (right/left) lanes relative to the given lane segment
+        get sorted adjacent (right/left) lanes relative to the given lane segment, or empty list if no adjacent lanes
         :param lane_id:
         :param relative_lane: either right or left
-        :return: adjacent lanes ids sorted by their distance from the given lane
+        :return: adjacent lanes ids sorted by their distance from the given lane;
+                    if there are no such lanes, return empty list []
         """
         assert relative_lane != RelativeLane.SAME_LANE, "adjacent lanes can be either from LEFT or RIGHT side"
         map_api = MapService.get_instance()

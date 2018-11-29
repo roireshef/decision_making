@@ -79,7 +79,8 @@ class TrajectoryPlannerCosts:
                                                  if obj.map_state.lane_fstate is not None])
 
             # Predict objects' future movement, then project predicted objects' states to Cartesian frame
-            # TODO: if an object is located on another road than reference_route, its prediction may be wrong
+            # TODO: objects' frenet states relative to ego should be part of Scene Provider!!
+            # TODO: this assumes predictor works with frenet frames relative to ego-lane - figure out if this is how we want to do it in the future.
             objects_predicted_ftrajectories = predictor.predict_frenet_states(
                 objects_relative_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
             objects_predicted_ctrajectories = reference_route.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
