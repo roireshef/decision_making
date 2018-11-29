@@ -14,10 +14,9 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
     LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
     TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE, REFERENCE_ROUTE_LANE_ID
 from decision_making.src.infra.dm_module import DmModule
-from decision_making.src.messages.common_message import Header, Timestamp
+from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
-from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan, DataTrajectoryPlan, Header, Timestamp, \
-    MapOrigin
+from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan, DataTrajectoryPlan
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg, \
     PredictionsVisualization, DataTrajectoryVisualization
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
@@ -239,8 +238,7 @@ class TrajectoryPlanningFacade(DmModule):
         """
         # TODO: add recipe to trajectory_params for goal's description
         # slice alternative trajectories by skipping indices - for visualization
-        alternative_ids_skip_range = \
-            range(0, len(ctrajectories), max(int(len(ctrajectories) / MAX_VIS_TRAJECTORIES_NUMBER), 1))[:MAX_VIS_TRAJECTORIES_NUMBER]
+        alternative_ids_skip_range = np.round(np.linspace(0, len(ctrajectories)-1, MAX_VIS_TRAJECTORIES_NUMBER)).astype(int)
         # slice alternative trajectories by skipping indices - for visualization
         sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
 
@@ -262,8 +260,7 @@ class TrajectoryPlanningFacade(DmModule):
                     object_cpredictions = reference_route.fpoints_to_cpoints(object_fpredictions)
                     objects_visualizations.append(PredictionsVisualization(obj.obj_id, object_cpredictions))
 
-        ego_time = state.ego_state.timestamp_in_sec
-        header = Header(0, Timestamp(int(np.floor(ego_time)), int((ego_time % 1) * 2**32)), 0)
+        header = Header(0, Timestamp.from_seconds(state.ego_state.timestamp_in_sec), 0)
         visualization_data = DataTrajectoryVisualization(
             sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :(C_Y+1)],
             objects_visualizations, "")

@@ -1,9 +1,8 @@
+import numpy as np
+import six
 from abc import abstractmethod, ABCMeta
 from logging import Logger
 from typing import Optional, List, Dict
-
-import numpy as np
-import six
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, TRAJECTORY_ARCLEN_RESOLUTION, \
@@ -27,12 +26,12 @@ from decision_making.src.planning.trajectory.samplable_werling_trajectory import
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, ObjectSize, EgoState
 from decision_making.src.utils.map_utils import MapUtils
+from mapping.src.exceptions import UpstreamLaneNotFound
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 
 
@@ -150,41 +149,36 @@ class CostBasedBehavioralPlanner:
         # set the reference route to start with a margin before the current longitudinal position of the vehicle
         ref_route_start = ego_spec_fstate[FS_SX] - REFERENCE_ROUTE_MARGINS
 
+        # TODO: remove this hack when using a real map from SP
+        # if there is no long enough road behind ego, set ref_route_start = 0
+        if ref_route_start < 0:
+            try:
+                backward_lane_ids, backward_lane_s = \
+                    MapUtils._get_upstream_lanes_from_distance(action_spec.lane_id, 0, -ref_route_start)
+            except UpstreamLaneNotFound:
+                ref_route_start = 0
+
         forward_lookahead = action_spec.s - ref_route_start + REFERENCE_ROUTE_MARGINS
-        # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
-        # caused by the curve linearization approximation in the resampling process
-        # The compensation here is multiplicative because of the different curve-fittings we use:
-        # in BP we use piecewise-linear and in TP we use cubic-fit.
-        # Due to that, a point's longitude-value will be different between the 2 curves.
-        # This error is accumulated depending on the actual length of the curvature -
-        # when it is long, the error will potentially be big.
         ref_route_length = forward_lookahead * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
-        # create generalized Frenet frame along lanes-center of a few lane segments
-        center_lane_reference_route = MapUtils.get_lookahead_frenet_frame(
+        action_lane_gff = MapUtils.get_lookahead_frenet_frame(
             lane_id=action_spec.lane_id, starting_lon=ref_route_start, lookahead_dist=ref_route_length,
             navigation_plan=navigation_plan)
 
-        ego_reference_fstate = center_lane_reference_route.convert_from_segment_state(frenet_state=ego_spec_fstate,
-                                                                                      segment_id=action_spec.lane_id)
-        goal_reference_fstate = center_lane_reference_route.convert_from_segment_state(frenet_state=goal_spec_fstate,
-                                                                                       segment_id=action_spec.lane_id)
+        ego_reference_fstate = action_lane_gff.convert_from_segment_state(frenet_state=ego_spec_fstate,
+                                                                          segment_id=action_spec.lane_id)
+        goal_reference_fstate = action_lane_gff.convert_from_segment_state(frenet_state=goal_spec_fstate,
+                                                                           segment_id=action_spec.lane_id)
 
-        goal_segment_id, goal_segment_fstate = center_lane_reference_route.convert_to_segment_state(goal_reference_fstate)
+        goal_segment_id, goal_segment_fstate = action_lane_gff.convert_to_segment_state(goal_reference_fstate)
 
         cost_params = CostBasedBehavioralPlanner._generate_cost_params(
             map_state=MapState(goal_segment_fstate, goal_segment_id), ego_size=ego.size)
 
         # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)
-        goal_cstate = center_lane_reference_route.fstate_to_cstate(goal_reference_fstate)
+        goal_cstate = action_lane_gff.fstate_to_cstate(goal_reference_fstate)
 
-        # np.set_printoptions(suppress=True)
-        # print('BP: time=%f\nego=%s\nBP: goal=%s' % (ego.timestamp_in_sec, ego.cartesian_state, goal_cstate))
-
-        # TODO: use GFF center_lane_reference_route after changing Rte_Types.pubpub
-        reference_frenet_frame = FrenetSerret2DFrame.fit(center_lane_reference_route.points)
-
-        trajectory_parameters = TrajectoryParams(reference_route=reference_frenet_frame,
+        trajectory_parameters = TrajectoryParams(reference_route=action_lane_gff,
                                                  time=action_spec.t + ego.timestamp_in_sec,
                                                  target_state=goal_cstate,
                                                  cost_params=cost_params,

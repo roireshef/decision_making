@@ -127,7 +127,7 @@ class BehavioralGridState(BehavioralState):
                                             unified_frames, ego_state, objects_segment_ids, objects_segment_fstates)
 
         # for objects on non-adjacent lane set relative_lanes[i] = None
-        rel_lanes_per_obj: List[RelativeLane] = [None]*len(dynamic_objects)
+        rel_lanes_per_obj: List[RelativeLane] = [None] * len(dynamic_objects)
         for rel_lane in relative_lane_ids:
             # find all dynamic objects that belong to the current unified frame
             relevant_objects = unified_frames[rel_lane].has_segment_ids(objects_segment_ids)
@@ -151,8 +151,8 @@ class BehavioralGridState(BehavioralState):
         unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame] = {}
         for rel_lane in adjacent_lanes_dict:
             unified_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
-                lane_id=adjacent_lanes_dict[rel_lane], starting_lon = -PLANNING_LOOKAHEAD_DIST,
-                lookahead_dist = 2*PLANNING_LOOKAHEAD_DIST, navigation_plan=nav_plan)
+                lane_id=adjacent_lanes_dict[rel_lane], starting_lon=-PLANNING_LOOKAHEAD_DIST,
+                lookahead_dist=2 * PLANNING_LOOKAHEAD_DIST, navigation_plan=nav_plan)
         return unified_frames
 
     @staticmethod

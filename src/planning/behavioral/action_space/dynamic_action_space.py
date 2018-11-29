@@ -111,6 +111,7 @@ class DynamicActionSpace(ActionSpace):
         # Absolute longitudinal position of target
         target_s = distance_s + ego_init_fstates[:, FS_SX]
 
+        # lane center has latitude = 0, i.e. spec.d = 0
         action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, relative_lane_ids[relative_lanes[i]])
                         if ~np.isnan(t) else None
                         for i, t in enumerate(T)]

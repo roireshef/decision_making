@@ -35,7 +35,11 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         self.N = N
         self.k = k
         self.k_tag = k_tag
-        self.ds = ds
+        self._ds = ds
+
+    @property
+    def ds(self):
+        return self._ds
 
     @classmethod
     def fit(cls, spline_points: CartesianPath2D, ds: float = TRAJECTORY_ARCLEN_RESOLUTION,

@@ -92,6 +92,7 @@ class StaticActionSpace(ActionSpace):
                           RelativeLane.SAME_LANE: lane_id,
                           RelativeLane.LEFT_LANE: left_lanes[0] if len(left_lanes) > 0 else None}
 
+        # lane center has latitude = 0, i.e. spec.d = 0
         action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, adjacent_lanes[relative_lanes[i]])
                         if ~np.isnan(t) else None
                         for i, t in enumerate(T)]

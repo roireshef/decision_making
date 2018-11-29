@@ -142,7 +142,7 @@ class StateModule(DmModule):
                     if not FILTER_OFF_ROAD_OBJECTS or dyn_obj.map_state.is_on_road():
 
                         # Required to verify the object has map state and that the velocity exceeds a minimal value.
-                        # If FILTER_OFF_ROAD_OBJECTS is true, it means that the object is on road - therfore has map
+                        # If FILTER_OFF_ROAD_OBJECTS is true, it means that the object is on road - therefore has map
                         # state
                         if FILTER_OFF_ROAD_OBJECTS and dyn_obj.map_state.lane_fstate[FS_SV] < VELOCITY_MINIMAL_THRESHOLD:
                             thresholded_lane_fstate = np.copy(dyn_obj.map_state.lane_fstate)

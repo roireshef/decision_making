@@ -2,11 +2,12 @@ from typing import List, Dict, Tuple, Optional
 
 import numpy as np
 
+from decision_making.src.global_constants import EPS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import FP_DX, C_X, C_Y, CartesianPoint2D, FrenetPoint, FP_SX
+from decision_making.src.planning.types import FP_DX, FP_SX, C_X, C_Y, CartesianPoint2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from mapping.src.exceptions import raises, LongitudeOutOfRoad, RoadNotFound, NextRoadNotFound, DownstreamLaneNotFound, \
+from mapping.src.exceptions import raises, RoadNotFound, NextRoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound
 from mapping.src.service.map_service import MapService
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
@@ -14,7 +15,6 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
 
 
 class MapUtils:
-
     @staticmethod
     def get_road_segment_id_from_lane_id(lane_id: int) -> int:
         """
@@ -79,15 +79,13 @@ class MapUtils:
         """
         right_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.RIGHT_LANE)
         left_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.LEFT_LANE)
-        rel_lane_dict = {RelativeLane.SAME_LANE: lane_id}
-        if len(right_lanes) > 0:
-            rel_lane_dict[RelativeLane.RIGHT_LANE] = right_lanes[0]
-        if len(left_lanes) > 0:
-            rel_lane_dict[RelativeLane.LEFT_LANE] = left_lanes[0]
-        return rel_lane_dict
+        return {RelativeLane.RIGHT_LANE: right_lanes[0] if len(right_lanes) > 0 else None,
+                RelativeLane.SAME_LANE: lane_id,
+                RelativeLane.LEFT_LANE: left_lanes[0] if len(left_lanes) > 0 else None}
 
     # TODO: Remove it after introduction of the new mapping module. Avoid using this function once SP output is available.
     @staticmethod
+    @raises(RoadNotFound)
     def get_closest_lane(cartesian_point: CartesianPoint2D, road_segment_id: int = None) -> int:
         """
         given cartesian coordinates, find the closest lane to the point
@@ -96,11 +94,13 @@ class MapUtils:
         :return: closest lane segment id
         """
         map_api = MapService.get_instance()
+        relevant_road_ids = map_api._find_roads_containing_point(cartesian_point[C_X], cartesian_point[C_Y])
         if road_segment_id is None:
             # find the closest road segment
-            relevant_road_ids = map_api._find_roads_containing_point(cartesian_point[C_X], cartesian_point[C_Y])
             closest_road_id = map_api._find_closest_road(cartesian_point[C_X], cartesian_point[C_Y], relevant_road_ids)
         else:
+            if road_segment_id not in relevant_road_ids:
+                raise RoadNotFound("road_segment_id=%d does not contain the given point", road_segment_id)
             closest_road_id = road_segment_id
 
         # find the closest lane segment, given the closest road segment
@@ -222,26 +222,24 @@ class MapUtils:
         :return: generalized Frenet frame for the given route part
         """
         # find the starting point
-        if starting_lon < 0:  # the starting point is behind lane_id
+        if starting_lon <= 0:  # the starting point is behind lane_id
             lane_ids, init_lon = MapUtils._get_upstream_lanes_from_distance(lane_id, 0, -starting_lon)
             init_lane_id = lane_ids[-1]
         else:  # the starting point is within or after lane_id
             init_lane_id, init_lon = lane_id, starting_lon
 
         # get the full lanes path
-        lane_subsegments = MapUtils._advance_on_plan(init_lane_id, init_lon, lookahead_dist, navigation_plan)
+        sub_segments = MapUtils._advance_on_plan(init_lane_id, init_lon, lookahead_dist, navigation_plan)
         # create sub-segments for GFF
-        frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment[0]) for sub_segment in lane_subsegments]
-        frenet_sub_segments = [FrenetSubSegment(seg[0], seg[1], seg[2], frenet_frames[i].ds)
-                               for i, seg in enumerate(lane_subsegments)]
+        frenet_frames = [MapUtils.get_lane_frenet_frame(sub_segment.segment_id) for sub_segment in sub_segments]
         # create GFF
-        gff = GeneralizedFrenetSerretFrame.build(frenet_frames, frenet_sub_segments)
+        gff = GeneralizedFrenetSerretFrame.build(frenet_frames, sub_segments)
         return gff
 
     @staticmethod
     @raises(RoadNotFound, DownstreamLaneNotFound)
     def _advance_on_plan(initial_lane_id: int, initial_s: float, lookahead_distance: float,
-                         navigation_plan: NavigationPlanMsg) -> List[Tuple[int, float, float]]:
+                         navigation_plan: NavigationPlanMsg) -> List[FrenetSubSegment]:
         """
         Given a longitudinal position <initial_s> on lane segment <initial_lane_id>, advance <lookahead_distance>
         further according to <navigation_plan>, and finally return a configuration of lane-subsegments.
@@ -269,20 +267,22 @@ class MapUtils:
                                         current_segment_start_s + lookahead_distance - cumulative_distance)
 
             # add subsegment to the list and add traveled distance to <cumulative_distance> sum
-            lane_subsegments.append((current_lane_id, current_segment_start_s, current_segment_end_s))
+            lane_subsegments.append(FrenetSubSegment(current_lane_id, current_segment_start_s, current_segment_end_s))
             cumulative_distance += current_segment_end_s - current_segment_start_s
 
-            if cumulative_distance >= lookahead_distance:
+            if cumulative_distance > lookahead_distance - EPS:
                 break
 
-            if current_road_idx_on_plan + 1 >= len(navigation_plan.road_ids):
-                cumulative_distance=cumulative_distance
-                raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m])" %
-                                             (navigation_plan, lookahead_distance - cumulative_distance))
+            next_road_idx_on_plan = current_road_idx_on_plan + 1
+            if next_road_idx_on_plan > len(navigation_plan.road_ids) - 1:
+                raise NavigationPlanTooShort("Cannot progress further on plan %s (leftover: %s [m]); "
+                                             "current_segment_end_s=%f lookahead_distance=%f" %
+                                             (navigation_plan, lookahead_distance - cumulative_distance,
+                                              current_segment_end_s, lookahead_distance))
 
             # pull next road segment from the navigation plan, then look for the downstream lane segment on this
             # road segment. This assumes a single correct downstream segment.
-            next_road_segment_id_on_plan = navigation_plan.road_ids[current_road_idx_on_plan + 1]
+            next_road_segment_id_on_plan = navigation_plan.road_ids[next_road_idx_on_plan]
             downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
 
             if len(downstream_lanes_ids) == 0:
@@ -298,156 +298,9 @@ class MapUtils:
 
             current_lane_id = downstream_lanes_ids_on_plan[0]
             current_segment_start_s = 0
-            current_road_idx_on_plan += 1
+            current_road_idx_on_plan = next_road_idx_on_plan
 
         return lane_subsegments
-
-    @staticmethod
-    def get_longitudinal_distance(lane_id1: int, lane_id2: int, longitude1: float, longitude2: float) -> Optional[float]:
-        """
-        Get longitudinal distance between two points located on lane centers, along lanes path starting from lane_id1.
-        lane_id2 must be down/upstream of lane_id1.
-        :param lane_id1: lane segment of the first point
-        :param lane_id2: lane segment of the second point
-        :param longitude1: longitude of the first point relative to lane_id1
-        :param longitude2: longitude of the second point relative to lane_id2
-        :return: longitudinal difference between the second point and the first point;
-        if lane_id1 is ahead of lane_id2, then return negative distance;
-        if lane_id2 is not down/upstream of lane_id1, then return None
-        """
-        connecting_lanes, is_forward = MapUtils._get_path_between_lane_segments(lane_id1, lane_id2)
-        if len(connecting_lanes) == 0 or connecting_lanes[-1] != lane_id2:
-            return None
-        sign = 1 if is_forward else -1
-        lanes_excluding_front_lane = connecting_lanes[:-1] if is_forward else connecting_lanes[1:]
-        connecting_lengths = [MapUtils.get_lane_length(lid) for lid in lanes_excluding_front_lane]
-        return sign * sum(connecting_lengths) + longitude2 - longitude1
-
-    @staticmethod
-    def get_lateral_distance_in_lane_units(lane_id1: int, lane_id2: int) -> Optional[int]:
-        """
-        Get lateral distance in lanes (difference between relative ordinals) between two lane segments.
-        For example, if one of the given lanes is subsequent downstream/upstream of another lane, return 0.
-        :param lane_id1:
-        :param lane_id2:
-        :return: Difference between lane ordinal of lane_id2 and subsequent downstream/upstream of lane_id1.
-        If the given lanes are not in subsequent road segments, return None.
-        """
-        connecting_lanes, _ = MapUtils._get_path_between_lane_segments(lane_id1, lane_id2)
-        if len(connecting_lanes) == 0:
-            return None
-        return MapUtils.get_lane_ordinal(lane_id2) - MapUtils.get_lane_ordinal(connecting_lanes[-1])
-
-    @staticmethod
-    def _get_path_between_lane_segments(starting_lane_id: int, final_lane_id: int) -> (List[int], bool):
-        """
-        Get ordered list of lane segments (starting from starting_lane_id), connecting between starting_lane_id and
-        final_road_segment_id (either forward or backward).
-        :param starting_lane_id: initial lane segment
-        :param final_lane_id: road segment id, containing the subsequent downstream/upstream of starting_lane_id
-        :return: First return value: Return list of lane segments connecting between starting_lane_id and
-            final_road_segment_id (including both the first lane and the last lanes).
-            If final_road_segment_id is NOT subsequent downstream/upstream of starting_lane_id,
-            then return empty list.
-            The second return value is whether the path direction is forward: True if final_road_segment_id is ahead of
-            starting_lane_id.
-        """
-        starting_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(starting_lane_id)
-        final_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(final_lane_id)
-        if starting_road_segment_id == final_road_segment_id:
-            return [starting_lane_id], True
-        else:  # different road segments
-            # TODO: 1. in case of road split the following implementation takes the first exit
-            # TODO: 2. assume no more than 3 road segments between the starting and final segments
-            # search forward
-            max_depth = 3
-            path = [starting_lane_id]
-            next_lane = starting_lane_id
-            for _ in range(max_depth):
-                next_lanes = MapUtils.get_downstream_lanes(next_lane)
-                if len(next_lanes) == 0:
-                    break
-                next_lane = next_lanes[0]
-                path.append(next_lane)
-                if MapUtils.get_road_segment_id_from_lane_id(next_lane) == final_road_segment_id:
-                    return path, True
-            # search backward
-            path = [starting_lane_id]
-            prev_lane = starting_lane_id
-            for _ in range(max_depth):
-                prev_lanes = MapUtils.get_upstream_lanes(prev_lane)
-                if len(prev_lanes) == 0:
-                    break
-                prev_lane = prev_lanes[0]
-                path.append(prev_lane)
-                if MapUtils.get_road_segment_id_from_lane_id(prev_lane) == final_road_segment_id:
-                    return path, False
-
-            return [], True  # the path not found
-
-    @staticmethod
-    def _convert_from_lane_to_map_coordinates(lane_id: int, frenet_point: FrenetPoint, relative_yaw: float = 0) -> \
-            [CartesianPoint2D, float]:
-        """
-        convert a point from lane coordinates to map (global) coordinates
-        :param lane_id:
-        :param frenet_point: frenet point w.r.t. the lane
-        :param relative_yaw: intra-lane yaw (optional)
-        :return: map coordinates: x, y, yaw (tangent to the lane in the given point)
-        """
-        lane_frenet = MapUtils.get_lane_frenet_frame(lane_id)
-        cpoint = lane_frenet.fpoint_to_cpoint(frenet_point)
-        global_yaw = relative_yaw + lane_frenet.get_yaw(np.array([frenet_point[FP_SX]]))[0]
-        return cpoint, global_yaw
-
-    @staticmethod
-    @raises(RoadNotFound, LongitudeOutOfRoad)
-    def _get_downstream_lanes_by_distance(initial_lane_id: int, initial_lon: float, lookahead_dist: float,
-                                          navigation_plan: NavigationPlanMsg) -> [List[int], float]:
-        """
-        Given a longitude on specific lane (<initial_lane_id> and <initial_lon>), advance <lookahead_dist>
-        distance, return list of lane_ids in the way and final longitude w.r.t. the last lane.
-        The lookahead iterates over the next roads specified in the <navigation_plan>.
-        If <desired_lon> is more than the distance to end of the plan, a LongitudeOutOfRoad exception is thrown.
-        :param initial_lane_id: the initial lane_id (the vehicle is current on)
-        :param initial_lon: initial longitude along <initial_lane_id>
-        :param lookahead_dist: the desired distance of lookahead in [m].
-        :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
-        :return: (list of lane_ids, longitudinal distance [m] from the beginning of the last lane in lane_ids)
-        """
-        initial_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(initial_lane_id)
-        current_road_idx_in_plan = navigation_plan.get_road_index_in_plan(initial_road_segment_id)
-        road_segment_ids = navigation_plan.road_ids[current_road_idx_in_plan:]
-
-        # collect relevant lane_ids with their lengths
-        downstream_lanes = MapUtils.get_downstream_lanes(initial_lane_id)
-        lane_lengths = [MapUtils.get_lane_length(initial_lane_id)]
-        cumulative_length = lane_lengths[0] - initial_lon
-        lane_ids = [initial_lane_id]
-        for road_segment_id in road_segment_ids[1:]:
-            next_lane = [lid for lid in downstream_lanes if
-                         MapUtils.get_road_segment_id_from_lane_id(lid) == road_segment_id]
-            if cumulative_length > lookahead_dist:
-                break
-            if len(next_lane) < 1:
-                raise RoadNotFound("Downstream lane was not found in navigation plan")
-            lane_ids.append(next_lane[0])
-            current_lane_length = MapUtils.get_lane_length(next_lane[0])
-            cumulative_length += current_lane_length
-            lane_lengths.append(current_lane_length)
-            downstream_lanes = MapUtils.get_downstream_lanes(next_lane[0])
-
-        # distance to roads-ends
-        lanes_dist_to_end = np.cumsum(np.append([lane_lengths[0] - initial_lon], lane_lengths[1:]))
-        # how much of lookahead_dist is left after this road
-        lanes_leftovers = np.subtract(lookahead_dist, lanes_dist_to_end)
-
-        try:
-            target_lane_idx = np.where(lanes_leftovers < 0)[0][0]
-            return lane_ids[:(target_lane_idx + 1)], lanes_leftovers[target_lane_idx] + lane_lengths[target_lane_idx]
-        except IndexError:
-            raise LongitudeOutOfRoad("The specified navigation plan is short {} meters to advance {} in longitude"
-                                     .format(lanes_leftovers[-1], lookahead_dist))
 
     @staticmethod
     def _get_upstream_lanes_from_distance(starting_lane_id: int, starting_lon: float, backward_dist: float) -> \
@@ -464,10 +317,10 @@ class MapUtils:
         prev_lane_id = starting_lane_id
         total_dist = starting_lon
         while total_dist < backward_dist:
-            prev_lanes = MapUtils.get_upstream_lanes(prev_lane_id)
-            if len(prev_lanes) == 0:
-                raise UpstreamLaneNotFound("MapUtils._advance_on_plan: Downstream lane not found for lane_id=%d" % (prev_lane_id))
-            prev_lane_id = prev_lanes[0]
+            prev_lane_ids = MapUtils.get_upstream_lanes(prev_lane_id)
+            if len(prev_lane_ids) == 0:
+                raise UpstreamLaneNotFound("MapUtils._advance_on_plan: Upstream lane not found for lane_id=%d" % (prev_lane_id))
+            prev_lane_id = prev_lane_ids[0]
             path.append(prev_lane_id)
             total_dist += MapUtils.get_lane_length(prev_lane_id)
         return path, total_dist - backward_dist
