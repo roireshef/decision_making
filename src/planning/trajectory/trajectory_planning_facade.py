@@ -142,7 +142,7 @@ class TrajectoryPlanningFacade(DmModule):
                 state_aligned, ctrajectories, params.time - state.ego_state.timestamp_in_sec,
                 self._strategy_handlers[params.strategy].predictor)
 
-            self._publish_debug(debug_results)
+            # self._publish_debug(debug_results)
 
             self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
             MetricLogger.get_logger().report()
