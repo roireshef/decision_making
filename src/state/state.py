@@ -152,23 +152,6 @@ class DynamicObject(PUBSUB_MSG_IMPL):
             self._cached_map_state = MapState(lane_frenet.cstate_to_fstate(self.cartesian_state), closest_lane_id)
         return self._cached_map_state
 
-    def project_on_adjacent_lanes(self) -> Dict[RelativeLane, FrenetState2D]:
-        """
-        project cartesian state on the existing adjacent lanes
-        :return: dictionary mapping between existing relative lane (adjacent to lane_id) to Frenet state
-                                                                        projected on the adjacent Frenet frame
-        """
-        projected_fstates: Dict[RelativeLane, FrenetState2D] = {}
-        for rel_lane in RelativeLane:
-            if rel_lane == RelativeLane.SAME_LANE:
-                projected_fstates[rel_lane] = self.map_state.lane_fstate
-            else:
-                adjacent_lane_ids = MapUtils.get_adjacent_lanes(self.map_state.lane_id, rel_lane)
-                if len(adjacent_lane_ids) > 0:
-                    adjacent_frenet = MapUtils.get_lane_frenet_frame(adjacent_lane_ids[0])
-                    projected_fstates[rel_lane] = adjacent_frenet.cstate_to_fstate(self.cartesian_state)
-        return projected_fstates
-
     @staticmethod
     def sec_to_ticks(time_in_seconds: float):
         """

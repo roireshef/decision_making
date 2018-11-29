@@ -8,7 +8,7 @@ from decision_making.src.global_constants import LON_MARGIN_FROM_EGO
 from decision_making.src.global_constants import PLANNING_LOOKAHEAD_DIST
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
-from decision_making.src.planning.types import FS_SX
+from decision_making.src.planning.types import FS_SX, FrenetState2D
 from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
@@ -89,7 +89,7 @@ class BehavioralGridState(BehavioralState):
         # for objects on non-adjacent lanes set relative_lanes[i] = None
         relative_lanes = [RelativeLane(diff) if abs(diff) <= 1 else None for diff in lat_diffs]
 
-        projected_fstates = ego_state.project_on_adjacent_lanes()
+        projected_fstates = BehavioralGridState.project_ego_on_adjacent_lanes(ego_state)
         ego_init_fstates = [projected_fstates[rel_lane] for rel_lane in relative_lanes]
 
         # compute the relative longitudinal distance between object and ego (positive means object is in front)
@@ -98,6 +98,24 @@ class BehavioralGridState(BehavioralState):
                                                relative_lanes[i])
                 for i, obj in enumerate(dynamic_objects)
                 if relative_lanes[i] is not None and ego_init_fstates[i] is not None]
+
+    @staticmethod
+    def project_ego_on_adjacent_lanes(ego_state: EgoState) -> Dict[RelativeLane, FrenetState2D]:
+        """
+        project cartesian state on the existing adjacent lanes
+        :return: dictionary mapping between existing relative lane (adjacent to lane_id) to Frenet state
+                                                                        projected on the adjacent Frenet frame
+        """
+        projected_fstates: Dict[RelativeLane, FrenetState2D] = {}
+        for rel_lane in RelativeLane:
+            if rel_lane == RelativeLane.SAME_LANE:
+                projected_fstates[rel_lane] = ego_state.map_state.lane_fstate
+            else:
+                adjacent_lane_ids = MapUtils.get_adjacent_lanes(ego_state.map_state.lane_id, rel_lane)
+                if len(adjacent_lane_ids) > 0:
+                    adjacent_frenet = MapUtils.get_lane_frenet_frame(adjacent_lane_ids[0])
+                    projected_fstates[rel_lane] = adjacent_frenet.cstate_to_fstate(self.ego_state.cartesian_state)
+        return projected_fstates
 
     @staticmethod
     @prof.ProfileFunction()

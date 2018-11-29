@@ -146,7 +146,7 @@ class CostBasedBehavioralPlanner:
         relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
         spec_lane_id = relative_lane_ids[action_spec.relative_lane]
 
-        projected_fstates = ego.project_on_adjacent_lanes()
+        projected_fstates = BehavioralGridState.project_ego_on_adjacent_lanes(ego)
         ego_init_fstate = projected_fstates[action_recipe.relative_lane]
 
         goal_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
@@ -202,7 +202,7 @@ class CostBasedBehavioralPlanner:
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
 
         # project ego on target lane frenet_frame
-        projected_fstates = ego.project_on_adjacent_lanes()
+        projected_fstates = BehavioralGridState.project_ego_on_adjacent_lanes(ego)
         ego_init_fstate = projected_fstates[action_recipe.relative_lane]
 
         relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
