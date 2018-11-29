@@ -11,6 +11,8 @@ from decision_making.src.state.state_module import StateModule
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH, FILTER_OBJECT_OFF_ROAD_PATH
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
+from decision_making.test.planning.custom_fixtures import dynamic_objects_not_in_fov, dynamic_objects_in_fov,\
+    dynamic_objects_not_on_road, scene_dynamic_fix, pubsub, dynamic_objects_negative_velocity
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
