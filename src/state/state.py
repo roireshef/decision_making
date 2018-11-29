@@ -163,8 +163,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         return self._cached_map_state_on_host_lane
 
     @staticmethod
-    def sec_to_ticks(time_in_seconds: float):
-        # type: float -> int
+    def sec_to_ticks(time_in_seconds):
+        # type: (float) -> int
         """
         Convert seconds to ticks (nanoseconds)
         :param time_in_seconds:
@@ -173,8 +173,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         return int(round(time_in_seconds / TIMESTAMP_RESOLUTION_IN_SEC))
 
     @staticmethod
-    def ticks_to_sec(time_in_nanoseconds: int):
-        # type: int -> float
+    def ticks_to_sec(time_in_nanoseconds):
+        # type: (int) -> float
         """
         Convert ticks (nanoseconds) to seconds
         :param time_in_nanoseconds:
