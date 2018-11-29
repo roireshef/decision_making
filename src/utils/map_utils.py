@@ -82,7 +82,7 @@ class MapUtils:
             last_nom_path_pt = curr_lane.a_nominal_path_points[curr_lane.e_Cnt_nominal_path_point_count]
 
             # End point is beyond end of LS and LS is starting segment. Append start point to end of LS 
-            if curr_lane_id == start_lane_seg_id and 
+            if curr_lane_id == start_lane_seg_id and \
                (last_nom_path_pt.CeSYS_NominalPathPoint_e_l_s - curr_lane.a_nominal_path_points[start_pt_idx].CeSYS_NominalPathPoint_e_l_s) < lookahead_dist:
                 accumulated_s += last_nom_path_pt.CeSYS_NominalPathPoint_e_l_s - curr_lane.a_nominal_path_points[start_pt_idx].CeSYS_NominalPathPoint_e_l_s
                 frenet_frames += FrenetSerret2DFrame.fit(curr_lane.a_nominal_path_points[0:curr_lane.e_Cnt_nominal_path_point_count, 
