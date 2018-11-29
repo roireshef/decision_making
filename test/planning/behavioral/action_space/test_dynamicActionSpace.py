@@ -36,11 +36,6 @@ def test_specifyGoals_stateWithSorroundingObjects_specifiesFollowTowardsFrontCel
     latitudes = [action.d for i, action in enumerate(actions)]
     np.testing.assert_array_almost_equal(latitudes, expected_latitudes)
 
-    # action-specs' relative_lanes equal to recipes' relative lanes
-    expected_relative_lanes = [recipe.relative_lane.value for recipe in dynamic_action_space.recipes]
-    relative_lanes = [action.relative_lane.value for i, action in enumerate(actions)]
-    np.testing.assert_array_almost_equal(relative_lanes, expected_relative_lanes)
-
     # terminal action-spec longitude equals the terminal longitude of target vehicle
     # (according to prediction at the terminal time)
     expected_longitudes = [target.dynamic_object.map_state.lane_fstate[FS_SX] +
