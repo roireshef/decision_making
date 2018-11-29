@@ -159,9 +159,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         # type: () -> MapState
         if self._cached_map_state_on_host_lane is None:
             # TODO: Agree on the way for projecting dynamic object on host lane or on its continuation
-            # For now, if Dynamic object wasn't generated at StateModule,  map_state_on_host_lane is generated
-            # from the DynamicObject's lane instead
-            self._cached_map_state_on_host_lane = MapUtils.convert_cartesian_to_map_state(self._cached_cartesian_state)
+            raise ValueError('map_state_on_host_lane was called on object without it being cached')
         return self._cached_map_state_on_host_lane
 
     @staticmethod
