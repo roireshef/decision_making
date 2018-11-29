@@ -8,10 +8,9 @@ import rte.python.profiler as prof
 from decision_making.src.exceptions import raises
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
-from decision_making.src.planning.behavioral.data_objects import ActionRecipe, RelativeLane
+from decision_making.src.planning.behavioral.data_objects import ActionRecipe
 from decision_making.src.planning.behavioral.data_objects import ActionSpec
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 
 
 class ActionSpace:
