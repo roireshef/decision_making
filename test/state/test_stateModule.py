@@ -101,8 +101,8 @@ def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: Pu
 
     dyn_obj_list = state_module.create_dyn_obj_list(dynamic_objects_negative_velocity)
 
-    assert len(dyn_obj_list) == 1  # check that object was inserted
-    assert np.isclose(dyn_obj_list[0].map_state.road_fstate[FS_SV], VELOCITY_MINIMAL_THRESHOLD)
+    assert len(dyn_obj_list) == 1 # check that object was inserted
+    assert np.isclose(dyn_obj_list[0].map_state.lane_fstate[FS_SV], VELOCITY_MINIMAL_THRESHOLD)
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)

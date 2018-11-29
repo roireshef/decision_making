@@ -6,8 +6,7 @@ import numpy as np
 import six
 
 import rte.python.profiler as prof
-from decision_making.src.planning.behavioral.behavioral_grid_state import \
-    BehavioralGridState
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe
 
 

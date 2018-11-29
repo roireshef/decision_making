@@ -9,25 +9,26 @@ from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_to
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
-    VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION, \
-    NUM_ALTERNATIVE_TRAJECTORIES, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
+    VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, \
+    MAX_VIS_TRAJECTORIES_NUMBER, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
     TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE
 from decision_making.src.infra.dm_module import DmModule
+from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
-from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan, DataTrajectoryPlan, Header, MapOrigin, \
-    Timestamp
-from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
+from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan, DataTrajectoryPlan
+from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg, \
+    PredictionsVisualization, DataTrajectoryVisualization
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, C_Y, FS_SX, FS_DX
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.planning.utils.transformations import Transformations
 from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State
+from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger import MetricLogger
 
 
@@ -138,10 +139,11 @@ class TrajectoryPlanningFacade(DmModule):
 
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
-                state_aligned, params.reference_route, ctrajectories, costs,
-                params.time - state.ego_state.timestamp_in_sec, self._strategy_handlers[params.strategy].predictor)
+                state_aligned, ctrajectories, params.time - state.ego_state.timestamp_in_sec,
+                self._strategy_handlers[params.strategy].predictor)
 
-            self._publish_debug(debug_results)
+            # TODO: uncomment this line when proper visualization messages integrate into the code
+            # self._publish_debug(debug_results)
 
             self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
             MetricLogger.get_logger().report()
@@ -188,7 +190,6 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-
         is_success, input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_LCM, timeout=1)
         object_params = TrajectoryParams.deserialize(input_params)
         self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, object_params)
@@ -219,51 +220,14 @@ class TrajectoryPlanningFacade(DmModule):
         return updated_state
 
     @staticmethod
-    def _prepare_visualization_msg(state: State, reference_route: FrenetSerret2DFrame,
-                                   ctrajectories: CartesianTrajectories, costs: np.ndarray,
-                                   planning_horizon: float, predictor: EgoAwarePredictor):
+    def _prepare_visualization_msg(state: State, ctrajectories: CartesianTrajectories,
+                                   planning_horizon: float, predictor: EgoAwarePredictor) -> TrajectoryVisualizationMsg:
         """
         prepares visualization message for visualization purposes
         :param state: short-term prediction aligned state
-        :param reference_route: the reference route got from BP (frenet frame)
         :param ctrajectories: alternative trajectories in cartesian-frame
-        :param costs: costs computed for each alternative trajectory
         :param planning_horizon: [sec] the (relative) planning-horizon used for planning
-        :return:
+        :param predictor: predictor for the actors' predictions
+        :return: trajectory visualization message
         """
-        # this assumes the state is already aligned by short time prediction
-        most_recent_timestamp = state.ego_state.timestamp_in_sec
-        prediction_timestamps = np.arange(most_recent_timestamp, most_recent_timestamp + planning_horizon,
-                                          VISUALIZATION_PREDICTION_RESOLUTION, float)
-
-        # TODO: move this to visualizer!
-        # Currently we are predicting the state at ego's timestamp and at the end of the traj execution time.
-        # predicted_states[0] is the current state
-        # predicted_states[1] is the predicted state in the end of the execution of traj.
-        # TODO: Hack! We need a prediction method for this case which: 1. creates states,
-        # TODO: 2.predicts for more than one timestamp, 3. ego can't be None because LCM doesn't like it.
-        predicted_states_without_ego = predictor.predict_state(state=state, prediction_timestamps=prediction_timestamps,
-                                                               action_trajectory=None)
-        predicted_states = [State(occupancy_state=predicted_state.occupancy_state,
-                                  dynamic_objects=predicted_state.dynamic_objects,
-                                  ego_state=state.ego_state) for predicted_state in predicted_states_without_ego]
-
-        # # downsample reference route for visualization
-        # downsample_skip_factor = max(1, int(DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION // reference_route.ds))
-        # downsampled_reference_points = reference_route.points[::downsample_skip_factor]
-
-        # slice alternative trajectories by skipping indices - for visualization
-        alternative_ids_skip_range = range(0, len(ctrajectories),
-                                           max(int(len(ctrajectories) / NUM_ALTERNATIVE_TRAJECTORIES), 1))
-
-        # slice alternative trajectories by skipping indices - for visualization
-        sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
-        sliced_costs = costs[alternative_ids_skip_range]
-
-        return TrajectoryVisualizationMsg(reference_route.points,
-                                          sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]),
-                                          :C_V],
-                                          sliced_costs,
-                                          predicted_states[0],
-                                          predicted_states[1:],
-                                          planning_horizon)
+        pass

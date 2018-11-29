@@ -11,7 +11,6 @@ from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from decision_making.paths import Paths
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.test.bench import dm_main_trajectory_bench
-from mapping.src.service.map_service import MapService
 
 test_fixed_trajectory_file = Paths.get_resource_absolute_path_filename(
         'fixed_trajectory_files/test_trajectory.txt')
