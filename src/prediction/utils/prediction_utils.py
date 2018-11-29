@@ -31,7 +31,7 @@ class PredictionUtils:
 
         # Calculate object's initial state in Frenet frame according to model
         object_center_lane_latitude = object_state.map_state.lane_center_lat
-        lane_width = map_api.get_road(road_id=road_id).lane_width
+        lane_width = map_api.get_road(road_segment_id=road_id).lane_width
 
         s_x_final, s_v_final = PredictionUtils.compute_distance_from_average_acceleration(ended_maneuver_params.T_s,
                                                                                           ended_maneuver_params.avg_s_a,

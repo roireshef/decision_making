@@ -1,9 +1,8 @@
+import numpy as np
+import six
 from abc import abstractmethod, ABCMeta
 from logging import Logger
 from typing import Optional, List
-
-import numpy as np
-import six
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, TRAJECTORY_ARCLEN_RESOLUTION, \
@@ -27,6 +26,8 @@ from decision_making.src.planning.trajectory.samplable_werling_trajectory import
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
+    FrenetSubSegment
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
@@ -157,7 +158,7 @@ class CostBasedBehavioralPlanner:
         ref_route_length = min(max_road_longitude - ref_route_start, forward_lookahead * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO)
 
         center_lane_points = MapService.get_instance().get_uniform_path_lookahead(
-            road_id=road_id,
+            road_segment_id=road_id,
             lat_shift=action_spec.d,  # THIS ASSUMES THE GOAL ALWAYS FALLS ON THE REFERENCE ROUTE
             starting_lon=ref_route_start,
             lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
@@ -175,9 +176,12 @@ class CostBasedBehavioralPlanner:
             reference_route_latitude=action_spec.d  # this assumes the target falls on the reference route
         )
 
+        # TODO: replace this with proper generation of a GeneralizedFrenetSerretFrame from a sequence of FrenetSerret2DFrames
         center_lane_reference_route = FrenetSerret2DFrame.fit(center_lane_points)
+        center_lane_gff = GeneralizedFrenetSerretFrame.build([center_lane_reference_route],
+                                                             [FrenetSubSegment(0, 0, center_lane_reference_route.s_max)])
 
-        trajectory_parameters = TrajectoryParams(reference_route=center_lane_reference_route,
+        trajectory_parameters = TrajectoryParams(reference_route=center_lane_gff,
                                                  time=action_spec.t + ego.timestamp_in_sec,
                                                  target_state=goal_cstate,
                                                  cost_params=cost_params,

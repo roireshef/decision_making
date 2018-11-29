@@ -24,6 +24,8 @@ from decision_making.src.messages.visualization.behavioral_visualization_message
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
+    FrenetSubSegment
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, DynamicObject, EgoState
 from decision_making.src.state.state_module import DynamicObjectsData
@@ -205,7 +207,8 @@ def dyn_obj_outside_road():
 @pytest.fixture(scope='function')
 def trajectory_params():
     ref_points = np.array([[x, -2.0] for x in range(0, 16)])
-    ref_route = FrenetSerret2DFrame.fit(ref_points)
+    frenet = FrenetSerret2DFrame.fit(ref_points)
+    ref_route = GeneralizedFrenetSerretFrame.build([frenet], [FrenetSubSegment(0, 0, frenet.s_max)])
     target_state = np.array([15.0, -2.0, 0.0, 1, 0.0, 0.0])
     mock_sigmoid = SigmoidFunctionParams(1.0, 2.0, 3.0)
     trajectory_cost_params = TrajectoryCostParams(mock_sigmoid, mock_sigmoid, mock_sigmoid, mock_sigmoid,
