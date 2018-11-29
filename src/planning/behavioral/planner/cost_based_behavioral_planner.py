@@ -82,9 +82,9 @@ class CostBasedBehavioralPlanner:
         pass
 
     @prof.ProfileFunction()
-    def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray,
-                                  navigation_plan: NavigationPlanMsg) -> \
-            [BehavioralGridState]:
+    def _generate_terminal_states(self, state: State, behavioral_state: BehavioralGridState,
+                                  action_specs: List[ActionSpec], mask: np.ndarray, navigation_plan: NavigationPlanMsg) \
+            -> List[BehavioralGridState]:
         """
         Given current state and action specifications, generate a corresponding list of future states using the
         predictor. Uses mask over list of action specifications to avoid unnecessary computation
@@ -146,8 +146,7 @@ class CostBasedBehavioralPlanner:
         spec_lane_id = relative_lane_ids[action_spec.relative_lane]
 
         # ego Frenet state projected on the target lane segment (adjacent to ego or lane of ego)
-        projected_fstates = BehavioralGridState.project_ego_on_adjacent_lanes(ego)
-        projected_ego_fstate = projected_fstates[action_spec.relative_lane]  # ego projected on the relative lane
+        projected_ego_fstate = behavioral_state.projected_ego_fstates[action_spec.relative_lane]  # ego projected on the relative lane
 
         # goal Frenet state w.r.t. spec_lane_id
         goal_spec_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])

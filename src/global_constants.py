@@ -108,6 +108,9 @@ MIN_OVERTAKE_VEL = 3.5
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
 
+# [m] Maximal horizon distance for building Generalized Frenet Frames
+MAX_HORIZON_DISTANCE = 500
+
 # Uniform grids for BP Filters
 FILTER_A_0_GRID = UniformGrid(LON_ACC_LIMITS, 0.5)
 FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?

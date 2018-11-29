@@ -5,7 +5,7 @@ from logging import Logger
 from typing import Dict, List, Tuple, Optional
 
 import rte.python.profiler as prof
-from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST
+from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
@@ -64,6 +64,7 @@ class BehavioralGridState(BehavioralState):
          ego front).
         :return: road semantic occupancy grid
         """
+        # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
         unified_frames = BehavioralGridState.create_generalized_frenet_frames(state, nav_plan)
 
         projected_ego_fstates = {rel_lane: unified_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
@@ -125,6 +126,7 @@ class BehavioralGridState(BehavioralState):
         objects_segment_ids = np.array([obj.map_state.lane_id for obj in dynamic_objects])
         objects_segment_fstates = np.array([obj.map_state.lane_fstate for obj in dynamic_objects])
 
+        # calculate longitudinal distances between the objects and ego, using unified_frames (GFF's)
         longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
             unified_frames, ego_state.map_state.lane_id, projected_ego_fstates, objects_segment_ids, objects_segment_fstates)
 
@@ -151,10 +153,12 @@ class BehavioralGridState(BehavioralState):
         ego_lane_id = state.ego_state.map_state.lane_id
         adjacent_lanes_dict = MapUtils.get_relative_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
         unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame] = {}
+        backward_dist = PLANNING_LOOKAHEAD_DIST
+        frame_length = backward_dist + MAX_HORIZON_DISTANCE
         for rel_lane in adjacent_lanes_dict:
             unified_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
-                lane_id=adjacent_lanes_dict[rel_lane], starting_lon=-PLANNING_LOOKAHEAD_DIST,
-                lookahead_dist=2 * PLANNING_LOOKAHEAD_DIST, navigation_plan=nav_plan)
+                lane_id=adjacent_lanes_dict[rel_lane], starting_lon=-backward_dist, lookahead_dist=frame_length,
+                navigation_plan=nav_plan)
         return unified_frames
 
     @staticmethod
