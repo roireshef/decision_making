@@ -121,7 +121,7 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         Calculate both actual and safe distances between rear object and ego on the left side or right side.
         If there is no object, return actual dist = inf and safe dist = 0.
         :param behavioral_state: semantic behavioral state, containing the semantic grid
-        :param lane_frenet: road Frenet frame for ego's road_id
+        :param lane_frenet: lane Frenet frame for ego's lane_id
         :param ego_fpoint: frenet point of ego location
         :param relative_lane: RelativeLane enum value (either LEFT_LANE or RIGHT_LANE)
         :return: longitudinal distance between ego and rear object, safe distance between ego and the rear object
