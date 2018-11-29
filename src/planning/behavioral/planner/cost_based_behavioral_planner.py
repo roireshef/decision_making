@@ -202,8 +202,7 @@ class CostBasedBehavioralPlanner:
 
     @staticmethod
     @prof.ProfileFunction()
-    def generate_baseline_trajectory(ego: EgoState, action_spec: ActionSpec,
-                                     reference_route: FrenetSerret2DFrame,
+    def generate_baseline_trajectory(ego: EgoState, action_spec: ActionSpec, reference_route: FrenetSerret2DFrame,
                                      ego_fstate: FrenetState2D, goal_fstate: FrenetState2D) -> \
             SamplableTrajectory:
         """
