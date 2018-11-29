@@ -89,7 +89,8 @@ class BehavioralGridState(BehavioralState):
         # for objects on non-adjacent lanes set relative_lanes[i] = None
         relative_lanes = [RelativeLane(diff) if abs(diff) <= 1 else None for diff in lat_diffs]
 
-        ego_init_fstates = ego_state.project_on_relative_lanes(relative_lanes)
+        projected_fstates = ego_state.project_on_adjacent_lanes()
+        ego_init_fstates = [projected_fstates[rel_lane] for rel_lane in relative_lanes]
 
         # compute the relative longitudinal distance between object and ego (positive means object is in front)
         # TODO: for multi-segment maps use GFF for the calculation of longitudinal distance

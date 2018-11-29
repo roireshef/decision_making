@@ -51,9 +51,10 @@ class DynamicActionSpace(ActionSpace):
         targets = [behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
                    for action_recipe in action_recipes]
 
-        relative_lanes = [action_recipe.relative_lane for action_recipe in action_recipes]
+        relative_lanes_per_action = [recipe.relative_lane for recipe in action_recipes]
         # project ego on target lane frenet_frame
-        ego_init_fstates = np.array(ego.project_on_relative_lanes(relative_lanes))
+        projected_fstates = ego.project_on_adjacent_lanes()
+        ego_init_fstates = np.array([projected_fstates[recipe.relative_lane] for recipe in action_recipes])
 
         target_length = np.array([target.dynamic_object.size.length for target in targets])
         target_fstate = np.array([target.dynamic_object.map_state.lane_fstate for target in targets])
@@ -115,7 +116,7 @@ class DynamicActionSpace(ActionSpace):
                           RelativeLane.LEFT_LANE: left_lanes[0] if len(left_lanes) > 0 else None}
 
         # lane center has latitude = 0, i.e. spec.d = 0
-        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, adjacent_lanes[relative_lanes[i]])
+        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, adjacent_lanes[relative_lanes_per_action[i]])
                         if ~np.isnan(t) else None
                         for i, t in enumerate(T)]
 

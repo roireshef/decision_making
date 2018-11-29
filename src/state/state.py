@@ -5,7 +5,6 @@ import numpy as np
 
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmDynamicObject import LcmDynamicObject
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmEgoState import LcmEgoState
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmNonTypedSmallNumpyArray import LcmNonTypedSmallNumpyArray
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectSize import LcmObjectSize
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmOccupancyState import LcmOccupancyState
 from common_data.interface.py.idl_generated_files.Rte_Types.LcmState import LcmState
@@ -86,7 +85,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     obj_id = int
     timestamp = int
     _cached_cartesian_state = CartesianExtendedState
-    _cached_map_states = Dict[RelativeLane, MapState]
+    _cached_map_state = MapState
     size = ObjectSize
     confidence = float
 
@@ -104,7 +103,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         self.obj_id = obj_id
         self.timestamp = timestamp
         self._cached_cartesian_state = cartesian_state
-        self._cached_map_states = {RelativeLane.SAME_LANE:map_state, RelativeLane.RIGHT_LANE:None, RelativeLane.LEFT_LANE:None}
+        self._cached_map_state = map_state
         self.size = copy.copy(size)
         self.confidence = confidence
 
@@ -140,51 +139,32 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def cartesian_state(self):
         # type: () -> CartesianExtendedState
         if self._cached_cartesian_state is None:
-            self._cached_cartesian_state = self._cached_map_states[RelativeLane.SAME_LANE].to_cartesian_state()
+            self._cached_cartesian_state = self._cached_map_state.to_cartesian_state()
         return self._cached_cartesian_state
 
     @property
     def map_state(self):
-        return self._get_adjacent_map_state(RelativeLane.SAME_LANE)
+        # type: () -> MapState
+        if self._cached_map_state is None:
+            self._cached_map_state = MapState.from_cartesian_state(self._cached_cartesian_state)
+        return self._cached_map_state
 
-    @property
-    def right_lane_map_state(self):
+    def project_on_adjacent_lanes(self) -> Dict[RelativeLane, FrenetState2D]:
         """
-        project the map_state on the right lane's Frenet frame (use caching)
-        :return: projected map_state
+        project cartesian state on the existing adjacent lanes
+        :return: dictionary mapping between existing relative lane (adjacent to lane_id) to Frenet state
+                                                                        projected on the adjacent Frenet frame
         """
-        return self._get_adjacent_map_state(RelativeLane.RIGHT_LANE)
-
-    @property
-    def left_lane_map_state(self):
-        """
-        project the map_state on the left lane's Frenet frame (use caching)
-        :return: projected map_state
-        """
-        return self._get_adjacent_map_state(RelativeLane.LEFT_LANE)
-
-    def _get_adjacent_map_state(self, relative_lane):
-        # type: (RelativeLane) -> MapState
-        """
-        If relative_lane == RelativeLane.SAME_LANE, then get the same lane's map_state.
-        Otherwise project the map_state on an adjacent lane's Frenet frame (use caching).
-        If the adjacent lane does not exist, return empty MapState(None, None).
-        :param relative_lane: either SAME_LANE or RIGHT_LANE or LEFT_LANE
-        :return: projected map_state on the adjacent lane
-        """
-        if self._cached_map_states[relative_lane] is None:
-            if relative_lane == RelativeLane.SAME_LANE:
-                self._cached_map_states[relative_lane] = MapState.from_cartesian_state(self._cached_cartesian_state)
+        projected_fstates: Dict[RelativeLane, FrenetState2D] = {}
+        for rel_lane in RelativeLane:
+            if rel_lane == RelativeLane.SAME_LANE:
+                projected_fstates[rel_lane] = self.map_state.lane_fstate
             else:
-                adjacent_lane_ids = MapUtils.get_adjacent_lanes(self.map_state.lane_id, relative_lane)
+                adjacent_lane_ids = MapUtils.get_adjacent_lanes(self.map_state.lane_id, rel_lane)
                 if len(adjacent_lane_ids) > 0:
-                    frenet = MapUtils.get_lane_frenet_frame(adjacent_lane_ids[0])
-                    # TODO: replace with faster implementation of cstate_to_fstate
-                    fstate = frenet.cstate_to_fstate(self.cartesian_state)
-                    self._cached_map_states[relative_lane] = MapState(fstate, adjacent_lane_ids[0])
-                else:  # distinguish between not cached and non-existing lane
-                    self._cached_map_states[relative_lane] = MapState(None, None)
-        return self._cached_map_states[relative_lane]
+                    adjacent_frenet = MapUtils.get_lane_frenet_frame(adjacent_lane_ids[0])
+                    projected_fstates[rel_lane] = adjacent_frenet.cstate_to_fstate(self.cartesian_state)
+        return projected_fstates
 
     @staticmethod
     def sec_to_ticks(time_in_seconds: float):
@@ -252,18 +232,6 @@ class DynamicObject(PUBSUB_MSG_IMPL):
                                           map_state,
                                           self.size, self.confidence)
 
-    def project_on_relative_lanes(self, relative_lanes):
-        # type: (List[RelativeLane]) -> List[FrenetState2D]
-        """
-        Calculate frenet-states of the given object w.r.t. the relative (adjacent) lanes
-        :param relative_lanes: list of relative lanes (same, left, right)
-        :return: list of frenet-states of size len(relative_lanes)
-        """
-        return [self.map_state.lane_fstate if relative_lane == RelativeLane.SAME_LANE
-                else self.left_lane_map_state.lane_fstate if relative_lane == RelativeLane.LEFT_LANE
-                else self.right_lane_map_state.lane_fstate if relative_lane == RelativeLane.RIGHT_LANE else None
-                for relative_lane in relative_lanes]
-
     def serialize(self):
         # type: () -> LcmDynamicObject
         lcm_msg = LcmDynamicObject()
@@ -313,7 +281,7 @@ class EgoState(DynamicObject):
         # type: (LcmEgoState) -> EgoState
         dyn_obj = DynamicObject.deserialize(lcmMsg.dynamic_obj)
         return cls(dyn_obj.obj_id, dyn_obj.timestamp
-                   , dyn_obj._cached_cartesian_state, dyn_obj._cached_map_states[RelativeLane.SAME_LANE]
+                   , dyn_obj._cached_cartesian_state, dyn_obj._cached_map_state
                    , dyn_obj.size
                    , dyn_obj.confidence)
 

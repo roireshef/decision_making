@@ -141,7 +141,9 @@ class CostBasedBehavioralPlanner:
         """
         ego = behavioral_state.ego_state
 
-        ego_init_fstate = ego.project_on_relative_lanes([action_recipe.relative_lane])[0]
+        projected_fstates = ego.project_on_adjacent_lanes()
+        ego_init_fstate = projected_fstates[action_recipe.relative_lane]
+
         goal_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
 
         # set the reference route to start with a margin before the current longitudinal position of the vehicle
@@ -195,7 +197,8 @@ class CostBasedBehavioralPlanner:
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
 
         # project ego on target lane frenet_frame
-        ego_init_fstate = ego.project_on_relative_lanes([action_recipe.relative_lane])[0]
+        projected_fstates = ego.project_on_adjacent_lanes()
+        ego_init_fstate = projected_fstates[action_recipe.relative_lane]
 
         target_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
 
