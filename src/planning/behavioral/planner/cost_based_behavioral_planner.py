@@ -196,8 +196,7 @@ class CostBasedBehavioralPlanner:
 
     @staticmethod
     @prof.ProfileFunction()
-    def generate_baseline_trajectory(ego: EgoState, action_recipe: ActionRecipe, action_spec: ActionSpec) -> \
-            SamplableTrajectory:
+    def generate_baseline_trajectory(ego: EgoState, action_spec: ActionSpec) -> SamplableTrajectory:
         """
         Creates a SamplableTrajectory as a reference trajectory for a given ActionSpec, assuming T_d=T_s
         :param ego: ego object
@@ -209,7 +208,7 @@ class CostBasedBehavioralPlanner:
 
         # project ego on target lane frenet_frame
         projected_fstates = BehavioralGridState.project_ego_on_adjacent_lanes(ego)
-        projected_ego_fstate = projected_fstates[action_recipe.relative_lane]  # ego projected on the relative lane
+        projected_ego_fstate = projected_fstates[action_spec.relative_lane]  # ego projected on the relative lane
 
         relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
         spec_lane_id = relative_lane_ids[action_spec.relative_lane]
