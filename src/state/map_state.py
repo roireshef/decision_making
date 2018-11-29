@@ -2,52 +2,40 @@ import numpy as np
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmMapState import LcmMapState
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.planning.types import FrenetState2D, FS_DX
-from mapping.src.service.map_service import MapService
+from decision_making.src.planning.types import FrenetState2D, CartesianExtendedState, C_X, C_Y, FS_SX, FS_DX
+from common_data.lcm.python.utils.lcm_utils import LCMUtils
+from decision_making.src.utils.map_utils import MapUtils
+from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 
 
 class MapState(PUBSUB_MSG_IMPL):
-    road_fstate = FrenetState2D
-    road_id = int
+    lane_fstate = FrenetState2D
+    lane_id = int
 
-    def __init__(self, road_fstate, road_id):
+    def __init__(self, lane_fstate, lane_id):
         # type: (FrenetState2D, int) -> MapState
-        self.road_fstate = road_fstate
-        self.road_id = road_id
+        self.lane_fstate = lane_fstate
+        self.lane_id = lane_id
 
-    @property
-    def lane_center_lat(self):
-        lane_width, _, lane_num = self._get_current_lane_params()
-        return (lane_num+0.5)*lane_width
-
-    @property
-    def intra_lane_lat(self) -> int:
-        lane_width, lat_pos_from_right, lane_num = self._get_current_lane_params()
-        return lat_pos_from_right - lane_num * lane_width
-
-    @property
-    def lane_num(self) -> int:
-        _, _, lane = self._get_current_lane_params()
-        return lane
-
-    def _get_current_lane_params(self):
+    def is_on_road(self):
+        # type: () -> bool
         """
-        :return: A tuple consisting of: (the lane width,lateral position in frenet from right hand side of road,lane number between 0 and num_lanes-1)
+        Returns true of the object is on the road. False otherwise.
+        :return: Returns true of the object is on the road. False otherwise.
         """
-        # type: MapState -> (float, float, int)
-        lane_width = MapService.get_instance().get_road(self.road_id).lane_width
-        lat_pos_from_right = self.road_fstate[FS_DX]
-        lane = int(np.math.floor(lat_pos_from_right / lane_width))
-        return lane_width, lat_pos_from_right, lane
+        on_road_longitudinally = (0 <= self.lane_fstate[FS_SX] < MapUtils.get_lane_length(self.lane_id))
+        dist_from_right, dist_from_left = MapUtils.get_dist_to_lane_borders(self.lane_id, self.lane_fstate[FS_SX])
+        on_road_laterally = (-dist_from_right - ROAD_SHOULDERS_WIDTH < self.lane_fstate[FS_DX] < dist_from_left + ROAD_SHOULDERS_WIDTH)
+        return on_road_longitudinally and on_road_laterally
 
     def serialize(self):
         # type: () -> LcmMapState
         lcm_msg = LcmMapState()
-        lcm_msg.road_fstate = self.road_fstate
-        lcm_msg.road_id = self.road_id
+        lcm_msg.lane_fstate = self.lane_fstate
+        lcm_msg.lane_id = self.lane_id
         return lcm_msg
 
     @classmethod
     def deserialize(cls, lcm_msg):
         # type: (LcmMapState) -> MapState
-        return cls(lcm_msg.road_fstate.data, lcm_msg.road_id)
+        return cls(lcm_msg.lane_fstate.data, lcm_msg.lane_id)

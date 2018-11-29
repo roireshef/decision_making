@@ -1,11 +1,10 @@
 import copy
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 import numpy as np
 
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmDynamicObject import LcmDynamicObject
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmEgoState import LcmEgoState
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmNonTypedSmallNumpyArray import LcmNonTypedSmallNumpyArray
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectSize import LcmObjectSize
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmOccupancyState import LcmOccupancyState
 from common_data.interface.py.idl_generated_files.Rte_Types.LcmState import LcmState
@@ -13,7 +12,8 @@ from common_data.interface.py.utils.serialization_utils import SerializationUtil
 
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
-from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K
+from decision_making.src.planning.behavioral.data_objects import RelativeLane
+from decision_making.src.planning.types import C_X, C_Y, C_V, C_YAW, CartesianExtendedState, C_A, C_K, FrenetState2D
 from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.map_utils import MapUtils
 
@@ -139,14 +139,17 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def cartesian_state(self):
         # type: () -> CartesianExtendedState
         if self._cached_cartesian_state is None:
-            self._cached_cartesian_state = MapUtils.convert_map_to_cartesian_state(self._cached_map_state)
+            lane_frenet = MapUtils.get_lane_frenet_frame(self.map_state.lane_id)
+            self._cached_cartesian_state = lane_frenet.fstate_to_cstate(self.map_state.lane_fstate)
         return self._cached_cartesian_state
 
     @property
     def map_state(self):
         # type: () -> MapState
         if self._cached_map_state is None:
-            self._cached_map_state = MapUtils.convert_cartesian_to_map_state(self._cached_cartesian_state)
+            closest_lane_id = MapUtils.get_closest_lane(self.cartesian_state[:(C_Y+1)])
+            lane_frenet = MapUtils.get_lane_frenet_frame(closest_lane_id)
+            self._cached_map_state = MapState(lane_frenet.cstate_to_fstate(self.cartesian_state), closest_lane_id)
         return self._cached_map_state
 
     @staticmethod
@@ -330,14 +333,11 @@ class State(PUBSUB_MSG_IMPL):
         :param target_obj_id: the id of the requested object
         :return: the dynamic_object matching the requested id
         """
-
         selected_objects = [obj for obj in state.dynamic_objects if obj.obj_id == target_obj_id]
-
         # Verify that object exists in state exactly once
         if len(selected_objects) != 1:
             raise MultipleObjectsWithRequestedID(
                 'Found %d matching objects for object ID %d' % (len(selected_objects), target_obj_id))
-
         return selected_objects[0]
 
     # TODO: remove when access to dynamic objects according to dictionary will be available.
@@ -350,6 +350,5 @@ class State(PUBSUB_MSG_IMPL):
         :param target_obj_ids: a list of the id of the requested objects
         :return: the dynamic_objects matching the requested ids
         """
-
         selected_objects = [obj for obj in state.dynamic_objects if obj.obj_id in target_obj_ids]
         return selected_objects

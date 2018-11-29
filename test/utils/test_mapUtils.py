@@ -1,37 +1,15 @@
-from unittest.mock import patch
-
 import numpy as np
 
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.state.state import DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from mapping.src.exceptions import NavigationPlanTooShort, DownstreamLaneNotFound, UpstreamLaneNotFound, \
     NavigationPlanDoesNotFitMap, RoadNotFound
 from mapping.src.service.map_service import MapService
-from mapping.test.model.testable_map_fixtures import map_api_mock
-from decision_making.test.planning.custom_fixtures import dyn_obj_outside_road, dyn_obj_on_road
 from decision_making.src.planning.types import FS_SX, FS_DX, FP_SX, FP_DX
 
 MAP_SPLIT = "PG_split.bin"
 SMALL_DISTANCE_ERROR = 0.01
-
-
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-def test_isObjectOnRoad_objectOffOfRoad_False(dyn_obj_outside_road: DynamicObject):
-    """
-    Checking functionality of _is_object_on_road for an object that is off the road.
-    """
-    assert not MapUtils.is_object_on_road(dyn_obj_outside_road.map_state)
-
-
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-def test_isObjectOnRoad_objectOnRoad_True(dyn_obj_on_road: DynamicObject):
-    """
-    Checking functionality of _is_object_on_road for an object that is on the road.
-    """
-    assert MapUtils.is_object_on_road(dyn_obj_on_road.map_state)
 
 
 def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate():
@@ -56,7 +34,7 @@ def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate():
 
 def test_getDistToLaneBorders_rightLane_equalToHalfLaneWidth():
     """
-    test method get_dist_from_lane_center_to_lane_borders:
+    test method get_dist_to_lane_borders:
         in the current map the lanes have a constant lane width and all lanes have the same width;
         therefore it should return half lane width
     """
@@ -356,3 +334,12 @@ def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency():
     assert len(lane_ids) == MapService.get_instance().get_road(road_segment_id).lanes_num
     assert road_segment_id == MapUtils.get_road_segment_id_from_lane_id(lane_ids[0])
     assert road_segment_id == MapUtils.get_road_segment_id_from_lane_id(lane_ids[-1])
+
+
+def test_doesMapExistBackward_longBackwardDist_validateRelevantException():
+    MapService.initialize(MAP_SPLIT)
+    road_segment_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    road_segment_id = road_segment_ids[2]
+    lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[0]
+    assert MapUtils.does_map_exist_backward(lane_id, 200)
+    assert not MapUtils.does_map_exist_backward(lane_id, 400)

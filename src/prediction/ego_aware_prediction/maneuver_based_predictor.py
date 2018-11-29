@@ -5,13 +5,12 @@ import copy
 import numpy as np
 
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.types import C_X, C_V, C_YAW, C_Y
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.ego_aware_prediction.maneuver_recognition.manuever_classifier import \
     ManeuverClassifier
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State, DynamicObject
-from mapping.src.service.map_service import MapService
+from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.trajectory_generator import \
     TrajectoryGenerator
 
@@ -102,7 +101,8 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
             predicted_maneuver_spec = self._maneuver_classifier.classify_maneuver(state=state, object_id=obj_id,
                                                                                   maneuver_horizon=horizon)
 
-            frenet_frame = MapService.get_instance()._rhs_roads_frenet[dynamic_object.map_state.road_id]
+            # TODO: treat the case when we are close to the end of the segment
+            frenet_frame = MapUtils.get_lane_frenet_frame(dynamic_object.map_state.lane_id)
 
             init_time = dynamic_object.timestamp_in_sec
 
