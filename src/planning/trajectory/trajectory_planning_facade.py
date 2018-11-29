@@ -229,30 +229,4 @@ class TrajectoryPlanningFacade(DmModule):
         :param predictor: predictor for the actors' predictions
         :return: trajectory visualization message
         """
-        # TODO: add recipe to trajectory_params for goal's description
-        # slice alternative trajectories by skipping indices - for visualization
-        alternative_ids_skip_range = np.round(np.linspace(0, len(ctrajectories)-1, MAX_VIS_TRAJECTORIES_NUMBER)).astype(int)
-        # slice alternative trajectories by skipping indices - for visualization
-        sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
-
-        # this assumes the state is already aligned by short time prediction
-        most_recent_timestamp = state.ego_state.timestamp_in_sec
-        prediction_timestamps = np.arange(most_recent_timestamp, most_recent_timestamp + planning_horizon,
-                                          VISUALIZATION_PREDICTION_RESOLUTION, float)
-
-        objects_visualizations = []
-        for i, obj in enumerate(state.dynamic_objects):
-            fstates = np.array([obj.map_state.lane_fstate])
-            if obj.cartesian_state[C_V] > 0:  # calculate predictions only for moving objects
-                object_fpredictions = predictor.predict_frenet_states(fstates, prediction_timestamps)[0][:, [FS_SX, FS_DX]]
-            else:  # leave only current fstate
-                object_fpredictions = fstates[..., [FS_SX, FS_DX]]
-            object_frenet = MapUtils.get_lane_frenet_frame(obj.map_state.lane_id)
-            object_cpredictions = object_frenet.fpoints_to_cpoints(object_fpredictions)
-            objects_visualizations.append(PredictionsVisualization(obj.obj_id, object_cpredictions))
-
-        header = Header(0, Timestamp.from_seconds(state.ego_state.timestamp_in_sec), 0)
-        visualization_data = DataTrajectoryVisualization(
-            sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :(C_Y+1)],
-            objects_visualizations, "")
-        return TrajectoryVisualizationMsg(header, visualization_data)
+        pass
