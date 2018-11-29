@@ -3,7 +3,6 @@ from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmMa
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import FrenetState2D, CartesianExtendedState, C_X, C_Y, FS_SX, FS_DX
-from common_data.lcm.python.utils.lcm_utils import LCMUtils
 from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 
@@ -23,6 +22,8 @@ class MapState(PUBSUB_MSG_IMPL):
         Returns true of the object is on the road. False otherwise.
         :return: Returns true of the object is on the road. False otherwise.
         """
+        if self.lane_id is None:
+            return False
         on_road_longitudinally = (0 <= self.lane_fstate[FS_SX] < MapUtils.get_lane_length(self.lane_id))
         dist_from_right, dist_from_left = MapUtils.get_dist_to_lane_borders(self.lane_id, self.lane_fstate[FS_SX])
         on_road_laterally = (-dist_from_right - ROAD_SHOULDERS_WIDTH < self.lane_fstate[FS_DX] < dist_from_left + ROAD_SHOULDERS_WIDTH)

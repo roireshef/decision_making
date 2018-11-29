@@ -57,22 +57,25 @@ class DynamicActionSpace(ActionSpace):
         ego_init_fstates = np.array([projected_fstates[recipe.relative_lane] for recipe in action_recipes])
 
         target_length = np.array([target.dynamic_object.size.length for target in targets])
-        target_fstate = np.array([target.dynamic_object.map_state.lane_fstate for target in targets])
+        target_lane_ids = np.array([target.dynamic_object.map_state.lane_id for target in targets])
+        target_fstates = np.array([target.dynamic_object.map_state.lane_fstate for target in targets])
 
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
         weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness]
 
         # get desired terminal velocity
-        v_T = target_fstate[:, FS_SV]
+        v_T = target_fstates[:, FS_SV]
 
-        # longitudinal difference between object and ego at t=0 (positive if obj in front of ego)
-        init_longitudinal_difference = target_fstate[:, FS_SX] - ego_init_fstates[:, FS_SX]
+        relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
+        # calculate initial longitudinal differences between all target objects and ego along target lanes
+        longitudinal_differences = behavioral_state.calculate_longitudinal_differences(target_lane_ids, target_fstates)
+
         # margin_sign is -1 for FOLLOW_VEHICLE (behind target) and +1 for OVER_TAKE_VEHICLE (in front of target)
         margin_sign = np.array([-1 if action_recipe.action_type == ActionType.FOLLOW_VEHICLE else +1
                                 for action_recipe in action_recipes])
 
-        ds = init_longitudinal_difference + margin_sign * (
+        ds = longitudinal_differences + margin_sign * (
             LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + ego.size.length / 2 + target_length / 2)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>

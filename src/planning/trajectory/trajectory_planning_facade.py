@@ -12,7 +12,7 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
     VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, \
     MAX_VIS_TRAJECTORIES_NUMBER, LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
-    TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE
+    TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE, REFERENCE_ROUTE_LANE_ID
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
@@ -21,14 +21,15 @@ from decision_making.src.messages.visualization.trajectory_visualization_message
     PredictionsVisualization, DataTrajectoryVisualization
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, C_Y, FS_SX, FS_DX
+from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, C_Y, FS_SX, FS_DX, \
+    FP_SX
+from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.planning.utils.transformations import Transformations
 from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State
-from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger import MetricLogger
 
 
@@ -104,6 +105,11 @@ class TrajectoryPlanningFacade(DmModule):
 
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
+            # np.set_printoptions(suppress=True)
+            # print('TP: time=%f ego=%s\nTP: goal=%s' % (state.ego_state.timestamp_in_sec, state.ego_state.cartesian_state, params.target_state))
+            # print('TP state_aligned: time=%f ego=%s' % (state_aligned.ego_state.timestamp_in_sec, state_aligned.ego_state.cartesian_state))
+            # print('TP updated_state: ego=%s' % (updated_state.ego_state.cartesian_state))
+
             # plan a trajectory according to specification from upper DM level
             samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
                 plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
@@ -140,7 +146,7 @@ class TrajectoryPlanningFacade(DmModule):
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
                 state_aligned, ctrajectories, params.time - state.ego_state.timestamp_in_sec,
-                self._strategy_handlers[params.strategy].predictor)
+                self._strategy_handlers[params.strategy].predictor, params.reference_route)
 
             # TODO: uncomment this line when proper visualization messages integrate into the code
             # self._publish_debug(debug_results)
@@ -221,7 +227,8 @@ class TrajectoryPlanningFacade(DmModule):
 
     @staticmethod
     def _prepare_visualization_msg(state: State, ctrajectories: CartesianTrajectories,
-                                   planning_horizon: float, predictor: EgoAwarePredictor) -> TrajectoryVisualizationMsg:
+                                   planning_horizon: float, predictor: EgoAwarePredictor,
+                                   reference_route: FrenetSerret2DFrame) -> TrajectoryVisualizationMsg:
         """
         prepares visualization message for visualization purposes
         :param state: short-term prediction aligned state

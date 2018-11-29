@@ -1,6 +1,6 @@
 import numpy as np
 from logging import Logger
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import rte.python.profiler as prof
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -36,7 +36,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
                          predictor, logger)
 
     def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
-                      recipes_mask: List[bool]) -> (int, ActionSpec):
+                      recipes_mask: List[bool], nav_plan: NavigationPlanMsg) -> (int, ActionSpec):
         """
         upon receiving an input state, return an action specification and its respective index in the given list of
         action recipes.
@@ -69,7 +69,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)
 
         # approximate cost-to-go per terminal state
-        terminal_behavioral_states = self._generate_terminal_states(state, action_specs, action_specs_mask)
+        terminal_behavioral_states = self._generate_terminal_states(state, behavioral_state, action_specs,
+                                                                    action_specs_mask, nav_plan)
         # TODO: NavigationPlan is now None and should be meaningful when we have one
         terminal_states_values = np.array([self.value_approximator.approximate(state, None) if action_specs_mask[i] else np.nan
                                            for i, state in enumerate(terminal_behavioral_states)])
@@ -91,7 +92,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         # create road semantic grid from the raw State object
         # behavioral_state contains road_occupancy_grid and ego_state
-        behavioral_state = BehavioralGridState.create_from_state(state=state, logger=self.logger)
+        behavioral_state = BehavioralGridState.create_from_state(state=state, nav_plan=nav_plan, logger=self.logger)
 
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)
@@ -99,7 +100,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self.logger.debug('Number of actions originally: %d, valid: %d',
                           self.action_space.action_space_size, np.sum(recipes_mask))
         selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes, recipes_mask)
-        trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(
+        trajectory_parameters, ego_fstate, goal_fstate = CostBasedBehavioralPlanner._generate_trajectory_specs(
             behavioral_state=behavioral_state, action_spec=selected_action_spec, navigation_plan=nav_plan)
         visualization_message = BehavioralVisualizationMsg(
             reference_route_points=trajectory_parameters.reference_route.points)
@@ -108,7 +109,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self._last_action = action_recipes[selected_action_index]
         self._last_action_spec = selected_action_spec
 
-        baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(state.ego_state, selected_action_spec)
+        baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(
+            state.ego_state, selected_action_spec, trajectory_parameters.reference_route, ego_fstate, goal_fstate)
 
         self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
                           action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)
@@ -116,5 +118,3 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
                           selected_action_spec, state.ego_state.timestamp_in_sec)
 
         return trajectory_parameters, baseline_trajectory, visualization_message
-
-

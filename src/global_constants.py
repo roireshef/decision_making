@@ -108,6 +108,9 @@ MIN_OVERTAKE_VEL = 3.5
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
 
+# [m] Maximal horizon distance for building Generalized Frenet Frames
+MAX_HORIZON_DISTANCE = 500
+
 # Uniform grids for BP Filters
 FILTER_A_0_GRID = UniformGrid(LON_ACC_LIMITS, 0.5)
 FILTER_V_0_GRID = UniformGrid(np.array([0.0, 34]), 0.5)  # [m/sec] # TODO: use VELOCITY_LIMITS?
@@ -164,6 +167,9 @@ TRAJECTORY_NUM_POINTS = 16
 # Waypoints requirements from IDL
 TRAJECTORY_WAYPOINT_SIZE = 11
 MAX_TRAJECTORY_WAYPOINTS = 100
+
+# lane_id of reference route; used in map_state.lane_id of objects whose map_state is calculated w.r.t. reference_route
+REFERENCE_ROUTE_LANE_ID = 0
 
 # Werling Planner #
 
