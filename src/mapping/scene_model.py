@@ -61,7 +61,7 @@ class SceneModel:
         """
         scene_static = self.get_scene_static()
         road_segments = [road_segment for road_segment in scene_static.s_Data.as_scene_road_segment if
-                         road_segment.e_Cnt_road_id == road_id]
+                         road_segment.e_Cnt_road_segment_id == road_id]
         assert len(road_segments) == 1
         return road_segments[0]
 
