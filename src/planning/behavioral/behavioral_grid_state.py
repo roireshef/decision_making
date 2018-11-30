@@ -100,10 +100,10 @@ class BehavioralGridState(BehavioralState):
         # longitudinal difference between object and ego at t=0 (positive if obj in front of ego)
         for rel_lane in relative_lane_ids:
             # find all dynamic objects that belong to the current unified frame
-            relevant_targets = unified_frames[rel_lane].has_segment_ids(target_lane_ids)
+            relevant_idxs = unified_frames[rel_lane].has_segment_ids(target_lane_ids)
             # convert relevant dynamic objects to fstate w.r.t. the current unified frame
-            tar_unified_fstates[relevant_targets] = unified_frames[rel_lane].convert_from_segment_states(
-                target_fstates[relevant_targets], target_lane_ids[relevant_targets])
+            tar_unified_fstates[relevant_idxs] = unified_frames[rel_lane].convert_from_segment_states(
+                target_fstates[relevant_idxs], target_lane_ids[relevant_idxs])
 
         return tar_unified_fstates[:, FS_SX] - ego_unified_fstates[:, FS_SX]
 

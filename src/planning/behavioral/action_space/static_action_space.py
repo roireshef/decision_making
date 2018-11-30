@@ -43,13 +43,8 @@ class StaticActionSpace(ActionSpace):
         :param behavioral_state: a Frenet state of ego at initial point
         :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
-        ego = behavioral_state.ego_state
-
-        # get the relevant desired center lane latitude (from road's RHS)
-        relative_lanes = [action_recipe.relative_lane for action_recipe in action_recipes]
         # project ego on target lane frenet_frame
-        projected_fstates = BehavioralGridState.project_ego_on_adjacent_lanes(ego)
-        ego_init_fstates = np.array([projected_fstates[recipe.relative_lane] for recipe in action_recipes])
+        ego_init_fstates = np.array([behavioral_state.projected_ego_fstates[recipe.relative_lane] for recipe in action_recipes])
 
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
@@ -87,7 +82,7 @@ class StaticActionSpace(ActionSpace):
         target_s = distance_s + ego_init_fstates[:, FS_SX]
 
         # lane center has latitude = 0, i.e. spec.d = 0
-        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, relative_lanes[i])
+        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, action_recipes[i].relative_lane)
                         if ~np.isnan(t) else None
                         for i, t in enumerate(T)]
 

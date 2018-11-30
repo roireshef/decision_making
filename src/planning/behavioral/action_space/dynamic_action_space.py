@@ -46,16 +46,12 @@ class DynamicActionSpace(ActionSpace):
         :param behavioral_state: a Frenet state of ego at initial point
         :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
-        ego = behavioral_state.ego_state
+        # project ego on target lane frenet_frame
+        ego_init_fstates = np.array([behavioral_state.projected_ego_fstates[recipe.relative_lane] for recipe in action_recipes])
 
+        # collect targets' lengths, lane_ids and fstates
         targets = [behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
                    for action_recipe in action_recipes]
-
-        relative_lanes_per_action = [recipe.relative_lane for recipe in action_recipes]
-        # project ego on target lane frenet_frame
-        projected_fstates = BehavioralGridState.project_ego_on_adjacent_lanes(ego)
-        ego_init_fstates = np.array([projected_fstates[recipe.relative_lane] for recipe in action_recipes])
-
         target_length = np.array([target.dynamic_object.size.length for target in targets])
         target_lane_ids = np.array([target.dynamic_object.map_state.lane_id for target in targets])
         target_fstates = np.array([target.dynamic_object.map_state.lane_fstate for target in targets])
@@ -67,7 +63,6 @@ class DynamicActionSpace(ActionSpace):
         # get desired terminal velocity
         v_T = target_fstates[:, FS_SV]
 
-        relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
         # calculate initial longitudinal differences between all target objects and ego along target lanes
         longitudinal_differences = behavioral_state.calculate_longitudinal_differences(target_lane_ids, target_fstates)
 
@@ -76,7 +71,7 @@ class DynamicActionSpace(ActionSpace):
                                 for action_recipe in action_recipes])
 
         ds = longitudinal_differences + margin_sign * (
-            LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + ego.size.length / 2 + target_length / 2)
+            LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + behavioral_state.ego_state.size.length / 2 + target_length / 2)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
@@ -112,7 +107,7 @@ class DynamicActionSpace(ActionSpace):
         target_s = distance_s + ego_init_fstates[:, FS_SX]
 
         # lane center has latitude = 0, i.e. spec.d = 0
-        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, relative_lanes_per_action[i])
+        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, action_recipes[i].relative_lane)
                         if ~np.isnan(t) else None
                         for i, t in enumerate(T)]
 

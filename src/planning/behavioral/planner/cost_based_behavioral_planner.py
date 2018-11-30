@@ -93,28 +93,47 @@ class CostBasedBehavioralPlanner:
         :param mask: 1D mask vector (boolean) for filtering valid action specifications
         :return: a list of terminal states
         """
-        # create a new behavioral state at the action end
         ego = state.ego_state
-
         relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
+        # collect terminal / specs' lane_ids and fstates wrt these lanes
         existing_specs = [spec for i, spec in enumerate(action_specs) if mask[i]]
         spec_lane_ids = [relative_lane_ids[spec.relative_lane] for spec in existing_specs]
+        spec_fstates = np.array([[spec.s, spec.v, 0, spec.d, 0, 0] for spec in existing_specs])
         actions_horizons = np.array([spec.t for spec in existing_specs])
-        # TODO: assumes everyone on the same road!
+
+        # collect objects' current fstates and lane_ids
+        objects_curr_fstates = np.array([dynamic_object.map_state.lane_fstate for dynamic_object in state.dynamic_objects])
+        objects_curr_lane_ids = np.array([dynamic_object.map_state.lane_id for dynamic_object in state.dynamic_objects])
+
+        # allocate memory for ego & objects for the existing specs
+        ego_terminal_fstates = np.empty((len(spec_lane_ids), 6), dtype=float)
+        objects_terminal_fstates = np.empty((len(state.dynamic_objects), len(spec_lane_ids), 6), dtype=float)
+
+        # calculate terminal fstates w.r.t. the unified frames
+        for rel_lane in relative_lane_ids:  # loop over at most 3 adjacent lanes
+            # find all dynamic objects that belong to the current unified frame
+            relevant_idxs = behavioral_state.unified_frames[rel_lane].has_segment_ids(spec_lane_ids)
+
+            # convert relevant dynamic objects to fstate w.r.t. the current unified frame
+            ego_terminal_fstates[relevant_idxs] = behavioral_state.unified_frames[rel_lane].convert_from_segment_states(
+                spec_fstates[relevant_idxs], spec_lane_ids[relevant_idxs])
+
+            # covert objects' fstates to the unified frame
+            objects_unified_fstates = behavioral_state.unified_frames[rel_lane].convert_from_segment_states(
+                objects_curr_fstates, objects_curr_lane_ids)
+            # predict all objects' terminal states for the actions, whose target is the current unified frame
+            objects_terminal_fstates[:, relevant_idxs] = self.predictor.predict_frenet_states(objects_unified_fstates,
+                                                                                              actions_horizons[relevant_idxs])
 
         # Create ego states, dynamic objects, states and finally behavioral states
-        terminal_ego_states = [ego.clone_from_map_state(MapState(np.array([spec.s, spec.v, 0, spec.d, 0, 0]),
-                                                                 spec_lane_ids[i]),
+        terminal_ego_states = [ego.clone_from_map_state(MapState(ego_terminal_fstates[i], spec.relative_lane.value),
                                                         ego.timestamp_in_sec + actions_horizons[i])
                                for i, spec in enumerate(existing_specs)]
 
-        objects_curr_fstates = np.array(
-            [dynamic_object.map_state.lane_fstate for dynamic_object in state.dynamic_objects])
-        objects_terminal_fstates = self.predictor.predict_frenet_states(objects_curr_fstates, actions_horizons)
         terminal_dynamic_objects = [
-            [dynamic_object.clone_from_map_state(MapState(objects_terminal_fstates[i][j], lane_id))
+            [dynamic_object.clone_from_map_state(MapState(objects_terminal_fstates[i, j], spec.relative_lane.value))
              for i, dynamic_object in enumerate(state.dynamic_objects)]
-            for j, lane_id in enumerate(spec_lane_ids)]
+            for j, spec in enumerate(existing_specs)]
 
         terminal_states = [
             state.clone_with(dynamic_objects=terminal_dynamic_objects[i], ego_state=terminal_ego_states[i])
@@ -127,9 +146,8 @@ class CostBasedBehavioralPlanner:
 
     @staticmethod
     @prof.ProfileFunction()
-    def _generate_trajectory_specs(behavioral_state: BehavioralGridState, action_spec: ActionSpec,
-                                   navigation_plan: NavigationPlanMsg) -> \
-            [TrajectoryParams, FrenetState2D, FrenetState2D]:
+    def _generate_trajectory_specs(behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> \
+            [TrajectoryParams, FrenetState2D]:
         """
         Generate trajectory specification for trajectory planner given a SemanticActionSpec. This also
         generates the reference route that will be provided to the trajectory planner.
@@ -137,7 +155,6 @@ class CostBasedBehavioralPlanner:
          latitude is constant and equal to the target latitude;
          longitude starts from ego current longitude, and end in the target longitude.
         :param behavioral_state: processed behavioral state
-        :param navigation_plan: navigation plan of the rest of the roads to be followed (used to create a ref. route)
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
         ego = behavioral_state.ego_state
@@ -146,68 +163,42 @@ class CostBasedBehavioralPlanner:
         # calculate adjacent lane_id matching to the action_spec
         spec_lane_id = relative_lane_ids[action_spec.relative_lane]
 
-        # ego Frenet state projected on the target lane segment (adjacent to ego or lane of ego)
-        projected_ego_fstate = behavioral_state.projected_ego_fstates[action_spec.relative_lane]  # ego projected on the relative lane
+        # get action's unified frame (GFF)
+        action_frame = behavioral_state.unified_frames[action_spec.relative_lane]
 
         # goal Frenet state w.r.t. spec_lane_id
         goal_spec_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
+        # project goal onto action_frame
+        projected_goal_fstate = action_frame.convert_from_segment_state(goal_spec_fstate, spec_lane_id)
 
-        # set the reference route to start with a margin before the current longitudinal position of the vehicle
-        suggested_ref_route_start = projected_ego_fstate[FS_SX] - REFERENCE_ROUTE_MARGINS
-
-        # TODO: remove this hack when using a real map from SP
-        # if there is no long enough road behind ego, set ref_route_start = 0
-        ref_route_start = suggested_ref_route_start \
-            if suggested_ref_route_start >= 0 or MapUtils.does_map_exist_backward(spec_lane_id, -suggested_ref_route_start) \
-            else 0
-
-        # calculate reference route length
-        forward_lookahead = action_spec.s - ref_route_start + REFERENCE_ROUTE_MARGINS
-        ref_route_length = forward_lookahead * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
-
-        # create Generalized Frenet Frame (GFF) for TP, which is a part of TrajectoryParams
-        # TODO: remove it and use GFFs from BehavioralGridState
-        action_lane_gff = MapUtils.get_lookahead_frenet_frame(
-            lane_id=spec_lane_id, starting_lon=ref_route_start, lookahead_dist=ref_route_length,
-            navigation_plan=navigation_plan)
-
-        # create cost params, which are part of TrajectoryParams
-        ego_reference_fstate = action_lane_gff.convert_from_segment_state(frenet_state=projected_ego_fstate,
-                                                                          segment_id=action_spec.lane_id)
-        goal_reference_fstate = action_lane_gff.convert_from_segment_state(frenet_state=goal_spec_fstate,
-                                                                           segment_id=action_spec.lane_id)
-
-        goal_segment_id, goal_segment_fstate = action_lane_gff.convert_to_segment_state(goal_reference_fstate)
-
-        cost_params = CostBasedBehavioralPlanner._generate_cost_params(
-            map_state=MapState(goal_segment_fstate, spec_lane_id),
-            ego_size=ego.size
-        )
-
+        # calculate trajectory cost_params using original goal map_state (from the map)
+        goal_segment_id, goal_segment_fstate = action_frame.convert_to_segment_state(projected_goal_fstate)
+        cost_params = CostBasedBehavioralPlanner._generate_cost_params(map_state=MapState(goal_segment_fstate, goal_segment_id),
+                                                                       ego_size=ego.size)
         # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)
-        goal_cstate = action_lane_gff.fstate_to_cstate(goal_reference_fstate)
+        goal_cstate = action_frame.fstate_to_cstate(projected_goal_fstate)
 
         # create TrajectoryParams for TP
-        trajectory_parameters = TrajectoryParams(reference_route=action_lane_gff,
+        trajectory_parameters = TrajectoryParams(reference_route=action_frame,
                                                  time=action_spec.t + ego.timestamp_in_sec,
                                                  target_state=goal_cstate,
                                                  cost_params=cost_params,
                                                  strategy=TrajectoryPlanningStrategy.HIGHWAY,
                                                  bp_time=ego.timestamp)
 
-        return trajectory_parameters, ego_reference_fstate, goal_reference_fstate
+        return trajectory_parameters, projected_goal_fstate
 
     @staticmethod
     @prof.ProfileFunction()
-    def generate_baseline_trajectory(ego: EgoState, action_spec: ActionSpec, reference_route: FrenetSerret2DFrame,
+    def generate_baseline_trajectory(timestamp: float, action_spec: ActionSpec, reference_route: FrenetSerret2DFrame,
                                      ego_fstate: FrenetState2D, goal_fstate: FrenetState2D) -> \
             SamplableTrajectory:
         """
         Creates a SamplableTrajectory as a reference trajectory for a given ActionSpec, assuming T_d=T_s
-        :param ego: ego object
+        :param timestamp: [s] ego timestamp in seconds
         :param action_spec: action specification that contains all relevant info about the action's terminal state
         :param reference_route: the reference Frenet frame sent to TP
-        :param ego_fstate: initial ego Frenet state w.r.t. reference_route
+        :param ego_fstate: ego Frenet state w.r.t. reference_route
         :param goal_fstate: goal Frenet state w.r.t. reference_route
         :return: a SamplableWerlingTrajectory object
         """
@@ -221,7 +212,7 @@ class CostBasedBehavioralPlanner:
         poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
         poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
 
-        return SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
+        return SamplableWerlingTrajectory(timestamp_in_sec=timestamp,
                                           T_s=action_spec.t,
                                           T_d=action_spec.t,
                                           frenet_frame=reference_route,
