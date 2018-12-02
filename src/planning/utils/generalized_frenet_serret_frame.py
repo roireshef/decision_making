@@ -159,7 +159,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         (the resulted frenet states))
         """
         # Find the closest greater segment offset for each frenet state longitudinal
-        segment_idxs = self._get_segment_idxs_from_s(frenet_states[:, FS_SX])
+        segment_idxs = self._get_segment_idxs_from_s(frenet_states[..., FS_SX])
         s_offset = self._segments_s_offsets[segment_idxs]
         new_frenet_states = frenet_states.copy()
         new_frenet_states[..., FS_SX] -= s_offset
