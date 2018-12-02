@@ -297,7 +297,7 @@ class State(PUBSUB_MSG_IMPL):
         requires deep-copying of all fields in State.__init__ !!
         """
         return State(occupancy_state or self.occupancy_state,
-                     dynamic_objects or self.dynamic_objects,
+                     dynamic_objects if dynamic_objects is not None else self.dynamic_objects,
                      ego_state or self.ego_state)
 
     def serialize(self):

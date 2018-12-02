@@ -55,6 +55,7 @@ class DynamicActionSpace(ActionSpace):
         target_length = np.array([target.dynamic_object.size.length for target in targets])
         target_lane_ids = np.array([target.dynamic_object.map_state.lane_id for target in targets])
         target_fstates = np.array([target.dynamic_object.map_state.lane_fstate for target in targets])
+        rel_lanes_per_target = np.array([recipe.relative_lane for recipe in action_recipes])
 
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
@@ -64,7 +65,8 @@ class DynamicActionSpace(ActionSpace):
         v_T = target_fstates[:, FS_SV]
 
         # calculate initial longitudinal differences between all target objects and ego along target lanes
-        longitudinal_differences = behavioral_state.calculate_longitudinal_differences(target_lane_ids, target_fstates)
+        longitudinal_differences = behavioral_state.calculate_longitudinal_differences(target_lane_ids, target_fstates,
+                                                                                       rel_lanes_per_target)
 
         # margin_sign is -1 for FOLLOW_VEHICLE (behind target) and +1 for OVER_TAKE_VEHICLE (in front of target)
         margin_sign = np.array([-1 if action_recipe.action_type == ActionType.FOLLOW_VEHICLE else +1

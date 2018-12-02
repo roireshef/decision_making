@@ -72,21 +72,24 @@ class BehavioralGridState(BehavioralState):
 
         # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
         dynamic_objects_with_road_semantics = \
-            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, state.ego_state, unified_frames),
+            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, state.ego_state, unified_frames, projected_ego_fstates),
                    key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
 
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
                                                                          state.ego_state)
         return cls(multi_object_grid, state.ego_state, unified_frames, projected_ego_fstates)
 
-    def calculate_longitudinal_differences(self, target_lane_ids: np.array, target_fstates: np.array) -> np.array:
+    def calculate_longitudinal_differences(self, target_lane_ids: np.array, target_fstates: np.array,
+                                           rel_lanes_per_target: np.array) -> np.array:
         return BehavioralGridState._calculate_longitudinal_differences(
-            self.unified_frames, self.ego_state.map_state.lane_id, self.projected_ego_fstates, target_lane_ids, target_fstates)
+            self.unified_frames, self.ego_state.map_state.lane_id, self.projected_ego_fstates,
+            target_lane_ids, target_fstates, rel_lanes_per_target)
 
     @staticmethod
     def _calculate_longitudinal_differences(unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
                                             ego_lane_id: int, ego_unified_fstates: Dict[RelativeLane, FrenetState2D],
-                                            target_lane_ids: np.array, target_fstates: np.array) -> np.array:
+                                            target_lane_ids: np.array, target_fstates: np.array,
+                                            rel_lanes_per_target: np.array) -> np.array:
         """
         Given target segment ids and fstates, calculate longitudinal differences between the target and ego
         projected on the target lanes, using 3 unified frames (GFF).
@@ -98,14 +101,16 @@ class BehavioralGridState(BehavioralState):
         relative_lane_ids = MapUtils.get_relative_lane_ids(ego_lane_id)
 
         # longitudinal difference between object and ego at t=0 (positive if obj in front of ego)
-        for rel_lane in relative_lane_ids:
-            # find all dynamic objects that belong to the current unified frame
+        for rel_lane in relative_lane_ids:  # loop over at most 3 relative lanes (adjacent)
+            # find all targets belonging to the current unified frame
             relevant_idxs = unified_frames[rel_lane].has_segment_ids(target_lane_ids)
             # convert relevant dynamic objects to fstate w.r.t. the current unified frame
             tar_unified_fstates[relevant_idxs] = unified_frames[rel_lane].convert_from_segment_states(
                 target_fstates[relevant_idxs], target_lane_ids[relevant_idxs])
 
-        return tar_unified_fstates[:, FS_SX] - ego_unified_fstates[:, FS_SX]
+        longitudinal_differences = np.array([tar_unified_fstates[i, FS_SX] - ego_unified_fstates[rel_lane][FS_SX]
+                                             for i, rel_lane in enumerate(rel_lanes_per_target)])
+        return longitudinal_differences
 
     @staticmethod
     @prof.ProfileFunction()
@@ -122,20 +127,22 @@ class BehavioralGridState(BehavioralState):
         :return: list of object of type DynamicObjectWithRoadSemantics
         """
         relative_lane_ids = MapUtils.get_relative_lane_ids(ego_state.map_state.lane_id)
+
         # calculate objects' segment map_states
         objects_segment_ids = np.array([obj.map_state.lane_id for obj in dynamic_objects])
         objects_segment_fstates = np.array([obj.map_state.lane_fstate for obj in dynamic_objects])
 
-        # calculate longitudinal distances between the objects and ego, using unified_frames (GFF's)
-        longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
-            unified_frames, ego_state.map_state.lane_id, projected_ego_fstates, objects_segment_ids, objects_segment_fstates)
-
         # for objects on non-adjacent lane set relative_lanes[i] = None
-        rel_lanes_per_obj: List[RelativeLane] = [None] * len(dynamic_objects)
+        rel_lanes_per_obj = np.full(len(dynamic_objects), None)
         for rel_lane in relative_lane_ids:
             # find all dynamic objects that belong to the current unified frame
             relevant_objects = unified_frames[rel_lane].has_segment_ids(objects_segment_ids)
             rel_lanes_per_obj[relevant_objects] = rel_lane
+
+        # calculate longitudinal distances between the objects and ego, using unified_frames (GFF's)
+        longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
+            unified_frames, ego_state.map_state.lane_id, projected_ego_fstates,
+            objects_segment_ids, objects_segment_fstates, rel_lanes_per_obj)
 
         return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i], rel_lanes_per_obj[i])
                 for i, obj in enumerate(dynamic_objects) if rel_lanes_per_obj[i] is not None]
@@ -153,11 +160,18 @@ class BehavioralGridState(BehavioralState):
         ego_lane_id = state.ego_state.map_state.lane_id
         adjacent_lanes_dict = MapUtils.get_relative_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
         unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame] = {}
-        backward_dist = PLANNING_LOOKAHEAD_DIST
-        frame_length = backward_dist + MAX_HORIZON_DISTANCE
+        suggested_ref_route_start = state.ego_state.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST
+
+        # TODO: remove this hack when using a real map from SP
+        # if there is no long enough road behind ego, set ref_route_start = 0
+        ref_route_start = suggested_ref_route_start \
+            if suggested_ref_route_start >= 0 or MapUtils.does_map_exist_backward(ego_lane_id, -suggested_ref_route_start) \
+            else 0
+
+        frame_length = ref_route_start + MAX_HORIZON_DISTANCE
         for rel_lane in adjacent_lanes_dict:
             unified_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
-                lane_id=adjacent_lanes_dict[rel_lane], starting_lon=-backward_dist, lookahead_dist=frame_length,
+                lane_id=adjacent_lanes_dict[rel_lane], starting_lon=ref_route_start, lookahead_dist=frame_length,
                 navigation_plan=nav_plan)
         return unified_frames
 

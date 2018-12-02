@@ -99,7 +99,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
         self.logger.debug('Number of actions originally: %d, valid: %d',
                           self.action_space.action_space_size, np.sum(recipes_mask))
-        selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes, recipes_mask)
+        selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes,
+                                                                         recipes_mask, nav_plan)
         trajectory_parameters, goal_fstate = CostBasedBehavioralPlanner._generate_trajectory_specs(
             behavioral_state=behavioral_state, action_spec=selected_action_spec)
         visualization_message = BehavioralVisualizationMsg(
