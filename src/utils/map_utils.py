@@ -201,7 +201,7 @@ class MapUtils:
         :return: lane's length
         """
         nominal_points = SceneModel.get_instance().get_lane(lane_id).a_nominal_path_points
-        return nominal_points[-1, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s]
+        return nominal_points[-1][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
 
 
     @staticmethod
@@ -245,10 +245,10 @@ class MapUtils:
         :return: distance from the right lane border, distance from the left lane border
         """
         nominal_points = SceneModel.get_instance().get_lane(lane_id).a_nominal_path_points
-        for x in np.nditer(nominal_points):
-            if x[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s] == s:
-                return (x[NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset],
-                        x[NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset])
+        for x in nominal_points:
+            if x[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] == s:
+                return (x[NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset.value],
+                        x[NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value])
 
 
     @staticmethod

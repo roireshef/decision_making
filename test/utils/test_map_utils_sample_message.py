@@ -7,6 +7,8 @@ from common_data.lcm.config import pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
 
 from decision_making.test.messages.static_scene_fixture import scene_static
+from decision_making.test.utils.map_util_test_functions import TestFunctions
+
 from decision_making.src.messages.scene_common_messages import Header, MapOrigin, Timestamp
 from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic, SceneRoadSegment, \
     MapRoadSegmentType, SceneLaneSegment, MapLaneType, LaneSegmentConnectivity, ManeuverType, NominalPathPoint, \
@@ -15,6 +17,7 @@ from decision_making.src.messages.navigation_plan_message import NavigationPlanM
 
 from decision_making.src.mapping.scene_model import SceneModel
 from decision_making.src.messages.scene_static_message import SceneStatic
+from decision_making.src.planning.types import CartesianPoint2D
 from decision_making.src.utils.map_utils import MapUtils
 
 # ---------------------------------------------------------
@@ -62,8 +65,13 @@ def scene_static_sample():
         nominal_points = []
         for i in range(NUM_NOM_PATH_PTS):
             point = np.empty(len(NominalPathPoint))
-            point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value] = START_EAST_X_VAL + i
-            point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value] = START_NORTH_Y_VAL + i
+            if i == 0:
+                point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value] = START_EAST_X_VAL + i
+                point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value] = START_NORTH_Y_VAL + i
+            else:
+                prev_pt = nominal_points[i-1]
+                point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value] = START_EAST_X_VAL + i + prev_pt[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value]
+                point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value] = START_NORTH_Y_VAL + i + prev_pt[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value]
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_phi_heading.value] = 0 
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_il_curvature.value] = 0
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_il2_curvature_rate.value] = 0
@@ -82,12 +90,12 @@ def scene_static_sample():
         left_boundry_point = [BoundaryPoint(MapLaneMarkerType.MapLaneMarkerType_SolidSingleLine_BottsDots, 0, (FRENET_DS * (NUM_NOM_PATH_PTS-1)))]
         right_boundry_point = [BoundaryPoint(MapLaneMarkerType.MapLaneMarkerType_SolidSingleLine_BottsDots, 0, (FRENET_DS * (NUM_NOM_PATH_PTS-1)))]
 
-        downstream_id = LANE_SEG_IDS[lane_idx + 1] if lane_idx < (NUM_LANE_SEGS - 1) else -1 
-        upstream_id = LANE_SEG_IDS[lane_idx - 1] if lane_idx > 0 else -1 
-        # print("Lane ", lane_id, ": downstream from lane ",downstream_id, ", upstream from lane ", upstream_id)    
+        upstream_id = LANE_SEG_IDS[lane_idx - 1] if lane_idx != 0 else -1 
+        downstream_id = LANE_SEG_IDS[lane_idx + 1] if lane_idx != (NUM_LANE_SEGS - 1) else -1 
+        # print("Lane ", lane_id, ": downstream lane = ",downstream_id, ", upstream lane = ", upstream_id)    
 
-        downstream_lane_segment_connectivity = LaneSegmentConnectivity(downstream_id, ManeuverType.STRAIGHT_CONNECTION) if downstream_id != -1 else None
-        upstream_lane_segment_connectivity = LaneSegmentConnectivity(upstream_id, ManeuverType.STRAIGHT_CONNECTION) if upstream_id != -1 else None
+        downstream_lane_segment_connectivity = [LaneSegmentConnectivity(downstream_id, ManeuverType.STRAIGHT_CONNECTION)] if downstream_id != -1 else []
+        upstream_lane_segment_connectivity = [LaneSegmentConnectivity(upstream_id, ManeuverType.STRAIGHT_CONNECTION)] if upstream_id != -1 else []
 
         scene_lane_segments.append(SceneLaneSegment(e_i_lane_segment_id=lane_id,
                                                     e_i_road_segment_id=road_segment_id,
@@ -101,9 +109,9 @@ def scene_static_sample():
                                                     e_Cnt_right_adjacent_lane_count=0,
                                                     as_right_adjacent_lanes=[],
                                                     e_Cnt_downstream_lane_count=1,
-                                                    as_downstream_lanes=[downstream_lane_segment_connectivity],
+                                                    as_downstream_lanes=downstream_lane_segment_connectivity,
                                                     e_Cnt_upstream_lane_count=1,
-                                                    as_upstream_lanes=[upstream_lane_segment_connectivity],
+                                                    as_upstream_lanes=upstream_lane_segment_connectivity,
                                                     e_v_nominal_speed=NOM_SPEED,
                                                     e_Cnt_nominal_path_point_count=len(nominal_points),
                                                     a_nominal_path_points=np.asarray(nominal_points),
@@ -134,8 +142,45 @@ def scene_static_sample():
 
 
 
-def test_getLookaheadFrenetFrame_simple(scene_static: SceneStatic):
-    pass
+def run_test_cases(scene_static: SceneStatic):
+    first_lane_nom_path_pts = scene_static.s_Data.as_scene_lane_segment[0].a_nominal_path_points
+
+    # TODO Test get_road_rhs_frenet
+
+    # TODO Test get_lookahead_frenet_frame
+
+    # Test get_road_segment_id_from_lane_id
+    TestFunctions.test_get_road_segment_id_from_lane_id(LANE_SEG_IDS[0], ROAD_SEG_ID)
+
+    # Test get_lane_ordinal
+    TestFunctions.test_get_lane_ordinal(LANE_SEG_IDS[NUM_LANE_SEGS - 1], 0)  
+
+    # Test get_lane_length
+    first_lane_last_nom_pt = first_lane_nom_path_pts[scene_static.s_Data.as_scene_lane_segment[0].e_Cnt_nominal_path_point_count - 1]
+    first_lane_length = first_lane_last_nom_pt[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+    TestFunctions.test_get_lane_length(LANE_SEG_IDS[0], first_lane_length)
+
+    # TODO Test get_lane_frenet_frame
+
+    # TODO Test get_adjacent_lanes
+
+    # Test get_dist_from_lane_center_to_lane_borders
+    TestFunctions.test_get_dist_from_lane_center_to_lane_borders(LANE_SEG_IDS[0], 0, (HALF_LANE_WIDTH, HALF_LANE_WIDTH))
+
+    # Test get_dist_from_lane_center_to_road_borders 
+    TestFunctions.test_get_dist_from_lane_center_to_road_borders(LANE_SEG_IDS[0], 0, (HALF_LANE_WIDTH, HALF_LANE_WIDTH))
+
+    # Test get_lane_width
+    TestFunctions.test_get_lane_width(LANE_SEG_IDS[0], 0, HALF_LANE_WIDTH * 2)
+
+    # Test get_upstream_lanes
+    TestFunctions.test_get_upstream_lanes(LANE_SEG_IDS[NUM_LANE_SEGS - 1], [LANE_SEG_IDS[2]])
+
+    # Test get_downstream_lanes
+    TestFunctions.test_get_downstream_lanes(LANE_SEG_IDS[0], [LANE_SEG_IDS[1]])
+
+    # Test get_lanes_id_from_road_segment_id
+    TestFunctions.test_get_lanes_id_from_road_segment_id(ROAD_SEG_ID, LANE_SEG_IDS)
 
 
 def main():
@@ -154,10 +199,8 @@ def main():
         assert lane.e_i_lane_segment_id == LANE_SEG_IDS[lane_idx]
         lane_idx += 1
 
-    #######################################################
-    # Insert tests here
-    #######################################################
-
+    # Run test cases
+    run_test_cases(scene_static)
 
 if __name__ == '__main__':
     main()
