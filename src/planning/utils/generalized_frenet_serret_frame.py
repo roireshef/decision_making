@@ -9,6 +9,7 @@ from common_data.interface.py.utils.serialization_utils import SerializationUtil
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, FrenetStates2D, NumpyIndicesArray, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from mapping.src.exceptions import OutOfSegmentFront
 from mapping.src.transformations.geometry_utils import Euclidean
 
 
@@ -122,6 +123,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         :return: boolean multi-dimensional array of the same size of <segment_ids> that has True whenever segment_ids[.]
         exists in self._segments_id
         """
+        if len(segment_ids) == 0:
+            return np.array([], dtype=int)
         assert segment_ids.dtype == np.int, 'Array of indices should have int type'
         return np.isin(segment_ids, self._segments_id)
 
@@ -160,6 +163,9 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         s_offset = self._segments_s_offsets[segment_idxs]
         new_frenet_states = frenet_states.copy()
         new_frenet_states[..., FS_SX] -= s_offset
+        if np.max(segment_idxs) >= len(self._segments_id):
+            raise OutOfSegmentFront("frenet_states[%s, FS_SX] = %s exceeds the frame length %f" %
+                                    (np.argmax(frenet_states[..., FS_SX]), np.max(frenet_states[..., FS_SX]), self.s_max))
         return self._segments_id[segment_idxs], new_frenet_states
 
     def convert_to_segment_state(self, frenet_state: FrenetState2D) -> (int, FrenetState2D):

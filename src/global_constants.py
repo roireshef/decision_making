@@ -109,7 +109,7 @@ MIN_OVERTAKE_VEL = 3.5
 LON_MARGIN_FROM_EGO = 1
 
 # [m] Maximal horizon distance for building Generalized Frenet Frames
-MAX_HORIZON_DISTANCE = 500
+MAX_HORIZON_DISTANCE = 400
 
 # Uniform grids for BP Filters
 FILTER_A_0_GRID = UniformGrid(LON_ACC_LIMITS, 0.5)

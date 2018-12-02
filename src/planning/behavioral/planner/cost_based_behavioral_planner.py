@@ -5,18 +5,18 @@ from logging import Logger
 from typing import Optional, List, Dict
 
 import rte.python.profiler as prof
-from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, TRAJECTORY_ARCLEN_RESOLUTION, \
-    SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, \
-    DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, \
-    OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, \
-    DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT, REFERENCE_ROUTE_MARGINS
+from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, \
+    LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, \
+    ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, \
+    GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, \
+    LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
+    LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, RelativeLane
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator, \
     ActionRecipeEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
@@ -29,9 +29,8 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import State, ObjectSize, EgoState
+from decision_making.src.state.state import State, ObjectSize
 from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.exceptions import UpstreamLaneNotFound
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 
 
@@ -97,8 +96,9 @@ class CostBasedBehavioralPlanner:
         relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
         # collect terminal / specs' lane_ids and fstates wrt these lanes
         existing_specs = [spec for i, spec in enumerate(action_specs) if mask[i]]
-        spec_lane_ids = np.array([relative_lane_ids[spec.relative_lane] for spec in existing_specs])
-        spec_fstates = np.array([[spec.s, spec.v, 0, spec.d, 0, 0] for spec in existing_specs])
+        # get lane_ids adjacent to ego according to specs' relative lanes
+        lane_ids_per_spec = np.array([relative_lane_ids[spec.relative_lane] for spec in existing_specs])
+        ego_terminal_fstates = np.array([[spec.s, spec.v, 0, spec.d, 0, 0] for spec in existing_specs])
         actions_horizons = np.array([spec.t for spec in existing_specs])
 
         # collect objects' current fstates and lane_ids
@@ -106,23 +106,23 @@ class CostBasedBehavioralPlanner:
         objects_curr_lane_ids = np.array([dynamic_object.map_state.lane_id for dynamic_object in state.dynamic_objects])
 
         # allocate memory for ego & objects for the existing specs
-        ego_terminal_fstates = np.empty((len(spec_lane_ids), 6), dtype=float)
-        ego_terminal_lane_ids = np.full((len(spec_lane_ids)), None)
-        objects_terminal_fstates = np.empty((len(state.dynamic_objects), len(spec_lane_ids), 6), dtype=float)
-        objects_terminal_lane_ids = np.full((len(state.dynamic_objects), len(spec_lane_ids)), None)
+        ego_terminal_segment_fstates = np.empty((len(existing_specs), 6), dtype=float)
+        ego_terminal_segment_lane_ids = np.full((len(existing_specs)), None)
+
+        objects_terminal_fstates = np.empty((len(state.dynamic_objects), len(existing_specs), 6), dtype=float)
+        objects_terminal_segment_fstates = np.empty((len(state.dynamic_objects), len(existing_specs), 6), dtype=float)
+        objects_terminal_segment_lane_ids = np.full((len(state.dynamic_objects), len(existing_specs)), None)
 
         # calculate terminal fstates w.r.t. the unified frames
         for rel_lane in relative_lane_ids:  # loop over at most 3 adjacent lanes
             # find all specs, whose target belongs to the current unified frame
-            relevant_spec_idxs = behavioral_state.unified_frames[rel_lane].has_segment_ids(spec_lane_ids)
+            relevant_spec_idxs = behavioral_state.unified_frames[rel_lane].has_segment_ids(lane_ids_per_spec)
             # find all objects that belong to the current unified frame
             relevant_object_idxs = behavioral_state.unified_frames[rel_lane].has_segment_ids(objects_curr_lane_ids)
 
-            # convert relevant dynamic objects to fstate w.r.t. the current unified frame
-            ego_terminal_fstates[relevant_spec_idxs] = behavioral_state.unified_frames[rel_lane].convert_from_segment_states(
-                spec_fstates[relevant_spec_idxs], spec_lane_ids[relevant_spec_idxs])
-            ego_terminal_lane_ids[relevant_spec_idxs], _ = behavioral_state.unified_frames[rel_lane].convert_to_segment_states(
-                ego_terminal_fstates[relevant_spec_idxs])
+            # convert the obtained ego terminal states to the segments (ids & fstates)
+            ego_terminal_segment_lane_ids[relevant_spec_idxs], ego_terminal_segment_fstates[relevant_spec_idxs] = \
+                behavioral_state.unified_frames[rel_lane].convert_to_segment_states(ego_terminal_fstates[relevant_spec_idxs])
 
             # covert relevant objects' fstates to the unified frame
             objects_current_fstates = behavioral_state.unified_frames[rel_lane].convert_from_segment_states(
@@ -130,20 +130,26 @@ class CostBasedBehavioralPlanner:
 
             # predict all objects' terminal states for the actions, whose target is the current unified frame
             if np.array(relevant_object_idxs).any():
+                # predict relevant objects and relevant specs
                 objects_terminal_fstates[relevant_object_idxs, relevant_spec_idxs] = \
                     self.predictor.predict_frenet_states(objects_current_fstates, actions_horizons[relevant_spec_idxs])
-                objects_terminal_lane_ids[relevant_object_idxs, relevant_spec_idxs], _ = \
+                # convert the obtained objects' terminal fstates to the segments (ids & fstates)
+                obj_segment_lane_ids, obj_segment_fstates = \
                     behavioral_state.unified_frames[rel_lane].convert_to_segment_states(
                         objects_terminal_fstates[relevant_object_idxs, relevant_spec_idxs])
+                objects_terminal_segment_lane_ids[relevant_object_idxs, relevant_spec_idxs] = obj_segment_lane_ids
+                objects_terminal_segment_fstates[relevant_object_idxs, relevant_spec_idxs] = obj_segment_fstates
 
         # Create ego states, dynamic objects, states and finally behavioral states
-        terminal_ego_states = [ego.clone_from_map_state(MapState(ego_terminal_fstates[i], ego_terminal_lane_ids[i]),
+        terminal_ego_states = [ego.clone_from_map_state(MapState(ego_terminal_segment_fstates[i],
+                                                                 ego_terminal_segment_lane_ids[i]),
                                                         ego.timestamp_in_sec + actions_horizons[i])
                                for i, spec in enumerate(existing_specs)]
 
         terminal_dynamic_objects = [
-            [dynamic_object.clone_from_map_state(MapState(objects_terminal_fstates[i, j], objects_terminal_lane_ids[i, j]))
-             for i, dynamic_object in enumerate(state.dynamic_objects) if objects_terminal_lane_ids[i, j] is not None]
+            [dynamic_object.clone_from_map_state(MapState(objects_terminal_segment_fstates[i, j],
+                                                          objects_terminal_segment_lane_ids[i, j]))
+             for i, dynamic_object in enumerate(state.dynamic_objects) if objects_terminal_segment_lane_ids[i, j] is not None]
             for j, spec in enumerate(existing_specs)]
 
         terminal_states = [
@@ -178,9 +184,7 @@ class CostBasedBehavioralPlanner:
         action_frame = behavioral_state.unified_frames[action_spec.relative_lane]
 
         # goal Frenet state w.r.t. spec_lane_id
-        goal_spec_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
-        # project goal onto action_frame
-        projected_goal_fstate = action_frame.convert_from_segment_state(goal_spec_fstate, spec_lane_id)
+        projected_goal_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
 
         # calculate trajectory cost_params using original goal map_state (from the map)
         goal_segment_id, goal_segment_fstate = action_frame.convert_to_segment_state(projected_goal_fstate)

@@ -73,8 +73,8 @@ class TrajectoryPlannerCosts:
 
             # calculate objects' map_state
             for obj in close_objects:
-                obj._cached_map_states[RelativeLane.SAME_LANE] = \
-                    MapState(lane_fstate=reference_route.cstate_to_fstate(obj.cartesian_state), lane_id=REFERENCE_ROUTE_LANE_ID)
+                obj._cached_map_state = MapState(lane_fstate=reference_route.cstate_to_fstate(obj.cartesian_state),
+                                                 lane_id=REFERENCE_ROUTE_LANE_ID)
             objects_relative_fstates = np.array([obj.map_state.lane_fstate for obj in close_objects
                                                  if obj.map_state.lane_fstate is not None])
 

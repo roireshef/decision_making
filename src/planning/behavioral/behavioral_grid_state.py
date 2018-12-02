@@ -104,9 +104,10 @@ class BehavioralGridState(BehavioralState):
         for rel_lane in relative_lane_ids:  # loop over at most 3 relative lanes (adjacent)
             # find all targets belonging to the current unified frame
             relevant_idxs = unified_frames[rel_lane].has_segment_ids(target_lane_ids)
-            # convert relevant dynamic objects to fstate w.r.t. the current unified frame
-            tar_unified_fstates[relevant_idxs] = unified_frames[rel_lane].convert_from_segment_states(
-                target_fstates[relevant_idxs], target_lane_ids[relevant_idxs])
+            if relevant_idxs.any():
+                # convert relevant dynamic objects to fstate w.r.t. the current unified frame
+                tar_unified_fstates[relevant_idxs] = unified_frames[rel_lane].convert_from_segment_states(
+                    target_fstates[relevant_idxs], target_lane_ids[relevant_idxs])
 
         longitudinal_differences = np.array([tar_unified_fstates[i, FS_SX] - ego_unified_fstates[rel_lane][FS_SX]
                                              for i, rel_lane in enumerate(rel_lanes_per_target)])
@@ -168,7 +169,7 @@ class BehavioralGridState(BehavioralState):
             if suggested_ref_route_start >= 0 or MapUtils.does_map_exist_backward(ego_lane_id, -suggested_ref_route_start) \
             else 0
 
-        frame_length = ref_route_start + MAX_HORIZON_DISTANCE
+        frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
         for rel_lane in adjacent_lanes_dict:
             unified_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
                 lane_id=adjacent_lanes_dict[rel_lane], starting_lon=ref_route_start, lookahead_dist=frame_length,

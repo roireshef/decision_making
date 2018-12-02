@@ -80,9 +80,13 @@ class MapUtils:
         """
         right_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.RIGHT_LANE)
         left_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.LEFT_LANE)
-        return {RelativeLane.RIGHT_LANE: right_lanes[0] if len(right_lanes) > 0 else None,
-                RelativeLane.SAME_LANE: lane_id,
-                RelativeLane.LEFT_LANE: left_lanes[0] if len(left_lanes) > 0 else None}
+        relative_lane_ids: Dict[RelativeLane, int] = {}
+        if len(right_lanes) > 0:
+            relative_lane_ids[RelativeLane.RIGHT_LANE] = right_lanes[0]
+        relative_lane_ids[RelativeLane.SAME_LANE] = lane_id
+        if len(left_lanes) > 0:
+            relative_lane_ids[RelativeLane.LEFT_LANE] = left_lanes[0]
+        return relative_lane_ids
 
     # TODO: Remove it after introduction of the new mapping module. Avoid using this function once SP output is available.
     @staticmethod
