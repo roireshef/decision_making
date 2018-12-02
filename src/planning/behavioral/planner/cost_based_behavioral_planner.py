@@ -1,9 +1,8 @@
+import numpy as np
+import six
 from abc import abstractmethod, ABCMeta
 from logging import Logger
 from typing import Optional, List
-
-import numpy as np
-import six
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, TRAJECTORY_ARCLEN_RESOLUTION, \
@@ -27,13 +26,15 @@ from decision_making.src.planning.trajectory.samplable_werling_trajectory import
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
+    FrenetSubSegment
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, ObjectSize, EgoState
 from decision_making.src.utils.map_utils import MapUtils
+from mapping.src.exceptions import UpstreamLaneNotFound
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
-from mapping.src.service.map_service import MapService
 
 
 @six.add_metaclass(ABCMeta)
@@ -96,23 +97,26 @@ class CostBasedBehavioralPlanner:
         # create a new behavioral state at the action end
         ego = state.ego_state
 
+        relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
+        existing_specs = [spec for i, spec in enumerate(action_specs) if mask[i]]
+        spec_lane_ids = [relative_lane_ids[spec.relative_lane] for spec in existing_specs]
+        actions_horizons = np.array([spec.t for spec in existing_specs])
         # TODO: assumes everyone on the same road!
-        road_id = ego.map_state.road_id
-        actions_horizons = np.array([spec.t for i, spec in enumerate(action_specs) if mask[i]])
-        terminal_timestamps = ego.timestamp_in_sec + actions_horizons
-
-        objects_curr_fstates = np.array(
-            [dynamic_object.map_state.road_fstate for dynamic_object in state.dynamic_objects])
-        objects_terminal_fstates = self.predictor.predict_frenet_states(objects_curr_fstates, actions_horizons)
 
         # Create ego states, dynamic objects, states and finally behavioral states
-        terminal_ego_states = [ego.clone_from_map_state(MapState([spec.s, spec.v, 0, spec.d, 0, 0], road_id),
-                                                        ego.timestamp_in_sec + spec.t)
-                               for i, spec in enumerate(action_specs) if mask[i]]
+        terminal_ego_states = [ego.clone_from_map_state(MapState(np.array([spec.s, spec.v, 0, spec.d, 0, 0]),
+                                                                 spec_lane_ids[i]),
+                                                        ego.timestamp_in_sec + actions_horizons[i])
+                               for i, spec in enumerate(existing_specs)]
+
+        objects_curr_fstates = np.array(
+            [dynamic_object.map_state.lane_fstate for dynamic_object in state.dynamic_objects])
+        objects_terminal_fstates = self.predictor.predict_frenet_states(objects_curr_fstates, actions_horizons)
         terminal_dynamic_objects = [
-            [dynamic_object.clone_from_map_state(MapState(objects_terminal_fstates[i][j], road_id))
+            [dynamic_object.clone_from_map_state(MapState(objects_terminal_fstates[i][j], lane_id))
              for i, dynamic_object in enumerate(state.dynamic_objects)]
-            for j, terminal_timestamp in enumerate(terminal_timestamps)]
+            for j, lane_id in enumerate(spec_lane_ids)]
+
         terminal_states = [
             state.clone_with(dynamic_objects=terminal_dynamic_objects[i], ego_state=terminal_ego_states[i])
             for i in range(len(terminal_ego_states))]
@@ -124,8 +128,7 @@ class CostBasedBehavioralPlanner:
 
     @staticmethod
     @prof.ProfileFunction()
-    def _generate_trajectory_specs(behavioral_state: BehavioralGridState,
-                                   action_spec: ActionSpec,
+    def _generate_trajectory_specs(behavioral_state: BehavioralGridState, action_spec: ActionSpec,
                                    navigation_plan: NavigationPlanMsg) -> TrajectoryParams:
         """
         Generate trajectory specification for trajectory planner given a SemanticActionSpec. This also
@@ -138,46 +141,49 @@ class CostBasedBehavioralPlanner:
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
         ego = behavioral_state.ego_state
+        # calculate adjacent lane_ids
+        relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
+        # calculate adjacent lane_id matching to the action_spec
+        spec_lane_id = relative_lane_ids[action_spec.relative_lane]
 
-        # Get road details
-        road_id = ego.map_state.road_id
+        # calculate projected ego frenet state
+        projected_fstates = BehavioralGridState.project_ego_on_adjacent_lanes(ego)
+        projected_ego_fstate = projected_fstates[action_spec.relative_lane]  # ego projected on the relative lane
+
+        # goal frenet state relative to spec_lane_id
+        goal_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
 
         # set the reference route to start with a margin before the current longitudinal position of the vehicle
-        ref_route_start = max(0, ego.map_state.road_fstate[FS_SX] - REFERENCE_ROUTE_MARGINS)
+        suggested_ref_route_start = projected_ego_fstate[FS_SX] - REFERENCE_ROUTE_MARGINS
 
-        # Add a margin to the lookahead path of dynamic objects to avoid extrapolation
-        # caused by the curve linearization approximation in the resampling process
-        # The compensation here is multiplicative because of the different curve-fittings we use:
-        # in BP we use piecewise-linear and in TP we use cubic-fit.
-        # Due to that, a point's longitude-value will be different between the 2 curves.
-        # This error is accumulated depending on the actual length of the curvature -
-        # when it is long, the error will potentially be big.
-        max_road_longitude = MapService.get_instance().get_road(ego.map_state.road_id).length
+        # TODO: remove this hack when using a real map from SP
+        # if there is no long enough road behind ego, set ref_route_start = 0
+        ref_route_start = suggested_ref_route_start \
+            if suggested_ref_route_start >= 0 or MapUtils.does_map_exist_backward(spec_lane_id, -suggested_ref_route_start) \
+            else 0
+
+        # calculate reference route length
         forward_lookahead = action_spec.s - ref_route_start + REFERENCE_ROUTE_MARGINS
-        ref_route_length = min(max_road_longitude - ref_route_start, forward_lookahead * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO)
+        ref_route_length = forward_lookahead * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
 
-        center_lane_points = MapService.get_instance().get_uniform_path_lookahead(
-            road_id=road_id,
-            lat_shift=action_spec.d,  # THIS ASSUMES THE GOAL ALWAYS FALLS ON THE REFERENCE ROUTE
-            starting_lon=ref_route_start,
-            lon_step=TRAJECTORY_ARCLEN_RESOLUTION,
-            steps_num=int(np.ceil(ref_route_length / TRAJECTORY_ARCLEN_RESOLUTION)),
+        # create Generalized Frenet Frame (GFF) for TP, which is a part of TrajectoryParams
+        # TODO: remove it and use GFFs from BehavioralGridState
+        action_lane_gff = MapUtils.get_lookahead_frenet_frame(
+            lane_id=spec_lane_id, starting_lon=ref_route_start, lookahead_dist=ref_route_length,
             navigation_plan=navigation_plan)
 
-        # The frenet frame used in specify (RightHandSide of road)
-        rhs_frenet = MapService.get_instance()._rhs_roads_frenet[ego.map_state.road_id]
-        # Convert goal state from rhs-frenet-frame to center-lane-frenet-frame
-        goal_cstate = rhs_frenet.fstate_to_cstate(np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0]))
-
+        # create cost params, which are part of TrajectoryParams
         cost_params = CostBasedBehavioralPlanner._generate_cost_params(
-            road_id=road_id,
-            ego_size=ego.size,
-            reference_route_latitude=action_spec.d  # this assumes the target falls on the reference route
+            map_state=MapState(goal_fstate, spec_lane_id),
+            ego_size=ego.size
         )
 
-        center_lane_reference_route = FrenetSerret2DFrame.fit(center_lane_points)
+        # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)
+        # TODO: remove it, when TP will obtain frenet frame
+        goal_cstate = MapUtils.get_lane_frenet_frame(spec_lane_id).fstate_to_cstate(goal_fstate)
 
-        trajectory_parameters = TrajectoryParams(reference_route=center_lane_reference_route,
+        # create TrajectoryParams for TP
+        trajectory_parameters = TrajectoryParams(reference_route=action_lane_gff,
                                                  time=action_spec.t + ego.timestamp_in_sec,
                                                  target_state=goal_cstate,
                                                  cost_params=cost_params,
@@ -198,55 +204,56 @@ class CostBasedBehavioralPlanner:
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
 
-        # project ego vehicle onto the road
-        ego_init_fstate = ego.map_state.road_fstate
+        # project ego on target lane frenet_frame
+        projected_fstates = BehavioralGridState.project_ego_on_adjacent_lanes(ego)
+        projected_ego_fstate = projected_fstates[action_spec.relative_lane]  # ego projected on the relative lane
+
+        relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
+        spec_lane_id = relative_lane_ids[action_spec.relative_lane]
 
         target_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
 
         A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_matrix(action_spec.t))
 
-        constraints_s = np.concatenate((ego_init_fstate[FS_SX:(FS_SA + 1)], target_fstate[FS_SX:(FS_SA + 1)]))
-        constraints_d = np.concatenate((ego_init_fstate[FS_DX:(FS_DA + 1)], target_fstate[FS_DX:(FS_DA + 1)]))
+        constraints_s = np.concatenate((projected_ego_fstate[FS_SX:(FS_SA + 1)], target_fstate[FS_SX:(FS_SA + 1)]))
+        constraints_d = np.concatenate((projected_ego_fstate[FS_DX:(FS_DA + 1)], target_fstate[FS_DX:(FS_DA + 1)]))
 
         poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
         poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
 
-        road_frenet = MapUtils.get_road_rhs_frenet(ego)
-
         return SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
                                           T_s=action_spec.t,
                                           T_d=action_spec.t,
-                                          frenet_frame=road_frenet,
+                                          frenet_frame=MapUtils.get_lane_frenet_frame(spec_lane_id),
                                           poly_s_coefs=poly_coefs_s,
                                           poly_d_coefs=poly_coefs_d)
 
     @staticmethod
-    def _generate_cost_params(road_id: int, ego_size: ObjectSize, reference_route_latitude: float) -> \
-            TrajectoryCostParams:
+    def _generate_cost_params(map_state: MapState, ego_size: ObjectSize) -> TrajectoryCostParams:
         """
         Generate cost specification for trajectory planner
-        :param road_id: the road's id - it currently assumes a single road for the whole action.
+        :param map_state: MapState of the goal
         :param ego_size: ego size used to extract margins (for dilation of other objects on road)
-        :param reference_route_latitude: the latitude of the reference route. This is used to compute out-of-lane cost
         :return: a TrajectoryCostParams instance that encodes all parameters for TP cost computation.
         """
-        road = MapService.get_instance().get_road(road_id)
-        target_lane_num = int(reference_route_latitude / road.lane_width)
+        # TODO: here we assume a constant lane width from the current state to the goal
+        dist_from_right_lane_border, dist_from_left_lane_border = \
+            MapUtils.get_dist_to_lane_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
+        dist_from_right_road_border, dist_from_left_road_border = \
+            MapUtils.get_dist_to_road_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
 
         # lateral distance in [m] from ref. path to rightmost edge of lane
-        right_lane_offset = max(0.0, reference_route_latitude - ego_size.width / 2 - target_lane_num * road.lane_width)
+        right_lane_offset = dist_from_right_lane_border - ego_size.width / 2
         # lateral distance in [m] from ref. path to leftmost edge of lane
-        left_lane_offset = (road.road_width - reference_route_latitude) - ego_size.width / 2 - \
-                           (road.lanes_num - target_lane_num - 1) * road.lane_width
+        left_lane_offset = dist_from_left_lane_border - ego_size.width / 2
         # as stated above, for shoulders
-        right_shoulder_offset = reference_route_latitude - ego_size.width / 2 + SHOULDER_SIGMOID_OFFSET
+        right_shoulder_offset = dist_from_right_road_border - ego_size.width / 2 + SHOULDER_SIGMOID_OFFSET
         # as stated above, for shoulders
-        left_shoulder_offset = (road.road_width - reference_route_latitude) - ego_size.width / 2 + \
-                               SHOULDER_SIGMOID_OFFSET
+        left_shoulder_offset = dist_from_left_road_border - ego_size.width / 2 + SHOULDER_SIGMOID_OFFSET
         # as stated above, for whole road including shoulders
-        right_road_offset = reference_route_latitude - ego_size.width / 2 + ROAD_SHOULDERS_WIDTH
+        right_road_offset = dist_from_right_road_border - ego_size.width / 2 + ROAD_SHOULDERS_WIDTH
         # as stated above, for whole road including shoulders
-        left_road_offset = (road.road_width - reference_route_latitude) - ego_size.width / 2 + ROAD_SHOULDERS_WIDTH
+        left_road_offset = dist_from_left_road_border - ego_size.width / 2 + ROAD_SHOULDERS_WIDTH
 
         # Set road-structure-based cost parameters
         right_lane_cost = SigmoidFunctionParams(w=DEVIATION_FROM_LANE_COST, k=LANE_SIGMOID_K_PARAM,

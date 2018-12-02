@@ -8,15 +8,10 @@ from decision_making.src.global_constants import LON_MARGIN_FROM_EGO
 from decision_making.src.global_constants import PLANNING_LOOKAHEAD_DIST
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
-from decision_making.src.planning.types import FS_SX
+from decision_making.src.planning.types import FS_SX, FrenetState2D
 from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
-from mapping.src.service.map_service import MapService
-
-
-class SemanticActionType(Enum):
-    FOLLOW_VEHICLE = 1
-    FOLLOW_LANE = 2
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class DynamicObjectWithRoadSemantics:
@@ -25,13 +20,15 @@ class DynamicObjectWithRoadSemantics:
     its frenet state.
     """
 
-    def __init__(self, dynamic_object: DynamicObject, longitudinal_distance: float):
+    def __init__(self, dynamic_object: DynamicObject, longitudinal_distance: float, relative_lane: Optional[RelativeLane]):
         """
         :param dynamic_object:
         :param longitudinal_distance: Distance relative to ego on the road's longitude
+        :param relative_lane: relative lane w.r.t. ego; None if the object is far laterally (not on adjacent lane)
         """
         self.dynamic_object = dynamic_object
         self.longitudinal_distance = longitudinal_distance
+        self.relative_lane = relative_lane
 
 
 # Define semantic cell
@@ -42,12 +39,9 @@ RoadSemanticOccupancyGrid = Dict[SemanticGridCell, List[DynamicObjectWithRoadSem
 
 
 class BehavioralGridState(BehavioralState):
-    def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState,
-                 right_lane_exists: bool, left_lane_exists: bool):
+    def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState):
         self.road_occupancy_grid = road_occupancy_grid
         self.ego_state = ego_state
-        self.right_lane_exists = right_lane_exists
-        self.left_lane_exists = left_lane_exists
 
     @classmethod
     @prof.ProfileFunction()
@@ -63,24 +57,18 @@ class BehavioralGridState(BehavioralState):
          ego front).
         :return: road semantic occupancy grid
         """
-        road_id = state.ego_state.map_state.road_id
-
         # TODO: the relative localization calculated here assumes that all objects are located on the same road.
         # TODO: Fix after demo and calculate longitudinal difference properly in the general case
         # navigation_plan = MapService.get_instance().get_road_based_navigation_plan(current_road_id=road_id)
 
         # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
         dynamic_objects_with_road_semantics = \
-            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects,state.ego_state),
+            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, state.ego_state),
                    key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
 
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
                                                                          state.ego_state)
-
-        ego_lane = state.ego_state.map_state.lane_num
-        num_lanes = MapService.get_instance().get_num_lanes(road_id)
-        return cls(multi_object_grid, state.ego_state,
-                   right_lane_exists=ego_lane > 0, left_lane_exists=ego_lane < num_lanes - 1)
+        return cls(multi_object_grid, state.ego_state)
 
     @staticmethod
     @prof.ProfileFunction()
@@ -94,10 +82,40 @@ class BehavioralGridState(BehavioralState):
         :param ego_state:
         :return: list of object of type DynamicObjectWithRoadSemantics
         """
-        ego_init_fstate = ego_state.map_state.road_fstate
+        # TODO: if the lanes belong to different roads, we can't subtract their ordinals
+        ego_lane_id = ego_state.map_state.lane_id
+        lat_diffs = [MapUtils.get_lane_ordinal(obj.map_state.lane_id) - MapUtils.get_lane_ordinal(ego_lane_id)
+                     for obj in dynamic_objects]
+        # for objects on non-adjacent lanes set relative_lanes[i] = None
+        relative_lanes = [RelativeLane(diff) if abs(diff) <= 1 else None for diff in lat_diffs]
+
+        projected_fstates = BehavioralGridState.project_ego_on_adjacent_lanes(ego_state)
+        ego_init_fstates = [projected_fstates[rel_lane] for rel_lane in relative_lanes]
+
         # compute the relative longitudinal distance between object and ego (positive means object is in front)
-        return [DynamicObjectWithRoadSemantics(obj, obj.map_state.road_fstate[FS_SX] - ego_init_fstate[FS_SX]) for obj
-                in dynamic_objects]
+        # TODO: for multi-segment maps use GFF for the calculation of longitudinal distance
+        return [DynamicObjectWithRoadSemantics(obj, obj.map_state.lane_fstate[FS_SX] - ego_init_fstates[i][FS_SX],
+                                               relative_lanes[i])
+                for i, obj in enumerate(dynamic_objects)
+                if relative_lanes[i] is not None and ego_init_fstates[i] is not None]
+
+    @staticmethod
+    def project_ego_on_adjacent_lanes(ego_state: EgoState) -> Dict[RelativeLane, FrenetState2D]:
+        """
+        project cartesian state on the existing adjacent lanes
+        :return: dictionary mapping between existing relative lane (adjacent to lane_id) to Frenet state
+                                                                        projected on the adjacent Frenet frame
+        """
+        projected_fstates: Dict[RelativeLane, FrenetState2D] = {}
+        for rel_lane in RelativeLane:
+            if rel_lane == RelativeLane.SAME_LANE:
+                projected_fstates[rel_lane] = ego_state.map_state.lane_fstate
+            else:
+                adjacent_lane_ids = MapUtils.get_adjacent_lanes(ego_state.map_state.lane_id, rel_lane)
+                if len(adjacent_lane_ids) > 0:
+                    adjacent_frenet = MapUtils.get_lane_frenet_frame(adjacent_lane_ids[0])
+                    projected_fstates[rel_lane] = adjacent_frenet.cstate_to_fstate(ego_state.cartesian_state)
+        return projected_fstates
 
     @staticmethod
     @prof.ProfileFunction()
@@ -116,20 +134,14 @@ class BehavioralGridState(BehavioralState):
         """
         grid = defaultdict(list)
 
-        ego_lane = ego_state.map_state.lane_num
-
         # We consider only object on the adjacent lanes
-        adjacent_lanes = [x.value for x in RelativeLane]
-
         for obj in objects:
-            # Compute relative lane to ego
-            object_relative_lane = obj.dynamic_object.map_state.lane_num - ego_lane
             # ignore vehicles out of pre-defined range and vehicles not in adjacent lanes
-            if abs(obj.longitudinal_distance) <= PLANNING_LOOKAHEAD_DIST and object_relative_lane in adjacent_lanes:
+            if abs(obj.longitudinal_distance) <= PLANNING_LOOKAHEAD_DIST and obj.relative_lane is not None:
                 # compute longitudinal projection on the grid
                 object_relative_long = BehavioralGridState._get_longitudinal_grid_cell(obj, ego_state)
 
-                grid[(RelativeLane(object_relative_lane), object_relative_long)].append(obj)
+                grid[(obj.relative_lane, object_relative_long)].append(obj)
 
         return grid
 

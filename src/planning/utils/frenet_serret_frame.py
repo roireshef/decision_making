@@ -35,7 +35,11 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         self.N = N
         self.k = k
         self.k_tag = k_tag
-        self.ds = ds
+        self._ds = ds
+
+    @property
+    def ds(self):
+        return self._ds
 
     @classmethod
     def fit(cls, spline_points: CartesianPath2D, ds: float = TRAJECTORY_ARCLEN_RESOLUTION,
@@ -144,9 +148,9 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         #       When vehicle's velocity is zero, we assume that the vehicle is parallel to the road.
         #       Calculate d_tag & d_tagtag as 1st and 2nd derivatives of d_x by distance
         # 1st derivative of d_x by distance: d_tag = d_v / s_v
-        d_tag = np.divide(d_v, s_v, out=np.zeros_like(d_v), where=s_v!=0)
+        d_tag = np.divide(d_v, s_v, where=s_v!=0)
         # 2nd derivative of d_x by distance: d_tagtag = (d_a - d_tag * s_a) / (s_v ** 2)
-        d_tagtag = np.divide(d_a - d_tag * s_a, s_v ** 2, out=np.zeros_like(d_v), where=s_v!=0)
+        d_tagtag = np.divide(d_a - d_tag * s_a, s_v ** 2, where=s_v!=0)
 
         tan_delta_theta = d_tag / radius_ratio
         delta_theta = np.arctan2(d_tag, radius_ratio)

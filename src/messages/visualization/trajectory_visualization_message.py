@@ -1,62 +1,59 @@
-import numpy as np
 from typing import List
 
-from common_data.interface.py.utils.serialization_utils import SerializationUtils
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.planning.types import CartesianPath2D, CartesianExtendedTrajectories
-from decision_making.src.state.state import State
+import numpy as np
 
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmNonTypedSmallNumpyArray import LcmNonTypedSmallNumpyArray
-from common_data.interface.py.idl_generated_files.Rte_Types import LcmTrajectoryVisualizationMsg
+from Rte_Types import TsSYSTrajectoryVisualization
+from Rte_Types.sub_structures import TsSYSDataTrajectoryVisualization
+from Rte_Types.sub_structures.TsSYS_PredictionsVisualization import TsSYSPredictionsVisualization
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.messages.scene_common_messages import Header
+
+
+class PredictionsVisualization(PUBSUB_MSG_IMPL):
+    def __init__(self, e_object_id: int, a_predictions: np.array):
+        """
+        The class contains predicted locations for single dynamic object
+        :param e_object_id:
+        :param a_predictions: predicted 2D locations of the object
+        """
+        pass
+
+    def serialize(self) -> TsSYSPredictionsVisualization:
+        return TsSYSPredictionsVisualization()
+
+    @classmethod
+    def deserialize(cls, pubsubMsg: TsSYSPredictionsVisualization):
+        pass
+
+
+class DataTrajectoryVisualization(PUBSUB_MSG_IMPL):
+    def __init__(self, a_trajectories: np.ndarray, as_actors_predictions: List[PredictionsVisualization],
+                 e_recipe_description: str):
+        """
+        Message that holds debug results of WerlingPlanner to be broadcasted to the visualizer
+        :param a_trajectories: 3D array of trajectories: num_trajectories x trajectory_length x 2
+        :param as_actors_predictions: list of classes of type PredictionsVisualization per dynamic object.
+                Each class instance contains predictions for the dynamic object.
+        :param e_recipe_description: String for semantic meaning of action. For example:
+                                                            "static action to the left with 50 km/h".
+        """
+        pass
+
+    def serialize(self) -> TsSYSDataTrajectoryVisualization:
+        return TsSYSDataTrajectoryVisualization()
+
+    @classmethod
+    def deserialize(cls, pubsubMsg: TsSYSDataTrajectoryVisualization):
+        pass
 
 
 class TrajectoryVisualizationMsg(PUBSUB_MSG_IMPL):
-    def __init__(self, reference_route, trajectories, costs, state, predicted_states, plan_time):
-        # type: (CartesianPath2D, CartesianExtendedTrajectories, np.ndarray, State, List[State], float) -> None
-        """
-        Message that holds debug results of WerlingPlanner to be broadcasted to the visualizer
-        :param reference_route: of type CartesianPath2D
-        :param trajectories: a tensor of the best <NUM_ALTERNATIVE_TRAJECTORIES> trajectory points in the vehicle's
-        coordinate frame. of type CartesianExtendedTrajectories
-        :param costs: 1D numpy array of the above trajectories, respectively.
-        :param state: the current state
-        :param predicted_states: a list of predicted states (uniform prediction times in ascending order).
-        Only the predictions of the dynamic objects are used.
-        :param plan_time: the time given to the trajectory planner for trajectory generation
-        """
-        self.reference_route = reference_route
-        self.trajectories = trajectories
-        self.costs = costs
-        self.state = state
-        self.predicted_states = predicted_states
-        self.plan_time = plan_time
+    def __init__(self, s_Header: Header, s_Data: DataTrajectoryVisualization):
+        pass
 
-    def serialize(self):
-        # type: ()->LcmTrajectoryVisualizationMsg
-        lcm_msg = LcmTrajectoryVisualizationMsg()
-
-        lcm_msg.reference_route = SerializationUtils.serialize_non_typed_small_array(self.reference_route)
-        #lcm_msg.trajectories = SerializationUtils.serialize_non_typed_small_array(self.trajectories)
-        lcm_msg.costs = SerializationUtils.serialize_non_typed_small_array(self.costs)
-
-        lcm_msg.state = self.state.serialize()
-        lcm_msg.predicted_states = [predicted_state.serialize() for predicted_state in self.predicted_states]
-        lcm_msg.num_predicted_states = len(lcm_msg.predicted_states)
-        lcm_msg.plan_time = self.plan_time
-
-        return lcm_msg
+    def serialize(self) -> TsSYSTrajectoryVisualization:
+        return TsSYSTrajectoryVisualization()
 
     @classmethod
-    def deserialize(cls, lcmMsg):
-        # type: (LcmTrajectoryVisualizationMsg)-> TrajectoryVisualizationMsg
-        return cls(SerializationUtils.deserialize_any_array(lcmMsg.reference_route),
-                   SerializationUtils.deserialize_any_array(lcmMsg.trajectories),
-                   SerializationUtils.deserialize_any_array(lcmMsg.costs),
-                   State.deserialize(lcmMsg.state),
-                   [State.deserialize(predicted_state) for predicted_state in lcmMsg.predicted_states],
-                   lcmMsg.plan_time)
-
-    @property
-    def best_trajectory(self):
-        return self.trajectories[0]
-
+    def deserialize(cls, pubsubMsg: TsSYSTrajectoryVisualization):
+        pass

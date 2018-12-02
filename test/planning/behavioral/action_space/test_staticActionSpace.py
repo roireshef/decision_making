@@ -1,8 +1,9 @@
 from logging import Logger
 
+import numpy as np
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane
-from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, RelativeLane
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.state.state import ObjectSize, State, EgoState
 from mapping.src.service.map_service import MapService
@@ -24,18 +25,25 @@ def test_specifyGoals_closeToTargetVelocity_specifyNotFail():
     ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon,
                                                                                        road_mid_lat - lane_width)
     ego = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
-                                               cartesian_state=[ego_cpoint[0], ego_cpoint[1], ego_yaw, ego_vel, 0, 0],
+                                               cartesian_state=np.array([ego_cpoint[0], ego_cpoint[1], ego_yaw, ego_vel, 0, 0]),
                                                size=size, confidence=0)
 
     state = State(None, [], ego)
     behavioral_state = BehavioralGridState.create_from_state(state, logger)
+    # ego is located on the rightest lane, so filter recipes to the right
+    filtered_recipes = [recipe for recipe in action_space.recipes if recipe.relative_lane != RelativeLane.RIGHT_LANE]
 
-    action_specs = action_space.specify_goals(action_space.recipes, behavioral_state)
-
-    specs = [action_specs[i] for i, recipe in enumerate(action_space.recipes)
-             if recipe.relative_lane == RelativeLane.SAME_LANE and recipe.aggressiveness == AggressivenessLevel.CALM
-             and recipe.velocity == target_vel]
+    action_specs = action_space.specify_goals(filtered_recipes, behavioral_state)
 
     # check specification of CALM SAME_LANE static action
-    assert len(specs) > 0 and specs[0] is not None
+    same_lane_specs = [action_specs[i] for i, recipe in enumerate(filtered_recipes)
+                       if recipe.relative_lane == RelativeLane.SAME_LANE and recipe.aggressiveness == AggressivenessLevel.CALM
+                       and recipe.velocity == target_vel]
+    assert len(same_lane_specs) > 0 and same_lane_specs[0] is not None
+
+    # check specification of CALM LEFT_LANE static action
+    left_lane_specs = [action_specs[i] for i, recipe in enumerate(filtered_recipes)
+                       if recipe.relative_lane == RelativeLane.LEFT_LANE and recipe.aggressiveness == AggressivenessLevel.CALM
+                       and recipe.velocity == target_vel]
+    assert len(left_lane_specs) > 0 and left_lane_specs[0] is not None
 

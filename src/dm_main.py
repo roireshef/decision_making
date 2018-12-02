@@ -1,7 +1,6 @@
 from logging import Logger
 from os import getpid
 
-import os
 import numpy as np
 
 from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
@@ -10,10 +9,8 @@ from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
-    BEHAVIORAL_PLANNING_MODULE_PERIOD, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
-    TRAJECTORY_PLANNING_MODULE_PERIOD, \
-    DM_MANAGER_NAME_FOR_LOGGING
+    DM_MANAGER_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
@@ -37,16 +34,14 @@ from decision_making.src.planning.trajectory.werling_planner import WerlingPlann
 from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
     PhysicalTimeAlignmentPredictor
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state import OccupancyState
 from decision_making.src.state.state_module import StateModule
-from mapping.src.global_constants import DEFAULT_MAP_FILE
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 
 # TODO: move this into config?
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))  # 20 for Ayalon PG
-MAP_FILE = None  # os.environ['AVCODE_PATH'] + '/spav/common_data/maps/OvalMilford.bin'  # None for Ayalon PG
+DEFAULT_MAP_FILE = None  # os.environ['AVCODE_PATH'] + '/spav/common_data/maps/OvalMilford.bin'  # None for Ayalon PG
 
 
 class NavigationFacadeMock(NavigationFacade):
@@ -64,19 +59,16 @@ class DmInitialization:
     """
 
     @staticmethod
-    def create_state_module(map_file: str) -> StateModule:
+    def create_state_module(map_file: str=DEFAULT_MAP_FILE) -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
-        # TODO: figure out if we want to use OccupancyState at all
-        default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
-                                                 np.array([0.1], dtype=np.float))
-        state_module = StateModule(pubsub, logger, default_occupancy_state, None, None)
+        state_module = StateModule(pubsub, logger, None)
         return state_module
 
     @staticmethod
-    def create_navigation_planner(map_file: str, nav_plan: NavigationPlanMsg=NAVIGATION_PLAN) -> NavigationFacade:
+    def create_navigation_planner(map_file: str=DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg=NAVIGATION_PLAN) -> NavigationFacade:
         logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
         # MapService should be initialized in each process according to the given map_file
@@ -86,7 +78,7 @@ class DmInitialization:
         return navigation_module
 
     @staticmethod
-    def create_behavioral_planner(map_file: str) -> BehavioralPlanningFacade:
+    def create_behavioral_planner(map_file: str=DEFAULT_MAP_FILE) -> BehavioralPlanningFacade:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
         # MapService should be initialized in each process according to the given map_file
@@ -114,7 +106,7 @@ class DmInitialization:
         return behavioral_module
 
     @staticmethod
-    def create_trajectory_planner(map_file: str) -> TrajectoryPlanningFacade:
+    def create_trajectory_planner(map_file: str=DEFAULT_MAP_FILE) -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
         # MapService should be initialized in each process according to the given map_file
@@ -142,19 +134,19 @@ def main():
 
     modules_list = \
         [
-            DmProcess(lambda: DmInitialization.create_navigation_planner(MAP_FILE),
+            DmProcess(lambda: DmInitialization.create_navigation_planner(DEFAULT_MAP_FILE),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
-            DmProcess(lambda: DmInitialization.create_state_module(MAP_FILE),
+            DmProcess(lambda: DmInitialization.create_state_module(DEFAULT_MAP_FILE),
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={}),
 
-            DmProcess(lambda: DmInitialization.create_behavioral_planner(MAP_FILE),
+            DmProcess(lambda: DmInitialization.create_behavioral_planner(DEFAULT_MAP_FILE),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
-            DmProcess(lambda: DmInitialization.create_trajectory_planner(MAP_FILE),
+            DmProcess(lambda: DmInitialization.create_trajectory_planner(DEFAULT_MAP_FILE),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD})
         ]

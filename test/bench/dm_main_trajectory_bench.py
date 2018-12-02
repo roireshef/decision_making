@@ -5,7 +5,7 @@ import numpy as np
 from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
 from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from decision_making.src import global_constants
-from decision_making.src.dm_main import DmInitialization, NAVIGATION_PLAN, MAP_FILE
+from decision_making.src.dm_main import DmInitialization, NAVIGATION_PLAN, DEFAULT_MAP_FILE
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
     DM_MANAGER_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_TIME_RESOLUTION, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, \
@@ -47,11 +47,7 @@ class DmMockInitialization:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
         MapService.initialize(map_file)
-        #TODO: figure out if we want to use OccupancyState at all
-        default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
-                                                 np.array([0.1], dtype=np.float))
-
-        state_module = StateModule(pubsub, logger, default_occupancy_state, [], None)
+        state_module = StateModule(pubsub, logger, None)
         return state_module
 
     @staticmethod
@@ -85,7 +81,7 @@ class DmMockInitialization:
 
 
 
-def main(fixed_trajectory_file: str = None, map_file: str = MAP_FILE, nav_plan: NavigationPlanMsg = NAVIGATION_PLAN):
+def main(fixed_trajectory_file: str = None, map_file: str = DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg = NAVIGATION_PLAN):
     """
     initializes DM planning pipeline. for switching between BP/TP impl./mock make sure to comment out the relevant
     instantiation in modules_list.

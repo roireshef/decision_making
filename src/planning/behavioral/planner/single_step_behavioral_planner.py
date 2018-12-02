@@ -6,8 +6,7 @@ import rte.python.profiler as prof
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
-from decision_making.src.planning.behavioral.behavioral_grid_state import \
-    BehavioralGridState
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import StaticActionRecipe, DynamicActionRecipe, ActionRecipe, \
     ActionSpec
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionRecipeEvaluator, \
@@ -100,9 +99,8 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self.logger.debug('Number of actions originally: %d, valid: %d',
                           self.action_space.action_space_size, np.sum(recipes_mask))
         selected_action_index, selected_action_spec = self.choose_action(state, behavioral_state, action_recipes, recipes_mask)
-        trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(behavioral_state=behavioral_state,
-                                                                                      action_spec=selected_action_spec,
-                                                                                      navigation_plan=nav_plan)
+        trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(
+            behavioral_state=behavioral_state, action_spec=selected_action_spec, navigation_plan=nav_plan)
         visualization_message = BehavioralVisualizationMsg(
             reference_route_points=trajectory_parameters.reference_route.points)
 
@@ -110,8 +108,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self._last_action = action_recipes[selected_action_index]
         self._last_action_spec = selected_action_spec
 
-        baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(state.ego_state,
-                                                                                      selected_action_spec)
+        baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(state.ego_state, selected_action_spec)
 
         self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",
                           action_recipes[selected_action_index], state.ego_state.timestamp_in_sec)

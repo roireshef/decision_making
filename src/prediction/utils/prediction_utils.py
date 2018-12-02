@@ -8,7 +8,7 @@ from decision_making.src.prediction.ego_aware_prediction.ended_maneuver_params i
 from decision_making.src.prediction.ego_aware_prediction.maneuver_spec import ManeuverSpec
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import DynamicObject, State
-from mapping.src.service.map_service import MapService
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class PredictionUtils:
@@ -23,15 +23,13 @@ class PredictionUtils:
 
         assert -0.5 <= ended_maneuver_params.lat_normalized <= 0.5
 
-        map_api = MapService.get_instance()
-        road_id = object_state.map_state.road_id
+        lane_id = object_state.map_state.lane_id
 
         # Object's initial state in Frenet frame
-        obj_init_fstate = object_state.map_state.road_fstate
+        obj_init_fstate = object_state.map_state.lane_fstate
 
         # Calculate object's initial state in Frenet frame according to model
-        object_center_lane_latitude = object_state.map_state.lane_center_lat
-        lane_width = map_api.get_road(road_id=road_id).lane_width
+        lane_width = MapUtils.get_lane_width(lane_id, s=obj_init_fstate[FS_SX])
 
         s_x_final, s_v_final = PredictionUtils.compute_distance_from_average_acceleration(ended_maneuver_params.T_s,
                                                                                           ended_maneuver_params.avg_s_a,
@@ -39,8 +37,7 @@ class PredictionUtils:
                                                                                           obj_init_fstate[FS_SV])
 
         s_a_final = ended_maneuver_params.s_a_final
-        d_x_final = object_center_lane_latitude + lane_width * (
-                ended_maneuver_params.relative_lane + ended_maneuver_params.lat_normalized)
+        d_x_final = lane_width * (ended_maneuver_params.relative_lane + ended_maneuver_params.lat_normalized)
         d_v_final = 0.0
         d_a_final = 0.0
 
@@ -106,8 +103,8 @@ class PredictionUtils:
 
         predicted_object_states = [
             dynamic_object.clone_from_map_state(timestamp_in_sec=prediction_timestamps[t_ind],
-                                                map_state=MapState(road_fstate=predictions[t_ind],
-                                                                   road_id=dynamic_object.map_state.road_id)) for t_ind
+                                                map_state=MapState(lane_fstate=predictions[t_ind],
+                                                                   lane_id=dynamic_object.map_state.lane_id)) for t_ind
             in
             range(len(prediction_timestamps))]
 
