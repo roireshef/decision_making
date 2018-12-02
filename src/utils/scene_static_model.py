@@ -19,9 +19,8 @@ class SceneStaticModel:
         return cls.__instance
 
     @property
-    def scene_static(self):
+    def get_scene_static(self):
         return self._scene_static_message
 
-    @scene_static.setter
-    def scene_static(self, message):
+    def set_scene_static(self, message):
         self._scene_static_message = message

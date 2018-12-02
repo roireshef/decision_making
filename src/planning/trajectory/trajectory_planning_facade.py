@@ -79,7 +79,7 @@ class TrajectoryPlanningFacade(DmModule):
             state = self._get_current_state()
 
             scene_static = self._get_current_scene_static()
-            SceneStaticModel.get_instance().scene_static = scene_static
+            SceneStaticModel.get_instance().set_scene_static(scene_static)
 
             # Update state: align all object to most recent timestamp, based on ego and dynamic objects timestamp
             most_recent_timestamp = PredictionUtils.extract_most_recent_timestamp(state)
