@@ -62,12 +62,10 @@ class BehavioralPlanningFacade(DmModule):
         """
 
         try:
-            MetricLogger.get_logger().report()
             start_time = time.time()
             state = self._get_current_state()
 
             scene_static = self._get_current_scene_static()
-
             SceneStaticModel.get_instance().scene_static = scene_static
 
             # Update state: align all object to most recent timestamp, based on ego and dynamic objects timestamp
@@ -99,6 +97,8 @@ class BehavioralPlanningFacade(DmModule):
             self._publish_visualization(behavioral_visualization_message)
 
             self.logger.info("{} {}".format(LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, time.time() - start_time))
+
+            MetricLogger.get_logger().report()
 
         except MsgDeserializationError as e:
             self.logger.warning("MsgDeserializationError was raised. skipping planning. " +
