@@ -15,6 +15,7 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
     TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
+from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan, DataTrajectoryPlan
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg, \
@@ -30,6 +31,7 @@ from decision_making.src.prediction.utils.prediction_utils import PredictionUtil
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger import MetricLogger
+from decision_making.src.utils.scene_static_model import SceneStaticModel
 
 
 class TrajectoryPlanningFacade(DmModule):
@@ -58,10 +60,12 @@ class TrajectoryPlanningFacade(DmModule):
     def _start_impl(self):
         self.pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_LCM, None)
         self.pubsub.subscribe(pubsub_topics.STATE_LCM, None)
+        self.pubsub.subscribe(pubsub_topics.SCENE_STATIC, None)
 
     def _stop_impl(self):
         self.pubsub.unsubscribe(pubsub_topics.TRAJECTORY_PARAMS_LCM)
         self.pubsub.unsubscribe(pubsub_topics.STATE_LCM)
+        self.pubsub.unsubscribe(pubsub_topics.SCENE_STATIC)
 
     def _periodic_action_impl(self):
         """
@@ -73,6 +77,10 @@ class TrajectoryPlanningFacade(DmModule):
             start_time = time.time()
 
             state = self._get_current_state()
+
+            scene_static = self._get_current_scene_static()
+
+            SceneStaticModel.get_instance().scene_static = scene_static
 
             # Update state: align all object to most recent timestamp, based on ego and dynamic objects timestamp
             most_recent_timestamp = PredictionUtils.extract_most_recent_timestamp(state)
@@ -177,11 +185,21 @@ class TrajectoryPlanningFacade(DmModule):
         """
         is_success, input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_LCM, timeout=1)
         if input_state is None:
-            raise MsgDeserializationError('LCM message queue for %s topic is empty or topic isn\'t subscribed',
+            raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed',
                                           pubsub_topics.STATE_LCM)
         object_state = State.deserialize(input_state)
         self.logger.debug('%s: %s' % (LOG_MSG_RECEIVED_STATE, object_state))
         return object_state
+
+    def _get_current_scene_static(self) -> SceneStatic:
+        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=pubsub_topics.SCENE_STATIC, timeout=1)
+        # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
+        if serialized_scene_static is None:
+            raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed',
+                                          pubsub_topics.SCENE_STATIC)
+        scene_static = SceneStatic.deserialize(serialized_scene_static)
+        # TODO: Write to log the relevant part of scene static
+        return scene_static
 
     def _get_mission_params(self) -> TrajectoryParams:
         """
