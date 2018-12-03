@@ -43,8 +43,8 @@ class StaticActionSpace(ActionSpace):
         :param behavioral_state: a Frenet state of ego at initial point
         :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
-        # project ego on target lane frenet_frame
-        ego_init_fstates = np.array([behavioral_state.projected_ego_fstates[recipe.relative_lane] for recipe in action_recipes])
+        # pick ego initial fstates projected on all target frenet_frames
+        projected_ego_fstates = np.array([behavioral_state.projected_ego_fstates[recipe.relative_lane] for recipe in action_recipes])
 
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
@@ -55,7 +55,7 @@ class StaticActionSpace(ActionSpace):
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuarticPoly1D.time_cost_function_derivative_coefs(
-            w_T=weights[:, 2], w_J=weights[:, 0], a_0=ego_init_fstates[:, FS_SA], v_0=ego_init_fstates[:, FS_SV], v_T=v_T)
+            w_T=weights[:, 2], w_J=weights[:, 0], a_0=projected_ego_fstates[:, FS_SA], v_0=projected_ego_fstates[:, FS_SV], v_T=v_T)
         roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         T_s = np.fmin.reduce(roots_s, axis=-1)
 
@@ -67,8 +67,8 @@ class StaticActionSpace(ActionSpace):
 
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
-            w_T=weights[:, 2], w_J=weights[:, 1], a_0=ego_init_fstates[:, FS_DA], v_0=ego_init_fstates[:, FS_DV], v_T=0,
-            dx=-ego_init_fstates[:, FS_DX], T_m=0)
+            w_T=weights[:, 2], w_J=weights[:, 1], a_0=projected_ego_fstates[:, FS_DA], v_0=projected_ego_fstates[:, FS_DV], v_T=0,
+            dx=-projected_ego_fstates[:, FS_DX], T_m=0)
         roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         T_d = np.fmin.reduce(roots_d, axis=-1)
 
@@ -76,10 +76,10 @@ class StaticActionSpace(ActionSpace):
         T = np.maximum(np.maximum(T_d, T_s), BP_ACTION_T_LIMITS[LIMIT_MIN])
 
         # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution
-        distance_s = QuarticPoly1D.distance_profile_function(a_0=ego_init_fstates[:, FS_SA],
-                                                             v_0=ego_init_fstates[:, FS_SV], v_T=v_T, T=T)(T)
+        distance_s = QuarticPoly1D.distance_profile_function(a_0=projected_ego_fstates[:, FS_SA],
+                                                             v_0=projected_ego_fstates[:, FS_SV], v_T=v_T, T=T)(T)
         # Absolute longitudinal position of target
-        target_s = distance_s + ego_init_fstates[:, FS_SX]
+        target_s = distance_s + projected_ego_fstates[:, FS_SX]
 
         # lane center has latitude = 0, i.e. spec.d = 0
         action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, action_recipes[i].relative_lane)

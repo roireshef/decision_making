@@ -120,9 +120,9 @@ class CostBasedBehavioralPlanner:
                                          actions_specs: List[ActionSpec]) -> List[State]:
         """
         Create terminal states given: (1) frame of relative lane; (2) action_specs whose target is that lane.
-        :param state:
-        :param unified_frame: GFF
-        :param actions_specs: relevant action specs
+        :param state: contains ego state & dynamic objects
+        :param unified_frame: generalized Frenet frame (GFF) of the given single target lane
+        :param actions_specs: subset of the action_specs whose target is on the given target lane
         :return: terminal states with predicted dynamic objects
         """
         ego = state.ego_state
@@ -134,10 +134,11 @@ class CostBasedBehavioralPlanner:
         # find all objects that belong to the current unified frame
         relevant_object_idxs = unified_frame.has_segment_ids(all_objects_lane_ids)
 
+        # collect segment map states (from SP) of the objects located on the given target lane
         relevant_dynamic_objects = np.array(state.dynamic_objects)[relevant_object_idxs]
         objects_curr_segment_ids = all_objects_lane_ids[relevant_object_idxs]
         objects_curr_segment_fstates = np.array([object.map_state.lane_fstate for object in relevant_dynamic_objects])
-
+        # allocate memory for the objects' terminal map states
         objects_terminal_segment_fstates = np.empty((len(state.dynamic_objects), len(actions_specs), 6), dtype=float)
         objects_terminal_segment_ids = np.full((len(state.dynamic_objects), len(actions_specs)), None)
 
@@ -158,7 +159,7 @@ class CostBasedBehavioralPlanner:
                                                           objects_terminal_segment_ids[i, j]))
              for i, dynamic_object in enumerate(relevant_dynamic_objects) if objects_terminal_segment_ids[i, j] is not None]
             for j in range(len(actions_specs))]
-
+        # create full terminal states
         return [state.clone_with(dynamic_objects=terminal_dynamic_objects[i], ego_state=terminal_ego_states[i])
                 for i in range(len(terminal_ego_states))]
 
@@ -193,11 +194,6 @@ class CostBasedBehavioralPlanner:
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
         ego = behavioral_state.ego_state
-        # calculate adjacent lane_ids
-        relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
-        # calculate adjacent lane_id matching to the action_spec
-        spec_lane_id = relative_lane_ids[action_spec.relative_lane]
-
         # get action's unified frame (GFF)
         action_frame = behavioral_state.unified_frames[action_spec.relative_lane]
 
