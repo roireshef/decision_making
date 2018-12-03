@@ -59,7 +59,7 @@ def test_getRoadSegmentIdFromLaneId_correct(scene_static: SceneStatic):
     assert actual_result == expected_result
 
 
-def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate(scene_static):
+def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate(scene_static: SceneStatic):
     """
     test method get_adjacent_lanes for the current map;
     check adjacent lanes of the rightest and the second-from-right lanes
@@ -80,7 +80,7 @@ def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate(scene_static
     assert len(left_to_leftmost) == 0
 
 
-def test_getDistToLaneBorders_rightLane_equalToHalfLaneWidth(scene_static):
+def test_getDistToLaneBorders_rightLane_equalToHalfLaneWidth(scene_static: SceneStatic):
     """
     test method get_dist_to_lane_borders:
         in the current map the lanes have a constant lane width and all lanes have the same width;
@@ -95,7 +95,7 @@ def test_getDistToLaneBorders_rightLane_equalToHalfLaneWidth(scene_static):
     assert dist_to_right == MapService.get_instance().get_road(road_ids[0]).lane_width/2
 
 
-def test_getDistToRoadBorders_rightLane_equalToDistFromRoadBorder(scene_static):
+def test_getDistToRoadBorders_rightLane_equalToDistFromRoadBorder(scene_static: SceneStatic):
     """
     test method get_dist_from_lane_center_to_road_borders:
         in the current map the lanes have a constant lane width and all lanes have the same width
@@ -110,7 +110,7 @@ def test_getDistToRoadBorders_rightLane_equalToDistFromRoadBorder(scene_static):
     assert dist_to_left == lane_width * (len(lane_ids) - 0.5)
 
 
-def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_accurateFrameStartAndLength(scene_static):
+def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_accurateFrameStartAndLength(scene_static: SceneStatic):
     """
     test method get_lookahead_frenet_frame:
         the current map has only one road segment;
@@ -119,7 +119,7 @@ def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_acc
     """
 
     SceneModel.get_instance().add_scene_static(scene_static)
-    road_ids = [road_segment.e_Cnt_road_segment_id for road_segment in scene_static.s_Data.as_scene_road_segment]
+    road_ids = MapUtils.get_road_segment_ids()
     current_road_idx = 3
     current_ordinal = 1
     starting_lon = -200.
@@ -145,14 +145,14 @@ def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_acc
     assert np.linalg.norm(gff_cpoint - ff_cpoint) < SMALL_DISTANCE_ERROR
 
 
-def test_advanceOnPlan_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(scene_static):
+def test_advanceOnPlan_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(scene_static: SceneStatic):
     """
     test the method _advance_on_plan
         validate that total length of output sub segments == lookahead_dist;
     """
 
     SceneModel.get_instance().add_scene_static(scene_static)
-    road_ids = [road_segment.e_Cnt_road_segment_id for road_segment in scene_static.s_Data.as_scene_road_segment]
+    road_ids = MapUtils.get_road_segment_ids()
     current_road_idx = 3
     current_ordinal = 1
     starting_lon = 20.
@@ -166,106 +166,106 @@ def test_advanceOnPlan_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(sc
     assert np.isclose(tot_length, lookahead_dist)
 
 
-def test_advanceOnPlan_navPlanDoesNotFitMap_relevantException(scene_static):
+def test_advanceOnPlan_navPlanDoesNotFitMap_relevantException(scene_static: SceneStatic):
     """
     test the method _advance_on_plan
         add additional segment to nav_plan that does not exist on the map; validate getting the relevant exception
     """
 
     SceneModel.get_instance().add_scene_static(scene_static)
-    road_ids = [road_segment.e_Cnt_road_segment_id for road_segment in scene_static.s_Data.as_scene_road_segment]
+    road_segment_ids = MapUtils.get_road_segment_ids()
     current_road_idx = 3
     current_ordinal = 1
     starting_lon = 20.
     lookahead_dist = 600.
-    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
+    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[current_road_idx])[current_ordinal]
     wrong_road_segment_id = 1234
     nav_plan_length = 8
     # test navigation plan fitting the lookahead distance, and add non-existing road at the end of the plan
     # validate getting the relevant exception
     try:
         MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist,
-                                  NavigationPlanMsg(np.array(road_ids[:nav_plan_length] + [wrong_road_segment_id])))
+                                  NavigationPlanMsg(np.array(road_segment_ids[:nav_plan_length] + [wrong_road_segment_id])))
         assert False
     except NavigationPlanDoesNotFitMap:
         assert True
 
 
-def test_advanceOnPlan_lookaheadCoversFullMap_validateNoException(scene_static):
+def test_advanceOnPlan_lookaheadCoversFullMap_validateNoException(scene_static: SceneStatic):
     """
     test the method _advance_on_plan
         run lookahead_dist from the beginning until end of the map
     """
     SceneModel.get_instance().add_scene_static(scene_static)
-    road_ids = [road_segment.e_Cnt_road_segment_id for road_segment in scene_static.s_Data.as_scene_road_segment]
+    road_segment_ids = MapUtils.get_road_segment_ids()
     current_ordinal = 1
     # test lookahead distance until the end of the map: verify no exception is thrown
     cumulative_distance = 0
-    for road_id in road_ids:
+    for road_id in road_segment_ids:
         lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
         cumulative_distance += MapUtils.get_lane_length(lane_id)
-    first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])[current_ordinal]
-    sub_segments = MapUtils._advance_on_plan(first_lane_id, 0, cumulative_distance, NavigationPlanMsg(np.array(road_ids)))
-    assert len(sub_segments) == len(road_ids)
+    first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
+    sub_segments = MapUtils._advance_on_plan(first_lane_id, 0, cumulative_distance, NavigationPlanMsg(np.array(road_segment_ids)))
+    assert len(sub_segments) == len(road_segment_ids)
 
 
-def test_advanceOnPlan_navPlanTooShort_validateRelevantException(scene_static):
+def test_advanceOnPlan_navPlanTooShort_validateRelevantException(scene_static: SceneStatic):
     """
     test the method _advance_on_plan
         test exception for too short nav plan; validate the relevant exception
     """
 
     SceneModel.get_instance().add_scene_static(scene_static)
-    road_ids = [road_segment.e_Cnt_road_segment_id for road_segment in scene_static.s_Data.as_scene_road_segment]
+    road_segment_ids = MapUtils.get_road_segment_ids()
     current_road_idx = 3
     current_ordinal = 1
     starting_lon = 20.
     lookahead_dist = 500.
-    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
+    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[current_road_idx])[current_ordinal]
     nav_plan_length = 7
     # test the case when the navigation plan is too short; validate the relevant exception
     try:
         MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_dist,
-                                  NavigationPlanMsg(np.array(road_ids[:nav_plan_length])))
+                                  NavigationPlanMsg(np.array(road_segment_ids[:nav_plan_length])))
         assert False
     except NavigationPlanTooShort:
         assert True
 
 
-def test_advanceOnPlan_lookAheadDistLongerThanMap_validateException(scene_static):
+def test_advanceOnPlan_lookAheadDistLongerThanMap_validateException(scene_static: SceneStatic):
     """
     test the method _advance_on_plan
         test exception for too short map but nav_plan is long enough; validate the relevant exception
     """
     SceneModel.get_instance().add_scene_static(scene_static)
-    road_ids = [road_segment.e_Cnt_road_segment_id for road_segment in scene_static.s_Data.as_scene_road_segment]
+    road_segment_ids = MapUtils.get_road_segment_ids()
     current_road_idx = 3
     current_ordinal = 1
     starting_lon = 20.
-    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
+    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[current_road_idx])[current_ordinal]
     wrong_road_id = 1234
     lookadhead_dist = 1000
     # test the case when the map is too short; validate the relevant exception
     try:
         MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_distance=lookadhead_dist,
-                                  navigation_plan=NavigationPlanMsg(np.array(road_ids + [wrong_road_id])))
+                                  navigation_plan=NavigationPlanMsg(np.array(road_segment_ids + [wrong_road_id])))
         assert False
     except DownstreamLaneNotFound:
         assert True
 
 
-def test_getUpstreamLanesFromDistance_upstreamFiveOutOfTenSegments_validateLength(scene_static):
+def test_getUpstreamLanesFromDistance_upstreamFiveOutOfTenSegments_validateLength(scene_static: SceneStatic):
     """
      test the method _get_upstream_lanes_from_distance
          validate that total length of output sub segments == lookahead_dist; validate lanes' ordinal
      """
     SceneModel.get_instance().add_scene_static(scene_static)
-    road_ids = [road_segment.e_Cnt_road_segment_id for road_segment in scene_static.s_Data.as_scene_road_segment]
+    road_segment_ids = MapUtils.get_road_segment_ids()
     current_road_idx = 7
     current_ordinal = 1
     starting_lon = 20.
     backward_dist = 500.
-    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
+    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[current_road_idx])[current_ordinal]
     lane_ids, final_lon = MapUtils._get_upstream_lanes_from_distance(starting_lane_id, starting_lon, backward_dist)
     tot_length = starting_lon - final_lon
     # validate: total length of the segments equals to backward_dist and correctness of the segments' ordinal
@@ -275,17 +275,17 @@ def test_getUpstreamLanesFromDistance_upstreamFiveOutOfTenSegments_validateLengt
     assert np.isclose(tot_length, backward_dist)
 
 
-def test_getUpstreamLanesFromDistance_smallBackwardDist_validateLaneIdAndLength(scene_static):
+def test_getUpstreamLanesFromDistance_smallBackwardDist_validateLaneIdAndLength(scene_static: SceneStatic):
     """
      test the method _get_upstream_lanes_from_distance
         test small backward_dist ending on the same lane; validate the same lane_id and final longitude
      """
     SceneModel.get_instance().add_scene_static(scene_static)
-    road_ids = [road_segment.e_Cnt_road_segment_id for road_segment in scene_static.s_Data.as_scene_road_segment]
+    road_segment_ids = MapUtils.get_road_segment_ids()
     current_road_idx = 7
     current_ordinal = 1
     starting_lon = 20.
-    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[current_road_idx])[current_ordinal]
+    starting_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[current_road_idx])[current_ordinal]
 
     # test small backward_dist ending on the same lane
     small_backward_dist = 1
@@ -295,28 +295,28 @@ def test_getUpstreamLanesFromDistance_smallBackwardDist_validateLaneIdAndLength(
     assert final_lon == starting_lon - small_backward_dist
 
 
-def test_getUpstreamLanesFromDistance_backwardDistForFullMap_validateSegmentsNumberAndFinalLon(scene_static):
+def test_getUpstreamLanesFromDistance_backwardDistForFullMap_validateSegmentsNumberAndFinalLon(scene_static: SceneStatic):
     """
      test the method _get_upstream_lanes_from_distance
          try lookahead_dist until start of the map; validate there are no exceptions and segments number
      """
     SceneModel.get_instance().add_scene_static(scene_static)
-    road_ids = [road_segment.e_Cnt_road_segment_id for road_segment in scene_static.s_Data.as_scene_road_segment]
+    road_segment_ids = MapUtils.get_road_segment_ids()
     current_ordinal = 1
     # test from the end until start of the map: verify no exception is thrown
     cumulative_distance = 0
-    for road_id in road_ids:
+    for road_id in road_segment_ids:
         lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
         cumulative_distance += MapUtils.get_lane_length(lane_id)
-    last_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[-1])[current_ordinal]
+    last_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[-1])[current_ordinal]
     last_lane_length = MapUtils.get_lane_length(last_lane_id)
     lane_ids, final_lon = MapUtils._get_upstream_lanes_from_distance(last_lane_id, last_lane_length, cumulative_distance)
     # validate the number of segments and final longitude
-    assert len(lane_ids) == len(road_ids)
+    assert len(lane_ids) == len(road_segment_ids)
     assert final_lon == 0
 
 
-def test_getUpstreamLanesFromDistance_tooLongBackwardDist_validateRelevantException(scene_static):
+def test_getUpstreamLanesFromDistance_tooLongBackwardDist_validateRelevantException(scene_static: SceneStatic):
     """
      test the method _get_upstream_lanes_from_distance
          validate the relevant exception
@@ -336,7 +336,7 @@ def test_getUpstreamLanesFromDistance_tooLongBackwardDist_validateRelevantExcept
         assert True
 
 
-def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints(scene_static):
+def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints(scene_static: SceneStatic):
     """
     test method get_closest_lane:
         find the most left and the most right lanes by points inside these lanes
@@ -356,7 +356,7 @@ def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints(scene_
     assert lane_id == closest_lane_id
 
 
-def test_getClosestLane_multiLaneRoad_testExceptionOnWrongRoadId(scene_static):
+def test_getClosestLane_multiLaneRoad_testExceptionOnWrongRoadId(scene_static: SceneStatic):
     """
     test method get_closest_lane:
         validate relevant exception on wrong road_segment_id
@@ -372,7 +372,7 @@ def test_getClosestLane_multiLaneRoad_testExceptionOnWrongRoadId(scene_static):
     assert closest_wrong_lane == 280
 
 
-def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency(scene_static):
+def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency(scene_static: SceneStatic):
     """
     test method get_lanes_ids_from_road_segment_id
         validate consistency between road segment ids and lane ids
@@ -387,7 +387,7 @@ def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency(scene
     assert road_segment_id == MapUtils.get_road_segment_id_from_lane_id(lane_ids[-1])
 
 
-def test_doesMapExistBackward_longBackwardDist_validateRelevantException(scene_static):
+def test_doesMapExistBackward_longBackwardDist_validateRelevantException(scene_static: SceneStatic):
     SceneModel.get_instance().add_scene_static(scene_static)
     MapService.initialize(MAP_SPLIT)
     road_segment_ids = MapUtils.get_road_segment_ids()

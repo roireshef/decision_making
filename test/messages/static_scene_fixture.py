@@ -24,7 +24,6 @@ def get_connectivity_lane_segment(map_api, road_segment_id, lane_ordinal):
     return downstream_lane_id, upstream_lane_id
 
 
-
 @pytest.fixture
 def scene_static():
     MapService.initialize('PG_split.bin')
@@ -88,7 +87,6 @@ def scene_static():
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value] = half_lane_width
             nominal_points.append(point)
 
-        print(lane_frenet.s_max)
         assert nominal_points[-1][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] == lane_frenet.s_max
 
         left_boundry_point = [BoundaryPoint(MapLaneMarkerType.MapLaneMarkerType_SolidSingleLine_BottsDots,
@@ -107,7 +105,6 @@ def scene_static():
         else:
             upstream_lane_segment_connectivity = [LaneSegmentConnectivity(upstream_id, ManeuverType.STRAIGHT_CONNECTION)]
 
-        print('{3}:{0} {1} {2}'.format(downstream_id, lane_id, upstream_id, road_segment_id))
         scene_lane_segments.append(SceneLaneSegment(e_i_lane_segment_id=lane_id,
                                                     e_i_road_segment_id=road_segment_id,
                                                     e_e_lane_type=MapLaneType.LocalRoadLane,
