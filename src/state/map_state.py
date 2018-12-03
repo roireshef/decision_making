@@ -39,3 +39,4 @@ class MapState(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcm_msg):
         # type: (LcmMapState) -> MapState
         return cls(lcm_msg.lane_fstate.data, lcm_msg.lane_id)
+

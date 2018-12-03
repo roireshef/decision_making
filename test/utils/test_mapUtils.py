@@ -1,5 +1,6 @@
 import numpy as np
 
+from decision_making.src.mapping.scene_model import SceneModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.utils.map_utils import MapUtils
@@ -7,16 +8,18 @@ from mapping.src.exceptions import NavigationPlanTooShort, DownstreamLaneNotFoun
     NavigationPlanDoesNotFitMap, RoadNotFound
 from mapping.src.service.map_service import MapService
 from decision_making.src.planning.types import FS_SX, FS_DX, FP_SX, FP_DX
+from decision_making.test.messages.static_scene_fixture import scene_static
 
 MAP_SPLIT = "PG_split.bin"
 SMALL_DISTANCE_ERROR = 0.01
 
 
-def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate():
+def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate(scene_static):
     """
     test method get_adjacent_lanes for the current map;
     check adjacent lanes of the rightest and the second-from-right lanes
     """
+    SceneModel.get_instance().add_scene_static(scene_static)
     MapService.initialize(MAP_SPLIT)
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[2])
@@ -32,12 +35,14 @@ def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate():
     assert len(left_to_leftmost) == 0
 
 
-def test_getDistToLaneBorders_rightLane_equalToHalfLaneWidth():
+def test_getDistToLaneBorders_rightLane_equalToHalfLaneWidth(scene_static):
     """
     test method get_dist_to_lane_borders:
         in the current map the lanes have a constant lane width and all lanes have the same width;
         therefore it should return half lane width
     """
+
+    SceneModel.get_instance().add_scene_static(scene_static)
     MapService.initialize(MAP_SPLIT)
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
@@ -46,11 +51,13 @@ def test_getDistToLaneBorders_rightLane_equalToHalfLaneWidth():
     assert dist_to_right == MapService.get_instance().get_road(road_ids[0]).lane_width/2
 
 
-def test_getDistToRoadBorders_rightLane_equalToDistFromRoadBorder():
+def test_getDistToRoadBorders_rightLane_equalToDistFromRoadBorder(scene_static):
     """
     test method get_dist_from_lane_center_to_road_borders:
         in the current map the lanes have a constant lane width and all lanes have the same width
     """
+
+    SceneModel.get_instance().add_scene_static(scene_static)
     MapService.initialize(MAP_SPLIT)
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
@@ -60,13 +67,15 @@ def test_getDistToRoadBorders_rightLane_equalToDistFromRoadBorder():
     assert dist_to_left == lane_width * (len(lane_ids) - 0.5)
 
 
-def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_accurateFrameStartAndLength():
+def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_accurateFrameStartAndLength(scene_static):
     """
     test method get_lookahead_frenet_frame:
         the current map has only one road segment;
         the frame starts and ends on arbitrary points.
     verify that final length, offset of GFF and conversion of an arbitrary point are accurate
     """
+
+    SceneModel.get_instance().add_scene_static(scene_static)
     MapService.initialize(MAP_SPLIT)
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     current_road_idx = 3
@@ -93,11 +102,13 @@ def test_getLookaheadFrenetFrame_frenetStartsBehindAndEndsAheadOfCurrentLane_acc
     assert np.linalg.norm(gff_cpoint - ff_cpoint) < SMALL_DISTANCE_ERROR
 
 
-def test_advanceOnPlan_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal():
+def test_advanceOnPlan_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(scene_static):
     """
     test the method _advance_on_plan
         validate that total length of output sub segments == lookahead_dist;
     """
+
+    SceneModel.get_instance().add_scene_static(scene_static)
     MapService.initialize(MAP_SPLIT)
     road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
     current_road_idx = 3

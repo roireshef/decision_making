@@ -1,8 +1,6 @@
 import itertools
 from typing import List, Dict
-
 import numpy as np
-
 from decision_making.src.global_constants import EPS
 from decision_making.src.mapping.scene_model import SceneModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
@@ -14,7 +12,7 @@ from decision_making.src.planning.types import FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
-from decision_making.src.state.map_state import MapState
+#from decision_making.src.state.map_state import MapState
 from mapping.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
