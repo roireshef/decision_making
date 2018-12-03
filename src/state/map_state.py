@@ -1,9 +1,8 @@
-import numpy as np
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmMapState import LcmMapState
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from decision_making.src.planning.types import FrenetState2D, CartesianExtendedState, C_X, C_Y, FS_SX, FS_DX
-from common_data.lcm.python.utils.lcm_utils import LCMUtils
+from decision_making.src.planning.types import FrenetState2D, FS_SX, FS_DX
+from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 
 
@@ -12,7 +11,7 @@ class MapState(PUBSUB_MSG_IMPL):
     lane_id = int
 
     def __init__(self, lane_fstate, lane_id):
-        # type: (FrenetState2D, int) -> MapState
+        # type: (FrenetState2D, int) -> None
         self.lane_fstate = lane_fstate
         self.lane_id = lane_id
 

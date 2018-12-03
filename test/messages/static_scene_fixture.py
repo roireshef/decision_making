@@ -9,7 +9,7 @@ from mapping.src.exceptions import NextRoadNotFound
 from mapping.src.service.map_service import MapService
 
 
-def get_connectivity_lane_segment(map_api, road_segment_id, lane_ordinal, lane_id):
+def get_connectivity_lane_segment(map_api, road_segment_id, lane_ordinal):
     map_model = map_api._cached_map_model
     try:
         prev_road_id = map_model.get_prev_road(road_segment_id)
@@ -39,11 +39,11 @@ def scene_static():
         try:
             upstream_roads = np.array(map_model.get_prev_road(road_id))
         except NextRoadNotFound:
-            upstream_roads = np.array([])
+            upstream_roads = []
         try:
             downstream_roads = np.array(map_model.get_next_road(road_id))
         except NextRoadNotFound:
-            downstream_roads = np.array([])
+            downstream_roads = []
         lane_ids = np.array([map_api._lane_by_address[(road_id, i)] for i in range(num_lanes)])
         scene_road_segment = SceneRoadSegment(e_Cnt_road_segment_id=road_id, e_Cnt_road_id=0,
                                               e_Cnt_lane_segment_id_count=num_lanes,
@@ -69,7 +69,7 @@ def scene_static():
                                         MapLaneType.LocalRoadLane) for k in range(lane_ordinal+1,
                                                                                   map_model.get_road_data(road_id).lanes_num)]
 
-        downstream_id, upstream_id = get_connectivity_lane_segment(map_api, road_segment_id, lane_ordinal, lane_id)
+        downstream_id, upstream_id = get_connectivity_lane_segment(map_api, road_segment_id, lane_ordinal)
         lane_frenet = map_api._lane_frenet[lane_id]
         nominal_points = []
         half_lane_width = map_api.get_road(road_id).lane_width/2
@@ -94,8 +94,15 @@ def scene_static():
         right_boundry_point = [BoundaryPoint(MapLaneMarkerType.MapLaneMarkerType_SolidSingleLine_BottsDots,
                                            0, lane_frenet.s_max)]
 
-        downstream_lane_segment_connectivity = LaneSegmentConnectivity(downstream_id, ManeuverType.STRAIGHT_CONNECTION)
-        upstream_lane_segment_connectivity = LaneSegmentConnectivity(upstream_id, ManeuverType.STRAIGHT_CONNECTION)
+        if not downstream_id:
+            downstream_lane_segment_connectivity = []
+        else:
+            downstream_lane_segment_connectivity = [LaneSegmentConnectivity(downstream_id, ManeuverType.STRAIGHT_CONNECTION)]
+
+        if not upstream_id:
+            upstream_lane_segment_connectivity = []
+        else:
+            upstream_lane_segment_connectivity = [LaneSegmentConnectivity(upstream_id, ManeuverType.STRAIGHT_CONNECTION)]
 
         print('{3}:{0} {1} {2}'.format(downstream_id, lane_id, upstream_id, road_segment_id))
         scene_lane_segments.append(SceneLaneSegment(e_i_lane_segment_id=lane_id,
@@ -110,9 +117,9 @@ def scene_static():
                                                     e_Cnt_right_adjacent_lane_count=len(right_adj_lanes),
                                                     as_right_adjacent_lanes=right_adj_lanes,
                                                     e_Cnt_downstream_lane_count=1,
-                                                    as_downstream_lanes=[downstream_lane_segment_connectivity],
+                                                    as_downstream_lanes=downstream_lane_segment_connectivity,
                                                     e_Cnt_upstream_lane_count=1,
-                                                    as_upstream_lanes=[upstream_lane_segment_connectivity],
+                                                    as_upstream_lanes=upstream_lane_segment_connectivity,
                                                     e_v_nominal_speed=50.0,
                                                     e_Cnt_nominal_path_point_count=len(nominal_points),
                                                     a_nominal_path_points=np.array(nominal_points),
