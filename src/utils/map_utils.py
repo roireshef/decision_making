@@ -53,7 +53,7 @@ class MapUtils:
         if abs(starting_lon) > scene_static.s_Data.e_l_perception_horizon_rear:   
             raise ValueError('starting_lon greater than SceneStatic rear horizon')
         
-        nav_plan_laneseg_ids = [MapUtils.get_lanes_id_from_road_segment_id(road_id) for road_id in navigation_plan.road_ids]
+        nav_plan_laneseg_ids = [MapUtils.get_lanes_ids_from_road_segment_id(road_id) for road_id in navigation_plan.road_ids]
         nav_plan_laneseg_ids = list(itertools.chain.from_iterable(nav_plan_laneseg_ids))
 
         # TODO CHECK can scenemodel have function to give list of all available lane segments
@@ -146,7 +146,7 @@ class MapUtils:
 
         current_s = map_state.road_fstate[FS_SX]
         road_width = np.sum([MapUtils.get_lane_width(lane_id, current_s)
-                             for lane_id in MapUtils.get_lanes_id_from_road_segment_id(map_state.road_id)])
+                             for lane_id in MapUtils.get_lanes_ids_from_road_segment_id(map_state.road_id)])
         is_on_road = road_width + ROAD_SHOULDERS_WIDTH > map_state.road_fstate[FS_DX] > -ROAD_SHOULDERS_WIDTH
         return is_on_road
 
@@ -163,7 +163,7 @@ class MapUtils:
         """
         # TODO: This is a VERY naive implementation. This can be imporoved easily by (a) vectorizing. i.e., all lanes stacked
         # TODO: (b) using current 's' to limit the search
-        lane_ids = MapUtils.get_lanes_id_from_road_segment_id(road_segment_id)
+        lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
         min_dist = float('inf')
         min_lane_id = None
         for lane_id in lane_ids:
@@ -266,7 +266,7 @@ class MapUtils:
         """
         # TODO: This is a VERY naive implementation. This can be imporoved easily by (a) vectorizing. i.e., all lanes stacked
         # TODO: (b) using current 's' to limit the search
-        lane_ids = MapUtils.get_lanes_id_from_road_segment_id(road_segment_id)
+        lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
         min_dist = float('inf')
         min_lane_id = None
         for lane_id in lane_ids:
@@ -317,8 +317,8 @@ class MapUtils:
             leftmost_lane = right_lanes[-1]
         else:
             leftmost_lane = lane_id
-        right_border, _ = MapUtils.get_dist_from_lane_center_to_lane_borders(rightmost_lane, s)
-        _, left_border = MapUtils.get_dist_from_lane_center_to_lane_borders(leftmost_lane, s)
+        right_border, _ = MapUtils.get_dist_to_lane_borders(rightmost_lane, s)
+        _, left_border = MapUtils.get_dist_to_lane_borders(leftmost_lane, s)
         return right_border, left_border
 
 
@@ -331,7 +331,7 @@ class MapUtils:
         :param s: longitude of the lane center point (w.r.t. the lane Frenet frame)
         :return: lane width
         """
-        return np.sum(np.abs(MapUtils.get_dist_from_lane_center_to_lane_borders(lane_id, s)))
+        return np.sum(np.abs(MapUtils.get_dist_to_lane_borders(lane_id, s)))
 
 
 

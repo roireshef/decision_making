@@ -105,7 +105,7 @@ def test_getDistToRoadBorders_rightLane_equalToDistFromRoadBorder(scene_static):
     road_ids = [road_segment.e_Cnt_road_segment_id for road_segment in scene_static.s_Data.as_scene_road_segment]
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
     dist_to_right, dist_to_left = MapUtils.get_dist_to_road_borders(lane_ids[0], 0)
-    lane_width = MapService.get_instance().get_road(road_ids[0]).lane_width
+    lane_width = 3.6
     assert dist_to_right == lane_width/2
     assert dist_to_left == lane_width * (len(lane_ids) - 0.5)
 
