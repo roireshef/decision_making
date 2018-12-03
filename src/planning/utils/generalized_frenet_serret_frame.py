@@ -256,6 +256,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         lcm_msg.k = SerializationUtils.serialize_non_typed_array(self.k)
         lcm_msg.k_tag = SerializationUtils.serialize_non_typed_array(self.k_tag)
         lcm_msg.segments_id = SerializationUtils.serialize_non_typed_int_array(self._segments_id)
+        lcm_msg.segments_s_start = SerializationUtils.serialize_non_typed_int_array(self._segments_s_start)
         lcm_msg.segments_s_offsets = SerializationUtils.serialize_non_typed_array(self._segments_s_offsets)
         lcm_msg.segments_ds = SerializationUtils.serialize_non_typed_array(self._segments_ds)
         lcm_msg.segments_point_offset = SerializationUtils.serialize_non_typed_int_array(self._segments_point_offset)
@@ -270,6 +271,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
                    SerializationUtils.deserialize_any_array(lcmMsg.k),
                    SerializationUtils.deserialize_any_array(lcmMsg.k_tag),
                    SerializationUtils.deserialize_any_array(lcmMsg.segments_id),
+                   SerializationUtils.deserialize_any_array(lcmMsg.segments_s_start),
                    SerializationUtils.deserialize_any_array(lcmMsg.segments_s_offsets),
                    SerializationUtils.deserialize_any_array(lcmMsg.segments_ds),
                    SerializationUtils.deserialize_any_array(lcmMsg.segments_point_offset))
