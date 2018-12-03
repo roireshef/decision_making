@@ -133,7 +133,9 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         """
         Converts frenet_states on a frenet_frame to frenet_states on the generalized frenet frame.
         :param frenet_states: frenet_states on another frenet_frame which was part in building the generalized frenet frame.
+                It may NOT have more than 2 dimensions.
         :param segment_ids: segment_ids, usually lane_ids, of one of the frenet frames which were used in building the generalized frenet frame.
+                It may NOT have more than 1 dimension.
         :return: frenet states on the generalized frenet frame.
         """
         segment_idxs = self._get_segment_idxs_from_ids(segment_ids)
@@ -158,7 +160,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def convert_to_segment_states(self, frenet_states: FrenetStates2D) -> (List[int], FrenetStates2D):
         """
         Converts frenet_states on the generalized frenet frame to frenet_states on a frenet_frame it's built from.
-        :param frenet_states: frenet_states on the generalized frenet frame.
+        :param frenet_states: frenet_states on the generalized frenet frame. It may have more than 2 dimensions.
         :return: a tuple: ((segment_ids, usually lane_ids, these frenet_states will land on after the conversion),
         (the resulted frenet states))
         """
