@@ -213,7 +213,7 @@ def dyn_obj_outside_road():
 
 @pytest.fixture(scope='function')
 def trajectory_params():
-    ref_points = np.array([[x, -2.0] for x in range(0, 16)])
+    ref_points = np.array([[x, -2.0] for x in range(0, 200)])
     frenet = FrenetSerret2DFrame.fit(ref_points)
     ref_route = GeneralizedFrenetSerretFrame.build([frenet], [FrenetSubSegment(0, 0, frenet.s_max)])
     target_state = np.array([15.0, -2.0, 0.0, 1, 0.0, 0.0])

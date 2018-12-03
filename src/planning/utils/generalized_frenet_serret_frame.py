@@ -125,7 +125,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         exists in self._segments_id
         """
         if len(segment_ids) == 0:
-            return np.array([], dtype=int)
+            return np.array([], dtype=bool)
         assert segment_ids.dtype == np.int, 'Array of indices should have int type'
         return np.isin(segment_ids, self._segments_id)
 
@@ -165,10 +165,10 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         (the resulted frenet states))
         """
         # Find the closest greater segment offset for each frenet state longitudinal
-        segment_idxs = self._get_segment_idxs_from_s(frenet_states[..., FS_SX])
-        if np.max(segment_idxs) >= len(self._segments_id):
+        if np.max(frenet_states[..., FS_SX]) > self.s_max:
             raise OutOfSegmentFront("frenet_states[%s, FS_SX] = %s exceeds the frame length %f" %
                                     (np.argmax(frenet_states[..., FS_SX]), np.max(frenet_states[..., FS_SX]), self.s_max))
+        segment_idxs = self._get_segment_idxs_from_s(frenet_states[..., FS_SX])
         s_offset = self._segments_s_offsets[segment_idxs]
         s_start = self._segments_s_start[segment_idxs]
         new_frenet_states = frenet_states.copy()
