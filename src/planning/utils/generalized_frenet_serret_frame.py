@@ -138,6 +138,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         s_start = self._segments_s_start[segment_idxs]
         new_frenet_states = frenet_states.copy()
         new_frenet_states[..., FS_SX] += s_offset
+        # For points that belong to the first subsegment, the frame bias (initial s) have to be added
         new_frenet_states[..., FS_SX] -= s_start
         return new_frenet_states
 
@@ -164,6 +165,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         s_start = self._segments_s_start[segment_idxs]
         new_frenet_states = frenet_states.copy()
         new_frenet_states[..., FS_SX] -= s_offset
+        # For points that belong to the first subsegment, the frame bias (initial s) have to be added
         new_frenet_states[..., FS_SX] += s_start
         return self._segments_id[segment_idxs], new_frenet_states
 
