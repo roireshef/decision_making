@@ -36,13 +36,13 @@ def scene_static():
         num_lanes = map_model.get_road_data(road_id).lanes_num
 
         try:
-            upstream_roads = np.array(map_model.get_prev_road(road_id))
+            upstream_roads = np.array([map_model.get_prev_road(road_id)])
         except NextRoadNotFound:
-            upstream_roads = []
+            upstream_roads = np.array([])
         try:
-            downstream_roads = np.array(map_model.get_next_road(road_id))
+            downstream_roads = np.array([map_model.get_next_road(road_id)])
         except NextRoadNotFound:
-            downstream_roads = []
+            downstream_roads = np.array([])
         lane_ids = np.array([map_api._lane_by_address[(road_id, i)] for i in range(num_lanes)])
         scene_road_segment = SceneRoadSegment(e_Cnt_road_segment_id=road_id, e_Cnt_road_id=0,
                                               e_Cnt_lane_segment_id_count=num_lanes,
@@ -116,9 +116,9 @@ def scene_static():
                                                     as_left_adjacent_lanes=left_adj_lanes,
                                                     e_Cnt_right_adjacent_lane_count=len(right_adj_lanes),
                                                     as_right_adjacent_lanes=right_adj_lanes,
-                                                    e_Cnt_downstream_lane_count=1,
+                                                    e_Cnt_downstream_lane_count=len(downstream_lane_segment_connectivity),
                                                     as_downstream_lanes=downstream_lane_segment_connectivity,
-                                                    e_Cnt_upstream_lane_count=1,
+                                                    e_Cnt_upstream_lane_count=len(upstream_lane_segment_connectivity),
                                                     as_upstream_lanes=upstream_lane_segment_connectivity,
                                                     e_v_nominal_speed=50.0,
                                                     e_Cnt_nominal_path_point_count=len(nominal_points),
