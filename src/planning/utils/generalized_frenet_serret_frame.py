@@ -9,6 +9,7 @@ from common_data.interface.py.utils.serialization_utils import SerializationUtil
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import CartesianPath2D, FrenetState2D, FrenetStates2D, NumpyIndicesArray, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from mapping.src.exceptions import OutOfSegmentFront
 from mapping.src.transformations.geometry_utils import Euclidean
 
 
@@ -123,6 +124,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         :return: boolean multi-dimensional array of the same size of <segment_ids> that has True whenever segment_ids[.]
         exists in self._segments_id
         """
+        if len(segment_ids) == 0:
+            return np.array([], dtype=int)
         assert segment_ids.dtype == np.int, 'Array of indices should have int type'
         return np.isin(segment_ids, self._segments_id)
 
@@ -160,7 +163,10 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         (the resulted frenet states))
         """
         # Find the closest greater segment offset for each frenet state longitudinal
-        segment_idxs = self._get_segment_idxs_from_s(frenet_states[:, FS_SX])
+        segment_idxs = self._get_segment_idxs_from_s(frenet_states[..., FS_SX])
+        if np.max(segment_idxs) >= len(self._segments_id):
+            raise OutOfSegmentFront("frenet_states[%s, FS_SX] = %s exceeds the frame length %f" %
+                                    (np.argmax(frenet_states[..., FS_SX]), np.max(frenet_states[..., FS_SX]), self.s_max))
         s_offset = self._segments_s_offsets[segment_idxs]
         s_start = self._segments_s_start[segment_idxs]
         new_frenet_states = frenet_states.copy()
@@ -250,6 +256,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         lcm_msg.k = SerializationUtils.serialize_non_typed_array(self.k)
         lcm_msg.k_tag = SerializationUtils.serialize_non_typed_array(self.k_tag)
         lcm_msg.segments_id = SerializationUtils.serialize_non_typed_int_array(self._segments_id)
+        lcm_msg.segments_s_start = SerializationUtils.serialize_non_typed_int_array(self._segments_s_start)
         lcm_msg.segments_s_offsets = SerializationUtils.serialize_non_typed_array(self._segments_s_offsets)
         lcm_msg.segments_ds = SerializationUtils.serialize_non_typed_array(self._segments_ds)
         lcm_msg.segments_point_offset = SerializationUtils.serialize_non_typed_int_array(self._segments_point_offset)
@@ -264,6 +271,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
                    SerializationUtils.deserialize_any_array(lcmMsg.k),
                    SerializationUtils.deserialize_any_array(lcmMsg.k_tag),
                    SerializationUtils.deserialize_any_array(lcmMsg.segments_id),
+                   SerializationUtils.deserialize_any_array(lcmMsg.segments_s_start),
                    SerializationUtils.deserialize_any_array(lcmMsg.segments_s_offsets),
                    SerializationUtils.deserialize_any_array(lcmMsg.segments_ds),
                    SerializationUtils.deserialize_any_array(lcmMsg.segments_point_offset))
