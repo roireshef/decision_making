@@ -250,7 +250,7 @@ def test_advanceOnPlan_lookAheadDistLongerThanMap_validateException(scene_static
         MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_distance=lookadhead_dist,
                                   navigation_plan=NavigationPlanMsg(np.array(road_ids + [wrong_road_id])))
         assert False
-    except NavigationPlanDoesNotFitMap:
+    except DownstreamLaneNotFound:
         assert True
 
 

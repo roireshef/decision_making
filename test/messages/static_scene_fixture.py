@@ -88,6 +88,9 @@ def scene_static():
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value] = half_lane_width
             nominal_points.append(point)
 
+        print(lane_frenet.s_max)
+        assert nominal_points[-1][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] == lane_frenet.s_max
+
         left_boundry_point = [BoundaryPoint(MapLaneMarkerType.MapLaneMarkerType_SolidSingleLine_BottsDots,
                                                      0, lane_frenet.s_max)]
 
@@ -146,6 +149,7 @@ def scene_static():
 
     scene = SceneStatic(s_Header=header, s_MapOrigin=map_origin, s_Data=data)
     return scene
+
 
 
 if __name__ == '__main__':
