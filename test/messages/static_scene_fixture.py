@@ -24,7 +24,6 @@ def get_connectivity_lane_segment(map_api, road_segment_id, lane_ordinal):
     return downstream_lane_id, upstream_lane_id
 
 
-
 @pytest.fixture
 def scene_static():
     MapService.initialize('PG_split.bin')
@@ -104,7 +103,6 @@ def scene_static():
         else:
             upstream_lane_segment_connectivity = [LaneSegmentConnectivity(upstream_id, ManeuverType.STRAIGHT_CONNECTION)]
 
-        print('{3}:{0} {1} {2}'.format(downstream_id, lane_id, upstream_id, road_segment_id))
         scene_lane_segments.append(SceneLaneSegment(e_i_lane_segment_id=lane_id,
                                                     e_i_road_segment_id=road_segment_id,
                                                     e_e_lane_type=MapLaneType.LocalRoadLane,
