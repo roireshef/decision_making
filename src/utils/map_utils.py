@@ -12,7 +12,7 @@ from decision_making.src.planning.types import FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
-#from decision_making.src.state.map_state import MapState
+from decision_making.src.state.map_state import MapState
 from mapping.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
@@ -20,7 +20,6 @@ from mapping.src.service.map_service import MapService
 
 
 class MapUtils:
-
 
     # TODO: remove this on Lane-based planner PR
     @staticmethod
@@ -30,8 +29,6 @@ class MapUtils:
         return FrenetSerret2DFrame.fit(nominal_points[:,
                                        (NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset,
                                         NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY)])
-
-
 
     @staticmethod
     def get_lookahead_frenet_frame(lane_id: int, starting_lon: float, lookahead_dist: float,
@@ -95,8 +92,7 @@ class MapUtils:
  
                 frenet_sub_segments += FrenetSubSegment(curr_lane.e_i_lane_segment_id,
                                                         curr_lane.a_nominal_path_points[start_pt_idx][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value],
-                                                        last_nom_path_pt[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value],
-                                                        frenet_frames[-1].ds)
+                                                        last_nom_path_pt[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value])
                 curr_lane_id = curr_lane.as_downstream_lanes[0].e_Cnt_lane_segment_id
             
             # End point beyond end of LS. Append entire LS 
@@ -106,8 +102,7 @@ class MapUtils:
                 frenet_frames += MapUtils.get_lane_frenet_frame(curr_lane.e_i_lane_segment_id)
                 frenet_sub_segments += FrenetSubSegment(curr_lane.e_i_lane_segment_id,
                                                         first_nom_path_pt[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value],
-                                                        last_nom_path_pt[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value],
-                                                        frenet_frames[-1].ds)
+                                                        last_nom_path_pt[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value])
                 curr_lane_id = curr_lane.as_downstream_lanes[0].e_Cnt_lane_segment_id
 
             # End point is somewhere in the middle of LS. Find the endpoint and append the relevant portion of LS
@@ -122,13 +117,11 @@ class MapUtils:
                 if curr_lane_id == start_lane_seg_id:
                     frenet_sub_segments += FrenetSubSegment(curr_lane.e_i_lane_segment_id,
                                                             curr_lane.a_nominal_path_points[start_pt_idx][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value],
-                                                            curr_lane.a_nominal_path_points[pt_idx][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value],
-                                                            frenet_frames[-1].ds)
+                                                            curr_lane.a_nominal_path_points[pt_idx][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value])
                 else:
                     frenet_sub_segments += FrenetSubSegment(curr_lane.e_i_lane_segment_id,
                                                             first_nom_path_pt[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value],
-                                                            curr_lane.a_nominal_path_points[pt_idx][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value],
-                                                            frenet_frames[-1].ds)
+                                                            curr_lane.a_nominal_path_points[pt_idx][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value])
 
         return GeneralizedFrenetSerretFrame.build(frenet_frames, frenet_sub_segments)
 
@@ -144,40 +137,11 @@ class MapUtils:
         :return: Returns true of the object is on the road. False otherwise.
         """
 
-        current_s = map_state.road_fstate[FS_SX]
+        current_s = map_state.lane_fstate[FS_SX]
         road_width = np.sum([MapUtils.get_lane_width(lane_id, current_s)
-                             for lane_id in MapUtils.get_lanes_ids_from_road_segment_id(map_state.road_id)])
-        is_on_road = road_width + ROAD_SHOULDERS_WIDTH > map_state.road_fstate[FS_DX] > -ROAD_SHOULDERS_WIDTH
+                             for lane_id in MapUtils.get_lanes_ids_from_road_segment_id(map_state.lane_id)])
+        is_on_road = road_width + ROAD_SHOULDERS_WIDTH > map_state.lane_fstate[FS_DX] > -ROAD_SHOULDERS_WIDTH
         return is_on_road
-
-
-
-    # TODO: remove it after introduction of the new mapping module
-    @staticmethod
-    def get_closest_lane(cartesian_point: CartesianPoint2D, road_segment_id: int = None) -> int:
-        """
-        given cartesian coordinates, find the closest lane to the point
-        :param cartesian_point: 2D cartesian coordinates
-        :param road_segment_id: optional argument for road_segment_id closest to the given point
-        :return: closest lane segment id
-        """
-        # TODO: This is a VERY naive implementation. This can be imporoved easily by (a) vectorizing. i.e., all lanes stacked
-        # TODO: (b) using current 's' to limit the search
-        lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
-        min_dist = float('inf')
-        min_lane_id = None
-        for lane_id in lane_ids:
-            nominal_points = SceneModel.get_instance() \
-                                 .get_lane(lane_id).a_nominal_path_points \
-                [:, (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX,
-                    NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY)]
-            lane_min = np.min(np.linalg.norm(nominal_points-cartesian_point, axis=1))
-            if lane_min < min_dist:
-                min_dist = lane_min
-                min_lane_id = lane_id
-        return min_lane_id
-
-
 
     @staticmethod
     def get_road_segment_id_from_lane_id(lane_id: int) -> int:
@@ -197,7 +161,6 @@ class MapUtils:
         """
         return SceneModel.get_instance().get_lane(lane_id).e_Cnt_right_adjacent_lane_count
 
-
     @staticmethod
     def get_lane_length(lane_id: int) -> float:
         """
@@ -207,7 +170,6 @@ class MapUtils:
         """
         nominal_points = SceneModel.get_instance().get_lane(lane_id).a_nominal_path_points
         return nominal_points[-1][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
-
 
     @staticmethod
     def get_lane_frenet_frame(lane_id: int) -> FrenetSerret2DFrame:
@@ -220,7 +182,6 @@ class MapUtils:
         return FrenetSerret2DFrame.fit(nominal_points[:,
                                        (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX,
                                         NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY)])
-
 
     @staticmethod
     def get_adjacent_lanes(lane_id: int, relative_lane: RelativeLane) -> List[int]:
@@ -241,7 +202,6 @@ class MapUtils:
             raise ValueError('Relative lane must be either right or left')
         return [l.e_Cnt_lane_segment_id for l in adj_lanes]
 
-
     @staticmethod
     def get_relative_lane_ids(lane_id: int) -> Dict[RelativeLane, int]:
         """
@@ -254,7 +214,6 @@ class MapUtils:
         return {RelativeLane.RIGHT_LANE: right_lanes[0] if len(right_lanes) > 0 else None,
                 RelativeLane.SAME_LANE: lane_id,
                 RelativeLane.LEFT_LANE: left_lanes[0] if len(left_lanes) > 0 else None}
-
 
     @staticmethod
     def get_closest_lane(cartesian_point: CartesianPoint2D, road_segment_id: int = None) -> int:
@@ -280,9 +239,6 @@ class MapUtils:
                 min_lane_id = lane_id
         return min_lane_id
 
-
-
-
     @staticmethod
     def get_dist_to_lane_borders(lane_id: int, s: float) -> (float, float):
         """
@@ -296,7 +252,6 @@ class MapUtils:
             if x[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] == s:
                 return (x[NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset.value],
                         x[NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value])
-
 
     @staticmethod
     def get_dist_to_road_borders(lane_id: int, s: float) -> (float, float):
@@ -322,8 +277,6 @@ class MapUtils:
         _, left_border = MapUtils.get_dist_to_lane_borders(leftmost_lane, s)
         return right_border, left_border
 
-
-
     @staticmethod
     def get_lane_width(lane_id: int, s: float) -> float:
         """
@@ -333,8 +286,6 @@ class MapUtils:
         :return: lane width
         """
         return np.sum(np.abs(MapUtils.get_dist_to_lane_borders(lane_id, s)))
-
-
 
     @staticmethod
     def get_upstream_lanes(lane_id: int) -> List[int]:
@@ -346,7 +297,6 @@ class MapUtils:
         """
         upstream_connectivity = SceneModel.get_instance().get_lane(lane_id).as_upstream_lanes
         return [connectivity.e_Cnt_lane_segment_id for connectivity in upstream_connectivity]
-
 
     @staticmethod
     def get_downstream_lanes(lane_id: int) -> List[int]:
@@ -390,7 +340,7 @@ class MapUtils:
         """
         Create Generalized Frenet frame of a given length along lane center, starting from given lane's longitude
         (may be negative).
-        When some lane finishes, it automatically continues to the next lane, according to the navigation plan.
+        When some lane ends, it automatically continues to the next lane, according to the navigation plan.
         :param lane_id: starting lane_id
         :param starting_lon: starting longitude (may be negative) [m]
         :param lookahead_dist: lookahead distance for the output frame [m]
