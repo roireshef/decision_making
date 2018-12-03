@@ -188,8 +188,8 @@ class MapUtils:
         """
         nominal_points = SceneModel.get_instance().get_lane(lane_id).a_nominal_path_points
         return FrenetSerret2DFrame.fit(nominal_points[:,
-                                       (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX,
-                                        NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY)])
+                                       (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value,
+                                        NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value)])
 
     @staticmethod
     def get_adjacent_lanes(lane_id: int, relative_lane: RelativeLane) -> List[int]:
@@ -239,8 +239,8 @@ class MapUtils:
         for lane_id in lane_ids:
             nominal_points = SceneModel.get_instance() \
                                  .get_lane(lane_id).a_nominal_path_points \
-                [:, (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX,
-                    NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY)]
+                [:, (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value,
+                    NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value)]
             lane_min = np.min(np.linalg.norm(nominal_points-cartesian_point, axis=1))
             if lane_min < min_dist:
                 min_dist = lane_min
@@ -280,21 +280,10 @@ class MapUtils:
             leftmost_lane = right_lanes[-1]
         else:
             leftmost_lane = lane_id
-        #add the distance to the center of the rightmost lane
+        # add the distance to the center of the rightmost lane
         right_border, _ = MapUtils.get_dist_to_lane_borders(rightmost_lane, s)
         _, left_border = MapUtils.get_dist_to_lane_borders(leftmost_lane, s)
         return right_border, left_border
-
-
-    @staticmethod
-    def get_dist_to_road_borders(lane_id: int, s: float) -> (float, float):
-        road_id = MapUtils.get_road_segment_id_from_lane_id(lane_id)
-        MapUtils.get_adjacent_lanes(lane_id, )
-
-       right_border, left_border = MapUtils.get_dist_to_lane_borders(lane_id, s)
-       return right_border + MapUtils._get_dist_to_border(lane_id,)
-
-        return MapUtils.get_adjacent_lanes(lane_id, RelativeLane.LEFT_LANE)
 
     @staticmethod
     def get_lane_width(lane_id: int, s: float) -> float:

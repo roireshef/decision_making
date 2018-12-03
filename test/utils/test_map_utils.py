@@ -366,8 +366,8 @@ def test_getClosestLane_multiLaneRoad_testExceptionOnWrongRoadId(scene_static):
     """
     SceneModel.get_instance().add_scene_static(scene_static)
     MapService.initialize(MAP_SPLIT)
-    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
-    lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
+    road_segment_ids = MapUtils.get_road_segment_ids()
+    lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])
     # find the rightest lane
     lane_id = lane_ids[0]
     frenet = MapUtils.get_lane_frenet_frame(lane_id)
@@ -386,7 +386,7 @@ def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency(scene
     """
     SceneModel.get_instance().add_scene_static(scene_static)
     MapService.initialize(MAP_SPLIT)
-    road_segment_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    road_segment_ids = MapUtils.get_road_segment_ids()
     road_segment_id = road_segment_ids[0]
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
     assert len(lane_ids) == MapService.get_instance().get_road(road_segment_id).lanes_num
