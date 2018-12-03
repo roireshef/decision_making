@@ -1,7 +1,6 @@
 from logging import Logger
 from os import getpid
 
-import os
 import numpy as np
 
 from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
@@ -10,10 +9,8 @@ from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
-    BEHAVIORAL_PLANNING_MODULE_PERIOD, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
-    TRAJECTORY_PLANNING_MODULE_PERIOD, \
-    DM_MANAGER_NAME_FOR_LOGGING
+    DM_MANAGER_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
@@ -37,9 +34,7 @@ from decision_making.src.planning.trajectory.werling_planner import WerlingPlann
 from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
     PhysicalTimeAlignmentPredictor
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state import OccupancyState
 from decision_making.src.state.state_module import StateModule
-from mapping.src.global_constants import DEFAULT_MAP_FILE
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
@@ -70,10 +65,7 @@ class DmInitialization:
         pubsub = create_pubsub(PubSubMessageTypes)
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
-        # TODO: figure out if we want to use OccupancyState at all
-        default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
-                                                 np.array([0.1], dtype=np.float))
-        state_module = StateModule(pubsub, logger, default_occupancy_state, None, None)
+        state_module = StateModule(pubsub, logger, None)
         return state_module
 
     @staticmethod

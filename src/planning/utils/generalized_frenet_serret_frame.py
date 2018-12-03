@@ -39,11 +39,11 @@ class FrenetSubSegment(PUBSUB_MSG_IMPL):
 
 class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
-                 segments_id: np.ndarray, segments_s_offsets: np.ndarray, segments_ds: np.ndarray,
-                 segments_point_offset: np.ndarray):
-        # TODO: figure out how to replace np.average which is hacky! (it is being called from outside this class!)
+                 segments_id: np.ndarray, segments_s_start: np.ndarray, segments_s_offsets: np.ndarray,
+                 segments_ds: np.ndarray, segments_point_offset: np.ndarray):
         FrenetSerret2DFrame.__init__(self, points, T, N, k, k_tag, None)
         self._segments_id = segments_id
+        self._segments_s_start = segments_s_start
         self._segments_s_offsets = segments_s_offsets
         self._segments_ds = segments_ds
         self._segments_point_offset = segments_point_offset
@@ -110,7 +110,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         # plus the number of points taken from subsegment #1.
         segments_point_offset = np.insert(segments_num_points_so_far, 0, 0., axis=0)
 
-        return cls(points, T, N, k, k_tag, segments_id, segments_s_offsets, segments_ds, segments_point_offset)
+        return cls(points, T, N, k, k_tag, segments_id, segments_s_start, segments_s_offsets, segments_ds,
+                   segments_point_offset)
 
     def has_segment_id(self, segment_id: int) -> bool:
         """see has_segment_ids"""
@@ -137,8 +138,11 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         """
         segment_idxs = self._get_segment_idxs_from_ids(segment_ids)
         s_offset = self._segments_s_offsets[segment_idxs]
+        s_start = self._segments_s_start[segment_idxs]
         new_frenet_states = frenet_states.copy()
         new_frenet_states[..., FS_SX] += s_offset
+        # For points that belong to the first subsegment, the frame bias (initial s) have to be added
+        new_frenet_states[..., FS_SX] -= s_start
         return new_frenet_states
 
     def convert_from_segment_state(self, frenet_state: FrenetState2D, segment_id: int) -> FrenetState2D:
@@ -160,12 +164,15 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         """
         # Find the closest greater segment offset for each frenet state longitudinal
         segment_idxs = self._get_segment_idxs_from_s(frenet_states[..., FS_SX])
-        s_offset = self._segments_s_offsets[segment_idxs]
-        new_frenet_states = frenet_states.copy()
-        new_frenet_states[..., FS_SX] -= s_offset
         if np.max(segment_idxs) >= len(self._segments_id):
             raise OutOfSegmentFront("frenet_states[%s, FS_SX] = %s exceeds the frame length %f" %
                                     (np.argmax(frenet_states[..., FS_SX]), np.max(frenet_states[..., FS_SX]), self.s_max))
+        s_offset = self._segments_s_offsets[segment_idxs]
+        s_start = self._segments_s_start[segment_idxs]
+        new_frenet_states = frenet_states.copy()
+        new_frenet_states[..., FS_SX] -= s_offset
+        # For points that belong to the first subsegment, the frame bias (initial s) have to be added
+        new_frenet_states[..., FS_SX] += s_start
         return self._segments_id[segment_idxs], new_frenet_states
 
     def convert_to_segment_state(self, frenet_state: FrenetState2D) -> (int, FrenetState2D):
