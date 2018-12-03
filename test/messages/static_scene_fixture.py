@@ -4,7 +4,7 @@ import numpy as np
 from decision_making.src.messages.scene_common_messages import Header, MapOrigin, Timestamp
 from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic, SceneRoadSegment, \
     MapRoadSegmentType, SceneLaneSegment, MapLaneType, LaneSegmentConnectivity, ManeuverType, NominalPathPoint, \
-    MapLaneMarkerType, BoundaryPoint
+    MapLaneMarkerType, BoundaryPoint, AdjacentLane, MovingDirection
 from mapping.src.exceptions import NextRoadNotFound
 from mapping.src.service.map_service import MapService
 
@@ -59,9 +59,16 @@ def scene_static():
     for lane_id in map_api._lane_address:
 
         road_segment_id, lane_ordinal = map_api._lane_address[lane_id]
-        right_adj_lanes = [map_api._lane_by_address[(road_segment_id, k)] for k in range(lane_ordinal)]
-        left_adj_lanes = [map_api._lane_by_address[(road_segment_id, k)] for k in range(lane_ordinal+1,
-                                                                                      map_model.get_road_data(road_id).lanes_num)]
+
+        right_adj_lanes = [AdjacentLane(map_api._lane_by_address[(road_segment_id, k)],
+                                        MovingDirection.Adjacent_or_same_dir,
+                                        MapLaneType.LocalRoadLane) for k in range(lane_ordinal)]
+
+        left_adj_lanes = [AdjacentLane(map_api._lane_by_address[(road_segment_id, k)],
+                                        MovingDirection.Adjacent_or_same_dir,
+                                        MapLaneType.LocalRoadLane) for k in range(lane_ordinal+1,
+                                                                                  map_model.get_road_data(road_id).lanes_num)]
+
         downstream_id, upstream_id = get_connectivity_lane_segment(map_api, road_segment_id, lane_ordinal, lane_id)
         lane_frenet = map_api._lane_frenet[lane_id]
         nominal_points = []

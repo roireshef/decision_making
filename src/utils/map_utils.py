@@ -367,7 +367,7 @@ class MapUtils:
         :return: sorted list of lane segments' IDs
         """
         segment = SceneModel.get_instance().get_road_segment(road_segment_id)
-        return segment.a_Cnt_lane_segment_id
+        return segment.a_Cnt_lane_segment_id.tolist()
 
     @staticmethod
     def does_map_exist_backward(lane_id: int, backward_dist: float):
