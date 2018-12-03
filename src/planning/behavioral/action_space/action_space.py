@@ -2,7 +2,7 @@ import itertools
 from abc import abstractmethod
 from collections import defaultdict
 from logging import Logger
-from typing import List, Optional, Type, Dict
+from typing import List, Optional, Type
 
 import rte.python.profiler as prof
 from decision_making.src.exceptions import raises
@@ -66,8 +66,7 @@ class ActionSpace:
         return self.specify_goals([action_recipe], behavioral_state)[0]
 
     @abstractmethod
-    def specify_goals(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> \
-            List[Optional[ActionSpec]]:
+    def specify_goals(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[Optional[ActionSpec]]:
         """
         This method's purpose is to specify the enumerated actions (recipes) that the agent can take.
         Each semantic action (ActionRecipe) is translated into a terminal state specification (ActionSpec).
