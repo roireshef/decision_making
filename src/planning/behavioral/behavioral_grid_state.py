@@ -65,7 +65,7 @@ class BehavioralGridState(BehavioralState):
         :return: road semantic occupancy grid
         """
         # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
-        unified_frames = BehavioralGridState.create_generalized_frenet_frames(state, nav_plan)
+        unified_frames = BehavioralGridState._create_generalized_frenet_frames(state, nav_plan)
 
         projected_ego_fstates = {rel_lane: unified_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
                                  for rel_lane in unified_frames}
@@ -114,52 +114,6 @@ class BehavioralGridState(BehavioralState):
         return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i], rel_lanes_per_obj[i])
                 for i, obj in enumerate(dynamic_objects) if rel_lanes_per_obj[i] is not None]
 
-    @staticmethod
-    def create_generalized_frenet_frames(state: State, nav_plan: NavigationPlanMsg) -> \
-            Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
-        """
-        For all available relative lanes create a relevant generalized frenet frame
-        :param state:
-        :param nav_plan:
-        :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
-        """
-        # calculate unified generalized frenet frames
-        ego_lane_id = state.ego_state.map_state.lane_id
-        adjacent_lanes_dict = MapUtils.get_relative_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
-        unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame] = {}
-        suggested_ref_route_start = state.ego_state.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST
-
-        # TODO: remove this hack when using a real map from SP
-        # if there is no long enough road behind ego, set ref_route_start = 0
-        ref_route_start = suggested_ref_route_start \
-            if suggested_ref_route_start >= 0 or MapUtils.does_map_exist_backward(ego_lane_id, -suggested_ref_route_start) \
-            else 0
-
-        frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
-        for rel_lane in adjacent_lanes_dict:
-            unified_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
-                lane_id=adjacent_lanes_dict[rel_lane], starting_lon=ref_route_start, lookahead_dist=frame_length,
-                navigation_plan=nav_plan)
-        return unified_frames
-
-    @staticmethod
-    def project_ego_on_adjacent_lanes(ego_state: EgoState) -> Dict[RelativeLane, FrenetState2D]:
-        """
-        project cartesian state on the existing adjacent lanes
-        :return: dictionary mapping between existing relative lane (adjacent to lane_id) to Frenet state
-                                                                        projected on the adjacent Frenet frame
-        """
-        projected_fstates: Dict[RelativeLane, FrenetState2D] = {}
-        for rel_lane in RelativeLane:
-            if rel_lane == RelativeLane.SAME_LANE:
-                projected_fstates[rel_lane] = ego_state.map_state.lane_fstate
-            else:
-                adjacent_lane_ids = MapUtils.get_adjacent_lanes(ego_state.map_state.lane_id, rel_lane)
-                if len(adjacent_lane_ids) > 0:
-                    adjacent_frenet = MapUtils.get_lane_frenet_frame(adjacent_lane_ids[0])
-                    projected_fstates[rel_lane] = adjacent_frenet.cstate_to_fstate(ego_state.cartesian_state)
-        return projected_fstates
-
     def calculate_longitudinal_differences(self, target_segment_ids: np.array, target_segment_fstates: np.array,
                                            rel_lanes_per_target: np.array) -> np.array:
         """
@@ -202,6 +156,34 @@ class BehavioralGridState(BehavioralState):
         longitudinal_differences = np.array([tar_unified_fstates[i, FS_SX] - ego_unified_fstates[rel_lane][FS_SX]
                                              for i, rel_lane in enumerate(rel_lanes_per_target)])
         return longitudinal_differences
+
+    @staticmethod
+    def _create_generalized_frenet_frames(state: State, nav_plan: NavigationPlanMsg) -> \
+            Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
+        """
+        For all available relative lanes create a relevant generalized frenet frame
+        :param state:
+        :param nav_plan:
+        :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
+        """
+        # calculate unified generalized frenet frames
+        ego_lane_id = state.ego_state.map_state.lane_id
+        adjacent_lanes_dict = MapUtils.get_relative_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
+        unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame] = {}
+        suggested_ref_route_start = state.ego_state.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST
+
+        # TODO: remove this hack when using a real map from SP
+        # if there is no long enough road behind ego, set ref_route_start = 0
+        ref_route_start = suggested_ref_route_start \
+            if suggested_ref_route_start >= 0 or MapUtils.does_map_exist_backward(ego_lane_id, -suggested_ref_route_start) \
+            else 0
+
+        frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
+        for rel_lane in adjacent_lanes_dict:
+            unified_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
+                lane_id=adjacent_lanes_dict[rel_lane], starting_lon=ref_route_start, lookahead_dist=frame_length,
+                navigation_plan=nav_plan)
+        return unified_frames
 
     @staticmethod
     @prof.ProfileFunction()
