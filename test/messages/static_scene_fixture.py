@@ -57,9 +57,10 @@ def scene_static():
         scene_road_segments.append(scene_road_segment)
     scene_lane_segments = []
     for lane_id in map_api._lane_address:
-        road_segment_id, lane_ordinal  = map_api._lane_address[lane_id]
-        right_adj_lanes=[map_api._lane_by_address[(road_segment_id,k)] for k in range(lane_ordinal)]
-        left_adj_lanes=[map_api._lane_by_address[(road_segment_id,k)] for k in range(lane_ordinal+1,
+
+        road_segment_id, lane_ordinal = map_api._lane_address[lane_id]
+        right_adj_lanes = [map_api._lane_by_address[(road_segment_id, k)] for k in range(lane_ordinal)]
+        left_adj_lanes = [map_api._lane_by_address[(road_segment_id, k)] for k in range(lane_ordinal+1,
                                                                                       map_model.get_road_data(road_id).lanes_num)]
         downstream_id, upstream_id = get_connectivity_lane_segment(map_api, road_segment_id, lane_ordinal, lane_id)
         lane_frenet = map_api._lane_frenet[lane_id]
@@ -79,7 +80,6 @@ def scene_static():
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset.value] = half_lane_width
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value] = half_lane_width
             nominal_points.append(point)
-
 
         left_boundry_point = [BoundaryPoint(MapLaneMarkerType.MapLaneMarkerType_SolidSingleLine_BottsDots,
                                                      0, lane_frenet.s_max)]
@@ -128,10 +128,11 @@ def scene_static():
                            e_Cnt_num_road_intersections=0,
                            as_scene_road_intersection=[],
                            e_Cnt_num_road_segments=len(scene_road_segments),
-                           as_scene_road_segment=np.array(scene_road_segments))
+                           as_scene_road_segment=scene_road_segments)
 
     scene = SceneStatic(s_Header=header, s_MapOrigin=map_origin, s_Data=data)
     return scene
+
 
 if __name__ == '__main__':
     scene_static()
