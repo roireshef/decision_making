@@ -224,14 +224,14 @@ class MapUtils:
                 RelativeLane.LEFT_LANE: left_lanes[0] if len(left_lanes) > 0 else None}
 
     @staticmethod
-    def get_closest_lane(cartesian_point: CartesianPoint2D, road_segment_id: int = None) -> int:
+    def get_closest_lane(cartesian_point: CartesianPoint2D, road_segment_id: int) -> int:
         """
         given cartesian coordinates, find the closest lane to the point
         :param cartesian_point: 2D cartesian coordinates
         :param road_segment_id: optional argument for road_segment_id closest to the given point
         :return: closest lane segment id
         """
-        # TODO: This is a VERY naive implementation. This can be imporoved easily by (a) vectorizing. i.e., all lanes stacked
+        # TODO: This is a VERY naive implementation. It can be improved  by (a) vectorizing. i.e., all lanes stacked
         # TODO: (b) using current 's' to limit the search
         lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
         min_dist = float('inf')

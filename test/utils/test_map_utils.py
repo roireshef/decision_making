@@ -322,7 +322,7 @@ def test_getUpstreamLanesFromDistance_tooLongBackwardDist_validateRelevantExcept
          validate the relevant exception
      """
     SceneModel.get_instance().add_scene_static(scene_static)
-    road_ids = [road_segment.e_Cnt_road_segment_id for road_segment in scene_static.s_Data.as_scene_road_segment]
+    road_ids = MapUtils.get_road_segment_ids()
     current_road_idx = 7
     current_ordinal = 1
     starting_lon = 20.
@@ -342,20 +342,17 @@ def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints(scene_
         find the most left and the most right lanes by points inside these lanes
     """
     SceneModel.get_instance().add_scene_static(scene_static)
-    MapService.initialize(MAP_SPLIT)
-    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
-    lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
+    road_segment_ids = MapUtils.get_road_segment_ids()
+    lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])
     # find the rightest lane
     lane_id = lane_ids[0]
     frenet = MapUtils.get_lane_frenet_frame(lane_id)
-    closest_lane_id = MapUtils.get_closest_lane(frenet.points[1])
+    closest_lane_id = MapUtils.get_closest_lane(frenet.points[1], road_segment_ids[0])
     assert lane_id == closest_lane_id
     # find the leftmost lane
     lane_id = lane_ids[-1]
     frenet = MapUtils.get_lane_frenet_frame(lane_id)
-    closest_lane_id = MapUtils.get_closest_lane(frenet.points[-2])
-    assert lane_id == closest_lane_id
-    closest_lane_id = MapUtils.get_closest_lane(frenet.points[-2], road_ids[0])
+    closest_lane_id = MapUtils.get_closest_lane(frenet.points[-2], road_segment_ids[0])
     assert lane_id == closest_lane_id
 
 
@@ -365,18 +362,14 @@ def test_getClosestLane_multiLaneRoad_testExceptionOnWrongRoadId(scene_static):
         validate relevant exception on wrong road_segment_id
     """
     SceneModel.get_instance().add_scene_static(scene_static)
-    MapService.initialize(MAP_SPLIT)
     road_segment_ids = MapUtils.get_road_segment_ids()
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])
     # find the rightest lane
     lane_id = lane_ids[0]
     frenet = MapUtils.get_lane_frenet_frame(lane_id)
     wrong_road_segment_id = 28
-    try:
-        MapUtils.get_closest_lane(frenet.points[-2], wrong_road_segment_id)
-        assert False
-    except RoadNotFound:
-        assert True
+    closest_wrong_lane = MapUtils.get_closest_lane(frenet.points[-2], wrong_road_segment_id)
+    assert closest_wrong_lane == 280
 
 
 def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency(scene_static):
