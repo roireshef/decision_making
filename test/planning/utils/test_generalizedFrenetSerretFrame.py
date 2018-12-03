@@ -343,6 +343,57 @@ def test_convertToAndFromSegmentStates_x_y():
     np.testing.assert_array_equal(upstream_segment_idxs, new_upstream_segment_idxs, 'Segment indices came out wrong')
     np.testing.assert_array_equal(downstream_segment_idxs, new_downstream_segment_idxs, 'Segment indices came out wrong')
 
+
+def test_convertToAndFromSegmentStates_firstSegmentStartsInMiddle_x_y():
+    ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
+    route_points = RouteFixture.get_route(lng=200, k=0.05, step=1, lat=100, offset=-50.0)
+    cpoints = np.array([[100.0, 0.0, -np.pi / 8, 0.1, 1.0, 1e-2], [130.0, 0.0, np.pi / 6, 0.1, 1.1, 1e-2],
+                        [150.0, 40.0, np.pi / 7, 10.0, -0.9, 1e-2], [450.0, 50.0, np.pi / 8, 3, -0.5, -5 * 1e-2],
+                        [460.0, 50.0, np.pi / 9, 0.1, -2, 0]
+                        ])
+
+    # split into two frenet frames that coincide in their last and first points
+    full_frenet = FrenetSerret2DFrame.fit(route_points)
+    n = (len(full_frenet.points) // 2)
+    upstream_frenet = FrenetSerret2DFrame(full_frenet.points[:(n + 1)], full_frenet.T[:(n + 1)],
+                                          full_frenet.N[:(n + 1)],
+                                          full_frenet.k[:(n + 1)], full_frenet.k_tag[:(n + 1)], full_frenet.ds)
+    downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
+                                            full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
+
+    upstream_s_start = upstream_frenet.ds * 100.9
+    upstream_s_end = upstream_frenet.s_max
+    downstream_s_start = 0
+    downstream_s_end = downstream_frenet.s_max - downstream_frenet.ds * 100.3
+
+    segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end),
+                    FrenetSubSegment(1, downstream_s_start, downstream_s_end)]
+    generalized_frenet = GeneralizedFrenetSerretFrame.build(frenet_frames=[upstream_frenet, downstream_frenet],
+                                                            sub_segments=segmentation)
+
+    upstream_cpoints = cpoints[:3]
+    downstream_cpoints = cpoints[3:]
+
+    upstream_fpoints = upstream_frenet.ctrajectory_to_ftrajectory(upstream_cpoints)
+    downstream_fpoints = downstream_frenet.ctrajectory_to_ftrajectory(downstream_cpoints)
+
+    upstream_segment_idxs = [0] * len(upstream_fpoints)
+    upstream_gen_fpoints = generalized_frenet.convert_from_segment_states(upstream_fpoints, upstream_segment_idxs)
+    new_upstream_segment_idxs, new_upstream_fpoints = generalized_frenet.convert_to_segment_states(upstream_gen_fpoints)
+
+    downstream_segment_idxs = [1] * len(downstream_fpoints)
+    downstream_gen_fpoints = generalized_frenet.convert_from_segment_states(downstream_fpoints, downstream_segment_idxs)
+    new_downstream_segment_idxs, new_downstream_fpoints = generalized_frenet.convert_to_segment_states(downstream_gen_fpoints)
+
+    errors_upstream = np.linalg.norm(upstream_fpoints - new_upstream_fpoints, axis=1)
+    errors_downstream = np.linalg.norm(downstream_fpoints - new_downstream_fpoints, axis=1)
+
+    np.testing.assert_array_less(errors_upstream, ACCURACY_TH, 'Conversions aren\'t accurate enough')
+    np.testing.assert_array_less(errors_downstream, ACCURACY_TH, 'Conversions aren\'t accurate enough')
+    np.testing.assert_array_equal(upstream_segment_idxs, new_upstream_segment_idxs, 'Segment indices came out wrong')
+    np.testing.assert_array_equal(downstream_segment_idxs, new_downstream_segment_idxs, 'Segment indices came out wrong')
+
+
 def test_hasSegmentIds_testMultiDimnesionalArrayOfIndices_validResults():
     ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
     route_points = RouteFixture.get_route(lng=200, k=0.05, step=1, lat=100, offset=-50.0)
