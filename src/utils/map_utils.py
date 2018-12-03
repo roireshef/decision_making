@@ -1,22 +1,22 @@
 import itertools
 from typing import List, Dict
+
 import numpy as np
+
 from decision_making.src.global_constants import EPS
 from decision_making.src.mapping.scene_model import SceneModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.scene_static_message import NominalPathPoint
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
-from decision_making.src.planning.types import FP_DX, C_X, C_Y, CartesianPoint2D
+from decision_making.src.planning.types import CartesianPoint2D
 from decision_making.src.planning.types import FS_DX
 from decision_making.src.planning.types import FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
-from decision_making.src.state.map_state import MapState
 from mapping.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
-from mapping.src.service.map_service import MapService
 
 
 class MapUtils:
@@ -129,7 +129,6 @@ class MapUtils:
     # TODO: Note! This function is only valid when the frenet reference frame is from the right side of the road
     @staticmethod
     def is_object_on_road(map_state):
-        # type: (MapState) -> bool
         """
         Returns true of the object is on the road. False otherwise.
         Note! This function is valid only when the frenet reference frame is from the right side of the road
@@ -142,6 +141,15 @@ class MapUtils:
                              for lane_id in MapUtils.get_lanes_ids_from_road_segment_id(map_state.lane_id)])
         is_on_road = road_width + ROAD_SHOULDERS_WIDTH > map_state.lane_fstate[FS_DX] > -ROAD_SHOULDERS_WIDTH
         return is_on_road
+
+    @staticmethod
+    def get_road_segment_ids() -> List[int]:
+        """
+        :return:road_segment_ids of every road in the static scene
+        """
+        scene_static = SceneModel.get_instance().get_scene_static()
+        road_segments = scene_static.s_Data.as_scene_road_segment[:scene_static.s_Data.e_Cnt_num_road_segments]
+        return [road_segment.e_Cnt_road_segment_id for road_segment in road_segments]
 
     @staticmethod
     def get_road_segment_id_from_lane_id(lane_id: int) -> int:

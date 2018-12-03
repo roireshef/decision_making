@@ -397,7 +397,7 @@ def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency(scene
 def test_doesMapExistBackward_longBackwardDist_validateRelevantException(scene_static):
     SceneModel.get_instance().add_scene_static(scene_static)
     MapService.initialize(MAP_SPLIT)
-    road_segment_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    road_segment_ids = MapUtils.get_road_segment_ids()
     road_segment_id = road_segment_ids[2]
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[0]
     assert MapUtils.does_map_exist_backward(lane_id, 200)
