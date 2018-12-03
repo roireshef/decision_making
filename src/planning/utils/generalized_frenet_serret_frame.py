@@ -136,10 +136,9 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         segment_idxs = self._get_segment_idxs_from_ids(segment_ids)
         s_offset = self._segments_s_offsets[segment_idxs]
         s_start = self._segments_s_start[segment_idxs]
-        is_first_segment = (segment_idxs == 0).astype(int)
         new_frenet_states = frenet_states.copy()
         new_frenet_states[..., FS_SX] += s_offset
-        new_frenet_states[..., FS_SX] -= is_first_segment * s_start
+        new_frenet_states[..., FS_SX] -= s_start
         return new_frenet_states
 
     def convert_from_segment_state(self, frenet_state: FrenetState2D, segment_id: int) -> FrenetState2D:
@@ -163,10 +162,9 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         segment_idxs = self._get_segment_idxs_from_s(frenet_states[:, FS_SX])
         s_offset = self._segments_s_offsets[segment_idxs]
         s_start = self._segments_s_start[segment_idxs]
-        is_first_segment = (segment_idxs == 0).astype(int)
         new_frenet_states = frenet_states.copy()
         new_frenet_states[..., FS_SX] -= s_offset
-        new_frenet_states[..., FS_SX] += is_first_segment*s_start
+        new_frenet_states[..., FS_SX] += s_start
         return self._segments_id[segment_idxs], new_frenet_states
 
     def convert_to_segment_state(self, frenet_state: FrenetState2D) -> (int, FrenetState2D):
