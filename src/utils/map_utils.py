@@ -280,9 +280,21 @@ class MapUtils:
             leftmost_lane = right_lanes[-1]
         else:
             leftmost_lane = lane_id
+        #add the distance to the center of the rightmost lane
         right_border, _ = MapUtils.get_dist_to_lane_borders(rightmost_lane, s)
         _, left_border = MapUtils.get_dist_to_lane_borders(leftmost_lane, s)
         return right_border, left_border
+
+
+    @staticmethod
+    def get_dist_to_road_borders(lane_id: int, s: float) -> (float, float):
+        road_id = MapUtils.get_road_segment_id_from_lane_id(lane_id)
+        MapUtils.get_adjacent_lanes(lane_id, )
+
+       right_border, left_border = MapUtils.get_dist_to_lane_borders(lane_id, s)
+       return right_border + MapUtils._get_dist_to_border(lane_id,)
+
+        return MapUtils.get_adjacent_lanes(lane_id, RelativeLane.LEFT_LANE)
 
     @staticmethod
     def get_lane_width(lane_id: int, s: float) -> float:
