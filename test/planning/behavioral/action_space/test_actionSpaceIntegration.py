@@ -1,6 +1,7 @@
 from logging import Logger
 import numpy as np
 
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
@@ -40,7 +41,7 @@ def test_specifyGoal_slightlyUnsafeState_shouldSucceed():
                                                     size=size, confidence=0)
 
     state = State(None, [obj], ego)
-    behavioral_state = BehavioralGridState.create_from_state(state, logger)
+    behavioral_state = BehavioralGridState.create_from_state(state, NavigationPlanMsg(np.array([20])), logger)
 
     action_recipes = action_space.recipes
     recipes_mask = action_space.filter_recipes(action_recipes, behavioral_state)

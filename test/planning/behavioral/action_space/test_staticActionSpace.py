@@ -1,6 +1,8 @@
 from logging import Logger
 
 import numpy as np
+
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, RelativeLane
@@ -29,7 +31,7 @@ def test_specifyGoals_closeToTargetVelocity_specifyNotFail():
                                                size=size, confidence=0)
 
     state = State(None, [], ego)
-    behavioral_state = BehavioralGridState.create_from_state(state, logger)
+    behavioral_state = BehavioralGridState.create_from_state(state, NavigationPlanMsg(np.array([20])), logger)
     # ego is located on the rightest lane, so filter recipes to the right
     filtered_recipes = [recipe for recipe in action_space.recipes if recipe.relative_lane != RelativeLane.RIGHT_LANE]
 

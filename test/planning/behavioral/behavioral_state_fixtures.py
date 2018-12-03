@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from decision_making.src.global_constants import EPS
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionType, AggressivenessLevel, \
@@ -14,6 +15,8 @@ from decision_making.src.state.state import OccupancyState, State, ObjectSize, E
 from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.model.map_api import MapAPI
 from mapping.src.service.map_service import MapService
+
+NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))
 
 
 @pytest.fixture(scope='function')
@@ -162,24 +165,28 @@ def state_with_objects_for_filtering_too_aggressive(pg_map_api: MapAPI):
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state(state_with_sorrounding_objects: State):
-    yield BehavioralGridState.create_from_state(state_with_sorrounding_objects, None)
+    yield BehavioralGridState.create_from_state(state_with_sorrounding_objects,
+                                                NAVIGATION_PLAN, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_tracking_mode(
         state_with_objects_for_filtering_tracking_mode: State):
-    yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_tracking_mode, None)
+    yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_tracking_mode,
+                                                NAVIGATION_PLAN, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_negative_sT(state_with_objects_for_filtering_negative_sT: State):
-    yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_negative_sT, None)
+    yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_negative_sT,
+                                                NAVIGATION_PLAN, None)
 
 
 @pytest.fixture(scope='function')
 def behavioral_grid_state_with_objects_for_filtering_too_aggressive(
         state_with_objects_for_filtering_too_aggressive: State):
-    yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_too_aggressive, None)
+    yield BehavioralGridState.create_from_state(state_with_objects_for_filtering_too_aggressive,
+                                                NAVIGATION_PLAN, None)
 
 
 @pytest.fixture(scope='function')

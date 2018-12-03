@@ -79,40 +79,6 @@ class BehavioralGridState(BehavioralState):
                                                                          state.ego_state)
         return cls(multi_object_grid, state.ego_state, unified_frames, projected_ego_fstates)
 
-    def calculate_longitudinal_differences(self, target_lane_ids: np.array, target_fstates: np.array,
-                                           rel_lanes_per_target: np.array) -> np.array:
-        return BehavioralGridState._calculate_longitudinal_differences(
-            self.unified_frames, self.ego_state.map_state.lane_id, self.projected_ego_fstates,
-            target_lane_ids, target_fstates, rel_lanes_per_target)
-
-    @staticmethod
-    def _calculate_longitudinal_differences(unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
-                                            ego_lane_id: int, ego_unified_fstates: Dict[RelativeLane, FrenetState2D],
-                                            target_lane_ids: np.array, target_fstates: np.array,
-                                            rel_lanes_per_target: np.array) -> np.array:
-        """
-        Given target segment ids and fstates, calculate longitudinal differences between the target and ego
-        projected on the target lanes, using 3 unified frames (GFF).
-        :param target_lane_ids: array of original lane ids of the targets
-        :param target_fstates: array of target fstates w.r.t. their original lane ids
-        :return: array of longitudinal differences between the targets and projected ego
-        """
-        tar_unified_fstates = np.empty((len(target_lane_ids), 6), dtype=float)
-        relative_lane_ids = MapUtils.get_relative_lane_ids(ego_lane_id)
-
-        # longitudinal difference between object and ego at t=0 (positive if obj in front of ego)
-        for rel_lane in relative_lane_ids:  # loop over at most 3 relative lanes (adjacent)
-            # find all targets belonging to the current unified frame
-            relevant_idxs = unified_frames[rel_lane].has_segment_ids(target_lane_ids)
-            if relevant_idxs.any():
-                # convert relevant dynamic objects to fstate w.r.t. the current unified frame
-                tar_unified_fstates[relevant_idxs] = unified_frames[rel_lane].convert_from_segment_states(
-                    target_fstates[relevant_idxs], target_lane_ids[relevant_idxs])
-
-        longitudinal_differences = np.array([tar_unified_fstates[i, FS_SX] - ego_unified_fstates[rel_lane][FS_SX]
-                                             for i, rel_lane in enumerate(rel_lanes_per_target)])
-        return longitudinal_differences
-
     @staticmethod
     @prof.ProfileFunction()
     def _add_road_semantics(dynamic_objects: List[DynamicObject], ego_state: EgoState,
@@ -193,6 +159,49 @@ class BehavioralGridState(BehavioralState):
                     adjacent_frenet = MapUtils.get_lane_frenet_frame(adjacent_lane_ids[0])
                     projected_fstates[rel_lane] = adjacent_frenet.cstate_to_fstate(ego_state.cartesian_state)
         return projected_fstates
+
+    def calculate_longitudinal_differences(self, target_segment_ids: np.array, target_segment_fstates: np.array,
+                                           rel_lanes_per_target: np.array) -> np.array:
+        """
+        Given target segment ids and segment fstates, calculate longitudinal differences between the targets and ego
+        projected on the target lanes, using the relevant unified frames (GFF).
+        :param target_segment_ids: array of original lane ids of the targets
+        :param target_segment_fstates: array of target fstates w.r.t. their original lane ids
+        :param rel_lanes_per_target: array of relative lanes (LEFT, SAME, RIGHT) for every target
+        :return: array of longitudinal differences between the targets and projected ego per target
+        """
+        return BehavioralGridState._calculate_longitudinal_differences(
+            self.unified_frames, self.ego_state.map_state.lane_id, self.projected_ego_fstates,
+            target_segment_ids, target_segment_fstates, rel_lanes_per_target)
+
+    @staticmethod
+    def _calculate_longitudinal_differences(unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
+                                            ego_lane_id: int, ego_unified_fstates: Dict[RelativeLane, FrenetState2D],
+                                            target_segment_ids: np.array, target_segment_fstates: np.array,
+                                            rel_lanes_per_target: np.array) -> np.array:
+        """
+        Given unified frames, ego projected on the unified frames, target segment ids and segment fstates, calculate
+        longitudinal differences between the targets and ego.
+        projected on the target lanes, using the relevant unified frames (GFF).
+        :param target_segment_ids: array of original lane ids of the targets
+        :param target_segment_fstates: array of target fstates w.r.t. their original lane ids
+        :return: array of longitudinal differences between the targets and projected ego
+        """
+        tar_unified_fstates = np.empty((len(target_segment_ids), 6), dtype=float)
+        relative_lane_ids = MapUtils.get_relative_lane_ids(ego_lane_id)
+
+        # longitudinal difference between object and ego at t=0 (positive if obj in front of ego)
+        for rel_lane in relative_lane_ids:  # loop over at most 3 relative lanes (adjacent)
+            # find all targets belonging to the current unified frame
+            relevant_idxs = unified_frames[rel_lane].has_segment_ids(target_segment_ids)
+            if relevant_idxs.any():
+                # convert relevant dynamic objects to fstate w.r.t. the current unified frame
+                tar_unified_fstates[relevant_idxs] = unified_frames[rel_lane].convert_from_segment_states(
+                    target_segment_fstates[relevant_idxs], target_segment_ids[relevant_idxs])
+
+        longitudinal_differences = np.array([tar_unified_fstates[i, FS_SX] - ego_unified_fstates[rel_lane][FS_SX]
+                                             for i, rel_lane in enumerate(rel_lanes_per_target)])
+        return longitudinal_differences
 
     @staticmethod
     @prof.ProfileFunction()
