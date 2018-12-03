@@ -342,8 +342,7 @@ def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints(scene_
         find the most left and the most right lanes by points inside these lanes
     """
     SceneModel.get_instance().add_scene_static(scene_static)
-    MapService.initialize(MAP_SPLIT)
-    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    road_ids = [road_segment.e_Cnt_road_segment_id for road_segment in scene_static.s_Data.as_scene_road_segment]
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
     # find the rightest lane
     lane_id = lane_ids[0]
@@ -365,8 +364,7 @@ def test_getClosestLane_multiLaneRoad_testExceptionOnWrongRoadId(scene_static):
         validate relevant exception on wrong road_segment_id
     """
     SceneModel.get_instance().add_scene_static(scene_static)
-    MapService.initialize(MAP_SPLIT)
-    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    road_ids = [road_segment.e_Cnt_road_segment_id for road_segment in scene_static.s_Data.as_scene_road_segment]
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
     # find the rightest lane
     lane_id = lane_ids[0]
@@ -385,8 +383,7 @@ def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency(scene
         validate consistency between road segment ids and lane ids
     """
     SceneModel.get_instance().add_scene_static(scene_static)
-    MapService.initialize(MAP_SPLIT)
-    road_segment_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    road_segment_ids = [road_segment.e_Cnt_road_segment_id for road_segment in scene_static.s_Data.as_scene_road_segment]
     road_segment_id = road_segment_ids[0]
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
     assert len(lane_ids) == MapService.get_instance().get_road(road_segment_id).lanes_num
@@ -396,8 +393,7 @@ def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency(scene
 
 def test_doesMapExistBackward_longBackwardDist_validateRelevantException(scene_static):
     SceneModel.get_instance().add_scene_static(scene_static)
-    MapService.initialize(MAP_SPLIT)
-    road_segment_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    road_segment_ids = [road_segment.e_Cnt_road_segment_id for road_segment in scene_static.s_Data.as_scene_road_segment]
     road_segment_id = road_segment_ids[2]
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[0]
     assert MapUtils.does_map_exist_backward(lane_id, 200)
