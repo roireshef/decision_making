@@ -166,7 +166,7 @@ def test_advanceOnPlan_planFiveOutOfTenSegments_validateTotalLengthAndOrdinal(sc
     assert np.isclose(tot_length, lookahead_dist)
 
 
-def test_advanceOnPlan_navPlanDoesNotFitMap_relevantException():
+def test_advanceOnPlan_navPlanDoesNotFitMap_relevantException(scene_static):
     """
     test the method _advance_on_plan
         add additional segment to nav_plan that does not exist on the map; validate getting the relevant exception
@@ -191,7 +191,7 @@ def test_advanceOnPlan_navPlanDoesNotFitMap_relevantException():
         assert True
 
 
-def test_advanceOnPlan_lookaheadCoversFullMap_validateNoException():
+def test_advanceOnPlan_lookaheadCoversFullMap_validateNoException(scene_static):
     """
     test the method _advance_on_plan
         run lookahead_dist from the beginning until end of the map
@@ -250,7 +250,7 @@ def test_advanceOnPlan_lookAheadDistLongerThanMap_validateException(scene_static
         MapUtils._advance_on_plan(starting_lane_id, starting_lon, lookahead_distance=lookadhead_dist,
                                   navigation_plan=NavigationPlanMsg(np.array(road_ids + [wrong_road_id])))
         assert False
-    except DownstreamLaneNotFound:
+    except NavigationPlanDoesNotFitMap:
         assert True
 
 

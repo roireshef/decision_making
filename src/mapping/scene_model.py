@@ -49,6 +49,8 @@ class SceneModel:
         scene_static = self.get_scene_static()
         lanes = [lane for lane in scene_static.s_Data.as_scene_lane_segment if
                  lane.e_i_lane_segment_id == lane_id]
+        if len(lanes) == 0:
+            return None
         assert len(lanes) == 1
         return lanes[0]
 

@@ -150,7 +150,10 @@ class MapUtils:
         :param lane_id:
         :return: road_segment_id
         """
-        return SceneModel.get_instance().get_lane(lane_id).e_i_road_segment_id
+        lane = SceneModel.get_instance().get_lane(lane_id)
+        if lane is None:
+            return None
+        return lane.e_i_road_segment_id
 
     @staticmethod
     def get_lane_ordinal(lane_id: int) -> int:
@@ -180,8 +183,8 @@ class MapUtils:
         """
         nominal_points = SceneModel.get_instance().get_lane(lane_id).a_nominal_path_points
         return FrenetSerret2DFrame.fit(nominal_points[:,
-                                       (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX,
-                                        NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY)])
+                                       (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value,
+                                        NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value)])
 
     @staticmethod
     def get_adjacent_lanes(lane_id: int, relative_lane: RelativeLane) -> List[int]:

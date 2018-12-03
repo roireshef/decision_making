@@ -142,5 +142,10 @@ def scene_static():
 
 
 if __name__ == '__main__':
-    scene_static()
+    ss = scene_static()
+
+    #lanes = [lane.e_i_lane_segment_id for lane in ss.s_Data.as_scene_lane_segment]
+    #print(lanes)
+
+
 
