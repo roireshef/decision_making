@@ -264,26 +264,21 @@ class MapUtils:
     @staticmethod
     def get_dist_to_road_borders(lane_id: int, s: float) -> (float, float):
         """
-        get distance from the lane center to the road borders at given longitude from the lane's origin
+         Get distance from the lane center to the road borders at given longitude from the lane's origin
         :param lane_id:
         :param s: longitude of the lane center point (w.r.t. the lane Frenet frame)
         :return: distance from the right road border, distance from the left road border
         """
-        right_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.RIGHT_LANE)
-        if len(right_lanes) > 0:
-            rightmost_lane = right_lanes[0]
-        else:
-            rightmost_lane = lane_id
 
-        right_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.LEFT_LANE)
-        if len(right_lanes) > 0:
-            leftmost_lane = right_lanes[-1]
-        else:
-            leftmost_lane = lane_id
-        # add the distance to the center of the rightmost lane
-        right_border, _ = MapUtils.get_dist_to_lane_borders(rightmost_lane, s)
-        _, left_border = MapUtils.get_dist_to_lane_borders(leftmost_lane, s)
-        return right_border, left_border
+        right_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.RIGHT_LANE)
+        left_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.LEFT_LANE)
+        right_distance = np.sum([np.sum(MapUtils.get_dist_to_lane_borders(right_lane,s)) for right_lane in right_lanes])
+        left_distance = np.sum([np.sum(MapUtils.get_dist_to_lane_borders(left_lane,s)) for left_lane in left_lanes])
+        right_from_lane, left_from_lane = MapUtils.get_dist_to_lane_borders(lane_id, s)
+
+        return right_from_lane+right_distance, left_from_lane+left_distance
+
+
 
     @staticmethod
     def get_lane_width(lane_id: int, s: float) -> float:
