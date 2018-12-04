@@ -5,7 +5,8 @@ from decision_making.src.messages.scene_common_messages import Header, MapOrigin
 from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic, SceneRoadSegment, \
     MapRoadSegmentType, SceneLaneSegment, MapLaneType, LaneSegmentConnectivity, ManeuverType, NominalPathPoint, \
     MapLaneMarkerType, BoundaryPoint, AdjacentLane, MovingDirection
-from mapping.src.exceptions import NextRoadNotFound
+from decision_making.src.planning.types import FS_DX, FS_SX, FP_SX, FP_DX
+from mapping.src.exceptions import NextRoadNotFound, RoadNotFound
 from mapping.src.service.map_service import MapService
 
 
@@ -48,9 +49,9 @@ def scene_static():
                                               e_Cnt_lane_segment_id_count=num_lanes,
                                               a_Cnt_lane_segment_id=lane_ids,
                                               e_e_road_segment_type=MapRoadSegmentType.Normal,
-                                              e_Cnt_upstream_segment_count=1,
+                                              e_Cnt_upstream_segment_count=len(upstream_roads),
                                               a_Cnt_upstream_road_segment_id=upstream_roads,
-                                              e_Cnt_downstream_segment_count=1,
+                                              e_Cnt_downstream_segment_count=len(downstream_roads),
                                               a_Cnt_downstream_road_segment_id=downstream_roads)
 
         scene_road_segments.append(scene_road_segment)
@@ -73,9 +74,9 @@ def scene_static():
         nominal_points = []
         half_lane_width = map_api.get_road(road_id).lane_width/2
         for i in range(len(lane_frenet.O)):
-            point = np.empty(len(NominalPathPoint))
-            point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value] = lane_frenet.O[i, 0]
-            point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value] = lane_frenet.O[i, 1]
+            point = np.empty(len(list(NominalPathPoint)))
+            point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value] = lane_frenet.O[i, FP_SX]
+            point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value] = lane_frenet.O[i, FP_DX]
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_phi_heading.value] = np.arctan2(lane_frenet.T[i, 1],
                                                                                       lane_frenet.T[i, 0])
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_il_curvature.value] = lane_frenet.k[i]
@@ -152,8 +153,6 @@ def scene_static():
 if __name__ == '__main__':
     ss = scene_static()
 
-    #lanes = [lane.e_i_lane_segment_id for lane in ss.s_Data.as_scene_lane_segment]
-    #print(lanes)
 
 
 

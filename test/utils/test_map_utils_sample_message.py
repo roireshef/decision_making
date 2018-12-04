@@ -46,14 +46,14 @@ def test_get_lane_length(scene_static_sample: SceneStatic):
 
 @pytest.mark.skip('Remove, not completed')
 def test_get_lane_frenet_frame(scene_static_sample: SceneStatic):
-    # SceneModel.get_instance().add_scene_static(scene_static_sample)
+    # SceneModel.get_instance().set_scene_static(scene_static_sample)
     # test_answer = MapUtils.get_lane_frenet_frame(lane_id)
     # assert (test_answer == expected_answer)
     pass
 
 @pytest.mark.skip('Remove, not completed')
 def test_get_adjacent_lanes(scene_static_sample: SceneStatic):
-    # SceneModel.get_instance().add_scene_static(scene_static_sample)
+    # SceneModel.get_instance().set_scene_static(scene_static_sample)
     # test_answer = MapUtils.get_adjacent_lanes(lane_id, relative_lane)
     # assert (test_answer == expected_answer)
     pass

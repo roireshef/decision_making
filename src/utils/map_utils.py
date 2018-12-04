@@ -1,147 +1,23 @@
-import itertools
 from typing import List, Dict
 
 import numpy as np
 
-from decision_making.src.global_constants import EPS, TRAJECTORY_ARCLEN_RESOLUTION
+from decision_making.src.global_constants import EPS
 from decision_making.src.mapping.scene_model import SceneModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.messages.scene_static_message import NominalPathPoint
+from decision_making.src.messages.scene_static_message import NominalPathPoint, SceneLaneSegment, SceneRoadSegment
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import CartesianPoint2D
-from decision_making.src.planning.types import FS_DX
-from decision_making.src.planning.types import FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from mapping.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
-    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound
-from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
+    NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound
 
 
 class MapUtils:
 
-    # TODO: remove this on Lane-based planner PR
-    @staticmethod
-    def get_road_rhs_frenet(road_id: int) -> FrenetSerret2DFrame:
-        rhs_lane_id = MapUtils.get_adjacent_lanes(road_id, RelativeLane.RIGHT_LANE)[0]
-        nominal_points = SceneModel.get_instance().get_lane(rhs_lane_id).a_nominal_path_points
-        return FrenetSerret2DFrame.fit(nominal_points[:,
-                                       (NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset,
-                                        NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY)])
-
-#    @staticmethod
-#    def get_lookahead_frenet_frame(lane_id: int, starting_lon: float, lookahead_dist: float,
-#                                   navigation_plan: NavigationPlanMsg) -> GeneralizedFrenetSerretFrame:
-#        """
-#        Get Frenet frame of a given length along lane center, starting from given lane's longitude (may be negative).
-#        When some lane finishes, it automatically continues to the next lane, according to the navigation plan.
-#        :param lane_id: starting lane_id
-#        :param starting_lon: starting longitude (may be negative) [m]
-#        :param lookahead_dist: lookahead distance for the output frame [m]
-#        :param navigation_plan: the relevant navigation plan to iterate over its road IDs.
-#        :return: Frenet frame for the given route part
-#        """
-#        scene_static = SceneModel.get_instance().get_scene_static()
-#
-#        # TODO CHECK can SceneModel give us a larger horizon than s_Data.e_l_perception_horizon_*
-#        if (starting_lon + lookahead_dist) > scene_static.s_Data.e_l_perception_horizon_front:
-#            raise ValueError('lookahead_dist greater than SceneStatic front horizon')
-#        if abs(starting_lon) > scene_static.s_Data.e_l_perception_horizon_rear:
-#            raise ValueError('starting_lon greater than SceneStatic rear horizon')
-#
-#        nav_plan_laneseg_ids = [MapUtils.get_lanes_ids_from_road_segment_id(road_id) for road_id in navigation_plan.road_ids]
-#        nav_plan_laneseg_ids = list(itertools.chain.from_iterable(nav_plan_laneseg_ids))
-#
-#        # TODO CHECK can scenemodel have function to give list of all available lane segments
-#        scene_model_lane_seg_ids = [lane.e_i_lane_segment_id for lane in scene_static.s_Data.as_scene_lane_segment]
-#
-#        if not set(nav_plan_laneseg_ids).issubset(scene_model_lane_seg_ids):
-#            raise ValueError('Navigation plan includes lane IDs that are not part of SceneModel')
-#
-#        # TODO ASSUMPTION starting_lon is limited to current lane id and previous, not >current <prev
-#        start_lane_seg_id = lane_id if starting_lon >= 0 else SceneModel.get_instance().get_lane(lane_id).as_upstream_lanes[0].e_Cnt_lane_segment_id
-#        start_lane = SceneModel.get_instance().get_lane(start_lane_seg_id)
-#
-#        # Find start point s distance
-#        if starting_lon < 0:
-#            seg_start_s = start_lane.a_nominal_path_points[start_lane.e_Cnt_nominal_path_point_count][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] + starting_lon
-#        else:
-#            seg_start_s = starting_lon
-#
-#        # Find start point s index
-#        start_pt_idx = 0
-#        while start_lane.a_nominal_path_points[start_pt_idx][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] < seg_start_s:
-#            start_pt_idx += 1
-#
-#        accumulated_s = 0
-#        frenet_frames = []
-#        frenet_sub_segments = []
-#        curr_lane_id = start_lane_seg_id
-#        while accumulated_s < lookahead_dist:
-#            curr_lane = SceneModel.get_instance().get_lane(curr_lane_id)
-#            first_nom_path_pt = curr_lane.a_nominal_path_points[0]
-#            last_nom_path_pt = curr_lane.a_nominal_path_points[curr_lane.e_Cnt_nominal_path_point_count - 1]
-#
-#            # End point is beyond end of LS and LS is starting segment. Append start point to end of LS
-#            if curr_lane_id == start_lane_seg_id and \
-#               (last_nom_path_pt[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - curr_lane.a_nominal_path_points[start_pt_idx][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]) < lookahead_dist:
-#                accumulated_s += last_nom_path_pt[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - curr_lane.a_nominal_path_points[start_pt_idx][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
-#                frenet_frames += FrenetSerret2DFrame.fit(curr_lane.a_nominal_path_points[0:curr_lane.e_Cnt_nominal_path_point_count,
-#                                                         NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value:NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value])
-#
-#                frenet_sub_segments += FrenetSubSegment(curr_lane.e_i_lane_segment_id,
-#                                                        curr_lane.a_nominal_path_points[start_pt_idx][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value],
-#                                                        last_nom_path_pt[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value])
-#                curr_lane_id = curr_lane.as_downstream_lanes[0].e_Cnt_lane_segment_id
-#
-#            # End point beyond end of LS. Append entire LS
-#            elif accumulated_s + last_nom_path_pt[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] < lookahead_dist:
-#                accumulated_s += last_nom_path_pt[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
-#
-#                frenet_frames += MapUtils.get_lane_frenet_frame(curr_lane.e_i_lane_segment_id)
-#                frenet_sub_segments += FrenetSubSegment(curr_lane.e_i_lane_segment_id,
-#                                                        first_nom_path_pt[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value],
-#                                                        last_nom_path_pt[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value])
-#                curr_lane_id = curr_lane.as_downstream_lanes[0].e_Cnt_lane_segment_id
-#
-#            # End point is somewhere in the middle of LS. Find the endpoint and append the relevant portion of LS
-#            else:
-#                pt_idx = 0
-#                while (accumulated_s + curr_lane.a_nominal_path_points[pt_idx][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]) < lookahead_dist:
-#                    pt_idx += 1
-#
-#                accumulated_s += curr_lane.a_nominal_path_points[pt_idx][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
-#                frenet_frames += FrenetSerret2DFrame.fit(curr_lane.a_nominal_path_points[0:pt_idx,
-#                                                         NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value:NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value])
-#                if curr_lane_id == start_lane_seg_id:
-#                    frenet_sub_segments += FrenetSubSegment(curr_lane.e_i_lane_segment_id,
-#                                                            curr_lane.a_nominal_path_points[start_pt_idx][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value],
-#                                                            curr_lane.a_nominal_path_points[pt_idx][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value])
-#                else:
-#                    frenet_sub_segments += FrenetSubSegment(curr_lane.e_i_lane_segment_id,
-#                                                            first_nom_path_pt[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value],
-#                                                            curr_lane.a_nominal_path_points[pt_idx][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value])
-#
-#        return GeneralizedFrenetSerretFrame.build(frenet_frames, frenet_sub_segments)
-
-    # TODO: remove this on Lane-based planner PR
-    # TODO: Note! This function is only valid when the frenet reference frame is from the right side of the road
-    @staticmethod
-    def is_object_on_road(map_state):
-        """
-        Returns true of the object is on the road. False otherwise.
-        Note! This function is valid only when the frenet reference frame is from the right side of the road
-        :param map_state: the map state to check
-        :return: Returns true of the object is on the road. False otherwise.
-        """
-
-        current_s = map_state.lane_fstate[FS_SX]
-        road_width = np.sum([MapUtils.get_lane_width(lane_id, current_s)
-                             for lane_id in MapUtils.get_lanes_ids_from_road_segment_id(map_state.lane_id)])
-        is_on_road = road_width + ROAD_SHOULDERS_WIDTH > map_state.lane_fstate[FS_DX] > -ROAD_SHOULDERS_WIDTH
-        return is_on_road
 
     @staticmethod
     def get_road_segment_ids() -> List[int]:
@@ -159,9 +35,9 @@ class MapUtils:
         :param lane_id:
         :return: road_segment_id
         """
-        lane = SceneModel.get_instance().get_lane(lane_id)
+        lane = MapUtils.get_lane(lane_id)
         if lane is None:
-            return None
+            raise LaneNotFound('lane {0} cannot be found'.format(lane_id))
         return lane.e_i_road_segment_id
 
     @staticmethod
@@ -171,7 +47,7 @@ class MapUtils:
         :param lane_id:
         :return: lane's ordinal
         """
-        return SceneModel.get_instance().get_lane(lane_id).e_Cnt_right_adjacent_lane_count
+        return MapUtils.get_lane(lane_id).e_Cnt_right_adjacent_lane_count
 
     @staticmethod
     def get_lane_length(lane_id: int) -> float:
@@ -180,8 +56,8 @@ class MapUtils:
         :param lane_id:
         :return: lane's length
         """
-        nominal_points = SceneModel.get_instance().get_lane(lane_id).a_nominal_path_points
-        return nominal_points[-1][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+        nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points
+        return nominal_points[-1,NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
 
     @staticmethod
     def get_lane_frenet_frame(lane_id: int) -> FrenetSerret2DFrame:
@@ -190,7 +66,7 @@ class MapUtils:
         :param lane_id:
         :return: Frenet frame
         """
-        nominal_points = SceneModel.get_instance().get_lane(lane_id).a_nominal_path_points
+        nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points
         points = nominal_points[:,(NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value,
                                    NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value)]
 
@@ -203,7 +79,6 @@ class MapUtils:
 
         return FrenetSerret2DFrame(points=points, T=T, N=N, k=k, k_tag=k_tag, ds=ds)
 
-    #def __init__(self, points: CartesianPath2D, T: np.ndarray, N: np.ndarray, k: np.ndarray, k_tag: np.ndarray,
 
     @staticmethod
     def get_adjacent_lanes(lane_id: int, relative_lane: RelativeLane) -> List[int]:
@@ -215,7 +90,7 @@ class MapUtils:
                     if there are no such lanes, return empty list []
         """
 
-        lane = SceneModel.get_instance().get_lane(lane_id)
+        lane = MapUtils.get_lane(lane_id)
         if relative_lane == RelativeLane.RIGHT_LANE:
             adj_lanes = lane.as_right_adjacent_lanes
         elif relative_lane == RelativeLane.LEFT_LANE:
@@ -251,8 +126,7 @@ class MapUtils:
         min_dist = float('inf')
         min_lane_id = None
         for lane_id in lane_ids:
-            nominal_points = SceneModel.get_instance() \
-                                 .get_lane(lane_id).a_nominal_path_points \
+            nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points \
                 [:, (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value,
                     NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value)]
             lane_min = np.min(np.linalg.norm(nominal_points-cartesian_point, axis=1))
@@ -269,11 +143,11 @@ class MapUtils:
         :param s: longitude of the lane center point (w.r.t. the lane Frenet frame)
         :return: distance from the right lane border, distance from the left lane border
         """
-        nominal_points = SceneModel.get_instance().get_lane(lane_id).a_nominal_path_points
-        for x in nominal_points:
-            if x[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] == s:
-                return (x[NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset.value],
-                        x[NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value])
+        nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points
+        closest_s_idx = np.argmin(np.abs(nominal_points[:,
+                                         NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - s))
+        return (nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset.value],
+                nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value])
 
     @staticmethod
     def get_dist_to_road_borders(lane_id: int, s: float) -> (float, float):
@@ -283,11 +157,12 @@ class MapUtils:
         :param s: longitude of the lane center point (w.r.t. the lane Frenet frame)
         :return: distance from the right road border, distance from the left road border
         """
+        #TODO: Currently assuming that s is consistent across all lanes.
 
         right_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.RIGHT_LANE)
         left_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.LEFT_LANE)
-        right_distance = np.sum([np.sum(MapUtils.get_dist_to_lane_borders(right_lane,s)) for right_lane in right_lanes])
-        left_distance = np.sum([np.sum(MapUtils.get_dist_to_lane_borders(left_lane,s)) for left_lane in left_lanes])
+        right_distance = np.sum([MapUtils.get_dist_to_lane_borders(right_lane, s) for right_lane in right_lanes])
+        left_distance = np.sum([MapUtils.get_dist_to_lane_borders(left_lane, s) for left_lane in left_lanes])
         right_from_lane, left_from_lane = MapUtils.get_dist_to_lane_borders(lane_id, s)
 
         return right_from_lane+right_distance, left_from_lane+left_distance
@@ -302,7 +177,8 @@ class MapUtils:
         :param s: longitude of the lane center point (w.r.t. the lane Frenet frame)
         :return: lane width
         """
-        return np.sum(np.abs(MapUtils.get_dist_to_lane_borders(lane_id, s)))
+        border_right, border_left = MapUtils.get_dist_to_lane_borders(lane_id, s)
+        return border_right + border_left
 
     @staticmethod
     def get_upstream_lanes(lane_id: int) -> List[int]:
@@ -312,7 +188,7 @@ class MapUtils:
         :param lane_id:
         :return: list of upstream lanes ids
         """
-        upstream_connectivity = SceneModel.get_instance().get_lane(lane_id).as_upstream_lanes
+        upstream_connectivity = MapUtils.get_lane(lane_id).as_upstream_lanes
         return [connectivity.e_Cnt_lane_segment_id for connectivity in upstream_connectivity]
 
     @staticmethod
@@ -323,7 +199,7 @@ class MapUtils:
         :param lane_id:
         :return: list of downstream lanes ids
         """
-        downstream_connectivity = SceneModel.get_instance().get_lane(lane_id).as_downstream_lanes
+        downstream_connectivity = MapUtils.get_lane(lane_id).as_downstream_lanes
         return [connectivity.e_Cnt_lane_segment_id for connectivity in downstream_connectivity]
 
     @staticmethod
@@ -334,7 +210,7 @@ class MapUtils:
         :param road_segment_id:
         :return: sorted list of lane segments' IDs
         """
-        segment = SceneModel.get_instance().get_road_segment(road_segment_id)
+        segment = MapUtils.get_road_segment(road_segment_id)
         return segment.a_Cnt_lane_segment_id.tolist()
 
     @staticmethod
@@ -467,4 +343,37 @@ class MapUtils:
             path.append(prev_lane_id)
             total_dist += MapUtils.get_lane_length(prev_lane_id)
         return path, total_dist - backward_dist
+
+    @staticmethod
+    @raises(LaneNotFound)
+    def get_lane(lane_id: int) -> SceneLaneSegment:
+        """
+        Retrieves lane by lane_id  according to the last message
+        :param lane_id:
+        :return:
+        """
+        scene_static = SceneModel.get_instance().get_scene_static()
+        lanes = [lane for lane in scene_static.s_Data.as_scene_lane_segment if
+                 lane.e_i_lane_segment_id == lane_id]
+        if len(lanes) == 0:
+            raise LaneNotFound('lane {0} not found'.format(lane_id))
+        assert len(lanes) == 1
+        return lanes[0]
+
+    @staticmethod
+    @raises(RoadNotFound)
+    def get_road_segment(road_id: int) -> SceneRoadSegment:
+        """
+
+        Retrieves road by road_id  according to the last message
+        :param road_id:
+        :return:
+        """
+        scene_static = SceneModel.get_instance().get_scene_static()
+        road_segments = [road_segment for road_segment in scene_static.s_Data.as_scene_road_segment if
+                         road_segment.e_Cnt_road_segment_id == road_id]
+        if len(road_segments) == 0 :
+            raise RoadNotFound('road {0} not found '.format(road_id))
+        assert len(road_segments) == 1
+        return road_segments[0]
 
