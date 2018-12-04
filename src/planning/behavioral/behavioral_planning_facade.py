@@ -48,10 +48,9 @@ class BehavioralPlanningFacade(DmModule):
         self.pubsub.subscribe(pubsub_topics.NAVIGATION_PLAN_LCM, None)
         self.pubsub.subscribe(pubsub_topics.SCENE_STATIC, None)
 
+    # TODO: unsubscribe once logic is fixed in LCM
     def _stop_impl(self):
-        self.pubsub.unsubscribe(pubsub_topics.STATE_LCM)
-        self.pubsub.unsubscribe(pubsub_topics.NAVIGATION_PLAN_LCM)
-        self.pubsub.unsubscribe(pubsub_topics.SCENE_STATIC)
+        pass
 
     def _periodic_action_impl(self) -> None:
         """
