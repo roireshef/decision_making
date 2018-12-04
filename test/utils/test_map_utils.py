@@ -391,6 +391,14 @@ def test_getLaneFrenetFrame_isClose(scene_static: SceneStatic):
     road_segment_id = road_segment_ids[2]
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[0]
 
-    frenet_lane =  MapUtils.get_lane_frenet_frame(lane_id)
-    pass
+    lane_frenet = MapUtils.get_lane_frenet_frame(lane_id)
+    MapService.initialize(MAP_SPLIT)
+    original_lane_frenet = MapService.get_instance()._lane_frenet[lane_id]
+
+    assert np.isclose(lane_frenet.k, original_lane_frenet.k).all()
+    assert np.isclose(lane_frenet.k_tag, original_lane_frenet.k_tag).all()
+    assert np.isclose(lane_frenet.points, original_lane_frenet.points).all()
+    assert np.isclose(lane_frenet.T, original_lane_frenet.T).all()
+    assert np.isclose(lane_frenet.N, original_lane_frenet.N).all()
+
 
