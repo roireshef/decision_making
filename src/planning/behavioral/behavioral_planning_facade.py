@@ -23,7 +23,7 @@ from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predic
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
-from decision_making.src.utils.scene_static_model import SceneStaticModel
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 
 
 class BehavioralPlanningFacade(DmModule):

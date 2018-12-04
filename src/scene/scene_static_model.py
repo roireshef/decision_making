@@ -7,7 +7,7 @@ class SceneStaticModel:
     __instance = None
 
     def __init__(self) -> None:
-        self._scene_static_message = []
+        self._scene_static_message = None
 
     @classmethod
     def get_instance(cls) -> None:
