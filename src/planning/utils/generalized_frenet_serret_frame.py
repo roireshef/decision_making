@@ -125,7 +125,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         exists in self._segments_id
         """
         if len(segment_ids) == 0:
-            return np.array([], dtype=int)
+            return np.array([], dtype=bool)
         assert segment_ids.dtype == np.int, 'Array of indices should have int type'
         return np.isin(segment_ids, self._segments_id)
 
@@ -133,7 +133,9 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         """
         Converts frenet_states on a frenet_frame to frenet_states on the generalized frenet frame.
         :param frenet_states: frenet_states on another frenet_frame which was part in building the generalized frenet frame.
+                TODO: It may NOT have more than 2 dimensions.
         :param segment_ids: segment_ids, usually lane_ids, of one of the frenet frames which were used in building the generalized frenet frame.
+                TODO: It may NOT have more than 1 dimension.
         :return: frenet states on the generalized frenet frame.
         """
         segment_idxs = self._get_segment_idxs_from_ids(segment_ids)
@@ -158,15 +160,15 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
     def convert_to_segment_states(self, frenet_states: FrenetStates2D) -> (List[int], FrenetStates2D):
         """
         Converts frenet_states on the generalized frenet frame to frenet_states on a frenet_frame it's built from.
-        :param frenet_states: frenet_states on the generalized frenet frame.
+        :param frenet_states: frenet_states on the generalized frenet frame. It may have more than 2 dimensions.
         :return: a tuple: ((segment_ids, usually lane_ids, these frenet_states will land on after the conversion),
         (the resulted frenet states))
         """
         # Find the closest greater segment offset for each frenet state longitudinal
-        segment_idxs = self._get_segment_idxs_from_s(frenet_states[..., FS_SX])
-        if np.max(segment_idxs) >= len(self._segments_id):
+        if np.max(frenet_states[..., FS_SX]) > self.s_max:
             raise OutOfSegmentFront("frenet_states[%s, FS_SX] = %s exceeds the frame length %f" %
                                     (np.argmax(frenet_states[..., FS_SX]), np.max(frenet_states[..., FS_SX]), self.s_max))
+        segment_idxs = self._get_segment_idxs_from_s(frenet_states[..., FS_SX])
         s_offset = self._segments_s_offsets[segment_idxs]
         s_start = self._segments_s_start[segment_idxs]
         new_frenet_states = frenet_states.copy()
