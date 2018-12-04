@@ -177,8 +177,18 @@ class CostBasedBehavioralPlanner:
         objects_current_fstates = unified_frame.convert_from_segment_states(curr_segment_fstates, curr_segment_ids)
         # predict relevant objects and relevant specs
         objects_terminal_fstates = self.predictor.predict_frenet_states(objects_current_fstates, action_horizons)
+
         # convert the obtained objects' terminal fstates to the segments (ids & fstates)
-        return unified_frame.convert_to_segment_states(objects_terminal_fstates)
+
+        # allocate memory for the terminal segment map states
+        objects_terminal_segment_ids = np.full(objects_terminal_fstates.shape[:-1], None)
+        objects_terminal_segment_fstates = objects_terminal_fstates.copy()
+
+        # convert only those predictions that are located inside unified_frame; the rest get segment_id = None
+        legal_objects = (objects_terminal_fstates[..., FS_SX] < unified_frame.s_max)
+        objects_terminal_segment_ids[legal_objects], objects_terminal_segment_fstates[legal_objects] = \
+            unified_frame.convert_to_segment_states(objects_terminal_fstates[legal_objects])
+        return objects_terminal_segment_ids, objects_terminal_segment_fstates
 
     @staticmethod
     @prof.ProfileFunction()
