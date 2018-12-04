@@ -5,6 +5,7 @@ from decision_making.src.messages.scene_common_messages import Header, MapOrigin
 from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic, SceneRoadSegment, \
     MapRoadSegmentType, SceneLaneSegment, MapLaneType, LaneSegmentConnectivity, ManeuverType, NominalPathPoint, \
     MapLaneMarkerType, BoundaryPoint, AdjacentLane, MovingDirection
+from decision_making.src.planning.types import FP_SX, FP_DX
 
 from mapping.src.exceptions import NextRoadNotFound
 from mapping.src.service.map_service import MapService
@@ -147,12 +148,4 @@ def scene_static():
 
     scene = SceneStatic(s_Header=header, s_MapOrigin=map_origin, s_Data=data)
     return scene
-
-
-
-if __name__ == '__main__':
-    ss = scene_static()
-
-
-
 

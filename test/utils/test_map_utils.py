@@ -24,21 +24,6 @@ SMALL_DISTANCE_ERROR = 0.01
 
 
 
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-@pytest.mark.skip('method removed on lane-based.')
-def test_isObjectOnRoad_objectOnRoad_True(dyn_obj_on_road: DynamicObject):
-    """
-    :param pubsub: Inter-process communication interface.
-    :param ego_state_fix: Fixture of an ego state.
-
-    Checking functionality of _is_object_on_road for an object that is on the road.
-    """
-
-    actual_result = MapUtils.is_object_on_road(dyn_obj_on_road.map_state)
-    expected_result = True
-    assert expected_result == actual_result
-
-
 def test_getRoadSegmentIdFromLaneId_correct(scene_static: SceneStatic):
     SceneModel.get_instance().set_scene_static(scene_static)
     lane_id = 222
