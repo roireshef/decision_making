@@ -30,7 +30,7 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import State, ObjectSize
+from decision_making.src.state.state import State, ObjectSize, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 
@@ -99,16 +99,25 @@ class CostBasedBehavioralPlanner:
         existing_specs = np.array([spec for i, spec in enumerate(action_specs) if mask[i]])
         # get lane_ids adjacent to ego according to specs' relative lanes
         lane_ids_per_spec = np.array([relative_lane_ids[spec.relative_lane] for spec in existing_specs])
+        action_horizons = np.array([spec.t for spec in existing_specs])
 
         terminal_states = np.empty(len(existing_specs), dtype=BehavioralGridState)
 
         # calculate terminal fstates w.r.t. the unified frames
         for rel_lane in relative_lane_ids:  # loop over at most 3 adjacent lanes
+            unified_frame = behavioral_state.unified_frames[rel_lane]
+            # collect objects' current fstates and lane_ids
+            all_objects_lane_ids = np.array([dynamic_object.map_state.lane_id for dynamic_object in state.dynamic_objects])
+            # find all objects that belong to the current unified frame
+            relevant_object_idxs = unified_frame.has_segment_ids(all_objects_lane_ids)
+            terminal_dynamic_objects = self._predict_objects_for_lane(state, unified_frame, action_horizons, relevant_object_idxs)
+
+
             # find all specs, whose target belongs to the current unified frame
-            relevant_spec_idxs = behavioral_state.unified_frames[rel_lane].has_segment_ids(lane_ids_per_spec)
+            relevant_spec_idxs = unified_frame.has_segment_ids(lane_ids_per_spec)
 
             terminal_states[relevant_spec_idxs] = self._create_terminal_states_for_lane(
-                state, behavioral_state.unified_frames[rel_lane], existing_specs[relevant_spec_idxs])
+                state, unified_frame, existing_specs[relevant_spec_idxs])
 
         # create behavioral states from states
         valid_behavioral_grid_states = (BehavioralGridState.create_from_state(terminal_state, navigation_plan, self.logger)
@@ -129,39 +138,42 @@ class CostBasedBehavioralPlanner:
         ego_terminal_fstates = np.array([[spec.s, spec.v, 0, spec.d, 0, 0] for spec in actions_specs])
         action_horizons = np.array([spec.t for spec in actions_specs])
 
+        # convert the obtained ego terminal states to the segments (ids & fstates)
+        ego_terminal_segment_ids, ego_terminal_segment_fstates = unified_frame.convert_to_segment_states(ego_terminal_fstates)
+
+        # create states from ego states and dynamic objects
+        terminal_ego_states = [ego.clone_from_map_state(MapState(ego_terminal_segment_fstates[i], ego_terminal_segment_ids[i]),
+                                                        ego.timestamp_in_sec + action_horizons[i])
+                               for i in range(len(actions_specs))]
+
+        # create full terminal states
+        return [state.clone_with(dynamic_objects=terminal_dynamic_objects[i], ego_state=terminal_ego_states[i])
+                for i in range(len(terminal_ego_states))]
+
+    def _predict_objects_for_lane(self, state: State, unified_frame: GeneralizedFrenetSerretFrame,
+                                  action_horizons: np.array, relevant_object_idxs: np.array) -> List[List[DynamicObject]]:
+
         # collect objects' current fstates and lane_ids
         all_objects_lane_ids = np.array([dynamic_object.map_state.lane_id for dynamic_object in state.dynamic_objects])
-        # find all objects that belong to the current unified frame
-        relevant_object_idxs = unified_frame.has_segment_ids(all_objects_lane_ids)
 
         # collect segment map states (from SP) of the objects located on the given target lane
         relevant_dynamic_objects = np.array(state.dynamic_objects)[relevant_object_idxs]
         objects_curr_segment_ids = all_objects_lane_ids[relevant_object_idxs]
         objects_curr_segment_fstates = np.array([object.map_state.lane_fstate for object in relevant_dynamic_objects])
         # allocate memory for the objects' terminal map states
-        objects_terminal_segment_fstates = np.empty((len(state.dynamic_objects), len(actions_specs), 6), dtype=float)
-        objects_terminal_segment_ids = np.full((len(state.dynamic_objects), len(actions_specs)), None)
-
-        # convert the obtained ego terminal states to the segments (ids & fstates)
-        ego_terminal_segment_ids, ego_terminal_segment_fstates = unified_frame.convert_to_segment_states(ego_terminal_fstates)
+        objects_terminal_segment_fstates = np.empty((len(state.dynamic_objects), len(action_horizons), 6), dtype=float)
+        objects_terminal_segment_ids = np.full((len(state.dynamic_objects), len(action_horizons)), None)
 
         # predict all objects' terminal states for the actions, whose target is the current unified frame
         if np.array(relevant_object_idxs).any():
             objects_terminal_segment_ids, objects_terminal_segment_fstates = \
                 self._predict_objects(unified_frame, objects_curr_segment_fstates, objects_curr_segment_ids, action_horizons)
 
-        # create states from ego states and dynamic objects
-        terminal_ego_states = [ego.clone_from_map_state(MapState(ego_terminal_segment_fstates[i], ego_terminal_segment_ids[i]),
-                                                        ego.timestamp_in_sec + action_horizons[i])
-                               for i in range(len(actions_specs))]
-        terminal_dynamic_objects = [
-            [dynamic_object.clone_from_map_state(MapState(objects_terminal_segment_fstates[i, j],
-                                                          objects_terminal_segment_ids[i, j]))
-             for i, dynamic_object in enumerate(relevant_dynamic_objects) if objects_terminal_segment_ids[i, j] is not None]
-            for j in range(len(actions_specs))]
-        # create full terminal states
-        return [state.clone_with(dynamic_objects=terminal_dynamic_objects[i], ego_state=terminal_ego_states[i])
-                for i in range(len(terminal_ego_states))]
+        return [[dynamic_object.clone_from_map_state(MapState(objects_terminal_segment_fstates[i, j],
+                                                              objects_terminal_segment_ids[i, j]))
+                 if objects_terminal_segment_ids[i, j] is not None else None
+                 for i, dynamic_object in enumerate(relevant_dynamic_objects)]
+                for j in range(len(action_horizons))]
 
     def _predict_objects(self, unified_frame: GeneralizedFrenetSerretFrame,
                          curr_segment_fstates: FrenetStates2D, curr_segment_ids: np.array, action_horizons: np.array):
