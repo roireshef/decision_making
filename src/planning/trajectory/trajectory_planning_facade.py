@@ -28,6 +28,7 @@ from decision_making.src.planning.utils.transformations import Transformations
 from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
+from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
 
@@ -245,9 +246,9 @@ class TrajectoryPlanningFacade(DmModule):
         objects_visualizations = []
         for i, obj in enumerate(state.dynamic_objects):
             # calculate predictions only for moving objects, whose map_state was w.r.t. the reference_route (lane_id=0)
-            if obj.map_state.lane_id == REFERENCE_ROUTE_LANE_ID and obj.map_state.lane_fstate is not None \
-                    and obj.cartesian_state[C_V] > 0:
-                obj_fstate = np.array([obj.map_state.lane_fstate])  # w.r.t. the reference_route
+            # the constant REFERENCE_ROUTE_LANE_ID is just a filler for MapState.lane_id
+            if obj.cartesian_state[C_V] > 0:
+                obj_fstate = reference_route.cstate_to_fstate(obj.cartesian_state)
                 object_fpredictions = predictor.predict_frenet_states(obj_fstate, prediction_timestamps)[0][:, [FS_SX, FS_DX]]
                 # visualize object's predictions only if they fully lay inside the reference_route range
                 if np.all(object_fpredictions[:, FP_SX] > 0) and np.all(object_fpredictions[:, FP_SX] < reference_route.s_max):
