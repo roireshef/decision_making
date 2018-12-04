@@ -5,8 +5,8 @@ from decision_making.src.messages.scene_common_messages import Header, MapOrigin
 from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic, SceneRoadSegment, \
     MapRoadSegmentType, SceneLaneSegment, MapLaneType, LaneSegmentConnectivity, ManeuverType, NominalPathPoint, \
     MapLaneMarkerType, BoundaryPoint, AdjacentLane, MovingDirection
-from decision_making.src.planning.types import FS_DX, FS_SX, FP_SX, FP_DX
-from mapping.src.exceptions import NextRoadNotFound, RoadNotFound
+
+from mapping.src.exceptions import NextRoadNotFound
 from mapping.src.service.map_service import MapService
 
 
