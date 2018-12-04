@@ -97,11 +97,11 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
         obj_final_fstate = np.array(
             [predicted_s, dynamic_object.map_state.lane_fstate[FS_SV], 0, predicted_d,
              dynamic_object.map_state.lane_fstate[FS_DV], 0])
-        # TODO: fix properly the following patch for multi-segment roads
+        # TODO: fix properly the following patch for multi-segment roads for one-to-many connections
         # if the object's predicted longitude overflows from its current lane, then move it to the next lane
         object_lane_id = dynamic_object.map_state.lane_id
-        current_lane_length = MapUtils.get_lane_frenet_frame(object_lane_id).s_max
-        if predicted_s > current_lane_length:
+        current_lane_length = MapUtils.get_lane_length(object_lane_id)
+        while obj_final_fstate[FS_SX] >= current_lane_length:
             object_lane_id = MapUtils.get_downstream_lanes(object_lane_id)[0]
             obj_final_fstate[FS_SX] -= current_lane_length
 

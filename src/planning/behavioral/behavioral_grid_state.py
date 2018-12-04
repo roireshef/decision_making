@@ -45,6 +45,14 @@ class BehavioralGridState(BehavioralState):
     def __init__(self, road_occupancy_grid: RoadSemanticOccupancyGrid, ego_state: EgoState,
                  unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
                  projected_ego_fstates: Dict[RelativeLane, FrenetState2D]):
+        """
+        constructor of BehavioralGridState
+        :param road_occupancy_grid: dictionary from grid cell to list of dynamic objects with semantics
+        :param ego_state:
+        :param unified_frames: dictionary from RelativeLane to the corresponding GeneralizedFrenetSerretFrame
+        :param projected_ego_fstates: dictionary from RelativeLane to ego Frenet state, which is ego projected on the
+                corresponding unified_frame
+        """
         self.road_occupancy_grid = road_occupancy_grid
         self.ego_state = ego_state
         self.unified_frames = unified_frames
@@ -62,7 +70,7 @@ class BehavioralGridState(BehavioralState):
          (e.g. in the cells in front of ego, we keep objects with minimal longitudinal distance
          relative to ego front, while in all other cells we keep the object with the maximal longitudinal distance from
          ego front).
-        :return: road semantic occupancy grid
+        :return: created BehavioralGridState
         """
         # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
         unified_frames = BehavioralGridState._create_generalized_frenet_frames(state, nav_plan)
@@ -93,7 +101,7 @@ class BehavioralGridState(BehavioralState):
         :param ego_state:
         :return: list of object of type DynamicObjectWithRoadSemantics
         """
-        relative_lane_ids = MapUtils.get_relative_lane_ids(ego_state.map_state.lane_id)
+        relative_lane_ids = MapUtils.get_closest_lane_ids(ego_state.map_state.lane_id)
 
         # calculate objects' segment map_states
         objects_segment_ids = np.array([obj.map_state.lane_id for obj in dynamic_objects])
@@ -142,7 +150,7 @@ class BehavioralGridState(BehavioralState):
         :return: array of longitudinal differences between the targets and projected ego
         """
         target_unified_fstates = np.empty((len(target_segment_ids), 6), dtype=float)
-        relative_lane_ids = MapUtils.get_relative_lane_ids(ego_lane_id)
+        relative_lane_ids = MapUtils.get_closest_lane_ids(ego_lane_id)
 
         # longitudinal difference between object and ego at t=0 (positive if obj in front of ego)
         for rel_lane in relative_lane_ids:  # loop over at most 3 relative lanes (adjacent)
@@ -161,14 +169,15 @@ class BehavioralGridState(BehavioralState):
     def _create_generalized_frenet_frames(state: State, nav_plan: NavigationPlanMsg) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
-        For all available relative lanes create a relevant generalized frenet frame
+        For all available nearest lanes create a corresponding generalized frenet frame
         :param state:
         :param nav_plan:
         :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
         """
         # calculate unified generalized frenet frames
         ego_lane_id = state.ego_state.map_state.lane_id
-        adjacent_lanes_dict = MapUtils.get_relative_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
+        closest_lanes_dict = MapUtils.get_closest_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
+        # create generalized_frames for the nearest lanes
         unified_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame] = {}
         suggested_ref_route_start = state.ego_state.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST
 
@@ -179,9 +188,9 @@ class BehavioralGridState(BehavioralState):
             else 0
 
         frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
-        for rel_lane in adjacent_lanes_dict:
+        for rel_lane in closest_lanes_dict:
             unified_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
-                lane_id=adjacent_lanes_dict[rel_lane], starting_lon=ref_route_start, lookahead_dist=frame_length,
+                lane_id=closest_lanes_dict[rel_lane], starting_lon=ref_route_start, lookahead_dist=frame_length,
                 navigation_plan=nav_plan)
         return unified_frames
 

@@ -72,7 +72,7 @@ class MapUtils:
                 for ordinal in ordinals if (road_segment_id, ordinal) in map_api._lane_by_address]
 
     @staticmethod
-    def get_relative_lane_ids(lane_id: int) -> Dict[RelativeLane, int]:
+    def get_closest_lane_ids(lane_id: int) -> Dict[RelativeLane, int]:
         """
         get dictionary that given lane_id maps from RelativeLane to lane_id of the immediate neighbor lane
         :param lane_id:
