@@ -141,7 +141,7 @@ class BehavioralGridState(BehavioralState):
         :param target_segment_fstates: array of target fstates w.r.t. their original lane ids
         :return: array of longitudinal differences between the targets and projected ego
         """
-        tar_unified_fstates = np.empty((len(target_segment_ids), 6), dtype=float)
+        target_unified_fstates = np.empty((len(target_segment_ids), 6), dtype=float)
         relative_lane_ids = MapUtils.get_relative_lane_ids(ego_lane_id)
 
         # longitudinal difference between object and ego at t=0 (positive if obj in front of ego)
@@ -150,10 +150,10 @@ class BehavioralGridState(BehavioralState):
             relevant_idxs = unified_frames[rel_lane].has_segment_ids(target_segment_ids)
             if relevant_idxs.any():
                 # convert relevant dynamic objects to fstate w.r.t. the current unified frame
-                tar_unified_fstates[relevant_idxs] = unified_frames[rel_lane].convert_from_segment_states(
+                target_unified_fstates[relevant_idxs] = unified_frames[rel_lane].convert_from_segment_states(
                     target_segment_fstates[relevant_idxs], target_segment_ids[relevant_idxs])
 
-        longitudinal_differences = np.array([tar_unified_fstates[i, FS_SX] - ego_unified_fstates[rel_lane][FS_SX]
+        longitudinal_differences = np.array([target_unified_fstates[i, FS_SX] - ego_unified_fstates[rel_lane][FS_SX]
                                              for i, rel_lane in enumerate(rel_lanes_per_target)])
         return longitudinal_differences
 
