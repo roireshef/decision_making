@@ -112,6 +112,7 @@ class MapUtils:
                 RelativeLane.SAME_LANE: lane_id,
                 RelativeLane.LEFT_LANE: left_lanes[0] if len(left_lanes) > 0 else None}
 
+
     @staticmethod
     def get_closest_lane(cartesian_point: CartesianPoint2D, road_segment_id: int) -> int:
         """
@@ -120,20 +121,15 @@ class MapUtils:
         :param road_segment_id: optional argument for road_segment_id closest to the given point
         :return: closest lane segment id
         """
-        # TODO: This is a VERY naive implementation. It can be improved  by (a) vectorizing. i.e., all lanes stacked
-        # TODO: (b) using current 's' to limit the search
         lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
-        min_dist = float('inf')
-        min_lane_id = None
-        for lane_id in lane_ids:
-            nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points \
-                [:, (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value,
-                    NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value)]
-            lane_min = np.min(np.linalg.norm(nominal_points-cartesian_point, axis=1))
-            if lane_min < min_dist:
-                min_dist = lane_min
-                min_lane_id = lane_id
-        return min_lane_id
+        min_nominal_points = [min(np.linalg.norm(MapUtils.get_lane(lane_id).a_nominal_path_points \
+            [:, (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value,
+                NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value)]-cartesian_point, axis=1))
+                          for lane_id in lane_ids]
+        return lane_ids[np.argmin(min_nominal_points)]
+
+
+
 
     @staticmethod
     def get_dist_to_lane_borders(lane_id: int, s: float) -> (float, float):
