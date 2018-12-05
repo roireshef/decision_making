@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from decision_making.src.global_constants import EPS
+from decision_making.src.mapping.scene_model import SceneModel
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionType, AggressivenessLevel, \
@@ -12,6 +13,7 @@ from decision_making.src.planning.types import CartesianPoint2D, FrenetPoint, FP
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
+from decision_making.test.messages.static_scene_fixture import scene_static_no_split
 from mapping.src.model.map_api import MapAPI
 from mapping.src.service.map_service import MapService
 
@@ -24,6 +26,9 @@ def pg_map_api():
 
 @pytest.fixture(scope='function')
 def state_with_sorrounding_objects(pg_map_api: MapAPI):
+
+    SceneModel.get_instance().set_scene_static(scene_static_no_split())
+
     road_id = 20
 
     # Stub of occupancy grid
