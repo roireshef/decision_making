@@ -67,6 +67,7 @@ class DynamicActionSpace(ActionSpace):
         # calculate initial longitudinal differences between all target objects and ego along target lanes
         longitudinal_differences = behavioral_state.calculate_longitudinal_differences(target_lane_ids, target_fstates,
                                                                                        rel_lanes_per_target)
+        assert not np.isinf(longitudinal_differences).any()
 
         # margin_sign is -1 for FOLLOW_VEHICLE (behind target) and +1 for OVER_TAKE_VEHICLE (in front of target)
         margin_sign = np.array([-1 if action_recipe.action_type == ActionType.FOLLOW_VEHICLE else +1

@@ -1,5 +1,8 @@
 from enum import Enum
 from typing import List
+import numpy as np
+
+from decision_making.src.planning.types import FrenetState2D
 
 
 class ActionType(Enum):
@@ -97,3 +100,6 @@ class ActionSpec:
 
     def __str__(self):
         return str({k: str(v) for (k, v) in self.__dict__.items()})
+
+    def as_fstate(self) -> FrenetState2D:
+        return np.array([self.s, self.v, 0, self.d, 0, 0])

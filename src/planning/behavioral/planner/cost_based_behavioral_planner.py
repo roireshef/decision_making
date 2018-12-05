@@ -97,8 +97,7 @@ class CostBasedBehavioralPlanner:
 
     @staticmethod
     @prof.ProfileFunction()
-    def _generate_trajectory_specs(behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> \
-            [TrajectoryParams, FrenetState2D]:
+    def _generate_trajectory_specs(behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> TrajectoryParams:
         """
         Generate trajectory specification for trajectory planner given a SemanticActionSpec. This also
         generates the reference route that will be provided to the trajectory planner.
@@ -110,10 +109,10 @@ class CostBasedBehavioralPlanner:
         """
         ego = behavioral_state.ego_state
         # get action's unified frame (GFF)
-        action_frame = behavioral_state.unified_frames[action_spec.relative_lane]
+        action_frame = behavioral_state.extended_lane_frames[action_spec.relative_lane]
 
         # goal Frenet state w.r.t. spec_lane_id
-        projected_goal_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
+        projected_goal_fstate = action_spec.as_fstate()
 
         # calculate trajectory cost_params using original goal map_state (from the map)
         goal_segment_id, goal_segment_fstate = action_frame.convert_to_segment_state(projected_goal_fstate)
@@ -130,25 +129,24 @@ class CostBasedBehavioralPlanner:
                                                  strategy=TrajectoryPlanningStrategy.HIGHWAY,
                                                  bp_time=ego.timestamp)
 
-        return trajectory_parameters, projected_goal_fstate
+        return trajectory_parameters
 
     @staticmethod
     @prof.ProfileFunction()
     def generate_baseline_trajectory(timestamp: float, action_spec: ActionSpec, reference_route: FrenetSerret2DFrame,
-                                     ego_fstate: FrenetState2D, goal_fstate: FrenetState2D) -> \
-            SamplableTrajectory:
+                                     ego_fstate: FrenetState2D) -> SamplableTrajectory:
         """
         Creates a SamplableTrajectory as a reference trajectory for a given ActionSpec, assuming T_d=T_s
         :param timestamp: [s] ego timestamp in seconds
         :param action_spec: action specification that contains all relevant info about the action's terminal state
         :param reference_route: the reference Frenet frame sent to TP
         :param ego_fstate: ego Frenet state w.r.t. reference_route
-        :param goal_fstate: goal Frenet state w.r.t. reference_route
         :return: a SamplableWerlingTrajectory object
         """
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
         A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_matrix(action_spec.t))
+        goal_fstate = action_spec.as_fstate()
 
         constraints_s = np.concatenate((ego_fstate[FS_SX:(FS_SA + 1)], goal_fstate[FS_SX:(FS_SA + 1)]))
         constraints_d = np.concatenate((ego_fstate[FS_DX:(FS_DA + 1)], goal_fstate[FS_DX:(FS_DA + 1)]))
