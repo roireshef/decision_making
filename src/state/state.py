@@ -244,7 +244,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmDynamicObject) -> DynamicObject
         return cls(lcmMsg.obj_id, lcmMsg.timestamp
-                   , lcmMsg._cached_cartesian_state.data
+                   , lcmMsg._cached_cartesian_state
                    , MapState.deserialize(lcmMsg._cached_map_state)
                    , MapState.deserialize(lcmMsg._cached_map_state)
                    , ObjectSize.deserialize(lcmMsg.size)
@@ -311,7 +311,7 @@ class State(PUBSUB_MSG_IMPL):
         requires deep-copying of all fields in State.__init__ !!
         """
         return State(occupancy_state or self.occupancy_state,
-                     dynamic_objects or self.dynamic_objects,
+                     dynamic_objects if dynamic_objects is not None else self.dynamic_objects,
                      ego_state or self.ego_state)
 
     def serialize(self):

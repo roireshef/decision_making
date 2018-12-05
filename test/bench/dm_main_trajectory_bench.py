@@ -22,8 +22,6 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.types import C_Y, C_X, CartesianExtendedTrajectory
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 
-from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
-    PhysicalTimeAlignmentPredictor
 from decision_making.src.state.state import ObjectSize, OccupancyState
 from decision_making.src.state.state_module import StateModule
 from decision_making.test import constants
@@ -73,10 +71,8 @@ class DmMockInitialization:
                              TrajectoryPlanningStrategy.PARKING: planner,
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
-        short_time_predictor = PhysicalTimeAlignmentPredictor(logger)
         trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
-                                                              strategy_handlers=strategy_handlers,
-                                                              short_time_predictor=short_time_predictor)
+                                                              strategy_handlers=strategy_handlers)
         return trajectory_planning_module
 
 

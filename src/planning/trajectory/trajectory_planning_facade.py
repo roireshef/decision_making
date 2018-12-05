@@ -24,9 +24,7 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.types import CartesianExtendedState, CartesianTrajectories
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.planning.utils.transformations import Transformations
-from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
-from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
 from decision_making.src.scene.scene_static_model import SceneStaticModel
@@ -35,7 +33,6 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 class TrajectoryPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger,
                  strategy_handlers: Dict[TrajectoryPlanningStrategy, TrajectoryPlanner],
-                 short_time_predictor: EgoUnawarePredictor,
                  last_trajectory: SamplableTrajectory = None):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
@@ -43,14 +40,12 @@ class TrajectoryPlanningFacade(DmModule):
         :param logger: logger
         :param strategy_handlers: a dictionary of trajectory planners as strategy handlers - types are
         {TrajectoryPlanningStrategy: TrajectoryPlanner}
-        :param short_time_predictor: predictor used to align all objects in state to ego's timestamp.
         :param last_trajectory: a representation of the last trajectory that was planned during self._periodic_action_impl
         """
         super().__init__(pubsub=pubsub, logger=logger)
 
         MetricLogger.init(TRAJECTORY_PLANNING_NAME_FOR_METRICS)
 
-        self._short_time_predictor = short_time_predictor
         self._strategy_handlers = strategy_handlers
         self._validate_strategy_handlers()
         self._last_trajectory = last_trajectory
@@ -79,10 +74,6 @@ class TrajectoryPlanningFacade(DmModule):
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
 
-            # Update state: align all object to most recent timestamp, based on ego and dynamic objects timestamp
-            most_recent_timestamp = PredictionUtils.extract_most_recent_timestamp(state)
-            state_aligned = self._short_time_predictor.predict_state(state, np.array([most_recent_timestamp]))[0]
-
             params = self._get_mission_params()
 
             # Longitudinal planning horizon (Ts)
@@ -100,12 +91,12 @@ class TrajectoryPlanningFacade(DmModule):
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
-                    state_aligned.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
-                updated_state = self._get_state_with_expected_ego(state_aligned)
+                    state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
+                updated_state = self._get_state_with_expected_ego(state)
                 self.logger.debug("TrajectoryPlanningFacade ego localization was overridden to the expected-state "
                                   "according to previous plan")
             else:
-                updated_state = state_aligned
+                updated_state = state
 
             MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
@@ -117,7 +108,7 @@ class TrajectoryPlanningFacade(DmModule):
             center_vehicle_trajectory_points = samplable_trajectory.sample(
                 np.linspace(start=0,
                             stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
-                            num=TRAJECTORY_NUM_POINTS) + state_aligned.ego_state.timestamp_in_sec)
+                            num=TRAJECTORY_NUM_POINTS) + state.ego_state.timestamp_in_sec)
             self._last_trajectory = samplable_trajectory
 
             vehicle_origin_trajectory_points = Transformations.transform_trajectory_between_ego_center_and_ego_origin(
@@ -144,7 +135,7 @@ class TrajectoryPlanningFacade(DmModule):
 
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
-                state_aligned, ctrajectories, params.time - state.ego_state.timestamp_in_sec,
+                state, ctrajectories, params.time - state.ego_state.timestamp_in_sec,
                 self._strategy_handlers[params.strategy].predictor)
 
             # TODO: uncomment this line when proper visualization messages integrate into the code
