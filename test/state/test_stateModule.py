@@ -12,12 +12,13 @@ from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.planning.types import FS_SV
 from decision_making.src.state.state_module import StateModule, DynamicObjectsData
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH, FILTER_OBJECT_OFF_ROAD_PATH
+from decision_making.test.messages.static_scene_fixture import create_scene_static_from_map_api
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.planning.custom_fixtures import dynamic_objects_not_on_road, scene_dynamic_fix, pubsub, \
     dynamic_objects_negative_velocity
+from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, navigation_fixture, testable_map_api
 
-from decision_making.test.messages.static_scene_fixture import scene_static_no_split
 
 @pytest.mark.skip(reason="Irrelevent when no out-of-fov data is available")
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
@@ -90,15 +91,15 @@ def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: P
 def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: PubSub,
                                                                       dynamic_objects_negative_velocity: DynamicObjectsData,
                                                                       scene_dynamic_fix: SceneDynamic,
-                                                                      scene_static_no_split: SceneStatic):
+                                                                      testable_map_api):
     """
     :param pubsub: Inter-process communication interface.
     :param scene_dynamic_fix: Fixture of scene dynamic
 
     Checking functionality of dynamic_object_callback for an object that is not on the road.
     """
-
-    SceneModel.get_instance().set_scene_static(scene_static_no_split)
+    scene_static = create_scene_static_from_map_api(testable_map_api)
+    SceneModel.get_instance().set_scene_static(scene_static)
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
     state_module = StateModule(pubsub=pubsub, logger=logger,
@@ -115,14 +116,14 @@ def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: Pu
 def test_dynamicObjCallbackWithFilter_objectOffRoad_stateWithoutObject(pubsub: PubSub,
                                                                        dynamic_objects_not_on_road: DynamicObjectsData,
                                                                        scene_dynamic_fix: SceneDynamic,
-                                                                       scene_static: SceneStatic):
+                                                                       testable_map_api):
     """
     :param pubsub: Inter-process communication interface.
     :param scene_dynamic_fix: Fixture of scene dynamic
 
     Checking functionality of dynamic_object_callback for an object that is not on the road.
     """
-
+    scene_static = create_scene_static_from_map_api(testable_map_api)
     SceneModel.get_instance().set_scene_static(scene_static)
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 

@@ -24,7 +24,7 @@ from decision_making.src.prediction.action_unaware_prediction.physical_time_alig
     PhysicalTimeAlignmentPredictor
 from decision_making.src.state.state_module import StateModule
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from mapping.test.model.testable_map_fixtures import map_api_mock
+from mapping.test.model.testable_map_fixtures import map_api_mock, short_map_api_mock
 
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING
@@ -32,7 +32,9 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAM
 from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, state_module, \
     navigation_facade, state, trajectory_params, behavioral_visualization_msg, navigation_plan
 
-from decision_making.test.messages.static_scene_fixture import scene_static_no_split, scene_static
+from decision_making.test.messages.static_scene_fixture import scene_static_no_split, scene_static, \
+    create_scene_static_from_map_api
+from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, navigation_fixture, short_testable_map_api
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
@@ -82,11 +84,12 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
     trajectory_publish_mock.assert_called_once()
 
 
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=short_map_api_mock)
 def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub, state_module:StateModule,
                                                                   navigation_facade: NavigationFacade,
-                                                                  scene_static: SceneStatic):
+                                                                  short_testable_map_api):
 
+    scene_static = create_scene_static_from_map_api(short_testable_map_api)
     SceneModel.get_instance().set_scene_static(scene_static)
     bp_logger = MagicMock()
     predictor_logger = MagicMock()

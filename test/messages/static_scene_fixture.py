@@ -32,10 +32,12 @@ def scene_static_no_split():
     MapService.initialize()
     return create_scene_static_from_map_api(MapService.get_instance())
 
+
 @pytest.fixture
 def scene_static():
     MapService.initialize('PG_split.bin')
     return create_scene_static_from_map_api(MapService.get_instance())
+
 
 def create_scene_static_from_map_api(map_api: MapAPI):
     map_model = map_api._cached_map_model
