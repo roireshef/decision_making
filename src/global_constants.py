@@ -27,6 +27,9 @@ REFERENCE_ROUTE_MARGINS = PLANNING_LOOKAHEAD_DIST
 # and linearization errors)
 PREDICTION_LOOKAHEAD_COMPENSATION_RATIO = 1.2
 
+# [m] Maximal horizon distance for building Generalized Frenet Frames
+MAX_HORIZON_DISTANCE = 400
+
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
 LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 2.0
@@ -107,9 +110,6 @@ MIN_OVERTAKE_VEL = 3.5
 
 # [m] The margin that we take from the front/read of the vehicle to define the front/rear partitions
 LON_MARGIN_FROM_EGO = 1
-
-# [m] Maximal horizon distance for building Generalized Frenet Frames
-MAX_HORIZON_DISTANCE = 400
 
 # Uniform grids for BP Filters
 FILTER_A_0_GRID = UniformGrid(LON_ACC_LIMITS, 0.5)
