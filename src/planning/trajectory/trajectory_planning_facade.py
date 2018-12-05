@@ -21,7 +21,8 @@ from decision_making.src.messages.visualization.trajectory_visualization_message
     PredictionsVisualization, DataTrajectoryVisualization
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, FP_SX, FS_SX, FS_DX
+from decision_making.src.planning.types import CartesianExtendedState, C_V, CartesianTrajectories, FP_SX, FS_SX, FS_DX, \
+    C_Y
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.planning.utils.transformations import Transformations
