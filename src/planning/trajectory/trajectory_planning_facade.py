@@ -245,9 +245,7 @@ class TrajectoryPlanningFacade(DmModule):
         # calculate objects' predictions
         objects_visualizations = []
         for i, obj in enumerate(state.dynamic_objects):
-            # calculate predictions only for moving objects, whose map_state was w.r.t. the reference_route (lane_id=0)
-            # the constant REFERENCE_ROUTE_LANE_ID is just a filler for MapState.lane_id
-            if obj.cartesian_state[C_V] > 0:
+            if obj.cartesian_state[C_V] > 0:  # calculate predictions only for moving objects
                 obj_fstate = reference_route.cstate_to_fstate(obj.cartesian_state)
                 object_fpredictions = predictor.predict_frenet_states(obj_fstate, prediction_timestamps)[0][:, [FS_SX, FS_DX]]
                 # visualize object's predictions only if they fully lay inside the reference_route range
