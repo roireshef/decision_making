@@ -86,7 +86,7 @@ def scene_static():
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_phi_along_slope.value] = 0
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] = i * lane_frenet.ds
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset.value] = half_lane_width
-            point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value] = half_lane_width
+            point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value] = -half_lane_width
             nominal_points.append(point)
 
         assert nominal_points[-1][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] == lane_frenet.s_max
@@ -134,15 +134,16 @@ def scene_static():
                                                     as_lane_coupling=[]))
 
     header = Header(e_Cnt_SeqNum=0, s_Timestamp=Timestamp(0, 0),e_Cnt_version=0)
-    map_origin = MapOrigin(e_phi_latitude=.0, e_phi_longitude=.0, e_l_altitude=.0,s_Timestamp=Timestamp(0,0))
+    map_origin = MapOrigin(e_phi_latitude=.0, e_phi_longitude=.0, e_l_altitude=.0, s_Timestamp=Timestamp(0, 0))
+    scene_road_intersections=[]
     data = DataSceneStatic(e_b_Valid=True,
                            s_ComputeTimestamp=Timestamp(0, 0),
                            e_l_perception_horizon_front=.0,
                            e_l_perception_horizon_rear=.0,
                            e_Cnt_num_lane_segments=len(scene_lane_segments),
                            as_scene_lane_segment=scene_lane_segments,
-                           e_Cnt_num_road_intersections=0,
-                           as_scene_road_intersection=[],
+                           e_Cnt_num_road_intersections=len(scene_road_intersections),
+                           as_scene_road_intersection=scene_road_intersections,
                            e_Cnt_num_road_segments=len(scene_road_segments),
                            as_scene_road_segment=scene_road_segments)
 

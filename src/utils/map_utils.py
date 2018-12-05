@@ -97,7 +97,7 @@ class MapUtils:
             adj_lanes = lane.as_left_adjacent_lanes
         else:
             raise ValueError('Relative lane must be either right or left')
-        return [l.e_Cnt_lane_segment_id for l in adj_lanes]
+        return [adj_lane.e_Cnt_lane_segment_id for adj_lane in adj_lanes]
 
     @staticmethod
     def get_relative_lane_ids(lane_id: int) -> Dict[RelativeLane, int]:
@@ -147,7 +147,7 @@ class MapUtils:
         closest_s_idx = np.argmin(np.abs(nominal_points[:,
                                          NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - s))
         return (nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset.value],
-                nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value])
+                -nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value])
 
     @staticmethod
     def get_dist_to_road_borders(lane_id: int, s: float) -> (float, float):
