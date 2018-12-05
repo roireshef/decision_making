@@ -308,6 +308,28 @@ def test_getUpstreamLanesFromDistance_tooLongBackwardDist_validateRelevantExcept
     except UpstreamLaneNotFound:
         assert True
 
+def test_getUpstreamLanes(scene_static: SceneStatic):
+    SceneModel.get_instance().set_scene_static(scene_static)
+    current_lane_id = 222
+    upstream_of_current = 212
+    upstream_lanes = MapUtils.get_upstream_lanes(lane_id=current_lane_id)
+    assert upstream_lanes[0] == upstream_of_current
+
+def test_getUpstreamLanes_upstreamMatch(scene_static: SceneStatic):
+    SceneModel.get_instance().set_scene_static(scene_static)
+    current_lane_id = 222
+    upstream_of_current = 212
+    upstream_lanes = MapUtils.get_upstream_lanes(lane_id=current_lane_id)
+    assert upstream_lanes[0] == upstream_of_current
+
+
+def test_getDownstreamLanes_downstreamMatch(scene_static: SceneStatic):
+    SceneModel.get_instance().set_scene_static(scene_static)
+    current_lane_id = 212
+    downstream_of_current = 222
+    downstream_lanes = MapUtils.get_downstream_lanes(lane_id=current_lane_id)
+    assert downstream_lanes[0] == downstream_of_current
+
 
 def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints(scene_static: SceneStatic):
     """
