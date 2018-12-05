@@ -12,6 +12,7 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane, R
 from decision_making.src.planning.types import FS_SX, FrenetState2D
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
+from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
@@ -80,8 +81,7 @@ class BehavioralGridState(BehavioralState):
 
         # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
         dynamic_objects_with_road_semantics = \
-            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, state.ego_state, extended_lane_frames,
-                                                           projected_ego_fstates),
+            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames, projected_ego_fstates),
                    key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
 
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
@@ -90,7 +90,7 @@ class BehavioralGridState(BehavioralState):
 
     @staticmethod
     @prof.ProfileFunction()
-    def _add_road_semantics(dynamic_objects: List[DynamicObject], ego_state: EgoState,
+    def _add_road_semantics(dynamic_objects: List[DynamicObject],
                             extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
                             projected_ego_fstates: Dict[RelativeLane, FrenetState2D]) -> \
             List[DynamicObjectWithRoadSemantics]:
@@ -99,12 +99,14 @@ class BehavioralGridState(BehavioralState):
         This is a temporary function that caches relevant metrics for re-use. Should be removed after an efficient
         representation of DynamicObject.
         :param dynamic_objects: list of relevant DynamicObjects to calculate "on-road" metrics for.
-        :param ego_state:
+        :param extended_lane_frames: dictionary from RelativeLane to the corresponding GeneralizedFrenetSerretFrame
+        :param projected_ego_fstates: dictionary from RelativeLane to ego Frenet state, which is ego projected on the
+                corresponding extended_lane_frame
         :return: list of object of type DynamicObjectWithRoadSemantics
         """
         # calculate objects' segment map_states
-        objects_segment_ids = np.array([obj.map_state.lane_id for obj in dynamic_objects])
-        objects_segment_fstates = np.array([obj.map_state.lane_fstate for obj in dynamic_objects])
+        object_map_states = [obj.map_state for obj in dynamic_objects]
+        objects_segment_ids = np.array([map_state.lane_id for map_state in object_map_states])
 
         # for objects on non-adjacent lane set relative_lanes[i] = None
         rel_lanes_per_obj = np.full(len(dynamic_objects), None)
@@ -115,27 +117,25 @@ class BehavioralGridState(BehavioralState):
 
         # calculate longitudinal distances between the objects and ego, using extended_lane_frames (GFF's)
         longitudinal_differences = BehavioralGridState._calculate_longitudinal_differences(
-            extended_lane_frames, projected_ego_fstates, objects_segment_ids, objects_segment_fstates)
+            extended_lane_frames, projected_ego_fstates, object_map_states)
 
         return [DynamicObjectWithRoadSemantics(obj, longitudinal_differences[i], rel_lanes_per_obj[i])
                 for i, obj in enumerate(dynamic_objects) if rel_lanes_per_obj[i] is not None]
 
-    def calculate_longitudinal_differences(self, target_segment_ids: np.array, target_segment_fstates: np.array) -> np.array:
+    def calculate_longitudinal_differences(self, target_map_states: List[MapState]) -> np.array:
         """
         Given target segment ids and segment fstates, calculate longitudinal differences between the targets and ego
         projected on the target lanes, using the relevant unified frames (GFF).
-        :param target_segment_ids: array of original lane ids of the targets
-        :param target_segment_fstates: array of target fstates w.r.t. their original lane ids
+        :param target_map_states: list of original map states of the targets
         :return: array of longitudinal differences between the targets and projected ego per target
         """
         return BehavioralGridState._calculate_longitudinal_differences(
-            self.extended_lane_frames, self.projected_ego_fstates,
-            target_segment_ids, target_segment_fstates)
+            self.extended_lane_frames, self.projected_ego_fstates, target_map_states)
 
     @staticmethod
     def _calculate_longitudinal_differences(extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame],
                                             ego_unified_fstates: Dict[RelativeLane, FrenetState2D],
-                                            target_segment_ids: np.array, target_segment_fstates: np.array) -> np.array:
+                                            target_map_states: List[MapState]) -> np.array:
         """
         Given unified frames, ego projected on the unified frames, target segment ids and segment fstates, calculate
         longitudinal differences between the targets and ego.
@@ -143,10 +143,12 @@ class BehavioralGridState(BehavioralState):
         :param extended_lane_frames: dictionary from RelativeLane to the corresponding GeneralizedFrenetSerretFrame
         :param ego_unified_fstates: dictionary from RelativeLane to ego Frenet state, which is ego projected on the
                 corresponding extended_lane_frame
-        :param target_segment_ids: array of original lane ids of the targets
-        :param target_segment_fstates: array of target fstates w.r.t. their original lane ids
+        :param target_map_states: list of original map states of the targets
         :return: array of longitudinal differences between the targets and projected ego
         """
+        target_segment_ids = np.array([map_state.lane_id for map_state in target_map_states])
+        target_segment_fstates = np.array([map_state.lane_fstate for map_state in target_map_states])
+
         # initialize longitudinal_differences to infinity
         longitudinal_differences = np.full(len(target_segment_ids), np.inf)
 

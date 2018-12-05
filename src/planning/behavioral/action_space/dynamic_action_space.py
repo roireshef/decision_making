@@ -53,19 +53,16 @@ class DynamicActionSpace(ActionSpace):
         targets = [behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
                    for action_recipe in action_recipes]
         target_length = np.array([target.dynamic_object.size.length for target in targets])
-        target_lane_ids = np.array([target.dynamic_object.map_state.lane_id for target in targets])
-        target_fstates = np.array([target.dynamic_object.map_state.lane_fstate for target in targets])
-        rel_lanes_per_target = np.array([recipe.relative_lane for recipe in action_recipes])
+        target_map_states = [target.dynamic_object.map_state for target in targets]
+        # get desired terminal velocity
+        v_T = np.array([map_state.lane_fstate[FS_SV] for map_state in target_map_states])
 
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
         weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness]
 
-        # get desired terminal velocity
-        v_T = target_fstates[:, FS_SV]
-
         # calculate initial longitudinal differences between all target objects and ego along target lanes
-        longitudinal_differences = behavioral_state.calculate_longitudinal_differences(target_lane_ids, target_fstates)
+        longitudinal_differences = behavioral_state.calculate_longitudinal_differences(target_map_states)
         assert not np.isinf(longitudinal_differences).any()
 
         # margin_sign is -1 for FOLLOW_VEHICLE (behind target) and +1 for OVER_TAKE_VEHICLE (in front of target)
