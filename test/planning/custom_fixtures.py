@@ -12,7 +12,7 @@ from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmPe
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT
-from decision_making.src.mapping.scene_model import SceneModel
+from decision_making.src.scene_static_model.scene_static_model import SceneStaticModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.scene_common_messages import Timestamp, Header, MapOrigin
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, DataSceneDynamic, HostLocalization, \
@@ -174,7 +174,7 @@ def state_with_old_object(request) -> State:
 @pytest.fixture(scope='function')
 def scene_dynamic_fix():
 
-    SceneModel.get_instance().set_scene_static(scene_static())
+    SceneStaticModel.get_instance().set_scene_static(scene_static())
     lane_id = 200
     cstate = np.array([1100, 7, 0, 1.0, 0.0, 0])
 

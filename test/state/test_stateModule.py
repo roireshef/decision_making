@@ -6,7 +6,7 @@ import pytest
 from common_data.interface.py.idl_generated_files.Rte_Types import LcmPerceivedDynamicObjectList
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, VELOCITY_MINIMAL_THRESHOLD
-from decision_making.src.mapping.scene_model import SceneModel
+from decision_making.src.scene_static_model.scene_static_model import SceneStaticModel
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.planning.types import FS_SV
@@ -99,7 +99,7 @@ def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: Pu
     Checking functionality of dynamic_object_callback for an object that is not on the road.
     """
     scene_static = create_scene_static_from_map_api(testable_map_api)
-    SceneModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
     state_module = StateModule(pubsub=pubsub, logger=logger,
@@ -124,7 +124,7 @@ def test_dynamicObjCallbackWithFilter_objectOffRoad_stateWithoutObject(pubsub: P
     Checking functionality of dynamic_object_callback for an object that is not on the road.
     """
     scene_static = create_scene_static_from_map_api(testable_map_api)
-    SceneModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
     state_module = StateModule(pubsub=pubsub, logger=logger,

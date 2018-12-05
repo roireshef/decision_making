@@ -2,7 +2,7 @@ from typing import List
 from unittest.mock import patch, MagicMock
 import numpy as np
 
-from decision_making.src.mapping.scene_model import SceneModel
+from decision_making.src.scene_static_model.scene_static_model import SceneStaticModel
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.state.state import DynamicObject, State, EgoState
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
@@ -24,7 +24,7 @@ def test_PredictObjects_StraightRoad_AccuratePrediction(constant_velocity_predic
                                                         ego_samplable_trajectory: SamplableTrajectory,
                                                         testable_map_api):
     scene_static = create_scene_static_from_map_api(testable_map_api)
-    SceneModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
 
     predicted_objects = constant_velocity_predictor.predict_objects(state=init_state, object_ids=[DYNAMIC_OBJECT_ID],
                                                   prediction_timestamps=prediction_timestamps,

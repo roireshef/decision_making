@@ -2,7 +2,7 @@ from logging import Logger
 
 import numpy as np
 
-from decision_making.src.mapping.scene_model import SceneModel
+from decision_making.src.scene_static_model.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, RelativeLane
@@ -14,7 +14,7 @@ from decision_making.test.messages.static_scene_fixture import scene_static_no_s
 
 # test Specify, when ego starts with velocity very close to the target velocity
 def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static_no_split):
-    SceneModel.get_instance().set_scene_static(scene_static_no_split)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_no_split)
 
     logger = Logger("test_specifyStaticAction")
     road_id = 20

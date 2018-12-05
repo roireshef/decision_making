@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from decision_making.src.global_constants import EPS
-from decision_making.src.mapping.scene_model import SceneModel
+from decision_making.src.scene_static_model.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionType, AggressivenessLevel, \
@@ -27,7 +27,7 @@ def pg_map_api():
 @pytest.fixture(scope='function')
 def state_with_sorrounding_objects(pg_map_api: MapAPI):
 
-    SceneModel.get_instance().set_scene_static(scene_static_no_split())
+    SceneStaticModel.get_instance().set_scene_static(scene_static_no_split())
 
     road_id = 20
 

@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
-from decision_making.src.mapping.scene_model import SceneModel
+from decision_making.src.scene_static_model.scene_static_model import SceneStaticModel
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
@@ -41,7 +41,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
                                                                         scene_static: SceneStatic,
                                                                         scene_static_no_split: SceneStatic):
 
-    SceneModel.get_instance().set_scene_static(scene_static_no_split)
+    SceneStaticModel.get_instance().set_scene_static(scene_static_no_split)
     # Using logger-mock here because facades catch exceptions and redirect them to logger
     tp_logger = MagicMock()
     predictor_logger = MagicMock()
@@ -86,7 +86,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
                                                                   short_testable_map_api):
 
     scene_static = create_scene_static_from_map_api(short_testable_map_api)
-    SceneModel.get_instance().set_scene_static(scene_static)
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
     bp_logger = MagicMock()
     predictor_logger = MagicMock()
 

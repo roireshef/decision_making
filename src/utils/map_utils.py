@@ -3,7 +3,7 @@ from typing import List, Dict
 import numpy as np
 
 from decision_making.src.global_constants import EPS
-from decision_making.src.mapping.scene_model import SceneModel
+from decision_making.src.scene_static_model.scene_static_model import SceneStaticModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.scene_static_message import NominalPathPoint, SceneLaneSegment, SceneRoadSegment
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
@@ -23,7 +23,7 @@ class MapUtils:
         """
         :return:road_segment_ids of every road in the static scene
         """
-        scene_static = SceneModel.get_instance().get_scene_static()
+        scene_static = SceneStaticModel.get_instance().get_scene_static()
         road_segments = scene_static.s_Data.as_scene_road_segment[:scene_static.s_Data.e_Cnt_num_road_segments]
         return [road_segment.e_Cnt_road_segment_id for road_segment in road_segments]
 
@@ -127,7 +127,9 @@ class MapUtils:
         """
         x_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value
         y_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value
-        #lane_ids can be either vertical middle lanes or horizontal lanes of the given road_segment_id
+        # lane_ids can be either vertical middle lanes or horizontal lanes of the given road_segment_id
+        # TODO: Change this heuristic in the future
+        # Out of all middle lanes in all road segments, find the closest to cartesian_point, this lane is in the closest road_segment
         if road_segment_id is None:
             lane_ids = MapUtils._get_all_middle_lanes()
         else:
@@ -362,7 +364,7 @@ class MapUtils:
         :param lane_id:
         :return:
         """
-        scene_static = SceneModel.get_instance().get_scene_static()
+        scene_static = SceneStaticModel.get_instance().get_scene_static()
         lanes = [lane for lane in scene_static.s_Data.as_scene_lane_segment if
                  lane.e_i_lane_segment_id == lane_id]
         if len(lanes) == 0:
@@ -379,7 +381,7 @@ class MapUtils:
         :param road_id:
         :return:
         """
-        scene_static = SceneModel.get_instance().get_scene_static()
+        scene_static = SceneStaticModel.get_instance().get_scene_static()
         road_segments = [road_segment for road_segment in scene_static.s_Data.as_scene_road_segment if
                          road_segment.e_Cnt_road_segment_id == road_id]
         if len(road_segments) == 0:
