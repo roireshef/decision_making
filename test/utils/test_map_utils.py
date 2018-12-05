@@ -336,6 +336,47 @@ def test_getDownstreamLanes_downstreamMatch(scene_static: SceneStatic):
     downstream_lanes = MapUtils.get_downstream_lanes(lane_id=current_lane_id)
     assert downstream_lanes[0] == downstream_of_current
 
+###########
+def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints():
+    """
+    test method get_closest_lane:
+        find the most left and the most right lanes by points inside these lanes
+    """
+    MapService.initialize(MAP_SPLIT)
+    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
+    # find the rightest lane
+    lane_id = lane_ids[0]
+    frenet = MapUtils.get_lane_frenet_frame(lane_id)
+    closest_lane_id = MapUtils.get_closest_lane(frenet.points[1])
+    assert lane_id == closest_lane_id
+    # find the leftmost lane
+    lane_id = lane_ids[-1]
+    frenet = MapUtils.get_lane_frenet_frame(lane_id)
+    closest_lane_id = MapUtils.get_closest_lane(frenet.points[-2])
+    assert lane_id == closest_lane_id
+    closest_lane_id = MapUtils.get_closest_lane(frenet.points[-2], road_ids[0])
+    assert lane_id == closest_lane_id
+
+
+def test_getClosestLane_multiLaneRoad_testExceptionOnWrongRoadId():
+    """
+    test method get_closest_lane:
+        validate relevant exception on wrong road_segment_id
+    """
+    MapService.initialize(MAP_SPLIT)
+    road_ids = MapService.get_instance()._cached_map_model.get_road_ids()
+    lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[0])
+    # find the rightest lane
+    lane_id = lane_ids[0]
+    frenet = MapUtils.get_lane_frenet_frame(lane_id)
+    wrong_road_segment_id = 28
+    try:
+        MapUtils.get_closest_lane(frenet.points[-2], wrong_road_segment_id)
+        assert False
+    except RoadNotFound:
+        assert True
+##############
 
 def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints(scene_static: SceneStatic):
     """

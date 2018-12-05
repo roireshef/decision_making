@@ -27,8 +27,16 @@ def get_connectivity_lane_segment(map_api, road_segment_id, lane_ordinal):
 
 
 @pytest.fixture
+def scene_static_no_split():
+    MapService.initialize()
+    return scene_static_fixture()
+
+@pytest.fixture
 def scene_static():
     MapService.initialize('PG_split.bin')
+    return scene_static_fixture()
+
+def scene_static_fixture():
     map_api = MapService.get_instance()
     map_model = map_api._cached_map_model
     road_ids = map_model.get_road_ids()

@@ -135,7 +135,12 @@ class MapUtils:
         min_dist_in_lanes = np.array(
             [min(np.linalg.norm(MapUtils.get_lane(lane_id).a_nominal_path_points[:, (x_index, y_index)]
                                 - cartesian_point, axis=1)) for lane_id in lane_ids])
-        return lane_ids[min_dist_in_lanes.argmin()]
+        closest_lane_id = lane_ids[min_dist_in_lanes.argmin()]
+        if road_segment_id is None:
+            road_segment_id = MapUtils.get_road_segment_id_from_lane_id(closest_lane_id)
+            return MapUtils.get_closest_lane(cartesian_point, road_segment_id)
+
+        return closest_lane_id
 
     @staticmethod
     def get_dist_to_lane_borders(lane_id: int, s: float) -> (float, float):

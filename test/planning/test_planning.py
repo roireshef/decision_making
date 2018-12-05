@@ -32,15 +32,16 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAM
 from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, state_module, \
     navigation_facade, state, trajectory_params, behavioral_visualization_msg, navigation_plan
 
-from decision_making.test.messages.static_scene_fixture import scene_static
+from decision_making.test.messages.static_scene_fixture import scene_static_no_split, scene_static
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
                                                                         behavioral_facade: BehavioralPlanningFacade,
                                                                         state_module:StateModule,
-                                                                        scene_static: SceneStatic):
+                                                                        scene_static: SceneStatic,
+                                                                        scene_static_no_split: SceneStatic):
 
-    SceneModel.get_instance().set_scene_static(scene_static)
+    SceneModel.get_instance().set_scene_static(scene_static_no_split)
     # Using logger-mock here because facades catch exceptions and redirect them to logger
     tp_logger = MagicMock()
     predictor_logger = MagicMock()
