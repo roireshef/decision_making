@@ -1,5 +1,3 @@
-import numpy as np
-
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, C_A, C_K
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
