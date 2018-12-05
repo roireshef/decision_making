@@ -1,6 +1,8 @@
 import time
 import numpy as np
 
+import pytest
+
 from multiprocessing import Process
 from unittest.mock import MagicMock
 
@@ -16,6 +18,7 @@ test_fixed_trajectory_file = Paths.get_resource_absolute_path_filename(
         'fixed_trajectory_files/test_trajectory.txt')
 
 
+@pytest.mark.skip(reason="scenario is obsolete. this test needs to be rewritten")
 def test_DMMainTraj_Bench_SingleLocalizationMessage_TrajectoryOutput():
 
     #Read first point in the test trajectory to accommodate trigger condition

@@ -47,11 +47,7 @@ class DmMockInitialization:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
         MapService.initialize(map_file)
-        #TODO: figure out if we want to use OccupancyState at all
-        default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
-                                                 np.array([0.1], dtype=np.float))
-
-        state_module = StateModule(pubsub, logger, default_occupancy_state, [], None)
+        state_module = StateModule(pubsub, logger, None)
         return state_module
 
     @staticmethod
