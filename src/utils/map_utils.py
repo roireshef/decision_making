@@ -127,6 +127,7 @@ class MapUtils:
         """
         x_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value
         y_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value
+        #lane_ids can be either vertical middle lanes or horizontal lanes of the given road_segment_id
         if road_segment_id is None:
             lane_ids = MapUtils._get_all_middle_lanes()
         else:
