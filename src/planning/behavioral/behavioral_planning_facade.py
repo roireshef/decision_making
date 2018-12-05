@@ -8,9 +8,10 @@ from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_to
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
-    LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS
+    LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.planner.cost_based_behavioral_planner import \
@@ -18,25 +19,22 @@ from decision_making.src.planning.behavioral.planner.cost_based_behavioral_plann
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
-from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
-from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 
 
 class BehavioralPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger, behavioral_planner: CostBasedBehavioralPlanner,
-                 short_time_predictor: EgoUnawarePredictor, last_trajectory: SamplableTrajectory = None) -> None:
+                 last_trajectory: SamplableTrajectory = None) -> None:
         """
         :param pubsub:
         :param logger:
         :param behavioral_planner: 
-        :param short_time_predictor: predictor used to align all objects in state to ego's timestamp.
         :param last_trajectory: last trajectory returned from behavioral planner.
         """
         super().__init__(pubsub=pubsub, logger=logger)
         self._planner = behavioral_planner
-        self._predictor = short_time_predictor
         self.logger.info("Initialized Behavioral Planner Facade.")
         self._last_trajectory = last_trajectory
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
@@ -44,6 +42,7 @@ class BehavioralPlanningFacade(DmModule):
     def _start_impl(self):
         self.pubsub.subscribe(pubsub_topics.STATE_LCM, None)
         self.pubsub.subscribe(pubsub_topics.NAVIGATION_PLAN_LCM, None)
+        self.pubsub.subscribe(pubsub_topics.SCENE_STATIC, None)
 
     # TODO: unsubscribe once logic is fixed in LCM
     def _stop_impl(self):
@@ -58,25 +57,23 @@ class BehavioralPlanningFacade(DmModule):
         """
 
         try:
-            MetricLogger.get_logger().report()
             start_time = time.time()
             state = self._get_current_state()
 
-            # Update state: align all object to most recent timestamp, based on ego and dynamic objects timestamp
-            most_recent_timestamp = PredictionUtils.extract_most_recent_timestamp(state)
-            state_aligned = self._predictor.predict_state(state, np.array([most_recent_timestamp]))[0]
+            scene_static = self._get_current_scene_static()
+            SceneStaticModel.get_instance().set_scene_static(scene_static)
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
-                    state_aligned.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
-                updated_state = self._get_state_with_expected_ego(state_aligned)
+                    state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
+                updated_state = self._get_state_with_expected_ego(state)
                 self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
                                   "according to previous plan")
             else:
-                updated_state = state_aligned
+                updated_state = state
 
             navigation_plan = self._get_current_navigation_plan()
 
@@ -92,6 +89,8 @@ class BehavioralPlanningFacade(DmModule):
 
             self.logger.info("{} {}".format(LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, time.time() - start_time))
 
+            MetricLogger.get_logger().report()
+
         except MsgDeserializationError as e:
             self.logger.warning("MsgDeserializationError was raised. skipping planning. " +
                                 "turn on debug logging level for more details.")
@@ -106,7 +105,7 @@ class BehavioralPlanningFacade(DmModule):
         is_success, input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_LCM, timeout=1)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if input_state is None:
-            raise MsgDeserializationError('LCM message queue for %s topic is empty or topic isn\'t subscribed',
+            raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed',
                                           pubsub_topics.STATE_LCM)
         object_state = State.deserialize(input_state)
         self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, object_state))
@@ -117,6 +116,16 @@ class BehavioralPlanningFacade(DmModule):
         object_plan = NavigationPlanMsg.deserialize(input_plan)
         self.logger.debug('Received navigation plan: %s', object_plan)
         return object_plan
+
+    def _get_current_scene_static(self) -> SceneStatic:
+        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=pubsub_topics.SCENE_STATIC, timeout=1)
+        # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
+        if serialized_scene_static is None:
+            raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed',
+                                          pubsub_topics.SCENE_STATIC)
+        scene_static = SceneStatic.deserialize(serialized_scene_static)
+        self.logger.debug('%s: %f' % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
+        return scene_static
 
     def _get_state_with_expected_ego(self, state: State) -> State:
         """

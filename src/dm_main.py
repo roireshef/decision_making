@@ -1,7 +1,6 @@
 from logging import Logger
 from os import getpid
 
-import os
 import numpy as np
 
 from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
@@ -10,10 +9,8 @@ from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
-    BEHAVIORAL_PLANNING_MODULE_PERIOD, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
-    TRAJECTORY_PLANNING_MODULE_PERIOD, \
-    DM_MANAGER_NAME_FOR_LOGGING
+    DM_MANAGER_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
@@ -34,12 +31,8 @@ from decision_making.src.planning.navigation.navigation_facade import Navigation
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
-from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
-    PhysicalTimeAlignmentPredictor
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state import OccupancyState
 from decision_making.src.state.state_module import StateModule
-from mapping.src.global_constants import DEFAULT_MAP_FILE
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
@@ -69,10 +62,7 @@ class DmInitialization:
         pubsub = create_pubsub(PubSubMessageTypes)
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
-        # TODO: figure out if we want to use OccupancyState at all
-        default_occupancy_state = OccupancyState(0, np.array([[1.1, 1.1, 0.1]], dtype=np.float),
-                                                 np.array([0.1], dtype=np.float))
-        state_module = StateModule(pubsub, logger, default_occupancy_state, None, None)
+        state_module = StateModule(pubsub, logger, None)
         return state_module
 
     @staticmethod
@@ -94,8 +84,6 @@ class DmInitialization:
 
         predictor = RoadFollowingPredictor(logger)
 
-        short_time_predictor = PhysicalTimeAlignmentPredictor(logger)
-
         action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
                                                      DynamicActionSpace(logger, predictor,
                                                                         DEFAULT_DYNAMIC_RECIPE_FILTERING)])
@@ -109,8 +97,7 @@ class DmInitialization:
                                               action_spec_filtering, value_approximator, predictor, logger)
 
         behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger,
-                                                     behavioral_planner=planner,
-                                                     short_time_predictor=short_time_predictor, last_trajectory=None)
+                                                     behavioral_planner=planner, last_trajectory=None)
         return behavioral_module
 
     @staticmethod
@@ -121,7 +108,6 @@ class DmInitialization:
         MapService.initialize(map_file)
 
         predictor = RoadFollowingPredictor(logger)
-        short_time_predictor = PhysicalTimeAlignmentPredictor(logger)
 
         planner = WerlingPlanner(logger, predictor)
         strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
@@ -129,8 +115,7 @@ class DmInitialization:
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
         trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
-                                                              strategy_handlers=strategy_handlers,
-                                                              short_time_predictor=short_time_predictor)
+                                                              strategy_handlers=strategy_handlers)
         return trajectory_planning_module
 
 

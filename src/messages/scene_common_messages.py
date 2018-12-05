@@ -1,4 +1,4 @@
-from Rte_Types.sub_structures import TsSYSTimestamp, TsSYSMapOrigin, TsSYSHeader
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import TsSYSTimestamp, TsSYSMapOrigin, TsSYSHeader
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 
@@ -23,9 +23,13 @@ class Timestamp(PUBSUB_MSG_IMPL):
         :param timestamp_in_sec:
         :return:
         """
-        timestamp_secs = int(timestamp_in_sec)
-        timestamp_frac = int((timestamp_in_sec % 1) * (1 << 32))
-        return cls(e_Cnt_Secs=timestamp_secs, e_Cnt_FractionSecs=timestamp_frac)
+        timestamp_int = int(timestamp_in_sec)
+        timestamp_frac = int((timestamp_in_sec-timestamp_int) * (1 << 32))
+        return cls(e_Cnt_Secs=timestamp_int, e_Cnt_FractionSecs=timestamp_frac)
+
+    @property
+    def timestamp_in_seconds(self):
+        return self.e_Cnt_Secs + self.e_Cnt_FractionSecs / (1 << 32)
 
     def serialize(self):
         # type: () -> TsSYSTimestamp
