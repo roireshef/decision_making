@@ -318,7 +318,8 @@ class AdjacentLane(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSAdjacentLane):
-        return cls(pubsubMsg.e_Cnt_lane_segment_id, MovingDirection(pubsubMsg.e_e_moving_direction),
+        # TODO: hack!! moving direction is received badly from map_services, remove when fixed
+        return cls(pubsubMsg.e_Cnt_lane_segment_id, MovingDirection(1),
                    MapLaneType(pubsubMsg.e_e_lane_type))
 
 

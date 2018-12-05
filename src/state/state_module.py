@@ -7,7 +7,8 @@ from typing import Optional, Any, List
 import rte.python.profiler as prof
 from common_data.interface.py.idl_generated_files.Rte_Types.TsSYS_SceneDynamic import TsSYSSceneDynamic
 from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import SCENE_DYNAMIC
-from common_data.lcm.config import pubsub_topics
+from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
+
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE, \
     DEFAULT_OBJECT_Z_VALUE, FILTER_OFF_ROAD_OBJECTS, VELOCITY_MINIMAL_THRESHOLD
@@ -65,11 +66,13 @@ class StateModule(DmModule):
                 self._scene_dynamic = SceneDynamic.deserialize(scene_dynamic)
                 timestamp = DynamicObject.sec_to_ticks(self._scene_dynamic.s_Data.s_ComputeTimestamp.timestamp_in_seconds)
                 occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
+                ego_map_state = MapState(lane_fstate=self._scene_dynamic.s_Data.s_host_localization.a_lane_frenet_pose,
+                                         lane_id=self._scene_dynamic.s_Data.s_host_localization.e_Cnt_lane_segment_id)
                 ego_state = EgoState(obj_id=0,
                                      timestamp=timestamp,
                                      cartesian_state=self._scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
-                                     map_state=self._scene_dynamic.s_Data.s_host_localization.a_lane_frenet_pose,
-                                     map_state_on_host_lane=self._scene_dynamic.s_Data.s_host_localization.a_lane_frenet_pose,
+                                     map_state=ego_map_state,
+                                     map_state_on_host_lane=ego_map_state,
                                      size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
                                      confidence=1.0)
 
@@ -80,7 +83,7 @@ class StateModule(DmModule):
                 state = State(occupancy_state, dynamic_objects, ego_state)
                 self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
 
-                self.pubsub.publish(pubsub_topics.STATE_TOPIC, state.serialize())
+                self.pubsub.publish(pubsub_topics.STATE_LCM, state.serialize())
 
         except Exception as e:
             self.logger.error("StateModule._scene_dynamic_callback failed due to %s", format_exc())
