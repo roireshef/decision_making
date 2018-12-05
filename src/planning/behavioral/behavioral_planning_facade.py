@@ -19,8 +19,6 @@ from decision_making.src.planning.behavioral.planner.cost_based_behavioral_plann
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
-from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predictor import EgoUnawarePredictor
-from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
 from decision_making.src.scene.scene_static_model import SceneStaticModel
@@ -28,17 +26,15 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 
 class BehavioralPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger, behavioral_planner: CostBasedBehavioralPlanner,
-                 short_time_predictor: EgoUnawarePredictor, last_trajectory: SamplableTrajectory = None) -> None:
+                 last_trajectory: SamplableTrajectory = None) -> None:
         """
         :param pubsub:
         :param logger:
         :param behavioral_planner: 
-        :param short_time_predictor: predictor used to align all objects in state to ego's timestamp.
         :param last_trajectory: last trajectory returned from behavioral planner.
         """
         super().__init__(pubsub=pubsub, logger=logger)
         self._planner = behavioral_planner
-        self._predictor = short_time_predictor
         self.logger.info("Initialized Behavioral Planner Facade.")
         self._last_trajectory = last_trajectory
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
@@ -67,21 +63,17 @@ class BehavioralPlanningFacade(DmModule):
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
 
-            # Update state: align all object to most recent timestamp, based on ego and dynamic objects timestamp
-            most_recent_timestamp = PredictionUtils.extract_most_recent_timestamp(state)
-            state_aligned = self._predictor.predict_state(state, np.array([most_recent_timestamp]))[0]
-
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
-                    state_aligned.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
-                updated_state = self._get_state_with_expected_ego(state_aligned)
+                    state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
+                updated_state = self._get_state_with_expected_ego(state)
                 self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
                                   "according to previous plan")
             else:
-                updated_state = state_aligned
+                updated_state = state
 
             navigation_plan = self._get_current_navigation_plan()
 

@@ -13,6 +13,7 @@ from mapping.src.service.map_service import MapService
 # test specify for dynamic action from a slightly unsafe position:
 # when the distance from the target is just 2 seconds * target velocity, without adding the cars' sizes
 def test_specifyGoal_slightlyUnsafeState_shouldSucceed():
+    MapService.initialize()
     logger = Logger("test_specifyDynamicAction")
     road_id = 20
     ego_lon = 400.
