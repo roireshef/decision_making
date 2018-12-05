@@ -111,7 +111,14 @@ class MapUtils:
                 RelativeLane.LEFT_LANE: left_lanes[0] if len(left_lanes) > 0 else None}
 
     @staticmethod
-    def get_closest_lane(cartesian_point: CartesianPoint2D, road_segment_id: int) -> int:
+    def _get_all_middle_lanes():
+         lanes_per_roads = [MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
+                            for road_segment_id in MapUtils.get_road_segment_ids()]
+         return [lanes[int(len(lanes)/2)] for lanes in lanes_per_roads]
+
+
+    @staticmethod
+    def get_closest_lane(cartesian_point: CartesianPoint2D, road_segment_id: int = None) -> int:
         """
         given cartesian coordinates, find the closest lane to the point
         :param cartesian_point: 2D cartesian coordinates
@@ -120,7 +127,11 @@ class MapUtils:
         """
         x_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value
         y_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value
-        lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
+        if road_segment_id is None:
+            lane_ids = MapUtils._get_all_middle_lanes()
+        else:
+            lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
+
         min_dist_in_lanes = np.array(
             [min(np.linalg.norm(MapUtils.get_lane(lane_id).a_nominal_path_points[:, (x_index, y_index)]
                                 - cartesian_point, axis=1)) for lane_id in lane_ids])

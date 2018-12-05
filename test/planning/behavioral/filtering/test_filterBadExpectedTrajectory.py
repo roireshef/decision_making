@@ -5,6 +5,7 @@ import time
 
 from decision_making.src.global_constants import SPECIFICATION_MARGIN_TIME_DELAY, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID, FILTER_V_T_GRID
+from decision_making.src.mapping.scene_model import SceneModel
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -31,11 +32,14 @@ from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import
 
 import numpy as np
 
+from decision_making.test.messages.static_scene_fixture import scene_static
 
 def test_filter_followVehicleTracking_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_filtering_tracking_mode: BehavioralGridState,
-        follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
+        follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe], scene_static):
     logger = AV_Logger.get_logger()
+
+    SceneModel.get_instance().set_scene_static(scene_static)
     predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
 
     filtering = RecipeFiltering(filters=[FilterBadExpectedTrajectory('predicates')], logger=logger)
