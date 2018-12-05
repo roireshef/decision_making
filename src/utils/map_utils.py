@@ -210,7 +210,7 @@ class MapUtils:
         :param road_segment_id:
         :return: sorted list of lane segments' IDs
         """
-        return MapUtils.get_road_segment(road_segment_id).tolist()
+        return list(MapUtils.get_road_segment(road_segment_id).a_Cnt_lane_segment_id)
 
     @staticmethod
     def does_map_exist_backward(lane_id: int, backward_dist: float):

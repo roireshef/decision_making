@@ -134,7 +134,7 @@ def scene_static():
                                                     as_lane_coupling=[]))
 
     header = Header(e_Cnt_SeqNum=0, s_Timestamp=Timestamp(0, 0),e_Cnt_version=0)
-    map_origin = MapOrigin(e_phi_latitude=.0, e_phi_longitude=.0,e_l_altitude=.0,s_Timestamp=Timestamp(0,0))
+    map_origin = MapOrigin(e_phi_latitude=.0, e_phi_longitude=.0, e_l_altitude=.0,s_Timestamp=Timestamp(0,0))
     data = DataSceneStatic(e_b_Valid=True,
                            s_ComputeTimestamp=Timestamp(0, 0),
                            e_l_perception_horizon_front=.0,
