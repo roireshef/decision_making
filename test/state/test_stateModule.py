@@ -17,7 +17,7 @@ from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.planning.custom_fixtures import dynamic_objects_not_on_road, scene_dynamic_fix, pubsub, \
     dynamic_objects_negative_velocity
 
-from decision_making.test.messages.static_scene_fixture import scene_static
+from decision_making.test.messages.static_scene_fixture import scene_static_no_split
 
 @pytest.mark.skip(reason="Irrelevent when no out-of-fov data is available")
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
@@ -90,7 +90,7 @@ def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: P
 def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: PubSub,
                                                                       dynamic_objects_negative_velocity: DynamicObjectsData,
                                                                       scene_dynamic_fix: SceneDynamic,
-                                                                      scene_static: SceneStatic):
+                                                                      scene_static_no_split: SceneStatic):
     """
     :param pubsub: Inter-process communication interface.
     :param scene_dynamic_fix: Fixture of scene dynamic
@@ -98,7 +98,7 @@ def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: Pu
     Checking functionality of dynamic_object_callback for an object that is not on the road.
     """
 
-    SceneModel.get_instance().set_scene_static(scene_static)
+    SceneModel.get_instance().set_scene_static(scene_static_no_split)
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
     state_module = StateModule(pubsub=pubsub, logger=logger,

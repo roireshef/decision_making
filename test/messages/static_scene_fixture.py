@@ -8,6 +8,7 @@ from decision_making.src.messages.scene_static_message import SceneStatic, DataS
 from decision_making.src.planning.types import FP_SX, FP_DX
 
 from mapping.src.exceptions import NextRoadNotFound
+from mapping.src.model.map_api import MapAPI
 from mapping.src.service.map_service import MapService
 
 
@@ -29,15 +30,14 @@ def get_connectivity_lane_segment(map_api, road_segment_id, lane_ordinal):
 @pytest.fixture
 def scene_static_no_split():
     MapService.initialize()
-    return scene_static_fixture()
+    return create_scene_static_from_map_api(MapService.get_instance())
 
 @pytest.fixture
 def scene_static():
     MapService.initialize('PG_split.bin')
-    return scene_static_fixture()
+    return create_scene_static_from_map_api(MapService.get_instance())
 
-def scene_static_fixture():
-    map_api = MapService.get_instance()
+def create_scene_static_from_map_api(map_api: MapAPI):
     map_model = map_api._cached_map_model
     road_ids = map_model.get_road_ids()
 

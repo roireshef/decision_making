@@ -2,21 +2,29 @@ from typing import List
 from unittest.mock import patch, MagicMock
 import numpy as np
 
+from decision_making.src.mapping.scene_model import SceneModel
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.state.state import DynamicObject, State, EgoState
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
+from decision_making.test.messages.static_scene_fixture import create_scene_static_from_map_api
 from decision_making.test.prediction.conftest import constant_velocity_predictor, init_state, prediction_timestamps, \
     predicted_dyn_object_states_road_yaw, ego_samplable_trajectory, static_cartesian_state, \
     predicted_static_ego_states, static_cartesian_state, DYNAMIC_OBJECT_ID, CARTESIAN_CREATION
 from decision_making.test.prediction.utils import Utils
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from decision_making.src.prediction.ego_aware_prediction.maneuver_based_predictor import ManeuverBasedPredictor
+from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, navigation_fixture, testable_map_api
+
+
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_PredictObjects_StraightRoad_AccuratePrediction(constant_velocity_predictor: ManeuverBasedPredictor,
                                                         init_state: State, prediction_timestamps: np.ndarray,
                                                         predicted_dyn_object_states_road_yaw: List[DynamicObject],
-                                                        ego_samplable_trajectory: SamplableTrajectory):
+                                                        ego_samplable_trajectory: SamplableTrajectory,
+                                                        testable_map_api):
+    scene_static = create_scene_static_from_map_api(testable_map_api)
+    SceneModel.get_instance().set_scene_static(scene_static)
 
     predicted_objects = constant_velocity_predictor.predict_objects(state=init_state, object_ids=[DYNAMIC_OBJECT_ID],
                                                   prediction_timestamps=prediction_timestamps,
