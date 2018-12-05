@@ -34,22 +34,22 @@ def test_getRoadSegmentIdFromLaneId_correct(scene_static: SceneStatic):
 
 def test_getAdjacentLanes_adjacentOfRightestAndSecondLanes_accurate(scene_static: SceneStatic):
     """
-    test method get_adjacent_lanes for the current map;
+    test method get_adjacent_lane_ids for the current map;
     check adjacent lanes of the rightest and the second-from-right lanes
     """
     SceneModel.get_instance().set_scene_static(scene_static)
     road_ids = MapUtils.get_road_segment_ids()
 
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_ids[2])
-    right_to_rightest = MapUtils.get_adjacent_lanes(lane_ids[0], RelativeLane.RIGHT_LANE)
+    right_to_rightest = MapUtils.get_adjacent_lane_ids(lane_ids[0], RelativeLane.RIGHT_LANE)
     assert len(right_to_rightest) == 0
-    left_to_rightest = MapUtils.get_adjacent_lanes(lane_ids[0], RelativeLane.LEFT_LANE)
+    left_to_rightest = MapUtils.get_adjacent_lane_ids(lane_ids[0], RelativeLane.LEFT_LANE)
     assert left_to_rightest == lane_ids[1:]
-    right_to_second = MapUtils.get_adjacent_lanes(lane_ids[1], RelativeLane.RIGHT_LANE)
+    right_to_second = MapUtils.get_adjacent_lane_ids(lane_ids[1], RelativeLane.RIGHT_LANE)
     assert right_to_second == [lane_ids[0]]
-    left_to_second = MapUtils.get_adjacent_lanes(lane_ids[1], RelativeLane.LEFT_LANE)
+    left_to_second = MapUtils.get_adjacent_lane_ids(lane_ids[1], RelativeLane.LEFT_LANE)
     assert left_to_second == lane_ids[2:]
-    left_to_leftmost = MapUtils.get_adjacent_lanes(lane_ids[-1], RelativeLane.LEFT_LANE)
+    left_to_leftmost = MapUtils.get_adjacent_lane_ids(lane_ids[-1], RelativeLane.LEFT_LANE)
     assert len(left_to_leftmost) == 0
 
 

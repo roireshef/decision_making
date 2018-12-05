@@ -68,7 +68,7 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         # boolean whether the right cell near ego is occupied
         ego = behavioral_state.ego_state
         lane_id = ego.map_state.lane_id
-        is_right_occupied = len(MapUtils.get_adjacent_lanes(lane_id, RelativeLane.RIGHT_LANE)) == 0 or \
+        is_right_occupied = len(MapUtils.get_adjacent_lane_ids(lane_id, RelativeLane.RIGHT_LANE)) == 0 or \
                             (RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.PARALLEL) in \
                             behavioral_state.road_occupancy_grid
 
@@ -96,7 +96,7 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
                           safe_right_dist_behind_ego)
 
         # boolean whether the left cell near ego is occupied
-        is_left_occupied = len(MapUtils.get_adjacent_lanes(lane_id, RelativeLane.LEFT_LANE)) == 0 or \
+        is_left_occupied = len(MapUtils.get_adjacent_lane_ids(lane_id, RelativeLane.LEFT_LANE)) == 0 or \
                            (RelativeLane.LEFT_LANE, RelativeLongitudinalPosition.PARALLEL) in \
                            behavioral_state.road_occupancy_grid
         costs = np.ones(len(action_recipes))

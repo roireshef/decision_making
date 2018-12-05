@@ -81,7 +81,7 @@ class MapUtils:
 
 
     @staticmethod
-    def get_adjacent_lanes(lane_id: int, relative_lane: RelativeLane) -> List[int]:
+    def get_adjacent_lane_ids(lane_id: int, relative_lane: RelativeLane) -> List[int]:
         """
         get sorted adjacent (right/left) lanes relative to the given lane segment, or empty list if no adjacent lanes
         :param lane_id:
@@ -106,8 +106,8 @@ class MapUtils:
         :param lane_id:
         :return: dictionary from RelativeLane to the immediate neighbor lane ids (or None if the neighbor does not exist)
         """
-        right_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.RIGHT_LANE)
-        left_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.LEFT_LANE)
+        right_lanes = MapUtils.get_adjacent_lane_ids(lane_id, RelativeLane.RIGHT_LANE)
+        left_lanes = MapUtils.get_adjacent_lane_ids(lane_id, RelativeLane.LEFT_LANE)
         return {RelativeLane.RIGHT_LANE: right_lanes[0] if len(right_lanes) > 0 else None,
                 RelativeLane.SAME_LANE: lane_id,
                 RelativeLane.LEFT_LANE: left_lanes[0] if len(left_lanes) > 0 else None}
@@ -155,8 +155,8 @@ class MapUtils:
         """
         #TODO: Currently assuming that s is consistent across all lanes.
 
-        right_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.RIGHT_LANE)
-        left_lanes = MapUtils.get_adjacent_lanes(lane_id, RelativeLane.LEFT_LANE)
+        right_lanes = MapUtils.get_adjacent_lane_ids(lane_id, RelativeLane.RIGHT_LANE)
+        left_lanes = MapUtils.get_adjacent_lane_ids(lane_id, RelativeLane.LEFT_LANE)
         right_distance = np.sum([MapUtils.get_dist_to_lane_borders(right_lane, s) for right_lane in right_lanes])
         left_distance = np.sum([MapUtils.get_dist_to_lane_borders(left_lane, s) for left_lane in left_lanes])
         right_from_lane, left_from_lane = MapUtils.get_dist_to_lane_borders(lane_id, s)
