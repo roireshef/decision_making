@@ -32,16 +32,19 @@ from decision_making.test.planning.custom_fixtures import pubsub, behavioral_fac
 
 from decision_making.test.messages.static_scene_fixture import scene_static_no_split, scene_static, \
     create_scene_static_from_map_api
-from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, navigation_fixture, short_testable_map_api
+from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, navigation_fixture,\
+    short_testable_map_api, testable_map_api
 
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=short_map_api_mock)
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
                                                                         behavioral_facade: BehavioralPlanningFacade,
                                                                         state_module:StateModule,
-                                                                        scene_static: SceneStatic,
-                                                                        scene_static_no_split: SceneStatic):
+                                                                        short_testable_map_api):
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static_no_split)
+
+    short_scene_static = create_scene_static_from_map_api(short_testable_map_api)
+    SceneStaticModel.get_instance().set_scene_static(short_scene_static)
+
     # Using logger-mock here because facades catch exceptions and redirect them to logger
     tp_logger = MagicMock()
     predictor_logger = MagicMock()
@@ -62,7 +65,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
     state_module.periodic_action()
     trajectory_facade.start()
 
-    pubsub.publish(pubsub_topics.SCENE_STATIC, scene_static.serialize())
+    pubsub.publish(pubsub_topics.SCENE_STATIC, short_scene_static.serialize())
 
     behavioral_facade.periodic_action()
     state_module.periodic_action()
