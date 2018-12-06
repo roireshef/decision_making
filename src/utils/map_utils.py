@@ -3,7 +3,6 @@ from typing import List, Dict
 import numpy as np
 
 from decision_making.src.global_constants import EPS
-from decision_making.src.scene_static_model.scene_static_model import SceneStaticModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.scene_static_message import NominalPathPoint, SceneLaneSegment, SceneRoadSegment
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
@@ -12,6 +11,7 @@ from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from mapping.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound
 

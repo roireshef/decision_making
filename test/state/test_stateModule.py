@@ -6,7 +6,7 @@ import pytest
 from common_data.interface.py.idl_generated_files.Rte_Types import LcmPerceivedDynamicObjectList
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, VELOCITY_MINIMAL_THRESHOLD
-from decision_making.src.scene_static_model.scene_static_model import SceneStaticModel
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.planning.types import FS_SV

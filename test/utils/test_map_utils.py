@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 import numpy as np
 
-from decision_making.src.scene_static_model.scene_static_model import SceneStaticModel
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.planning.behavioral.data_objects import RelativeLane

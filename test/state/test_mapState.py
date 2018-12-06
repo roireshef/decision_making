@@ -1,6 +1,6 @@
 import numpy as np
 
-from decision_making.src.scene_static_model.scene_static_model import SceneStaticModel
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH

@@ -2,7 +2,7 @@ from logging import Logger
 
 import numpy as np
 
-from decision_making.src.scene_static_model.scene_static_model import SceneStaticModel
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, RelativeLane
