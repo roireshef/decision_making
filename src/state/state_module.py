@@ -64,7 +64,7 @@ class StateModule(DmModule):
         try:
             with self._scene_dynamic_lock:
                 self._scene_dynamic = SceneDynamic.deserialize(scene_dynamic)
-                timestamp = DynamicObject.sec_to_ticks(self._scene_dynamic.s_Data.s_ComputeTimestamp.timestamp_in_seconds)
+                timestamp = DynamicObject.sec_to_ticks(self._scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
                 occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
                 ego_map_state = MapState(lane_fstate=self._scene_dynamic.s_Data.s_host_localization.a_lane_frenet_pose,
                                          lane_id=self._scene_dynamic.s_Data.s_host_localization.e_Cnt_lane_segment_id)

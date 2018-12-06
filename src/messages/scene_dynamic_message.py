@@ -286,7 +286,7 @@ class ObjectLocalization(PUBSUB_MSG_IMPL):
 
 class DataSceneDynamic(PUBSUB_MSG_IMPL):
     e_b_Valid = bool
-    s_ReceiveTimestamp = Timestamp
+    s_RecvTimestamp = Timestamp
     s_ComputeTimestamp = Timestamp
     e_Cnt_num_objects = int
     as_object_localization = List[ObjectLocalization]
@@ -297,7 +297,7 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
         """
 
         :param e_b_Valid:
-        :param s_ReceiveTimestamp:
+        :param s_RecvTimestamp:
         :param s_ComputeTimestamp:
         :param e_Cnt_num_objects: Total number of actors
         :param as_object_localization:
