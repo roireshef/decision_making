@@ -1,5 +1,6 @@
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FS_SX
+from decision_making.src.utils.map_utils import MapUtils
 
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
     state_with_sorrounding_objects, pg_map_api
@@ -12,5 +13,9 @@ def test_calculateLongitudinalDifferences(state_with_sorrounding_objects, behavi
     longitudinal_distances = behavioral_grid_state.calculate_longitudinal_differences(target_map_states)
 
     for i, map_state in enumerate(target_map_states):
-        rel_lane = RelativeLane(map_state.lane_id - behavioral_grid_state.ego_state.map_state.lane_id)
-        assert longitudinal_distances[i] == map_state.lane_fstate[FS_SX] - behavioral_grid_state.projected_ego_fstates[rel_lane][FS_SX]
+        ego_ordinal = MapUtils.get_lane_ordinal(behavioral_grid_state.ego_state.map_state.lane_id)
+        target_ordinal = MapUtils.get_lane_ordinal(map_state.lane_id)
+        rel_lane = RelativeLane(target_ordinal - ego_ordinal)
+        target_gff_fstate = behavioral_grid_state.extended_lane_frames[rel_lane].convert_from_segment_state(
+            map_state.lane_fstate, map_state.lane_id)
+        assert longitudinal_distances[i] == target_gff_fstate[FS_SX] - behavioral_grid_state.projected_ego_fstates[rel_lane][FS_SX]
