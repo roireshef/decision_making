@@ -721,6 +721,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
 
 class DataSceneStatic(PUBSUB_MSG_IMPL):
     e_b_Valid = bool
+    s_RecvTimestamp = Timestamp
     s_ComputeTimestamp = Timestamp
     e_l_perception_horizon_front = float
     e_l_perception_horizon_rear = float
@@ -731,7 +732,7 @@ class DataSceneStatic(PUBSUB_MSG_IMPL):
     e_Cnt_num_road_segments = int
     as_scene_road_segment = List[SceneRoadSegment]
 
-    def __init__(self, e_b_Valid: bool, s_ComputeTimestamp: Timestamp, e_l_perception_horizon_front: float,
+    def __init__(self, e_b_Valid: bool, s_RecvTimestamp:Timestamp, s_ComputeTimestamp: Timestamp, e_l_perception_horizon_front: float,
                  e_l_perception_horizon_rear: float,
                  e_Cnt_num_lane_segments: int, as_scene_lane_segment: List[SceneLaneSegment],
                  e_Cnt_num_road_intersections: int, as_scene_road_intersection: List[SceneRoadIntersection],
@@ -750,6 +751,7 @@ class DataSceneStatic(PUBSUB_MSG_IMPL):
         :param as_scene_road_segment: All road-segments in the static scene
         """
         self.e_b_Valid = e_b_Valid
+        self.s_RecvTimestamp = s_RecvTimestamp
         self.s_ComputeTimestamp = s_ComputeTimestamp
         self.e_l_perception_horizon_front = e_l_perception_horizon_front
         self.e_l_perception_horizon_rear = e_l_perception_horizon_rear
@@ -764,6 +766,7 @@ class DataSceneStatic(PUBSUB_MSG_IMPL):
         pubsub_msg = TsSYSDataSceneStatic()
 
         pubsub_msg.e_b_Valid = self.e_b_Valid
+        pubsub_msg.s_RecvTimestamp = self.s_RecvTimestamp.serialize()
         pubsub_msg.s_ComputeTimestamp = self.s_ComputeTimestamp.serialize()
         pubsub_msg.e_l_perception_horizon_front = self.e_l_perception_horizon_front
         pubsub_msg.e_l_perception_horizon_rear = self.e_l_perception_horizon_rear
@@ -797,7 +800,8 @@ class DataSceneStatic(PUBSUB_MSG_IMPL):
         for i in range(pubsubMsg.e_Cnt_num_road_segments):
             road_segments.append(SceneRoadSegment.deserialize(pubsubMsg.as_scene_road_segment[i]))
 
-        return cls(pubsubMsg.e_b_Valid, Timestamp.deserialize(pubsubMsg.s_ComputeTimestamp),
+        return cls(pubsubMsg.e_b_Valid, Timestamp.deserialize(pubsubMsg.s_RecvTimestamp),
+                   Timestamp.deserialize(pubsubMsg.s_ComputeTimestamp),
                    pubsubMsg.e_l_perception_horizon_front, pubsubMsg.e_l_perception_horizon_rear,
                    pubsubMsg.e_Cnt_num_lane_segments, lane_segments,
                    pubsubMsg.e_Cnt_num_road_intersections, road_intersections,
