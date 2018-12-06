@@ -687,7 +687,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         for i in range(pubsubMsg.e_Cnt_upstream_lane_count):
             as_upstream_lanes.append(LaneSegmentConnectivity.deserialize(pubsubMsg.as_upstream_lanes[i]))
 
-        a_nominal_path_points = pubsubMsg.a_nominal_path_points[:pubsubMsg.e_Cnt_nominal_path_point_count][:MAX_NOMINAL_PATH_POINT_FIELDS]
+        a_nominal_path_points = pubsubMsg.a_nominal_path_points[:pubsubMsg.e_Cnt_nominal_path_point_count, :MAX_NOMINAL_PATH_POINT_FIELDS]
 
         as_left_boundary_points = list()
         for i in range(pubsubMsg.e_Cnt_left_boundary_points_count):
