@@ -11,6 +11,7 @@ from rte.python.logger.AV_logger import AV_Logger
 def test_createFromState_8objectsAroundEgo_correctGridSize(state_with_sorrounding_objects):
     """
     validate that 8 objects around ego create 8 grid cells in the behavioral state in multi-road map
+    (a cell is created only if it contains at least one object)
     """
     logger = AV_Logger.get_logger()
 
