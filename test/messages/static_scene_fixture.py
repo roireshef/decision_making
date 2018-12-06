@@ -5,7 +5,10 @@ from decision_making.src.messages.scene_common_messages import Header, MapOrigin
 from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic, SceneRoadSegment, \
     MapRoadSegmentType, SceneLaneSegment, MapLaneType, LaneSegmentConnectivity, ManeuverType, NominalPathPoint, \
     MapLaneMarkerType, BoundaryPoint, AdjacentLane, MovingDirection
+from decision_making.src.planning.types import FP_SX, FP_DX
+
 from mapping.src.exceptions import NextRoadNotFound
+from mapping.src.model.map_api import MapAPI
 from mapping.src.service.map_service import MapService
 
 
@@ -25,9 +28,18 @@ def get_connectivity_lane_segment(map_api, road_segment_id, lane_ordinal):
 
 
 @pytest.fixture
+def scene_static_no_split():
+    MapService.initialize()
+    return create_scene_static_from_map_api(MapService.get_instance())
+
+
+@pytest.fixture
 def scene_static():
     MapService.initialize('PG_split.bin')
-    map_api = MapService.get_instance()
+    return create_scene_static_from_map_api(MapService.get_instance())
+
+
+def create_scene_static_from_map_api(map_api: MapAPI):
     map_model = map_api._cached_map_model
     road_ids = map_model.get_road_ids()
 
@@ -48,9 +60,9 @@ def scene_static():
                                               e_Cnt_lane_segment_id_count=num_lanes,
                                               a_Cnt_lane_segment_id=lane_ids,
                                               e_e_road_segment_type=MapRoadSegmentType.Normal,
-                                              e_Cnt_upstream_segment_count=1,
+                                              e_Cnt_upstream_segment_count=len(upstream_roads),
                                               a_Cnt_upstream_road_segment_id=upstream_roads,
-                                              e_Cnt_downstream_segment_count=1,
+                                              e_Cnt_downstream_segment_count=len(downstream_roads),
                                               a_Cnt_downstream_road_segment_id=downstream_roads)
 
         scene_road_segments.append(scene_road_segment)
@@ -73,9 +85,9 @@ def scene_static():
         nominal_points = []
         half_lane_width = map_api.get_road(road_id).lane_width/2
         for i in range(len(lane_frenet.O)):
-            point = np.empty(len(NominalPathPoint))
-            point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value] = lane_frenet.O[i, 0]
-            point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value] = lane_frenet.O[i, 1]
+            point = np.empty(len(list(NominalPathPoint)))
+            point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value] = lane_frenet.O[i, FP_SX]
+            point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value] = lane_frenet.O[i, FP_DX]
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_phi_heading.value] = np.arctan2(lane_frenet.T[i, 1],
                                                                                       lane_frenet.T[i, 0])
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_il_curvature.value] = lane_frenet.k[i]
@@ -84,8 +96,10 @@ def scene_static():
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_phi_along_slope.value] = 0
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] = i * lane_frenet.ds
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset.value] = half_lane_width
-            point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value] = half_lane_width
+            point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value] = -half_lane_width
             nominal_points.append(point)
+
+        assert nominal_points[-1][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] == lane_frenet.s_max
 
         left_boundry_point = [BoundaryPoint(MapLaneMarkerType.MapLaneMarkerType_SolidSingleLine_BottsDots,
                                                      0, lane_frenet.s_max)]
@@ -130,22 +144,19 @@ def scene_static():
                                                     as_lane_coupling=[]))
 
     header = Header(e_Cnt_SeqNum=0, s_Timestamp=Timestamp(0, 0),e_Cnt_version=0)
-    map_origin = MapOrigin(e_phi_latitude=.0, e_phi_longitude=.0,e_l_altitude=.0,s_Timestamp=Timestamp(0,0))
+    map_origin = MapOrigin(e_phi_latitude=.0, e_phi_longitude=.0, e_l_altitude=.0, s_Timestamp=Timestamp(0, 0))
+    scene_road_intersections=[]
     data = DataSceneStatic(e_b_Valid=True,
                            s_ComputeTimestamp=Timestamp(0, 0),
                            e_l_perception_horizon_front=.0,
                            e_l_perception_horizon_rear=.0,
                            e_Cnt_num_lane_segments=len(scene_lane_segments),
                            as_scene_lane_segment=scene_lane_segments,
-                           e_Cnt_num_road_intersections=0,
-                           as_scene_road_intersection=[],
+                           e_Cnt_num_road_intersections=len(scene_road_intersections),
+                           as_scene_road_intersection=scene_road_intersections,
                            e_Cnt_num_road_segments=len(scene_road_segments),
                            as_scene_road_segment=scene_road_segments)
 
     scene = SceneStatic(s_Header=header, s_MapOrigin=map_origin, s_Data=data)
     return scene
-
-
-if __name__ == '__main__':
-    scene_static()
 

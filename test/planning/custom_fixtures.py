@@ -12,6 +12,7 @@ from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmPe
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.scene_common_messages import Timestamp, Header, MapOrigin
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, DataSceneDynamic, HostLocalization, \
@@ -31,6 +32,7 @@ from decision_making.src.state.state import OccupancyState, ObjectSize, State, D
 from decision_making.src.state.state_module import DynamicObjectsData
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
+from decision_making.test.messages.static_scene_fixture import scene_static
 from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
 from decision_making.test.planning.navigation.mock_navigation_facade import NavigationFacadeMock
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
@@ -171,6 +173,8 @@ def state_with_old_object(request) -> State:
 
 @pytest.fixture(scope='function')
 def scene_dynamic_fix():
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static())
     lane_id = 200
     cstate = np.array([1100, 7, 0, 1.0, 0.0, 0])
 

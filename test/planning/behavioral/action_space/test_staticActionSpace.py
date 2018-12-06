@@ -1,15 +1,16 @@
 from logging import Logger
 
 import numpy as np
-
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import AggressivenessLevel, RelativeLane
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.state.state import ObjectSize, State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.service.map_service import MapService
+
+from decision_making.test.messages.static_scene_fixture import scene_static_no_split
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import pg_map_api
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))
@@ -17,7 +18,9 @@ NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))
 
 # test Specify, when ego starts with velocity very close to the target velocity
 # pg_map_api is a multi-segment map
-def test_specifyGoals_closeToTargetVelocity_specifyNotFail(pg_map_api):
+def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static_no_split):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_no_split)
+
     logger = Logger("test_specifyStaticAction")
     road_segment_id = 21
     ego_lon = 120.
