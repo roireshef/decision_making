@@ -110,6 +110,7 @@ class BehavioralGridState(BehavioralState):
 
         # for objects on non-adjacent lane set relative_lanes[i] = None
         rel_lanes_per_obj = np.full(len(dynamic_objects), None)
+        # calculate relative to ego lane (RIGHT, SAME, LEFT) for every object
         for rel_lane, extended_lane_frame in extended_lane_frames.items():
             # find all dynamic objects that belong to the current unified frame
             relevant_objects = extended_lane_frame.has_segment_ids(objects_segment_ids)
@@ -140,7 +141,8 @@ class BehavioralGridState(BehavioralState):
         Given unified frames, ego projected on the unified frames, target segment ids and segment fstates, calculate
         longitudinal differences between the targets and ego.
         projected on the target lanes, using the relevant unified frames (GFF).
-        :param extended_lane_frames: dictionary from RelativeLane to the corresponding GeneralizedFrenetSerretFrame
+        :param extended_lane_frames: mapping between 3 lanes relative to the host vehicle (left adjacent, same,
+                                                                        right adjacent) to their curve representation
         :param ego_unified_fstates: dictionary from RelativeLane to ego Frenet state, which is ego projected on the
                 corresponding extended_lane_frame
         :param target_map_states: list of original map states of the targets

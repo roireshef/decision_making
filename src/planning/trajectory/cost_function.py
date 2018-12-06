@@ -72,11 +72,11 @@ class TrajectoryPlannerCosts:
                 return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
 
             # calculate objects' map_state
+            # TODO: consider using map_state_on_host_lane
             objects_relative_fstates = np.array([reference_route.cstate_to_fstate(obj.cartesian_state)
                                                  for obj in close_objects if obj.cartesian_state is not None])
 
             # Predict objects' future movement, then project predicted objects' states to Cartesian frame
-            # TODO: objects' frenet states relative to ego should be part of Scene Provider!!
             # TODO: this assumes predictor works with frenet frames relative to ego-lane - figure out if this is how we want to do it in the future.
             objects_predicted_ftrajectories = predictor.predict_frenet_states(
                 objects_relative_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
