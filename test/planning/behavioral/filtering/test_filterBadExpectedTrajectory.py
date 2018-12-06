@@ -20,11 +20,7 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_filtering_negative_sT, \
     behavioral_grid_state_with_objects_for_filtering_too_aggressive, \
     state_with_objects_for_filtering_tracking_mode, state_with_objects_for_filtering_negative_sT, \
-    state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes, \
-    pg_map_api
-from decision_making.test.planning.utils.optimal_control.quartic_poly_formulas import QuarticMotionPredicatesCreator
-from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import QuinticMotionPredicatesCreator
-from mapping.src.service.map_service import MapService
+    state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes
 from rte.python.logger.AV_logger import AV_Logger
 
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING
@@ -36,10 +32,9 @@ from decision_making.test.messages.static_scene_fixture import scene_static
 
 def test_filter_followVehicleTracking_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_filtering_tracking_mode: BehavioralGridState,
-        follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe], scene_static):
+        follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
     logger = AV_Logger.get_logger()
 
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
     predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
 
     filtering = RecipeFiltering(filters=[FilterBadExpectedTrajectory('predicates')], logger=logger)
@@ -59,6 +54,7 @@ def test_filter_followVehicleTracking_filterResultsMatchExpected(
 def test_filter_followVehicleSTNegative_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_filtering_negative_sT: BehavioralGridState,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
+
     logger = AV_Logger.get_logger()
     predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
 

@@ -10,16 +10,16 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_STATI
 from decision_making.src.state.state import ObjectSize, State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
 
-from decision_making.test.messages.static_scene_fixture import scene_static_no_split
-from decision_making.test.planning.behavioral.behavioral_state_fixtures import pg_map_api
+from decision_making.test.messages.static_scene_fixture import scene_static
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))
 
 
 # test Specify, when ego starts with velocity very close to the target velocity
-# pg_map_api is a multi-segment map
-def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static_no_split):
-    SceneStaticModel.get_instance().set_scene_static(scene_static_no_split)
+# scene_static is a multi-segment map
+def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static):
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
 
     logger = Logger("test_specifyStaticAction")
     road_segment_id = 21

@@ -4,7 +4,7 @@ from decision_making.src.planning.types import FS_SX
 from decision_making.src.utils.map_utils import MapUtils
 
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import behavioral_grid_state, \
-    state_with_sorrounding_objects, pg_map_api, NAVIGATION_PLAN
+    state_with_sorrounding_objects, NAVIGATION_PLAN
 from rte.python.logger.AV_logger import AV_Logger
 
 

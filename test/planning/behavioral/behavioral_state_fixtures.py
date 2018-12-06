@@ -10,28 +10,19 @@ from decision_making.src.planning.behavioral.behavioral_grid_state import Behavi
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionType, AggressivenessLevel, \
     StaticActionRecipe
-from decision_making.src.planning.types import CartesianPoint2D, FrenetPoint, FP_SX
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.messages.static_scene_fixture import scene_static_no_split
-from mapping.src.model.map_api import MapAPI
-from mapping.src.service.map_service import MapService
+from decision_making.test.messages.static_scene_fixture import scene_static
 
 NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))
-EGO_LANE_LON = 120.
+EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
 
 
 @pytest.fixture(scope='function')
-def pg_map_api():
-    MapService.initialize(map_file='PG_split.bin')
-    yield MapService.get_instance()
+def state_with_sorrounding_objects():
 
-
-@pytest.fixture(scope='function')
-def state_with_sorrounding_objects(pg_map_api: MapAPI):
-
-    SceneStaticModel.get_instance().set_scene_static(scene_static_no_split())
+    SceneStaticModel.get_instance().set_scene_static(scene_static())
 
     road_segment_id = 20
 
@@ -53,7 +44,7 @@ def state_with_sorrounding_objects(pg_map_api: MapAPI):
     # Generate objects at the following locations:
     for rel_lane in RelativeLane:
         # calculate objects' lane_ids and longitudes: 20 m behind, parallel and 20 m ahead of ego on the relative lane
-        parallel_lane_id = MapUtils.get_adjacent_lanes(ego_lane_id, rel_lane)[0] \
+        parallel_lane_id = MapUtils.get_adjacent_lane_ids(ego_lane_id, rel_lane)[0] \
             if rel_lane != RelativeLane.SAME_LANE else ego_lane_id
         prev_lane_ids, back_lon = MapUtils._get_upstream_lanes_from_distance(parallel_lane_id, ego_lane_lon, 20)
         next_sub_segments = MapUtils._advance_on_plan(parallel_lane_id, ego_lane_lon, 20, NAVIGATION_PLAN)
@@ -76,7 +67,10 @@ def state_with_sorrounding_objects(pg_map_api: MapAPI):
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_tracking_mode(pg_map_api: MapAPI):
+def state_with_objects_for_filtering_tracking_mode():
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static())
+
     road_id = 20
 
     # Stub of occupancy grid
@@ -111,7 +105,10 @@ def state_with_objects_for_filtering_tracking_mode(pg_map_api: MapAPI):
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_negative_sT(pg_map_api: MapAPI):
+def state_with_objects_for_filtering_negative_sT():
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static())
+
     road_id = 20
 
     # Stub of occupancy grid
@@ -146,7 +143,10 @@ def state_with_objects_for_filtering_negative_sT(pg_map_api: MapAPI):
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_too_aggressive(pg_map_api: MapAPI):
+def state_with_objects_for_filtering_too_aggressive():
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static())
+
     road_id = 20
 
     # Stub of occupancy grid
