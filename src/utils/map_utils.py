@@ -112,9 +112,13 @@ class MapUtils:
 
     @staticmethod
     def _get_all_middle_lanes():
-         lanes_per_roads = [MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
-                            for road_segment_id in MapUtils.get_road_segment_ids()]
-         return [lanes[int(len(lanes)/2)] for lanes in lanes_per_roads]
+        """
+        Returns the middle lane of each road segment.
+        :return:
+        """
+        lanes_per_roads = [MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
+                           for road_segment_id in MapUtils.get_road_segment_ids()]
+        return [lanes[int(len(lanes)/2)] for lanes in lanes_per_roads]
 
     @staticmethod
     def get_closest_lane(cartesian_point: CartesianPoint2D, road_segment_id: int = None) -> int:
@@ -127,9 +131,11 @@ class MapUtils:
         x_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value
         y_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value
 
-        # lane_ids can be either vertical middle lanes or horizontal lanes of the given road_segment_id
         # TODO: Change this heuristic in the future
-        # Out of all middle lanes in all road segments, find the closest to cartesian_point, this lane is in the closest road_segment
+        # `lane_ids` is set to either the (vertical) middle lanes of all or horizontal lanes
+        # of the given road_segment_id or to the (horizonal) lanes of the road_segment
+        # In case of the former, out of all middle lanes in all road segments, find the closest to cartesian_point,
+        #  this lane determines the closest road_segment
         if road_segment_id is None:
             lane_ids = MapUtils._get_all_middle_lanes()
         else:
@@ -389,3 +395,4 @@ class MapUtils:
             raise RoadNotFound('road {0} not found '.format(road_id))
         assert len(road_segments) == 1
         return road_segments[0]
+
