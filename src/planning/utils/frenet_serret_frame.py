@@ -201,7 +201,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
     def cstate_to_fstate(self, cstate: CartesianExtendedState) -> FrenetState2D:
         """
         Transforms Cartesian-frame state to Frenet-frame state
-        :param ctrajectory: a cartesian-frame state (in the coordinate frame of self.points)
+        :param cstate: a cartesian-frame state (in the coordinate frame of self.points)
         :return: a frenet-frame state
         """
         return self.ctrajectory_to_ftrajectory(np.array([cstate]))[0]

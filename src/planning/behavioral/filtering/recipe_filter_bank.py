@@ -167,7 +167,7 @@ class FilterIfNoLane(RecipeFilter):
     def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
         lane_id = behavioral_state.ego_state.map_state.lane_id
         return (recipe.relative_lane == RelativeLane.SAME_LANE or
-                len(MapUtils.get_adjacent_lanes(lane_id, recipe.relative_lane)) > 0)
+                len(MapUtils.get_adjacent_lane_ids(lane_id, recipe.relative_lane)) > 0)
 
 
 class FilterIfAggressive(RecipeFilter):

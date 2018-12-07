@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
@@ -19,11 +20,9 @@ from decision_making.src.planning.trajectory.trajectory_planning_strategy import
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 
-from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
-    PhysicalTimeAlignmentPredictor
 from decision_making.src.state.state_module import StateModule
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from mapping.test.model.testable_map_fixtures import map_api_mock
+from mapping.test.model.testable_map_fixtures import map_api_mock, short_map_api_mock
 
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING
@@ -31,20 +30,27 @@ from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAM
 from decision_making.test.planning.custom_fixtures import pubsub, behavioral_facade, state_module, \
     navigation_facade, state, trajectory_params, behavioral_visualization_msg, navigation_plan
 
-from decision_making.test.messages.static_scene_fixture import scene_static
+from decision_making.test.messages.static_scene_fixture import scene_static_no_split, scene_static, \
+    create_scene_static_from_map_api
+from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, navigation_fixture,\
+    short_testable_map_api, testable_map_api
 
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=short_map_api_mock)
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
                                                                         behavioral_facade: BehavioralPlanningFacade,
                                                                         state_module:StateModule,
-                                                                        scene_static: SceneStatic):
+                                                                        short_testable_map_api):
+
+
+    short_scene_static = create_scene_static_from_map_api(short_testable_map_api)
+    SceneStaticModel.get_instance().set_scene_static(short_scene_static)
+
     # Using logger-mock here because facades catch exceptions and redirect them to logger
     tp_logger = MagicMock()
     predictor_logger = MagicMock()
 
     trajectory_publish_mock = MagicMock()
     predictor = RoadFollowingPredictor(predictor_logger)
-    short_time_predictor = PhysicalTimeAlignmentPredictor(predictor_logger)
 
     planner = WerlingPlanner(tp_logger, predictor)
     strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
@@ -52,15 +58,14 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
                          TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
     trajectory_facade = TrajectoryPlanningFacade(pubsub=pubsub, logger=tp_logger,
-                                                 strategy_handlers=strategy_handlers,
-                                                 short_time_predictor=short_time_predictor)
+                                                 strategy_handlers=strategy_handlers)
 
     pubsub.subscribe(pubsub_topics.TRAJECTORY_PLAN, trajectory_publish_mock)
 
     state_module.periodic_action()
     trajectory_facade.start()
 
-    pubsub.publish(pubsub_topics.SCENE_STATIC, scene_static.serialize())
+    pubsub.publish(pubsub_topics.SCENE_STATIC, short_scene_static.serialize())
 
     behavioral_facade.periodic_action()
     state_module.periodic_action()
@@ -78,16 +83,18 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
     trajectory_publish_mock.assert_called_once()
 
 
-@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+@patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=short_map_api_mock)
 def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub, state_module:StateModule,
                                                                   navigation_facade: NavigationFacade,
-                                                                  scene_static: SceneStatic):
+                                                                  short_testable_map_api):
+
+    scene_static = create_scene_static_from_map_api(short_testable_map_api)
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
     bp_logger = MagicMock()
     predictor_logger = MagicMock()
 
     behavioral_publish_mock = MagicMock()
     predictor = RoadFollowingPredictor(predictor_logger)
-    short_time_predictor = PhysicalTimeAlignmentPredictor(predictor_logger)
     action_space = ActionSpaceContainer(bp_logger,
                                         [StaticActionSpace(bp_logger, filtering=DEFAULT_STATIC_RECIPE_FILTERING),
                                          DynamicActionSpace(bp_logger, predictor,
@@ -102,8 +109,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
 
     state_module.periodic_action()
     navigation_facade.periodic_action()
-    behavioral_planner_module = BehavioralPlanningFacade(pubsub=pubsub, logger=bp_logger, behavioral_planner=planner,
-                                                         short_time_predictor=short_time_predictor)
+    behavioral_planner_module = BehavioralPlanningFacade(pubsub=pubsub, logger=bp_logger, behavioral_planner=planner)
 
     pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_LCM, behavioral_publish_mock)
 

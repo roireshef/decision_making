@@ -4,30 +4,27 @@ import numpy as np
 import pytest
 
 from decision_making.src.global_constants import EPS
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
     RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, ActionType, AggressivenessLevel, \
     StaticActionRecipe
-from decision_making.src.planning.types import CartesianPoint2D, FrenetPoint, FP_SX
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, State, ObjectSize, EgoState, DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.model.map_api import MapAPI
-from mapping.src.service.map_service import MapService
+from decision_making.test.messages.static_scene_fixture import scene_static
 
-NAVIGATION_PLAN = NavigationPlanMsg(np.array([20]))
-
-
-@pytest.fixture(scope='function')
-def pg_map_api():
-    MapService.initialize(map_file='TestingGroundMap3Lanes.bin')
-    yield MapService.get_instance()
+NAVIGATION_PLAN = NavigationPlanMsg(np.array(range(20, 30)))
+EGO_LANE_LON = 120.  # ~2 meters behind end of a lane segment
 
 
 @pytest.fixture(scope='function')
-def state_with_sorrounding_objects(pg_map_api: MapAPI):
-    road_id = 20
+def state_with_sorrounding_objects():
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static())
+
+    road_segment_id = 20
 
     # Stub of occupancy grid
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
@@ -35,27 +32,32 @@ def state_with_sorrounding_objects(pg_map_api: MapAPI):
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
     # Ego state
-    ego_lane_lon = 50.0
+    ego_lane_lon = EGO_LANE_LON
     obj_vel = ego_vel = 10
-    ego_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
+    ego_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)[1]
 
     map_state = MapState(np.array([ego_lane_lon, ego_vel, 0, 0, 0, 0]), ego_lane_id)
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
 
-    # Generate objects at the following locations:
-    obj_lane_lons = [ego_lane_lon - 20, ego_lane_lon, ego_lane_lon + 20]
-
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
-    obj_lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_id)
-    for obj_lane_lon in obj_lane_lons:
-        for obj_lane_id in obj_lane_ids:
+    # Generate objects at the following locations:
+    for rel_lane in RelativeLane:
+        # calculate objects' lane_ids and longitudes: 20 m behind, parallel and 20 m ahead of ego on the relative lane
+        parallel_lane_id = MapUtils.get_adjacent_lane_ids(ego_lane_id, rel_lane)[0] \
+            if rel_lane != RelativeLane.SAME_LANE else ego_lane_id
+        prev_lane_ids, back_lon = MapUtils._get_upstream_lanes_from_distance(parallel_lane_id, ego_lane_lon, 20)
+        next_sub_segments = MapUtils._advance_on_plan(parallel_lane_id, ego_lane_lon, 20, NAVIGATION_PLAN)
+        obj_lane_lons = [back_lon, ego_lane_lon, next_sub_segments[-1].s_end]
+        obj_lane_ids = [prev_lane_ids[-1], parallel_lane_id, next_sub_segments[-1].segment_id]
 
-            if obj_lane_lon == ego_lane_lon and obj_lane_id == ego_lane_id:
+        for i, obj_lane_lon in enumerate(obj_lane_lons):
+
+            if obj_lane_lon == ego_lane_lon and rel_lane == RelativeLane.SAME_LANE:
                 # Don't create an object where the ego is
                 continue
 
-            map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), obj_lane_id)
+            map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), obj_lane_ids[i])
             dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
                                                             size=car_size, confidence=1.)
             dynamic_objects.append(dynamic_object)
@@ -65,7 +67,10 @@ def state_with_sorrounding_objects(pg_map_api: MapAPI):
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_tracking_mode(pg_map_api: MapAPI):
+def state_with_objects_for_filtering_tracking_mode():
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static())
+
     road_id = 20
 
     # Stub of occupancy grid
@@ -74,7 +79,7 @@ def state_with_objects_for_filtering_tracking_mode(pg_map_api: MapAPI):
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
     # Ego state
-    ego_lane_lon = 50.0
+    ego_lane_lon = EGO_LANE_LON
     ego_vel = 10
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
@@ -82,13 +87,15 @@ def state_with_objects_for_filtering_tracking_mode(pg_map_api: MapAPI):
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
 
     # Generate objects at the following locations:
-    obj_lane_lon = ego_lane_lon + 20
+    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 20, NAVIGATION_PLAN)
+    obj_lane_lon = next_sub_segments[-1].s_end
+    obj_lane_id = next_sub_segments[-1].segment_id
     obj_vel = 10.2
 
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
 
-    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), lane_id)
+    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), obj_lane_id)
     dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
                                                     size=car_size, confidence=1.)
 
@@ -98,7 +105,10 @@ def state_with_objects_for_filtering_tracking_mode(pg_map_api: MapAPI):
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_negative_sT(pg_map_api: MapAPI):
+def state_with_objects_for_filtering_negative_sT():
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static())
+
     road_id = 20
 
     # Stub of occupancy grid
@@ -107,7 +117,7 @@ def state_with_objects_for_filtering_negative_sT(pg_map_api: MapAPI):
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
     # Ego state
-    ego_lane_lon = 50.0
+    ego_lane_lon = EGO_LANE_LON
     ego_vel = 10
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
@@ -115,13 +125,15 @@ def state_with_objects_for_filtering_negative_sT(pg_map_api: MapAPI):
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
 
     # Generate objects at the following locations:
-    obj_lane_lon = ego_lane_lon + 3.8
+    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 3.8, NAVIGATION_PLAN)
+    obj_lane_lon = next_sub_segments[-1].s_end
+    obj_lane_id = next_sub_segments[-1].segment_id
     obj_vel = 11
 
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
 
-    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), lane_id)
+    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), obj_lane_id)
     dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
                                                     size=car_size, confidence=1.)
 
@@ -131,7 +143,10 @@ def state_with_objects_for_filtering_negative_sT(pg_map_api: MapAPI):
 
 
 @pytest.fixture(scope='function')
-def state_with_objects_for_filtering_too_aggressive(pg_map_api: MapAPI):
+def state_with_objects_for_filtering_too_aggressive():
+
+    SceneStaticModel.get_instance().set_scene_static(scene_static())
+
     road_id = 20
 
     # Stub of occupancy grid
@@ -140,7 +155,7 @@ def state_with_objects_for_filtering_too_aggressive(pg_map_api: MapAPI):
     car_size = ObjectSize(length=2.5, width=1.5, height=1.0)
 
     # Ego state
-    ego_lane_lon = 50.0
+    ego_lane_lon = EGO_LANE_LON
     ego_vel = 10
     lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[1]
 
@@ -148,13 +163,15 @@ def state_with_objects_for_filtering_too_aggressive(pg_map_api: MapAPI):
     ego_state = EgoState.create_from_map_state(obj_id=0, timestamp=0, map_state=map_state, size=car_size, confidence=1)
 
     # Generate objects at the following locations:
-    obj_lane_lon = ego_lane_lon + 58
+    next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 58, NAVIGATION_PLAN)
+    obj_lane_lon = next_sub_segments[-1].s_end
+    obj_lane_id = next_sub_segments[-1].segment_id
     obj_vel = 30
 
     dynamic_objects: List[DynamicObject] = list()
     obj_id = 1
 
-    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), lane_id)
+    map_state = MapState(np.array([obj_lane_lon, obj_vel, 0, 0, 0, 0]), obj_lane_id)
     dynamic_object = EgoState.create_from_map_state(obj_id=obj_id, timestamp=0, map_state=map_state,
                                                     size=car_size, confidence=1.)
 

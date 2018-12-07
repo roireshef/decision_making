@@ -244,7 +244,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmDynamicObject) -> DynamicObject
         return cls(lcmMsg.obj_id, lcmMsg.timestamp
-                   , lcmMsg._cached_cartesian_state.data
+                   , lcmMsg._cached_cartesian_state
                    , MapState.deserialize(lcmMsg._cached_map_state)
                    , MapState.deserialize(lcmMsg._cached_map_state)
                    , ObjectSize.deserialize(lcmMsg.size)
