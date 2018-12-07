@@ -111,7 +111,7 @@ class BehavioralGridState(BehavioralState):
             if rel_lane == RelativeLane.SAME_LANE:
                 projected_fstates[rel_lane] = ego_state.map_state.lane_fstate
             else:
-                adjacent_lane_ids = MapUtils.get_adjacent_lanes(ego_state.map_state.lane_id, rel_lane)
+                adjacent_lane_ids = MapUtils.get_adjacent_lane_ids(ego_state.map_state.lane_id, rel_lane)
                 if len(adjacent_lane_ids) > 0:
                     adjacent_frenet = MapUtils.get_lane_frenet_frame(adjacent_lane_ids[0])
                     projected_fstates[rel_lane] = adjacent_frenet.cstate_to_fstate(ego_state.cartesian_state)

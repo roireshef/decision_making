@@ -1,3 +1,5 @@
+from decision_making.src.messages.scene_static_message import SceneStatic
+
 
 class SceneStaticModel:
     """
@@ -12,15 +14,28 @@ class SceneStaticModel:
     @classmethod
     def get_instance(cls) -> None:
         """
-        :return: The instance of SceneStaticModel
+        :return: The instance of SceneModel
         """
         if cls.__instance is None:
             cls.__instance = SceneStaticModel()
         return cls.__instance
 
-    @property
-    def get_scene_static(self):
+    def set_scene_static(self, scene_static_message: SceneStatic) -> None:
+        """
+        Add a SceneStatic message to the model. Currently this assumes there is only
+        a single message
+        :param scene_static_message:  The SceneStatic message
+        :return:
+        """
+        self._scene_static_message = scene_static_message
+
+    def get_scene_static(self) -> SceneStatic:
+        """
+        Gets the last message in list
+        :return:  The SceneStatic message
+        """
+        if self._scene_static_message is None:
+            raise ValueError('Scene model is empty')
         return self._scene_static_message
 
-    def set_scene_static(self, message):
-        self._scene_static_message = message
+
