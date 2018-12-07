@@ -1,6 +1,6 @@
 import numpy as np
 
-from decision_making.src.planning.types import C_A, C_V, C_K, C_X, C_Y
+from decision_making.src.planning.types import C_A, C_V, C_K, C_X, C_Y, FS_SX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
     FrenetSubSegment
@@ -40,6 +40,7 @@ def test_cpointsToFpointsToCpoints_pointTwoWayConversionExactSegmentationSameDs_
     errors = np.linalg.norm(cpoints - new_cpoints, axis=1)
 
     np.testing.assert_array_less(errors, ACCURACY_TH, 'FrenetMovingFrame point conversions aren\'t accurate enough')
+
 
 def test_cpointsToFpointsToCpoints_pointTwoWayConversionNonExactSegmentationSameDs_accurate():
     ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
@@ -109,6 +110,7 @@ def test_cpointsToFpointsToCpoints_pointTwoWayConversionNonExactSegmentationDiff
     errors = np.linalg.norm(cpoints - new_cpoints, axis=1)
 
     np.testing.assert_array_less(errors, ACCURACY_TH, 'FrenetMovingFrame point conversions aren\'t accurate enough')
+
 
 def test_ctrajectoryToFtrajectoryToCtrajectory_pointTwoWayConversionTwoFullFrenetFramesDifferentDs_accuratePoseAndVelocity():
     POSITION_ACCURACY_TH = 1e-3  # up to 1 [mm] error in euclidean distance
@@ -381,9 +383,25 @@ def test_convertToAndFromSegmentStates_firstSegmentStartsInMiddle_x_y():
     upstream_gen_fpoints = generalized_frenet.convert_from_segment_states(upstream_fpoints, upstream_segment_idxs)
     new_upstream_segment_idxs, new_upstream_fpoints = generalized_frenet.convert_to_segment_states(upstream_gen_fpoints)
 
+    upstream_cpoints_to_fpoints = generalized_frenet.ctrajectory_to_ftrajectory(upstream_cpoints)
+    errors_c2f = (upstream_cpoints_to_fpoints - upstream_gen_fpoints)[:, FS_SX]
+    np.testing.assert_array_less(errors_c2f, ACCURACY_TH, 'upstream_cpoint_to_fpoint conversions aren\'t accurate enough')
+
+    upstream_fpoints_to_cpoints = generalized_frenet.ftrajectory_to_ctrajectory(upstream_gen_fpoints)
+    errors_f2c = (upstream_fpoints_to_cpoints - upstream_cpoints)[:, FS_SX]
+    np.testing.assert_array_less(errors_f2c, ACCURACY_TH, 'upstream_fpoint_to_cpoint conversions aren\'t accurate enough')
+
     downstream_segment_idxs = [1] * len(downstream_fpoints)
     downstream_gen_fpoints = generalized_frenet.convert_from_segment_states(downstream_fpoints, downstream_segment_idxs)
     new_downstream_segment_idxs, new_downstream_fpoints = generalized_frenet.convert_to_segment_states(downstream_gen_fpoints)
+
+    downstream_cpoints_to_fpoints = generalized_frenet.ctrajectory_to_ftrajectory(downstream_cpoints)
+    downstream_errors_c2f = (downstream_cpoints_to_fpoints - downstream_gen_fpoints)[:, FS_SX]
+    np.testing.assert_array_less(downstream_errors_c2f, ACCURACY_TH, 'downstream_cpoint_to_fpoint conversions aren\'t accurate enough')
+
+    downstream_fpoints_to_cpoints = generalized_frenet.ftrajectory_to_ctrajectory(downstream_gen_fpoints)
+    downstream_errors_f2c = (downstream_fpoints_to_cpoints - downstream_cpoints)[:, FS_SX]
+    np.testing.assert_array_less(downstream_errors_f2c, ACCURACY_TH, 'downstream_fpoint_to_cpoint conversions aren\'t accurate enough')
 
     errors_upstream = np.linalg.norm(upstream_fpoints - new_upstream_fpoints, axis=1)
     errors_downstream = np.linalg.norm(downstream_fpoints - new_downstream_fpoints, axis=1)

@@ -221,18 +221,20 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         ds = self._segments_ds[segment_idx_per_point]
         # The approximate longitudinal progress is the longitudinal offset of the segment plus the in-segment-index
         #  times the segment ds.
+        initial_intra_point_offset = self._segments_s_start[0] % self._segments_ds[0]
+        intra_point_offsets = initial_intra_point_offset * (segment_idx_per_point == 0).astype(np.int)
         s_approx = self._segments_s_offsets[segment_idx_per_point] + \
-                   (((O_idx - self._segments_point_offset[segment_idx_per_point]) + delta_s) * ds)
+                   (((O_idx - self._segments_point_offset[segment_idx_per_point]) + delta_s) * ds) - intra_point_offsets
 
         return s_approx
 
     def _get_closest_index_on_frame(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
         """
         from s, a vector of longitudinal progress on the frame, return the index of the closest point on the frame and
-        a normalized fractional value in the range [0,1] representing the projection on this closest point.
+        a value in the range [0, ds] representing the projection on this closest point.
         The returned values, if summed, represent a "fractional index" on the curve.
         :param s: a vector of longitudinal progress on the frame
-        :return: a tuple of: indices of closest points, a vector of normalized projections on these points.
+        :return: a tuple of: indices of closest points, a vector of projections on these points.
         """
         # get the index of the segment that contains each s value
         segment_idxs = self._get_segment_idxs_from_s(s)
@@ -246,7 +248,11 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         progress_in_points = np.divide(s_in_segment, ds) + segment_points_offset
         # calculate and return the integer and fractional parts of the index
         O_idx = np.round(progress_in_points).astype(np.int)
-        delta_s = np.expand_dims((progress_in_points - O_idx) * ds, axis=len(s.shape))
+
+        initial_intra_point_offset = self._segments_s_start[0] % self._segments_ds[0]
+        intra_point_offsets = initial_intra_point_offset * (segment_idxs == 0).astype(np.int)
+
+        delta_s = np.expand_dims((progress_in_points - O_idx) * ds + intra_point_offsets, axis=len(s.shape))
 
         return O_idx, delta_s
 
