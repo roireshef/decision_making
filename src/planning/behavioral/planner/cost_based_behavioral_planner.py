@@ -105,7 +105,7 @@ class CostBasedBehavioralPlanner:
         terminal_dynamic_objects = np.full((len(existing_specs), len(state.dynamic_objects)), None)
 
         # calculate terminal fstates w.r.t. the extended_lane_frames
-        for extended_lane_frame in behavioral_state.extended_lane_frames:  # loop over at most 3 closest frames
+        for rel_lane, extended_lane_frame in behavioral_state.extended_lane_frames.items():  # loop over at most 3 closest frames
             # find all specs, whose target belongs to the current extended_lane_frame
             relevant_spec_idxs = extended_lane_frame.has_segment_ids(lane_ids_per_spec)
             # create terminal ego states for those specs, whose target is no the extended_lane_frame
@@ -163,15 +163,14 @@ class CostBasedBehavioralPlanner:
         current_segment_fstates = np.array([object.map_state.lane_fstate for object in relevant_dynamic_objects])
 
         # convert segment map states to the extended frame fstates
-        objects_current_extended_fstates = extended_lane_frame.convert_from_segment_states(
-            current_segment_fstates, current_segment_ids)
+        current_extended_fstates = extended_lane_frame.convert_from_segment_states(current_segment_fstates, current_segment_ids)
 
         # predict the relevant objects for all specs
-        terminal_fstates = self.predictor.predict_frenet_states(objects_current_extended_fstates, action_horizons)
+        terminal_fstates = self.predictor.predict_frenet_states(current_extended_fstates, action_horizons)
 
         # allocate memory for the objects' terminal segment map states
-        terminal_segment_ids = np.full((len(state.dynamic_objects), len(action_horizons)), None)
-        terminal_segment_fstates = np.empty((len(state.dynamic_objects), len(action_horizons), 6), dtype=float)
+        terminal_segment_ids = np.full((len(relevant_dynamic_objects), len(action_horizons)), None)
+        terminal_segment_fstates = np.empty((len(relevant_dynamic_objects), len(action_horizons), 6), dtype=float)
 
         # convert the objects' terminal extended_frame fstates back to the segments map states (ids & fstates)
         # convert only those predictions that are located inside extended_lane_frame; the rest get segment_id = None
@@ -194,9 +193,9 @@ class CostBasedBehavioralPlanner:
         """
         Generate trajectory specification for trajectory planner given a SemanticActionSpec. This also
         generates the reference route that will be provided to the trajectory planner.
-         Given the target longitude and latitude, we create a reference route in global coordinates, where:
-         latitude is constant and equal to the target latitude;
-         longitude starts from ego current longitude, and end in the target longitude.
+        Given the target longitude and latitude, we create a reference route in global coordinates, where:
+        latitude is constant and equal to the target latitude;
+        longitude starts from ego current longitude, and end in the target longitude.
         :param behavioral_state: processed behavioral state
         :return: Trajectory cost specifications [TrajectoryParameters]
         """

@@ -207,7 +207,7 @@ class TrajectoryPlanningFacade(DmModule):
         self.pubsub.publish(pubsub_topics.TRAJECTORY_PLAN, results.serialize())
 
     def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
-        self.pubsub.publish(pubsub_topics.TRAJECTORY_VISUALIZATION_LCM, debug_msg.serialize())
+        self.pubsub.publish(pubsub_topics.TRAJECTORY_VISUALIZATION, debug_msg.serialize())
 
     def _get_state_with_expected_ego(self, state: State) -> State:
         """
