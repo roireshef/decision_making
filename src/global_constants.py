@@ -165,7 +165,6 @@ TRAJECTORY_NUM_POINTS = 16
 TRAJECTORY_WAYPOINT_SIZE = 11
 MAX_TRAJECTORY_WAYPOINTS = 100
 
-
 # Werling Planner #
 
 # [sec] Time-Resolution for planning
