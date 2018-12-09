@@ -251,16 +251,16 @@ class TrajectoryPlanningFacade(DmModule):
         prediction_timestamps = np.arange(most_recent_timestamp, most_recent_timestamp + planning_horizon,
                                           VISUALIZATION_PREDICTION_RESOLUTION, float)
 
-        # calculate objects' predictions
-        objects_visualizations = []
-        for i, obj in enumerate(state.dynamic_objects):
-            if obj.cartesian_state[C_V] > 0:  # calculate predictions only for moving objects
-                obj_fstate = reference_route.cstate_to_fstate(obj.cartesian_state)
-                object_fpredictions = predictor.predict_frenet_states(obj_fstate, prediction_timestamps)[0][:, [FS_SX, FS_DX]]
-                # visualize object's predictions only if they fully lay inside the reference_route range
-                if np.all(object_fpredictions[:, FP_SX] > 0) and np.all(object_fpredictions[:, FP_SX] < reference_route.s_max):
-                    object_cpredictions = reference_route.fpoints_to_cpoints(object_fpredictions)
-                    objects_visualizations.append(PredictionsVisualization(obj.obj_id, object_cpredictions))
+        # visualize only moving object
+        objects_cartesian_states = np.array([obj.cartesian_state
+                                             for obj in state.dynamic_objects if obj.cartesian_state[C_V] > 0])
+        objects_fstates = reference_route.ctrajectory_to_ftrajectory(objects_cartesian_states)
+        object_fpredictions = predictor.predict_frenet_states(objects_fstates, prediction_timestamps)[..., [FS_SX, FS_DX]]
+        # visualize object's predictions only if they fully lay inside the reference_route range
+        valid_objects_fpredictions = object_fpredictions[np.all(object_fpredictions[..., FP_SX] < reference_route.s_max, axis=1)]
+        objects_cpredictions = reference_route.fpoints_to_cpoints(valid_objects_fpredictions)
+        objects_visualizations = [PredictionsVisualization(state.dynamic_objects[i].obj_id, obj_predictions)
+                                  for i, obj_predictions in enumerate(objects_cpredictions)]
 
         header = Header(0, Timestamp.from_seconds(state.ego_state.timestamp_in_sec), 0)
         visualization_data = DataTrajectoryVisualization(
