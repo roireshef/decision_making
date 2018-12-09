@@ -219,10 +219,13 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         segment_idx_per_point = np.searchsorted(self._segments_point_offset, np.add(O_idx, delta_s)) - 1
         # get ds of every point based on the ds of the segment
         ds = self._segments_ds[segment_idx_per_point]
-        # The approximate longitudinal progress is the longitudinal offset of the segment plus the in-segment-index
-        #  times the segment ds.
+
+        # calculate the offset of the first segment starting relative to the first GFF point
+        # subtract this offset from s_approx for the points on the first segment (in other segments this offset is 0)
         initial_intra_point_offset = self._segments_s_start[0] % self._segments_ds[0]
         intra_point_offsets = initial_intra_point_offset * (segment_idx_per_point == 0).astype(np.int)
+        # The approximate longitudinal progress is the longitudinal offset of the segment plus the in-segment-index
+        # times the segment ds.
         s_approx = self._segments_s_offsets[segment_idx_per_point] + \
                    (((O_idx - self._segments_point_offset[segment_idx_per_point]) + delta_s) * ds) - intra_point_offsets
 
@@ -249,6 +252,8 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         # calculate and return the integer and fractional parts of the index
         O_idx = np.round(progress_in_points).astype(np.int)
 
+        # calculate the offset of the first segment starting relative to the first GFF point
+        # add this offset to delta_s for the points on the first segment (in other segments this offset is 0)
         initial_intra_point_offset = self._segments_s_start[0] % self._segments_ds[0]
         intra_point_offsets = initial_intra_point_offset * (segment_idxs == 0).astype(np.int)
 
