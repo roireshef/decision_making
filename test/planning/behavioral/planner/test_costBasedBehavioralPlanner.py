@@ -4,6 +4,7 @@ from decision_making.src.planning.behavioral.action_space.action_space import Ac
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.evaluators.rule_based_action_spec_evaluator import \
@@ -12,7 +13,6 @@ from decision_making.src.planning.behavioral.evaluators.zero_value_approximator 
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
-from decision_making.src.planning.types import FS_SX
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import EgoState, State, ObjectSize
@@ -98,3 +98,18 @@ def test_generateTerminalStates_multiRoad_accurate(scene_static):
         np.array([timestamp_in_sec + spec.t for i, spec in enumerate(action_specs) if action_specs_mask[i]])).all()
     assert (np.array(
         [len(state.road_occupancy_grid) for state in terminal_behavioral_states if state is not None]) > 0).all()
+
+    for i, state in enumerate(terminal_behavioral_states):
+        if state is not None:
+            for cell, objects_with_semantics in state.road_occupancy_grid.items():
+                if abs(action_specs[i].relative_lane.value + cell[0].value) <= 1:
+                    originial_rel_lane = RelativeLane(action_specs[i].relative_lane.value + cell[0].value)
+                    for obj in objects_with_semantics:
+                        relevant_idxs = extended_lane_frame.has_segment_ids(object_segment_ids)
+                        for rel_lane, extended_lane_frame in extended_lane_frames.items():  # loop over at most 3 unified frames
+                            # find all targets belonging to the current unified frame
+                            relevant_idxs = extended_lane_frame.has_segment_ids(object_segment_ids)
+                            if relevant_idxs.any():
+                                # convert relevant dynamic objects to fstate w.r.t. the current unified frame
+                                object_extended_fstates[relevant_idxs] = extended_lane_frame.convert_from_segment_states(
+                                    object_segment_fstates[relevant_idxs], object_segment_ids[relevant_idxs])

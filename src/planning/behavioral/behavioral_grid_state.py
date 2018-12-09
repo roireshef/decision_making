@@ -76,6 +76,7 @@ class BehavioralGridState(BehavioralState):
         # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
         extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, nav_plan)
 
+        # calculate frenet states of ego projected on all extended_lane_frames
         projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
                                  for rel_lane in extended_lane_frames}
 
