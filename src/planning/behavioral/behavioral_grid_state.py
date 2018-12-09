@@ -61,7 +61,8 @@ class BehavioralGridState(BehavioralState):
 
     @classmethod
     @prof.ProfileFunction()
-    def create_from_state(cls, state: State, nav_plan: NavigationPlanMsg, logger: Logger):
+    def create_from_state(cls, state: State, nav_plan: NavigationPlanMsg, logger: Logger,
+                          extended_lane_frames: Dict[RelativeLane, GeneralizedFrenetSerretFrame] = None):
         """
         Occupy the occupancy grid.
         This method iterates over all dynamic objects, and fits them into the relevant cell
@@ -74,7 +75,8 @@ class BehavioralGridState(BehavioralState):
         :return: created BehavioralGridState
         """
         # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
-        extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, nav_plan)
+        if extended_lane_frames is None:
+            extended_lane_frames = BehavioralGridState._create_extended_lane_frames(state, nav_plan)
 
         # calculate frenet states of ego projected on all extended_lane_frames
         projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
@@ -170,7 +172,7 @@ class BehavioralGridState(BehavioralState):
         return longitudinal_differences
 
     @staticmethod
-    def _create_generalized_frenet_frames(state: State, nav_plan: NavigationPlanMsg) -> \
+    def _create_extended_lane_frames(state: State, nav_plan: NavigationPlanMsg) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         For all available nearest lanes create a corresponding generalized frenet frame (long enough) that can

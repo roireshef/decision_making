@@ -91,25 +91,29 @@ def test_generateTerminalStates_multiRoad_accurate(scene_static):
     terminal_behavioral_states = planner._generate_terminal_states(state, behavioral_state, action_specs,
                                                                    action_specs_mask, nav_plan)
 
+    valid_specs = np.array([spec for i, spec in enumerate(action_specs) if action_specs_mask[i]])
+    valid_terminal_states = np.array([state for state in terminal_behavioral_states if state is not None])
+
     assert len(terminal_behavioral_states) == len(action_specs)
-    assert len([state for state in terminal_behavioral_states if state is not None]) == sum(action_specs_mask)
+    assert len(valid_terminal_states) == len(valid_specs)
     assert np.isclose(
         np.array([state.ego_state.timestamp_in_sec for state in terminal_behavioral_states if state is not None]),
         np.array([timestamp_in_sec + spec.t for i, spec in enumerate(action_specs) if action_specs_mask[i]])).all()
-    assert (np.array(
-        [len(state.road_occupancy_grid) for state in terminal_behavioral_states if state is not None]) > 0).all()
 
-    for i, state in enumerate(terminal_behavioral_states):
-        if state is not None:
-            for cell, objects_with_semantics in state.road_occupancy_grid.items():
-                if abs(action_specs[i].relative_lane.value + cell[0].value) <= 1:
-                    originial_rel_lane = RelativeLane(action_specs[i].relative_lane.value + cell[0].value)
-                    for obj in objects_with_semantics:
-                        relevant_idxs = extended_lane_frame.has_segment_ids(object_segment_ids)
-                        for rel_lane, extended_lane_frame in extended_lane_frames.items():  # loop over at most 3 unified frames
-                            # find all targets belonging to the current unified frame
-                            relevant_idxs = extended_lane_frame.has_segment_ids(object_segment_ids)
-                            if relevant_idxs.any():
-                                # convert relevant dynamic objects to fstate w.r.t. the current unified frame
-                                object_extended_fstates[relevant_idxs] = extended_lane_frame.convert_from_segment_states(
-                                    object_segment_fstates[relevant_idxs], object_segment_ids[relevant_idxs])
+    ego_lane_ordinal = MapUtils.get_lane_ordinal(ego.map_state.lane_id)
+    for obj in state.dynamic_objects:
+        lane_ordinal = MapUtils.get_lane_ordinal(obj.map_state.lane_id)
+        rel_lane_val = lane_ordinal - ego_lane_ordinal
+        if abs(rel_lane_val) <= 1:
+            rel_lane = RelativeLane(rel_lane_val)
+            behavioral_state.projected_ego_fstates[rel_lane]
+
+
+
+    # verify all terminal states have non-empty road_occupancy_grid
+    assert (np.array([len(state.road_occupancy_grid) for state in terminal_behavioral_states if state is not None]) > 0).all()
+
+    for i, state in enumerate(valid_terminal_states):
+        for cell, objects_with_semantics in state.road_occupancy_grid.items():
+            for obj in objects_with_semantics:
+                pass

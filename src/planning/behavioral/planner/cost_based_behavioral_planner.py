@@ -10,13 +10,13 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
     ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, \
     GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, \
     LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    LATERAL_SAFETY_MARGIN_FROM_OBJECT
+    LATERAL_SAFETY_MARGIN_FROM_OBJECT, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, RelativeLane
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator, \
     ActionRecipeEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
@@ -83,7 +83,7 @@ class CostBasedBehavioralPlanner:
 
     @prof.ProfileFunction()
     def _generate_terminal_states(self, state: State, behavioral_state: BehavioralGridState,
-                                  action_specs: List[ActionSpec], mask: np.ndarray, navigation_plan: NavigationPlanMsg) \
+                                  action_specs: List[ActionSpec], mask: np.ndarray, nav_plan: NavigationPlanMsg) \
             -> List[BehavioralGridState]:
         """
         Given current state and action specifications, generate a corresponding list of future states using the
@@ -96,22 +96,28 @@ class CostBasedBehavioralPlanner:
         ego = state.ego_state
         relative_lane_ids = MapUtils.get_closest_lane_ids(ego.map_state.lane_id)
         # collect terminal / specs' lane_ids and fstates wrt these lanes
-        existing_specs = np.array([spec for i, spec in enumerate(action_specs) if mask[i]])
+        valid_specs = np.array([spec for i, spec in enumerate(action_specs) if mask[i]])
         # get lane_ids adjacent to ego according to specs' relative lanes
-        lane_ids_per_spec = np.array([relative_lane_ids[spec.relative_lane] for spec in existing_specs])
-        action_horizons = np.array([spec.t for spec in existing_specs])
+        lane_ids_per_spec = np.array([relative_lane_ids[spec.relative_lane] for spec in valid_specs])
+        action_horizons = np.array([spec.t for spec in valid_specs])
 
-        terminal_ego_states = np.full(len(existing_specs), None)
-        terminal_dynamic_objects = np.full((len(existing_specs), len(state.dynamic_objects)), None)
+        # calculate extended_lane_frames for all neighbor lanes, whose lateral distance from ego lane <= 2
+        # the number of such lanes is at most 5
+        five_extended_lane_frames = CostBasedBehavioralPlanner._create_five_extended_lane_frames(state, nav_plan)
 
-        # calculate terminal fstates w.r.t. the extended_lane_frames
-        for rel_lane, extended_lane_frame in behavioral_state.extended_lane_frames.items():  # loop over at most 3 closest frames
+        terminal_ego_states = np.full(len(valid_specs), None)
+        terminal_dynamic_objects = np.full((len(valid_specs), len(state.dynamic_objects)), None)
+
+        # calculate terminal ego fstates w.r.t. 3 extended_lane_frames
+        for rel_lane, extended_lane_frame in behavioral_state.extended_lane_frames.items():
             # find all specs, whose target belongs to the current extended_lane_frame
             relevant_spec_idxs = extended_lane_frame.has_segment_ids(lane_ids_per_spec)
             # create terminal ego states for those specs, whose target is no the extended_lane_frame
             terminal_ego_states[relevant_spec_idxs] = self._create_terminal_ego_states_for_lane(
-                state, extended_lane_frame, existing_specs[relevant_spec_idxs])
+                state, extended_lane_frame, valid_specs[relevant_spec_idxs])
 
+        # calculate terminal predicted objects fstates on (at most) 5 adjacent extended_lane_frames
+        for _, extended_lane_frame in five_extended_lane_frames.items():
             # collect objects' lane_ids
             all_objects_lane_ids = np.array([dynamic_object.map_state.lane_id for dynamic_object in state.dynamic_objects])
             # find all objects that belong to the current extended_lane_frames
@@ -123,11 +129,18 @@ class CostBasedBehavioralPlanner:
         # create full terminal states
         terminal_states = [state.clone_with(dynamic_objects=[obj for obj in terminal_dynamic_objects[i] if obj is not None],
                                             ego_state=terminal_ego_states[i])
-                           for i in range(len(existing_specs))]
+                           for i in range(len(valid_specs))]
+
+        # for each spec calculate dictionary of its 3 closest extended frames
+        extended_frames_per_spec = [{RelativeLane(rel_lane_val - spec.relative_lane.value):
+                                     frame for rel_lane_val, frame in five_extended_lane_frames.items()
+                                     if abs(rel_lane_val - spec.relative_lane.value) <= 1}
+                                    for spec in valid_specs]
 
         # create behavioral states from states
-        valid_behavioral_grid_states = (BehavioralGridState.create_from_state(terminal_state, navigation_plan, self.logger)
-                                        for terminal_state in terminal_states)
+        valid_behavioral_grid_states = (BehavioralGridState.create_from_state(terminal_state, nav_plan, self.logger,
+                                                                              extended_frames_per_spec[i])
+                                        for i, terminal_state in enumerate(terminal_states))
         terminal_behavioral_states = [valid_behavioral_grid_states.__next__() if m else None for m in mask]
         return terminal_behavioral_states
 
@@ -186,6 +199,36 @@ class CostBasedBehavioralPlanner:
                           if terminal_segment_ids[i, j] is not None else None
                           for i, obj in enumerate(relevant_dynamic_objects)]
                          for j in range(len(action_horizons))])
+
+    @staticmethod
+    def _create_five_extended_lane_frames(state: State, nav_plan: NavigationPlanMsg) -> \
+            Dict[int, GeneralizedFrenetSerretFrame]:
+        """
+        For all available nearest lanes create a corresponding generalized frenet frame (long enough) that can
+        contain multiple original lane segments.
+        :param state:
+        :param nav_plan:
+        :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
+        """
+        # calculate unified generalized frenet frames
+        ego_lane_id = state.ego_state.map_state.lane_id
+        right_adjacent_lanes = MapUtils.get_adjacent_lane_ids(ego_lane_id, RelativeLane.RIGHT_LANE)
+        left_adjacent_lanes = MapUtils.get_adjacent_lane_ids(ego_lane_id, RelativeLane.LEFT_LANE)
+
+        # create generalized_frames for the nearest lanes
+        ref_route_start = max(0., state.ego_state.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST)
+
+        frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + 2*MAX_HORIZON_DISTANCE
+
+        five_adjacent_lanes = right_adjacent_lanes[1::-1] + [ego_lane_id] + left_adjacent_lanes[:2]
+        ego_lane_index = len(right_adjacent_lanes[1::-1])
+
+        extended_lane_frames = {i - ego_lane_index:
+            MapUtils.get_lookahead_frenet_frame(lane_id=neighbor_lane_id, starting_lon=ref_route_start,
+                                                lookahead_dist=frame_length, navigation_plan=nav_plan)
+                                for i, neighbor_lane_id in enumerate(five_adjacent_lanes)}
+        return extended_lane_frames
+
 
     @staticmethod
     @prof.ProfileFunction()
