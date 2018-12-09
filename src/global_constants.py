@@ -165,8 +165,6 @@ TRAJECTORY_NUM_POINTS = 16
 TRAJECTORY_WAYPOINT_SIZE = 11
 MAX_TRAJECTORY_WAYPOINTS = 100
 
-# lane_id of reference route; used in map_state.lane_id of objects whose map_state is calculated w.r.t. reference_route
-REFERENCE_ROUTE_LANE_ID = 0
 
 # Werling Planner #
 
