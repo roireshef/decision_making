@@ -39,11 +39,7 @@ from rte.python.os import catch_interrupt_signals
 
 # TODO: move this into config?
 NAVIGATION_PLAN = NavigationPlanMsg(np.array([231800832,
-                                              238944256,
-                                              574488576,
-                                              648347648,
-                                              648413184,
-                                              1701904384]))  # 20 for Ayalon PG
+                                              5007343616]))  # 20 for Ayalon PG
 DEFAULT_MAP_FILE = None  # os.environ['AVCODE_PATH'] + '/spav/common_data/maps/OvalMilford.bin'  # None for Ayalon PG
 
 

@@ -57,7 +57,9 @@ class MapUtils:
         :return: lane's length
         """
         nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points
-        return nominal_points[-1, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+        # TODO: lane length should be nominal_points[-1, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+        ds = nominal_points[1, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+        return ds*(nominal_points.shape[0] - 1)
 
     @staticmethod
     def get_lane_frenet_frame(lane_id: int) -> FrenetSerret2DFrame:
@@ -67,14 +69,6 @@ class MapUtils:
         :return: Frenet frame
         """
         nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points
-
-        # TODO: remove when fixed in SceneProvider
-        # Reduce the first s_values from the vector of s values
-        nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] = nominal_points[:,
-                                                                                 NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - \
-                                                                                 nominal_points[
-                                                                                     0, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] * np.ones(
-            shape=nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value].shape)
 
         points = nominal_points[:, (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value,
                                     NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value)]
@@ -171,6 +165,7 @@ class MapUtils:
         :return: distance from the right lane border, distance from the left lane border
         """
         nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points
+
         closest_s_idx = np.argmin(np.abs(nominal_points[:,
                                          NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - s))
         return (nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset.value],
