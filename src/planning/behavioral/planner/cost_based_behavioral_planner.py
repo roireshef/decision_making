@@ -94,37 +94,8 @@ class CostBasedBehavioralPlanner:
         :param mask: 1D mask vector (boolean) for filtering valid action specifications
         :return: a list of terminal states
         """
-        # create a new behavioral state at the action end
-        ego = state.ego_state
-
-        relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
-        existing_specs = [spec for i, spec in enumerate(action_specs) if mask[i]]
-        spec_lane_ids = [relative_lane_ids[spec.relative_lane] for spec in existing_specs]
-        actions_horizons = np.array([spec.t for spec in existing_specs])
-        # TODO: assumes everyone on the same road!
-
-        # Create ego states, dynamic objects, states and finally behavioral states
-        terminal_ego_states = [ego.clone_from_map_state(MapState(np.array([spec.s, spec.v, 0, spec.d, 0, 0]),
-                                                                 spec_lane_ids[i]),
-                                                        ego.timestamp_in_sec + actions_horizons[i])
-                               for i, spec in enumerate(existing_specs)]
-
-        objects_curr_fstates = np.array(
-            [dynamic_object.map_state.lane_fstate for dynamic_object in state.dynamic_objects])
-        objects_terminal_fstates = self.predictor.predict_frenet_states(objects_curr_fstates, actions_horizons)
-        terminal_dynamic_objects = [
-            [dynamic_object.clone_from_map_state(MapState(objects_terminal_fstates[i][j], lane_id))
-             for i, dynamic_object in enumerate(state.dynamic_objects)]
-            for j, lane_id in enumerate(spec_lane_ids)]
-
-        terminal_states = [
-            state.clone_with(dynamic_objects=terminal_dynamic_objects[i], ego_state=terminal_ego_states[i])
-            for i in range(len(terminal_ego_states))]
-
-        valid_behavioral_grid_states = (BehavioralGridState.create_from_state(terminal_state, self.logger)
-                                        for terminal_state in terminal_states)
-        terminal_behavioral_states = [valid_behavioral_grid_states.__next__() if m else None for m in mask]
-        return terminal_behavioral_states
+        # TODO: implement after M0
+        return [None] * len(action_specs)
 
     @staticmethod
     @prof.ProfileFunction()
