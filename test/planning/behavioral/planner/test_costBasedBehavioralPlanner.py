@@ -110,12 +110,16 @@ def test_generateTerminalStates_multiRoad_accurate(scene_static):
     obj_terminal_lon = np.array([obj_road_lon + spec.t * object_vels for spec in valid_specs])
     terminal_rel_lon = obj_terminal_lon - ego_terminal_road_lon[:, np.newaxis]
     terminal_rel_lane = np.array(obj_lane*len(valid_specs)).reshape(len(valid_specs), -1) - ego_terminal_lane[:, np.newaxis]
+    lon_dist = {}
+    grid = {}
     for i, obj in enumerate(state.dynamic_objects):
         for j, spec in enumerate(valid_specs):
             lat_cell = RelativeLane(terminal_rel_lane[j, i]) if abs(terminal_rel_lane[j, i]) <= 1 else None
             lon_cell = RelativeLongitudinalPosition.FRONT if terminal_rel_lon > 4 \
                 else RelativeLongitudinalPosition.REAR if terminal_rel_lon < -4 else RelativeLongitudinalPosition.PARALLEL
-
+            if (lat_cell, lon_cell) not in lon_dist or lon_dist[(lat_cell, lon_cell)] > abs(terminal_rel_lon):
+                lon_dist[(lat_cell, lon_cell)] = abs(terminal_rel_lon)
+                grid[(lat_cell, lon_cell)] = obj
 
     assert len(terminal_behavioral_states) == len(action_specs)
     assert len(valid_terminal_states) == len(valid_specs)
