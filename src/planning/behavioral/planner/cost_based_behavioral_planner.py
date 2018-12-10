@@ -218,7 +218,7 @@ class CostBasedBehavioralPlanner:
         # create generalized_frames for the nearest lanes
         ref_route_start = max(0., state.ego_state.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST)
 
-        frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + 2*MAX_HORIZON_DISTANCE
+        frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
 
         five_adjacent_lanes = right_adjacent_lanes[1::-1] + [ego_lane_id] + left_adjacent_lanes[:2]
         ego_lane_index = len(right_adjacent_lanes[1::-1])

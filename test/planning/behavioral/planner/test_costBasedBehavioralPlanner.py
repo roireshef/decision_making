@@ -4,7 +4,7 @@ from decision_making.src.planning.behavioral.action_space.action_space import Ac
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import RelativeLane
+from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.evaluators.rule_based_action_spec_evaluator import \
@@ -13,6 +13,7 @@ from decision_making.src.planning.behavioral.evaluators.zero_value_approximator 
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
+from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import EgoState, State, ObjectSize
@@ -65,6 +66,15 @@ def test_generateTerminalStates_multiRoad_accurate(scene_static):
 
     state = State(None, [obj1, obj2, obj3, obj4, obj5, obj6], ego)
 
+    lane_length = MapUtils.get_lane_length(200)
+    lane_ids = np.array(range(300))
+    lanes_road_lon = (np.floor(lane_ids / 10) % 10) * lane_length
+    ego_road_lon = ego.map_state.lane_fstate[FS_SX] + lanes_road_lon[ego.map_state.lane_id]
+    obj_road_lon = np.array([obj.map_state.lane_fstate[FS_SX] + lanes_road_lon[obj.map_state.lane_id]
+                             for obj in state.dynamic_objects])
+    obj_lane = [obj.map_state.lane_id % 10 for obj in state.dynamic_objects]
+    object_vels = np.array([obj.map_state.lane_fstate[FS_SV] for obj in state.dynamic_objects])
+
     action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
                                                  DynamicActionSpace(logger, predictor,
                                                                     DEFAULT_DYNAMIC_RECIPE_FILTERING)])
@@ -74,8 +84,7 @@ def test_generateTerminalStates_multiRoad_accurate(scene_static):
     action_spec_filtering = ActionSpecFiltering(filters=[FilterIfNone()], logger=logger)
 
     planner = SingleStepBehavioralPlanner(action_space, recipe_evaluator, action_spec_evaluator,
-                                          action_spec_filtering,
-                                          value_approximator, predictor, logger)
+                                          action_spec_filtering, value_approximator, predictor, logger)
 
     behavioral_state = BehavioralGridState.create_from_state(state, nav_plan, logger)
 
@@ -94,6 +103,20 @@ def test_generateTerminalStates_multiRoad_accurate(scene_static):
     valid_specs = np.array([spec for i, spec in enumerate(action_specs) if action_specs_mask[i]])
     valid_terminal_states = np.array([state for state in terminal_behavioral_states if state is not None])
 
+    ego_terminal_road_lon = np.array([state.ego_state.map_state.lane_fstate[FS_SX] +
+                                      lanes_road_lon[state.ego_state.map_state.lane_id]
+                                      for state in valid_terminal_states])
+    ego_terminal_lane = np.array([state.ego_state.map_state.lane_id % 10 for state in valid_terminal_states])
+    obj_terminal_lon = np.array([obj_road_lon + spec.t * object_vels for spec in valid_specs])
+    terminal_rel_lon = obj_terminal_lon - ego_terminal_road_lon[:, np.newaxis]
+    terminal_rel_lane = np.array(obj_lane*len(valid_specs)).reshape(len(valid_specs), -1) - ego_terminal_lane[:, np.newaxis]
+    for i, obj in enumerate(state.dynamic_objects):
+        for j, spec in enumerate(valid_specs):
+            lat_cell = RelativeLane(terminal_rel_lane[j, i]) if abs(terminal_rel_lane[j, i]) <= 1 else None
+            lon_cell = RelativeLongitudinalPosition.FRONT if terminal_rel_lon > 4 \
+                else RelativeLongitudinalPosition.REAR if terminal_rel_lon < -4 else RelativeLongitudinalPosition.PARALLEL
+
+
     assert len(terminal_behavioral_states) == len(action_specs)
     assert len(valid_terminal_states) == len(valid_specs)
     assert np.isclose(
@@ -107,8 +130,6 @@ def test_generateTerminalStates_multiRoad_accurate(scene_static):
         if abs(rel_lane_val) <= 1:
             rel_lane = RelativeLane(rel_lane_val)
             behavioral_state.projected_ego_fstates[rel_lane]
-
-
 
     # verify all terminal states have non-empty road_occupancy_grid
     assert (np.array([len(state.road_occupancy_grid) for state in terminal_behavioral_states if state is not None]) > 0).all()
