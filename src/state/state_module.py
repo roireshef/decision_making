@@ -16,11 +16,14 @@ from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIG
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
 from decision_making.src.planning.types import FS_SV, FS_SX
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
     DynamicObject, EgoState
 from mapping.src.exceptions import MapCellNotFound, raises
-
+from decision_making.src.exceptions import SceneModelIsEmpty
+from decision_making.src.messages.scene_static_message import SceneStatic
+from rte.python.logger.AV_logger import AV_Logger
 
 class DynamicObjectsData:
     def __init__(self, num_objects: int, objects_localization: List[ObjectLocalization], timestamp: int):
@@ -63,7 +66,7 @@ class StateModule(DmModule):
 
     def _scene_static_callback(self, serialized_scene_static: TsSYSSceneStatic, args: Any):
         scene_static = SceneStatic.deserialize(serialized_scene_static)
-        SceneModel.get_instance().set_scene_static(scene_static)
+        SceneStaticModel.get_instance().set_scene_static(scene_static)
 
 
     @prof.ProfileFunction()
@@ -92,6 +95,9 @@ class StateModule(DmModule):
 
                 self.pubsub.publish(pubsub_topics.STATE_LCM, state.serialize())
 
+        except SceneModelIsEmpty:
+            AV_Logger.get_logger().warn('WARN: SceneModel not initialized (scene dynamic received before scene static')
+
         except Exception as e:
             self.logger.error("StateModule._scene_dynamic_callback failed due to %s", format_exc())
 
@@ -111,7 +117,8 @@ class StateModule(DmModule):
             id = obj_loc.e_Cnt_object_id
             # TODO: Handle multiple hypotheses
             cartesian_state = obj_loc.as_object_hypothesis[0].a_cartesian_pose
-            map_state = MapState(obj_loc.as_object_hypothesis[0].a_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_Cnt_lane_segment_id)
+            map_state = MapState(obj_loc.as_object_hypothesis[0].a_lane_frenet_pose,
+                                 obj_loc.as_object_hypothesis[0].e_Cnt_lane_segment_id)
             # TODO: map_state_on_host_lane now unused, see if it makes more sense to send ego lane_id in its map_state
             map_state_on_host_lane = MapState(obj_loc.as_object_hypothesis[0].a_host_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_Cnt_lane_segment_id)
             size = ObjectSize(obj_loc.s_bounding_box.e_l_length,
@@ -144,6 +151,7 @@ class StateModule(DmModule):
                     objects_list.append(dyn_obj)  # update the list of dynamic objects
                 else:
                     continue
+
 
             except MapCellNotFound:
                 x, y, z = cartesian_state[FS_SX], cartesian_state[FS_SV], DEFAULT_OBJECT_Z_VALUE

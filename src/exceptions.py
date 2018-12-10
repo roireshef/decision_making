@@ -2,6 +2,10 @@ import six
 from abc import ABCMeta
 
 
+class SceneModelIsEmpty(Exception):
+    pass
+
+
 class MultipleObjectsWithRequestedID(Exception):
     pass
 
