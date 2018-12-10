@@ -148,7 +148,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     @property
     def map_state(self):
         # type: () -> MapState
-        if self._cached_map_state is None:
+        if self._cached_map_state is None or self._cached_map_state.lane_id==0:
             closest_lane_id = MapUtils.get_closest_lane(self.cartesian_state[:(C_Y+1)])
             lane_frenet = MapUtils.get_lane_frenet_frame(closest_lane_id)
             self._cached_map_state = MapState(lane_frenet.cstate_to_fstate(self.cartesian_state), closest_lane_id)
@@ -157,7 +157,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     @property
     def map_state_on_host_lane(self):
         # type: () -> MapState
-        if self._cached_map_state_on_host_lane is None:
+        if self._cached_map_state_on_host_lane is None or self._cached_map_state_on_host_lane.lane_id==0:
             # TODO: Agree on the way for projecting dynamic object on host lane or on its continuation
             raise ValueError('map_state_on_host_lane was called on object without it being cached')
         return self._cached_map_state_on_host_lane
