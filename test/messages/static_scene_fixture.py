@@ -148,6 +148,7 @@ def create_scene_static_from_map_api(map_api: MapAPI):
     scene_road_intersections=[]
     data = DataSceneStatic(e_b_Valid=True,
                            s_ComputeTimestamp=Timestamp(0, 0),
+                           s_RecvTimestamp=Timestamp(0, 0),
                            e_l_perception_horizon_front=.0,
                            e_l_perception_horizon_rear=.0,
                            e_Cnt_num_lane_segments=len(scene_lane_segments),
