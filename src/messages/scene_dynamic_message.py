@@ -286,22 +286,25 @@ class ObjectLocalization(PUBSUB_MSG_IMPL):
 
 class DataSceneDynamic(PUBSUB_MSG_IMPL):
     e_b_Valid = bool
+    s_RecvTimestamp = Timestamp
     s_ComputeTimestamp = Timestamp
     e_Cnt_num_objects = int
     as_object_localization = List[ObjectLocalization]
     s_host_localization = HostLocalization
 
-    def __init__(self, e_b_Valid, s_ComputeTimestamp, e_Cnt_num_objects, as_object_localization, s_host_localization):
-        # type: (bool, Timestamp, int, List[ObjectLocalization], HostLocalization) -> None
+    def __init__(self, e_b_Valid, s_RecvTimestamp, s_ComputeTimestamp, e_Cnt_num_objects, as_object_localization, s_host_localization):
+        # type: (bool, Timestamp, Timestamp, int, List[ObjectLocalization], HostLocalization) -> None
         """
 
         :param e_b_Valid:
+        :param s_RecvTimestamp:
         :param s_ComputeTimestamp:
         :param e_Cnt_num_objects: Total number of actors
         :param as_object_localization:
         :param s_host_localization:
         """
         self.e_b_Valid = e_b_Valid
+        self.s_RecvTimestamp = s_RecvTimestamp
         self.s_ComputeTimestamp = s_ComputeTimestamp
         self.e_Cnt_num_objects = e_Cnt_num_objects
         self.as_object_localization = as_object_localization
@@ -311,6 +314,7 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
         # type: () -> TsSYSDataSceneDynamic
         pubsub_msg = TsSYSDataSceneDynamic()
         pubsub_msg.e_b_Valid = self.e_b_Valid
+        pubsub_msg.s_RecvTimestamp = self.s_RecvTimestamp.serialize()
         pubsub_msg.s_ComputeTimestamp = self.s_ComputeTimestamp.serialize()
         pubsub_msg.e_Cnt_num_objects = self.e_Cnt_num_objects
 
@@ -329,7 +333,7 @@ class DataSceneDynamic(PUBSUB_MSG_IMPL):
         for i in range(pubsubMsg.e_Cnt_num_objects):
             obj_localizations.append(ObjectLocalization.deserialize(pubsubMsg.as_object_localization[i]))
 
-        return cls(pubsubMsg.e_b_Valid, Timestamp.deserialize(pubsubMsg.s_ComputeTimestamp), pubsubMsg.e_Cnt_num_objects,
+        return cls(pubsubMsg.e_b_Valid, Timestamp.deserialize(pubsubMsg.s_RecvTimestamp), Timestamp.deserialize(pubsubMsg.s_ComputeTimestamp), pubsubMsg.e_Cnt_num_objects,
                    obj_localizations, HostLocalization.deserialize(pubsubMsg.s_host_localization))
 
 
