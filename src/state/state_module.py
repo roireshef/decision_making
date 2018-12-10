@@ -6,7 +6,8 @@ from typing import Optional, Any, List
 
 import rte.python.profiler as prof
 from common_data.interface.py.idl_generated_files.Rte_Types.TsSYS_SceneDynamic import TsSYSSceneDynamic
-from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import SCENE_DYNAMIC
+from common_data.interface.py.idl_generated_files.Rte_Types.TsSYS_SceneStatic import TsSYSSceneStatic
+from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import SCENE_DYNAMIC,SCENE_STATIC
 from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
 
 from common_data.src.communication.pubsub.pubsub import PubSub
@@ -48,6 +49,7 @@ class StateModule(DmModule):
         When starting the State Module, subscribe to dynamic objects, ego state and occupancy state services.
         """
         self.pubsub.subscribe(SCENE_DYNAMIC, self._scene_dynamic_callback)
+        self.pubsub.subscribe(SCENE_STATIC, self._scene_static_callback)
 
     # TODO - implement unsubscribe only when logic is fixed in LCM
     def _stop_impl(self) -> None:
@@ -58,6 +60,11 @@ class StateModule(DmModule):
 
     def _periodic_action_impl(self) -> None:
         pass
+
+    def _scene_static_callback(self, serialized_scene_static: TsSYSSceneStatic, args: Any):
+        scene_static = SceneStatic.deserialize(serialized_scene_static)
+        SceneModel.get_instance().set_scene_static(scene_static)
+
 
     @prof.ProfileFunction()
     def _scene_dynamic_callback(self, scene_dynamic: TsSYSSceneDynamic, args: Any):

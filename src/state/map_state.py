@@ -4,6 +4,7 @@ from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import FrenetState2D, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
+from rte.python.logger.AV_logger import AV_Logger
 
 
 class MapState(PUBSUB_MSG_IMPL):
@@ -15,16 +16,20 @@ class MapState(PUBSUB_MSG_IMPL):
         self.lane_fstate = lane_fstate
         self.lane_id = lane_id
 
+
     def is_on_road(self):
         # type: () -> bool
         """
         Returns true of the object is on the road. False otherwise.
         :return: Returns true of the object is on the road. False otherwise.
         """
-        on_road_longitudinally = (0 <= self.lane_fstate[FS_SX] < MapUtils.get_lane_length(self.lane_id))
-        dist_from_right, dist_from_left = MapUtils.get_dist_to_lane_borders(self.lane_id, self.lane_fstate[FS_SX])
-        on_road_laterally = (-dist_from_right - ROAD_SHOULDERS_WIDTH < self.lane_fstate[FS_DX] < dist_from_left + ROAD_SHOULDERS_WIDTH)
-        return on_road_longitudinally and on_road_laterally
+        try:
+            on_road_longitudinally = (0 <= self.lane_fstate[FS_SX] < MapUtils.get_lane_length(self.lane_id))
+            dist_from_right, dist_from_left = MapUtils.get_dist_to_lane_borders(self.lane_id, self.lane_fstate[FS_SX])
+            on_road_laterally = (-dist_from_right - ROAD_SHOULDERS_WIDTH < self.lane_fstate[FS_DX] < dist_from_left + ROAD_SHOULDERS_WIDTH)
+            return on_road_longitudinally and on_road_laterally
+        except ValueError:
+            AV_Logger.get_logger().warn('WARN: SceneModel not initialized (scene dynamic received before scene static')
 
     def serialize(self):
         # type: () -> LcmMapState
