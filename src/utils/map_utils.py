@@ -46,6 +46,7 @@ class MapUtils:
         :param lane_id:
         :return: lane's ordinal
         """
+        # TODO: extract ordinal from lane_id numerically (lowest hexadecimal digit)
         return MapUtils.get_lane(lane_id).e_Cnt_right_adjacent_lane_count
 
     @staticmethod
@@ -66,6 +67,15 @@ class MapUtils:
         :return: Frenet frame
         """
         nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points
+
+        # TODO: remove when fixed in SceneProvider
+        # Reduce the first s_values from the vector of s values
+        nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] = nominal_points[:,
+                                                                                 NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - \
+                                                                                 nominal_points[
+                                                                                     0, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] * np.ones(
+            shape=nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value].shape)
+
         points = nominal_points[:, (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value,
                                     NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value)]
 
@@ -122,7 +132,7 @@ class MapUtils:
         """
         lanes_per_roads = [MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
                            for road_segment_id in MapUtils.get_road_segment_ids()]
-        return [lanes[int(len(lanes)/2)] for lanes in lanes_per_roads]
+        return [lanes[int(len(lanes) / 2)] for lanes in lanes_per_roads]
 
     @staticmethod
     def get_closest_lane(cartesian_point: CartesianPoint2D, road_segment_id: int = None) -> int:
@@ -399,4 +409,3 @@ class MapUtils:
             raise RoadNotFound('road {0} not found '.format(road_id))
         assert len(road_segments) == 1
         return road_segments[0]
-

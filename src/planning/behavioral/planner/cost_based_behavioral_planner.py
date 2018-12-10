@@ -93,7 +93,8 @@ class CostBasedBehavioralPlanner:
         :param mask: 1D mask vector (boolean) for filtering valid action specifications
         :return: a list of terminal states
         """
-        return [None]*len(action_specs)
+        # TODO: implement after M0
+        return [None] * len(action_specs)
 
     @staticmethod
     @prof.ProfileFunction()
