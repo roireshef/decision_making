@@ -348,16 +348,16 @@ def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints(scene_
     # find the rightest lane
     lane_id = lane_ids[0]
     frenet = MapUtils.get_lane_frenet_frame(lane_id)
-    closest_lane_id = MapUtils.get_closest_lane(frenet.points[1], road_segment_ids[0])
+    closest_lane_id = MapUtils.get_closest_lane(frenet.points[1])
     assert lane_id == closest_lane_id
     # find the leftmost lane
     lane_id = lane_ids[-1]
     frenet = MapUtils.get_lane_frenet_frame(lane_id)
-    closest_lane_id = MapUtils.get_closest_lane(frenet.points[-2], road_segment_ids[0])
+    closest_lane_id = MapUtils.get_closest_lane(frenet.points[-2])
     assert lane_id == closest_lane_id
 
 
-def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPointsNoRoadSegment(scene_static: SceneStatic):
+def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints(scene_static: SceneStatic):
     """
     test method get_closest_lane:
         find the most left and the most right lanes by points inside these lanes
@@ -375,22 +375,6 @@ def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPointsNoRoadS
     frenet = MapUtils.get_lane_frenet_frame(lane_id)
     closest_lane_id = MapUtils.get_closest_lane(frenet.points[-2])
     assert lane_id == closest_lane_id
-
-
-def test_getClosestLane_multiLaneRoad_testExceptionOnWrongRoadId(scene_static: SceneStatic):
-    """
-    test method get_closest_lane:
-        validate relevant exception on wrong road_segment_id
-    """
-    SceneStaticModel.get_instance().set_scene_static(scene_static)
-    road_segment_ids = MapUtils.get_road_segment_ids()
-    lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])
-    # find the rightest lane
-    lane_id = lane_ids[0]
-    frenet = MapUtils.get_lane_frenet_frame(lane_id)
-    wrong_road_segment_id = 28
-    closest_wrong_lane = MapUtils.get_closest_lane(frenet.points[-2], wrong_road_segment_id)
-    assert closest_wrong_lane == 280
 
 
 def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency(scene_static: SceneStatic):
