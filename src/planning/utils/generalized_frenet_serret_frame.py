@@ -92,7 +92,9 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
             # if this is not the last frame then the next already has this frame's last point as its first - omit it.
             if i < len(frenet_frames) - 1:
                 # if this frame is not the last frame, it must end in s_max
-                assert segments_s_end[i] == frame.s_max
+                # TODO: figure out how to solve it better!!
+                assert segments_s_end[i] - frame.s_max < 0.01, 'frenet frame of segment %s has problems with s_max' % \
+                                                                sub_segments[i].segment_id
                 end_ind = frame.points.shape[0] - 1
             else:
                 end_ind = int(np.ceil(segments_s_end[i] / segments_ds[i])) + 1
