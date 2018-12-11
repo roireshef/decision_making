@@ -84,7 +84,7 @@ class MapUtils:
         N = NumpyUtils.row_wise_normal(T)
         k = nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_il_curvature.value][:, np.newaxis]
         k_tag = nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_il2_curvature_rate.value][:, np.newaxis]
-        ds = nominal_points[1, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+        ds = np.mean(np.diff(nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]))   # TODO: is this necessary?
 
         return FrenetSerret2DFrame(points=points, T=T, N=N, k=k, k_tag=k_tag, ds=ds)
 
@@ -150,10 +150,13 @@ class MapUtils:
         # of the given road_segment_id or to the (horizonal) lanes of the road_segment
         # In case of the former, out of all middle lanes in all road segments, find the closest to cartesian_point,
         #  this lane determines the closest road_segment
-        if road_segment_id is None:
-            lane_ids = MapUtils._get_all_middle_lanes()
-        else:
-            lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
+        # TODO: doesn't work?
+        # if road_segment_id is None:
+        #     lane_ids = MapUtils._get_all_middle_lanes()
+        # else:
+        #     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
+        lane_ids = [lane_segment.e_i_lane_segment_id
+                    for lane_segment in SceneStaticModel.get_instance().get_scene_static().s_Data.as_scene_lane_segment]
 
         min_dist_in_lanes = np.array(
             [min(np.linalg.norm(MapUtils.get_lane(lane_id).a_nominal_path_points[:, (x_index, y_index)]
@@ -337,8 +340,7 @@ class MapUtils:
                     "MapUtils._advance_on_plan: Downstream lane not found for lane_id=%d" % (current_lane_id))
 
             downstream_lanes_ids_on_plan = [lid for lid in downstream_lanes_ids
-                                            if MapUtils.get_road_segment_id_from_lane_id(
-                    lid) == next_road_segment_id_on_plan]
+                                            if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan]
 
             if len(downstream_lanes_ids_on_plan) == 0:
                 raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan %s",

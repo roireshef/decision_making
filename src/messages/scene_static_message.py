@@ -15,6 +15,7 @@ from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS
     TsSYSSceneRoadSegment
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header
+from rte.python.logger.AV_logger import AV_Logger
 
 MAX_NOMINAL_PATH_POINT_FIELDS = 10
 
@@ -681,8 +682,13 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
             as_right_adjacent_lanes.append(AdjacentLane.deserialize(pubsubMsg.as_right_adjacent_lanes[i]))
 
         as_downstream_lanes = list()
-        for i in range(pubsubMsg.e_Cnt_downstream_lane_count):
-            as_downstream_lanes.append(LaneSegmentConnectivity.deserialize(pubsubMsg.as_downstream_lanes[i]))
+        # TODO: counter values are invalid!!
+        # TODO: data dict is messed up!!
+        # for i in range(min(1,pubsubMsg.e_Cnt_downstream_lane_count)):
+        #     as_downstream_lanes.append(LaneSegmentConnectivity.deserialize(pubsubMsg.as_downstream_lanes[i]))
+        if pubsubMsg.e_Cnt_downstream_lane_count > 0:
+            [as_downstream_lanes.append(LaneSegmentConnectivity.deserialize(ds_lane))
+             for ds_lane in pubsubMsg.as_downstream_lanes if ds_lane.e_Cnt_lane_segment_id > 0]
 
         as_upstream_lanes = list()
         for i in range(pubsubMsg.e_Cnt_upstream_lane_count):

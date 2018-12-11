@@ -185,10 +185,15 @@ class BehavioralGridState(BehavioralState):
         ref_route_start = max(0., state.ego_state.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST)
 
         frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
-        extended_lane_frames = {rel_lane:
-            MapUtils.get_lookahead_frenet_frame(lane_id=neighbor_lane_id, starting_lon=ref_route_start,
-                                                lookahead_dist=frame_length, navigation_plan=nav_plan)
-                                for rel_lane, neighbor_lane_id in closest_lanes_dict.items()}
+        extended_lane_frames = {}
+        for rel_lane, neighbor_lane_id in closest_lanes_dict.items():
+            try:
+                extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
+                    lane_id=neighbor_lane_id, starting_lon=ref_route_start,
+                    lookahead_dist=frame_length, navigation_plan=nav_plan)
+            except:
+                pass
+
         return extended_lane_frames
 
     @staticmethod

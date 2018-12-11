@@ -231,7 +231,7 @@ VELOCITY_MINIMAL_THRESHOLD = 0.001
 # Whether we filter out dynamic objects that are not on the road
 # Request by perception for viewing recordings in non-mapped areas.
 # SHOULD ALWAYS BE TRUE FOR NORMAL DM FLOW
-FILTER_OFF_ROAD_OBJECTS = True
+FILTER_OFF_ROAD_OBJECTS = False
 
 ### DM Manager configuration ###
 BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.5

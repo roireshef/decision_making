@@ -20,6 +20,7 @@ from decision_making.src.planning.trajectory.samplable_trajectory import Samplab
 from decision_making.src.planning.types import CartesianExtendedState
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.state.state import State
+from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.utils.metric_logger import MetricLogger
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 
@@ -63,6 +64,9 @@ class BehavioralPlanningFacade(DmModule):
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
 
+            # # TODO: DEBUG MESSAGE FOR MPG NAV PLAN
+            # self.logger.debug("driving road segment %s", MapUtils.get_road_segment_id_from_lane_id(state.ego_state.map_state.lane_id))
+
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
@@ -92,8 +96,8 @@ class BehavioralPlanningFacade(DmModule):
             MetricLogger.get_logger().report()
 
         except MsgDeserializationError as e:
-            self.logger.warning("MsgDeserializationError was raised. skipping planning. " +
-                                "turn on debug logging level for more details.")
+            self.logger.warning("MsgDeserializationError was raised. skipping planning.g " +
+                                "turn on debug logging level for more details. %s", traceback.format_exc())
             self.logger.debug(str(e))
         except BehavioralPlanningException as e:
             self.logger.warning(e)
