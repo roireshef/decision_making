@@ -58,7 +58,7 @@ class MapUtils:
         """
         nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points
         # TODO: lane length should be nominal_points[-1, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
-        ds = nominal_points[1, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+        ds = np.mean(np.diff(nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]))
         return ds*(nominal_points.shape[0] - 1)
 
     @staticmethod
@@ -78,7 +78,7 @@ class MapUtils:
         N = NumpyUtils.row_wise_normal(T)
         k = nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_il_curvature.value][:, np.newaxis]
         k_tag = nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_il2_curvature_rate.value][:, np.newaxis]
-        ds = nominal_points[1, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+        ds = np.mean(np.diff(nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]))   # TODO: is this necessary?
 
         return FrenetSerret2DFrame(points=points, T=T, N=N, k=k, k_tag=k_tag, ds=ds)
 
@@ -125,7 +125,7 @@ class MapUtils:
         return [lanes[int(len(lanes) / 2)] for lanes in lanes_per_roads]
 
     @staticmethod
-    def get_closest_lane(cartesian_point: CartesianPoint2D, road_segment_id: int = None) -> int:
+    def get_closest_lane(cartesian_point: CartesianPoint2D) -> int:
         """
         given cartesian coordinates, find the closest lane to the point
         :param cartesian_point: 2D cartesian coordinates
@@ -140,21 +140,21 @@ class MapUtils:
         # of the given road_segment_id or to the (horizonal) lanes of the road_segment
         # In case of the former, out of all middle lanes in all road segments, find the closest to cartesian_point,
         #  this lane determines the closest road_segment
-        if road_segment_id is None:
-            lane_ids = MapUtils._get_all_middle_lanes()
-        else:
-            lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
+        # TODO: doesn't work?
+        # if road_segment_id is None:
+        #     lane_ids = MapUtils._get_all_middle_lanes()
+        # else:
+        #     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
+        lane_ids = [lane_segment.e_i_lane_segment_id
+                    for lane_segment in SceneStaticModel.get_instance().get_scene_static().s_Data.as_scene_lane_segment]
 
         min_dist_in_lanes = np.array(
             [min(np.linalg.norm(MapUtils.get_lane(lane_id).a_nominal_path_points[:, (x_index, y_index)]
                                 - cartesian_point, axis=1)) for lane_id in lane_ids])
         closest_lane_id = lane_ids[min_dist_in_lanes.argmin()]
 
-        if road_segment_id is None:
-            road_segment_id = MapUtils.get_road_segment_id_from_lane_id(closest_lane_id)
-            return MapUtils.get_closest_lane(cartesian_point, road_segment_id)
-
         return closest_lane_id
+
 
     @staticmethod
     def get_dist_to_lane_borders(lane_id: int, s: float) -> (float, float):
