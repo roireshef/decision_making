@@ -270,7 +270,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
     def _get_closest_index_on_frame(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
         """
         from s, a vector of longitudinal progress on the frame, return the index of the closest point on the frame and
-        a normalized fractional value in the range [0,1] representing the projection on this closest point.
+        a value in the range [0, ds] representing the projection on this closest point.
         The returned values, if summed, represent a "fractional index" on the curve.
         :param s: a vector of longitudinal progress on the frame
         :return: a tuple of: (indices of closest points, (signed) distance on s axis between the given s coordinate and
