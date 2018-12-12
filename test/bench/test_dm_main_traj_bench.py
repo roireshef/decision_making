@@ -15,7 +15,7 @@ from decision_making.test.bench import dm_main_trajectory_bench
 test_fixed_trajectory_file = Paths.get_resource_absolute_path_filename(
         'fixed_trajectory_files/test_trajectory.txt')
 
-#
+# TODO: rewrite this!
 # @pytest.mark.skip(reason="scenario is obsolete. this test needs to be rewritten")
 # def test_DMMainTraj_Bench_SingleLocalizationMessage_TrajectoryOutput():
 #
