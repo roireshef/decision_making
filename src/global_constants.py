@@ -141,7 +141,7 @@ ROAD_MAP_REQUIRED_RES = 5
 EXP_CLIP_TH = 50.0
 
 # Number of (best) trajectories to publish to visualization
-NUM_ALTERNATIVE_TRAJECTORIES = 50
+MAX_VIS_TRAJECTORIES_NUMBER = 64
 
 # Number of points in trajectories for sending out to visualization (currently VizTool freezes when there are too much)
 MAX_NUM_POINTS_FOR_VIZ = 60
@@ -253,6 +253,7 @@ METRIC_LOGGER_DELIMITER= '_'
 ##### Log messages
 # TODO: update decision_making_sim messages
 LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS = "Received mission params"
+LOG_MSG_SCENE_STATIC_RECEIVED = "Received SceneStatic message with Timestamp: "
 LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG = "Publishing Trajectory"
 LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT = "BehavioralPlanningFacade output is"
 LOG_MSG_BEHAVIORAL_PLANNER_SEMANTIC_ACTION = "Chosen behavioral semantic action is"

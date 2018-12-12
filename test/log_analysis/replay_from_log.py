@@ -72,8 +72,7 @@ def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
                          TrajectoryPlanningStrategy.PARKING: planner,
                          TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
     trajectory_planning_module = TrajectoryPlanningFacadeNoLcm(pubsub=pubsub, logger=logger,
-                                                               strategy_handlers=strategy_handlers,
-                                                               short_time_predictor=predictor)
+                                                               strategy_handlers=strategy_handlers)
 
     # Execute TP
     trajectory_planning_module._periodic_action_impl()

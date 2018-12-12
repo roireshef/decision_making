@@ -1,7 +1,6 @@
+import numpy as np
 from logging import Logger
 from typing import Tuple
-
-import numpy as np
 
 from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
@@ -18,7 +17,7 @@ from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FrenetState2D, C_A, C_K, D5, Limits
 from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.planning.utils.math import Math
+from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -61,7 +60,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_frenet_state[FS_SX],
                                        (goal_frenet_state[FS_SX] + ego_frenet_state[FS_SX]) / 2)),
-                               np.min((SX_OFFSET_MAX + goal_frenet_state[FS_SX], (len(reference_route.O) - 1) * reference_route.ds)),
+                               np.min((SX_OFFSET_MAX + goal_frenet_state[FS_SX], reference_route.s_max)),
                                SX_STEPS)
 
         sv_range = np.linspace(

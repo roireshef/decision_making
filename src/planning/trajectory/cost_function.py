@@ -5,11 +5,11 @@ from decision_making.src.global_constants import EXP_CLIP_TH, PLANNING_LOOKAHEAD
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams
 from decision_making.src.planning.types import C_YAW, C_Y, C_X, C_A, C_K, C_V, CartesianExtendedTrajectories, \
     FrenetTrajectories2D, FS_DX
-from decision_making.src.planning.utils.math import Math
+from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import State
-from mapping.src.service.map_service import MapService
+from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.transformations.geometry_utils import CartesianFrame
 
 
@@ -66,13 +66,16 @@ class TrajectoryPlannerCosts:
                 return np.zeros((ctrajectories.shape[0], ctrajectories.shape[1]))
 
             # TODO: this assumes everybody on the same road!
-            road_frenet = MapService.get_instance()._rhs_roads_frenet[state.ego_state.map_state.road_id]
+            ego_lane_frenet = MapUtils.get_lane_frenet_frame(state.ego_state.map_state.lane_id)
+            objects_relative_fstates = np.array([ego_lane_frenet.cstate_to_fstate(obj.cartesian_state)
+                                                 for obj in close_objects])
 
             # Predict objects' future movement, then project predicted objects' states to Cartesian frame
-            objects_fstates = np.array([obs.map_state.road_fstate for obs in close_objects])
+            # TODO: objects' frenet states relative to ego should be part of Scene Provider!!
+            # TODO: this assumes predictor works with frenet frames relative to ego-lane - figure out if this is how we want to do it in the future.
             objects_predicted_ftrajectories = predictor.predict_frenet_states(
-                objects_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
-            objects_predicted_ctrajectories = road_frenet.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
+                objects_relative_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
+            objects_predicted_ctrajectories = ego_lane_frenet.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
 
             objects_sizes = np.array([[obs.size.length, obs.size.width] for obs in close_objects])
             ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])

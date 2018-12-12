@@ -1,17 +1,22 @@
 from logging import Logger
+import numpy as np
 
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, RelativeLane, \
-    RelativeLongitudinalPosition
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
+from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import ObjectSize, State, EgoState, DynamicObject
 from mapping.src.service.map_service import MapService
+from decision_making.test.messages.static_scene_fixture import scene_static_no_split
 
 
 # test specify for dynamic action from a slightly unsafe position:
 # when the distance from the target is just 2 seconds * target velocity, without adding the cars' sizes
-def test_specifyGoal_slightlyUnsafeState_shouldSucceed():
+def test_specifyGoal_slightlyUnsafeState_shouldSucceed(scene_static_no_split):
+    SceneStaticModel.get_instance().set_scene_static(scene_static_no_split)
+
     logger = Logger("test_specifyDynamicAction")
     road_id = 20
     ego_lon = 400.
@@ -27,7 +32,7 @@ def test_specifyGoal_slightlyUnsafeState_shouldSucceed():
     ego_cpoint, ego_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, ego_lon,
                                                                                        road_mid_lat - lane_width)
     ego = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0,
-                                               cartesian_state=[ego_cpoint[0], ego_cpoint[1], ego_yaw, ego_vel, 0, 0],
+                                               cartesian_state=np.array([ego_cpoint[0], ego_cpoint[1], ego_yaw, ego_vel, 0, 0]),
                                                size=size, confidence=0)
 
     obj_vel = 10
@@ -35,7 +40,7 @@ def test_specifyGoal_slightlyUnsafeState_shouldSucceed():
     obj_cpoint, obj_yaw = MapService.get_instance().convert_road_to_global_coordinates(road_id, obj_lon,
                                                                                        road_mid_lat - lane_width)
     obj = DynamicObject.create_from_cartesian_state(obj_id=0, timestamp=0,
-                                                    cartesian_state=[obj_cpoint[0], obj_cpoint[1], obj_yaw, obj_vel, 0.0, 0.0],
+                                                    cartesian_state=np.array([obj_cpoint[0], obj_cpoint[1], obj_yaw, obj_vel, 0.0, 0.0]),
                                                     size=size, confidence=0)
 
     state = State(None, [obj], ego)

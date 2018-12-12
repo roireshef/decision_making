@@ -6,14 +6,14 @@ import numpy as np
 from decision_making.src.exceptions import BehavioralPlanningException
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MIN_OVERTAKE_VEL, \
     SPECIFICATION_MARGIN_TIME_DELAY, LON_ACC_LIMITS
-from decision_making.src.planning.behavioral.behavioral_grid_state import \
-    BehavioralGridState, SemanticGridCell, RelativeLane, RelativeLongitudinalPosition
-from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, SemanticGridCell
+from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
+    RelativeLongitudinalPosition
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
 from decision_making.src.planning.types import FrenetPoint, FP_SX, LAT_CELL, FP_DX
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from mapping.src.service.map_service import MapService
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
@@ -66,7 +66,9 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         is_forward_right_fast = right_lane_action_ind is not None and \
                                 desired_vel - action_specs[right_lane_action_ind].v < MIN_OVERTAKE_VEL
         # boolean whether the right cell near ego is occupied
-        is_right_occupied = not behavioral_state.right_lane_exists or \
+        ego = behavioral_state.ego_state
+        lane_id = ego.map_state.lane_id
+        is_right_occupied = len(MapUtils.get_adjacent_lane_ids(lane_id, RelativeLane.RIGHT_LANE)) == 0 or \
                             (RelativeLane.RIGHT_LANE, RelativeLongitudinalPosition.PARALLEL) in \
                             behavioral_state.road_occupancy_grid
 
@@ -80,15 +82,13 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
                                   action_specs[left_lane_action_ind].v - action_specs[current_lane_action_ind].v >=
                                   MIN_OVERTAKE_VEL)
 
-        ego = behavioral_state.ego_state
-        road_id = ego.map_state.road_id
-        road_frenet = MapService.get_instance()._rhs_roads_frenet[road_id]
-        ego_fpoint = behavioral_state.ego_state.map_state.road_fstate[[FP_SX, FP_DX]]
+        lane_frenet = MapUtils.get_lane_frenet_frame(lane_id)
+        ego_fpoint = behavioral_state.ego_state.map_state.lane_fstate[[FP_SX, FP_DX]]
 
         dist_to_backleft, safe_left_dist_behind_ego = RuleBasedActionSpecEvaluator._calc_safe_dist_behind_ego(
-            behavioral_state, road_frenet, ego_fpoint, RelativeLane.LEFT_LANE)
+            behavioral_state, lane_frenet, ego_fpoint, RelativeLane.LEFT_LANE)
         dist_to_backright, safe_right_dist_behind_ego = RuleBasedActionSpecEvaluator._calc_safe_dist_behind_ego(
-            behavioral_state, road_frenet, ego_fpoint, RelativeLane.RIGHT_LANE)
+            behavioral_state, lane_frenet, ego_fpoint, RelativeLane.RIGHT_LANE)
 
         self.logger.debug("Distance\safe distance to back left car: %s\%s.", dist_to_backleft,
                           safe_left_dist_behind_ego)
@@ -96,7 +96,7 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
                           safe_right_dist_behind_ego)
 
         # boolean whether the left cell near ego is occupied
-        is_left_occupied = not behavioral_state.left_lane_exists or \
+        is_left_occupied = len(MapUtils.get_adjacent_lane_ids(lane_id, RelativeLane.LEFT_LANE)) == 0 or \
                            (RelativeLane.LEFT_LANE, RelativeLongitudinalPosition.PARALLEL) in \
                            behavioral_state.road_occupancy_grid
         costs = np.ones(len(action_recipes))
@@ -115,13 +115,13 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
         return costs
 
     @staticmethod
-    def _calc_safe_dist_behind_ego(behavioral_state: BehavioralGridState, road_frenet: FrenetSerret2DFrame,
+    def _calc_safe_dist_behind_ego(behavioral_state: BehavioralGridState, lane_frenet: FrenetSerret2DFrame,
                                    ego_fpoint: FrenetPoint, relative_lane: RelativeLane) -> [float, float]:
         """
         Calculate both actual and safe distances between rear object and ego on the left side or right side.
         If there is no object, return actual dist = inf and safe dist = 0.
         :param behavioral_state: semantic behavioral state, containing the semantic grid
-        :param road_frenet: road Frenet frame for ego's road_id
+        :param lane_frenet: lane Frenet frame for ego's lane_id
         :param ego_fpoint: frenet point of ego location
         :param relative_lane: RelativeLane enum value (either LEFT_LANE or RIGHT_LANE)
         :return: longitudinal distance between ego and rear object, safe distance between ego and the rear object
@@ -133,7 +133,7 @@ class RuleBasedActionSpecEvaluator(ActionSpecEvaluator):
             back_objects = behavioral_state.road_occupancy_grid[(relative_lane, RelativeLongitudinalPosition.REAR)]
         if len(back_objects) > 0:
             back_object = back_objects[0].dynamic_object
-            back_fpoint = road_frenet.cpoint_to_fpoint(np.array([back_object.x, back_object.y]))
+            back_fpoint = lane_frenet.cpoint_to_fpoint(np.array([back_object.x, back_object.y]))
             dist_to_back_obj = ego_fpoint[FP_SX] - back_fpoint[FP_SX]
             if behavioral_state.ego_state.velocity > back_object.velocity:
                 safe_dist_behind_ego = back_object.velocity * SPECIFICATION_MARGIN_TIME_DELAY

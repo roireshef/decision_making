@@ -16,7 +16,7 @@ from decision_making.src.planning.trajectory.werling_planner import WerlingPlann
 from decision_making.src.planning.types import CURVE_X, CURVE_Y, CURVE_YAW, C_X, C_Y, C_YAW, C_V, FP_SX, FP_DX, FS_DX, \
     CartesianExtendedState, CartesianTrajectory
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.planning.utils.math import Math
+from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State, ObjectSize, DynamicObject, EgoState
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
