@@ -662,7 +662,6 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSSceneLaneSegment):
-
         as_static_traffic_flow_control = list()
         for i in range(pubsubMsg.e_Cnt_static_traffic_flow_control_count):
             as_static_traffic_flow_control.append(
@@ -682,11 +681,6 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
             as_right_adjacent_lanes.append(AdjacentLane.deserialize(pubsubMsg.as_right_adjacent_lanes[i]))
 
         as_downstream_lanes = list()
-        # TODO: counter values are invalid??
-        # TODO: data dict is messed up??
-        # if pubsubMsg.e_Cnt_downstream_lane_count > 0:
-        #     [as_downstream_lanes.append(LaneSegmentConnectivity.deserialize(ds_lane))
-        #      for ds_lane in pubsubMsg.as_downstream_lanes if ds_lane.e_Cnt_lane_segment_id > 0]
         for i in range(min(1,pubsubMsg.e_Cnt_downstream_lane_count)):
             as_downstream_lanes.append(LaneSegmentConnectivity.deserialize(pubsubMsg.as_downstream_lanes[i]))
 
