@@ -103,8 +103,8 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         :param fpoint: Frenet-frame trajectory (matrix)
         :return: Cartesian-frame trajectory (matrix)
         """
-        a_s, _, N_s, _, _ = self._taylor_interp(fpoints[:, FP_SX])
-        return a_s + N_s * fpoints[:, [FP_DX]]
+        a_s, _, N_s, _, _ = self._taylor_interp(fpoints[..., FP_SX])
+        return a_s + N_s * fpoints[..., [FP_DX]]
 
     def fstate_to_cstate(self, fstate: FrenetState2D) -> CartesianExtendedState:
         """
