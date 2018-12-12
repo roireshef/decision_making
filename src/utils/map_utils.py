@@ -57,7 +57,9 @@ class MapUtils:
         :return: lane's length
         """
         nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points
-        return nominal_points[-1, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+        # TODO: lane length should be nominal_points[-1, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
+        ds = np.mean(np.diff(nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]))
+        return ds*(nominal_points.shape[0] - 1)
 
     @staticmethod
     def get_lane_frenet_frame(lane_id: int) -> FrenetSerret2DFrame:
@@ -67,14 +69,6 @@ class MapUtils:
         :return: Frenet frame
         """
         nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points
-
-        # TODO: remove when fixed in SceneProvider
-        # Reduce the first s_values from the vector of s values
-        nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] = nominal_points[:,
-                                                                                 NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - \
-                                                                                 nominal_points[
-                                                                                     0, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] * np.ones(
-            shape=nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value].shape)
 
         points = nominal_points[:, (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value,
                                     NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value)]
@@ -135,7 +129,7 @@ class MapUtils:
         return [lanes[int(len(lanes) / 2)] for lanes in lanes_per_roads]
 
     @staticmethod
-    def get_closest_lane(cartesian_point: CartesianPoint2D, road_segment_id: int = None) -> int:
+    def get_closest_lane(cartesian_point: CartesianPoint2D) -> int:
         """
         given cartesian coordinates, find the closest lane to the point
         :param cartesian_point: 2D cartesian coordinates
@@ -163,11 +157,8 @@ class MapUtils:
                                 - cartesian_point, axis=1)) for lane_id in lane_ids])
         closest_lane_id = lane_ids[min_dist_in_lanes.argmin()]
 
-        if road_segment_id is None:
-            road_segment_id = MapUtils.get_road_segment_id_from_lane_id(closest_lane_id)
-            return MapUtils.get_closest_lane(cartesian_point, road_segment_id)
-
         return closest_lane_id
+
 
     @staticmethod
     def get_dist_to_lane_borders(lane_id: int, s: float) -> (float, float):
@@ -178,6 +169,7 @@ class MapUtils:
         :return: distance from the right lane border, distance from the left lane border
         """
         nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points
+
         closest_s_idx = np.argmin(np.abs(nominal_points[:,
                                          NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - s))
         return (nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_left_offset.value],
