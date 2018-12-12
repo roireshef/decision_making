@@ -9,6 +9,7 @@ from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.planning.custom_fixtures import state
 import numpy as np
 
+from decision_making.test.planning.custom_fixtures import short_testable_map_api
 
 def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTrue():
     route_points = RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5)
