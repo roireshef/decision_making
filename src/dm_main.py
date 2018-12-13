@@ -4,6 +4,9 @@ from os import getpid
 import numpy as np
 import os
 
+from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
+    SingleLaneActionSpecEvaluator
+
 from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
 from common_data.src.communication.pubsub.pubsub import PubSub
 from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
@@ -97,7 +100,7 @@ class DmInitialization:
                                                                         DEFAULT_DYNAMIC_RECIPE_FILTERING)])
 
         recipe_evaluator = None
-        action_spec_evaluator = RuleBasedActionSpecEvaluator(logger)
+        action_spec_evaluator = SingleLaneActionSpecEvaluator(logger)  # RuleBasedActionSpecEvaluator(logger)
         value_approximator = ZeroValueApproximator(logger)
 
         action_spec_filtering = ActionSpecFiltering(filters=[FilterIfNone()], logger=logger)
