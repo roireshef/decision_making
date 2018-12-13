@@ -1,20 +1,14 @@
-from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator
 from logging import Logger
 from typing import List
 
 import numpy as np
 
-from decision_making.src.exceptions import BehavioralPlanningException
-from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED, MIN_OVERTAKE_VEL, \
-    SPECIFICATION_MARGIN_TIME_DELAY, LON_ACC_LIMITS
-from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState, SemanticGridCell
+from decision_making.src.global_constants import BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED
+from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, ActionSpec, ActionType, RelativeLane, \
-    RelativeLongitudinalPosition, StaticActionRecipe
+    StaticActionRecipe
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import \
     ActionSpecEvaluator
-from decision_making.src.planning.types import FrenetPoint, FP_SX, LAT_CELL, FP_DX
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.utils.map_utils import MapUtils
 
 
 class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
@@ -23,6 +17,13 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
 
     def evaluate(self, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
                  action_specs: List[ActionSpec], action_specs_mask: List[bool]) -> np.ndarray:
+        """
+        Evluates Action-Specifications based on the following logic:
+         * Only takes into account actions on RelativeLane.SAME_LANE
+         * If there's a leading vehicle, try following it (ActionType.FOLLOW_LANE, lowest aggressiveness possible)
+         * If no action from the previous bullet is found valid, find the ActionType.FOLLOW_LANE action with maximal
+         allowed velocity (lowest aggressiveness possible)
+        """
         costs = np.full(len(action_recipes), 1)
 
         follow_vehicle_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
