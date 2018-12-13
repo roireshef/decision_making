@@ -11,7 +11,8 @@ from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_to
 
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE, \
-    DEFAULT_OBJECT_Z_VALUE, FILTER_OFF_ROAD_OBJECTS, VELOCITY_MINIMAL_THRESHOLD
+    DEFAULT_OBJECT_Z_VALUE, FILTER_OFF_ROAD_OBJECTS, VELOCITY_MINIMAL_THRESHOLD, \
+    LOG_MSG_STATE_MODULE_PUBLISH_DYNAMIC_SCENE
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
 from decision_making.src.planning.types import FS_SV, FS_SX
@@ -63,6 +64,8 @@ class StateModule(DmModule):
     def _scene_dynamic_callback(self, scene_dynamic: TsSYSSceneDynamic, args: Any):
         try:
             with self._scene_dynamic_lock:
+                self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_DYNAMIC_SCENE, scene_dynamic._dic)
+
                 self._scene_dynamic = SceneDynamic.deserialize(scene_dynamic)
                 timestamp = DynamicObject.sec_to_ticks(self._scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
                 occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
@@ -81,6 +84,7 @@ class StateModule(DmModule):
                                                   timestamp=timestamp)
                 dynamic_objects = self.create_dyn_obj_list(dyn_obj_data)
                 state = State(occupancy_state, dynamic_objects, ego_state)
+                
                 self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
 
                 self.pubsub.publish(pubsub_topics.STATE_LCM, state.serialize())
