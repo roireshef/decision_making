@@ -64,8 +64,7 @@ class StateModule(DmModule):
     def _scene_dynamic_callback(self, scene_dynamic: TsSYSSceneDynamic, args: Any):
         try:
             with self._scene_dynamic_lock:
-                self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_DYNAMIC_SCENE, scene_dynamic._dic)
-
+                # self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_DYNAMIC_SCENE, scene_dynamic._dic)
                 self._scene_dynamic = SceneDynamic.deserialize(scene_dynamic)
                 timestamp = DynamicObject.sec_to_ticks(self._scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
                 occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
