@@ -156,8 +156,9 @@ class TrajectoryPlanningFacade(DmModule):
                         num=TRAJECTORY_NUM_POINTS) + timestamp)
         self._last_trajectory = samplable_trajectory
 
-        vehicle_origin_trajectory_points = Transformations.transform_trajectory_between_ego_center_and_ego_origin(
-            center_vehicle_trajectory_points, direction=1)
+        vehicle_origin_trajectory_points = center_vehicle_trajectory_points
+            #Transformations.transform_trajectory_between_ego_center_and_ego_origin(
+            #center_vehicle_trajectory_points, direction=1)
 
         # publish results to the lower DM level (Control)
         # TODO: put real values in tolerance and maximal velocity fields
