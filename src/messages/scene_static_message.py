@@ -681,7 +681,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
             as_right_adjacent_lanes.append(AdjacentLane.deserialize(pubsubMsg.as_right_adjacent_lanes[i]))
 
         as_downstream_lanes = list()
-        for i in range(min(1,pubsubMsg.e_Cnt_downstream_lane_count)):
+        for i in range(pubsubMsg.e_Cnt_downstream_lane_count):
             as_downstream_lanes.append(LaneSegmentConnectivity.deserialize(pubsubMsg.as_downstream_lanes[i]))
 
         as_upstream_lanes = list()

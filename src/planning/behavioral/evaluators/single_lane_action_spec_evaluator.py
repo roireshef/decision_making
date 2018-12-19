@@ -18,11 +18,16 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
     def evaluate(self, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
                  action_specs: List[ActionSpec], action_specs_mask: List[bool]) -> np.ndarray:
         """
-        Evluates Action-Specifications based on the following logic:
-         * Only takes into account actions on RelativeLane.SAME_LANE
-         * If there's a leading vehicle, try following it (ActionType.FOLLOW_LANE, lowest aggressiveness possible)
-         * If no action from the previous bullet is found valid, find the ActionType.FOLLOW_LANE action with maximal
-         allowed velocity (lowest aggressiveness possible)
+        Evaluates Action-Specifications based on the following logic:
+        * Only takes into account actions on RelativeLane.SAME_LANE
+        * If there's a leading vehicle, try following it (ActionType.FOLLOW_LANE, lowest aggressiveness possible)
+        * If no action from the previous bullet is found valid, find the ActionType.FOLLOW_LANE action with maximal
+        allowed velocity and lowest aggressiveness possible.
+        :param behavioral_state: semantic behavioral state, containing the semantic grid.
+        :param action_recipes: semantic actions list.
+        :param action_specs: specifications of action_recipes.
+        :param action_specs_mask: a boolean mask, showing True where actions_spec is valid (and thus will be evaluated).
+        :return: numpy array of costs of semantic actions. Only one action gets a cost of 0, the rest get 1.
         """
         costs = np.full(len(action_recipes), 1)
 

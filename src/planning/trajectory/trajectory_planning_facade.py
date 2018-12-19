@@ -150,25 +150,20 @@ class TrajectoryPlanningFacade(DmModule):
         :param samplable_trajectory: the trajectory plan to sample points from (samplable object)
         :return: a TrajectoryPlan message ready to send to the controller
         """
-        center_vehicle_trajectory_points = samplable_trajectory.sample(
+        trajectory_points = samplable_trajectory.sample(
             np.linspace(start=0,
                         stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
                         num=TRAJECTORY_NUM_POINTS) + timestamp)
         self._last_trajectory = samplable_trajectory
 
-        vehicle_origin_trajectory_points = center_vehicle_trajectory_points
-            #Transformations.transform_trajectory_between_ego_center_and_ego_origin(
-            #center_vehicle_trajectory_points, direction=1)
-
         # publish results to the lower DM level (Control)
         # TODO: put real values in tolerance and maximal velocity fields
         # TODO: understand if padding with zeros is necessary
-        waypoints = np.vstack((np.hstack((vehicle_origin_trajectory_points,
-                                          np.zeros(shape=[TRAJECTORY_NUM_POINTS,
-                                                          TRAJECTORY_WAYPOINT_SIZE -
-                                                          vehicle_origin_trajectory_points.shape[1]]))),
-                               np.zeros(
-                                   shape=[MAX_TRAJECTORY_WAYPOINTS - TRAJECTORY_NUM_POINTS, TRAJECTORY_WAYPOINT_SIZE])))
+        waypoints = np.vstack((np.hstack((trajectory_points, np.zeros(shape=[TRAJECTORY_NUM_POINTS,
+                                                                             TRAJECTORY_WAYPOINT_SIZE -
+                                                                             trajectory_points.shape[1]]))),
+                               np.zeros(shape=[MAX_TRAJECTORY_WAYPOINTS - TRAJECTORY_NUM_POINTS,
+                                               TRAJECTORY_WAYPOINT_SIZE])))
 
         timestamp_object = Timestamp.from_seconds(timestamp)
         map_origin = MapOrigin(e_phi_latitude=0, e_phi_longitude=0, e_l_altitude=0, s_Timestamp=timestamp_object)
