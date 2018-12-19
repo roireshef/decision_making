@@ -52,7 +52,6 @@ class StateModule(DmModule):
         When starting the State Module, subscribe to dynamic objects, ego state and occupancy state services.
         """
         self.pubsub.subscribe(SCENE_DYNAMIC, self._scene_dynamic_callback)
-        self.pubsub.subscribe(SCENE_STATIC, self._scene_static_callback)
 
     # TODO - implement unsubscribe only when logic is fixed in LCM
     def _stop_impl(self) -> None:
@@ -63,10 +62,6 @@ class StateModule(DmModule):
 
     def _periodic_action_impl(self) -> None:
         pass
-
-    def _scene_static_callback(self, serialized_scene_static: TsSYSSceneStatic, args: Any):
-        scene_static = SceneStatic.deserialize(serialized_scene_static)
-        SceneStaticModel.get_instance().set_scene_static(scene_static)
 
 
     @prof.ProfileFunction()
@@ -136,7 +131,7 @@ class StateModule(DmModule):
                                         confidence=confidence)
 
                 # When filtering off-road objects, try to localize object on road.
-                if not FILTER_OFF_ROAD_OBJECTS or dyn_obj.map_state.is_on_road():
+                if not FILTER_OFF_ROAD_OBJECTS
 
                     # Required to verify the object has map state and that the velocity exceeds a minimal value.
                     # If FILTER_OFF_ROAD_OBJECTS is true, it means that the object is on road - therefore has map
