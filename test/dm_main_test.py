@@ -19,7 +19,7 @@ from decision_making.src.planning.types import C_Y
 from decision_making.test import constants
 from decision_making.test.constants import TP_MOCK_FIXED_TRAJECTORY_FILENAME
 from decision_making.test.utils_for_tests import Utils
-from mapping.src.service.map_service import MapService
+from decision_making.src.mapping.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 

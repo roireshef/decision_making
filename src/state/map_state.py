@@ -1,9 +1,9 @@
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmMapState import LcmMapState
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from decision_making.src.mapping.model.constants import ROAD_SHOULDERS_WIDTH
 from decision_making.src.planning.types import FrenetState2D, FS_SX, FS_DX
 from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
 
 
 class MapState(PUBSUB_MSG_IMPL):

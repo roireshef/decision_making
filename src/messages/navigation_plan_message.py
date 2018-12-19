@@ -3,10 +3,9 @@ from typing import Optional
 import numpy as np
 
 from common_data.interface.py.idl_generated_files.Rte_Types import LcmNavigationPlan
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmNonTypedIntNumpyArray import LcmNonTypedIntNumpyArray
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
-from mapping.src.exceptions import RoadNotFound, raises
+from decision_making.src.map_exceptions import RoadNotFound, raises
 
 
 class NavigationPlanMsg(PUBSUB_MSG_IMPL):

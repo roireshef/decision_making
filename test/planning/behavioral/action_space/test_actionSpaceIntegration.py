@@ -1,6 +1,7 @@
 from logging import Logger
 import numpy as np
 
+from decision_making.src.mapping.service.map_service import MapService
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
@@ -9,8 +10,8 @@ from decision_making.src.planning.behavioral.data_objects import RelativeLane, R
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import ObjectSize, State, EgoState, DynamicObject
-from mapping.src.service.map_service import MapService
-from decision_making.test.messages.static_scene_fixture import scene_static_no_split
+from decision_making.test.messages.static_scene_fixture import scene_static_no_split, scene_static, \
+    create_scene_static_from_map_api
 
 
 # test specify for dynamic action from a slightly unsafe position:

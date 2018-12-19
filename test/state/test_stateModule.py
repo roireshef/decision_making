@@ -12,11 +12,11 @@ from decision_making.src.planning.types import FS_SV
 from decision_making.src.state.state_module import StateModule, DynamicObjectsData
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH, FILTER_OBJECT_OFF_ROAD_PATH
 from decision_making.test.messages.static_scene_fixture import create_scene_static_from_map_api
-from mapping.test.model.testable_map_fixtures import map_api_mock
+from decision_making.test.mapping.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.planning.custom_fixtures import dynamic_objects_not_on_road, scene_dynamic_fix, pubsub, \
     dynamic_objects_negative_velocity
-from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, navigation_fixture, testable_map_api
+from decision_making.test.mapping.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, navigation_fixture, testable_map_api
 
 
 # @pytest.mark.skip(reason="Irrelevent when no out-of-fov data is available")

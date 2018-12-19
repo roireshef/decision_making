@@ -4,6 +4,7 @@ import numpy as np
 
 from decision_making.src.global_constants import EPS, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, \
     LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT
+from decision_making.src.mapping.service.map_service import MapService
 from decision_making.src.messages.trajectory_parameters import TrajectoryCostParams, SigmoidFunctionParams
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
@@ -15,7 +16,6 @@ from decision_making.src.prediction.ego_aware_prediction.road_following_predicto
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import ObjectSize, DynamicObject, State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.service.map_service import MapService
 
 
 def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():

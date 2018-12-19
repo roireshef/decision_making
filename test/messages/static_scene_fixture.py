@@ -1,15 +1,14 @@
 import pytest
 import numpy as np
 
+from decision_making.src.map_exceptions import NextRoadNotFound
+from decision_making.src.mapping.model.map_api import MapAPI
+from decision_making.src.mapping.service.map_service import MapService
 from decision_making.src.messages.scene_common_messages import Header, MapOrigin, Timestamp
 from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic, SceneRoadSegment, \
     MapRoadSegmentType, SceneLaneSegment, MapLaneType, LaneSegmentConnectivity, ManeuverType, NominalPathPoint, \
     MapLaneMarkerType, BoundaryPoint, AdjacentLane, MovingDirection
 from decision_making.src.planning.types import FP_SX, FP_DX
-
-from mapping.src.exceptions import NextRoadNotFound
-from mapping.src.model.map_api import MapAPI
-from mapping.src.service.map_service import MapService
 
 
 def get_connectivity_lane_segment(map_api, road_segment_id, lane_ordinal):

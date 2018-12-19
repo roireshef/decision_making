@@ -18,7 +18,7 @@ from decision_making.src.planning.types import FS_SV, FS_SX
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import OccupancyState, ObjectSize, State, \
     DynamicObject, EgoState
-from mapping.src.exceptions import MapCellNotFound, raises
+from decision_making.src.map_exceptions import MapCellNotFound, raises
 
 
 class DynamicObjectsData:

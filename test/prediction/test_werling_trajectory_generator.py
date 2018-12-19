@@ -1,16 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-from decision_making.src.planning.types import FP_SX, FS_DX, FS_SX, C_X, C_Y
-from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.types import FS_DX, FS_SX, C_X, C_Y
 from decision_making.src.prediction.ego_aware_prediction.maneuver_spec import ManeuverSpec
 from decision_making.src.state.state import State
 from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.service.map_service import MapService
 from decision_making.test.prediction.conftest import PREDICTION_HORIZON
 from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.werling_trajectory_generator import \
     WerlingTrajectoryGenerator
-from decision_making.test.prediction.conftest import original_state_with_sorrounding_objects
 
 DEBUG_PLOT = False
 

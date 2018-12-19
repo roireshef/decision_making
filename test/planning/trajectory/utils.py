@@ -6,7 +6,7 @@ import numpy as np
 from decision_making.src.planning.types import CURVE_YAW, CartesianPoint2D, CartesianExtendedState, C_X, C_Y, C_YAW
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.state import DynamicObject, State
-from mapping.src.transformations.geometry_utils import CartesianFrame
+from decision_making.src.mapping.transformations.geometry_utils import CartesianFrame
 
 
 class RouteFixture:

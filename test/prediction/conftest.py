@@ -3,9 +3,8 @@ from typing import List
 import numpy as np
 import pytest
 
-from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
-from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, C_V
+from decision_making.src.planning.types import CartesianExtendedState
 from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
     PhysicalTimeAlignmentPredictor
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -18,8 +17,8 @@ from decision_making.src.prediction.ego_aware_prediction.trajectory_generation.w
     WerlingTrajectoryGenerator
 from decision_making.src.state.state import DynamicObject, ObjectSize, EgoState, State, OccupancyState
 from decision_making.test.planning.trajectory.mock_samplable_trajectory import MockSamplableTrajectory
-from mapping.src.service.map_service import MapService
-from mapping.test.model.testable_map_fixtures import map_api_mock
+from decision_making.src.mapping.service.map_service import MapService
+from decision_making.test.mapping.model.testable_map_fixtures import map_api_mock
 from rte.python.logger.AV_logger import AV_Logger
 from unittest.mock import patch
 

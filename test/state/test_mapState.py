@@ -1,11 +1,12 @@
 import numpy as np
 
+from decision_making.src.mapping.model.constants import ROAD_SHOULDERS_WIDTH
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.map_state import MapState
 from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
-from mapping.src.service.map_service import MapService
-from decision_making.test.messages.static_scene_fixture import scene_static_no_split
+from decision_making.src.mapping.service.map_service import MapService
+from decision_making.test.messages.static_scene_fixture import scene_static_no_split, scene_static, \
+    create_scene_static_from_map_api
 
 
 def test_isOnRoad_onRighestLane_validateOnRoad(scene_static_no_split):

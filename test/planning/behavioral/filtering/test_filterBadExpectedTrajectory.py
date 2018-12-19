@@ -30,6 +30,7 @@ import numpy as np
 
 from decision_making.test.messages.static_scene_fixture import scene_static
 
+
 def test_filter_followVehicleTracking_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_filtering_tracking_mode: BehavioralGridState,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):

@@ -7,7 +7,7 @@ from decision_making.src.prediction.action_unaware_prediction.ego_unaware_predic
 from decision_making.src.state.state import DynamicObject, EgoState, State
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.prediction.utils import Utils
-from mapping.test.model.testable_map_fixtures import map_api_mock
+from decision_making.test.mapping.model.testable_map_fixtures import map_api_mock
 
 from decision_making.test.prediction.conftest import physical_time_alignment_predictor, dynamic_init_state, \
     prediction_timestamps, static_cartesian_state, \

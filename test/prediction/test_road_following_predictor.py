@@ -10,7 +10,7 @@ from decision_making.test.prediction.conftest import road_following_predictor, i
     predicted_dyn_object_states_road_yaw, ego_samplable_trajectory, static_cartesian_state, \
     predicted_static_ego_states, static_cartesian_state, DYNAMIC_OBJECT_ID, CARTESIAN_CREATION
 from decision_making.test.prediction.utils import Utils
-from mapping.test.model.testable_map_fixtures import map_api_mock
+from decision_making.test.mapping.model.testable_map_fixtures import map_api_mock
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 def test_PredictObjects_StraightRoad_AccuratePrediction(road_following_predictor: EgoAwarePredictor,

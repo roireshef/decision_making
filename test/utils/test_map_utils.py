@@ -1,6 +1,3 @@
-from unittest.mock import patch
-
-import pytest
 import numpy as np
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
@@ -8,16 +5,12 @@ from decision_making.src.messages.navigation_plan_message import NavigationPlanM
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import FP_SX, FP_DX, FS_SX, FS_DX
-from decision_making.src.state.state import DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
-from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from decision_making.test.messages.static_scene_fixture import scene_static
-from mapping.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
-    UpstreamLaneNotFound, RoadNotFound
-from mapping.src.service.map_service import MapService
-from mapping.test.model.testable_map_fixtures import map_api_mock
-from decision_making.test.planning.custom_fixtures import dyn_obj_outside_road, dyn_obj_on_road
-from decision_making.test.messages.static_scene_fixture import scene_static
+from decision_making.src.map_exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, \
+    DownstreamLaneNotFound, UpstreamLaneNotFound
+from decision_making.src.mapping.service.map_service import MapService
+from decision_making.test.messages.static_scene_fixture import scene_static_no_split, scene_static, \
+    create_scene_static_from_map_api
 
 MAP_SPLIT = "PG_split.bin"
 SMALL_DISTANCE_ERROR = 0.01

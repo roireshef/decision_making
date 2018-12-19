@@ -22,7 +22,7 @@ from decision_making.src.prediction.ego_aware_prediction.road_following_predicto
 
 from decision_making.src.state.state_module import StateModule
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
-from mapping.test.model.testable_map_fixtures import map_api_mock, short_map_api_mock
+from decision_making.test.mapping.model.testable_map_fixtures import map_api_mock, short_map_api_mock
 
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING
@@ -32,15 +32,16 @@ from decision_making.test.planning.custom_fixtures import pubsub, behavioral_fac
 
 from decision_making.test.messages.static_scene_fixture import scene_static_no_split, scene_static, \
     create_scene_static_from_map_api
-from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, navigation_fixture,\
+
+from decision_making.test.mapping.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, navigation_fixture,\
     short_testable_map_api, testable_map_api
+
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=short_map_api_mock)
 def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: PubSub,
                                                                         behavioral_facade: BehavioralPlanningFacade,
                                                                         state_module:StateModule,
                                                                         short_testable_map_api):
-
 
     short_scene_static = create_scene_static_from_map_api(short_testable_map_api)
     SceneStaticModel.get_instance().set_scene_static(short_scene_static)
