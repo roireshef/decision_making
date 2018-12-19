@@ -1,3 +1,4 @@
+from decision_making.src.exceptions import SceneModelIsEmpty
 from decision_making.src.messages.scene_static_message import SceneStatic
 
 
@@ -35,7 +36,7 @@ class SceneStaticModel:
         :return:  The SceneStatic message
         """
         if self._scene_static_message is None:
-            raise ValueError('Scene model is empty')
+            raise SceneModelIsEmpty('Scene static model is empty')
         return self._scene_static_message
 
 

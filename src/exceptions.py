@@ -63,6 +63,10 @@ class NoValidLanesFound(BehavioralPlanningException):
     pass
 
 
+class SceneModelIsEmpty(Exception):
+    pass
+
+
 def raises(*e):
     # type: (Exception)
     """
