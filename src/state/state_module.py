@@ -1,14 +1,14 @@
-import numpy as np
 from logging import Logger
 from threading import Lock
 from traceback import format_exc
 from typing import Optional, Any, List
 
+import numpy as np
+
 import rte.python.profiler as prof
 from common_data.interface.py.idl_generated_files.Rte_Types.TsSYS_SceneDynamic import TsSYSSceneDynamic
-from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import SCENE_DYNAMIC
 from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
-
+from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import SCENE_DYNAMIC
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE, \
     DEFAULT_OBJECT_Z_VALUE, FILTER_OFF_ROAD_OBJECTS, VELOCITY_MINIMAL_THRESHOLD
