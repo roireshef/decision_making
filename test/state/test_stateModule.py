@@ -67,7 +67,7 @@ from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_F
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-@patch(FILTER_OBJECT_OFF_ROAD_PATH, False)
+# @patch(FILTER_OBJECT_OFF_ROAD_PATH, False)
 def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: PubSub,
                                                                        dynamic_objects_not_on_road: DynamicObjectsData,
                                                                        scene_dynamic_fix: SceneDynamic):

@@ -117,8 +117,8 @@ class StateModule(DmModule):
                 dyn_obj = DynamicObject(obj_id=obj_loc.e_Cnt_object_id,
                                         timestamp=timestamp,
                                         cartesian_state=cartesian_state,
-                                        map_state=map_state,
-                                        map_state_on_host_lane=map_state_on_host_lane,
+                                        map_state=map_state if map_state.lane_id > 0 else None,
+                                        map_state_on_host_lane=map_state_on_host_lane if map_state_on_host_lane.lane_id > 0 else None,
                                         size=size,
                                         confidence=confidence)
 
