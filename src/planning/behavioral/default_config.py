@@ -7,7 +7,7 @@ from rte.python.logger.AV_logger import AV_Logger
 
 # TODO: remove FilterIfAggressive() once we introduce lateral and longitudinal acceleration checks in Cartesian frame
 DEFAULT_STATIC_RECIPE_FILTERING = RecipeFiltering(filters=[FilterIfNone(), FilterIfNoLane(), FilterIfAggressive(),
-                                                           FilterBadExpectedTrajectory('predicates'), FilterLaneChanging()],
+                                                           FilterLaneChanging(), FilterBadExpectedTrajectory('predicates')],
                                                   logger=AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING))
 DEFAULT_DYNAMIC_RECIPE_FILTERING = RecipeFiltering(filters=[FilterIfNone(), FilterActionsTowardsNonOccupiedCells(),
                                                             FilterActionsTowardBackAndParallelCells(),
