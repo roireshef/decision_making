@@ -5,6 +5,7 @@ from logging import Logger
 from typing import Dict, List, Tuple, Optional
 
 import rte.python.profiler as prof
+from decision_making.src.exceptions import MappingException
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
@@ -193,8 +194,8 @@ class BehavioralGridState(BehavioralState):
                 extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
                     lane_id=neighbor_lane_id, starting_lon=ref_route_start,
                     lookahead_dist=frame_length, navigation_plan=nav_plan)
-            except:
-                pass
+            except MappingException:
+                continue
 
         return extended_lane_frames
 
