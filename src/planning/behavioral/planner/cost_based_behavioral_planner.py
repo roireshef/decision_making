@@ -101,10 +101,6 @@ class CostBasedBehavioralPlanner:
         lane_ids_per_spec = np.array([relative_lane_ids[spec.relative_lane] for spec in valid_specs])
         action_horizons = np.array([spec.t for spec in valid_specs])
 
-        # calculate extended_lane_frames for all neighbor lanes, whose lateral distance from ego lane <= 2
-        # the number of such lanes is at most 5
-        five_extended_lane_frames = CostBasedBehavioralPlanner._create_five_extended_lane_frames(state, nav_plan)
-
         terminal_ego_states = np.full(len(valid_specs), None)
         terminal_dynamic_objects = np.full((len(valid_specs), len(state.dynamic_objects)), None)
 
@@ -115,6 +111,11 @@ class CostBasedBehavioralPlanner:
             # create terminal ego states for those specs, whose target is no the extended_lane_frame
             terminal_ego_states[relevant_spec_idxs] = self._create_terminal_ego_states_for_lane(
                 state, extended_lane_frame, valid_specs[relevant_spec_idxs])
+
+        # Since at terminal states objects from more than 3 closest lanes may be relevant, but also from their neighbor
+        # lanes, calculate extended_lane_frames for all lanes, whose lateral distance from ego lane <= 2 lanes.
+        # The number of such lanes is at most 5.
+        five_extended_lane_frames = CostBasedBehavioralPlanner._create_five_extended_lane_frames(state, nav_plan)
 
         # calculate terminal predicted objects fstates on (at most) 5 adjacent extended_lane_frames
         for _, extended_lane_frame in five_extended_lane_frames.items():
@@ -148,6 +149,7 @@ class CostBasedBehavioralPlanner:
                                              actions_specs: List[ActionSpec]) -> np.array:
         """
         Create terminal ego states given: (1) frame of relative lane; (2) action_specs whose target is that lane.
+        Used by _generate_terminal_states.
         :param state: contains ego state & dynamic objects
         :param extended_lane_frame: generalized Frenet frame (GFF) of the given single target lane
         :param actions_specs: subset of the action_specs whose target is on the given target lane
@@ -167,7 +169,15 @@ class CostBasedBehavioralPlanner:
 
     def _create_terminal_objects_states_for_lane(self, state: State, extended_lane_frame: GeneralizedFrenetSerretFrame,
                                                  action_horizons: np.array, relevant_object_idxs: np.array) -> np.array:
-
+        """
+        Create terminal dynamic objects, given: (1) frame of relative lane; (2) all action horizons; (3) indices of
+        objects from the given lane. Used by _generate_terminal_states.
+        :param state:
+        :param extended_lane_frame: generalized Frenet frame (GFF) of the given single target lane
+        :param action_horizons: all action horizons (from the valid action_specs)
+        :param relevant_object_idxs: array of indices of state.dynamic_objects that are located on the given lane
+        :return: 2D array of terminal dynamic objects of shape: len(action_horizons) x len(relevant_object_idxs).
+        """
         # collect segment map states (from SP) of the objects located on the given target lane
         relevant_dynamic_objects = [obj for i, obj in enumerate(state.dynamic_objects) if relevant_object_idxs[i]]
 
@@ -205,7 +215,7 @@ class CostBasedBehavioralPlanner:
             Dict[int, GeneralizedFrenetSerretFrame]:
         """
         For all available nearest lanes create a corresponding generalized frenet frame (long enough) that can
-        contain multiple original lane segments.
+        contain multiple original lane segments. Used by _generate_terminal_states.
         :param state:
         :param nav_plan:
         :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
@@ -228,7 +238,6 @@ class CostBasedBehavioralPlanner:
                                                 lookahead_dist=frame_length, navigation_plan=nav_plan)
                                 for i, neighbor_lane_id in enumerate(five_adjacent_lanes)}
         return extended_lane_frames
-
 
     @staticmethod
     @prof.ProfileFunction()
