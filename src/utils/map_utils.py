@@ -12,7 +12,7 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
     FrenetSubSegment
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from mapping.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
+from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound
 
 
@@ -251,6 +251,7 @@ class MapUtils:
             return False
 
     @staticmethod
+    @raises(UpstreamLaneNotFound, LaneNotFound, RoadNotFound, DownstreamLaneNotFound)
     def get_lookahead_frenet_frame(lane_id: int, starting_lon: float, lookahead_dist: float,
                                    navigation_plan: NavigationPlanMsg) -> GeneralizedFrenetSerretFrame:
         """
@@ -348,6 +349,7 @@ class MapUtils:
         return lane_subsegments
 
     @staticmethod
+    @raises(UpstreamLaneNotFound)
     def _get_upstream_lanes_from_distance(starting_lane_id: int, starting_lon: float, backward_dist: float) -> \
             (List[int], float):
         """

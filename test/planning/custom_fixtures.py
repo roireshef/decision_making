@@ -84,8 +84,8 @@ def dynamic_objects_not_on_road():
                                                                                       e_Pct_location_uncertainty_yaw=0,
                                                                                       e_Cnt_host_lane_frenet_id=0,
                                                                                       a_cartesian_pose=cartesian_state,
-                                                                                      a_lane_frenet_pose=None,
-                                                                                      a_host_lane_frenet_pose=None)])]
+                                                                                      a_lane_frenet_pose=np.zeros(6),
+                                                                                      a_host_lane_frenet_pose=np.zeros(6))])]
     objects = DynamicObjectsData(num_objects=1, objects_localization=objects_localization, timestamp=3)
     yield objects
 

@@ -91,7 +91,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     confidence = float
 
     def __init__(self, obj_id, timestamp, cartesian_state, map_state, map_state_on_host_lane, size, confidence):
-        # type: (int, int, CartesianExtendedState, MapState, MapState, ObjectSize, float) -> None
+        # type: (int, int, CartesianExtendedState, Optional[MapState], Optional[MapState], ObjectSize, float) -> None
         """
         Data object that hold
         :param obj_id: object id
@@ -148,7 +148,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     @property
     def map_state(self):
         # type: () -> MapState
-        if self._cached_map_state is None or self._cached_map_state.lane_id==0:
+        if self._cached_map_state is None:
             closest_lane_id = MapUtils.get_closest_lane(self.cartesian_state[:(C_Y+1)])
             lane_frenet = MapUtils.get_lane_frenet_frame(closest_lane_id)
             self._cached_map_state = MapState(lane_frenet.cstate_to_fstate(self.cartesian_state), closest_lane_id)
@@ -157,7 +157,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     @property
     def map_state_on_host_lane(self):
         # type: () -> MapState
-        if self._cached_map_state_on_host_lane is None or self._cached_map_state_on_host_lane.lane_id==0:
+        if self._cached_map_state_on_host_lane is None:
             # TODO: Agree on the way for projecting dynamic object on host lane or on its continuation
             raise ValueError('map_state_on_host_lane was called on object without it being cached')
         return self._cached_map_state_on_host_lane
@@ -245,12 +245,13 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         # type: (LcmDynamicObject) -> DynamicObject
         return cls(lcmMsg.obj_id, lcmMsg.timestamp
                    , lcmMsg._cached_cartesian_state
-                   , MapState.deserialize(lcmMsg._cached_map_state)
-                   , MapState.deserialize(lcmMsg._cached_map_state)
+                   , MapState.deserialize(lcmMsg._cached_map_state) if lcmMsg._cached_map_state.lane_id > 0 else None
+                   , MapState.deserialize(lcmMsg._cached_map_state) if lcmMsg._cached_map_state.lane_id > 0 else None
                    , ObjectSize.deserialize(lcmMsg.size)
                    , lcmMsg.confidence)
 
 
+# TODO: remove map_state_on_host_lane from constructor
 class EgoState(DynamicObject):
     def __init__(self, obj_id, timestamp, cartesian_state, map_state, map_state_on_host_lane, size, confidence):
         # type: (int, int, CartesianExtendedState, MapState, MapState, ObjectSize, float) -> EgoState
@@ -280,7 +281,8 @@ class EgoState(DynamicObject):
         # type: (LcmEgoState) -> EgoState
         dyn_obj = DynamicObject.deserialize(lcmMsg.dynamic_obj)
         return cls(dyn_obj.obj_id, dyn_obj.timestamp
-                   , dyn_obj._cached_cartesian_state, dyn_obj._cached_map_state
+                   , dyn_obj._cached_cartesian_state
+                   , dyn_obj._cached_map_state
                    , dyn_obj._cached_map_state_on_host_lane
                    , dyn_obj.size
                    , dyn_obj.confidence)

@@ -4,6 +4,7 @@ from os import getpid
 import numpy as np
 import os
 
+from decision_making.paths import Paths
 from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
     SingleLaneActionSpecEvaluator
 
@@ -61,7 +62,7 @@ NAVIGATION_PLAN = NavigationPlanMsg(np.array([231800832, 5007343616,  238944256,
                                               689373184, 683671552]))
 
 NAVIGATION_PLAN_PG = NavigationPlanMsg(np.array(range(20, 30)))  # 20 for Ayalon PG
-DEFAULT_MAP_FILE = os.environ['AVCODE_PATH'] + '/spav/common_data/maps/PG_split.bin'
+DEFAULT_MAP_FILE = Paths.get_repo_path() + '/../common_data/maps/PG_split.bin'
 
 
 class NavigationFacadeMock(NavigationFacade):

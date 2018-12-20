@@ -12,8 +12,8 @@ from decision_making.src.state.state import DynamicObject
 from decision_making.src.utils.map_utils import MapUtils
 from decision_making.test.constants import MAP_SERVICE_ABSOLUTE_PATH
 from decision_making.test.messages.static_scene_fixture import scene_static
-from mapping.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
-    UpstreamLaneNotFound, RoadNotFound
+from decision_making.src.exceptions import NavigationPlanDoesNotFitMap, NavigationPlanTooShort, DownstreamLaneNotFound, \
+    UpstreamLaneNotFound
 from mapping.src.service.map_service import MapService
 from mapping.test.model.testable_map_fixtures import map_api_mock
 from decision_making.test.planning.custom_fixtures import dyn_obj_outside_road, dyn_obj_on_road
