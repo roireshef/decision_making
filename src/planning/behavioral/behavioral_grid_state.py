@@ -1,8 +1,8 @@
 from collections import defaultdict
-from enum import Enum
-import numpy as np
 from logging import Logger
 from typing import Dict, List, Tuple, Optional
+
+import numpy as np
 
 import rte.python.profiler as prof
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
@@ -10,8 +10,7 @@ from decision_making.src.messages.navigation_plan_message import NavigationPlanM
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
-    FrenetSubSegment
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
