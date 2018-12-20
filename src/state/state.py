@@ -251,6 +251,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
                    , lcmMsg.confidence)
 
 
+# TODO: remove map_state_on_host_lane from constructor
 class EgoState(DynamicObject):
     def __init__(self, obj_id, timestamp, cartesian_state, map_state, map_state_on_host_lane, size, confidence):
         # type: (int, int, CartesianExtendedState, MapState, MapState, ObjectSize, float) -> EgoState
