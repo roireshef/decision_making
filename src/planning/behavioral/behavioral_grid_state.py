@@ -1,17 +1,17 @@
 from collections import defaultdict
-from enum import Enum
-import numpy as np
 from logging import Logger
 from typing import Dict, List, Tuple, Optional
 
+import numpy as np
+
 import rte.python.profiler as prof
+from decision_making.src.exceptions import MappingException
 from decision_making.src.global_constants import LON_MARGIN_FROM_EGO, PLANNING_LOOKAHEAD_DIST, MAX_HORIZON_DISTANCE
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, RelativeLongitudinalPosition
 from decision_making.src.planning.types import FS_SX, FrenetState2D
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
-    FrenetSubSegment
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import DynamicObject, EgoState
 from decision_making.src.state.state import State
@@ -205,16 +205,22 @@ class BehavioralGridState(BehavioralState):
 
         frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
 
+        # TODO: figure out what's the best solution to deal with short/invalid lanes without crashing here.
         # create the adjacent lanes ids
         right_lanes = right_adjacent_lanes[adjacent_lanes_num-1::-1]
         left_lanes = left_adjacent_lanes[:adjacent_lanes_num]
         adjacent_lane_ids = right_lanes + [ego_lane_id] + left_lanes
         ego_lane_index = len(right_lanes)  # it can be different from adjacent_lanes_num
+        extended_lane_frames = {}
+        for i, neighbor_lane_id in enumerate(adjacent_lane_ids):
+            try:
+                extended_lane_frames[i - ego_lane_index] = MapUtils.get_lookahead_frenet_frame(
+                    lane_id=neighbor_lane_id, starting_lon=ref_route_start,
+                    lookahead_dist=frame_length, navigation_plan=nav_plan)
+            except MappingException:
+                continue
 
-        return {i - ego_lane_index:
-                MapUtils.get_lookahead_frenet_frame(lane_id=neighbor_lane_id, starting_lon=ref_route_start,
-                                                    lookahead_dist=frame_length, navigation_plan=nav_plan)
-                for i, neighbor_lane_id in enumerate(adjacent_lane_ids)}
+        return extended_lane_frames
 
     @staticmethod
     @prof.ProfileFunction()

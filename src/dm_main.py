@@ -2,6 +2,11 @@ from logging import Logger
 from os import getpid
 
 import numpy as np
+import os
+
+from decision_making.paths import Paths
+from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
+    SingleLaneActionSpecEvaluator
 
 from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
 from common_data.src.communication.pubsub.pubsub import PubSub
@@ -21,8 +26,6 @@ from decision_making.src.planning.behavioral.action_space.static_action_space im
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING
-from decision_making.src.planning.behavioral.evaluators.rule_based_action_spec_evaluator import \
-    RuleBasedActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
@@ -38,15 +41,28 @@ from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 
 # TODO: move this into config?
-NAVIGATION_PLAN = NavigationPlanMsg(np.array([5779750912,2683895808,660144128,659685376,5749604352,2851864576,
-                                              5752094720,5766250496,5766905856,5771821056,690487296,5772935168,
-                                              5774770176,689373184,683671552,231800832,5007343616,238944256,3052470272,
-                                              3054829568,5751373824,574488576,5035655168,5751111680,3365928960,
-                                              5751046144,5742395392,5727059968,5744885760,5750390784,648347648,
-                                              648413184,5750128640,5072355328,5750194176,1701904384,659816448,
-                                              5715460096,676331520,676462592,9135521792,5750063104]))
+NAVIGATION_PLAN = NavigationPlanMsg(np.array([231800832, 5007343616,  238944256, 3052470272, 3054829568,
+                                              5751373824,  574488576, 5035655168, 5751111680, 3365928960,
+                                              5751046144, 5742395392, 5727059968, 5744885760, 5750390784,
+                                              648347648,  648413184, 5750128640, 5072355328, 5750194176,
+                                              1701904384,  659816448, 5715460096,  676331520,  676462592,
+                                              9135521792, 5750063104, 2683895808,  660144128,  659685376,
+                                              5749604352, 2851864576, 5752094720, 5766250496, 5766905856,
+                                              5771821056,  690487296, 5772935168, 5774770176, 5779750912,
+                                              689373184,  683671552,
+
+                                              231800832, 5007343616, 238944256, 3052470272, 3054829568,
+                                              5751373824, 574488576, 5035655168, 5751111680, 3365928960,
+                                              5751046144, 5742395392, 5727059968, 5744885760, 5750390784,
+                                              648347648, 648413184, 5750128640, 5072355328, 5750194176,
+                                              1701904384, 659816448, 5715460096, 676331520, 676462592,
+                                              9135521792, 5750063104, 2683895808, 660144128, 659685376,
+                                              5749604352, 2851864576, 5752094720, 5766250496, 5766905856,
+                                              5771821056, 690487296, 5772935168, 5774770176, 5779750912,
+                                              689373184, 683671552]))
+
 NAVIGATION_PLAN_PG = NavigationPlanMsg(np.array(range(20, 30)))  # 20 for Ayalon PG
-DEFAULT_MAP_FILE = None  # os.environ['AVCODE_PATH'] + '/spav/common_data/maps/OvalMilford.bin'  # None for Ayalon PG
+DEFAULT_MAP_FILE = Paths.get_repo_path() + '/../common_data/maps/PG_split.bin'
 
 
 class NavigationFacadeMock(NavigationFacade):
@@ -96,7 +112,7 @@ class DmInitialization:
                                                                         DEFAULT_DYNAMIC_RECIPE_FILTERING)])
 
         recipe_evaluator = None
-        action_spec_evaluator = RuleBasedActionSpecEvaluator(logger)
+        action_spec_evaluator = SingleLaneActionSpecEvaluator(logger)  # RuleBasedActionSpecEvaluator(logger)
         value_approximator = ZeroValueApproximator(logger)
 
         action_spec_filtering = ActionSpecFiltering(filters=[FilterIfNone()], logger=logger)

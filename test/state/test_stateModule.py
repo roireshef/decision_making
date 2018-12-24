@@ -67,7 +67,7 @@ from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_F
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-@patch(FILTER_OBJECT_OFF_ROAD_PATH, False)
+# @patch(FILTER_OBJECT_OFF_ROAD_PATH, False)
 def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: PubSub,
                                                                        dynamic_objects_not_on_road: DynamicObjectsData,
                                                                        scene_dynamic_fix: SceneDynamic):
@@ -87,6 +87,7 @@ def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: P
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+@pytest.mark.skip(reason="irrelevant since was moved to SP")
 def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: PubSub,
                                                                       dynamic_objects_negative_velocity: DynamicObjectsData,
                                                                       scene_dynamic_fix: SceneDynamic,
@@ -112,6 +113,7 @@ def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: Pu
 
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
+@pytest.mark.skip(reason="irrelevant since was moved to SP")
 def test_dynamicObjCallbackWithFilter_objectOffRoad_stateWithoutObject(pubsub: PubSub,
                                                                        dynamic_objects_not_on_road: DynamicObjectsData,
                                                                        scene_dynamic_fix: SceneDynamic,

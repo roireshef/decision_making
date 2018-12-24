@@ -168,9 +168,6 @@ TRAJECTORY_NUM_POINTS = 10
 TRAJECTORY_WAYPOINT_SIZE = 11
 MAX_TRAJECTORY_WAYPOINTS = 100
 
-# lane_id of reference route; used in map_state.lane_id of objects whose map_state is calculated w.r.t. reference_route
-REFERENCE_ROUTE_LANE_ID = 0
-
 # Werling Planner #
 
 # [sec] Time-Resolution for planning
@@ -230,8 +227,8 @@ VELOCITY_MINIMAL_THRESHOLD = 0.001
 
 # Whether we filter out dynamic objects that are not on the road
 # Request by perception for viewing recordings in non-mapped areas.
-# SHOULD ALWAYS BE TRUE FOR NORMAL DM FLOW
-FILTER_OFF_ROAD_OBJECTS = True
+# Since SP is assumed to handle filtering out off-road objects, this is currently in use only in prediction.
+FILTER_OFF_ROAD_OBJECTS = False
 
 ### DM Manager configuration ###
 BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.5
@@ -266,11 +263,16 @@ LOG_MSG_BEHAVIORAL_PLANNER_SEMANTIC_ACTION = "Chosen behavioral semantic action 
 LOG_MSG_BEHAVIORAL_PLANNER_ACTION_SPEC = "Chosen action specification is"
 LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES = "TP has found %d valid trajectories to choose from"
 LOG_MSG_RECEIVED_STATE = "Received state"
-LOG_MSG_STATE_MODULE_PUBLISH_STATE = "publishing state"
+LOG_MSG_STATE_MODULE_PUBLISH_STATE = "Publishing State"
+LOG_MSG_STATE_MODULE_PUBLISH_DYNAMIC_SCENE = "Publishing Scene"
 LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME = "TrajectoryPlanningFacade._periodic_action_impl time"
 LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME = "BehavioralFacade._periodic_action_impl time"
 LOG_INVALID_TRAJECTORY_SAMPLING_TIME = "LocalizationUtils.is_actual_state_close_to_expected_state timestamp to sample is " \
                                        "%f while trajectory time range is [%f, %f]"
+LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED = "TrajectoryPlanningFacade planning from desired location (desired frenet: %s, actual frenet: %s)"
+LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL = "TrajectoryPlanningFacade planning from actual location (actual frenet: %s)"
+
+
 
 # Resolution of car timestamps in sec
 TIMESTAMP_RESOLUTION_IN_SEC = 1e-9

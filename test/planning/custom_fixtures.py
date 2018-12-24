@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from decision_making.src.state.map_state import MapState
 
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
@@ -31,6 +32,11 @@ from decision_making.test.planning.trajectory.mock_trajectory_planning_facade im
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from decision_making.test.state.mock_state_module import StateModuleMock
 from rte.python.logger.AV_logger import AV_Logger
+
+from decision_making.test.messages.static_scene_fixture import create_scene_static_from_map_api
+
+from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_FACTOR, navigation_fixture,\
+    short_testable_map_api, testable_map_api
 
 UPDATED_TIMESTAMP_PARAM = 'updated_timestamp'
 OLD_TIMESTAMP_PARAM = 'old_timestamp'
@@ -78,8 +84,8 @@ def dynamic_objects_not_on_road():
                                                                                       e_Pct_location_uncertainty_yaw=0,
                                                                                       e_Cnt_host_lane_frenet_id=0,
                                                                                       a_cartesian_pose=cartesian_state,
-                                                                                      a_lane_frenet_pose=None,
-                                                                                      a_host_lane_frenet_pose=None)])]
+                                                                                      a_lane_frenet_pose=np.zeros(6),
+                                                                                      a_host_lane_frenet_pose=np.zeros(6))])]
     objects = DynamicObjectsData(num_objects=1, objects_localization=objects_localization, timestamp=3)
     yield objects
 
@@ -121,19 +127,31 @@ def dynamic_objects_negative_velocity():
 
 
 @pytest.fixture(scope='function')
-def state():
+def state(short_testable_map_api):
+    short_scene_static = create_scene_static_from_map_api(short_testable_map_api)
+    SceneStaticModel.get_instance().set_scene_static(short_scene_static)
+
     occupancy_state = OccupancyState(0, np.array([]), np.array([]))
     v_x = 2.0
     v_y = 2.0
     v = np.linalg.norm([v_x, v_y])
-    dyn1 = DynamicObject.create_from_cartesian_state(obj_id=1, timestamp=34, cartesian_state=np.array([0.5, 0.1, np.pi / 8.0, v, 0.0, 0.0]),
-                                                     size=ObjectSize(1, 1, 1), confidence=1.0)
-    dyn2 = DynamicObject.create_from_cartesian_state(obj_id=2, timestamp=35, cartesian_state=np.array([10.0, 0.0, np.pi / 8.0, v, 0.0, 0.0]),
-                                                     size=ObjectSize(1, 1, 1), confidence=1.0)
+    dyn1 = DynamicObject(obj_id=1, timestamp=34, cartesian_state=np.array([0.5, 0.1, np.pi / 8.0, v, 0.0, 0.0]),
+                         map_state=MapState(lane_fstate=np.array([0.5, 2.61312593, 0., 0.1, 1.0823922, 0.]), lane_id=11),
+                         map_state_on_host_lane=MapState(lane_fstate=np.array([0.5, 2.61312593, 0., 0.1, 1.0823922, 0.]), lane_id=11),
+                         size=ObjectSize(1, 1, 1), confidence=1.0)
+    dyn2 = DynamicObject(obj_id=2, timestamp=35, cartesian_state=np.array([10.0, 0.0, np.pi / 8.0, v, 0.0, 0.0]),
+                         map_state=MapState(lane_fstate=np.array([10., 2.61312593, 0., 0., 1.0823922, 0.]), lane_id=11),
+                         map_state_on_host_lane=MapState(lane_fstate=np.array([0.5, 2.61312593, 0., 0.1, 1.0823922, 0.]), lane_id=11),
+                         size=ObjectSize(1, 1, 1), confidence=1.0)
+    dyn1.map_state
+    dyn2.map_state
+
     dynamic_objects = [dyn1, dyn2]
     size = ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT)
-    ego_state = EgoState.create_from_cartesian_state(obj_id=0, timestamp=0, cartesian_state=np.array([1, 0, 0, 1.0, 0.0, 0]),
-                                                     size=size, confidence=0)
+    ego_state = EgoState(obj_id=0, timestamp=0, cartesian_state=np.array([1, 0, 0, 1.0, 0.0, 0]),
+                         map_state=MapState(lane_fstate=np.array([1., 1., 0., 0., 0., 0.]), lane_id=11),
+                         map_state_on_host_lane=MapState(lane_fstate=np.array([1., 1., 0., 0., 0., 0.]), lane_id=11),
+                         size=size, confidence=0)
     yield State(occupancy_state, dynamic_objects, ego_state)
 
 
