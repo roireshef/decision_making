@@ -76,7 +76,7 @@ class BehavioralGridState(BehavioralState):
         """
         # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
         if extended_lane_frames is None:
-            extended_lane_frames = BehavioralGridState._create_extended_lane_frames(state, nav_plan)
+            extended_lane_frames = BehavioralGridState._create_nearest_extended_lane_frames(state, nav_plan)
 
         # calculate frenet states of ego projected on all extended_lane_frames
         projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
@@ -172,27 +172,49 @@ class BehavioralGridState(BehavioralState):
         return longitudinal_differences
 
     @staticmethod
-    def _create_extended_lane_frames(state: State, nav_plan: NavigationPlanMsg) -> \
+    def _create_nearest_extended_lane_frames(state: State, nav_plan: NavigationPlanMsg) -> \
             Dict[RelativeLane, GeneralizedFrenetSerretFrame]:
         """
         For all available nearest lanes create a corresponding generalized frenet frame (long enough) that can
-        contain multiple original lane segments.
+        contain multiple original lane segments. Used by _generate_terminal_states.
         :param state:
-        :param nav_plan:
+        :param nav_plan: navigation plan
+        :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
+        """
+        extended_relative_frames = BehavioralGridState.create_extended_lane_frames(state, nav_plan, adjacent_lanes_num=1)
+        return {RelativeLane(rel_lane_idx): frame for rel_lane_idx, frame in extended_relative_frames.items()}
+
+    @staticmethod
+    def create_extended_lane_frames(state: State, nav_plan: NavigationPlanMsg, adjacent_lanes_num: int) -> \
+            Dict[int, GeneralizedFrenetSerretFrame]:
+        """
+        For available adjacent lanes create a corresponding generalized frenet frame (long enough) that can
+        contain multiple original lane segments. Used by _generate_terminal_states.
+        :param state:
+        :param nav_plan: navigation plan
+        :param adjacent_lanes_num: how many adjacent lanes should be considered for each side
         :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
         """
         # calculate unified generalized frenet frames
         ego_lane_id = state.ego_state.map_state.lane_id
-        closest_lanes_dict = MapUtils.get_closest_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
+        right_adjacent_lanes = MapUtils.get_adjacent_lane_ids(ego_lane_id, RelativeLane.RIGHT_LANE)
+        left_adjacent_lanes = MapUtils.get_adjacent_lane_ids(ego_lane_id, RelativeLane.LEFT_LANE)
+
         # create generalized_frames for the nearest lanes
         ref_route_start = max(0., state.ego_state.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST)
 
         frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
-        extended_lane_frames = {rel_lane:
-            MapUtils.get_lookahead_frenet_frame(lane_id=neighbor_lane_id, starting_lon=ref_route_start,
-                                                lookahead_dist=frame_length, navigation_plan=nav_plan)
-                                for rel_lane, neighbor_lane_id in closest_lanes_dict.items()}
-        return extended_lane_frames
+
+        # create the adjacent lanes ids
+        right_lanes = right_adjacent_lanes[adjacent_lanes_num-1::-1]
+        left_lanes = left_adjacent_lanes[:adjacent_lanes_num]
+        adjacent_lane_ids = right_lanes + [ego_lane_id] + left_lanes
+        ego_lane_index = len(right_lanes)  # it can be different from adjacent_lanes_num
+
+        return {i - ego_lane_index:
+                MapUtils.get_lookahead_frenet_frame(lane_id=neighbor_lane_id, starting_lon=ref_route_start,
+                                                    lookahead_dist=frame_length, navigation_plan=nav_plan)
+                for i, neighbor_lane_id in enumerate(adjacent_lane_ids)}
 
     @staticmethod
     @prof.ProfileFunction()

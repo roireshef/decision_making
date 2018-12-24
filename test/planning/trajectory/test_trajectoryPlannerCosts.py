@@ -12,10 +12,12 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
     FrenetSubSegment
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import ObjectSize, DynamicObject, State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.service.map_service import MapService
+from decision_making.test.messages.static_scene_fixture import scene_static
 
 
 def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
@@ -28,6 +30,8 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
     The second trajectory is too close to the object.
     The third trajectory collides with the object.
     """
+    SceneStaticModel.get_instance().set_scene_static(scene_static())
+
     logger = Logger("test_computeCost_threeSRoutesOneObstacle_validScore")
     road_id = 20
     lane_width = MapService.get_instance().get_road(road_id).lane_width

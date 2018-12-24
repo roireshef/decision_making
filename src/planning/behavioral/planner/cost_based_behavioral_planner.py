@@ -115,10 +115,10 @@ class CostBasedBehavioralPlanner:
         # Since at terminal states objects from more than 3 closest lanes may be relevant, but also from their neighbor
         # lanes, calculate extended_lane_frames for all lanes, whose lateral distance from ego lane <= 2 lanes.
         # The number of such lanes is at most 5.
-        five_extended_lane_frames = CostBasedBehavioralPlanner._create_five_extended_lane_frames(state, nav_plan)
+        extended_lane_frames = BehavioralGridState.create_extended_lane_frames(state, nav_plan, adjacent_lanes_num=2)
 
         # calculate terminal predicted objects fstates on (at most) 5 adjacent extended_lane_frames
-        for _, extended_lane_frame in five_extended_lane_frames.items():
+        for _, extended_lane_frame in extended_lane_frames.items():
             # collect objects' lane_ids
             all_objects_lane_ids = np.array([dynamic_object.map_state.lane_id for dynamic_object in state.dynamic_objects])
             # find all objects that belong to the current extended_lane_frames
@@ -134,7 +134,7 @@ class CostBasedBehavioralPlanner:
 
         # for each spec calculate dictionary of its 3 closest extended frames
         extended_frames_per_spec = [{RelativeLane(rel_lane_val - spec.relative_lane.value):
-                                     frame for rel_lane_val, frame in five_extended_lane_frames.items()
+                                     frame for rel_lane_val, frame in extended_lane_frames.items()
                                      if abs(rel_lane_val - spec.relative_lane.value) <= 1}
                                     for spec in valid_specs]
 
@@ -209,35 +209,6 @@ class CostBasedBehavioralPlanner:
                           if terminal_segment_ids[i, j] is not None else None
                           for i, obj in enumerate(relevant_dynamic_objects)]
                          for j in range(len(action_horizons))])
-
-    @staticmethod
-    def _create_five_extended_lane_frames(state: State, nav_plan: NavigationPlanMsg) -> \
-            Dict[int, GeneralizedFrenetSerretFrame]:
-        """
-        For all available nearest lanes create a corresponding generalized frenet frame (long enough) that can
-        contain multiple original lane segments. Used by _generate_terminal_states.
-        :param state:
-        :param nav_plan:
-        :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
-        """
-        # calculate unified generalized frenet frames
-        ego_lane_id = state.ego_state.map_state.lane_id
-        right_adjacent_lanes = MapUtils.get_adjacent_lane_ids(ego_lane_id, RelativeLane.RIGHT_LANE)
-        left_adjacent_lanes = MapUtils.get_adjacent_lane_ids(ego_lane_id, RelativeLane.LEFT_LANE)
-
-        # create generalized_frames for the nearest lanes
-        ref_route_start = max(0., state.ego_state.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST)
-
-        frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
-
-        five_adjacent_lanes = right_adjacent_lanes[1::-1] + [ego_lane_id] + left_adjacent_lanes[:2]
-        ego_lane_index = len(right_adjacent_lanes[1::-1])
-
-        extended_lane_frames = {i - ego_lane_index:
-            MapUtils.get_lookahead_frenet_frame(lane_id=neighbor_lane_id, starting_lon=ref_route_start,
-                                                lookahead_dist=frame_length, navigation_plan=nav_plan)
-                                for i, neighbor_lane_id in enumerate(five_adjacent_lanes)}
-        return extended_lane_frames
 
     @staticmethod
     @prof.ProfileFunction()
