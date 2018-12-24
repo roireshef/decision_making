@@ -92,8 +92,8 @@ class BehavioralPlanningFacade(DmModule):
             MetricLogger.get_logger().report()
 
         except MsgDeserializationError as e:
-            self.logger.warning("MsgDeserializationError was raised. skipping planning. " +
-                                "turn on debug logging level for more details.")
+            self.logger.warning("MsgDeserializationError was raised. skipping planning." +
+                                "turn on debug logging level for more details. %s", traceback.format_exc())
             self.logger.debug(str(e))
         except BehavioralPlanningException as e:
             self.logger.warning(e)

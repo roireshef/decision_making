@@ -1,14 +1,6 @@
 import numpy as np
 import pytest
 
-from common_data.interface.py.idl_generated_files.Rte_Types import LcmPerceivedDynamicObjectList
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectBbox import LcmObjectBbox
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectLocation import LcmObjectLocation
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectTrackingStatus import \
-    LcmObjectTrackingStatus
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectVelocity import LcmObjectVelocity
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmPerceivedDynamicObject import \
-    LcmPerceivedDynamicObject
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, \
     VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT
@@ -38,7 +30,6 @@ from decision_making.test.planning.navigation.mock_navigation_facade import Navi
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.pubsub.mock_pubsub import PubSubMock
 from decision_making.test.state.mock_state_module import StateModuleMock
-from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 
 UPDATED_TIMESTAMP_PARAM = 'updated_timestamp'

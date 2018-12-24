@@ -12,17 +12,19 @@ from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRA
     LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, \
     TRAJECTORY_PLANNING_NAME_FOR_METRICS, MAX_TRAJECTORY_WAYPOINTS, TRAJECTORY_WAYPOINT_SIZE, \
-    LOG_MSG_SCENE_STATIC_RECEIVED
+    LOG_MSG_SCENE_STATIC_RECEIVED, VISUALIZATION_PREDICTION_RESOLUTION, MAX_NUM_POINTS_FOR_VIZ, \
+    MAX_VIS_TRAJECTORIES_NUMBER
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan, DataTrajectoryPlan
-from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
+from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg, \
+    PredictionsVisualization, DataTrajectoryVisualization
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import CartesianExtendedState, CartesianTrajectories, C_V, C_Y, FS_SX, FS_DX, \
-    FP_SX
+from decision_making.src.planning.types import CartesianExtendedState, CartesianTrajectories, C_V, FP_SX, C_Y, FS_DX, \
+    FS_SX
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
 from decision_making.src.planning.utils.transformations import Transformations
@@ -107,30 +109,8 @@ class TrajectoryPlanningFacade(DmModule):
                 plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
                      params.cost_params)
 
-            center_vehicle_trajectory_points = samplable_trajectory.sample(
-                np.linspace(start=0,
-                            stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
-                            num=TRAJECTORY_NUM_POINTS) + state.ego_state.timestamp_in_sec)
-            self._last_trajectory = samplable_trajectory
-
-            vehicle_origin_trajectory_points = Transformations.transform_trajectory_between_ego_center_and_ego_origin(
-                center_vehicle_trajectory_points, direction=1)
-
-            # publish results to the lower DM level (Control)
-            # TODO: put real values in tolerance and maximal velocity fields
-            waypoints = np.vstack((np.hstack((vehicle_origin_trajectory_points,
-                                              np.zeros(shape=[TRAJECTORY_NUM_POINTS,
-                                                              TRAJECTORY_WAYPOINT_SIZE-vehicle_origin_trajectory_points.shape[1]]))),
-                                  np.zeros(shape=[MAX_TRAJECTORY_WAYPOINTS-TRAJECTORY_NUM_POINTS, TRAJECTORY_WAYPOINT_SIZE])))
-
-            timestamp = Timestamp.from_seconds(state.ego_state.timestamp_in_sec)
-            map_origin = MapOrigin(e_phi_latitude=0, e_phi_longitude=0, e_l_altitude=0, s_Timestamp=timestamp)
-
-            trajectory_msg = TrajectoryPlan(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp,
-                                                            e_Cnt_version=0),
-                                            s_Data=DataTrajectoryPlan(s_Timestamp=timestamp, s_MapOrigin=map_origin,
-                                                                      a_TrajectoryWaypoints=waypoints,
-                                                                      e_Cnt_NumValidTrajectoryWaypoints=TRAJECTORY_NUM_POINTS))
+            trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
+                                                           samplable_trajectory=samplable_trajectory)
 
             self._publish_trajectory(trajectory_msg)
             self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG, trajectory_msg)
@@ -140,8 +120,7 @@ class TrajectoryPlanningFacade(DmModule):
                 state, ctrajectories, params.time - state.ego_state.timestamp_in_sec,
                 self._strategy_handlers[params.strategy].predictor, params.reference_route)
 
-            # TODO: uncomment this line when proper visualization messages integrate into the code
-            # self._publish_debug(debug_results)
+            self._publish_debug(debug_results)
 
             self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
             MetricLogger.get_logger().report()
@@ -158,6 +137,45 @@ class TrajectoryPlanningFacade(DmModule):
         except Exception:
             self.logger.critical("TrajectoryPlanningFacade: UNHANDLED EXCEPTION in trajectory planning: %s",
                                  traceback.format_exc())
+
+    # TODO: add map_origin that is sent from the outside
+    def generate_trajectory_plan(self, timestamp: float, samplable_trajectory: SamplableTrajectory):
+        """
+        sample trajectory points from the samplable-trajectory, translate them according to ego's reference point and
+        wrap them in a message to the controller
+        :param timestamp: the timestamp to use as a reference for the beginning of trajectory
+        :param samplable_trajectory: the trajectory plan to sample points from (samplable object)
+        :return: a TrajectoryPlan message ready to send to the controller
+        """
+        center_vehicle_trajectory_points = samplable_trajectory.sample(
+            np.linspace(start=0,
+                        stop=(TRAJECTORY_NUM_POINTS - 1) * TRAJECTORY_TIME_RESOLUTION,
+                        num=TRAJECTORY_NUM_POINTS) + timestamp)
+        self._last_trajectory = samplable_trajectory
+
+        vehicle_origin_trajectory_points = Transformations.transform_trajectory_between_ego_center_and_ego_origin(
+            center_vehicle_trajectory_points, direction=1)
+
+        # publish results to the lower DM level (Control)
+        # TODO: put real values in tolerance and maximal velocity fields
+        # TODO: understand if padding with zeros is necessary
+        waypoints = np.vstack((np.hstack((vehicle_origin_trajectory_points,
+                                          np.zeros(shape=[TRAJECTORY_NUM_POINTS,
+                                                          TRAJECTORY_WAYPOINT_SIZE -
+                                                          vehicle_origin_trajectory_points.shape[1]]))),
+                               np.zeros(
+                                   shape=[MAX_TRAJECTORY_WAYPOINTS - TRAJECTORY_NUM_POINTS, TRAJECTORY_WAYPOINT_SIZE])))
+
+        timestamp_object = Timestamp.from_seconds(timestamp)
+        map_origin = MapOrigin(e_phi_latitude=0, e_phi_longitude=0, e_l_altitude=0, s_Timestamp=timestamp_object)
+
+        trajectory_msg = TrajectoryPlan(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp_object,
+                                                        e_Cnt_version=0),
+                                        s_Data=DataTrajectoryPlan(s_Timestamp=timestamp_object, s_MapOrigin=map_origin,
+                                                                  a_TrajectoryWaypoints=waypoints,
+                                                                  e_Cnt_NumValidTrajectoryWaypoints=TRAJECTORY_NUM_POINTS))
+
+        return trajectory_msg
 
     def _validate_strategy_handlers(self) -> None:
         for elem in TrajectoryPlanningStrategy.__members__.values():
@@ -239,4 +257,30 @@ class TrajectoryPlanningFacade(DmModule):
         :param predictor: predictor for the actors' predictions
         :return: trajectory visualization message
         """
-        pass
+        # TODO: add recipe to trajectory_params for goal's description
+        # slice alternative trajectories by skipping indices - for visualization
+        alternative_ids_skip_range = np.round(np.linspace(0, len(ctrajectories)-1, MAX_VIS_TRAJECTORIES_NUMBER)).astype(int)
+        # slice alternative trajectories by skipping indices - for visualization
+        sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
+
+        # this assumes the state is already aligned by short time prediction
+        most_recent_timestamp = state.ego_state.timestamp_in_sec
+        prediction_timestamps = np.arange(most_recent_timestamp, most_recent_timestamp + planning_horizon,
+                                          VISUALIZATION_PREDICTION_RESOLUTION, float)
+
+        # visualize only moving object
+        objects_cartesian_states = np.array([obj.cartesian_state
+                                             for obj in state.dynamic_objects if obj.cartesian_state[C_V] > 0])
+        objects_fstates = reference_route.ctrajectory_to_ftrajectory(objects_cartesian_states)
+        object_fpredictions = predictor.predict_frenet_states(objects_fstates, prediction_timestamps)[..., [FS_SX, FS_DX]]
+        # visualize object's predictions only if they fully lay inside the reference_route range
+        valid_objects_fpredictions = object_fpredictions[np.all(object_fpredictions[..., FP_SX] < reference_route.s_max, axis=1)]
+        objects_cpredictions = reference_route.fpoints_to_cpoints(valid_objects_fpredictions)
+        objects_visualizations = [PredictionsVisualization(state.dynamic_objects[i].obj_id, obj_predictions)
+                                  for i, obj_predictions in enumerate(objects_cpredictions)]
+
+        header = Header(0, Timestamp.from_seconds(state.ego_state.timestamp_in_sec), 0)
+        visualization_data = DataTrajectoryVisualization(
+            sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :(C_Y+1)],
+            objects_visualizations, "")
+        return TrajectoryVisualizationMsg(header, visualization_data)
