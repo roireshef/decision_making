@@ -154,24 +154,6 @@ class MapUtils:
                 -nominal_points[closest_s_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_l_right_offset.value])
 
     @staticmethod
-    def get_dist_to_road_borders(lane_id: int, s: float) -> (float, float):
-        """
-         Get distance from the lane center to the road borders at given longitude from the lane's origin
-        :param lane_id:
-        :param s: longitude of the lane center point (w.r.t. the lane Frenet frame)
-        :return: distance from the right road border, distance from the left road border
-        """
-        # TODO: Currently assuming that s is consistent across all lanes.
-
-        right_lanes = MapUtils.get_adjacent_lane_ids(lane_id, RelativeLane.RIGHT_LANE)
-        left_lanes = MapUtils.get_adjacent_lane_ids(lane_id, RelativeLane.LEFT_LANE)
-        right_distance = np.sum([MapUtils.get_dist_to_lane_borders(right_lane, s) for right_lane in right_lanes])
-        left_distance = np.sum([MapUtils.get_dist_to_lane_borders(left_lane, s) for left_lane in left_lanes])
-        right_from_lane, left_from_lane = MapUtils.get_dist_to_lane_borders(lane_id, s)
-
-        return right_from_lane + right_distance, left_from_lane + left_distance
-
-    @staticmethod
     def get_lane_width(lane_id: int, s: float) -> float:
         """
         get lane width at given longitude from the lane's origin

@@ -123,7 +123,6 @@ class StateModule(DmModule):
                                         confidence=confidence)
 
                 # TODO: Figure out if we need SceneProvider to let us know if an object is not on road
-
                 # Required to verify the object has map state and that the velocity exceeds a minimal value.
                 if dyn_obj.map_state.lane_fstate[FS_SV] < VELOCITY_MINIMAL_THRESHOLD:
                     thresholded_lane_fstate = np.copy(dyn_obj.map_state.lane_fstate)

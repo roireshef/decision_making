@@ -35,7 +35,7 @@ def test_filter_followVehicleTracking_filterResultsMatchExpected(
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
     logger = AV_Logger.get_logger()
 
-    predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
+    predictor = RoadFollowingPredictor(logger)
 
     filtering = RecipeFiltering(filters=[FilterBadExpectedTrajectory('predicates')], logger=logger)
 
@@ -56,7 +56,7 @@ def test_filter_followVehicleSTNegative_filterResultsMatchExpected(
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
 
     logger = AV_Logger.get_logger()
-    predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
+    predictor = RoadFollowingPredictor(logger)
 
     filtering = RecipeFiltering(filters=[FilterBadExpectedTrajectory('predicates')], logger=logger)
 
@@ -77,7 +77,7 @@ def test_filter_followVehicleTooAggressive_filterResultsMatchExpected(
         behavioral_grid_state_with_objects_for_filtering_too_aggressive: BehavioralGridState,
         follow_vehicle_recipes_towards_front_cells: List[DynamicActionRecipe]):
     logger = AV_Logger.get_logger()
-    predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
+    predictor = RoadFollowingPredictor(logger)
 
     filtering = RecipeFiltering(filters=[FilterBadExpectedTrajectory('predicates')], logger=logger)
 

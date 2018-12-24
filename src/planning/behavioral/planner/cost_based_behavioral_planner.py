@@ -171,9 +171,8 @@ class CostBasedBehavioralPlanner:
         :param ego_size: ego size used to extract margins (for dilation of other objects on road)
         :return: a TrajectoryCostParams instance that encodes all parameters for TP cost computation.
         """
-        relative_lanes = MapUtils.get_relative_lane_ids(map_state.lane_id)
-        is_rightmost_lane = relative_lanes[RelativeLane.RIGHT_LANE] is None
-        is_leftmost_lane = relative_lanes[RelativeLane.LEFT_LANE] is None
+        is_rightmost_lane = (len(MapUtils.get_adjacent_lane_ids(map_state.lane_id, RelativeLane.RIGHT_LANE)) == 0)
+        is_leftmost_lane = (len(MapUtils.get_adjacent_lane_ids(map_state.lane_id, RelativeLane.LEFT_LANE)) == 0)
 
         # TODO: here we assume a constant lane width from the current state to the goal
         dist_from_right_lane_border, dist_from_left_lane_border = \

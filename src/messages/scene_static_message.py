@@ -319,9 +319,8 @@ class AdjacentLane(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSAdjacentLane):
-        # TODO: hack!! moving direction and map lane type is received badly from map_services, remove when fixed
-        return cls(pubsubMsg.e_Cnt_lane_segment_id, MovingDirection(1),
-                   MapLaneType(5))
+        return cls(pubsubMsg.e_Cnt_lane_segment_id, MovingDirection(pubsubMsg.e_e_moving_direction),
+                   MapLaneType(pubsubMsg.e_e_lane_type))
 
 
 class LaneSegmentConnectivity(PUBSUB_MSG_IMPL):
@@ -364,10 +363,9 @@ class BoundaryPoint(PUBSUB_MSG_IMPL):
 
         return pubsub_msg
 
-    # TODO: remove hack of MapLaneMarkerType after SP fix
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSBoundaryPoint):
-        return cls(MapLaneMarkerType(5), pubsubMsg.e_l_s_start, pubsubMsg.e_l_s_end)
+        return cls(MapLaneMarkerType(pubsubMsg.e_e_lane_marker_type), pubsubMsg.e_l_s_start, pubsubMsg.e_l_s_end)
 
 
 class LaneCoupling(PUBSUB_MSG_IMPL):
@@ -703,8 +701,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         for i in range(pubsubMsg.e_Cnt_lane_coupling_count):
             as_lane_coupling.append(LaneCoupling.deserialize(pubsubMsg.as_lane_coupling[i]))
 
-        # TODO: remove hack of constant MapLaneType after SceneProvider fix
-        return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_i_road_segment_id, MapLaneType(5),
+        return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_i_road_segment_id, MapLaneType(pubsubMsg.e_e_lane_type),
                    pubsubMsg.e_Cnt_static_traffic_flow_control_count, as_static_traffic_flow_control,
                    pubsubMsg.e_Cnt_dynamic_traffic_flow_control_count, as_dynamic_traffic_flow_control,
                    pubsubMsg.e_Cnt_left_adjacent_lane_count, as_left_adjacent_lanes,
