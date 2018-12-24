@@ -184,7 +184,7 @@ def scene_dynamic_fix():
     timestamp = Timestamp.from_seconds(5.0)
     ego_localization = HostLocalization(lane_id, 0, cstate, fstate)
     header = Header(0, timestamp, 0)
-    data = DataSceneDynamic(True, timestamp, 0, [], ego_localization)
+    data = DataSceneDynamic(True, timestamp, timestamp, 0, [], ego_localization)
     map_origin = MapOrigin(0.0, 0.0, 0.0, timestamp)
     scene_dynamic = SceneDynamic(s_Header=header, s_Data=data, s_MapOrigin=map_origin)
 
