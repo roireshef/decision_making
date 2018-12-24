@@ -46,7 +46,7 @@ class MapUtils:
         :param lane_id:
         :return: lane's ordinal
         """
-        # TODO: extract ordinal from lane_id numerically (lowest hexadecimal digit)
+        # TODO: extract ordinal from lowest hexadecimal digit of lane_id when all lanes are in UltraCruise convention
         return MapUtils.get_lane(lane_id).e_Cnt_right_adjacent_lane_count
 
     @staticmethod
@@ -115,36 +115,15 @@ class MapUtils:
                 RelativeLane.LEFT_LANE: left_lanes[0] if len(left_lanes) > 0 else None}
 
     @staticmethod
-    def _get_all_middle_lanes():
-        """
-        Returns the middle lane of each road segment.
-        :return:
-        """
-        lanes_per_roads = [MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
-                           for road_segment_id in MapUtils.get_road_segment_ids()]
-        return [lanes[int(len(lanes) / 2)] for lanes in lanes_per_roads]
-
-    @staticmethod
     def get_closest_lane(cartesian_point: CartesianPoint2D) -> int:
         """
         given cartesian coordinates, find the closest lane to the point
         :param cartesian_point: 2D cartesian coordinates
-        :param road_segment_id: optional argument for road_segment_id closest to the given point
         :return: closest lane segment id
         """
         x_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value
         y_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value
 
-        # TODO: Change this heuristic in the future
-        # `lane_ids` is set to either the (vertical) middle lanes of all or horizontal lanes
-        # of the given road_segment_id or to the (horizonal) lanes of the road_segment
-        # In case of the former, out of all middle lanes in all road segments, find the closest to cartesian_point,
-        #  this lane determines the closest road_segment
-        # TODO: doesn't work?
-        # if road_segment_id is None:
-        #     lane_ids = MapUtils._get_all_middle_lanes()
-        # else:
-        #     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
         lane_ids = [lane_segment.e_i_lane_segment_id
                     for lane_segment in SceneStaticModel.get_instance().get_scene_static().s_Data.as_scene_lane_segment]
 
@@ -154,7 +133,6 @@ class MapUtils:
         closest_lane_id = lane_ids[min_dist_in_lanes.argmin()]
 
         return closest_lane_id
-
 
     @staticmethod
     def get_dist_to_lane_borders(lane_id: int, s: float) -> (float, float):

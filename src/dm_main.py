@@ -1,8 +1,6 @@
 from logging import Logger
 from os import getpid
 
-import numpy as np
-
 from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
 from common_data.src.communication.pubsub.pubsub import PubSub
 from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
@@ -27,6 +25,7 @@ from decision_making.src.planning.behavioral.evaluators.zero_value_approximator 
 from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
+from decision_making.src.planning.navigation.default_config import NAVIGATION_PLAN_MILFORD
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -37,15 +36,6 @@ from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 
-# TODO: move this into config?
-NAVIGATION_PLAN = NavigationPlanMsg(np.array([5779750912,2683895808,660144128,659685376,5749604352,2851864576,
-                                              5752094720,5766250496,5766905856,5771821056,690487296,5772935168,
-                                              5774770176,689373184,683671552,231800832,5007343616,238944256,3052470272,
-                                              3054829568,5751373824,574488576,5035655168,5751111680,3365928960,
-                                              5751046144,5742395392,5727059968,5744885760,5750390784,648347648,
-                                              648413184,5750128640,5072355328,5750194176,1701904384,659816448,
-                                              5715460096,676331520,676462592,9135521792,5750063104]))
-NAVIGATION_PLAN_PG = NavigationPlanMsg(np.array(range(20, 30)))  # 20 for Ayalon PG
 DEFAULT_MAP_FILE = None  # os.environ['AVCODE_PATH'] + '/spav/common_data/maps/OvalMilford.bin'  # None for Ayalon PG
 
 
@@ -73,7 +63,7 @@ class DmInitialization:
         return state_module
 
     @staticmethod
-    def create_navigation_planner(map_file: str=DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg=NAVIGATION_PLAN) -> NavigationFacade:
+    def create_navigation_planner(map_file: str=DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg=NAVIGATION_PLAN_MILFORD) -> NavigationFacade:
         logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
         pubsub = create_pubsub(PubSubMessageTypes)
         # MapService should be initialized in each process according to the given map_file

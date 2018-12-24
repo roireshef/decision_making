@@ -105,7 +105,7 @@ class StateModule(DmModule):
             # TODO: Handle multiple hypotheses
             cartesian_state = obj_loc.as_object_hypothesis[0].a_cartesian_pose
             map_state = MapState(obj_loc.as_object_hypothesis[0].a_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_Cnt_lane_segment_id)
-            # TODO: map_state_on_host_lane now unused, see if it makes more sense to send ego lane_id in its map_state
+            # map_state_on_host_lane now unused
             map_state_on_host_lane = MapState(obj_loc.as_object_hypothesis[0].a_host_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_Cnt_lane_segment_id)
             size = ObjectSize(obj_loc.s_bounding_box.e_l_length,
                               obj_loc.s_bounding_box.e_l_width,

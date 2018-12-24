@@ -16,7 +16,7 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryParams,
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe
+from decision_making.src.planning.behavioral.data_objects import ActionSpec, ActionRecipe, RelativeLane
 from decision_making.src.planning.behavioral.evaluators.action_evaluator import ActionSpecEvaluator, \
     ActionRecipeEvaluator
 from decision_making.src.planning.behavioral.evaluators.value_approximator import ValueApproximator
@@ -34,7 +34,7 @@ from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import State, ObjectSize, EgoState
 from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.exceptions import UpstreamLaneNotFound
-from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH
+from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH, LARGE_DISTANCE_FROM_SHOULDER
 
 
 @six.add_metaclass(ABCMeta)
@@ -207,11 +207,16 @@ class CostBasedBehavioralPlanner:
         :param ego_size: ego size used to extract margins (for dilation of other objects on road)
         :return: a TrajectoryCostParams instance that encodes all parameters for TP cost computation.
         """
+        relative_lanes = MapUtils.get_relative_lane_ids(map_state.lane_id)
+        is_rightmost_lane = relative_lanes[RelativeLane.RIGHT_LANE] is None
+        is_leftmost_lane = relative_lanes[RelativeLane.LEFT_LANE] is None
+
         # TODO: here we assume a constant lane width from the current state to the goal
         dist_from_right_lane_border, dist_from_left_lane_border = \
             MapUtils.get_dist_to_lane_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
-        dist_from_right_road_border, dist_from_left_road_border = \
-            MapUtils.get_dist_to_road_borders(map_state.lane_id, map_state.lane_fstate[FS_SX])
+
+        dist_from_right_road_border = dist_from_right_lane_border if is_rightmost_lane else LARGE_DISTANCE_FROM_SHOULDER
+        dist_from_left_road_border = dist_from_left_lane_border if is_leftmost_lane else LARGE_DISTANCE_FROM_SHOULDER
 
         # lateral distance in [m] from ref. path to rightmost edge of lane
         right_lane_offset = dist_from_right_lane_border - ego_size.width / 2

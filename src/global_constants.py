@@ -244,11 +244,10 @@ ACDA_NAME_FOR_LOGGING = "ACDA Module"
 TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 TRAJECTORY_PLANNING_NAME_FOR_METRICS = "TP"
 STATE_MODULE_NAME_FOR_LOGGING = "State Module"
-RVIZ_MODULE_NAME_FOR_LOGGING = "Rviz Module"
 
 
 #### MetricLogger
-METRIC_LOGGER_DELIMITER= '_'
+METRIC_LOGGER_DELIMITER = '_'
 
 ##### Log messages
 # TODO: update decision_making_sim messages
