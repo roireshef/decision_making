@@ -8,6 +8,8 @@ from decision_making.src.messages.trajectory_parameters import TrajectoryCostPar
 from decision_making.src.planning.trajectory.cost_function import TrajectoryPlannerCosts
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.types import FS_DX
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
+    FrenetSubSegment
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.map_state import MapState
@@ -63,12 +65,16 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
     A_d_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_d))
     poly_coefs_d = QuinticPoly1D.zip_solve(A_d_inv, constraints_d)
 
+    frenet_frame = MapUtils.get_lane_frenet_frame(ego.map_state.lane_id)
+    sub_segment = FrenetSubSegment(ego.map_state.lane_id, 0, frenet_frame.s_max)
+    reference_route = GeneralizedFrenetSerretFrame.build([frenet_frame], [sub_segment])
+
     # create 3 ctrajectories
     ctrajectories = []
     for i in range(poly_coefs_s.shape[0]):
         samplable_trajectory = SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
                                                           T_s=T, T_d=T_d[i],
-                                                          frenet_frame=MapUtils.get_lane_frenet_frame(ego.map_state.lane_id),
+                                                          frenet_frame=frenet_frame,
                                                           poly_s_coefs=poly_coefs_s[i], poly_d_coefs=poly_coefs_d[i])
         ctrajectory = samplable_trajectory.sample(time_points)
         ctrajectories.append(ctrajectory)
@@ -86,7 +92,8 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
                                        dist_from_goal_cost=None, dist_from_goal_lat_factor=None, lon_jerk_cost=None,
                                        lat_jerk_cost=None, velocity_limits=None, lon_acceleration_limits=None,
                                        lat_acceleration_limits=None)
-    pointwise_costs = TrajectoryPlannerCosts.compute_obstacle_costs(ctrajectories, state, cost_params, time_points, predictor)
+    pointwise_costs = TrajectoryPlannerCosts.compute_obstacle_costs(ctrajectories, state, cost_params, time_points,
+                                                                    predictor, reference_route)
     total_costs = np.sum(pointwise_costs, axis=1)  # costs per trajectory
 
     assert total_costs[0] < total_costs[1]              # obstacle-free route (smallest T_d)

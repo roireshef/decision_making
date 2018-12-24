@@ -15,6 +15,7 @@ from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS
     TsSYSSceneRoadSegment
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header
+from rte.python.logger.AV_logger import AV_Logger
 
 MAX_NOMINAL_PATH_POINT_FIELDS = 10
 
@@ -661,7 +662,6 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSSceneLaneSegment):
-
         as_static_traffic_flow_control = list()
         for i in range(pubsubMsg.e_Cnt_static_traffic_flow_control_count):
             as_static_traffic_flow_control.append(

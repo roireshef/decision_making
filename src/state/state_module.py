@@ -1,17 +1,17 @@
-import numpy as np
 from logging import Logger
 from threading import Lock
 from traceback import format_exc
 from typing import Optional, Any, List
 
+import numpy as np
+
 import rte.python.profiler as prof
 from common_data.interface.py.idl_generated_files.Rte_Types.TsSYS_SceneDynamic import TsSYSSceneDynamic
-from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import SCENE_DYNAMIC
 from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
-
+from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import SCENE_DYNAMIC
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE, \
-    DEFAULT_OBJECT_Z_VALUE, FILTER_OFF_ROAD_OBJECTS, VELOCITY_MINIMAL_THRESHOLD
+    DEFAULT_OBJECT_Z_VALUE, VELOCITY_MINIMAL_THRESHOLD
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic, ObjectLocalization
 from decision_making.src.planning.types import FS_SV, FS_SX
@@ -81,6 +81,7 @@ class StateModule(DmModule):
                                                   timestamp=timestamp)
                 dynamic_objects = self.create_dyn_obj_list(dyn_obj_data)
                 state = State(occupancy_state, dynamic_objects, ego_state)
+                
                 self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
 
                 self.pubsub.publish(pubsub_topics.STATE_LCM, state.serialize())
@@ -116,27 +117,22 @@ class StateModule(DmModule):
                 dyn_obj = DynamicObject(obj_id=obj_loc.e_Cnt_object_id,
                                         timestamp=timestamp,
                                         cartesian_state=cartesian_state,
-                                        map_state=map_state,
-                                        map_state_on_host_lane=map_state_on_host_lane,
+                                        map_state=map_state if map_state.lane_id > 0 else None,
+                                        map_state_on_host_lane=map_state_on_host_lane if map_state_on_host_lane.lane_id > 0 else None,
                                         size=size,
                                         confidence=confidence)
 
-                # When filtering off-road objects, try to localize object on road.
-                if not FILTER_OFF_ROAD_OBJECTS or dyn_obj.map_state.is_on_road():
+                # TODO: Figure out if we need SceneProvider to let us know if an object is not on road
 
-                    # Required to verify the object has map state and that the velocity exceeds a minimal value.
-                    # If FILTER_OFF_ROAD_OBJECTS is true, it means that the object is on road - therefore has map
-                    # state
-                    if FILTER_OFF_ROAD_OBJECTS and dyn_obj.map_state.lane_fstate[FS_SV] < VELOCITY_MINIMAL_THRESHOLD:
-                        thresholded_lane_fstate = np.copy(dyn_obj.map_state.lane_fstate)
-                        thresholded_lane_fstate[FS_SV] = VELOCITY_MINIMAL_THRESHOLD
-                        dyn_obj = dyn_obj.clone_from_map_state(
-                            map_state=MapState(lane_fstate=thresholded_lane_fstate,
-                                               lane_id=dyn_obj.map_state.lane_id))
+                # Required to verify the object has map state and that the velocity exceeds a minimal value.
+                if dyn_obj.map_state.lane_fstate[FS_SV] < VELOCITY_MINIMAL_THRESHOLD:
+                    thresholded_lane_fstate = np.copy(dyn_obj.map_state.lane_fstate)
+                    thresholded_lane_fstate[FS_SV] = VELOCITY_MINIMAL_THRESHOLD
+                    dyn_obj = dyn_obj.clone_from_map_state(
+                        map_state=MapState(lane_fstate=thresholded_lane_fstate,
+                                           lane_id=dyn_obj.map_state.lane_id))
 
-                    objects_list.append(dyn_obj)  # update the list of dynamic objects
-                else:
-                    continue
+                objects_list.append(dyn_obj)  # update the list of dynamic objects
 
             except MapCellNotFound:
                 x, y, z = cartesian_state[FS_SX], cartesian_state[FS_SV], DEFAULT_OBJECT_Z_VALUE

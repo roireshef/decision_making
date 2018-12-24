@@ -363,10 +363,10 @@ def test_convertToAndFromSegmentStates_firstSegmentStartsInMiddle_x_y():
     downstream_frenet = FrenetSerret2DFrame(full_frenet.points[n::2], full_frenet.T[n::2], full_frenet.N[n::2],
                                             full_frenet.k[n::2], full_frenet.k_tag[n::2], full_frenet.ds * 2)
 
-    upstream_s_start = upstream_frenet.ds * 100.9
+    upstream_s_start = upstream_frenet.ds * 100.8
     upstream_s_end = upstream_frenet.s_max
     downstream_s_start = 0
-    downstream_s_end = downstream_frenet.s_max - downstream_frenet.ds * 100.3
+    downstream_s_end = downstream_frenet.s_max - downstream_frenet.ds * 100.8
 
     segmentation = [FrenetSubSegment(0, upstream_s_start, upstream_s_end),
                     FrenetSubSegment(1, downstream_s_start, downstream_s_end)]
@@ -382,6 +382,9 @@ def test_convertToAndFromSegmentStates_firstSegmentStartsInMiddle_x_y():
     upstream_segment_idxs = [0] * len(upstream_fpoints)
     upstream_gen_fpoints = generalized_frenet.convert_from_segment_states(upstream_fpoints, upstream_segment_idxs)
     new_upstream_segment_idxs, new_upstream_fpoints = generalized_frenet.convert_to_segment_states(upstream_gen_fpoints)
+    cpoints_to_fpoints = generalized_frenet.ctrajectory_to_ftrajectory(upstream_cpoints)
+    errors_c2f = (cpoints_to_fpoints - upstream_gen_fpoints)[:, 0]
+    np.testing.assert_array_less(errors_c2f, ACCURACY_TH, 'cpoint_to_fpoint conversions aren\'t accurate enough')
 
     downstream_segment_idxs = [1] * len(downstream_fpoints)
     downstream_gen_fpoints = generalized_frenet.convert_from_segment_states(downstream_fpoints, downstream_segment_idxs)

@@ -12,7 +12,7 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
     FrenetSubSegment
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from mapping.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
+from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound
 
 
@@ -102,7 +102,7 @@ class MapUtils:
         return [adj_lane.e_Cnt_lane_segment_id for adj_lane in adj_lanes]
 
     @staticmethod
-    def get_relative_lane_ids(lane_id: int) -> Dict[RelativeLane, int]:
+    def get_closest_lane_ids(lane_id: int) -> Dict[RelativeLane, int]:
         """
         get dictionary that given lane_id maps from RelativeLane to lane_id of the immediate neighbor lane
         :param lane_id:
@@ -110,9 +110,13 @@ class MapUtils:
         """
         right_lanes = MapUtils.get_adjacent_lane_ids(lane_id, RelativeLane.RIGHT_LANE)
         left_lanes = MapUtils.get_adjacent_lane_ids(lane_id, RelativeLane.LEFT_LANE)
-        return {RelativeLane.RIGHT_LANE: right_lanes[0] if len(right_lanes) > 0 else None,
-                RelativeLane.SAME_LANE: lane_id,
-                RelativeLane.LEFT_LANE: left_lanes[0] if len(left_lanes) > 0 else None}
+        relative_lane_ids: Dict[RelativeLane, int] = {}
+        if len(right_lanes) > 0:
+            relative_lane_ids[RelativeLane.RIGHT_LANE] = right_lanes[0]
+        relative_lane_ids[RelativeLane.SAME_LANE] = lane_id
+        if len(left_lanes) > 0:
+            relative_lane_ids[RelativeLane.LEFT_LANE] = left_lanes[0]
+        return relative_lane_ids
 
     @staticmethod
     def get_closest_lane(cartesian_point: CartesianPoint2D) -> int:
@@ -225,6 +229,7 @@ class MapUtils:
             return False
 
     @staticmethod
+    @raises(UpstreamLaneNotFound, LaneNotFound, RoadNotFound, DownstreamLaneNotFound)
     def get_lookahead_frenet_frame(lane_id: int, starting_lon: float, lookahead_dist: float,
                                    navigation_plan: NavigationPlanMsg) -> GeneralizedFrenetSerretFrame:
         """
@@ -306,8 +311,7 @@ class MapUtils:
                     "MapUtils._advance_on_plan: Downstream lane not found for lane_id=%d" % (current_lane_id))
 
             downstream_lanes_ids_on_plan = [lid for lid in downstream_lanes_ids
-                                            if MapUtils.get_road_segment_id_from_lane_id(
-                    lid) == next_road_segment_id_on_plan]
+                                            if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan]
 
             if len(downstream_lanes_ids_on_plan) == 0:
                 raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan %s",
@@ -323,6 +327,7 @@ class MapUtils:
         return lane_subsegments
 
     @staticmethod
+    @raises(UpstreamLaneNotFound)
     def _get_upstream_lanes_from_distance(starting_lane_id: int, starting_lon: float, backward_dist: float) -> \
             (List[int], float):
         """

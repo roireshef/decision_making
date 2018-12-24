@@ -39,13 +39,16 @@ class TrjajectoryPlanningException(Exception):
 class NoValidTrajectoriesFound(TrjajectoryPlanningException):
     pass
 
+
 class CouldNotGenerateTrajectories(TrjajectoryPlanningException):
     pass
+
 
 # BEHAVIORAL PLANNING
 @six.add_metaclass(ABCMeta)
 class BehavioralPlanningException(Exception):
     pass
+
 
 class ActionOutOfSpec(BehavioralPlanningException):
     pass
@@ -60,6 +63,44 @@ class VehicleOutOfRoad(BehavioralPlanningException):
 
 
 class NoValidLanesFound(BehavioralPlanningException):
+    pass
+
+
+class SceneModelIsEmpty(Exception):
+    pass
+
+
+# BEHAVIORAL PLANNING
+@six.add_metaclass(ABCMeta)
+class MappingException(Exception):
+    pass
+
+
+class UpstreamLaneNotFound(MappingException):
+    pass
+
+
+class DownstreamLaneNotFound(MappingException):
+    pass
+
+
+class NavigationPlanTooShort(MappingException):
+    pass
+
+
+class NavigationPlanDoesNotFitMap(MappingException):
+    pass
+
+
+class AmbiguousNavigationPlan(MappingException):
+    pass
+
+
+class RoadNotFound(MappingException):
+    pass
+
+
+class LaneNotFound(MappingException):
     pass
 
 

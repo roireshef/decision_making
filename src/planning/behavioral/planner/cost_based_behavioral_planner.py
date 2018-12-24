@@ -2,15 +2,15 @@ import numpy as np
 import six
 from abc import abstractmethod, ABCMeta
 from logging import Logger
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 import rte.python.profiler as prof
-from decision_making.src.global_constants import PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, TRAJECTORY_ARCLEN_RESOLUTION, \
-    SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, \
-    DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, \
-    OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, \
-    DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, \
-    LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, LATERAL_SAFETY_MARGIN_FROM_OBJECT, REFERENCE_ROUTE_MARGINS
+from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIATION_FROM_LANE_COST, \
+    LANE_SIGMOID_K_PARAM, SHOULDER_SIGMOID_K_PARAM, DEVIATION_TO_SHOULDER_COST, DEVIATION_FROM_ROAD_COST, \
+    ROAD_SIGMOID_K_PARAM, OBSTACLE_SIGMOID_COST, OBSTACLE_SIGMOID_K_PARAM, DEVIATION_FROM_GOAL_COST, \
+    GOAL_SIGMOID_K_PARAM, GOAL_SIGMOID_OFFSET, DEVIATION_FROM_GOAL_LAT_LON_RATIO, LON_JERK_COST_WEIGHT, \
+    LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
+    LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
@@ -24,14 +24,13 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX
+from decision_making.src.planning.types import FS_DA, FS_SA, FS_SX, FS_DX, FrenetState2D, FrenetStates2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
-    FrenetSubSegment
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
 from decision_making.src.state.map_state import MapState
-from decision_making.src.state.state import State, ObjectSize, EgoState
+from decision_making.src.state.state import State, ObjectSize
 from decision_making.src.utils.map_utils import MapUtils
 from mapping.src.exceptions import UpstreamLaneNotFound
 from mapping.src.model.constants import ROAD_SHOULDERS_WIDTH, LARGE_DISTANCE_FROM_SHOULDER
@@ -56,7 +55,7 @@ class CostBasedBehavioralPlanner:
 
     @abstractmethod
     def choose_action(self, state: State, behavioral_state: BehavioralGridState, action_recipes: List[ActionRecipe],
-                      recipes_mask: List[bool]):
+                      recipes_mask: List[bool], nav_plan: NavigationPlanMsg):
         """
         upon receiving an input state, return an action specification and its respective index in the given list of
         action recipes.
@@ -84,8 +83,9 @@ class CostBasedBehavioralPlanner:
         pass
 
     @prof.ProfileFunction()
-    def _generate_terminal_states(self, state: State, action_specs: List[ActionSpec], mask: np.ndarray) -> \
-            [BehavioralGridState]:
+    def _generate_terminal_states(self, state: State, behavioral_state: BehavioralGridState,
+                                  action_specs: List[ActionSpec], mask: np.ndarray, navigation_plan: NavigationPlanMsg) \
+            -> List[BehavioralGridState]:
         """
         Given current state and action specifications, generate a corresponding list of future states using the
         predictor. Uses mask over list of action specifications to avoid unnecessary computation
@@ -99,8 +99,7 @@ class CostBasedBehavioralPlanner:
 
     @staticmethod
     @prof.ProfileFunction()
-    def _generate_trajectory_specs(behavioral_state: BehavioralGridState, action_spec: ActionSpec,
-                                   navigation_plan: NavigationPlanMsg) -> TrajectoryParams:
+    def _generate_trajectory_specs(behavioral_state: BehavioralGridState, action_spec: ActionSpec) -> TrajectoryParams:
         """
         Generate trajectory specification for trajectory planner given a SemanticActionSpec. This also
         generates the reference route that will be provided to the trajectory planner.
@@ -108,53 +107,24 @@ class CostBasedBehavioralPlanner:
          latitude is constant and equal to the target latitude;
          longitude starts from ego current longitude, and end in the target longitude.
         :param behavioral_state: processed behavioral state
-        :param navigation_plan: navigation plan of the rest of the roads to be followed (used to create a ref. route)
         :return: Trajectory cost specifications [TrajectoryParameters]
         """
         ego = behavioral_state.ego_state
-        # calculate adjacent lane_ids
-        relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
-        # calculate adjacent lane_id matching to the action_spec
-        spec_lane_id = relative_lane_ids[action_spec.relative_lane]
+        # get action's unified frame (GFF)
+        action_frame = behavioral_state.extended_lane_frames[action_spec.relative_lane]
 
-        # calculate projected ego frenet state
-        projected_fstates = BehavioralGridState.project_ego_on_adjacent_lanes(ego)
-        projected_ego_fstate = projected_fstates[action_spec.relative_lane]  # ego projected on the relative lane
+        # goal Frenet state w.r.t. spec_lane_id
+        projected_goal_fstate = action_spec.as_fstate()
 
-        # goal frenet state relative to spec_lane_id
-        goal_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
-
-        # set the reference route to start with a margin before the current longitudinal position of the vehicle
-        suggested_ref_route_start = projected_ego_fstate[FS_SX] - REFERENCE_ROUTE_MARGINS
-
-        # TODO: remove this hack when using a real map from SP
-        # if there is no long enough road behind ego, set ref_route_start = 0
-        ref_route_start = suggested_ref_route_start \
-            if suggested_ref_route_start >= 0 or MapUtils.does_map_exist_backward(spec_lane_id, -suggested_ref_route_start) \
-            else 0
-
-        # calculate reference route length
-        forward_lookahead = action_spec.s - ref_route_start + REFERENCE_ROUTE_MARGINS
-        ref_route_length = forward_lookahead * PREDICTION_LOOKAHEAD_COMPENSATION_RATIO
-
-        # create Generalized Frenet Frame (GFF) for TP, which is a part of TrajectoryParams
-        # TODO: remove it and use GFFs from BehavioralGridState
-        action_lane_gff = MapUtils.get_lookahead_frenet_frame(
-            lane_id=spec_lane_id, starting_lon=ref_route_start, lookahead_dist=ref_route_length,
-            navigation_plan=navigation_plan)
-
-        # create cost params, which are part of TrajectoryParams
-        cost_params = CostBasedBehavioralPlanner._generate_cost_params(
-            map_state=MapState(goal_fstate, spec_lane_id),
-            ego_size=ego.size
-        )
-
+        # calculate trajectory cost_params using original goal map_state (from the map)
+        goal_segment_id, goal_segment_fstate = action_frame.convert_to_segment_state(projected_goal_fstate)
+        cost_params = CostBasedBehavioralPlanner._generate_cost_params(map_state=MapState(goal_segment_fstate, goal_segment_id),
+                                                                       ego_size=ego.size)
         # Calculate cartesian coordinates of action_spec's target (according to target-lane frenet_frame)
-        # TODO: remove it, when TP will obtain frenet frame
-        goal_cstate = MapUtils.get_lane_frenet_frame(spec_lane_id).fstate_to_cstate(goal_fstate)
+        goal_cstate = action_frame.fstate_to_cstate(projected_goal_fstate)
 
         # create TrajectoryParams for TP
-        trajectory_parameters = TrajectoryParams(reference_route=action_lane_gff,
+        trajectory_parameters = TrajectoryParams(reference_route=action_frame,
                                                  time=action_spec.t + ego.timestamp_in_sec,
                                                  target_state=goal_cstate,
                                                  cost_params=cost_params,
@@ -165,37 +135,31 @@ class CostBasedBehavioralPlanner:
 
     @staticmethod
     @prof.ProfileFunction()
-    def generate_baseline_trajectory(ego: EgoState, action_spec: ActionSpec) -> SamplableTrajectory:
+    def generate_baseline_trajectory(timestamp: float, action_spec: ActionSpec, reference_route: FrenetSerret2DFrame,
+                                     ego_fstate: FrenetState2D) -> SamplableTrajectory:
         """
         Creates a SamplableTrajectory as a reference trajectory for a given ActionSpec, assuming T_d=T_s
-        :param ego: ego object
+        :param timestamp: [s] ego timestamp in seconds
         :param action_spec: action specification that contains all relevant info about the action's terminal state
+        :param reference_route: the reference Frenet frame sent to TP
+        :param ego_fstate: ego Frenet state w.r.t. reference_route
         :return: a SamplableWerlingTrajectory object
         """
         # Note: We create the samplable trajectory as a reference trajectory of the current action.from
         # We assume correctness only of the longitudinal axis, and set T_d to be equal to T_s.
-
-        # project ego on target lane frenet_frame
-        projected_fstates = BehavioralGridState.project_ego_on_adjacent_lanes(ego)
-        projected_ego_fstate = projected_fstates[action_spec.relative_lane]  # ego projected on the relative lane
-
-        relative_lane_ids = MapUtils.get_relative_lane_ids(ego.map_state.lane_id)
-        spec_lane_id = relative_lane_ids[action_spec.relative_lane]
-
-        target_fstate = np.array([action_spec.s, action_spec.v, 0, action_spec.d, 0, 0])
-
         A_inv = np.linalg.inv(QuinticPoly1D.time_constraints_matrix(action_spec.t))
+        goal_fstate = action_spec.as_fstate()
 
-        constraints_s = np.concatenate((projected_ego_fstate[FS_SX:(FS_SA + 1)], target_fstate[FS_SX:(FS_SA + 1)]))
-        constraints_d = np.concatenate((projected_ego_fstate[FS_DX:(FS_DA + 1)], target_fstate[FS_DX:(FS_DA + 1)]))
+        constraints_s = np.concatenate((ego_fstate[FS_SX:(FS_SA + 1)], goal_fstate[FS_SX:(FS_SA + 1)]))
+        constraints_d = np.concatenate((ego_fstate[FS_DX:(FS_DA + 1)], goal_fstate[FS_DX:(FS_DA + 1)]))
 
         poly_coefs_s = QuinticPoly1D.solve(A_inv, constraints_s[np.newaxis, :])[0]
         poly_coefs_d = QuinticPoly1D.solve(A_inv, constraints_d[np.newaxis, :])[0]
 
-        return SamplableWerlingTrajectory(timestamp_in_sec=ego.timestamp_in_sec,
+        return SamplableWerlingTrajectory(timestamp_in_sec=timestamp,
                                           T_s=action_spec.t,
                                           T_d=action_spec.t,
-                                          frenet_frame=MapUtils.get_lane_frenet_frame(spec_lane_id),
+                                          frenet_frame=reference_route,
                                           poly_s_coefs=poly_coefs_s,
                                           poly_d_coefs=poly_coefs_d)
 
