@@ -16,7 +16,6 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.map_state import MapState
 from decision_making.src.state.state import ObjectSize, DynamicObject, State, EgoState
 from decision_making.src.utils.map_utils import MapUtils
-from mapping.src.service.map_service import MapService
 from decision_making.test.messages.static_scene_fixture import scene_static
 
 
@@ -34,7 +33,8 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
 
     logger = Logger("test_computeCost_threeSRoutesOneObstacle_validScore")
     road_id = 20
-    lane_width = MapService.get_instance().get_road(road_id).lane_width
+    lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[0]
+    lane_width = MapUtils.get_lane_width(lane_id, 0)
     s = 0
     init_d = 0
     end_d = init_d + lane_width
@@ -49,7 +49,6 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
     target_fstates = np.tile(target_fstate, 3).reshape(3, 6)
 
     # Dynamic object is static, located on the right lane, such that ego reaches it longitudinally at time t = 4.
-    lane_id = MapService().get_instance()._lane_by_address[(road_id, 0)]
     obj_map_state = MapState(np.array([s + T_d[0] * v, EPS, 0, init_d, 0, 0]), lane_id)
     obj_size = ObjectSize(4, 1.8, 0)
     time_points = np.arange(0, T + EPS, 0.1)
