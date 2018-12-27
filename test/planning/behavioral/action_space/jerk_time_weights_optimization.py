@@ -79,7 +79,7 @@ def jerk_time_weights_optimization():
     for wi, w in enumerate(weights):  # loop on weights' sets
         vel_acc_in_limits = np.zeros((states_num, weights.shape[1]))
         safe_actions = copy.deepcopy(vel_acc_in_limits)
-        for aggr in range(3):  # loop on aggressiveness levels
+        for aggr in range(weights.shape[1]):  # loop on aggressiveness levels
             # calculate time horizon for all states
             T_s[wi, :, aggr] = T = calculate_T_s(v0, vT, s, a0, BP_JERK_S_JERK_D_TIME_WEIGHTS[aggr, 2], w[aggr])
             # calculate states validity wrt velocity & acceleration limits
