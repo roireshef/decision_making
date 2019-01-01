@@ -190,7 +190,7 @@ class BehavioralGridState(BehavioralState):
         extended_lane_frames = {}
         for rel_lane, neighbor_lane_id in closest_lanes_dict.items():
             try:
-                extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame(
+                extended_lane_frames[rel_lane] = MapUtils.get_lookahead_frenet_frame_by_cost(
                     lane_id=neighbor_lane_id, starting_lon=ref_route_start,
                     lookahead_dist=frame_length, navigation_plan=nav_plan)
             except MappingException:
