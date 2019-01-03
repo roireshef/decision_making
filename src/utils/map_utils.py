@@ -133,7 +133,6 @@ class MapUtils:
         """
         given cartesian coordinates, find the closest lane to the point
         :param cartesian_point: 2D cartesian coordinates
-        :param road_segment_id: optional argument for road_segment_id closest to the given point
         :return: closest lane segment id
         """
         x_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value
@@ -149,15 +148,29 @@ class MapUtils:
         #     lane_ids = MapUtils._get_all_middle_lanes()
         # else:
         #     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
-        lane_ids = [lane_segment.e_i_lane_segment_id
-                    for lane_segment in SceneStaticModel.get_instance().get_scene_static().s_Data.as_scene_lane_segment]
+        lane_ids = np.array([lane_segment.e_i_lane_segment_id
+                    for lane_segment in SceneStaticModel.get_instance().get_scene_static().s_Data.as_scene_lane_segment])
 
         min_dist_in_lanes = np.array(
             [min(np.linalg.norm(MapUtils.get_lane(lane_id).a_nominal_path_points[:, (x_index, y_index)]
                                 - cartesian_point, axis=1)) for lane_id in lane_ids])
-        closest_lane_id = lane_ids[min_dist_in_lanes.argmin()]
 
-        return closest_lane_id
+        closest_lanes_ids = lane_ids[np.isclose(min_dist_in_lanes, min_dist_in_lanes.min(), atol=0.1)]
+        if closest_lanes_ids.size == 1:  # return the single close lane
+            return closest_lanes_ids[0]
+
+        # if cartesian_point is near a seam between two lanes, choose the closest lane according to its local yaw,
+        # such that the cartesian_point might be projected on the chosen lane
+        for lane_id in closest_lanes_ids:
+            lane_points = MapUtils.get_lane(lane_id).a_nominal_path_points
+            point_idx = np.linalg.norm(lane_points[:, (x_index, y_index)] - cartesian_point, axis=1).argmin()
+            closest_point = lane_points[point_idx, (x_index, y_index)]
+            second_closest_point = lane_points[1, (x_index, y_index)] if point_idx == 0 \
+                else lane_points[point_idx - 1, (x_index, y_index)]
+            if np.dot(second_closest_point - closest_point, cartesian_point - closest_point) >= 0:
+                return lane_id
+
+        return closest_lanes_ids[0]
 
 
     @staticmethod
