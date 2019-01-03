@@ -299,6 +299,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         s_approx = self._approximate_s_from_points(points)
 
         a_s, T_s, N_s, k_s, _ = self._taylor_interp(s_approx)
+        N_s_normalized = N_s / np.linalg.norm(N_s, axis=-1, keepdims=True)
 
         is_curvature_big_enough = np.greater(np.abs(k_s), TINY_CURVATURE)
 
@@ -309,13 +310,13 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         signed_radius = np.divide(1, k_s)
 
         # vector from the circle center to the input point
-        center_to_point = points - a_s - N_s * signed_radius[..., np.newaxis]
+        center_to_point = points - a_s - N_s_normalized * signed_radius[..., np.newaxis]
 
         # sign of the step (sign of the inner product between the position error and the tangent of all samples)
         step_sign = np.sign(np.einsum('...ik,...ik->...i', points - a_s, T_s))
 
         # cos(angle between N_s and this vector)
-        cos = np.abs(np.einsum('...ik,...ik->...i', N_s, center_to_point) / np.linalg.norm(center_to_point, axis=-1))
+        cos = np.abs(np.einsum('...ik,...ik->...i', N_s_normalized, center_to_point) / np.linalg.norm(center_to_point, axis=-1))
 
         # prevent illegal (greater than 1) argument for arccos()
         # don't enable zero curvature to prevent numerical problems with infinite radius
@@ -342,7 +343,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         k'(s) is the derivative of the curvature (by distance d(s))
         """
         assert np.all(np.bitwise_and(0 <= s, s <= self.s_max)), \
-            "Cannot extrapolate, desired progress (%s) is out of the curve." % s
+            "Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max)
 
         O_idx, delta_s = self._get_closest_index_on_frame(s)
 
