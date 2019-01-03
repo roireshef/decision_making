@@ -47,7 +47,14 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
 
         if len(follow_vehicle_valid_action_idxs) > 0:
             costs[follow_vehicle_valid_action_idxs[0]] = 0
-        else:
+        elif len(follow_lane_valid_action_idxs) > 0:
             costs[follow_lane_valid_action_idxs[0]] = 0
+        else:
+            follow_lane_any_velocity_idxs = [i for i, recipe in enumerate(action_recipes)
+                                             if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
+                                             and recipe.relative_lane == RelativeLane.SAME_LANE
+                                             and recipe.action_type == ActionType.FOLLOW_LANE
+                                             and recipe.velocity <= maximal_allowed_velocity]
+            costs[follow_lane_any_velocity_idxs[-1]] = 0
 
         return costs
