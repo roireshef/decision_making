@@ -31,25 +31,26 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         """
         costs = np.full(len(action_recipes), 1)
 
+        # first try to find a valid dynamic action for SAME_LANE
         follow_vehicle_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
                                             if action_specs_mask[i]
                                             and recipe.relative_lane == RelativeLane.SAME_LANE
                                             and recipe.action_type == ActionType.FOLLOW_VEHICLE]
+        if len(follow_vehicle_valid_action_idxs) > 0:
+            costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action
+            return costs
 
-        terminal_velocities = np.unique([recipe.velocity for recipe in action_recipes if isinstance(recipe, StaticActionRecipe)])
+        # if a dynamic action not found, calculate maximal valid existing velocity for static actions
+        terminal_velocities = np.unique([recipe.velocity for i, recipe in enumerate(action_recipes)
+                                         if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
+                                         and recipe.relative_lane == RelativeLane.SAME_LANE])
         maximal_allowed_velocity = max(terminal_velocities[terminal_velocities <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED])
 
-        if len(follow_vehicle_valid_action_idxs) > 0:
-            costs[follow_vehicle_valid_action_idxs[0]] = 0
-        else:
-            follow_lane_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
-                                             if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
-                                             and recipe.relative_lane == RelativeLane.SAME_LANE
-                                             and recipe.action_type == ActionType.FOLLOW_LANE
-                                             and recipe.velocity <= maximal_allowed_velocity]
-            max_valid_velocity = action_recipes[follow_lane_valid_action_idxs[-1]].velocity
-            fastest_valid_actions = [i for i in follow_lane_valid_action_idxs
-                                     if action_recipes[i].velocity == max_valid_velocity]
-            costs[fastest_valid_actions[0]] = 0
+        # find the most calm static action with the maximal existing velocity
+        follow_lane_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
+                                         if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
+                                         and recipe.relative_lane == RelativeLane.SAME_LANE
+                                         and recipe.velocity == maximal_allowed_velocity]
 
+        costs[follow_lane_valid_action_idxs[0]] = 0  # choose the found static action
         return costs
