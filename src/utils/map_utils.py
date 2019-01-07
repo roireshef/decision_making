@@ -182,12 +182,12 @@ class MapUtils:
         # calculate a vector from the closest point to the input point
         vec_to_input_point = cartesian_point - MapUtils.get_lane(closest_lane_id).a_nominal_path_points[point_idx, (x_index, y_index)]
         yaw_to_input_point = np.arctan2(vec_to_input_point[1], vec_to_input_point[0])
-        local_yaw = MapUtils.get_lane(lane_ids[lane_idx]).a_nominal_path_points[
+        lane_local_yaw = MapUtils.get_lane(lane_ids[lane_idx]).a_nominal_path_points[
             point_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_phi_heading.value]
-        if np.cos(yaw_to_input_point - local_yaw) > 0:  # local_yaw is in direction to the input point
+        if np.cos(yaw_to_input_point - lane_local_yaw) >= 0:  # local_yaw & yaw_to_input_point create an acute angle
             # take a lane that starts in the closest point
             final_lane_idx = closest_lanes_idxs[closest_points_idxs[closest_lanes_idxs] == 0][0]
-        else:  # local_yaw is in opposite direction with vec_to_input_point
+        else:  # local_yaw & yaw_to_input_point create an obtuse angle ( > 90 degrees)
             # take a lane that ends in the closest point
             final_lane_idx = closest_lanes_idxs[closest_points_idxs[closest_lanes_idxs] > 0][0]
         return lane_ids[final_lane_idx]
