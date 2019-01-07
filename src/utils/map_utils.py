@@ -151,27 +151,38 @@ class MapUtils:
         lane_ids = np.array([lane_segment.e_i_lane_segment_id
                     for lane_segment in SceneStaticModel.get_instance().get_scene_static().s_Data.as_scene_lane_segment])
 
-        min_dist_in_lanes = np.array(
-            [min(np.linalg.norm(MapUtils.get_lane(lane_id).a_nominal_path_points[:, (x_index, y_index)]
-                                - cartesian_point, axis=1)) for lane_id in lane_ids])
+        num_points_in_lanes = np.array([MapUtils.get_lane(lane_id).a_nominal_path_points[:, (x_index, y_index)].shape[0]
+                                        for lane_id in lane_ids])
+        max_num_points_in_lanes = np.max(num_points_in_lanes)
+        # create 3D matrix of all lanes' points; pad it by inf according to the largest number of lane points
+        lane_points = np.array([np.vstack((MapUtils.get_lane(lane_id).a_nominal_path_points[:, (x_index, y_index)],
+                                           np.full((max_num_points_in_lanes - num_points_in_lanes[i], 2), np.inf)))
+                                for i, lane_id in enumerate(lane_ids)])
+        distances_from_lane_points = np.linalg.norm(lane_points - cartesian_point, axis=2)  # 2D matrix
+        closest_points_idxs = np.argmin(distances_from_lane_points, axis=1)  # 1D array: closest point index per lane
+        # 1D array: the minimal distances to the point per lane
+        min_dist_in_lanes = distances_from_lane_points[np.arange(distances_from_lane_points.shape[0]), closest_points_idxs]
 
-        closest_lanes_ids = lane_ids[np.isclose(min_dist_in_lanes, min_dist_in_lanes.min(), atol=0.1)]
-        if closest_lanes_ids.size == 1:  # return the single close lane
-            return closest_lanes_ids[0]
+        # find all lanes having the closest distance to the point
+        # TODO: fix the map PG_split.bin such that seam points of stitching lanes will coinside and use default atol
+        closest_lanes_idxs = np.where(np.isclose(min_dist_in_lanes, min_dist_in_lanes.min(), atol=0.1))[0]
+        closest_lane_id = lane_ids[closest_lanes_idxs[0]]
+        if closest_lanes_idxs.size == 1:  # a single closest lane
+            return closest_lane_id
 
-        # if cartesian_point is near a seam between two lanes, choose the closest lane according to its local yaw,
-        # such that the cartesian_point might be projected on the chosen lane
-        for lane_id in closest_lanes_ids:
-            lane_points = MapUtils.get_lane(lane_id).a_nominal_path_points
-            point_idx = np.linalg.norm(lane_points[:, (x_index, y_index)] - cartesian_point, axis=1).argmin()
-            closest_point = lane_points[point_idx, (x_index, y_index)]
-            second_closest_point = lane_points[1, (x_index, y_index)] if point_idx == 0 \
-                else lane_points[point_idx - 1, (x_index, y_index)]
-            if np.dot(second_closest_point - closest_point, cartesian_point - closest_point) >= 0:
-                return lane_id
-
-        return closest_lanes_ids[0]
-
+        # if cartesian_point is near a seam between two (or more) lanes, choose the closest lane according to its
+        # local yaw, such that the cartesian_point might be projected on the chosen lane
+        lane_idx = closest_lanes_idxs[0]  # choose arbitrary closest lane
+        point_idx = closest_points_idxs[lane_idx]  # closest point index in the chosen lane
+        # calculate a vector from the closest point to the input point
+        vec_to_input_point = cartesian_point - MapUtils.get_lane(closest_lane_id).a_nominal_path_points[point_idx, (x_index, y_index)]
+        yaw_to_input_point = np.arctan2(vec_to_input_point[1], vec_to_input_point[0])
+        local_yaw = MapUtils.get_lane(lane_ids[lane_idx]).a_nominal_path_points[
+            point_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_phi_heading.value]
+        if np.cos(yaw_to_input_point - local_yaw) > 0:  # local_yaw is in direction to the input point
+            return lane_ids[np.where(closest_points_idxs == 0)[0][0]]  # take a lane that starts in the closest point
+        else:  # local_yaw is in opposite direction with vec_to_input_point
+            return lane_ids[np.where(closest_points_idxs > 0)[0][0]]  # take a lane that ends in the closest point
 
     @staticmethod
     def get_dist_to_lane_borders(lane_id: int, s: float) -> (float, float):
