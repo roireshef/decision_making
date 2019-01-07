@@ -169,6 +169,11 @@ class MapUtils:
         closest_lane_id = lane_ids[closest_lanes_idxs[0]]
         if closest_lanes_idxs.size == 1:  # a single closest lane
             return closest_lane_id
+        else:  # find lanes, whose closest point is not start/end point of the lane
+            lanes_with_internal_closest_point = np.where(np.logical_and(closest_points_idxs[closest_lanes_idxs] > 0,
+                             closest_points_idxs[closest_lanes_idxs] < num_points_in_lanes[closest_lanes_idxs] - 1))[0]
+            if len(lanes_with_internal_closest_point) > 0:
+                return lane_ids[closest_lanes_idxs[lanes_with_internal_closest_point[0]]]
 
         # if cartesian_point is near a seam between two (or more) lanes, choose the closest lane according to its
         # local yaw, such that the cartesian_point might be projected on the chosen lane
@@ -180,9 +185,12 @@ class MapUtils:
         local_yaw = MapUtils.get_lane(lane_ids[lane_idx]).a_nominal_path_points[
             point_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_phi_heading.value]
         if np.cos(yaw_to_input_point - local_yaw) > 0:  # local_yaw is in direction to the input point
-            return lane_ids[np.where(closest_points_idxs == 0)[0][0]]  # take a lane that starts in the closest point
+            # take a lane that starts in the closest point
+            final_lane_idx = closest_lanes_idxs[closest_points_idxs[closest_lanes_idxs] == 0][0]
         else:  # local_yaw is in opposite direction with vec_to_input_point
-            return lane_ids[np.where(closest_points_idxs > 0)[0][0]]  # take a lane that ends in the closest point
+            # take a lane that ends in the closest point
+            final_lane_idx = closest_lanes_idxs[closest_points_idxs[closest_lanes_idxs] > 0][0]
+        return lane_ids[final_lane_idx]
 
     @staticmethod
     def get_dist_to_lane_borders(lane_id: int, s: float) -> (float, float):
