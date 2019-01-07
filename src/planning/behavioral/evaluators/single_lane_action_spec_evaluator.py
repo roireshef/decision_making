@@ -48,7 +48,8 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
                                              and recipe.action_type == ActionType.FOLLOW_LANE
                                              and recipe.velocity <= maximal_allowed_velocity]
             max_valid_velocity = action_recipes[follow_lane_valid_action_idxs[-1]].velocity
-            fastest_valid_actions = [action_recipes[i].velocity == max_valid_velocity for i in follow_lane_valid_action_idxs]
+            fastest_valid_actions = [i for i in follow_lane_valid_action_idxs
+                                     if action_recipes[i].velocity == max_valid_velocity]
             costs[fastest_valid_actions[0]] = 0
 
         return costs
