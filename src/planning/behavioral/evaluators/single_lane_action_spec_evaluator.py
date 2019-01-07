@@ -39,22 +39,16 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
         terminal_velocities = np.unique([recipe.velocity for recipe in action_recipes if isinstance(recipe, StaticActionRecipe)])
         maximal_allowed_velocity = max(terminal_velocities[terminal_velocities <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED])
 
-        follow_lane_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
-                                         if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
-                                         and recipe.relative_lane == RelativeLane.SAME_LANE
-                                         and recipe.action_type == ActionType.FOLLOW_LANE
-                                         and recipe.velocity == maximal_allowed_velocity]
-
         if len(follow_vehicle_valid_action_idxs) > 0:
             costs[follow_vehicle_valid_action_idxs[0]] = 0
-        elif len(follow_lane_valid_action_idxs) > 0:
-            costs[follow_lane_valid_action_idxs[0]] = 0
         else:
-            follow_lane_any_velocity_idxs = [i for i, recipe in enumerate(action_recipes)
+            follow_lane_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
                                              if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
                                              and recipe.relative_lane == RelativeLane.SAME_LANE
                                              and recipe.action_type == ActionType.FOLLOW_LANE
                                              and recipe.velocity <= maximal_allowed_velocity]
-            costs[follow_lane_any_velocity_idxs[-1]] = 0
+            max_valid_velocity = action_recipes[follow_lane_valid_action_idxs[-1]].velocity
+            fastest_valid_actions = [action_recipes[i].velocity == max_valid_velocity for i in follow_lane_valid_action_idxs]
+            costs[fastest_valid_actions[0]] = 0
 
         return costs
