@@ -233,7 +233,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         lcm_msg = LcmDynamicObject()
         lcm_msg.obj_id = self.obj_id
         lcm_msg.timestamp = self.timestamp
-        lcm_msg._cached_cartesian_state = self._cached_cartesian_state if self._cached_cartesian_state is not None else np.full(6, -4*np.pi)
+        lcm_msg._cached_cartesian_state = self.cartesian_state
         lcm_msg._cached_map_state = self._cached_map_state.serialize()
         lcm_msg._cached_map_state_on_host_lane = self._cached_map_state.serialize()
         lcm_msg.size = self.size.serialize()
@@ -244,7 +244,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmDynamicObject) -> DynamicObject
         return cls(lcmMsg.obj_id, lcmMsg.timestamp
-                   , lcmMsg._cached_cartesian_state if lcmMsg._cached_cartesian_state[C_YAW] > -2*np.pi else None
+                   , lcmMsg._cached_cartesian_state
                    , MapState.deserialize(lcmMsg._cached_map_state) if lcmMsg._cached_map_state.lane_id > 0 else None
                    , MapState.deserialize(lcmMsg._cached_map_state) if lcmMsg._cached_map_state.lane_id > 0 else None
                    , ObjectSize.deserialize(lcmMsg.size)
