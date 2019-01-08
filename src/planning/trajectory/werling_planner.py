@@ -138,8 +138,8 @@ class WerlingPlanner(TrajectoryPlanner):
                                            "planned lat. accelerations range [%s, %s] (limits: %s); "
                                            "number of trajectories passed according to Frenet limits: %s/%s;"
                                            "number of trajectories passed according to Cartesian limits: %s/%s;"
-                                           "number of trajectories passed according to all limits: %s/%s;"
-                                           "\ngoal_frenet = %s, goal-ego = %f vs. t*v = %f" %
+                                           "number of trajectories passed according to all limits: %s/%s;\n"
+                                           "goal_frenet = %s; distance from ego to goal = %f, time*avg_velocity = %f" %
                                            (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                             np.min(ctrajectories[:, :, C_V]), np.max(ctrajectories[:, :, C_V]),
                                             NumpyUtils.str_log(cost_params.velocity_limits),

@@ -40,13 +40,13 @@ class SingleLaneActionSpecEvaluator(ActionSpecEvaluator):
             costs[follow_vehicle_valid_action_idxs[0]] = 0  # choose the found dynamic action
             return costs
 
-        # if a dynamic action not found, calculate maximal valid existing velocity for static actions
+        # if a dynamic action not found, calculate maximal valid existing velocity for same-lane static actions
         terminal_velocities = np.unique([recipe.velocity for i, recipe in enumerate(action_recipes)
                                          if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
                                          and recipe.relative_lane == RelativeLane.SAME_LANE])
         maximal_allowed_velocity = max(terminal_velocities[terminal_velocities <= BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED])
 
-        # find the most calm static action with the maximal existing velocity
+        # find the most calm same-lane static action with the maximal existing velocity
         follow_lane_valid_action_idxs = [i for i, recipe in enumerate(action_recipes)
                                          if action_specs_mask[i] and isinstance(recipe, StaticActionRecipe)
                                          and recipe.relative_lane == RelativeLane.SAME_LANE
