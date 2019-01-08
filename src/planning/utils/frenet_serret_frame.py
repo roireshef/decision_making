@@ -315,8 +315,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         step_sign = np.sign(np.einsum('...ik,...ik->...i', points - a_s, T_s))
 
         # cos(angle between N_s and this vector)
-        cos = np.abs(np.einsum('...ik,...ik->...i', N_s, center_to_point) /
-                     (np.linalg.norm(center_to_point, axis=-1) * np.linalg.norm(N_s, axis=-1)))
+        cos = np.abs(np.einsum('...ik,...ik->...i', N_s, center_to_point) / np.linalg.norm(center_to_point, axis=-1))
 
         # prevent illegal (greater than 1) argument for arccos()
         # don't enable zero curvature to prevent numerical problems with infinite radius
@@ -355,10 +354,12 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         T_s = self.T[O_idx] + \
               delta_s * self.k[O_idx] * self.N[O_idx] - \
               delta_s ** 2 / 2 * self.k[O_idx] ** 2 * self.T[O_idx]
+        T_s /= np.linalg.norm(T_s, axis=-1, keepdims=True)
 
         N_s = self.N[O_idx] - \
               delta_s * self.k[O_idx] * self.T[O_idx] - \
               delta_s ** 2 / 2 * self.k[O_idx] ** 2 * self.N[O_idx]
+        N_s /= np.linalg.norm(N_s, axis=-1, keepdims=True)
 
         k_s = self.k[O_idx] + \
               delta_s * self.k_tag[O_idx]
