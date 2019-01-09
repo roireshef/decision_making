@@ -166,21 +166,23 @@ class MapUtils:
         # find all lanes having the closest distance to the point
         # TODO: fix the map PG_split.bin such that seam points of stitching lanes will coinside and use default atol
         closest_lanes_idxs = np.where(np.isclose(min_dist_in_lanes, min_dist_in_lanes.min(), atol=0.1))[0]
-        closest_lane_id = lane_ids[closest_lanes_idxs[0]]
+        lane_idx = closest_lanes_idxs[0]  # choose arbitrary closest lane
+        lane_id = lane_ids[lane_idx]
         if closest_lanes_idxs.size == 1:  # a single closest lane
-            return closest_lane_id
-        else:  # find lanes, whose closest point is not start/end point of the lane
-            lanes_with_internal_closest_point = np.where(np.logical_and(closest_points_idxs[closest_lanes_idxs] > 0,
-                             closest_points_idxs[closest_lanes_idxs] < num_points_in_lanes[closest_lanes_idxs] - 1))[0]
-            if len(lanes_with_internal_closest_point) > 0:
-                return lane_ids[closest_lanes_idxs[lanes_with_internal_closest_point[0]]]
+            return lane_id
+
+        # Among the closest lanes find lanes, whose closest point is internal (not start/end point of the lane).
+        # If such lanes exist, return an arbitrary one of them.
+        lanes_with_internal_closest_point = np.where(np.logical_and(closest_points_idxs[closest_lanes_idxs] > 0,
+                         closest_points_idxs[closest_lanes_idxs] < num_points_in_lanes[closest_lanes_idxs] - 1))[0]
+        if len(lanes_with_internal_closest_point) > 0:  # then return an arbitrary lane, whose closest point is internal
+            return lane_ids[closest_lanes_idxs[lanes_with_internal_closest_point[0]]]
 
         # if cartesian_point is near a seam between two (or more) lanes, choose the closest lane according to its
         # local yaw, such that the cartesian_point might be projected on the chosen lane
-        lane_idx = closest_lanes_idxs[0]  # choose arbitrary closest lane
         point_idx = closest_points_idxs[lane_idx]  # closest point index in the chosen lane
         # calculate a vector from the closest point to the input point
-        vec_to_input_point = cartesian_point - MapUtils.get_lane(closest_lane_id).a_nominal_path_points[point_idx, (x_index, y_index)]
+        vec_to_input_point = cartesian_point - MapUtils.get_lane(lane_id).a_nominal_path_points[point_idx, (x_index, y_index)]
         yaw_to_input_point = np.arctan2(vec_to_input_point[1], vec_to_input_point[0])
         lane_local_yaw = MapUtils.get_lane(lane_ids[lane_idx]).a_nominal_path_points[
             point_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_phi_heading.value]
