@@ -391,10 +391,12 @@ def test_getClosestLane_nearLanesSeam_laneAccordingToYaw(scene_static: SceneStat
     yaw1 = yaw + 2  # obtuse angle with yaw
     cpoint1 = point_xy + distance_to_point * np.array([np.cos(yaw1), np.sin(yaw1)])
     lane1 = MapUtils.get_closest_lane(cpoint1)
+    assert lane1 == lane_id1
     MapUtils.get_lane_frenet_frame(lane1).cpoint_to_fpoint(cpoint1)  # verify that the conversion does not crash
     yaw2 = yaw + 1  # acute angle with yaw
     cpoint2 = point_xy + distance_to_point * np.array([np.cos(yaw2), np.sin(yaw2)])
     lane2 = MapUtils.get_closest_lane(cpoint2)
+    assert lane2 == lane_id2
     MapUtils.get_lane_frenet_frame(lane2).cpoint_to_fpoint(cpoint2)  # verify that the conversion does not crash
 
 
