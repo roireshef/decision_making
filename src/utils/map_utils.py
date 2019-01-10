@@ -175,11 +175,13 @@ class MapUtils:
         # If such lanes exist, return an arbitrary one of them.
         lanes_with_internal_closest_point = np.where(np.logical_and(closest_points_idxs[closest_lanes_idxs] > 0,
                          closest_points_idxs[closest_lanes_idxs] < num_points_in_lanes[closest_lanes_idxs] - 1))[0]
-        if len(lanes_with_internal_closest_point) > 0:  # then return an arbitrary lane, whose closest point is internal
+        if len(lanes_with_internal_closest_point) > 0:  # then return arbitrary (first) lane with internal closest point
             return lane_ids[closest_lanes_idxs[lanes_with_internal_closest_point[0]]]
 
-        # if cartesian_point is near a seam between two (or more) lanes, choose the closest lane according to its
-        # local yaw, such that the cartesian_point might be projected on the chosen lane
+        # The rest of the code handles deciding on which lane to project out of two closest lanes, while they share
+        # a given mutual closest point.
+        # If cartesian_point is near a seam between two (or more) lanes, choose the closest lane according to its
+        # local yaw, such that the cartesian_point might be projected on the chosen lane.
         point_idx = closest_points_idxs[lane_idx]  # closest point index in the chosen lane
         # calculate a vector from the closest point to the input point
         vec_to_input_point = cartesian_point - MapUtils.get_lane(lane_id).a_nominal_path_points[point_idx, (x_index, y_index)]

@@ -340,23 +340,46 @@ def test_getClosestLane_multiLaneRoad_findRightestAndLeftestLanesByPoints(scene_
     SceneStaticModel.get_instance().set_scene_static(scene_static)
     road_segment_ids = MapUtils.get_road_segment_ids()
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])
-    # find the rightest lane
+    # take the rightest lane
     lane_id = lane_ids[0]
     frenet = MapUtils.get_lane_frenet_frame(lane_id)
     closest_lane_id = MapUtils.get_closest_lane(frenet.points[1])
     assert lane_id == closest_lane_id
-    # find the leftmost lane
+    # take the leftmost lane
     lane_id = lane_ids[-1]
     frenet = MapUtils.get_lane_frenet_frame(lane_id)
     closest_lane_id = MapUtils.get_closest_lane(frenet.points[-2])
     assert lane_id == closest_lane_id
 
 
-def test_getClosestLane_nearLanesSeam_laneAccordingToYaw(scene_static: SceneStatic):
+def test_getClosestLane_nearLanesSeam_closestPointIsInternal(scene_static: SceneStatic):
+    # take a far input point, such that there are two closest lanes from the point and
+    # the closest point in one of them is internal point (not start/end point)
     SceneStaticModel.get_instance().set_scene_static(scene_static)
     road_segment_ids = MapUtils.get_road_segment_ids()
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])
-    # find the rightest lane
+    # take the rightest lane
+    lane_id1 = lane_ids[0]
+    lane_id2 = MapUtils.get_downstream_lanes(lane_id1)[0]
+    x_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value
+    y_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value
+    seam_point = MapUtils.get_lane(lane_id2).a_nominal_path_points[0]
+    point_xy = seam_point[[x_index, y_index]]
+    yaw = seam_point[NominalPathPoint.CeSYS_NominalPathPoint_e_phi_heading.value]
+    distance_to_point = 1000
+    normal_angle = yaw + np.pi/2  # normal to yaw
+    cpoint = point_xy + distance_to_point * np.array([np.cos(normal_angle), np.sin(normal_angle)])
+    lane = MapUtils.get_closest_lane(cpoint)
+    MapUtils.get_lane_frenet_frame(lane).cpoint_to_fpoint(cpoint)  # verify that the conversion does not crash
+
+
+def test_getClosestLane_nearLanesSeam_laneAccordingToYaw(scene_static: SceneStatic):
+    # take an input point close to the lanes seam, such that there are two closest lanes from the point
+    # sharing the same closest (non-internal) lane-point
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    road_segment_ids = MapUtils.get_road_segment_ids()
+    lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])
+    # take the rightest lane
     lane_id1 = lane_ids[0]
     lane_id2 = MapUtils.get_downstream_lanes(lane_id1)[0]
     x_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value
@@ -365,10 +388,14 @@ def test_getClosestLane_nearLanesSeam_laneAccordingToYaw(scene_static: SceneStat
     point_xy = seam_point[[x_index, y_index]]
     yaw = seam_point[NominalPathPoint.CeSYS_NominalPathPoint_e_phi_heading.value]
     distance_to_point = 0.2
-    yaw1 = yaw + 1  # acute angle with yaw
-    assert MapUtils.get_closest_lane(point_xy + distance_to_point * np.array([np.cos(yaw1), np.sin(yaw1)])) == lane_id2
-    yaw2 = yaw + 2  # obtuse angle with yaw
-    assert MapUtils.get_closest_lane(point_xy + distance_to_point * np.array([np.cos(yaw2), np.sin(yaw2)])) == lane_id1
+    yaw1 = yaw + 2  # obtuse angle with yaw
+    cpoint1 = point_xy + distance_to_point * np.array([np.cos(yaw1), np.sin(yaw1)])
+    lane1 = MapUtils.get_closest_lane(cpoint1)
+    MapUtils.get_lane_frenet_frame(lane1).cpoint_to_fpoint(cpoint1)  # verify that the conversion does not crash
+    yaw2 = yaw + 1  # acute angle with yaw
+    cpoint2 = point_xy + distance_to_point * np.array([np.cos(yaw2), np.sin(yaw2)])
+    lane2 = MapUtils.get_closest_lane(cpoint2)
+    MapUtils.get_lane_frenet_frame(lane2).cpoint_to_fpoint(cpoint2)  # verify that the conversion does not crash
 
 
 def test_getLanesIdsFromRoadSegmentId_multiLaneRoad_validateIdsConsistency(scene_static: SceneStatic):
