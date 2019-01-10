@@ -270,8 +270,6 @@ class TrajectoryPlanningFacade(DmModule):
         objects_visualizations = []
         if len(state.dynamic_objects) > 0:
             for obj in state.dynamic_objects:
-                if obj.cartesian_state[C_V] == 0:  # visualize only moving objects
-                    continue
                 try:
                     obj_fstate = reference_route.cstate_to_fstate(obj.cartesian_state)
                     obj_fpredictions = predictor.predict_frenet_states(np.array([obj_fstate]),
