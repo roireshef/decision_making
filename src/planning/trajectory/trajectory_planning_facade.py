@@ -266,6 +266,7 @@ class TrajectoryPlanningFacade(DmModule):
         prediction_horizons = np.arange(0, planning_horizon, VISUALIZATION_PREDICTION_RESOLUTION, float)
 
         # visualize objects' predictions
+        # TODO: create 3 GFFs in TP and convert objects' predictions on them
         objects_visualizations = []
         if len(state.dynamic_objects) > 0:
             for obj in state.dynamic_objects:
