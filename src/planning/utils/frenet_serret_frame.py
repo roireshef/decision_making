@@ -363,9 +363,8 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
 
         k_s = self.k[O_idx] + \
               delta_s * self.k_tag[O_idx]
-        # delta_s ** 2 / 2 * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
 
-        k_s_tag = self.k_tag[O_idx]  # + delta_s * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
+        k_s_tag = self.k_tag[O_idx]
 
         return a_s, T_s, N_s, k_s[..., 0], k_s_tag[..., 0]
 
