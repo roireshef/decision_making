@@ -262,7 +262,25 @@ class TrajectoryPlanningFacade(DmModule):
         # slice alternative trajectories by skipping indices - for visualization
         sliced_ctrajectories = ctrajectories[alternative_ids_skip_range]
 
-        objects_visualizations = []  # TODO fill dynamic objects' predictions using 3 GFFs
+        # this assumes the state is already aligned by short time prediction
+        prediction_horizons = np.arange(0, planning_horizon, VISUALIZATION_PREDICTION_RESOLUTION, float)
+
+        # visualize objects' predictions
+        objects_visualizations = []
+        if len(state.dynamic_objects) > 0:
+            for obj in state.dynamic_objects:
+                if obj.cartesian_state[C_V] == 0:  # visualize only moving objects
+                    continue
+                try:
+                    obj_fstate = reference_route.cstate_to_fstate(obj.cartesian_state)
+                    obj_fpredictions = predictor.predict_frenet_states(np.array([obj_fstate]),
+                                                                       prediction_horizons)[0][:, [FS_SX, FS_DX]]
+                    # skip objects having predictions out of reference_route
+                    if obj_fpredictions[-1, FP_SX] < reference_route.s_max:
+                        obj_cpredictions = reference_route.fpoints_to_cpoints(obj_fpredictions)
+                        objects_visualizations.append(PredictionsVisualization(obj.obj_id, obj_cpredictions))
+                except:  # verify the object can be projected on reference_route
+                    pass
 
         header = Header(0, Timestamp.from_seconds(state.ego_state.timestamp_in_sec), 0)
         visualization_data = DataTrajectoryVisualization(
