@@ -157,13 +157,13 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
 class TrajectoryParams(PUBSUB_MSG_IMPL):
     """ Members annotations for python 2 compliant classes """
     strategy = TrajectoryPlanningStrategy
-    reference_route = FrenetSerret2DFrame
+    reference_route = GeneralizedFrenetSerretFrame
     target_state = np.ndarray
     cost_params = TrajectoryCostParams
     time = float
 
     def __init__(self, strategy, reference_route, target_state, cost_params, time, bp_time):
-        # type: (TrajectoryPlanningStrategy, FrenetSerret2DFrame, np.ndarray, TrajectoryCostParams, float)->None
+        # type: (TrajectoryPlanningStrategy, GeneralizedFrenetSerretFrame, np.ndarray, TrajectoryCostParams, float)->None
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
         :param reference_route: the frenet frame of the reference route (often the center of lane)
