@@ -118,7 +118,6 @@ class WerlingPlanner(TrajectoryPlanner):
         ctrajectories_filtered = ctrajectories[cartesian_refiltered_indices]
         ftrajectories_refiltered = ftrajectories[frenet_filtered_indices][cartesian_refiltered_indices]
 
-
         self._logger.debug(LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, len(ctrajectories_filtered))
 
         if len(ctrajectories) == 0:
@@ -133,13 +132,14 @@ class WerlingPlanner(TrajectoryPlanner):
                                                 len(frenet_filtered_indices), len(ftrajectories)))
         elif len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
-            raise NoValidTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s. "
+            raise NoValidTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s.\n"
                                            "planned velocities range [%s, %s] (limits: %s); "
                                            "planned lon. accelerations range [%s, %s] (limits: %s); "
                                            "planned lat. accelerations range [%s, %s] (limits: %s); "
                                            "number of trajectories passed according to Frenet limits: %s/%s;"
                                            "number of trajectories passed according to Cartesian limits: %s/%s;"
-                                           "number of trajectories passed according to all limits: %s/%s;" %
+                                           "number of trajectories passed according to all limits: %s/%s;\n"
+                                           "goal_frenet = %s; distance from ego to goal = %f, time*approx_velocity = %f" %
                                            (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                             np.min(ctrajectories[:, :, C_V]), np.max(ctrajectories[:, :, C_V]),
                                             NumpyUtils.str_log(cost_params.velocity_limits),
@@ -149,7 +149,9 @@ class WerlingPlanner(TrajectoryPlanner):
                                             NumpyUtils.str_log(cost_params.lat_acceleration_limits),
                                             len(frenet_filtered_indices), len(ftrajectories),
                                             len(cartesian_refiltered_indices), len(ctrajectories),
-                                            len(refiltered_indices), len(ftrajectories)))
+                                            len(refiltered_indices), len(ftrajectories),
+                                            goal_frenet_state, goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
+                                            time_horizon * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV])*0.5))
 
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
