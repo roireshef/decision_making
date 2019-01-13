@@ -278,7 +278,7 @@ class TrajectoryPlanningFacade(DmModule):
                 obj_cpredictions = reference_route.fpoints_to_cpoints(valid_obj_fpredictions)
                 objects_visualizations.append(PredictionsVisualization(obj.obj_id, obj_cpredictions))
             except:  # verify the object can be projected on reference_route
-                pass
+                continue
 
         header = Header(0, Timestamp.from_seconds(state.ego_state.timestamp_in_sec), 0)
         visualization_data = DataTrajectoryVisualization(
