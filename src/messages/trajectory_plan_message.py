@@ -1,54 +1,79 @@
 import numpy as np
 
-from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
-from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryData
-from decision_making.src.global_constants import PUBSUB_MSG_IMPL
+from Rte_Types import TsSYSTrajectoryPlan
+from Rte_Types.sub_structures import TsSYSDataTrajectoryPlan
+from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TRAJECTORY_WAYPOINT_SIZE
+from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header
 
 
-class TrajectoryPlanMsg(PUBSUB_MSG_IMPL):
-    ''' Members annotations for python 2 compliant classes '''
-    timestamp = int
-    trajectory = np.ndarray
-    current_speed = float
+class DataTrajectoryPlan(PUBSUB_MSG_IMPL):
+    s_Timestamp = Timestamp
+    s_MapOrigin = MapOrigin
+    a_TrajectoryWaypoints = np.ndarray
+    e_Cnt_NumValidTrajectoryWaypoints = int
 
-    def __init__(self, timestamp, trajectory, current_speed):
-        # type: (int, np.ndarray, float) -> None
+    def __init__(self, s_Timestamp: Timestamp, s_MapOrigin: MapOrigin, a_TrajectoryWaypoints: np.ndarray,
+                 e_Cnt_NumValidTrajectoryWaypoints: int):
         """
-        A discrete representation of the trajectory to follow - passed from TrajectoryPlanner to Controller
-        :param timestamp: ego's timestamp on which the trajectory is based. Used for giving the controller a reference
-        between the planned trajectory at current time, and the part to be executed due to time delays in the system.
-        :param trajectory: numpy 2D array - 9 rows with each row containing <x, y, yaw, curvature, v> where x and y
-         values are given in global coordinate frame, yaw and curvature are currently only placeholders, and v is the
-         desired velocity of the vehicle on its actual longitudinal axis (the direction of its heading).
-         Note: the first points corresponds to the current pose of the ego-vehicle at the time of plan, and only the
-         following 8 points are points to follow further.
-        :param current_speed: the current speed of the ego vehicle at the time of plan
+
+        :param s_Timestamp: Scene time (sensor time) based on which the planner planned the trajectory
+        :param s_MapOrigin: The map origin used to represent the trajectory points according to
+        :param a_TrajectoryWaypoints: A 2d array of desired host-vehicle states (localizations) in the future (100ms difference in time),
+               with the first state being the current state (t=0). The array is implicitly index-able via the enum
+               TeSYS_TrajectoryWaypoint that reflect field names of the last dimension of the array
+        :param e_Cnt_NumValidTrajectoryWaypoints: number of valid points from the former parameter
         """
-        self.timestamp = timestamp
-        self.trajectory = trajectory
-        self.current_speed = current_speed
+        self.s_Timestamp = s_Timestamp
+        self.s_MapOrigin = s_MapOrigin
+        self.a_TrajectoryWaypoints = a_TrajectoryWaypoints
+        self.e_Cnt_NumValidTrajectoryWaypoints = e_Cnt_NumValidTrajectoryWaypoints
 
     def serialize(self):
-        # type: () -> LcmTrajectoryData
-        lcm_msg = LcmTrajectoryData()
+        # type: () -> TsSYSDataTrajectoryPlan
+        pubsub_msg = TsSYSDataTrajectoryPlan()
 
-        lcm_msg.timestamp = self.timestamp
-        lcm_msg.trajectory = LcmNumpyArray()
-        lcm_msg.trajectory.num_dimensions = len(self.trajectory.shape)
-        lcm_msg.trajectory.shape = list(self.trajectory.shape)
-        lcm_msg.trajectory.length = self.trajectory.size
-        lcm_msg.trajectory.data = self.trajectory.flat.__array__().tolist()
+        pubsub_msg.s_Timestamp = self.s_Timestamp.serialize()
+        pubsub_msg.s_MapOrigin = self.s_MapOrigin.serialize()
+        pubsub_msg.a_TrajectoryWaypoints = self.a_TrajectoryWaypoints
+        pubsub_msg.e_Cnt_NumValidTrajectoryWaypoints = self.e_Cnt_NumValidTrajectoryWaypoints
 
-        lcm_msg.current_speed = self.current_speed
-
-        return lcm_msg
+        return pubsub_msg
 
     @classmethod
-    def deserialize(cls, lcmMsg):
-        # type: (LcmTrajectoryData) -> TrajectoryPlanMsg
+    def deserialize(cls, pubsubMsg):
+        # type: (TsSYSDataTrajectoryPlan)->DataTrajectoryPlan
+        return cls(Timestamp.deserialize(pubsubMsg.s_Timestamp),
+                   MapOrigin.deserialize(pubsubMsg.s_MapOrigin),
+                   pubsubMsg.a_TrajectoryWaypoints[:pubsubMsg.e_Cnt_NumValidTrajectoryWaypoints,:TRAJECTORY_WAYPOINT_SIZE],
+                   pubsubMsg.e_Cnt_NumValidTrajectoryWaypoints)
 
-        return cls(lcmMsg.timestamp,
-                   np.ndarray(shape=tuple(lcmMsg.trajectory.shape)
-                              , buffer=np.array(lcmMsg.trajectory.data)
-                              , dtype=float)
-                   , lcmMsg.current_speed)
+
+class TrajectoryPlan(PUBSUB_MSG_IMPL):
+    s_Header = Header
+    s_Data = DataTrajectoryPlan
+
+    def __init__(self, s_Header: Header, s_Data: DataTrajectoryPlan):
+        """
+
+        :param s_Header:
+        :param s_Data:
+        """
+        self.s_Header = s_Header
+        self.s_Data = s_Data
+
+    def serialize(self):
+        # type: () -> TsSYSTrajectoryPlan
+        pubsub_msg = TsSYSTrajectoryPlan()
+
+        pubsub_msg.s_Header = self.s_Header.serialize()
+        pubsub_msg.s_Data = self.s_Data.serialize()
+
+        return pubsub_msg
+
+    @classmethod
+    def deserialize(cls, pubsubMsg):
+        # type: (TsSYSTrajectoryPlan)->TrajectoryPlan
+        return cls(Header.deserialize(pubsubMsg.s_Header),
+                   DataTrajectoryPlan.deserialize(pubsubMsg.s_Data))
+
+

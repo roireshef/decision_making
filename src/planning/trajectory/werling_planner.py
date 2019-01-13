@@ -1,7 +1,6 @@
+import numpy as np
 from logging import Logger
 from typing import Tuple
-
-import numpy as np
 
 from decision_making.src.exceptions import NoValidTrajectoriesFound, CouldNotGenerateTrajectories
 from decision_making.src.global_constants import WERLING_TIME_RESOLUTION, SX_STEPS, SV_OFFSET_MIN, SV_OFFSET_MAX, \
@@ -18,7 +17,7 @@ from decision_making.src.planning.types import FP_SX, FP_DX, C_V, FS_SV, \
     FrenetState2D, C_A, C_K, D5, Limits
 from decision_making.src.planning.types import FrenetTrajectories2D, CartesianExtendedTrajectories
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
-from decision_making.src.planning.utils.math import Math
+from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
@@ -61,7 +60,7 @@ class WerlingPlanner(TrajectoryPlanner):
 
         sx_range = np.linspace(np.max((SX_OFFSET_MIN + goal_frenet_state[FS_SX],
                                        (goal_frenet_state[FS_SX] + ego_frenet_state[FS_SX]) / 2)),
-                               np.min((SX_OFFSET_MAX + goal_frenet_state[FS_SX], (len(reference_route.O) - 1) * reference_route.ds)),
+                               np.min((SX_OFFSET_MAX + goal_frenet_state[FS_SX], reference_route.s_max)),
                                SX_STEPS)
 
         sv_range = np.linspace(
@@ -119,7 +118,6 @@ class WerlingPlanner(TrajectoryPlanner):
         ctrajectories_filtered = ctrajectories[cartesian_refiltered_indices]
         ftrajectories_refiltered = ftrajectories[frenet_filtered_indices][cartesian_refiltered_indices]
 
-
         self._logger.debug(LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES, len(ctrajectories_filtered))
 
         if len(ctrajectories) == 0:
@@ -134,13 +132,14 @@ class WerlingPlanner(TrajectoryPlanner):
                                                 len(frenet_filtered_indices), len(ftrajectories)))
         elif len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
-            raise NoValidTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s. "
+            raise NoValidTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s.\n"
                                            "planned velocities range [%s, %s] (limits: %s); "
                                            "planned lon. accelerations range [%s, %s] (limits: %s); "
                                            "planned lat. accelerations range [%s, %s] (limits: %s); "
                                            "number of trajectories passed according to Frenet limits: %s/%s;"
                                            "number of trajectories passed according to Cartesian limits: %s/%s;"
-                                           "number of trajectories passed according to all limits: %s/%s;" %
+                                           "number of trajectories passed according to all limits: %s/%s;\n"
+                                           "goal_frenet = %s; distance from ego to goal = %f, time*approx_velocity = %f" %
                                            (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                             np.min(ctrajectories[:, :, C_V]), np.max(ctrajectories[:, :, C_V]),
                                             NumpyUtils.str_log(cost_params.velocity_limits),
@@ -150,13 +149,15 @@ class WerlingPlanner(TrajectoryPlanner):
                                             NumpyUtils.str_log(cost_params.lat_acceleration_limits),
                                             len(frenet_filtered_indices), len(ftrajectories),
                                             len(cartesian_refiltered_indices), len(ctrajectories),
-                                            len(refiltered_indices), len(ftrajectories)))
+                                            len(refiltered_indices), len(ftrajectories),
+                                            goal_frenet_state, goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
+                                            time_horizon * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV])*0.5))
 
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
         filtered_trajectory_costs = \
             self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
-                               global_time_sample, self._predictor, self.dt)
+                               global_time_sample, self._predictor, self.dt, reference_route)
 
         sorted_filtered_idxs = filtered_trajectory_costs.argsort()
 
@@ -230,7 +231,7 @@ class WerlingPlanner(TrajectoryPlanner):
     @staticmethod
     def _compute_cost(ctrajectories: CartesianExtendedTrajectories, ftrajectories: FrenetTrajectories2D, state: State,
                       goal_in_frenet: FrenetState2D, params: TrajectoryCostParams, global_time_samples: np.ndarray,
-                      predictor: EgoAwarePredictor, dt: float) -> np.ndarray:
+                      predictor: EgoAwarePredictor, dt: float, reference_route: FrenetSerret2DFrame) -> np.ndarray:
         """
         Takes trajectories (in both frenet-frame repr. and cartesian-frame repr.) and computes a cost for each one
         :param ctrajectories: numpy tensor of trajectories in cartesian-frame
@@ -255,7 +256,8 @@ class WerlingPlanner(TrajectoryPlanner):
 
         ''' point-wise costs: obstacles, deviations, jerk '''
         pointwise_costs = TrajectoryPlannerCosts.compute_pointwise_costs(ctrajectories, ftrajectories, state, params,
-                                                                         global_time_samples, predictor, dt)
+                                                                         global_time_samples, predictor, dt,
+                                                                         reference_route)
 
         return np.sum(pointwise_costs, axis=(1, 2)) + dist_from_goal_costs
 

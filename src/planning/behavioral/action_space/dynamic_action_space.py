@@ -14,9 +14,10 @@ from decision_making.src.planning.behavioral.data_objects import ActionSpec, Dyn
 from decision_making.src.planning.behavioral.data_objects import RelativeLane, AggressivenessLevel
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
 from decision_making.src.planning.types import LIMIT_MAX, FS_SV, FS_SX, LIMIT_MIN, FS_SA, FS_DA, FS_DV, FS_DX
-from decision_making.src.planning.utils.math import Math
+from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class DynamicActionSpace(ActionSpace):
@@ -45,36 +46,36 @@ class DynamicActionSpace(ActionSpace):
         :param behavioral_state: a Frenet state of ego at initial point
         :return: semantic action specification [ActionSpec] or [None] if recipe can't be specified.
         """
-        ego = behavioral_state.ego_state
-        ego_init_fstate = ego.map_state.road_fstate
+        # pick ego initial fstates projected on all target frenet_frames
+        projected_ego_fstates = np.array([behavioral_state.projected_ego_fstates[recipe.relative_lane] for recipe in action_recipes])
 
+        # collect targets' lengths, lane_ids and fstates
         targets = [behavioral_state.road_occupancy_grid[(action_recipe.relative_lane, action_recipe.relative_lon)][0]
                    for action_recipe in action_recipes]
-
-        desired_center_lane_latitude = np.array([target.dynamic_object.map_state.lane_center_lat for target in targets])
         target_length = np.array([target.dynamic_object.size.length for target in targets])
-        target_fstate = np.array([target.dynamic_object.map_state.road_fstate for target in targets])
+        target_map_states = [target.dynamic_object.map_state for target in targets]
+        # get desired terminal velocity
+        v_T = np.array([map_state.lane_fstate[FS_SV] for map_state in target_map_states])
 
         # get relevant aggressiveness weights for all actions
         aggressiveness = np.array([action_recipe.aggressiveness.value for action_recipe in action_recipes])
         weights = BP_JERK_S_JERK_D_TIME_WEIGHTS[aggressiveness]
 
-        # get desired terminal velocity
-        v_T = target_fstate[:, FS_SV]
+        # calculate initial longitudinal differences between all target objects and ego along target lanes
+        longitudinal_differences = behavioral_state.calculate_longitudinal_differences(target_map_states)
+        assert not np.isinf(longitudinal_differences).any()
 
-        # longitudinal difference between object and ego at t=0 (positive if obj in front of ego)
-        init_longitudinal_difference = target_fstate[:, FS_SX] - ego_init_fstate[FS_SX]
         # margin_sign is -1 for FOLLOW_VEHICLE (behind target) and +1 for OVER_TAKE_VEHICLE (in front of target)
         margin_sign = np.array([-1 if action_recipe.action_type == ActionType.FOLLOW_VEHICLE else +1
                                 for action_recipe in action_recipes])
 
-        ds = init_longitudinal_difference + margin_sign * (
-            LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + ego.size.length / 2 + target_length / 2)
+        ds = longitudinal_differences + margin_sign * (
+            LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT + behavioral_state.ego_state.size.length / 2 + target_length / 2)
 
         # T_s <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_s = QuinticPoly1D.time_cost_function_derivative_coefs(
             w_T=weights[:, 2], w_J=weights[:, 0], dx=ds,
-            a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV], v_T=v_T, T_m=SPECIFICATION_MARGIN_TIME_DELAY)
+            a_0=projected_ego_fstates[:, FS_SA], v_0=projected_ego_fstates[:, FS_SV], v_T=v_T, T_m=SPECIFICATION_MARGIN_TIME_DELAY)
         roots_s = Math.find_real_roots_in_limits(cost_coeffs_s, np.array([0, np.inf]))
         T_s = np.fmax.reduce(roots_s, axis=-1)
 
@@ -84,13 +85,10 @@ class DynamicActionSpace(ActionSpace):
         with np.errstate(invalid='ignore'):
             T_s[(T_s < BP_ACTION_T_LIMITS[LIMIT_MIN]) & (aggressiveness > AggressivenessLevel.CALM.value)] = np.nan
 
-        # latitudinal difference to target
-        init_lateral_difference = desired_center_lane_latitude - ego_init_fstate[FS_DX]
-
         # T_d <- find minimal non-complex local optima within the BP_ACTION_T_LIMITS bounds, otherwise <np.nan>
         cost_coeffs_d = QuinticPoly1D.time_cost_function_derivative_coefs(
-            w_T=weights[:, 2], w_J=weights[:, 1], dx=init_lateral_difference,
-            a_0=ego_init_fstate[FS_DA], v_0=ego_init_fstate[FS_DV], v_T=0, T_m=SPECIFICATION_MARGIN_TIME_DELAY)
+            w_T=weights[:, 2], w_J=weights[:, 1], dx=-projected_ego_fstates[:, FS_DX],
+            a_0=projected_ego_fstates[:, FS_DA], v_0=projected_ego_fstates[:, FS_DV], v_T=0, T_m=SPECIFICATION_MARGIN_TIME_DELAY)
         roots_d = Math.find_real_roots_in_limits(cost_coeffs_d, np.array([0, BP_ACTION_T_LIMITS[LIMIT_MAX]]))
         T_d = np.fmin.reduce(roots_d, axis=-1)
 
@@ -100,12 +98,15 @@ class DynamicActionSpace(ActionSpace):
         # Calculate resulting distance from sampling the state at time T from the Quartic polynomial solution.
         # distance_s also takes into account the safe distance that depends on target vehicle velocity that we want
         # to keep from the target vehicle.
-        distance_s = QuinticPoly1D.distance_profile_function(a_0=ego_init_fstate[FS_SA], v_0=ego_init_fstate[FS_SV],
-                                                             v_T=v_T, T=T, dx=ds, T_m=SPECIFICATION_MARGIN_TIME_DELAY)(T)
+        distance_s = QuinticPoly1D.distance_profile_function(a_0=projected_ego_fstates[:, FS_SA],
+                                                             v_0=projected_ego_fstates[:, FS_SV],
+                                                             v_T=v_T, T=T, dx=ds,
+                                                             T_m=SPECIFICATION_MARGIN_TIME_DELAY)(T)
         # Absolute longitudinal position of target
-        target_s = distance_s + ego_init_fstate[FS_SX]
+        target_s = distance_s + projected_ego_fstates[:, FS_SX]
 
-        action_specs = [ActionSpec(t, v_T[i], target_s[i], desired_center_lane_latitude[i])
+        # lane center has latitude = 0, i.e. spec.d = 0
+        action_specs = [ActionSpec(t, v_T[i], target_s[i], 0, action_recipes[i].relative_lane)
                         if ~np.isnan(t) else None
                         for i, t in enumerate(T)]
 

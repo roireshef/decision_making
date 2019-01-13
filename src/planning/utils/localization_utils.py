@@ -3,7 +3,7 @@ from logging import Logger
 import numpy as np
 
 from decision_making.src.global_constants import DEFAULT_OBJECT_Z_VALUE, NEGLIGIBLE_DISPOSITION_LAT, \
-    NEGLIGIBLE_DISPOSITION_LON
+    NEGLIGIBLE_DISPOSITION_LON, LOG_INVALID_TRAJECTORY_SAMPLING_TIME
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
 from decision_making.src.planning.types import CartesianExtendedState, C_X, C_Y, C_YAW, FrenetPoint, FP_SX, FP_DX, C_V
 from decision_making.src.state.state import EgoState
@@ -27,7 +27,12 @@ class LocalizationUtils:
         :return: true if actual state is closer than NEGLIGIBLE_DISPOSITION_* to the planned state. false otherwise
         """
         current_time = current_ego_state.timestamp_in_sec
-        if last_trajectory is None or current_time > last_trajectory.max_sample_time:
+        if last_trajectory is None:
+            return False
+
+        if current_time < last_trajectory.timestamp_in_sec or current_time > last_trajectory.max_sample_time:
+            logger.warning(LOG_INVALID_TRAJECTORY_SAMPLING_TIME, current_time, last_trajectory.timestamp_in_sec,
+                           last_trajectory.max_sample_time)
             return False
 
         logger.debug("%s time-difference from last planned trajectory is %s",

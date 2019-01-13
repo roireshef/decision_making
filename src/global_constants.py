@@ -27,6 +27,9 @@ REFERENCE_ROUTE_MARGINS = PLANNING_LOOKAHEAD_DIST
 # and linearization errors)
 PREDICTION_LOOKAHEAD_COMPENSATION_RATIO = 1.2
 
+# [m] Maximal horizon distance for building Generalized Frenet Frames
+MAX_HORIZON_DISTANCE = 400
+
 # The necessary lateral margin in [m] that needs to be taken in order to assume that it is not in car's way
 LATERAL_SAFETY_MARGIN_FROM_OBJECT = 0.0
 LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT = 2.0
@@ -141,13 +144,13 @@ ROAD_MAP_REQUIRED_RES = 5
 EXP_CLIP_TH = 50.0
 
 # Number of (best) trajectories to publish to visualization
-NUM_ALTERNATIVE_TRAJECTORIES = 50
+MAX_VIS_TRAJECTORIES_NUMBER = 64
 
 # Number of points in trajectories for sending out to visualization (currently VizTool freezes when there are too much)
 MAX_NUM_POINTS_FOR_VIZ = 60
 
 # in meters, to be used as an argument in the resample_curve method
-DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION = 0.5
+DOWNSAMPLE_STEP_FOR_REF_ROUTE_VISUALIZATION = 2
 
 # [m] "Negligible distance" threshold between the desired location and the actual location between two TP planning
 # iterations. If the distance is lower than this threshold, the TP plans the trajectory as is the ego vehicle is
@@ -160,6 +163,10 @@ TRAJECTORY_TIME_RESOLUTION = 0.1
 
 # Number of trajectory points to send out (to controller) from the TP - including the current state of ego
 TRAJECTORY_NUM_POINTS = 10
+
+# Waypoints requirements from IDL
+TRAJECTORY_WAYPOINT_SIZE = 11
+MAX_TRAJECTORY_WAYPOINTS = 100
 
 # Werling Planner #
 
@@ -220,8 +227,8 @@ VELOCITY_MINIMAL_THRESHOLD = 0.001
 
 # Whether we filter out dynamic objects that are not on the road
 # Request by perception for viewing recordings in non-mapped areas.
-# SHOULD ALWAYS BE TRUE FOR NORMAL DM FLOW
-FILTER_OFF_ROAD_OBJECTS = True
+# Since SP is assumed to handle filtering out off-road objects, this is currently in use only in prediction.
+FILTER_OFF_ROAD_OBJECTS = False
 
 ### DM Manager configuration ###
 BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.5
@@ -249,15 +256,23 @@ METRIC_LOGGER_DELIMITER= '_'
 ##### Log messages
 # TODO: update decision_making_sim messages
 LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS = "Received mission params"
+LOG_MSG_SCENE_STATIC_RECEIVED = "Received SceneStatic message with Timestamp: "
 LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG = "Publishing Trajectory"
 LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT = "BehavioralPlanningFacade output is"
 LOG_MSG_BEHAVIORAL_PLANNER_SEMANTIC_ACTION = "Chosen behavioral semantic action is"
 LOG_MSG_BEHAVIORAL_PLANNER_ACTION_SPEC = "Chosen action specification is"
 LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES = "TP has found %d valid trajectories to choose from"
 LOG_MSG_RECEIVED_STATE = "Received state"
-LOG_MSG_STATE_MODULE_PUBLISH_STATE = "publishing state"
+LOG_MSG_STATE_MODULE_PUBLISH_STATE = "Publishing State"
+LOG_MSG_STATE_MODULE_PUBLISH_DYNAMIC_SCENE = "Publishing Scene"
 LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME = "TrajectoryPlanningFacade._periodic_action_impl time"
 LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME = "BehavioralFacade._periodic_action_impl time"
+LOG_INVALID_TRAJECTORY_SAMPLING_TIME = "LocalizationUtils.is_actual_state_close_to_expected_state timestamp to sample is " \
+                                       "%f while trajectory time range is [%f, %f]"
+LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED = "TrajectoryPlanningFacade planning from desired location (desired frenet: %s, actual frenet: %s)"
+LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL = "TrajectoryPlanningFacade planning from actual location (actual frenet: %s)"
+
+
 
 # Resolution of car timestamps in sec
 TIMESTAMP_RESOLUTION_IN_SEC = 1e-9

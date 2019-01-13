@@ -10,7 +10,7 @@ from decision_making.src.global_constants import LON_ACC_LIMITS, VELOCITY_LIMITS
     BP_ACTION_T_LIMITS, EPS
 from decision_making.src.planning.behavioral.data_objects import ActionType
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
-from decision_making.src.planning.utils.math import Math
+from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 

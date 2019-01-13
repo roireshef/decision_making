@@ -1,10 +1,11 @@
+from decision_making.src.planning.types import FS_DX, FS_SX
 from decision_making.src.prediction.ego_aware_prediction.ended_maneuver_params import EndedManeuverParams
 from decision_making.src.prediction.ego_aware_prediction.maneuver_recognition.manuever_classifier import \
     ManeuverClassifier
 from decision_making.src.prediction.ego_aware_prediction.maneuver_spec import ManeuverSpec
 from decision_making.src.prediction.utils.prediction_utils import PredictionUtils
 from decision_making.src.state.state import State
-from mapping.src.service.map_service import MapService
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class ConstantVelocityManeuverClassifier(ManeuverClassifier):
@@ -27,10 +28,8 @@ class ConstantVelocityManeuverClassifier(ManeuverClassifier):
         object_state = State.get_object_from_state(state=state, target_obj_id=object_id)
         map_state = object_state.map_state
 
-        map_api = MapService.get_instance()
-
         # Calculate object's initial state in Frenet frame according to model
-        lane_width = map_api.get_road(road_id=map_state.road_id).lane_width
+        lane_width = MapUtils.get_lane_width(map_state.lane_id, s=map_state.lane_fstate[FS_SX])
 
         # Fetch trajectory parameters
         avg_s_a = 0.0
@@ -38,7 +37,7 @@ class ConstantVelocityManeuverClassifier(ManeuverClassifier):
         relative_lane = 0.0
 
         # Keep same normalized latitude in lane
-        lat = (map_state.intra_lane_lat - lane_width / 2.0) / lane_width
+        lat = map_state.lane_fstate[FS_DX] / lane_width
 
         return PredictionUtils.convert_to_maneuver_spec(object_state=object_state,
                                                         ended_maneuver_params=EndedManeuverParams(T_s=maneuver_horizon,

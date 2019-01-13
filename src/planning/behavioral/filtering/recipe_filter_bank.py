@@ -11,6 +11,7 @@ from decision_making.src.planning.types import FS_SV, FS_SA
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite, TextReadWrite
 # DynamicActionRecipe Filters
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
+from decision_making.src.utils.map_utils import MapUtils
 
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
@@ -93,8 +94,8 @@ class FilterBadExpectedTrajectory(RecipeFilter):
         """
         action_type = recipe.action_type
         ego_state = behavioral_state.ego_state
-        v_0 = ego_state.map_state.road_fstate[FS_SV]
-        a_0 = ego_state.map_state.road_fstate[FS_SA]
+        v_0 = ego_state.map_state.lane_fstate[FS_SV]
+        a_0 = ego_state.map_state.lane_fstate[FS_SA]
         wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
 
         # The predicates currently work for follow-front car,overtake-back car or follow-lane actions.
@@ -115,7 +116,7 @@ class FilterBadExpectedTrajectory(RecipeFilter):
             # compute distance from target vehicle +/- safety margin
             s_T = relative_dynamic_object.longitudinal_distance - (LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
                                                       ego_state.size.length / 2 + dynamic_object.size.length / 2)
-            v_T = dynamic_object.map_state.road_fstate[FS_SV]
+            v_T = dynamic_object.map_state.lane_fstate[FS_SV]
 
             predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
 
@@ -163,11 +164,15 @@ class FilterNonCalmActions(RecipeFilter):
 
 class FilterIfNoLane(RecipeFilter):
     def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
+        lane_id = behavioral_state.ego_state.map_state.lane_id
         return (recipe.relative_lane == RelativeLane.SAME_LANE or
-                (recipe.relative_lane == RelativeLane.RIGHT_LANE and behavioral_state.right_lane_exists) or
-                (recipe.relative_lane == RelativeLane.LEFT_LANE and behavioral_state.left_lane_exists))
+                len(MapUtils.get_adjacent_lane_ids(lane_id, recipe.relative_lane)) > 0)
 
 
 class FilterIfAggressive(RecipeFilter):
     def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
         return recipe.aggressiveness != AggressivenessLevel.AGGRESSIVE
+
+class FilterLaneChanging(RecipeFilter):
+    def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
+        return recipe.relative_lane == RelativeLane.SAME_LANE

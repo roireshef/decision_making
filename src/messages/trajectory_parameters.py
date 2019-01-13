@@ -1,13 +1,15 @@
 import numpy as np
 
-from common_data.lcm.generatedFiles.gm_lcm import LcmNumpyArray
-from common_data.lcm.generatedFiles.gm_lcm import LcmSigmoidFunctionParams
-from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryCostParams
-from common_data.lcm.generatedFiles.gm_lcm import LcmTrajectoryParameters
+from common_data.interface.py.idl_generated_files.Rte_Types import LcmTrajectoryParameters
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmSigmoidFunctionParams import \
+    LcmSigmoidFunctionParams
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmTrajectoryCostParams import \
+    LcmTrajectoryCostParams
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_V, Limits
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 
 
 class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
@@ -126,24 +128,9 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         lcm_msg.dist_from_goal_lat_factor = self.dist_from_goal_lat_factor
         lcm_msg.lon_jerk_cost = self.lon_jerk_cost
         lcm_msg.lat_jerk_cost = self.lat_jerk_cost
-
-        lcm_msg.velocity_limits = LcmNumpyArray()
-        lcm_msg.velocity_limits.num_dimensions = len(self.velocity_limits.shape)
-        lcm_msg.velocity_limits.shape = list(self.velocity_limits.shape)
-        lcm_msg.velocity_limits.length = self.velocity_limits.size
-        lcm_msg.velocity_limits.data = self.velocity_limits.flat.__array__().tolist()
-
-        lcm_msg.lon_acceleration_limits = LcmNumpyArray()
-        lcm_msg.lon_acceleration_limits.num_dimensions = len(self.lon_acceleration_limits.shape)
-        lcm_msg.lon_acceleration_limits.shape = list(self.lon_acceleration_limits.shape)
-        lcm_msg.lon_acceleration_limits.length = self.lon_acceleration_limits.size
-        lcm_msg.lon_acceleration_limits.data = self.lon_acceleration_limits.flat.__array__().tolist()
-
-        lcm_msg.lat_acceleration_limits = LcmNumpyArray()
-        lcm_msg.lat_acceleration_limits.num_dimensions = len(self.lat_acceleration_limits.shape)
-        lcm_msg.lat_acceleration_limits.shape = list(self.lat_acceleration_limits.shape)
-        lcm_msg.lat_acceleration_limits.length = self.lat_acceleration_limits.size
-        lcm_msg.lat_acceleration_limits.data = self.lat_acceleration_limits.flat.__array__().tolist()
+        lcm_msg.velocity_limits = self.velocity_limits
+        lcm_msg.lon_acceleration_limits = self.lon_acceleration_limits
+        lcm_msg.lat_acceleration_limits = self.lat_acceleration_limits
 
         return lcm_msg
 
@@ -162,27 +149,21 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
                  , lcmMsg.dist_from_goal_lat_factor
                  , lcmMsg.lon_jerk_cost
                  , lcmMsg.lat_jerk_cost
-                 , np.ndarray(shape = tuple(lcmMsg.velocity_limits.shape)
-                            , buffer = np.array(lcmMsg.velocity_limits.data)
-                            , dtype = float)
-                 , np.ndarray(shape = tuple(lcmMsg.lon_acceleration_limits.shape)
-                            , buffer = np.array(lcmMsg.lon_acceleration_limits.data)
-                            , dtype = float)
-                 , np.ndarray(shape = tuple(lcmMsg.lat_acceleration_limits.shape)
-                            , buffer = np.array(lcmMsg.lat_acceleration_limits.data)
-                            , dtype = float))
+                 , lcmMsg.velocity_limits
+                 , lcmMsg.lon_acceleration_limits
+                 , lcmMsg.lat_acceleration_limits)
 
 
 class TrajectoryParams(PUBSUB_MSG_IMPL):
     """ Members annotations for python 2 compliant classes """
     strategy = TrajectoryPlanningStrategy
-    reference_route = FrenetSerret2DFrame
+    reference_route = GeneralizedFrenetSerretFrame
     target_state = np.ndarray
     cost_params = TrajectoryCostParams
     time = float
 
     def __init__(self, strategy, reference_route, target_state, cost_params, time, bp_time):
-        # type: (TrajectoryPlanningStrategy, FrenetSerret2DFrame, np.ndarray, TrajectoryCostParams, float)->None
+        # type: (TrajectoryPlanningStrategy, GeneralizedFrenetSerretFrame, np.ndarray, TrajectoryCostParams, float)->None
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
         :param reference_route: the frenet frame of the reference route (often the center of lane)
@@ -213,12 +194,7 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
 
         lcm_msg.reference_route = self.reference_route.serialize()
 
-        lcm_msg.target_state = LcmNumpyArray()
-        lcm_msg.target_state.num_dimensions = len(self.target_state.shape)
-        lcm_msg.target_state.shape = list(self.target_state.shape)
-        lcm_msg.target_state.length = self.target_state.size
-        lcm_msg.target_state.data = self.target_state.flat.__array__().tolist()
-
+        lcm_msg.target_state = self.target_state
         lcm_msg.cost_params = self.cost_params.serialize()
 
         lcm_msg.time = self.time
@@ -230,10 +206,8 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
     def deserialize(cls, lcmMsg):
         # type: (LcmTrajectoryParameters)->TrajectoryParams
         return cls(TrajectoryPlanningStrategy(lcmMsg.strategy)
-                 , FrenetSerret2DFrame.deserialize(lcmMsg.reference_route)
-                 , np.ndarray(shape = tuple(lcmMsg.target_state.shape)
-                            , buffer = np.array(lcmMsg.target_state.data)
-                            , dtype = float)
+                 , GeneralizedFrenetSerretFrame.deserialize(lcmMsg.reference_route)
+                 , lcmMsg.target_state
                  , TrajectoryCostParams.deserialize(lcmMsg.cost_params)
                  , lcmMsg.time
                  , lcmMsg.bp_time)

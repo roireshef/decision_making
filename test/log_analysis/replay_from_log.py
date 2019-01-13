@@ -3,14 +3,14 @@ from typing import Dict
 
 import numpy as np
 
-from common_data.lcm.config import pubsub_topics
+from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
 from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.messages.class_serialization import ClassSerializer
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
-from decision_making.src.prediction.road_following_predictor import RoadFollowingPredictor
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import State
 from decision_making.test.constants import LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING
 from decision_making.test.log_analysis.parse_log_messages import STATE_IDENTIFIER_STRING_BP, \
@@ -32,7 +32,7 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         then we will output the last received state.
         :return: deserialized State
         """
-        input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_TOPIC, timeout=1)
+        input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_LCM, timeout=1)
         object_state = ClassSerializer.deserialize(class_type=State, message=input_state)
         return object_state
 
@@ -43,7 +43,7 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-        input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_TOPIC, timeout=1)
+        input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_LCM, timeout=1)
         object_params = ClassSerializer.deserialize(class_type=TrajectoryParams, message=input_params)
         return object_params
 
@@ -60,8 +60,8 @@ def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
     pubsub = PubSubMock(logger=AV_Logger.get_logger(LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING))
 
     # Publish messages using pubsub mock
-    pubsub.publish(pubsub_topics.STATE_TOPIC, state_serialized)
-    pubsub.publish(pubsub_topics.TRAJECTORY_PARAMS_TOPIC, tp_params_serialized)
+    pubsub.publish(pubsub_topics.STATE_LCM, state_serialized)
+    pubsub.publish(pubsub_topics.TRAJECTORY_PARAMS_LCM, tp_params_serialized)
 
     # Initialize TP
     logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
@@ -72,8 +72,7 @@ def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
                          TrajectoryPlanningStrategy.PARKING: planner,
                          TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
     trajectory_planning_module = TrajectoryPlanningFacadeNoLcm(pubsub=pubsub, logger=logger,
-                                                               strategy_handlers=strategy_handlers,
-                                                               short_time_predictor=predictor)
+                                                               strategy_handlers=strategy_handlers)
 
     # Execute TP
     trajectory_planning_module._periodic_action_impl()

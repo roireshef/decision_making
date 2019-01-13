@@ -1,9 +1,8 @@
 from os import getpid
 
+from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 
-from common_data.lcm.config import config_defs
-from common_data.lcm.python.Communication.lcmpubsub import LcmPubSub
 from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from decision_making.src import global_constants
 from decision_making.src.dm_main import DmInitialization
@@ -17,8 +16,6 @@ from decision_making.src.planning.trajectory.fixed_trajectory_planner import Fix
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_Y
-from decision_making.src.prediction.action_unaware_prediction.physical_time_alignment_predictor import \
-    PhysicalTimeAlignmentPredictor
 from decision_making.test import constants
 from decision_making.test.constants import TP_MOCK_FIXED_TRAJECTORY_FILENAME
 from decision_making.test.utils_for_tests import Utils
@@ -31,12 +28,11 @@ class DmMockInitialization:
     @staticmethod
     def create_trajectory_planner() -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(config_file=config_defs.LCM_SOCKET_CONFIG, pubSubType=LcmPubSub)
+        pubsub = create_pubsub(PubSubMessageTypes)
 
         # Init map
         MapService.initialize()
         predictor = RoadFollowingPredictor(logger)
-        short_time_predictor = PhysicalTimeAlignmentPredictor(logger)
 
         fixed_trajectory = Utils.read_trajectory(TP_MOCK_FIXED_TRAJECTORY_FILENAME)
 
@@ -51,7 +47,6 @@ class DmMockInitialization:
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
         trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
-                                                              short_time_predictor=short_time_predictor,
                                                               strategy_handlers=strategy_handlers)
         return trajectory_planning_module
 

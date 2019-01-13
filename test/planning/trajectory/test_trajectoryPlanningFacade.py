@@ -1,15 +1,21 @@
-import numpy as np
+from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame, \
+    FrenetSubSegment
+
+from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 
 from decision_making.src.planning.trajectory.samplable_werling_trajectory import SamplableWerlingTrajectory
 from decision_making.src.planning.types import C_X, C_Y, C_YAW, C_V, C_A, C_K
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.src.state.state import ObjectSize, EgoState
 from decision_making.test.planning.trajectory.mock_trajectory_planning_facade import TrajectoryPlanningFacadeMock
 from decision_making.test.planning.trajectory.utils import RouteFixture
 from rte.python.logger.AV_logger import AV_Logger
 from decision_making.test.planning.custom_fixtures import state
 import numpy as np
+
+from decision_making.test.planning.custom_fixtures import short_testable_map_api
 
 
 def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTrue():
@@ -86,3 +92,33 @@ def test_getStateWithExpectedEgo_getsState_modifiesEgoStateInIt(state):
     np.testing.assert_almost_equal(modified_state.ego_state.velocity, sampled_ego_state_vec[C_V])
     np.testing.assert_almost_equal(modified_state.ego_state.acceleration, sampled_ego_state_vec[C_A])
     np.testing.assert_almost_equal(modified_state.ego_state.curvature, sampled_ego_state_vec[C_K])
+
+
+def test_prepareVisualizationMsg_withObjects_returnsValidMsg(state):
+    route_points = RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5)
+    frenet = FrenetSerret2DFrame.fit(route_points)
+    gff = GeneralizedFrenetSerretFrame.build([frenet], [FrenetSubSegment(1, 0, frenet.s_max)])
+
+    ctrajectories = np.array([[[1, 2, 3, 4, 5, 6]]])
+    planning_horizon = 0.1
+
+    predictor = RoadFollowingPredictor(AV_Logger.get_logger(""))
+    msg = TrajectoryPlanningFacade._prepare_visualization_msg(state, ctrajectories, planning_horizon, predictor, gff)
+
+    assert len(msg.s_Data.as_actors_predictions) == len(state.dynamic_objects)
+
+
+def test_prepareVisualizationMsg_withoutObjects_returnsValidMsg(state):
+    route_points = RouteFixture.get_route(lng=10, k=1, step=1, lat=3, offset=-.5)
+    frenet = FrenetSerret2DFrame.fit(route_points)
+    gff = GeneralizedFrenetSerretFrame.build([frenet], [FrenetSubSegment(1, 0, frenet.s_max)])
+
+    ctrajectories = np.array([[[1, 2, 3, 4, 5, 6]]])
+    planning_horizon = 0.1
+
+    state.dynamic_objects = []
+
+    predictor = RoadFollowingPredictor(AV_Logger.get_logger(""))
+    msg = TrajectoryPlanningFacade._prepare_visualization_msg(state, ctrajectories, planning_horizon, predictor, gff)
+
+    assert len(msg.s_Data.as_actors_predictions) == len(state.dynamic_objects)

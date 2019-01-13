@@ -39,14 +39,14 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         objects = [State.get_object_from_state(state=state, target_obj_id=obj_id)
                    for obj_id in object_ids]
 
-        objects_fstates = [obj.map_state.road_fstate for obj in objects]
+        objects_fstates = [obj.map_state.lane_fstate for obj in objects]
 
         first_timestamp = State.get_object_from_state(state=state, target_obj_id=object_ids[0]).timestamp_in_sec
         predictions = self.predict_frenet_states(np.array(objects_fstates), prediction_timestamps - first_timestamp)
 
         # Create a dictionary from predictions
         predicted_objects_states_dict = {obj.obj_id: [
-            objects[obj_idx].clone_from_map_state(MapState(predictions[obj_idx, time_idx], obj.map_state.road_id),
+            objects[obj_idx].clone_from_map_state(MapState(predictions[obj_idx, time_idx], obj.map_state.lane_id),
                                                   timestamp_in_sec=timestamp)
             for time_idx, timestamp in enumerate(prediction_timestamps)]
             for obj_idx, obj in enumerate(objects)}
