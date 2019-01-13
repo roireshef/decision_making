@@ -2,9 +2,6 @@ import time
 
 import numpy as np
 import traceback
-from logging import Logger
-from typing import Dict
-
 from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
@@ -23,15 +20,16 @@ from decision_making.src.messages.visualization.trajectory_visualization_message
     PredictionsVisualization, DataTrajectoryVisualization
 from decision_making.src.planning.trajectory.trajectory_planner import TrajectoryPlanner, SamplableTrajectory
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import CartesianExtendedState, CartesianTrajectories, C_V, FP_SX, C_Y, FS_DX, \
+from decision_making.src.planning.types import CartesianExtendedState, CartesianTrajectories, FP_SX, C_Y, FS_DX, \
     FS_SX
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from decision_making.src.planning.utils.localization_utils import LocalizationUtils
-from decision_making.src.planning.utils.transformations import Transformations
 from decision_making.src.prediction.ego_aware_prediction.ego_aware_predictor import EgoAwarePredictor
+from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.state.state import State
 from decision_making.src.utils.metric_logger import MetricLogger
-from decision_making.src.scene.scene_static_model import SceneStaticModel
+from logging import Logger
+from typing import Dict
 
 
 class TrajectoryPlanningFacade(DmModule):
@@ -277,7 +275,8 @@ class TrajectoryPlanningFacade(DmModule):
                 valid_obj_fpredictions = obj_fpredictions[obj_fpredictions[:, FP_SX] < reference_route.s_max]
                 obj_cpredictions = reference_route.fpoints_to_cpoints(valid_obj_fpredictions)
                 objects_visualizations.append(PredictionsVisualization(obj.obj_id, obj_cpredictions))
-            except:  # verify the object can be projected on reference_route
+
+            except Exception:  # verify the object can be projected on reference_route
                 continue
 
         header = Header(0, Timestamp.from_seconds(state.ego_state.timestamp_in_sec), 0)
