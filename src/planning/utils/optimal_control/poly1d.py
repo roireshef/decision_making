@@ -50,9 +50,9 @@ class Poly1D:
         {Local path planning and motion control for AGV in positioning. In IEEE/RSJ International Workshop on
         Intelligent Robots and Systems’ 89. The Autonomous Mobile Robots and Its Applications. IROS’89.
         Proceedings., pages 392–397, 1989}
-        :param A_inv: given that the constraints are Ax = B, and x are the polynom coeficients to seek,
+        :param A_inv: given that the constraints are Ax = B, and x are the polynomial coefficients to seek,
         this is the A ^ -1
-        :param constraints: given that the constraints are Ax = B, and x are the polynom coeficients to seek,
+        :param constraints: given that the constraints are Ax = B, and x are the polynomial coefficients to seek,
         every row in here is a B (so that this variable can hold a set of B's that results in a set of solutions)
         :return: x(t) coefficients
         """
@@ -299,6 +299,23 @@ class QuarticPoly1D(Poly1D):
                           - 2*T * (2 * T * a_0 + 3 * v_0 - 3 * v_T)]) / T ** 3
         return coefs
 
+    @staticmethod
+    def s_profile_coefficients(a0: np.array, v0: np.array, vT: np.array, T: np.array):
+        """
+        Given a set of quartic actions, i.e. arrays of v0, vT, a0 and T (all arrays of the same size), calculate
+        coefficients for profile polynomial of s for each action.
+        :param a0: array of initial accelerations
+        :param v0: array of initial velocities
+        :param vT: array of target velocities
+        :param T: array of action times
+        :return: 2D matrix of polynomials of shape Nx6, where N = T.shape[0]
+        """
+        zeros = np.zeros(v0.shape[0])
+        A = QuarticPoly1D.time_constraints_tensor(T)
+        A_inv = np.linalg.inv(A)
+        constraints = np.c_[zeros, v0, a0, vT, zeros]
+        return QuarticPoly1D.zip_solve(A_inv, constraints)
+
 
 class QuinticPoly1D(Poly1D):
     """
@@ -499,3 +516,22 @@ class QuinticPoly1D(Poly1D):
                           + 12 * T * (3 * T ** 2 * a_0 + 2 * T * (8 * v_0 + 7 * v_T) - 30 * dx - 30 * v_T * (T - T_m)),
                           - 3 * T ** 2 * (3 * T ** 2 * a_0 + 4 * T * (3 * v_0 + 2 * v_T) - 20 * dx - 20 * v_T * (T - T_m))]) / T ** 5
         return coefs
+
+    @staticmethod
+    def s_profile_coefficients(a0: np.array, v0: np.array, vT: np.array, s: np.array, T: np.array, T_m: float):
+        """
+        Given a set of quintic actions, i.e. arrays of s, v0, vT, a0 and T (all arrays of the same size), calculate
+        coefficients for profile polynomial of s for each action.
+        :param a0: array of initial accelerations
+        :param v0: array of initial velocities
+        :param vT: array of target velocities
+        :param s: array of distances to target
+        :param T: array of action times
+        :param T_m: [sec] T_m * v_T is added to dx
+        :return: 2D matrix of polynomials of shape Nx6, where N = T.shape[0]
+        """
+        zeros = np.zeros(v0.shape[0])
+        A = QuinticPoly1D.time_constraints_tensor(T)
+        A_inv = np.linalg.inv(A)
+        constraints = np.c_[zeros, v0, a0, s + vT * (T - T_m), vT, zeros]
+        return QuinticPoly1D.zip_solve(A_inv, constraints)
