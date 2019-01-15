@@ -12,6 +12,7 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
     FrenetSubSegment
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
+from decision_making.src.utils.temp_route_planner import TempRoutePlanner
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound
 
@@ -354,17 +355,23 @@ class MapUtils:
         return lane_subsegments
 
     @staticmethod
-    def _get_costs_per_lanes(navigation_plan):
+    def _get_costs_per_lanes(lane_list, navigation_plan) -> Dict[int, int]:
         """
+        :param lane_list: List of lanes to get cost of
+        :param navigation_plan: The navigation plan to obtain lane segments from 
         :return:  The costs for passing in each lane segment id
         """
-        # TODO: Use lookahead + nav_plan or other costing
-        return {}
+        lane_costs: Dict[int, int] = {}
+        for lane_id in lane_list:
+            lane_costs[lane_id] = TempRoutePlanner.get_cost(lane_id, navigation_plan)
+            # TODO above line should be changed to lane_costs[lane_id] = RoutePlanner.get_cost(lane_id)
+            # TODO Will the RoutePlanner need the navigation plan each time? Shouldn't it know the navigation plan?
+        return lane_costs
 
 
     @staticmethod
     @raises(DownstreamLaneNotFound)
-    def _choose_next_lane_id_by_cost(current_lane_id, navigation_plan):
+    def _choose_next_lane_id_by_cost(current_lane_id, navigation_plan) -> int:
         """
         Currently assumes that Lookahead spreads only current lane segment and the next lane segment(!)
 
@@ -372,9 +379,11 @@ class MapUtils:
         :param navigation_plan:  The navigation plan that determines the costs
         :return:  the id of the lane with the minimal costs
         """
-        costs_per_lanes = MapUtils._get_costs_per_lanes(navigation_plan)
+        # Isn't it expensive to repeatedly get costs_per_lanes each time?
+        # costs_per_lanes = MapUtils._get_costs_per_lanes(navigation_plan)
         downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
-        return min([(downstream_lane_id, costs_per_lanes[downstream_lane_id])
+        costs_per_downstream_lanes = MapUtils._get_costs_per_lanes(downstream_lanes_ids, navigation_plan)
+        return min([(downstream_lane_id, costs_per_downstream_lanes[downstream_lane_id])
                     for downstream_lane_id in downstream_lanes_ids], key=lambda x:x[1])[0]
 
 

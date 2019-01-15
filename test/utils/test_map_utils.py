@@ -182,6 +182,25 @@ def test_advanceOnPlan_lookaheadCoversFullMap_validateNoException(scene_static: 
     assert len(sub_segments) == len(road_segment_ids)
 
 
+def test_advanceByCost_lookaheadCoversFullMap_validateNoException(scene_static: SceneStatic):
+    """
+    test the method _advance_by_cost
+        run lookahead_dist from the beginning until end of the map
+        cost for each road segment should be the same, 0, as each is in the navigation plan
+    """
+    SceneStaticModel.get_instance().set_scene_static(scene_static)
+    road_segment_ids = MapUtils.get_road_segment_ids()
+    current_ordinal = 1
+    # test lookahead distance until the end of the map: verify no exception is thrown
+    cumulative_distance = 0
+    for road_id in road_segment_ids:
+        lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_id)[current_ordinal]
+        cumulative_distance += MapUtils.get_lane_length(lane_id)
+    first_lane_id = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_ids[0])[current_ordinal]
+    sub_segments = MapUtils._advance_by_cost(first_lane_id, 0, cumulative_distance, NavigationPlanMsg(np.array(road_segment_ids)))
+    assert len(sub_segments) == len(road_segment_ids)
+
+
 def test_advanceOnPlan_navPlanTooShort_validateRelevantException(scene_static: SceneStatic):
     """
     test the method _advance_on_plan
