@@ -61,11 +61,9 @@ def test_filter_followVehicleSTNegative_filterResultsMatchExpected(
     filtering = RecipeFiltering(filters=[FilterBadExpectedTrajectory('predicates')], logger=logger)
 
     # State leads to a0=0,v0=10,sT=-0.7,vT=11
-    # First three and last three are false because they're recipes of non-occupied cells
-    # three middle results are [False,True,True] because calm action takes too much time(>20s) and gets filtered while the others don't
-    # take this much time and meets the velocity and acceleration constraints
+    # Since the initial state is unsafe, all actions are unsafe and not valid.
     # All ground truths checked with desmos - https://www.desmos.com/calculator/8kybpq4tta
-    expected_filter_results = np.array([False, False, False, False, True, True, False, False, False], dtype=bool)
+    expected_filter_results = np.array([False, False, False, False, False, False, False, False, False], dtype=bool)
     dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=filtering)
     filter_results = np.array(dynamic_action_space.filter_recipes(follow_vehicle_recipes_towards_front_cells,
                                                                   behavioral_grid_state_with_objects_for_filtering_negative_sT))

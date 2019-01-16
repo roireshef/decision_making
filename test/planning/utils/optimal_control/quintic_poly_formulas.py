@@ -100,23 +100,25 @@ class QuinticMotionPredicatesCreator:
         self.predicate = np.full(shape=[len(v0_grid), len(a0_grid)*len(sT_grid)*len(vT_grid)], fill_value=False)
 
     @staticmethod
-    def generate_predicate_value(w_T: float, w_J: float, v_0: float, a_0: np.array, v_T: np.array, s_T: np.array, T_m: float):
+    def generate_predicate_value(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array, s_T: np.array, T_m: float):
         """
         Generates the actual predicate value (true/false) for the given action,weights and scenario params
         :param w_T: weight of Time component in time-jerk cost function
         :param w_J: weight of longitudinal jerk component in time-jerk cost function
-        :param v_0: initial velocity [m/s]
+        :param v_0: array of initial velocities [m/s]
         :param a_0: array of initial accelerations [m/s^2]
-        :param v_T: array of desired final velocities [m/s]
+        :param v_T: array of final velocities [m/s]
         :param s_T: array of initial distances from target car (+/- constant safety margin) [m]
         :param T_m: specification margin from target vehicle [s]
         :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
                 acceleration constraints and doesn't get into target vehicle safety zone.
         """
+        w_T_shaped = np.full(s_T.shape, w_T)
+        w_J_shaped = np.full(s_T.shape, w_J)
+
         # Get polynomial coefficients of time-jerk cost function derivative for our settings
         time_cost_derivative_poly_coefs = \
-            QuinticPoly1D.time_cost_function_derivative_coefs(np.full(s_T.shape, w_T), np.full(s_T.shape, w_J),
-                                                              a_0, np.full(s_T.shape, v_0), v_T, s_T, T_m)
+            QuinticPoly1D.time_cost_function_derivative_coefs(w_T_shaped, w_J_shaped, a_0, v_0, v_T, s_T, T_m)
 
         # Find roots of the polynomial in order to get extremum points
         cost_real_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([0, np.inf]))
@@ -133,10 +135,12 @@ class QuinticMotionPredicatesCreator:
 
         # get indices of non-nan positive T values; for nan values of T, is_in_limits = False
         valid_idxs = np.where(np.logical_and(T > 0, T <= BP_ACTION_T_LIMITS[1]))[0]
+        if len(valid_idxs) == 0:
+            return is_in_limits
 
         # check actions validity: velocity & acceleration limits and longitudinal safety
         is_in_limits[valid_idxs], is_safe[valid_idxs], _ = QuinticMotionPredicatesCreator.check_action_validity(
-            T[valid_idxs], np.full(T[valid_idxs].shape, v_0), v_T[valid_idxs], s_T[valid_idxs], a_0[valid_idxs], T_m)
+            T[valid_idxs], v_0[valid_idxs], v_T[valid_idxs], s_T[valid_idxs], a_0[valid_idxs], T_m)
         return np.logical_and(is_in_limits, is_safe)
 
     @staticmethod
@@ -224,7 +228,7 @@ class QuinticMotionPredicatesCreator:
                 for k, v_0 in enumerate(self.v0_grid):
                     print('v_0 is: %.1f' % v_0)
                     self.predicate[k] = QuinticMotionPredicatesCreator.generate_predicate_value(
-                        w_T, w_J, v_0, a0, vT, sT, T_m)
+                        w_T, w_J, np.full(vT.shape, v_0), a0, vT, sT, T_m)
 
                 output_predicate_file_name = '%s_predicate_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
                 output_predicate_file_path = Paths.get_resource_absolute_path_filename(

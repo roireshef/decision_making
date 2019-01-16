@@ -22,7 +22,7 @@ def test_specifyGoals_closeToTargetVelocity_specifyNotFail(scene_static):
     SceneStaticModel.get_instance().set_scene_static(scene_static)
 
     logger = Logger("test_specifyStaticAction")
-    road_segment_id = 21
+    road_segment_id = MapUtils.get_road_segment_ids()[1]
     ego_lon = 120.
     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
     lane_id = lane_ids[int(len(lane_ids)/2)]
