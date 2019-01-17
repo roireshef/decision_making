@@ -105,9 +105,10 @@ class StateModule(DmModule):
             id = obj_loc.e_Cnt_object_id
             # TODO: Handle multiple hypotheses
             cartesian_state = obj_loc.as_object_hypothesis[0].a_cartesian_pose
-            map_state = MapState(obj_loc.as_object_hypothesis[0].a_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_Cnt_lane_segment_id)
+            lane_id = obj_loc.as_object_hypothesis[0].e_Cnt_lane_segment_id
+            map_state = MapState(obj_loc.as_object_hypothesis[0].a_lane_frenet_pose, lane_id)
             # TODO: map_state_on_host_lane now unused, see if it makes more sense to send ego lane_id in its map_state
-            map_state_on_host_lane = MapState(obj_loc.as_object_hypothesis[0].a_host_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_Cnt_lane_segment_id)
+            map_state_on_host_lane = MapState(obj_loc.as_object_hypothesis[0].a_host_lane_frenet_pose, lane_id)
             size = ObjectSize(obj_loc.s_bounding_box.e_l_length,
                               obj_loc.s_bounding_box.e_l_width,
                               obj_loc.s_bounding_box.e_l_height)
@@ -125,7 +126,7 @@ class StateModule(DmModule):
                 # TODO: Figure out if we need SceneProvider to let us know if an object is not on road
 
                 # Required to verify the object has map state and that the velocity exceeds a minimal value.
-                if dyn_obj.map_state.lane_fstate[FS_SV] < VELOCITY_MINIMAL_THRESHOLD:
+                if lane_id > 0 and dyn_obj.map_state.lane_fstate[FS_SV] < VELOCITY_MINIMAL_THRESHOLD:
                     thresholded_lane_fstate = np.copy(dyn_obj.map_state.lane_fstate)
                     thresholded_lane_fstate[FS_SV] = VELOCITY_MINIMAL_THRESHOLD
                     dyn_obj = dyn_obj.clone_from_map_state(
