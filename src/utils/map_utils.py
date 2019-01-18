@@ -58,9 +58,7 @@ class MapUtils:
         :return: lane's length
         """
         nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points
-        # TODO: lane length should be nominal_points[-1, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
-        ds = np.mean(np.diff(nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]))
-        return ds*(nominal_points.shape[0] - 1)
+        return nominal_points[-1, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
 
     @staticmethod
     def get_lane_frenet_frame(lane_id: int) -> FrenetSerret2DFrame:
@@ -365,7 +363,7 @@ class MapUtils:
         for lane_id in lane_list:
             lane_costs[lane_id] = TempRoutePlanner.get_cost(lane_id, navigation_plan)
             # TODO above line should be changed to lane_costs[lane_id] = RoutePlanner.get_cost(lane_id)
-            # TODO Will the RoutePlanner need the navigation plan each time? Shouldn't it know the navigation plan?
+            #      RoutePlanner should know the navigation plan already
         return lane_costs
 
 
@@ -379,8 +377,7 @@ class MapUtils:
         :param navigation_plan:  The navigation plan that determines the costs
         :return:  the id of the lane with the minimal costs
         """
-        # Isn't it expensive to repeatedly get costs_per_lanes each time?
-        # costs_per_lanes = MapUtils._get_costs_per_lanes(navigation_plan)
+        # TODO Remove navigation_plan from arg list, RoutePlanner will know navigation plan already
         downstream_lanes_ids = MapUtils.get_downstream_lanes(current_lane_id)
         costs_per_downstream_lanes = MapUtils._get_costs_per_lanes(downstream_lanes_ids, navigation_plan)
         return min([(downstream_lane_id, costs_per_downstream_lanes[downstream_lane_id])
