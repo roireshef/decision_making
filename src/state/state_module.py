@@ -67,7 +67,7 @@ class StateModule(DmModule):
                 timestamp = DynamicObject.sec_to_ticks(self._scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
                 occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
                 ego_map_state = MapState(lane_fstate=self._scene_dynamic.s_Data.s_host_localization.a_lane_frenet_pose,
-                                         lane_id=self._scene_dynamic.s_Data.s_host_localization.e_Cnt_lane_segment_id)
+                                         lane_id=self._scene_dynamic.s_Data.s_host_localization.e_i_lane_segment_id)
                 ego_state = EgoState(obj_id=0,
                                      timestamp=timestamp,
                                      cartesian_state=self._scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
@@ -105,9 +105,9 @@ class StateModule(DmModule):
             id = obj_loc.e_Cnt_object_id
             # TODO: Handle multiple hypotheses
             cartesian_state = obj_loc.as_object_hypothesis[0].a_cartesian_pose
-            map_state = MapState(obj_loc.as_object_hypothesis[0].a_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_Cnt_lane_segment_id)
+            map_state = MapState(obj_loc.as_object_hypothesis[0].a_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_i_lane_segment_id)
             # TODO: map_state_on_host_lane now unused, see if it makes more sense to send ego lane_id in its map_state
-            map_state_on_host_lane = MapState(obj_loc.as_object_hypothesis[0].a_host_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_Cnt_lane_segment_id)
+            map_state_on_host_lane = MapState(obj_loc.as_object_hypothesis[0].a_host_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_i_lane_segment_id)
             size = ObjectSize(obj_loc.s_bounding_box.e_l_length,
                               obj_loc.s_bounding_box.e_l_width,
                               obj_loc.s_bounding_box.e_l_height)
