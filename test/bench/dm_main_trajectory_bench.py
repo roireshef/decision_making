@@ -2,8 +2,7 @@ from os import getpid
 
 import numpy as np
 
-from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
-from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
+from common_data.interface.Rte_Types.python.Rte_Types_pubsub import PubSubMessageTypes
 from decision_making.src import global_constants
 from decision_making.src.dm_main import DmInitialization, NAVIGATION_PLAN, DEFAULT_MAP_FILE
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
@@ -43,15 +42,13 @@ class DmMockInitialization:
     #for a dynamic object update.
     def create_state_module(map_file: str) -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(PubSubMessageTypes)
         MapService.initialize(map_file)
-        state_module = StateModule(pubsub, logger, None)
+        state_module = StateModule(logger, None)
         return state_module
 
     @staticmethod
     def create_trajectory_planner(map_file: str, fixed_trajectory_file: str = None) -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(PubSubMessageTypes)
         MapService.initialize(map_file)
 
         predictor = RoadFollowingPredictor(logger)
@@ -71,7 +68,7 @@ class DmMockInitialization:
                              TrajectoryPlanningStrategy.PARKING: planner,
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
-        trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
+        trajectory_planning_module = TrajectoryPlanningFacade(logger=logger,
                                                               strategy_handlers=strategy_handlers)
         return trajectory_planning_module
 

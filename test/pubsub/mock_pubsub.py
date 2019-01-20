@@ -2,10 +2,9 @@ from collections import defaultdict
 from logging import Logger
 from typing import Dict, List
 
-from common_data.src.communication.pubsub.pubsub import PubSub
 
 
-class PubSubMock(PubSub):
+class PubSubMock():
     def __init__(self, logger):
         # type: (Logger) -> None
         """
@@ -41,7 +40,7 @@ class PubSubMock(PubSub):
         self.topic_msg_mapping[topic] = msg
 
     # this won't support polling and callbacks together
-    def get_latest_sample(self, topic, timeout=0):
+    def get_latest_sample(self, topic):
         if topic in self.topic_msg_mapping:
             return True, self.topic_msg_mapping[topic]
         else:

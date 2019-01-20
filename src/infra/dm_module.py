@@ -1,7 +1,6 @@
 from abc import abstractmethod, ABCMeta
 from logging import Logger
 
-from common_data.src.communication.pubsub.pubsub import PubSub
 import six
 import rte.python.profiler as prof
 
@@ -10,9 +9,8 @@ class DmModule:
     """
     Abstract class which is implemented in functional DM modules and facades.
     """
-    def __init__(self, pubsub, logger):
+    def __init__(self, logger):
         # type: (PubSub, Logger) -> None
-        self.pubsub = pubsub
         """
         :param dds: Inter-process communication interface.
         :param logger: Logging interface.

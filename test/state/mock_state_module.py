@@ -1,7 +1,6 @@
 from logging import Logger
 
-from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
-from common_data.src.communication.pubsub.pubsub import PubSub
+from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
 from decision_making.src.state.state import State
 from decision_making.src.state.state_module import StateModule
 
@@ -10,16 +9,15 @@ class StateModuleMock(StateModule):
     """
     Send periodic dummy state message
     """
-    def __init__(self, pubsub: PubSub, logger: Logger, state: State):
+    def __init__(self, logger: Logger, state: State):
         """
 
-        :param pubsub: communication layer (DDS/LCM/...) instance
         :param logger: logger
         :param state: the state message to publish periodically
         """
         self._state = state
-        super().__init__(pubsub=pubsub, logger=logger, scene_dynamic=None)
+        super().__init__(logger=logger, scene_dynamic=None)
 
     def _periodic_action_impl(self):
-        self.pubsub.publish(pubsub_topics.STATE_LCM, self._state.serialize())
+        pubsub_topics.UC_SYSTEM_STATE_LCM.send(self._state.serialize())
 

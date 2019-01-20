@@ -6,10 +6,9 @@ from typing import Optional, Any, List
 import numpy as np
 
 import rte.python.profiler as prof
-from common_data.interface.py.idl_generated_files.Rte_Types.TsSYS_SceneDynamic import TsSYSSceneDynamic
-from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
-from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import SCENE_DYNAMIC
-from common_data.src.communication.pubsub.pubsub import PubSub
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
+from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
+from common_data.interface.Rte_Types.python.Rte_Types_pubsub import UC_SYSTEM_SCENE_DYNAMIC
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE, \
     DEFAULT_OBJECT_Z_VALUE, VELOCITY_MINIMAL_THRESHOLD
 from decision_making.src.infra.dm_module import DmModule
@@ -32,13 +31,12 @@ class StateModule(DmModule):
 
     # TODO: implement double-buffer mechanism for locks wherever needed. Current lock mechanism may slow the
     # TODO(cont): processing when multiple events come in concurrently.
-    def __init__(self, pubsub: PubSub, logger: Logger, scene_dynamic: Optional[SceneDynamic]) -> None:
+    def __init__(self, logger: Logger, scene_dynamic: Optional[SceneDynamic]) -> None:
         """
-        :param pubsub: Inter-process communication interface
         :param logger: Logging module
         :param scene_dynamic:
         """
-        super().__init__(pubsub, logger)
+        super().__init__(logger)
         # save initial state and generate type-specific locks
         self._scene_dynamic = scene_dynamic
         self._scene_dynamic_lock = Lock()
@@ -47,8 +45,7 @@ class StateModule(DmModule):
         """
         When starting the State Module, subscribe to dynamic objects, ego state and occupancy state services.
         """
-        self.pubsub.subscribe(SCENE_DYNAMIC, self._scene_dynamic_callback)
-
+        UC_SYSTEM_SCENE_DYNAMIC.register_cb(self._scene_dynamic_callback)
     # TODO - implement unsubscribe only when logic is fixed in LCM
     def _stop_impl(self) -> None:
         """
@@ -83,8 +80,7 @@ class StateModule(DmModule):
                 state = State(occupancy_state, dynamic_objects, ego_state)
                 
                 self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
-
-                self.pubsub.publish(pubsub_topics.STATE_LCM, state.serialize())
+                pubsub_topics.UC_SYSTEM_STATE_LCM.send(tate.serialize())
 
         except Exception as e:
             self.logger.error("StateModule._scene_dynamic_callback failed due to %s", format_exc())

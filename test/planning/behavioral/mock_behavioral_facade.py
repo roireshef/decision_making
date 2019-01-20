@@ -4,7 +4,6 @@ from typing import Optional
 
 import numpy as np
 
-from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
@@ -16,16 +15,15 @@ class BehavioralFacadeMock(BehavioralPlanningFacade):
     """
     Operate according to to policy with an empty dummy behavioral state
     """
-    def __init__(self, pubsub: PubSub, logger: Logger, trigger_pos: Optional[CartesianPoint2D],
+    def __init__(self, logger: Logger, trigger_pos: Optional[CartesianPoint2D],
                  trajectory_params: TrajectoryParams, visualization_msg: BehavioralVisualizationMsg):
         """
-        :param pubsub: communication layer (DDS/LCM/...) instance
         :param logger: logger
         :param trigger_pos: the position that triggers the first output, None if there is no need in triggering mechanism
         :param trajectory_params: the trajectory params message to publish periodically
         :param visualization_msg: the visualization message to publish periodically
         """
-        super().__init__(pubsub=pubsub, logger=logger, behavioral_planner=None,
+        super().__init__(logger=logger, behavioral_planner=None,
                          last_trajectory=None)
         self._trajectory_params = trajectory_params
         self._visualization_msg = visualization_msg
@@ -35,6 +33,13 @@ class BehavioralFacadeMock(BehavioralPlanningFacade):
             self._triggered = True
         else:
             self._triggered = False
+
+    def _get_latest_sample(self, topic):
+        is_success, msg = topic.recv_blocking(0)
+        if is_success is True and msg is not None:
+            return True, msg
+        else:
+            return False, None
 
     def _periodic_action_impl(self):
         """
@@ -61,3 +66,4 @@ class BehavioralFacadeMock(BehavioralPlanningFacade):
 
         except Exception as e:
             self.logger.error("BehavioralPlanningFacade error %s" % traceback.format_exc())
+
