@@ -82,7 +82,7 @@ class DmInitialization:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
-        state_module = StateModule(pubsub, logger, None)
+        state_module = StateModule(logger, None)
         return state_module
 
     @staticmethod

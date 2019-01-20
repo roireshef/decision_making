@@ -126,11 +126,12 @@ class BehavioralPlanningFacade(DmModule):
         return scene_static
 
     def _get_latest_sample(self, topic):
-        is_success, msg = topic.recv_blocking(0)
+        is_success = True
+        while is_success is True:
+            is_success, msg = topic.recv_blocking(0)
         if is_success is True and msg is not None:
-            return True, msg
-        else:
-            return False, None
+            self._last_msg[topic] = msg
+        return True, self._last_msg[topic]
 
     def _get_state_with_expected_ego(self, state: State) -> State:
         """

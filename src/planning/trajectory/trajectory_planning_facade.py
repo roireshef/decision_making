@@ -195,11 +195,12 @@ class TrajectoryPlanningFacade(DmModule):
         return object_state
 
     def _get_latest_sample(self, topic):
-        is_success, msg = topic.recv_blocking(0)
+        is_success = True
+        while is_success is True:
+            is_success, msg = topic.recv_blocking(0)
         if is_success is True and msg is not None:
-            return True, msg
-        else:
-            return False, None
+            self._last_msg[topic] = msg
+        return True, self._last_msg[topic]
 
     def _get_current_scene_static(self) -> SceneStatic:
         is_success, serialized_scene_static = self._get_latest_sample(topic=pubsub_topics.UC_SYSTEM_SCENE_STATIC)
