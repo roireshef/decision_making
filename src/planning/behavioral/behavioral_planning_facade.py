@@ -36,6 +36,7 @@ class BehavioralPlanningFacade(DmModule):
         self.logger.info("Initialized Behavioral Planner Facade.")
         self._last_trajectory = last_trajectory
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
+        self._last_msg = {}
 
     def _start_impl(self):
         pubsub_topics.UC_SYSTEM_STATE_LCM.register_cb(None)
@@ -126,12 +127,13 @@ class BehavioralPlanningFacade(DmModule):
         return scene_static
 
     def _get_latest_sample(self, topic):
-        is_success = True
-        while is_success is True:
+        while True:
             is_success, msg = topic.recv_blocking(0)
-        if is_success is True and msg is not None:
-            self._last_msg[topic] = msg
-        return True, self._last_msg[topic]
+            if is_success is True and msg is not None:
+                self._last_msg[topic] = msg
+            else:
+                break
+        return True, self._last_msg[topic] if topic in self._last_msg else None
 
     def _get_state_with_expected_ego(self, state: State) -> State:
         """

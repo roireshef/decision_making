@@ -49,6 +49,7 @@ class TrajectoryPlanningFacade(DmModule):
         self._strategy_handlers = strategy_handlers
         self._validate_strategy_handlers()
         self._last_trajectory = last_trajectory
+        self._last_msg = {}
 
     def _start_impl(self):
         pubsub_topics.UC_SYSTEM_TRAJECTORY_PARAMS_LCM.register_cb(None)
@@ -195,12 +196,13 @@ class TrajectoryPlanningFacade(DmModule):
         return object_state
 
     def _get_latest_sample(self, topic):
-        is_success = True
-        while is_success is True:
+        while True:
             is_success, msg = topic.recv_blocking(0)
-        if is_success is True and msg is not None:
-            self._last_msg[topic] = msg
-        return True, self._last_msg[topic]
+            if is_success is True and msg is not None:
+                self._last_msg[topic] = msg
+            else:
+                break
+        return True, self._last_msg[topic] if topic in self._last_msg else None
 
     def _get_current_scene_static(self) -> SceneStatic:
         is_success, serialized_scene_static = self._get_latest_sample(topic=pubsub_topics.UC_SYSTEM_SCENE_STATIC)

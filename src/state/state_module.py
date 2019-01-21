@@ -80,7 +80,7 @@ class StateModule(DmModule):
                 state = State(occupancy_state, dynamic_objects, ego_state)
                 
                 self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
-                pubsub_topics.UC_SYSTEM_STATE_LCM.send(tate.serialize())
+                pubsub_topics.UC_SYSTEM_STATE_LCM.send(state.serialize())
 
         except Exception as e:
             self.logger.error("StateModule._scene_dynamic_callback failed due to %s", format_exc())
