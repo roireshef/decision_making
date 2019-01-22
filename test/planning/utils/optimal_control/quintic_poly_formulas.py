@@ -113,35 +113,53 @@ class QuinticMotionPredicatesCreator:
         :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
                 acceleration constraints and doesn't get into target vehicle safety zone.
         """
-        w_T_shaped = np.full(s_T.shape, w_T)
-        w_J_shaped = np.full(s_T.shape, w_J)
+        # calculate T for all actions
+        T = QuinticMotionPredicatesCreator.calc_T_s(w_T, w_J, v_0, a_0, v_T, s_T, T_m)
+
+        # get indices of non-nan positive T values; for nan values of T, is_in_limits = False
+        valid_idxs = np.where(np.logical_and(T > 0, T <= BP_ACTION_T_LIMITS[1]))[0]
+        if len(valid_idxs) == 0:
+            return T == 0  # T is a vector of times
+
+        is_in_limits = np.full(T.shape, False)
+        is_safe = np.full(T.shape, False)
+
+        # check actions validity: velocity & acceleration limits and longitudinal safety
+        is_in_limits[valid_idxs], is_safe[valid_idxs], _ = QuinticMotionPredicatesCreator.check_action_validity(
+            T[valid_idxs], v_0[valid_idxs], v_T[valid_idxs], s_T[valid_idxs], a_0[valid_idxs], T_m)
+
+        # for T == 0 the actions are valid
+        is_in_limits[T == 0] = True
+        is_safe[T == 0] = True
+
+        return np.logical_and(is_in_limits, is_safe)
+
+    @staticmethod
+    def calc_T_s(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array, s_T: np.array,
+                 T_m: float=SPECIFICATION_MARGIN_TIME_DELAY):
+        """
+        given initial & end constraints and time-jerk weights, calculate longitudinal planning time
+        :param w_T: weight of Time component in time-jerk cost function
+        :param w_J: weight of longitudinal jerk component in time-jerk cost function
+        :param v_0: array of initial velocities [m/s]
+        :param a_0: array of initial accelerations [m/s^2]
+        :param v_T: array of final velocities [m/s]
+        :param s_T: array of initial distances from target car (+/- constant safety margin) [m]
+        :param T_m: specification margin from target vehicle [s]
+        :return: array of longitudinal trajectories' lengths (in seconds) for all sets of constraints
+        """
+        w_T_array = np.full(s_T.shape, w_T)
+        w_J_array = np.full(s_T.shape, w_J)
 
         # Get polynomial coefficients of time-jerk cost function derivative for our settings
         time_cost_derivative_poly_coefs = \
-            QuinticPoly1D.time_cost_function_derivative_coefs(w_T_shaped, w_J_shaped, a_0, v_0, v_T, s_T, T_m)
+            QuinticPoly1D.time_cost_function_derivative_coefs(w_T_array, w_J_array, a_0, v_0, v_T, s_T, T_m)
 
         # Find roots of the polynomial in order to get extremum points
         cost_real_roots = Math.find_real_roots_in_limits(time_cost_derivative_poly_coefs, np.array([0, np.inf]))
 
         # calculate T for all actions
-        T = np.nanmax(cost_real_roots, axis=1)
-
-        is_in_limits = np.full(T.shape, False)
-        is_safe = np.full(T.shape, False)
-
-        # for T == 0 the actions are in limits and safe
-        is_in_limits[T == 0] = True
-        is_safe[T == 0] = True
-
-        # get indices of non-nan positive T values; for nan values of T, is_in_limits = False
-        valid_idxs = np.where(np.logical_and(T > 0, T <= BP_ACTION_T_LIMITS[1]))[0]
-        if len(valid_idxs) == 0:
-            return is_in_limits
-
-        # check actions validity: velocity & acceleration limits and longitudinal safety
-        is_in_limits[valid_idxs], is_safe[valid_idxs], _ = QuinticMotionPredicatesCreator.check_action_validity(
-            T[valid_idxs], v_0[valid_idxs], v_T[valid_idxs], s_T[valid_idxs], a_0[valid_idxs], T_m)
-        return np.logical_and(is_in_limits, is_safe)
+        return np.fmax.reduce(cost_real_roots, axis=-1)
 
     @staticmethod
     def check_action_validity(T: np.array, v_0: np.array, v_T: np.array, s_T: np.array, a_0: np.array,
@@ -186,7 +204,8 @@ class QuinticMotionPredicatesCreator:
         ego_trajectories = [trajectory[0:int(T[i] / TRAJECTORY_TIME_RESOLUTION) + 1]
                             for i, trajectory in enumerate(trajectories_s)]
 
-        obj_trajectories = [np.c_[s_T[i] + np.linspace(0, v_T[i] * T[i], len(ego_trajectory)),
+        obj_trajectories = [np.c_[s_T[i] + np.linspace(0, v_T[i] * (len(ego_trajectory)-1) * TRAJECTORY_TIME_RESOLUTION,
+                                                       len(ego_trajectory)),
                                   np.full(len(ego_trajectory), v_T[i]),
                                   np.zeros(len(ego_trajectory))]
                             for i, ego_trajectory in enumerate(ego_trajectories)]
