@@ -28,10 +28,6 @@ class RoutePlanningFacade(DmModule):
             # Plan
             self.__planner.plan()
 
-            # If a takeover is needed, set flag
-            if self.__planner.is_takeover_needed():
-                pass
-
             # Write outputs
 
         except MsgDeserializationError as e:

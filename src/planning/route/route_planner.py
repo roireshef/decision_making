@@ -7,8 +7,3 @@ class RoutePlanner(metaclass=ABCMeta):
     def plan(self): # TODO: Set function annotaion
         """Add comments"""
         pass
-
-    @abstractmethod
-    def is_takeover_needed(self) -> bool:
-        """Add comments"""
-        pass
