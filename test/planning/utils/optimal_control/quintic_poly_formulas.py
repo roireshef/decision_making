@@ -165,7 +165,7 @@ class QuinticMotionPredicatesCreator:
     def check_action_validity(T: np.array, v_0: np.array, v_T: np.array, s_T: np.array, a_0: np.array,
                               T_m: float = SPECIFICATION_MARGIN_TIME_DELAY) -> [np.array, np.array, np.array]:
         """
-        Given longitudinal action specs, calculate validity wrt velocity & acceleration limits, and safety of each action.
+        Given longitudinal action dynamics, calculate validity wrt velocity & acceleration limits, and safety of each action.
         :param T: array of action times
         :param v_0: array of initial velocities
         :param v_T: array of final velocities
