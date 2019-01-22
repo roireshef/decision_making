@@ -4,6 +4,9 @@ from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_BoundaryPoint import TsSYSBoundaryPoint
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_DataSceneStatic import \
     TsSYSDataSceneStatic
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_DynamicStatus import TsSYSDynamicStatus
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_DynamicTrafficFlowControl import \
+    TsSYSDynamicTrafficFlowControl
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_LaneCoupling import TsSYSLaneCoupling
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_LaneSegmentConnectivity import \
     TsSYSLaneSegmentConnectivity
