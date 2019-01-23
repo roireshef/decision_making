@@ -181,7 +181,7 @@ class QuarticMotionPredicatesCreator:
                         self.predicate[k, m, j] = \
                             QuarticMotionPredicatesCreator.generate_predicate_value(w_T, w_J, a_0, v_0, v_T)
 
-            output_predicate_file_name = '%s_predicate_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
+            output_predicate_file_name = '%s_limits_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
             output_predicate_file_path = Paths.get_resource_absolute_path_filename(
                 '%s/%s' % (self.predicates_resources_target_directory,
                            output_predicate_file_name))

@@ -29,7 +29,7 @@ class FilterBadExpectedTrajectory(RecipeFilter):
     def __init__(self, predicates_dir: str):
         if not self.validate_predicate_constants(predicates_dir):
             raise ResourcesNotUpToDateException('Predicates files were creates with other set of constants')
-        self.predicates = self.read_predicates(predicates_dir)
+        self.limits_predicates, self.safety_predicates = self.read_predicates(predicates_dir)
 
     @staticmethod
     def read_predicates(predicates_dir):
@@ -39,11 +39,12 @@ class FilterBadExpectedTrajectory(RecipeFilter):
         :return: a dictionary mapping a tuple of (action_type,weights) to a binary LUT.
         """
         directory = Paths.get_resource_absolute_path_filename(predicates_dir)
-        predicates = {}
+        limits = {}
+        safety = {}
         for filename in os.listdir(directory):
             if filename.endswith(".bin"):
                 predicate_path = Paths.get_resource_absolute_path_filename('%s/%s' % (predicates_dir, filename))
-                action_type = filename.split('.bin')[0].split('_predicate')[0]
+                action_type = filename.split('.bin')[0].split('_limits')[0].split('_safety')[0]
                 wT, wJ = [float(filename.split('.bin')[0].split('_')[4]),
                           float(filename.split('.bin')[0].split('_')[6])]
                 if action_type == 'follow_lane':
@@ -51,10 +52,13 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                 else:
                     predicate_shape = (
                         len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_S_T_GRID), len(FILTER_V_T_GRID))
-                predicate = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
-                predicates[(action_type, wT, wJ)] = predicate
+                predicates = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
+                if 'safety' in filename:
+                    safety[(action_type, wT, wJ)] = predicates
+                else:  # limits predicate
+                    limits[(action_type, wT, wJ)] = predicates
 
-        return predicates
+        return limits, safety
 
     # TODO: Move to test folder when agent is in steady state (global constants don't get changed)
     @staticmethod
@@ -118,16 +122,19 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                                                       ego_state.size.length / 2 + dynamic_object.size.length / 2)
             v_T = dynamic_object.map_state.lane_fstate[FS_SV]
 
-            predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
-
-            return predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
-                             FILTER_S_T_GRID.get_index(margin_sign * s_T), FILTER_V_T_GRID.get_index(v_T)] > 0
+            limits = self.limits_predicates[(action_type.name.lower(), wT, wJ)]
+            passed_limits = limits[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
+                                   FILTER_S_T_GRID.get_index(margin_sign * s_T), FILTER_V_T_GRID.get_index(v_T)] > 0
+            safety = self.safety_predicates[(action_type.name.lower(), wT, wJ)]
+            passed_safety = safety[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
+                                   FILTER_S_T_GRID.get_index(margin_sign * s_T), FILTER_V_T_GRID.get_index(v_T)] > 0
+            return passed_limits and passed_safety
 
         elif action_type == ActionType.FOLLOW_LANE:
 
             v_T = recipe.velocity
 
-            predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
+            predicate = self.limits_predicates[(action_type.name.lower(), wT, wJ)]
 
             return predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
                              FILTER_V_T_GRID.get_index(v_T)] > 0

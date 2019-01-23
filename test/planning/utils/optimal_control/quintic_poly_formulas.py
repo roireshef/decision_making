@@ -8,8 +8,7 @@ from sympy.matrices import *
 
 from decision_making.paths import Paths
 from decision_making.src.global_constants import LON_ACC_LIMITS, VELOCITY_LIMITS, \
-    BP_ACTION_T_LIMITS, EPS, SPECIFICATION_MARGIN_TIME_DELAY, TRAJECTORY_TIME_RESOLUTION, \
-    LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, SAFETY_MARGIN_TIME_DELAY
+    BP_ACTION_T_LIMITS, EPS, SPECIFICATION_MARGIN_TIME_DELAY, TRAJECTORY_TIME_RESOLUTION, SAFETY_MARGIN_TIME_DELAY
 from decision_making.src.planning.behavioral.data_objects import ActionType
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 from decision_making.src.planning.utils.math_utils import Math
@@ -97,7 +96,8 @@ class QuinticMotionPredicatesCreator:
         self.T_safety = T_safety
 
         self.predicates_resources_target_directory = predicates_resources_target_directory  # 'predicates'
-        self.predicate = np.full(shape=[len(v0_grid), len(a0_grid)*len(sT_grid)*len(vT_grid)], fill_value=False)
+        self.limits = np.full(shape=[len(v0_grid), len(a0_grid), len(sT_grid), len(vT_grid)], fill_value=False)
+        self.safety = np.full(shape=[len(v0_grid), len(a0_grid), len(sT_grid), len(vT_grid)], fill_value=False)
 
     @staticmethod
     def generate_predicate_value(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array, s_T: np.array, T_m: float):
@@ -119,7 +119,7 @@ class QuinticMotionPredicatesCreator:
         # get indices of non-nan positive T values; for nan values of T, is_in_limits = False
         valid_idxs = np.where(np.logical_and(T > 0, T <= BP_ACTION_T_LIMITS[1]))[0]
         if len(valid_idxs) == 0:
-            return T == 0  # T is a vector of times
+            return T == 0, T == 0  # T is a vector of times
 
         is_in_limits = np.full(T.shape, False)
         is_safe = np.full(T.shape, False)
@@ -132,7 +132,7 @@ class QuinticMotionPredicatesCreator:
         is_in_limits[T == 0] = True
         is_safe[T == 0] = True
 
-        return np.logical_and(is_in_limits, is_safe)
+        return is_in_limits, is_safe
 
     @staticmethod
     def calc_T_s(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array, s_T: np.array,
@@ -246,10 +246,17 @@ class QuinticMotionPredicatesCreator:
 
                 for k, v_0 in enumerate(self.v0_grid):
                     print('v_0 is: %.1f' % v_0)
-                    self.predicate[k] = QuinticMotionPredicatesCreator.generate_predicate_value(
+                    limits, safety = QuinticMotionPredicatesCreator.generate_predicate_value(
                         w_T, w_J, np.full(vT.shape, v_0), a0, vT, sT, T_m)
+                    self.limits[k] = limits.reshape((len(self.a0_grid), len(self.sT_grid), len(self.vT_grid)))
+                    self.safety[k] = safety.reshape((len(self.a0_grid), len(self.sT_grid), len(self.vT_grid)))
 
-                output_predicate_file_name = '%s_predicate_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
+                output_limits_file_name = '%s_limits_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
                 output_predicate_file_path = Paths.get_resource_absolute_path_filename(
-                    '%s/%s' % (self.predicates_resources_target_directory, output_predicate_file_name))
-                BinaryReadWrite.save(array=self.predicate, file_path=output_predicate_file_path)
+                    '%s/%s' % (self.predicates_resources_target_directory, output_limits_file_name))
+                BinaryReadWrite.save(array=self.limits, file_path=output_predicate_file_path)
+
+                output_safety_file_name = '%s_safety_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
+                output_safety_file_path = Paths.get_resource_absolute_path_filename(
+                    '%s/%s' % (self.predicates_resources_target_directory, output_safety_file_name))
+                BinaryReadWrite.save(array=self.safety, file_path=output_safety_file_path)
