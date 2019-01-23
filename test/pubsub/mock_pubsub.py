@@ -40,11 +40,19 @@ class PubSubMock():
         self.topic_msg_mapping[topic] = msg
 
     # this won't support polling and callbacks together
-    def get_latest_sample(self, topic):
-        if topic in self.topic_msg_mapping:
-            return True, self.topic_msg_mapping[topic]
-        else:
-            return False, None
+    def _get_latest_sample(self, topic, timeout=0):
+        if topic not in self._last_msg:
+            is_success, msg = topic.recv_blocking(timeout * 1000)
+            if is_success is True and msg is not None:
+                self._last_msg[topic] = msg
+
+        while True:
+            is_success, msg = topic.recv_blocking(0)
+            if is_success is True and msg is not None:
+                self._last_msg[topic] = msg
+            else:
+                break
+        return True, self._last_msg[topic] if topic in self._last_msg else None
 
     def get_latest_samples_list(self, topic, timeout, max_list_length):
         raise NotImplementedError("Mock does not implement get_latest_samples_list method")

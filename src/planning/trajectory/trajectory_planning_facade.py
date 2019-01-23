@@ -187,7 +187,7 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received state.
         :return: deserialized State
         """
-        is_success, input_state = self._get_latest_sample(topic=pubsub_topics.UC_SYSTEM_STATE_LCM)
+        is_success, input_state = self._get_latest_sample(topic=pubsub_topics.UC_SYSTEM_STATE_LCM, timeout=1)
         if input_state is None:
             raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed',
                                           pubsub_topics.UC_SYSTEM_STATE_LCM)
@@ -195,7 +195,12 @@ class TrajectoryPlanningFacade(DmModule):
         self.logger.debug('%s: %s' % (LOG_MSG_RECEIVED_STATE, object_state))
         return object_state
 
-    def _get_latest_sample(self, topic):
+    def _get_latest_sample(self, topic, timeout=0):
+        if topic not in self._last_msg:
+            is_success, msg = topic.recv_blocking(timeout * 1000)
+            if is_success is True and msg is not None:
+                self._last_msg[topic] = msg
+
         while True:
             is_success, msg = topic.recv_blocking(0)
             if is_success is True and msg is not None:
@@ -205,7 +210,7 @@ class TrajectoryPlanningFacade(DmModule):
         return True, self._last_msg[topic] if topic in self._last_msg else None
 
     def _get_current_scene_static(self) -> SceneStatic:
-        is_success, serialized_scene_static = self._get_latest_sample(topic=pubsub_topics.UC_SYSTEM_SCENE_STATIC)
+        is_success, serialized_scene_static = self._get_latest_sample(topic=pubsub_topics.UC_SYSTEM_SCENE_STATIC, timeout=1)
         # TODO Move the raising of the exception to PubSub code. Do the same in trajectory facade
         if serialized_scene_static is None:
             raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed',
@@ -221,7 +226,7 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-        is_success, input_params = self._get_latest_sample(topic=pubsub_topics.UC_SYSTEM_TRAJECTORY_PARAMS_LCM)
+        is_success, input_params = self._get_latest_sample(topic=pubsub_topics.UC_SYSTEM_TRAJECTORY_PARAMS_LCM, timeout=1)
         object_params = TrajectoryParams.deserialize(input_params)
         self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, object_params)
         return object_params

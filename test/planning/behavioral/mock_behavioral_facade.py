@@ -35,7 +35,12 @@ class BehavioralFacadeMock(BehavioralPlanningFacade):
             self._triggered = False
         self._last_msg = {}
 
-    def _get_latest_sample(self, topic):
+    def _get_latest_sample(self, topic, timeout=0):
+        if topic not in self._last_msg:
+            is_success, msg = topic.recv_blocking(timeout * 1000)
+            if is_success is True and msg is not None:
+                self._last_msg[topic] = msg
+
         while True:
             is_success, msg = topic.recv_blocking(0)
             if is_success is True and msg is not None:

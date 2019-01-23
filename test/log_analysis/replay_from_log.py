@@ -33,11 +33,16 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         then we will output the last received state.
         :return: deserialized State
         """
-        input_state = self._get_latest_sample(topic=pubsub_topics.UC_SYSTEM_STATE_LCM)
+        input_state = self._get_latest_sample(topic=pubsub_topics.UC_SYSTEM_STATE_LCM, timeout=1)
         object_state = ClassSerializer.deserialize(class_type=State, message=input_state)
         return object_state
 
-    def _get_latest_sample(self, topic):
+    def _get_latest_sample(self, topic, timeout=0):
+        if topic not in self._last_msg:
+            is_success, msg = topic.recv_blocking(timeout * 1000)
+            if is_success is True and msg is not None:
+                self._last_msg[topic] = msg
+
         while True:
             is_success, msg = topic.recv_blocking(0)
             if is_success is True and msg is not None:
@@ -53,7 +58,7 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-        input_params = self._get_latest_sample(topic=pubsub_topics.UC_SYSTEM_TRAJECTORY_PARAMS_LCM)
+        input_params = self._get_latest_sample(topic=pubsub_topics.UC_SYSTEM_TRAJECTORY_PARAMS_LCM, timeout=1)
         object_params = ClassSerializer.deserialize(class_type=TrajectoryParams, message=input_params)
         return object_params
 
