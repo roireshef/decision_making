@@ -24,7 +24,8 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
 from rte.python.logger.AV_logger import AV_Logger
 
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING
-from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterBadExpectedTrajectory
+from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterLimitsViolatingTrajectory, \
+    FilterUnsafeExpectedTrajectory
 
 import numpy as np
 
@@ -37,11 +38,13 @@ def test_filter_followVehicleTracking_filterResultsMatchExpected(
 
     predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
 
-    filtering = RecipeFiltering(filters=[FilterBadExpectedTrajectory('predicates')], logger=logger)
+    filtering = RecipeFiltering(filters=[FilterLimitsViolatingTrajectory('predicates'),
+                                         FilterUnsafeExpectedTrajectory('predicates')], logger=logger)
 
     # State leads to a0=0,v0=10,sT=15.5,vT=10.2
     # First three and last three are false because they're recipes of non-occupied cells
-    # three middle results are true because tracking a vehicle whose velocity is very close to us can be done with multiple horizons
+    # three middle results are true because tracking a vehicle whose velocity is very close to us can be done with
+    # multiple horizons
     # All ground truths checked with desmos - https://www.desmos.com/calculator/8kybpq4tta
     expected_filter_results = np.array([False, False, False, True, True, True, False, False, False], dtype=bool)
     dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=filtering)
@@ -58,7 +61,8 @@ def test_filter_followVehicleSTNegative_filterResultsMatchExpected(
     logger = AV_Logger.get_logger()
     predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
 
-    filtering = RecipeFiltering(filters=[FilterBadExpectedTrajectory('predicates')], logger=logger)
+    filtering = RecipeFiltering(filters=[FilterLimitsViolatingTrajectory('predicates'),
+                                         FilterUnsafeExpectedTrajectory('predicates')], logger=logger)
 
     # State leads to a0=0,v0=10,sT=-0.7,vT=11
     # Since the initial state is unsafe, all actions are unsafe and not valid.
@@ -77,7 +81,8 @@ def test_filter_followVehicleTooAggressive_filterResultsMatchExpected(
     logger = AV_Logger.get_logger()
     predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
 
-    filtering = RecipeFiltering(filters=[FilterBadExpectedTrajectory('predicates')], logger=logger)
+    filtering = RecipeFiltering(filters=[FilterLimitsViolatingTrajectory('predicates'),
+                                         FilterUnsafeExpectedTrajectory('predicates')], logger=logger)
 
     # State leads to a0=0,v0=10,sT=53.5,vT=30
     # First three and last three are false because they're recipes of non-occupied cells
@@ -97,18 +102,18 @@ def test_filter_followLane_filterResultsMatchExpected(
         follow_lane_recipes: List[StaticActionRecipe]):
     logger = AV_Logger.get_logger()
 
-    filtering = RecipeFiltering(filters=[FilterBadExpectedTrajectory('predicates')], logger=logger)
+    filtering = RecipeFiltering(filters=[FilterLimitsViolatingTrajectory('predicates')], logger=logger)
 
     # State leads to a0=0,v0=10,vT= 0:6:30
     # Each three consequent results are of the same velocity and three aggressiveness levels (calm, standard, aggressive)
     # First one is filtered because calming into a stop takes too much time, then all actions meet constraints and for
-    # velocity of 18 [m/s] calm takes too much time, aggressive has velocity out of limits and only "standard" is valid.
+    # velocity of 18 [m/s] all actions are valid.
     # For acceleration to 24 m/s the calm action takes more than 20 sec and then is filtered.
     # For acceleration to 30 m/s only aggressive action takes less than 20 sec. The rest actions are filtered.
     # All ground truths checked with desmos - https://www.desmos.com/calculator/usk7djcttx
 
     expected_filter_results = np.array([False, True, True, True, True, True, True, True, True,
-                                        False, True, True, False, True, True, False, False, True], dtype=bool)
+                                        True, True, True, False, True, True, False, False, True], dtype=bool)
 
     static_action_space = StaticActionSpace(logger, filtering=filtering)
     filter_results = np.array(static_action_space.filter_recipes(follow_lane_recipes,
