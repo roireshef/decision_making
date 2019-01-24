@@ -10,7 +10,7 @@ class DmModule:
     Abstract class which is implemented in functional DM modules and facades.
     """
     def __init__(self, logger):
-        # type: (PubSub, Logger) -> None
+        # type: (Logger) -> None
         """
         :param dds: Inter-process communication interface.
         :param logger: Logging interface.
