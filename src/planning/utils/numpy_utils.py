@@ -93,8 +93,7 @@ class UniformGrid:
         :param value: the value to be looked for on axis
         :return: index of the closest value on the equally-spaced axis
         """
-        # TODO: investigate further issue of small negative velocity in frenet conversion (mainly received from Scene Provider's ego)
-        eps = 0.01
+        eps = np.finfo(np.float32).eps
         assert self.start-eps <= value <= self.end+eps, "value %s is outside the grid %s" % (value, str(self))
         index = np.round((value - self.start) / self.resolution)
         return int(max(min(index, self.length), 0))
