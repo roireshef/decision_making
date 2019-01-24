@@ -1,19 +1,33 @@
-import traceback
-
 from logging import Logger
 from common_data.src.communication.pubsub.pubsub import PubSub
+import time
+import traceback
+from logging import Logger
+
 from decision_making.src.exceptions import MsgDeserializationError
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.planning.route.route_planner import RoutePlanner
+from decision_making.src.utils.metric_logger import MetricLogger
+from decision_making.src.global_constants import LOG_MSG_ROUTE_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
+    LOG_MSG_ROUTE_PLANNER_IMPL_TIME, ROUTE_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED
 
 class RoutePlanningFacade(DmModule):
+
+
     def __init__(self, pubsub: PubSub, logger: Logger, planner: RoutePlanner):
-        """Add comments"""
+        """
+        :param pubsub:
+        :param logger:
+        :param route_planner:
+        """
         super().__init__(pubsub=pubsub, logger=logger)
-        self.planner = planner
+        self.__planner = route_planner
+        self.logger.info("Initialized Route Planner Facade.")
+        MetricLogger.init(ROUTE_PLANNING_NAME_FOR_METRICS)
 
     def _start_impl(self):
         """Add comments"""
+        self.pubsub.subscribe(pubsub_topics.SCENE_STATIC, None)
         pass
 
     def _stop_impl(self):
@@ -24,25 +38,48 @@ class RoutePlanningFacade(DmModule):
         """Add comments"""
         try:
             # Read inputs
+            start_time = time.time()
+            scene_static = self._get_current_scene_static()
+
 
             # Plan
-            self.__planner.plan()
+            self._planner.plan()
 
             # Write outputs
+
+            # Send plan to behavior
+            self._publish_results(trajectory_params)
+
+            # Send visualization data
+            self._publish_visualization(behavioral_visualization_message)
+
+            self.logger.info("{} {}".format(LOG_MSG_ROUTE_PLANNER_IMPL_TIME, time.time() - start_time))
+
+            MetricLogger.get_logger().report()
 
         except MsgDeserializationError as e:
             self.logger.warning("RoutePlanningFacade: MsgDeserializationError was raised. Skipping planning. " +
                                 "Turn on debug logging level for more details. Trace: %s", traceback.format_exc())
-            self.logger.debug(str(e))    
+            self.logger.debug(str(e))
 
         except Exception as e:
             self.logger.critical("RoutePlanningFacade: UNHANDLED EXCEPTION: %s. Trace: %s",
                                  e, traceback.format_exc())
 
+    def _get_current_scene_static(self) -> SceneStaticLite:
+        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=pubsub_topics.SCENE_STATIC, timeout=1)
+        # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
+        if serialized_scene_static is None:
+            raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed',
+                                          pubsub_topics.SCENE_STATIC)
+        scene_static = SceneStaticLite.deserialize(serialized_scene_static)
+        self.logger.debug('%s: %f' % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
+        return scene_static
+
     @property
     def planner(self):
         """Add comments"""
-        return self.__planner
+        return self._planner
 
     @planner.setter
     def planner(self, planner):
