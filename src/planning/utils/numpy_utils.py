@@ -1,5 +1,4 @@
 import numpy as np
-
 from decision_making.src.planning.types import Limits, LIMIT_MIN, LIMIT_MAX
 
 
@@ -93,7 +92,8 @@ class UniformGrid:
         :param value: the value to be looked for on axis
         :return: index of the closest value on the equally-spaced axis
         """
-        eps = np.finfo(np.float32).eps
+        # TODO: investigate further issue of small negative velocity in frenet conversion (mainly received from Scene Provider's ego)
+        eps = 0.01
         assert self.start-eps <= value <= self.end+eps, "value %s is outside the grid %s" % (value, str(self))
         index = np.round((value - self.start) / self.resolution)
         return int(max(min(index, self.length), 0))
