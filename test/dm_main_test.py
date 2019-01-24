@@ -48,8 +48,10 @@ class DmMockInitialization:
                                                               strategy_handlers=strategy_handlers)
         return trajectory_planning_module
 
-
 def main():
+    pass
+		
+def main0():
     """
     initializes DM planning pipeline. for switching between BP/TP impl./mock make sure to comment out the relevant
     instantiation in modules_list.
