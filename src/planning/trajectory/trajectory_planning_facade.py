@@ -214,6 +214,8 @@ class TrajectoryPlanningFacade(DmModule):
         :return: deserialized trajectory parameters
         """
         is_success, input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_LCM, timeout=1)
+        if not is_success:
+            raise MsgDeserializationError('TrajectoryParams has not been received from BehavioralPlanner yet')
         object_params = TrajectoryParams.deserialize(input_params)
         self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, object_params)
         return object_params
