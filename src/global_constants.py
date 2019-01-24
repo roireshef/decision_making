@@ -233,6 +233,8 @@ FILTER_OFF_ROAD_OBJECTS = False
 ### DM Manager configuration ###
 BEHAVIORAL_PLANNING_MODULE_PERIOD = 0.5
 TRAJECTORY_PLANNING_MODULE_PERIOD = 0.2
+ROUTE_PLANNING_MODULE_PERIOD = 1
+
 
 #### NAMES OF MODULES FOR LOGGING ####
 MAP_NAME_FOR_LOGGING = "Map API"
@@ -247,6 +249,8 @@ BEHAVIORAL_POLICY_NAME_FOR_LOGGING = "Behavioral Policy"
 ACDA_NAME_FOR_LOGGING = "ACDA Module"
 TRAJECTORY_PLANNING_NAME_FOR_LOGGING = "Trajectory Planning"
 TRAJECTORY_PLANNING_NAME_FOR_METRICS = "TP"
+ROUTE_PLANNING_NAME_FOR_LOGGING = "Route Planning"
+ROUTE_PLANNING_NAME_FOR_METRICS = "RP"
 STATE_MODULE_NAME_FOR_LOGGING = "State Module"
 RVIZ_MODULE_NAME_FOR_LOGGING = "Rviz Module"
 
@@ -260,6 +264,7 @@ LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS = "Received mission params"
 LOG_MSG_SCENE_STATIC_RECEIVED = "Received SceneStatic message with Timestamp: "
 LOG_MSG_TRAJECTORY_PLANNER_TRAJECTORY_MSG = "Publishing Trajectory"
 LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT = "BehavioralPlanningFacade output is"
+LOG_MSG_ROUTE_PLANNER_OUTPUT = "RoutePlanningFacade output is"
 LOG_MSG_BEHAVIORAL_PLANNER_SEMANTIC_ACTION = "Chosen behavioral semantic action is"
 LOG_MSG_BEHAVIORAL_PLANNER_ACTION_SPEC = "Chosen action specification is"
 LOG_MSG_TRAJECTORY_PLANNER_NUM_TRAJECTORIES = "TP has found %d valid trajectories to choose from"
@@ -268,6 +273,7 @@ LOG_MSG_STATE_MODULE_PUBLISH_STATE = "Publishing State"
 LOG_MSG_STATE_MODULE_PUBLISH_DYNAMIC_SCENE = "Publishing Scene"
 LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME = "TrajectoryPlanningFacade._periodic_action_impl time"
 LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME = "BehavioralFacade._periodic_action_impl time"
+LOG_MSG_ROUTE_PLANNER_IMPL_TIME = "ROUTE Facade._periodic_action_impl time"
 LOG_INVALID_TRAJECTORY_SAMPLING_TIME = "LocalizationUtils.is_actual_state_close_to_expected_state timestamp to sample is " \
                                        "%f while trajectory time range is [%f, %f]"
 LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED = "TrajectoryPlanningFacade planning from desired location (desired frenet: %s, actual frenet: %s)"

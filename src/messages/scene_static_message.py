@@ -511,8 +511,34 @@ class DynamicTrafficFlowControl(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_Cnt_dynamic_status_count,
                    dynamic_statuses)
 
+class LaneAttributes(PUBSUB_MSG_IMPL):
+    e_Cnt_num_active_lane_attributes = int 
+    e_i_active_lane_attribute_indices = List[int]
+    e_cmp_lane_attributes = List[int]
+    e_cmp_lane_attribute_confidences = List[float]
 
-class SceneLaneSegment(PUBSUB_MSG_IMPL):
+    def __init__(self, e_e_status: TrafficSignalState, e_Pct_confidence: float):
+        """
+        Status of Dynamic traffic-flow-control device, eg. red-yellow-green (not relevant for M0)
+        :param e_e_status:
+        :param e_Pct_confidence:
+        """
+        self.e_e_status = e_e_status
+        self.e_Pct_confidence = e_Pct_confidence
+
+    def serialize(self) -> TsSYSDynamicStatus:
+        pubsub_msg = TsSYSDynamicStatus()
+
+        pubsub_msg.e_e_status = self.e_e_status.value
+        pubsub_msg.e_Pct_confidence = self.e_Pct_confidence
+
+        return pubsub_msg
+
+    @classmethod
+    def deserialize(cls, pubsubMsg: TsSYSDynamicStatus):
+        return cls(TrafficSignalState(pubsubMsg.e_e_status), pubsubMsg.e_Pct_confidence)
+
+class SceneLaneSegmentLite(PUBSUB_MSG_IMPL):
     e_i_lane_segment_id = int
     e_i_road_segment_id = int
     e_e_lane_type = MapLaneType
@@ -529,12 +555,6 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
     e_Cnt_upstream_lane_count = int
     as_upstream_lanes = List[LaneSegmentConnectivity]
     e_v_nominal_speed = float
-    e_Cnt_nominal_path_point_count = int
-    a_nominal_path_points = np.ndarray
-    e_Cnt_left_boundary_points_count = int
-    as_left_boundary_points = List[BoundaryPoint]
-    e_Cnt_right_boundary_points_count = int
-    as_right_boundary_points = List[BoundaryPoint]
     e_i_downstream_road_intersection_id = int
     e_Cnt_lane_coupling_count = int
     as_lane_coupling = List[LaneCoupling]
@@ -548,9 +568,7 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
                  e_Cnt_right_adjacent_lane_count: int, as_right_adjacent_lanes: List[AdjacentLane],
                  e_Cnt_downstream_lane_count: int, as_downstream_lanes: List[LaneSegmentConnectivity],
                  e_Cnt_upstream_lane_count: int, as_upstream_lanes: List[LaneSegmentConnectivity],
-                 e_v_nominal_speed: float, e_Cnt_nominal_path_point_count: int, a_nominal_path_points: np.ndarray,
-                 e_Cnt_left_boundary_points_count: int, as_left_boundary_points: List[BoundaryPoint],
-                 e_Cnt_right_boundary_points_count: int, as_right_boundary_points: List[BoundaryPoint],
+                 e_v_nominal_speed: float,
                  e_i_downstream_road_intersection_id: int, e_Cnt_lane_coupling_count: int,
                  as_lane_coupling: List[LaneCoupling]):
         """
@@ -571,13 +589,6 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         :param e_Cnt_upstream_lane_count: Total number of lane-segments upstream of this lane-segment
         :param as_upstream_lanes: Lane-segments upstream of this lane-segment
         :param e_v_nominal_speed: Nominal speed (i.e. speed limit) of this lane-segment
-        :param e_Cnt_nominal_path_point_count: Total number of points that specify the nominal-path (i.e. center of lane) for this lane-segment
-        :param a_nominal_path_points: Points that specify the nominal-path (i.e. center of lane) for this lane-segment.
-               Its shape has to be [e_Cnt_nominal_path_point_count X MAX_NOMINAL_PATH_POINT_FIELDS].
-        :param e_Cnt_left_boundary_points_count: Total number of points that specify the left-boundary for this lane-segment
-        :param as_left_boundary_points: Points that specify the left-boundary for this lane-segment
-        :param e_Cnt_right_boundary_points_count: Total number of points that specify the right-boundary for this lane-segment
-        :param as_right_boundary_points: Points that specify the right-boundary for this lane-segment
         :param e_i_downstream_road_intersection_id: ID of the Road-Intersection that is immediately downstream from this lane-segment (0 if not applicable)
         :param e_Cnt_lane_coupling_count: Total number of lane-couplings for this lane-segment
         :param as_lane_coupling: Lane-couplings for this lane-segment
@@ -598,12 +609,6 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         self.e_Cnt_upstream_lane_count = e_Cnt_upstream_lane_count
         self.as_upstream_lanes = as_upstream_lanes
         self.e_v_nominal_speed = e_v_nominal_speed
-        self.e_Cnt_nominal_path_point_count = e_Cnt_nominal_path_point_count
-        self.a_nominal_path_points = a_nominal_path_points
-        self.e_Cnt_left_boundary_points_count = e_Cnt_left_boundary_points_count
-        self.as_left_boundary_points = as_left_boundary_points
-        self.e_Cnt_right_boundary_points_count = e_Cnt_right_boundary_points_count
-        self.as_right_boundary_points = as_right_boundary_points
         self.e_i_downstream_road_intersection_id = e_i_downstream_road_intersection_id
         self.e_Cnt_lane_coupling_count = e_Cnt_lane_coupling_count
         self.as_lane_coupling = as_lane_coupling
@@ -641,17 +646,6 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
 
         pubsub_msg.e_v_nominal_speed = self.e_v_nominal_speed
 
-        pubsub_msg.e_Cnt_nominal_path_point_count = self.e_Cnt_nominal_path_point_count
-        pubsub_msg.a_nominal_path_points = self.a_nominal_path_points
-
-        pubsub_msg.e_Cnt_left_boundary_points_count = self.e_Cnt_left_boundary_points_count
-        for i in range(pubsub_msg.e_Cnt_left_boundary_points_count):
-            pubsub_msg.as_left_boundary_points[i] = self.as_left_boundary_points[i].serialize()
-
-        pubsub_msg.e_Cnt_right_boundary_points_count = self.e_Cnt_right_boundary_points_count
-        for i in range(pubsub_msg.e_Cnt_right_boundary_points_count):
-            pubsub_msg.as_right_boundary_points[i] = self.as_right_boundary_points[i].serialize()
-
         pubsub_msg.e_i_downstream_road_intersection_id = self.e_i_downstream_road_intersection_id
 
         pubsub_msg.e_Cnt_lane_coupling_count = self.e_Cnt_lane_coupling_count
@@ -688,17 +682,6 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         for i in range(pubsubMsg.e_Cnt_upstream_lane_count):
             as_upstream_lanes.append(LaneSegmentConnectivity.deserialize(pubsubMsg.as_upstream_lanes[i]))
 
-        a_nominal_path_points = pubsubMsg.a_nominal_path_points[:pubsubMsg.e_Cnt_nominal_path_point_count,
-                                :MAX_NOMINAL_PATH_POINT_FIELDS]
-
-        as_left_boundary_points = list()
-        for i in range(pubsubMsg.e_Cnt_left_boundary_points_count):
-            as_left_boundary_points.append(BoundaryPoint.deserialize(pubsubMsg.as_left_boundary_points[i]))
-
-        as_right_boundary_points = list()
-        for i in range(pubsubMsg.e_Cnt_right_boundary_points_count):
-            as_right_boundary_points.append(BoundaryPoint.deserialize(pubsubMsg.as_right_boundary_points[i]))
-
         as_lane_coupling = list()
         for i in range(pubsubMsg.e_Cnt_lane_coupling_count):
             as_lane_coupling.append(LaneCoupling.deserialize(pubsubMsg.as_lane_coupling[i]))
@@ -712,21 +695,18 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_Cnt_downstream_lane_count, as_downstream_lanes,
                    pubsubMsg.e_Cnt_upstream_lane_count, as_upstream_lanes,
                    pubsubMsg.e_v_nominal_speed,
-                   pubsubMsg.e_Cnt_nominal_path_point_count, a_nominal_path_points,
-                   pubsubMsg.e_Cnt_left_boundary_points_count, as_left_boundary_points,
-                   pubsubMsg.e_Cnt_right_boundary_points_count, as_right_boundary_points,
                    pubsubMsg.e_i_downstream_road_intersection_id,
                    pubsubMsg.e_Cnt_lane_coupling_count, as_lane_coupling)
 
 
-class DataSceneStatic(PUBSUB_MSG_IMPL):
+class DataSceneStaticLite(PUBSUB_MSG_IMPL):
     e_b_Valid = bool
     s_RecvTimestamp = Timestamp
     s_ComputeTimestamp = Timestamp
     e_l_perception_horizon_front = float
     e_l_perception_horizon_rear = float
     e_Cnt_num_lane_segments = int
-    as_scene_lane_segment = List[SceneLaneSegment]
+    as_scene_lane_segment = List[SceneLaneSegmentLite]
     e_Cnt_num_road_intersections = int
     as_scene_road_intersection = List[SceneRoadIntersection]
     e_Cnt_num_road_segments = int
@@ -734,7 +714,7 @@ class DataSceneStatic(PUBSUB_MSG_IMPL):
 
     def __init__(self, e_b_Valid: bool, s_RecvTimestamp:Timestamp, s_ComputeTimestamp: Timestamp, e_l_perception_horizon_front: float,
                  e_l_perception_horizon_rear: float,
-                 e_Cnt_num_lane_segments: int, as_scene_lane_segment: List[SceneLaneSegment],
+                 e_Cnt_num_lane_segments: int, as_scene_lane_segment: List[SceneLaneSegmentLite],
                  e_Cnt_num_road_intersections: int, as_scene_road_intersection: List[SceneRoadIntersection],
                  e_Cnt_num_road_segments: int, as_scene_road_segment: List[SceneRoadSegment]):
         """
@@ -762,35 +742,14 @@ class DataSceneStatic(PUBSUB_MSG_IMPL):
         self.e_Cnt_num_road_segments = e_Cnt_num_road_segments
         self.as_scene_road_segment = as_scene_road_segment
 
-    def serialize(self) -> TsSYSDataSceneStatic:
-        pubsub_msg = TsSYSDataSceneStatic()
 
-        pubsub_msg.e_b_Valid = self.e_b_Valid
-        pubsub_msg.s_RecvTimestamp = self.s_RecvTimestamp.serialize()
-        pubsub_msg.s_ComputeTimestamp = self.s_ComputeTimestamp.serialize()
-        pubsub_msg.e_l_perception_horizon_front = self.e_l_perception_horizon_front
-        pubsub_msg.e_l_perception_horizon_rear = self.e_l_perception_horizon_rear
-
-        pubsub_msg.e_Cnt_num_lane_segments = self.e_Cnt_num_lane_segments
-        for i in range(pubsub_msg.e_Cnt_num_lane_segments):
-            pubsub_msg.as_scene_lane_segment[i] = self.as_scene_lane_segment[i].serialize()
-
-        pubsub_msg.e_Cnt_num_road_intersections = self.e_Cnt_num_road_intersections
-        for i in range(pubsub_msg.e_Cnt_num_road_intersections):
-            pubsub_msg.as_scene_road_intersection[i] = self.as_scene_road_intersection[i].serialize()
-
-        pubsub_msg.e_Cnt_num_road_segments = self.e_Cnt_num_road_segments
-        for i in range(pubsub_msg.e_Cnt_num_road_segments):
-            pubsub_msg.as_scene_road_segment[i] = self.as_scene_road_segment[i].serialize()
-
-        return pubsub_msg
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSDataSceneStatic):
 
         lane_segments = list()
-        for i in range(pubsubMsg.e_Cnt_num_lane_segments):
-            lane_segments.append(SceneLaneSegment.deserialize(pubsubMsg.as_scene_lane_segment[i]))
+        for i in range(pubsubMsg.e_Cnt_num_lane_segments_lite):
+            lane_segments.append(SceneLaneSegmentLite.deserialize(pubsubMsg.as_scene_lane_segment[i]))
 
         road_intersections = list()
         for i in range(pubsubMsg.e_Cnt_num_road_intersections):
@@ -808,12 +767,12 @@ class DataSceneStatic(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_Cnt_num_road_segments, road_segments)
 
 
-class SceneStatic(PUBSUB_MSG_IMPL):
+class SceneStaticLite(PUBSUB_MSG_IMPL):
     s_Header = Header
     s_MapOrigin = MapOrigin
-    s_Data = DataSceneStatic
+    s_Data = DataSceneStaticLite
 
-    def __init__(self, s_Header: Header, s_MapOrigin: MapOrigin, s_Data: DataSceneStatic):
+    def __init__(self, s_Header: Header, s_MapOrigin: MapOrigin, s_Data: DataSceneStaticLite):
         self.s_Header = s_Header
         self.s_MapOrigin = s_MapOrigin
         self.s_Data = s_Data
@@ -829,4 +788,4 @@ class SceneStatic(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg: TsSYSSceneStatic):
         return cls(Header.deserialize(pubsubMsg.s_Header),
                    MapOrigin.deserialize(pubsubMsg.s_MapOrigin),
-                   DataSceneStatic.deserialize(pubsubMsg.s_Data))
+                   DataSceneStaticLite.deserialize(pubsubMsg.s_Data))
