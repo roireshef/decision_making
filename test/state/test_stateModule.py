@@ -39,7 +39,7 @@ from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_F
 #     """
 #     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 #
-#     state_module = StateModule(pubsub=pubsub, logger=logger,
+#     state_module = StateModule(pubsub=PubSub, logger=logger,
 #                                scene_dynamic=scene_dynamic_fix)
 #     state_module.start()
 #     # Inserting an object in_fov in order to remember it.
@@ -79,7 +79,7 @@ def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: P
     """
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
-    state_module = StateModule(pubsub=pubsub, logger=logger, scene_dynamic=scene_dynamic_fix)
+    state_module = StateModule(pubsub=PubSub, logger=logger, scene_dynamic=scene_dynamic_fix)
     state_module.start()
     # Inserting a object that's not on the road
     dyn_obj_list = state_module.create_dyn_obj_list(dynamic_objects_not_on_road)
@@ -102,7 +102,7 @@ def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: Pu
     SceneStaticModel.get_instance().set_scene_static(scene_static)
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
-    state_module = StateModule(pubsub=pubsub, logger=logger,
+    state_module = StateModule(pubsub=PubSub, logger=logger,
                                scene_dynamic=scene_dynamic_fix)
     state_module.start()
 

@@ -66,7 +66,7 @@ DEFAULT_MAP_FILE = Paths.get_repo_path() + '/../common_data/maps/PG_split.bin'
 
 class NavigationFacadeMock(NavigationFacade):
     def __init__(self, pubsub: PubSub, logger: Logger, plan: NavigationPlanMsg):
-        super().__init__(pubsub=pubsub, logger=logger, handler=None)
+        super().__init__(pubsub=PubSub, logger=logger, handler=None)
         self.plan = plan
 
     def _periodic_action_impl(self):
@@ -109,14 +109,16 @@ class DmInitialization:
                                                                         DEFAULT_DYNAMIC_RECIPE_FILTERING)])
 
         recipe_evaluator = None
-        action_spec_evaluator = SingleLaneActionSpecEvaluator(logger)  # RuleBasedActionSpecEvaluator(logger)
+        action_spec_evaluator = SingleLaneActi
+
+        onSpecEvaluator(logger)  # RuleBasedActionSpecEvaluator(logger)
         value_approximator = ZeroValueApproximator(logger)
 
         action_spec_filtering = ActionSpecFiltering(filters=[FilterIfNone()], logger=logger)
         planner = SingleStepBehavioralPlanner(action_space, recipe_evaluator, action_spec_evaluator,
                                               action_spec_filtering, value_approximator, predictor, logger)
 
-        behavioral_module = BehavioralPlanningFacade(pubsub=Pubsub, logger=logger,
+        behavioral_module = BehavioralPlanningFacade(pubsub=PubSub, logger=logger,
                                                      behavioral_planner=planner, last_trajectory=None)
         return behavioral_module
 
@@ -133,7 +135,7 @@ class DmInitialization:
                              TrajectoryPlanningStrategy.PARKING: planner,
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
-        trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
+        trajectory_planning_module = TrajectoryPlanningFacade(pubsub=PubSub, logger=logger,
                                                               strategy_handlers=strategy_handlers)
         return trajectory_planning_module
 

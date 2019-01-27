@@ -288,7 +288,7 @@ def state_module(state, pubsub):
 def behavioral_facade(pubsub, trajectory_params, behavioral_visualization_msg):
     logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
 
-    behavioral_module = BehavioralFacadeMock(pubsub=pubsub, logger=logger, trajectory_params=trajectory_params,
+    behavioral_module = BehavioralFacadeMock(pubsub=PubSub, logger=logger, trajectory_params=trajectory_params,
                                              visualization_msg=behavioral_visualization_msg, trigger_pos=None)
 
     behavioral_module.start()
@@ -300,7 +300,7 @@ def behavioral_facade(pubsub, trajectory_params, behavioral_visualization_msg):
 def navigation_facade(pubsub, navigation_plan):
     logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
 
-    navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, navigation_plan_msg=navigation_plan)
+    navigation_module = NavigationFacadeMock(pubsub=PubSub, logger=logger, navigation_plan_msg=navigation_plan)
 
     navigation_module.start()
     yield navigation_module
@@ -311,7 +311,7 @@ def navigation_facade(pubsub, navigation_plan):
 def trajectory_planner_facade(pubsub, trajectory, trajectory_visualization_msg):
     logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
 
-    trajectory_planning_module = TrajectoryPlanningFacadeMock(pubsub=pubsub, logger=logger,
+    trajectory_planning_module = TrajectoryPlanningFacadeMock(pubsub=PubSub, logger=logger,
                                                               trajectory_msg=trajectory,
                                                               visualization_msg=trajectory_visualization_msg)
 

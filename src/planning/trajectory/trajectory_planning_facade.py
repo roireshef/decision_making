@@ -44,7 +44,7 @@ class TrajectoryPlanningFacade(DmModule):
         {TrajectoryPlanningStrategy: TrajectoryPlanner}
         :param last_trajectory: a representation of the last trajectory that was planned during self._periodic_action_impl
         """
-        super().__init__(pubsub=pubsub, logger=logger)
+        super().__init__(pubsub=PubSub, logger=logger)
 
         MetricLogger.init(TRAJECTORY_PLANNING_NAME_FOR_METRICS)
 

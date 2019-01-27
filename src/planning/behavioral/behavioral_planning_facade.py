@@ -33,7 +33,7 @@ class BehavioralPlanningFacade(DmModule):
         :param behavioral_planner: 
         :param last_trajectory: last trajectory returned from behavioral planner.
         """
-        super().__init__(pubsub=pubsub, logger=logger)
+        super().__init__(pubsub=PubSub, logger=logger)
         self._planner = behavioral_planner
         self.logger.info("Initialized Behavioral Planner Facade.")
         self._last_trajectory = last_trajectory
