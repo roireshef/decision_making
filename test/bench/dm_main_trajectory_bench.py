@@ -1,22 +1,32 @@
 from os import getpid
 
-from common_data.interface.Rte_Types.python.Rte_Types_pubsub import PubSubMessageTypes
-from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+import numpy as np
 
+from common_data.interface.Rte_Types.python.Rte_Types_pubsub import PubSubMessageTypes
 from decision_making.src import global_constants
-from decision_making.src.dm_main import DmInitialization
+from decision_making.src.dm_main import DmInitialization, NAVIGATION_PLAN, DEFAULT_MAP_FILE
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
     DM_MANAGER_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_TIME_RESOLUTION, \
-    FIXED_TRAJECTORY_PLANNER_SLEEP_STD, FIXED_TRAJECTORY_PLANNER_SLEEP_MEAN
+    BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, PREDICTION_LOOKAHEAD_COMPENSATION_RATIO, \
+    FIXED_TRAJECTORY_PLANNER_SLEEP_STD, FIXED_TRAJECTORY_PLANNER_SLEEP_MEAN, STATE_MODULE_NAME_FOR_LOGGING
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
-from decision_making.src.planning.trajectory.fixed_trajectory_planner import FixedTrajectoryPlanner
+from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.messages.trajectory_parameters import TrajectoryParams
+from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
+from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
-from decision_making.src.planning.types import C_Y
+from decision_making.src.planning.types import C_Y, C_X, CartesianExtendedTrajectory
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
+
+from decision_making.src.state.state import ObjectSize, OccupancyState
+from decision_making.src.state.state_module import StateModule
 from decision_making.test import constants
-from decision_making.test.constants import TP_MOCK_FIXED_TRAJECTORY_FILENAME
+from decision_making.test.constants import TP_MOCK_FIXED_TRAJECTORY_FILENAME, BP_MOCK_FIXED_SPECS
+from decision_making.test.planning.behavioral.mock_behavioral_facade import BehavioralFacadeMock
+from decision_making.src.planning.trajectory.fixed_trajectory_planner import FixedTrajectoryPlanner
 from decision_making.test.utils_for_tests import Utils
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
@@ -24,15 +34,29 @@ from rte.python.os import catch_interrupt_signals
 
 
 class DmMockInitialization:
-    @staticmethod
-    def create_trajectory_planner() -> TrajectoryPlanningFacade:
-        logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
 
-        # Init map
-        MapService.initialize()
+    @staticmethod
+
+    #The purpose of this initialization is to generate a state module holding an initial empty list of dyanmic object.
+    #The purpose here is to continuousely publish localization (as long as it is available from the IMU) wihtout waiting
+    #for a dynamic object update.
+    def create_state_module(map_file: str) -> StateModule:
+        logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
+        MapService.initialize(map_file)
+        state_module = StateModule(logger, None)
+        return state_module
+
+    @staticmethod
+    def create_trajectory_planner(map_file: str, fixed_trajectory_file: str = None) -> TrajectoryPlanningFacade:
+        logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
+        MapService.initialize(map_file)
+
         predictor = RoadFollowingPredictor(logger)
 
-        fixed_trajectory = Utils.read_trajectory(TP_MOCK_FIXED_TRAJECTORY_FILENAME)
+        if fixed_trajectory_file is None:
+            fixed_trajectory = Utils.read_trajectory(TP_MOCK_FIXED_TRAJECTORY_FILENAME)
+        else:
+            fixed_trajectory = Utils.read_trajectory(fixed_trajectory_file)
 
         step_size = TRAJECTORY_PLANNING_MODULE_PERIOD / TRAJECTORY_TIME_RESOLUTION
         planner = FixedTrajectoryPlanner(logger, predictor, fixed_trajectory, step_size,
@@ -49,27 +73,27 @@ class DmMockInitialization:
         return trajectory_planning_module
 
 
-def main():
+
+def main(fixed_trajectory_file: str = None, map_file: str = DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg = NAVIGATION_PLAN):
     """
     initializes DM planning pipeline. for switching between BP/TP impl./mock make sure to comment out the relevant
     instantiation in modules_list.
     """
     modules_list = \
         [
-            DmProcess(DmInitialization.create_navigation_planner,
+            DmProcess(lambda: DmInitialization.create_navigation_planner(map_file, nav_plan),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
-            DmProcess(DmInitialization.create_state_module,
+            DmProcess(lambda: DmMockInitialization.create_state_module(map_file),
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
                       trigger_args={}),
 
-            DmProcess(DmInitialization.create_behavioral_planner,
+            DmProcess(lambda: DmInitialization.create_behavioral_planner(map_file),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
 
-            DmProcess(DmInitialization.create_trajectory_planner,
-            # DmProcess(DmMockInitialization.create_trajectory_planner,
+            DmProcess(lambda: DmMockInitialization.create_trajectory_planner(map_file, fixed_trajectory_file),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
                       trigger_args={'period': TRAJECTORY_PLANNING_MODULE_PERIOD})
         ]
