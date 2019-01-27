@@ -116,7 +116,7 @@ class DmInitialization:
         planner = SingleStepBehavioralPlanner(action_space, recipe_evaluator, action_spec_evaluator,
                                               action_spec_filtering, value_approximator, predictor, logger)
 
-        behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger,
+        behavioral_module = BehavioralPlanningFacade(pubsub=Pubsub, logger=logger,
                                                      behavioral_planner=planner, last_trajectory=None)
         return behavioral_module
 
