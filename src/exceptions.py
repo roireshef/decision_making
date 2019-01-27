@@ -10,7 +10,7 @@ class TimeAlignmentPredictionHorizonTooLong(Exception):
     pass
 
 
-class PredictedObjectHasNegativeVelocity(Exception):
+class ObjectHasNegativeVelocityError(Exception):
     pass
 
 
