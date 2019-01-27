@@ -60,12 +60,12 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
     trajectory_facade = TrajectoryPlanningFacade(pubsub=PubSub, logger=tp_logger,
                                                  strategy_handlers=strategy_handlers)
 
-    pubsub.subscribe(pubsub_topics.UC_SYSTEM_TRAJECTORY_PLAN, trajectory_publish_mock)
+    pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PLAN"], trajectory_publish_mock)
 
     state_module.periodic_action()
     trajectory_facade.start()
 
-    pubsub.publish(pubsub_topics.UC_SYSTEM_SCENE_STATIC, short_scene_static.serialize())
+    pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], short_scene_static.serialize())
 
     behavioral_facade.periodic_action()
     state_module.periodic_action()
@@ -111,7 +111,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
     navigation_facade.periodic_action()
     behavioral_planner_module = BehavioralPlanningFacade(pubsub=PubSub, logger=bp_logger, behavioral_planner=planner)
 
-    pubsub.subscribe(pubsub_topics.UC_SYSTEM_TRAJECTORY_PARAMS_LCM, behavioral_publish_mock)
+    pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"], behavioral_publish_mock)
 
     bp_logger.warn.assert_not_called()
     bp_logger.error.assert_not_called()
@@ -121,7 +121,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
     predictor_logger.error.assert_not_called()
     predictor_logger.critical.assert_not_called()
 
-    pubsub.publish(pubsub_topics.UC_SYSTEM_SCENE_STATIC, scene_static.serialize())
+    pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], scene_static.serialize())
     behavioral_planner_module.start()
     behavioral_planner_module.periodic_action()
 

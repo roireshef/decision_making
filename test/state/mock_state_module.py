@@ -20,5 +20,5 @@ class StateModuleMock(StateModule):
         super().__init__(pubsub=PubSub, logger=logger, scene_dynamic=None)
 
     def _periodic_action_impl(self):
-        self.pubsub.publish(pubsub_topics.UC_SYSTEM_STATE_LCM, self._state.serialize())
+        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], self._state.serialize())
 

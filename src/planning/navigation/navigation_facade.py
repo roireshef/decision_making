@@ -4,7 +4,7 @@ from decision_making.src.planning.navigation.navigation_planner import Navigatio
 from logging import Logger
 
 from decision_making.src.infra.pubsub import PubSub
-from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
+from common_data.interface.Rte_Types.python.uc_system.uc_system_navigation_plan_lcm import UC_SYSTEM_NAVIGATION_PLAN_LCM
 
 
 # TODO - must think about what the input to the navigation computation is, and where it comes from
@@ -23,6 +23,7 @@ class NavigationFacade(DmModule):
         self._publish_navigation_plan(self.handler.plan())
 
     def _publish_navigation_plan(self, plan: NavigationPlanMsg):
-        self.pubsub.publish(pubsub_topics.UC_SYSTEM_NAVIGATION_PLAN_LCM, plan.serialize())
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        self.pubsub.publish(UC_SYSTEM_NAVIGATION_PLAN_LCM, plan.serialize())
 
 

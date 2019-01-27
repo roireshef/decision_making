@@ -9,7 +9,7 @@ import rte.python.profiler as prof
 from decision_making.src.infra.pubsub import PubSub
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
 from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
-from common_data.interface.Rte_Types.python.Rte_Types_pubsub import UC_SYSTEM_SCENE_DYNAMIC
+from common_data.interface.Rte_Types.python.uc_system.uc_system_scene_dynamic import UC_SYSTEM_SCENE_DYNAMIC
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE, \
     DEFAULT_OBJECT_Z_VALUE, VELOCITY_MINIMAL_THRESHOLD
 from decision_making.src.infra.dm_module import DmModule
@@ -82,7 +82,7 @@ class StateModule(DmModule):
                 state = State(occupancy_state, dynamic_objects, ego_state)
                 
                 self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
-                self.pubsub.publish(pubsub_topics.UC_SYSTEM_STATE_LCM, state.serialize())
+                self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], state.serialize())
 
         except Exception as e:
             self.logger.error("StateModule._scene_dynamic_callback failed due to %s", format_exc())

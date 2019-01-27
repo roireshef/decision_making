@@ -41,9 +41,9 @@ class BehavioralPlanningFacade(DmModule):
         self._last_msg = {}
 
     def _start_impl(self):
-        self.pubsub.subscribe(pubsub_topics.UC_SYSTEM_STATE_LCM, None)
-        self.pubsub.subscribe(pubsub_topics.UC_SYSTEM_NAVIGATION_PLAN_LCM, None)
-        self.pubsub.subscribe(pubsub_topics.UC_SYSTEM_SCENE_STATIC, None)
+        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], None)
+        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_NAVIGATION_PLAN_LCM"], None)
+        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], None)
 
     # TODO: unsubscribe once logic is fixed in LCM
     def _stop_impl(self):
@@ -103,27 +103,27 @@ class BehavioralPlanningFacade(DmModule):
                                  e, traceback.format_exc())
 
     def _get_current_state(self) -> State:
-        is_success, input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.UC_SYSTEM_STATE_LCM, timeout=1)
+        is_success, input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], timeout=1)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if input_state is None:
             raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed',
-                                          pubsub_topics.UC_SYSTEM_STATE_LCM)
+                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"])
         object_state = State.deserialize(input_state)
         self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, object_state))
         return object_state
 
     def _get_current_navigation_plan(self) -> NavigationPlanMsg:
-        is_success, input_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.UC_SYSTEM_NAVIGATION_PLAN_LCM, timeout=1)
+        is_success, input_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_NAVIGATION_PLAN_LCM"], timeout=1)
         object_plan = NavigationPlanMsg.deserialize(input_plan)
         self.logger.debug('Received navigation plan: %s', object_plan)
         return object_plan
 
     def _get_current_scene_static(self) -> SceneStatic:
-        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=pubsub_topics.UC_SYSTEM_SCENE_STATIC, timeout=1)
+        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], timeout=1)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if serialized_scene_static is None:
             raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed',
-                                          pubsub_topics.UC_SYSTEM_SCENE_STATIC)
+                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"])
         scene_static = SceneStatic.deserialize(serialized_scene_static)
         self.logger.debug('%s: %f' % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static
@@ -146,11 +146,11 @@ class BehavioralPlanningFacade(DmModule):
         return updated_state
 
     def _publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
-        self.pubsub.publish(pubsub_topics.UC_SYSTEM_TRAJECTORY_PARAMS_LCM, trajectory_parameters.serialize())
+        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"], trajectory_parameters.serialize())
         self.logger.debug("{} {}".format(LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, trajectory_parameters))
 
     def _publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
-        self.pubsub.publish(pubsub_topics.UC_SYSTEM_VISUALIZATION_LCM, visualization_message.serialize())
+        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_VISUALIZATION_LCM"], visualization_message.serialize())
 
     @property
     def planner(self):
