@@ -34,6 +34,7 @@ class StateModule(DmModule):
     # TODO(cont): processing when multiple events come in concurrently.
     def __init__(self, pubsub: PubSub, logger: Logger, scene_dynamic: Optional[SceneDynamic]) -> None:
         """
+        :param pubsub: Inter-process communication interface
         :param logger: Logging module
         :param scene_dynamic:
         """

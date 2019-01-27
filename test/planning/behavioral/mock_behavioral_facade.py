@@ -19,6 +19,7 @@ class BehavioralFacadeMock(BehavioralPlanningFacade):
     def __init__(self, pubsub: PubSub, logger: Logger, trigger_pos: Optional[CartesianPoint2D],
                  trajectory_params: TrajectoryParams, visualization_msg: BehavioralVisualizationMsg):
         """
+        :param pubsub: communication layer (DDS/LCM/...) instance
         :param logger: logger
         :param trigger_pos: the position that triggers the first output, None if there is no need in triggering mechanism
         :param trajectory_params: the trajectory params message to publish periodically

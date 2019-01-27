@@ -38,6 +38,7 @@ class TrajectoryPlanningFacade(DmModule):
                  last_trajectory: SamplableTrajectory = None):
         """
         The trajectory planning facade handles trajectory planning requests and redirects them to the relevant planner
+        :param pubsub: communication layer (DDS/LCM/...) instance
         :param logger: logger
         :param strategy_handlers: a dictionary of trajectory planners as strategy handlers - types are
         {TrajectoryPlanningStrategy: TrajectoryPlanner}

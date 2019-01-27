@@ -7,6 +7,7 @@ from decision_making.src.planning.navigation.navigation_facade import Navigation
 
 class NavigationFacadeMock(NavigationFacade):
     """
+    :param pubsub: communication layer (DDS/LCM/...) instance
     Sends a periodic dummy navigation message
     """
     def __init__(self, pubsub: PubSub, logger: Logger, navigation_plan_msg: NavigationPlanMsg):

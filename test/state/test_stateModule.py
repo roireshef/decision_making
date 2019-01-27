@@ -93,6 +93,7 @@ def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: Pu
                                                                       scene_dynamic_fix: SceneDynamic,
                                                                       testable_map_api):
     """
+    :param pubsub: Inter-process communication interface.
     :param scene_dynamic_fix: Fixture of scene dynamic
 
     Checking functionality of dynamic_object_callback for an object that is not on the road.
@@ -118,6 +119,7 @@ def test_dynamicObjCallbackWithFilter_objectOffRoad_stateWithoutObject(pubsub: P
                                                                        scene_dynamic_fix: SceneDynamic,
                                                                        testable_map_api):
     """
+    :param pubsub: Inter-process communication interface.
     :param scene_dynamic_fix: Fixture of scene dynamic
 
     Checking functionality of dynamic_object_callback for an object that is not on the road.

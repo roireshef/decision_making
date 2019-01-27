@@ -28,6 +28,7 @@ class BehavioralPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger, behavioral_planner: CostBasedBehavioralPlanner,
                  last_trajectory: SamplableTrajectory = None) -> None:
         """
+        :param pubsub:
         :param logger:
         :param behavioral_planner: 
         :param last_trajectory: last trajectory returned from behavioral planner.

@@ -15,6 +15,7 @@ class TrajectoryPlanningFacadeMock(TrajectoryPlanningFacade):
     def __init__(self, pubsub: PubSub, logger: Logger, trajectory_msg: TrajectoryPlan,
                  visualization_msg: TrajectoryVisualizationMsg, last_trajectory: SamplableTrajectory = None):
         """
+        :param pubsub: communication layer (DDS/LCM/...) instance
         :param logger: logger
         :param trajectory_msg: the trajectory message to publish periodically
         :param visualization_msg: the visualization message to publish periodically
