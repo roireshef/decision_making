@@ -2,9 +2,9 @@ from collections import defaultdict
 from logging import Logger
 from typing import Dict, List
 
+from decision_making.src.infra.pubsub import PubSub
 
-
-class PubSubMock():
+class PubSubMock(PubSub):
     def __init__(self, logger):
         # type: (Logger) -> None
         """
@@ -40,7 +40,7 @@ class PubSubMock():
         self.topic_msg_mapping[topic] = msg
 
     # this won't support polling and callbacks together
-    def _get_latest_sample(self, topic, timeout=0):
+    def get_latest_sample(self, topic, timeout=0):
         if topic in self.topic_msg_mapping:
             return True, self.topic_msg_mapping[topic]
         else:

@@ -1,5 +1,6 @@
 from logging import Logger
 
+from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.trajectory_plan_message import TrajectoryPlan
 from decision_making.src.messages.visualization.trajectory_visualization_message import TrajectoryVisualizationMsg
 from decision_making.src.planning.trajectory.samplable_trajectory import SamplableTrajectory
@@ -11,7 +12,7 @@ class TrajectoryPlanningFacadeMock(TrajectoryPlanningFacade):
     Sends periodic dummy trajectory message
     """
 
-    def __init__(self, logger: Logger, trajectory_msg: TrajectoryPlan,
+    def __init__(self, pubsub: PubSub, logger: Logger, trajectory_msg: TrajectoryPlan,
                  visualization_msg: TrajectoryVisualizationMsg, last_trajectory: SamplableTrajectory = None):
         """
         :param logger: logger
@@ -19,7 +20,7 @@ class TrajectoryPlanningFacadeMock(TrajectoryPlanningFacade):
         :param visualization_msg: the visualization message to publish periodically
         :param last_trajectory: only for unit-test purposes. same logic as TrajectoryPlanningFacade._last_trajectory
         """
-        TrajectoryPlanningFacade.__init__(self, logger, None, None)
+        TrajectoryPlanningFacade.__init__(self, pubsub, logger, None, None)
         self._trajectory_msg = trajectory_msg
         self._visualization_msg = visualization_msg
         self._last_trajectory = last_trajectory

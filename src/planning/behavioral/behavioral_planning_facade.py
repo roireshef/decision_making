@@ -5,6 +5,7 @@ from logging import Logger
 import numpy as np
 
 from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
+from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED
@@ -24,14 +25,14 @@ from decision_making.src.scene.scene_static_model import SceneStaticModel
 
 
 class BehavioralPlanningFacade(DmModule):
-    def __init__(self, logger: Logger, behavioral_planner: CostBasedBehavioralPlanner,
+    def __init__(self, pubsub: PubSub, logger: Logger, behavioral_planner: CostBasedBehavioralPlanner,
                  last_trajectory: SamplableTrajectory = None) -> None:
         """
         :param logger:
         :param behavioral_planner: 
         :param last_trajectory: last trajectory returned from behavioral planner.
         """
-        super().__init__(logger=logger)
+        super().__init__(pubsub=pubsub, logger=logger)
         self._planner = behavioral_planner
         self.logger.info("Initialized Behavioral Planner Facade.")
         self._last_trajectory = last_trajectory
@@ -39,9 +40,9 @@ class BehavioralPlanningFacade(DmModule):
         self._last_msg = {}
 
     def _start_impl(self):
-        pubsub_topics.UC_SYSTEM_STATE_LCM.register_cb(None)
-        pubsub_topics.UC_SYSTEM_NAVIGATION_PLAN_LCM.register_cb(None)
-        pubsub_topics.UC_SYSTEM_SCENE_STATIC.register_cb(None)
+        self.pubsub.subscribe(pubsub_topics.UC_SYSTEM_STATE_LCM, None)
+        self.pubsub.subscribe(pubsub_topics.UC_SYSTEM_NAVIGATION_PLAN_LCM, None)
+        self.pubsub.subscribe(pubsub_topics.UC_SYSTEM_SCENE_STATIC, None)
 
     # TODO: unsubscribe once logic is fixed in LCM
     def _stop_impl(self):
@@ -101,7 +102,7 @@ class BehavioralPlanningFacade(DmModule):
                                  e, traceback.format_exc())
 
     def _get_current_state(self) -> State:
-        is_success, input_state = self._get_latest_sample(topic=pubsub_topics.UC_SYSTEM_STATE_LCM, timeout=1)
+        is_success, input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.UC_SYSTEM_STATE_LCM, timeout=1)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if input_state is None:
             raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed',
@@ -111,13 +112,13 @@ class BehavioralPlanningFacade(DmModule):
         return object_state
 
     def _get_current_navigation_plan(self) -> NavigationPlanMsg:
-        is_success, input_plan = self._get_latest_sample(topic=pubsub_topics.UC_SYSTEM_NAVIGATION_PLAN_LCM, timeout=1)
+        is_success, input_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.UC_SYSTEM_NAVIGATION_PLAN_LCM, timeout=1)
         object_plan = NavigationPlanMsg.deserialize(input_plan)
         self.logger.debug('Received navigation plan: %s', object_plan)
         return object_plan
 
     def _get_current_scene_static(self) -> SceneStatic:
-        is_success, serialized_scene_static = self._get_latest_sample(topic=pubsub_topics.UC_SYSTEM_SCENE_STATIC, timeout=1)
+        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=pubsub_topics.UC_SYSTEM_SCENE_STATIC, timeout=1)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if serialized_scene_static is None:
             raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed',
@@ -125,20 +126,6 @@ class BehavioralPlanningFacade(DmModule):
         scene_static = SceneStatic.deserialize(serialized_scene_static)
         self.logger.debug('%s: %f' % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static
-
-    def _get_latest_sample(self, topic, timeout=0):
-        if topic not in self._last_msg:
-            is_success, msg = topic.recv_blocking(timeout * 1000)
-            if is_success is True and msg is not None:
-                self._last_msg[topic] = msg
-
-        while True:
-            is_success, msg = topic.recv_blocking(0)
-            if is_success is True and msg is not None:
-                self._last_msg[topic] = msg
-            else:
-                break
-        return True, self._last_msg[topic] if topic in self._last_msg else None
 
     def _get_state_with_expected_ego(self, state: State) -> State:
         """
@@ -158,11 +145,11 @@ class BehavioralPlanningFacade(DmModule):
         return updated_state
 
     def _publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
-        pubsub_topics.UC_SYSTEM_TRAJECTORY_PARAMS_LCM.send(trajectory_parameters.serialize())
+        self.pubsub.publish(pubsub_topics.UC_SYSTEM_TRAJECTORY_PARAMS_LCM, trajectory_parameters.serialize())
         self.logger.debug("{} {}".format(LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, trajectory_parameters))
 
     def _publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
-        pubsub_topics.UC_SYSTEM_VISUALIZATION_LCM.send(visualization_message.serialize())
+        self.pubsub.publish(pubsub_topics.UC_SYSTEM_VISUALIZATION_LCM, visualization_message.serialize())
 
     @property
     def planner(self):

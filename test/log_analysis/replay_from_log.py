@@ -33,23 +33,9 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         then we will output the last received state.
         :return: deserialized State
         """
-        input_state = self._get_latest_sample(topic=pubsub_topics.UC_SYSTEM_STATE_LCM, timeout=1)
+        input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.UC_SYSTEM_STATE_LCM, timeout=1)
         object_state = ClassSerializer.deserialize(class_type=State, message=input_state)
         return object_state
-
-    def _get_latest_sample(self, topic, timeout=0):
-        if topic not in self._last_msg:
-            is_success, msg = topic.recv_blocking(timeout * 1000)
-            if is_success is True and msg is not None:
-                self._last_msg[topic] = msg
-
-        while True:
-            is_success, msg = topic.recv_blocking(0)
-            if is_success is True and msg is not None:
-                self._last_msg[topic] = msg
-            else:
-                break
-        return True, self._last_msg[topic] if topic in self._last_msg else None
 
     def _get_mission_params(self) -> TrajectoryParams:
         """
@@ -58,7 +44,7 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-        input_params = self._get_latest_sample(topic=pubsub_topics.UC_SYSTEM_TRAJECTORY_PARAMS_LCM, timeout=1)
+        input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.UC_SYSTEM_TRAJECTORY_PARAMS_LCM, timeout=1)
         object_params = ClassSerializer.deserialize(class_type=TrajectoryParams, message=input_params)
         return object_params
 
@@ -75,8 +61,8 @@ def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
     pubsub = PubSubMock(logger=AV_Logger.get_logger(LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING))
 
     # Publish messages using pubsub mock
-    pubsub_topics.UC_SYSTEM_STATE_LCM.send(state_serialized)
-    pubsub_topics.UC_SYSTEM_TRAJECTORY_PARAMS_LCM.send(tp_params_serialized)
+    pubsub.publish(pubsub_topics.UC_SYSTEM_STATE_LCM, state_serialized)
+    pubsub.publish(pubsub_topics.UC_SYSTEM_TRAJECTORY_PARAMS_LCM, tp_params_serialized)
 
     # Initialize TP
     logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
@@ -86,7 +72,7 @@ def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
     strategy_handlers = {TrajectoryPlanningStrategy.HIGHWAY: planner,
                          TrajectoryPlanningStrategy.PARKING: planner,
                          TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
-    trajectory_planning_module = TrajectoryPlanningFacadeNoLcm(logger=logger,
+    trajectory_planning_module = TrajectoryPlanningFacadeNoLcm(pubsub=pubsub, logger=logger,
                                                                strategy_handlers=strategy_handlers)
 
     # Execute TP

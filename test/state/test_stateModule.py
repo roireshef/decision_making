@@ -3,7 +3,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-
+from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, VELOCITY_MINIMAL_THRESHOLD
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
@@ -21,7 +21,7 @@ from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_F
 
 # @pytest.mark.skip(reason="Irrelevent when no out-of-fov data is available")
 # @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
-# def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(
+# def test_dynamicObjCallback_objectInAndOutOfFOV_stateWithInFOVObject(pubsub: PubSub,
 #                                                                      dynamic_objects_in_fov: LcmPerceivedDynamicObjectList,
 #                                                                      dynamic_objects_not_in_fov: LcmPerceivedDynamicObjectList,
 #                                                                      scene_dynamic_fix: SceneDynamic):
@@ -68,7 +68,7 @@ from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_F
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 # @patch(FILTER_OBJECT_OFF_ROAD_PATH, False)
-def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(
+def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(pubsub: PubSub,
                                                                        dynamic_objects_not_on_road: DynamicObjectsData,
                                                                        scene_dynamic_fix: SceneDynamic):
     """
@@ -79,7 +79,7 @@ def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(
     """
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
-    state_module = StateModule(logger=logger, scene_dynamic=scene_dynamic_fix)
+    state_module = StateModule(pubsub=pubsub, logger=logger, scene_dynamic=scene_dynamic_fix)
     state_module.start()
     # Inserting a object that's not on the road
     dyn_obj_list = state_module.create_dyn_obj_list(dynamic_objects_not_on_road)
@@ -88,7 +88,7 @@ def test_dynamicObjCallbackWithoutFilter_objectOffRoad_stateWithObject(
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 @pytest.mark.skip(reason="irrelevant since was moved to SP")
-def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(
+def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(pubsub: PubSub,
                                                                       dynamic_objects_negative_velocity: DynamicObjectsData,
                                                                       scene_dynamic_fix: SceneDynamic,
                                                                       testable_map_api):
@@ -101,7 +101,7 @@ def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(
     SceneStaticModel.get_instance().set_scene_static(scene_static)
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
-    state_module = StateModule(logger=logger,
+    state_module = StateModule(pubsub=pubsub, logger=logger,
                                scene_dynamic=scene_dynamic_fix)
     state_module.start()
 
@@ -113,7 +113,7 @@ def test_dynamicObjCallback_negativeVelocity_stateWithUpdatedVelocity(
 
 @patch(target=MAP_SERVICE_ABSOLUTE_PATH, new=map_api_mock)
 @pytest.mark.skip(reason="irrelevant since was moved to SP")
-def test_dynamicObjCallbackWithFilter_objectOffRoad_stateWithoutObject(
+def test_dynamicObjCallbackWithFilter_objectOffRoad_stateWithoutObject(pubsub: PubSub,
                                                                        dynamic_objects_not_on_road: DynamicObjectsData,
                                                                        scene_dynamic_fix: SceneDynamic,
                                                                        testable_map_api):
@@ -126,7 +126,7 @@ def test_dynamicObjCallbackWithFilter_objectOffRoad_stateWithoutObject(
     SceneStaticModel.get_instance().set_scene_static(scene_static)
     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
-    state_module = StateModule(logger=logger,
+    state_module = StateModule(pubsub=pubsub, logger=logger,
                                scene_dynamic=scene_dynamic_fix)
     state_module.start()
     # Inserting a object that's not on the road

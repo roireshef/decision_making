@@ -30,7 +30,7 @@ def test_isActualStateCloseToExpectedState_closeTranslatedOnlyEgoState_returnsTr
 
     samplable_trajectory = SamplableWerlingTrajectory(1000, 1011.5, 1011.5,frenet, poly_s_coefs, poly_d_coefs)
 
-    facade = TrajectoryPlanningFacadeMock(AV_Logger.get_logger(""), None, None, samplable_trajectory)
+    facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 
     exact_desired_state = samplable_trajectory.sample(np.array([1001]))[0]
     close_state = EgoState.create_from_cartesian_state(-1, 1001e9, np.array([exact_desired_state[C_X] + 0.1, exact_desired_state[C_Y] + 0.1,
@@ -53,7 +53,7 @@ def test_isActualStateCloseToExpectedState_nonCloseTranslatedOnlyEgoState_return
 
     samplable_trajectory = SamplableWerlingTrajectory(1000, 1011.5, 1011.5, frenet, poly_s_coefs, poly_d_coefs)
 
-    facade = TrajectoryPlanningFacadeMock(AV_Logger.get_logger(""), None, None, samplable_trajectory)
+    facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 
     exact_desired_state = samplable_trajectory.sample(np.array([1001]))[0]
     close_state = EgoState.create_from_cartesian_state(-1, 1001e9, np.array([exact_desired_state[C_X] + 200, exact_desired_state[C_Y] + 200,
@@ -77,7 +77,7 @@ def test_getStateWithExpectedEgo_getsState_modifiesEgoStateInIt(state):
 
     samplable_trajectory = SamplableWerlingTrajectory(1000, 1011.5, 1011.5, frenet, poly_s_coefs, poly_d_coefs)
 
-    facade = TrajectoryPlanningFacadeMock(AV_Logger.get_logger(""), None, None, samplable_trajectory)
+    facade = TrajectoryPlanningFacadeMock(None, AV_Logger.get_logger(""), None, None, samplable_trajectory)
 
     # expected ego is the ego-state sampled from the facade._last_trajectory at time given by state.ego_state.timestamp
     state.ego_state.timestamp = 1001 * 1e9
