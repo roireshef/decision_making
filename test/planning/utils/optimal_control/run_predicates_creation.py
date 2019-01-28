@@ -24,7 +24,6 @@ def main():
     # Quintic predicates creation
     quintic_predicates_creator = QuinticMotionPredicatesCreator(FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID,
                                                                 FILTER_V_T_GRID, T_m=SPECIFICATION_MARGIN_TIME_DELAY,
-                                                                T_safety=SAFETY_MARGIN_TIME_DELAY,
                                                                 predicates_resources_target_directory=resources_directory)
     quintic_predicates_creator.create_predicates(weights, dynamic_actions)
     # Quartic predicates creation

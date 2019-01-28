@@ -33,7 +33,7 @@ def test_createPredicates_predicateFileMatchesCurrentPredicateGeneration():
             predicate_shape = (
                 len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_S_T_GRID), len(FILTER_V_T_GRID))
             predicates_creator = QuinticMotionPredicatesCreator(FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID,
-                                                                FILTER_V_T_GRID, T_m, T_safety, 'predicates')
+                                                                FILTER_V_T_GRID, T_m, 'predicates')
             predicate = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
 
             for i in range(num_trials):
