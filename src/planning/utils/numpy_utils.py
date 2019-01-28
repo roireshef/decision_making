@@ -1,5 +1,4 @@
 import numpy as np
-
 from decision_making.src.planning.types import Limits, LIMIT_MIN, LIMIT_MAX
 
 
@@ -97,4 +96,3 @@ class UniformGrid:
         assert self.start-eps <= value <= self.end+eps, "value %s is outside the grid %s" % (value, str(self))
         index = np.round((value - self.start) / self.resolution)
         return int(max(min(index, self.length), 0))
-
