@@ -218,11 +218,20 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         O_idx, delta_s = Euclidean.project_on_piecewise_linear_curve(points, self.O)
         # given the fractional index of the point (O_idx+delta_s), find which segment it belongs to based
         # on the points offset of each segment
+        return self.get_s_from_index_on_frame(O_idx, delta_s)
+
+    def get_s_from_index_on_frame(self, O_idx: np.ndarray, delta_s: np.ndarray):
+        """
+        given fractional index of the point (O_idx+delta_s), find which segment it belongs to based on
+        the points offset of each segment
+        :param O_idx: tensor of segment index per point in <points>,
+        :param delta_s: tensor of progress of projection of each point in <points> on its relevant segment
+        :return: approximate s value on the frame that will be created using self.O
+        """
         segment_idx_per_point = np.searchsorted(self._segments_point_offset, np.add(O_idx, delta_s)) - 1
         # get ds of every point based on the ds of the segment
         ds = self._segments_ds[segment_idx_per_point]
 
-        # calculate the offset of the first segment starting relative to the first GFF point
         # subtract this offset from s_approx for the points on the first segment (in other segments this offset is 0)
         initial_intra_point_offset = self._segments_s_start[0] % self._segments_ds[0]
         intra_point_offsets = initial_intra_point_offset * (segment_idx_per_point == 0).astype(np.int)
@@ -230,10 +239,9 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         # times the segment ds.
         s_approx = self._segments_s_offsets[segment_idx_per_point] + \
                    (((O_idx - self._segments_point_offset[segment_idx_per_point]) + delta_s) * ds) - intra_point_offsets
-
         return s_approx
 
-    def _get_closest_index_on_frame(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
+    def get_index_on_frame_from_s(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
         """
         from s, a vector of longitudinal progress on the frame, return the index of the closest point on the frame and
         a value in the range [0, ds] representing the projection on this closest point.

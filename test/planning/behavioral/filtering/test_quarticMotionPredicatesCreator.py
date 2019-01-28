@@ -35,7 +35,7 @@ def test_createPredicates_predicateFileMatchesCurrentPredicateGeneration():
                 a_0 = int(np.random.uniform(FILTER_A_0_GRID.start, FILTER_A_0_GRID.end))
                 v_T = int(np.random.uniform(FILTER_V_T_GRID.start, FILTER_V_T_GRID.end))
 
-                result_now[i] = predicates_creator.generate_predicate_value(wT, wJ, a_0, v_0, v_T, consider_local_minima=False)
+                result_now[i] = predicates_creator.generate_predicate_value(wT, wJ, a_0, v_0, v_T)
                 result_lut[i] = predicate[FILTER_V_0_GRID.get_index(v_0),
                                           FILTER_A_0_GRID.get_index(a_0),
                                           FILTER_V_T_GRID.get_index(v_T)]

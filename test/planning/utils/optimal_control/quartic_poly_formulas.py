@@ -96,7 +96,7 @@ class QuarticMotionPredicatesCreator:
                QuarticPoly1D.acceleration_profile_function(a_0, v_0, v_T, T)
 
     @staticmethod
-    def generate_predicate_value(w_T, w_J, a_0, v_0, v_T, consider_local_minima=False):
+    def generate_predicate_value(w_T, w_J, a_0, v_0, v_T):
         """
         Generates the actual predicate value (true/false) for the given action,weights and scenario params
         :param w_T: weight of Time component in time-jerk cost function
@@ -104,7 +104,6 @@ class QuarticMotionPredicatesCreator:
         :param a_0: initial acceleration [m/s^2]
         :param v_0: initial velocity [m/s]
         :param v_T: desired final velocity [m/s]
-        :param consider_local_minima: check validity against local minima if global minima is invalid[bool]
         :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
                 acceleration constraints and doesn't get into target vehicle safety zone.
         """
@@ -124,18 +123,7 @@ class QuarticMotionPredicatesCreator:
         # The extrema which is the furthest from origin is our global minimum (might be our only minimum)
         T = extremum_T.max()
 
-        global_min_is_valid = QuarticMotionPredicatesCreator.check_validity(a_0, v_0, v_T, T)
-
-        if global_min_is_valid:
-            return True
-
-        # global minima isn't valid and we'd like to consider the local minima instead (if there's one)
-        if consider_local_minima and len(extremum_T) > 1:
-            T = extremum_T.min()
-            local_minima_is_valid = QuarticMotionPredicatesCreator.check_validity(a_0, v_0, v_T, T)
-            return local_minima_is_valid
-        else:
-            return False
+        return QuarticMotionPredicatesCreator.check_validity(a_0, v_0, v_T, T)
 
     @staticmethod
     def check_validity(a_0, v_0, v_T, T):

@@ -267,7 +267,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         s_approx = np.add(O_idx, delta_s) * self.ds
         return s_approx
 
-    def _get_closest_index_on_frame(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
+    def get_index_on_frame_from_s(self, s: np.ndarray) -> (np.ndarray, np.ndarray):
         """
         from s, a vector of longitudinal progress on the frame, return the index of the closest point on the frame and
         a value in the range [0, ds] representing the projection on this closest point.
@@ -344,7 +344,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         assert np.all(np.bitwise_and(0 <= s, s <= self.s_max)), \
             "Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max)
 
-        O_idx, delta_s = self._get_closest_index_on_frame(s)
+        O_idx, delta_s = self.get_index_on_frame_from_s(s)
 
         a_s = self.O[O_idx] + \
               delta_s * self.T[O_idx] + \
