@@ -66,22 +66,22 @@ class LaneFrenetPose(Enum):
 
 
 class HostLocalization(PUBSUB_MSG_IMPL):
-    e_Cnt_road_segment_id = int
-    e_Cnt_lane_segment_id = int
+    e_i_road_segment_id = int
+    e_i_lane_segment_id = int
     a_cartesian_pose = np.ndarray
     a_lane_frenet_pose = np.ndarray
 
-    def __init__(self, e_Cnt_road_segment_id, e_Cnt_lane_segment_id, a_cartesian_pose, a_lane_frenet_pose):
+    def __init__(self, e_i_road_segment_id, e_i_lane_segment_id, a_cartesian_pose, a_lane_frenet_pose):
         # type: (int, int, np.ndarray, np.ndarray)->None
         """
         Host-localization information
-        :param e_Cnt_road_segment_id: The ID of the road-segment that the host is in
-        :param e_Cnt_lane_segment_id: The ID of the lane-segment that the host is in
+        :param e_i_road_segment_id: The ID of the road-segment that the host is in
+        :param e_i_lane_segment_id: The ID of the lane-segment that the host is in
         :param a_cartesian_pose: The host's pose, expressed in the Map (ENU) frame
         :param a_lane_frenet_pose: The host's pose, expressed in the the Frenet-Serret frame of the host's lane-segment
         """
-        self.e_Cnt_road_segment_id = e_Cnt_road_segment_id
-        self.e_Cnt_lane_segment_id = e_Cnt_lane_segment_id
+        self.e_i_road_segment_id = e_i_road_segment_id
+        self.e_i_lane_segment_id = e_i_lane_segment_id
         self.a_cartesian_pose = a_cartesian_pose
         self.a_lane_frenet_pose = a_lane_frenet_pose
 
@@ -89,8 +89,8 @@ class HostLocalization(PUBSUB_MSG_IMPL):
         # type: () -> TsSYSHostLocalization
         pubsub_msg = TsSYSHostLocalization()
 
-        pubsub_msg.e_Cnt_road_segment_id = self.e_Cnt_road_segment_id
-        pubsub_msg.e_Cnt_lane_segment_id = self.e_Cnt_lane_segment_id
+        pubsub_msg.e_i_road_segment_id = self.e_i_road_segment_id
+        pubsub_msg.e_i_lane_segment_id = self.e_i_lane_segment_id
 
         pubsub_msg.a_cartesian_pose = self.a_cartesian_pose
         pubsub_msg.a_lane_frenet_pose = self.a_lane_frenet_pose
@@ -100,7 +100,7 @@ class HostLocalization(PUBSUB_MSG_IMPL):
     @classmethod
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSHostLocalization)->HostLocalization
-        return cls(pubsubMsg.e_Cnt_road_segment_id, pubsubMsg.e_Cnt_lane_segment_id,
+        return cls(pubsubMsg.e_i_road_segment_id, pubsubMsg.e_i_lane_segment_id,
                    pubsubMsg.a_cartesian_pose[:MAX_CARTESIANPOSE_FIELDS],
                    pubsubMsg.a_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS])
 
@@ -169,40 +169,40 @@ class BoundingBoxSize(PUBSUB_MSG_IMPL):
 
 class ObjectHypothesis(PUBSUB_MSG_IMPL):
     e_r_probability = float
-    e_Cnt_lane_segment_id = int
+    e_i_lane_segment_id = int
     e_e_dynamic_status = ObjectTrackDynamicProperty
     e_Pct_location_uncertainty_x = float
     e_Pct_location_uncertainty_y = float
     e_Pct_location_uncertainty_yaw = float
-    e_Cnt_host_lane_frenet_id = int
+    e_i_host_lane_frenet_id = int
     a_cartesian_pose = np.ndarray
     a_lane_frenet_pose = np.ndarray
     a_host_lane_frenet_pose = np.ndarray
 
-    def __init__(self, e_r_probability, e_Cnt_lane_segment_id, e_e_dynamic_status, e_Pct_location_uncertainty_x,
-                 e_Pct_location_uncertainty_y, e_Pct_location_uncertainty_yaw, e_Cnt_host_lane_frenet_id,
+    def __init__(self, e_r_probability, e_i_lane_segment_id, e_e_dynamic_status, e_Pct_location_uncertainty_x,
+                 e_Pct_location_uncertainty_y, e_Pct_location_uncertainty_yaw, e_i_host_lane_frenet_id,
                  a_cartesian_pose, a_lane_frenet_pose, a_host_lane_frenet_pose):
         # type: (float, int, ObjectTrackDynamicProperty, float, float, float, int, np.ndarray, np.ndarray, np.ndarray) -> None
         """
         Actors-hypotheses information
         :param e_r_probability: Probability of this hypothesis (not relevant for M0)
-        :param e_Cnt_lane_segment_id: The lane-segment ID that this actor-hypothesis is in
+        :param e_i_lane_segment_id: The lane-segment ID that this actor-hypothesis is in
         :param e_e_dynamic_status:
         :param e_Pct_location_uncertainty_x: Not relevant for M0
         :param e_Pct_location_uncertainty_y: Not relevant for M0
         :param e_Pct_location_uncertainty_yaw: Not relevant for M0
-        :param e_Cnt_host_lane_frenet_id: The ID of the lane-segment that the host is in
+        :param e_i_host_lane_frenet_id: The ID of the lane-segment that the host is in
         :param a_cartesian_pose: The pose of this actor-hypothesis, expressed in the Map (ENU) frame
         :param a_lane_frenet_pose: The pose of this actor-hypothesis, expressed in the Frenet-Serret frame of its own lane-segment
         :param a_host_lane_frenet_pose: The pose of this actor-hypothesis, expressed in the Frenet-Serret frame of the host's lane-segment
         """
         self.e_r_probability = e_r_probability
-        self.e_Cnt_lane_segment_id = e_Cnt_lane_segment_id
+        self.e_i_lane_segment_id = e_i_lane_segment_id
         self.e_e_dynamic_status = e_e_dynamic_status
         self.e_Pct_location_uncertainty_x = e_Pct_location_uncertainty_x
         self.e_Pct_location_uncertainty_y = e_Pct_location_uncertainty_y
         self.e_Pct_location_uncertainty_yaw = e_Pct_location_uncertainty_yaw
-        self.e_Cnt_host_lane_frenet_id = e_Cnt_host_lane_frenet_id
+        self.e_i_host_lane_frenet_id = e_i_host_lane_frenet_id
         self.a_cartesian_pose = a_cartesian_pose
         self.a_lane_frenet_pose = a_lane_frenet_pose
         self.a_host_lane_frenet_pose = a_host_lane_frenet_pose
@@ -212,12 +212,12 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
         pubsub_msg = TsSYSObjectHypothesis()
 
         pubsub_msg.e_r_probability = self.e_r_probability
-        pubsub_msg.e_Cnt_lane_segment_id = self.e_Cnt_lane_segment_id
+        pubsub_msg.e_i_lane_segment_id = self.e_i_lane_segment_id
         pubsub_msg.e_e_dynamic_status = self.e_e_dynamic_status.value
         pubsub_msg.e_Pct_location_uncertainty_x = self.e_Pct_location_uncertainty_x
         pubsub_msg.e_Pct_location_uncertainty_y = self.e_Pct_location_uncertainty_y
         pubsub_msg.e_Pct_location_uncertainty_yaw = self.e_Pct_location_uncertainty_yaw
-        pubsub_msg.e_Cnt_host_lane_frenet_id = self.e_Cnt_host_lane_frenet_id
+        pubsub_msg.e_i_host_lane_frenet_id = self.e_i_host_lane_frenet_id
 
         pubsub_msg.a_cartesian_pose = self.a_cartesian_pose
         pubsub_msg.a_lane_frenet_pose = self.a_lane_frenet_pose
@@ -228,9 +228,9 @@ class ObjectHypothesis(PUBSUB_MSG_IMPL):
     @classmethod
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSObjectHypothesis)->ObjectHypothesis
-        return cls(pubsubMsg.e_r_probability, pubsubMsg.e_Cnt_lane_segment_id, ObjectTrackDynamicProperty(pubsubMsg.e_e_dynamic_status),
+        return cls(pubsubMsg.e_r_probability, pubsubMsg.e_i_lane_segment_id, ObjectTrackDynamicProperty(pubsubMsg.e_e_dynamic_status),
                    pubsubMsg.e_Pct_location_uncertainty_x, pubsubMsg.e_Pct_location_uncertainty_y,
-                   pubsubMsg.e_Pct_location_uncertainty_yaw, pubsubMsg.e_Cnt_host_lane_frenet_id,
+                   pubsubMsg.e_Pct_location_uncertainty_yaw, pubsubMsg.e_i_host_lane_frenet_id,
                    (pubsubMsg.a_cartesian_pose[:MAX_CARTESIANPOSE_FIELDS]),
                    pubsubMsg.a_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS],
                    pubsubMsg.a_host_lane_frenet_pose[:MAX_LANEFRENETPOSE_FIELDS])

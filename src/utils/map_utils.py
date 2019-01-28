@@ -25,7 +25,7 @@ class MapUtils:
         """
         scene_static = SceneStaticModel.get_instance().get_scene_static()
         road_segments = scene_static.s_Data.as_scene_road_segment[:scene_static.s_Data.e_Cnt_num_road_segments]
-        return [road_segment.e_Cnt_road_segment_id for road_segment in road_segments]
+        return [road_segment.e_i_road_segment_id for road_segment in road_segments]
 
     @staticmethod
     def get_road_segment_id_from_lane_id(lane_id: int) -> int:
@@ -100,7 +100,7 @@ class MapUtils:
             adj_lanes = lane.as_left_adjacent_lanes
         else:
             raise ValueError('Relative lane must be either right or left')
-        return [adj_lane.e_Cnt_lane_segment_id for adj_lane in adj_lanes]
+        return [adj_lane.e_i_lane_segment_id for adj_lane in adj_lanes]
 
     @staticmethod
     def get_closest_lane_ids(lane_id: int) -> Dict[RelativeLane, int]:
@@ -248,7 +248,7 @@ class MapUtils:
         :return: list of upstream lanes ids
         """
         upstream_connectivity = MapUtils.get_lane(lane_id).as_upstream_lanes
-        return [connectivity.e_Cnt_lane_segment_id for connectivity in upstream_connectivity]
+        return [connectivity.e_i_lane_segment_id for connectivity in upstream_connectivity]
 
     @staticmethod
     def get_downstream_lanes(lane_id: int) -> List[int]:
@@ -259,7 +259,7 @@ class MapUtils:
         :return: list of downstream lanes ids
         """
         downstream_connectivity = MapUtils.get_lane(lane_id).as_downstream_lanes
-        return [connectivity.e_Cnt_lane_segment_id for connectivity in downstream_connectivity]
+        return [connectivity.e_i_lane_segment_id for connectivity in downstream_connectivity]
 
     @staticmethod
     def get_lanes_ids_from_road_segment_id(road_segment_id: int) -> List[int]:
@@ -269,7 +269,7 @@ class MapUtils:
         :param road_segment_id:
         :return: sorted list of lane segments' IDs
         """
-        return list(MapUtils.get_road_segment(road_segment_id).a_Cnt_lane_segment_id)
+        return list(MapUtils.get_road_segment(road_segment_id).a_i_lane_segment_ids)
 
     @staticmethod
     def does_map_exist_backward(lane_id: int, backward_dist: float):
@@ -436,7 +436,7 @@ class MapUtils:
         """
         scene_static = SceneStaticModel.get_instance().get_scene_static()
         road_segments = [road_segment for road_segment in scene_static.s_Data.as_scene_road_segment if
-                         road_segment.e_Cnt_road_segment_id == road_id]
+                         road_segment.e_i_road_segment_id == road_id]
         if len(road_segments) == 0:
             raise RoadNotFound('road {0} not found '.format(road_id))
         assert len(road_segments) == 1
