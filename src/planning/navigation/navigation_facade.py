@@ -23,7 +23,6 @@ class NavigationFacade(DmModule):
         self._publish_navigation_plan(self.handler.plan())
 
     def _publish_navigation_plan(self, plan: NavigationPlanMsg):
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         self.pubsub.publish(UC_SYSTEM_NAVIGATION_PLAN_LCM, plan.serialize())
 
 
