@@ -91,6 +91,8 @@ class DmInitialization:
     @staticmethod
     def create_navigation_planner(map_file: str=DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg=NAVIGATION_PLAN) -> NavigationFacade:
         logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
+
+        pubsub = PubSub()
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
 
@@ -100,6 +102,8 @@ class DmInitialization:
     @staticmethod
     def create_behavioral_planner(map_file: str=DEFAULT_MAP_FILE) -> BehavioralPlanningFacade:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
+
+        pubsub = PubSub()
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
 
@@ -110,9 +114,7 @@ class DmInitialization:
                                                                         DEFAULT_DYNAMIC_RECIPE_FILTERING)])
 
         recipe_evaluator = None
-        action_spec_evaluator = SingleLaneActi
-
-        onSpecEvaluator(logger)  # RuleBasedActionSpecEvaluator(logger)
+        action_spec_evaluator = SingleLaneActionSpecEvaluator(logger)  # RuleBasedActionSpecEvaluator(logger)
         value_approximator = ZeroValueApproximator(logger)
 
         action_spec_filtering = ActionSpecFiltering(filters=[FilterIfNone()], logger=logger)
@@ -126,6 +128,8 @@ class DmInitialization:
     @staticmethod
     def create_trajectory_planner(map_file: str=DEFAULT_MAP_FILE) -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
+
+        pubsub = PubSub()
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
 
