@@ -3,7 +3,7 @@ from typing import List
 
 import numpy as np
 
-from common_data.interface.Rte_Types.python.sub_structures import TsSYSSceneDynamic
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_BoundingBoxSize import \
     TsSYSBoundingBoxSize
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataSceneDynamic import \

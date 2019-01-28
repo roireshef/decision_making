@@ -96,7 +96,7 @@ class DmInitialization:
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
 
-        navigation_module = NavigationFacadeMock(pubsub, logger=logger, plan=nav_plan)
+        navigation_module = NavigationFacadeMock(pubsub=pubsub, logger=logger, plan=nav_plan)
         return navigation_module
 
     @staticmethod
@@ -121,7 +121,7 @@ class DmInitialization:
         planner = SingleStepBehavioralPlanner(action_space, recipe_evaluator, action_spec_evaluator,
                                               action_spec_filtering, value_approximator, predictor, logger)
 
-        behavioral_module = BehavioralPlanningFacade(pubsub, logger=logger,
+        behavioral_module = BehavioralPlanningFacade(pubsub=pubsub, logger=logger,
                                                      behavioral_planner=planner, last_trajectory=None)
         return behavioral_module
 
@@ -140,7 +140,7 @@ class DmInitialization:
                              TrajectoryPlanningStrategy.PARKING: planner,
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
-        trajectory_planning_module = TrajectoryPlanningFacade(pubsub, logger=logger,
+        trajectory_planning_module = TrajectoryPlanningFacade(pubsub=pubsub, logger=logger,
                                                               strategy_handlers=strategy_handlers)
         return trajectory_planning_module
 
