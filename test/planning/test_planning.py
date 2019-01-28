@@ -57,7 +57,7 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
                          TrajectoryPlanningStrategy.PARKING: planner,
                          TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
-    trajectory_facade = TrajectoryPlanningFacade(pubsub=PubSub, logger=tp_logger,
+    trajectory_facade = TrajectoryPlanningFacade(pubsub=pubsub, logger=tp_logger,
                                                  strategy_handlers=strategy_handlers)
 
     pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PLAN"], trajectory_publish_mock)
@@ -109,7 +109,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
 
     state_module.periodic_action()
     navigation_facade.periodic_action()
-    behavioral_planner_module = BehavioralPlanningFacade(pubsub=PubSub, logger=bp_logger, behavioral_planner=planner)
+    behavioral_planner_module = BehavioralPlanningFacade(pubsub=pubsub, logger=bp_logger, behavioral_planner=planner)
 
     pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"], behavioral_publish_mock)
 

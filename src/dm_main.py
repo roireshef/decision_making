@@ -66,7 +66,7 @@ DEFAULT_MAP_FILE = Paths.get_repo_path() + '/../common_data/maps/PG_split.bin'
 
 class NavigationFacadeMock(NavigationFacade):
     def __init__(self, pubsub: PubSub, logger: Logger, plan: NavigationPlanMsg):
-        super().__init__(pubsub=PubSub, logger=logger, handler=None)
+        super().__init__(pubsub=pubsub, logger=logger, handler=None)
         self.plan = plan
 
     def _periodic_action_impl(self):
@@ -82,9 +82,10 @@ class DmInitialization:
     def create_state_module(map_file: str=DEFAULT_MAP_FILE) -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 
+        pubsub = PubSub()
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
-        state_module = StateModule(PubSub, logger, None)
+        state_module = StateModule(pubsub, logger, None)
         return state_module
 
     @staticmethod
@@ -93,7 +94,7 @@ class DmInitialization:
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
 
-        navigation_module = NavigationFacadeMock(pubsub=PubSub, logger=logger, plan=nav_plan)
+        navigation_module = NavigationFacadeMock(pubsub, logger=logger, plan=nav_plan)
         return navigation_module
 
     @staticmethod
@@ -118,7 +119,7 @@ class DmInitialization:
         planner = SingleStepBehavioralPlanner(action_space, recipe_evaluator, action_spec_evaluator,
                                               action_spec_filtering, value_approximator, predictor, logger)
 
-        behavioral_module = BehavioralPlanningFacade(pubsub=PubSub, logger=logger,
+        behavioral_module = BehavioralPlanningFacade(pubsub, logger=logger,
                                                      behavioral_planner=planner, last_trajectory=None)
         return behavioral_module
 
@@ -135,7 +136,7 @@ class DmInitialization:
                              TrajectoryPlanningStrategy.PARKING: planner,
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
-        trajectory_planning_module = TrajectoryPlanningFacade(pubsub=PubSub, logger=logger,
+        trajectory_planning_module = TrajectoryPlanningFacade(pubsub, logger=logger,
                                                               strategy_handlers=strategy_handlers)
         return trajectory_planning_module
 

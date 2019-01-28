@@ -31,7 +31,7 @@ from decision_making.test.utils_for_tests import Utils
 from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
-
+from decision_making.src.infra.pubsub import PubSub
 
 class DmMockInitialization:
 
@@ -68,7 +68,7 @@ class DmMockInitialization:
                              TrajectoryPlanningStrategy.PARKING: planner,
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
-        trajectory_planning_module = TrajectoryPlanningFacade(pubsub=PubSub, logger=logger,
+        trajectory_planning_module = TrajectoryPlanningFacade(pubsub=PubSub(), logger=logger,
                                                               strategy_handlers=strategy_handlers)
         return trajectory_planning_module
 
