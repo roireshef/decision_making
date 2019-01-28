@@ -29,6 +29,7 @@ class DmMockInitialization:
     def create_trajectory_planner() -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
 
+        pubsub = PubSub()
         # Init map
         MapService.initialize()
         predictor = RoadFollowingPredictor(logger)
@@ -45,7 +46,7 @@ class DmMockInitialization:
                              TrajectoryPlanningStrategy.PARKING: planner,
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
-        trajectory_planning_module = TrajectoryPlanningFacade(pubsub=PubSub(), logger=logger,
+        trajectory_planning_module = TrajectoryPlanningFacade(pubsub, logger=logger,
                                                               strategy_handlers=strategy_handlers)
         return trajectory_planning_module
 

@@ -42,6 +42,9 @@ class DmMockInitialization:
     #for a dynamic object update.
     def create_state_module(map_file: str) -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
+
+        pubsub = PubSub()
+
         MapService.initialize(map_file)
         state_module = StateModule(pubsub, logger, None)
         return state_module
@@ -49,6 +52,8 @@ class DmMockInitialization:
     @staticmethod
     def create_trajectory_planner(map_file: str, fixed_trajectory_file: str = None) -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
+
+        pubsub = PubSub()
         MapService.initialize(map_file)
 
         predictor = RoadFollowingPredictor(logger)
@@ -68,7 +73,7 @@ class DmMockInitialization:
                              TrajectoryPlanningStrategy.PARKING: planner,
                              TrajectoryPlanningStrategy.TRAFFIC_JAM: planner}
 
-        trajectory_planning_module = TrajectoryPlanningFacade(pubsub=PubSub(), logger=logger,
+        trajectory_planning_module = TrajectoryPlanningFacade(pubsub, logger=logger,
                                                               strategy_handlers=strategy_handlers)
         return trajectory_planning_module
 

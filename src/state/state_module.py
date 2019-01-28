@@ -46,7 +46,7 @@ class StateModule(DmModule):
         """
         When starting the State Module, subscribe to dynamic objects, ego state and occupancy state services.
         """
-        self.pubsub.subscribe(UC_SYSTEM_SCENE_DYNAMIC, self._scene_dynamic_callback)
+        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_DYNAMIC"], self._scene_dynamic_callback)
 
     # TODO - implement unsubscribe only when logic is fixed in LCM
     def _stop_impl(self) -> None:
