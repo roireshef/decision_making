@@ -10,6 +10,10 @@ from decision_making.src.planning.route.route_planner import RoutePlanner
 from decision_making.src.utils.metric_logger import MetricLogger
 from decision_making.src.global_constants import LOG_MSG_ROUTE_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_ROUTE_PLANNER_IMPL_TIME, ROUTE_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED
+    
+from decision_making.src.messages.scene_static_lite_message import SceneStaticLite,DataSceneStaticLite
+from cost_based_route_planner import RoutePlannerData
+    
 
 class RoutePlanningFacade(DmModule):
 
@@ -40,6 +44,7 @@ class RoutePlanningFacade(DmModule):
             # Read inputs
             start_time = time.time()
             scene_static = self._get_current_scene_static()
+            MainRoutePlanData = RoutePlannerData(scene_static)
 
 
             # Plan
@@ -48,10 +53,10 @@ class RoutePlanningFacade(DmModule):
             # Write outputs
 
             # Send plan to behavior
-            self._publish_results(trajectory_params)
+    #        self._publish_results(trajectory_params)
 
             # Send visualization data
-            self._publish_visualization(behavioral_visualization_message)
+   #         self._publish_visualization(behavioral_visualization_message)
 
             self.logger.info("{} {}".format(LOG_MSG_ROUTE_PLANNER_IMPL_TIME, time.time() - start_time))
 
