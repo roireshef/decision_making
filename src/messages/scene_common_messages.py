@@ -53,10 +53,10 @@ class MapOrigin(PUBSUB_MSG_IMPL):
     s_Timestamp = Timestamp
 
     def __init__(self, e_phi_latitude, e_phi_longitude, e_l_altitude, s_Timestamp):
+        # type: (float, float, float, Timestamp) -> None
         """
         All parameters are in ENU (east-north-up) coordinates, in [m] units
         """
-        # type: (float, float, float, Timestamp) -> None
         self.e_phi_latitude = e_phi_latitude
         self.e_phi_longitude = e_phi_longitude
         self.e_l_altitude = e_l_altitude
