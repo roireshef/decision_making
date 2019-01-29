@@ -200,11 +200,15 @@ class QuinticMotionPredicatesCreator:
 
         # sample polynomials and create ftrajectories_s
         trajectories_s = Poly1D.polyval_with_derivatives(poly_coefs, time_samples)
-        ego_trajectories = [trajectory[0:int(T[i] / TRAJECTORY_TIME_RESOLUTION) + 1]
+
+        # test longitudinal safety only for the second half of each trajectory, because in the first half ego
+        # may be safe laterally w.r.t. the followed/overtaken object
+        from_idx = [int(0.5 * T[i] / TRAJECTORY_TIME_RESOLUTION) for i, trajectory in enumerate(trajectories_s)]
+        ego_trajectories = [trajectory[from_idx[i]:int(T[i] / TRAJECTORY_TIME_RESOLUTION) + 1]
                             for i, trajectory in enumerate(trajectories_s)]
 
-        obj_trajectories = [np.c_[s_T[i] + np.linspace(0, v_T[i] * (len(ego_trajectory)-1) * TRAJECTORY_TIME_RESOLUTION,
-                                                       len(ego_trajectory)),
+        obj_trajectories = [np.c_[s_T[i] + v_T[i] * from_idx[i] * TRAJECTORY_TIME_RESOLUTION +
+                                  np.linspace(0, v_T[i] * (len(ego_trajectory)-1) * TRAJECTORY_TIME_RESOLUTION, len(ego_trajectory)),
                                   np.full(len(ego_trajectory), v_T[i]),
                                   np.zeros(len(ego_trajectory))]
                             for i, ego_trajectory in enumerate(ego_trajectories)]
