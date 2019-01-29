@@ -357,22 +357,27 @@ class DataSceneStaticLite(PUBSUB_MSG_IMPL):
 class SceneStaticLite(PUBSUB_MSG_IMPL):
     s_Header = Header
     s_MapOrigin = MapOrigin
-    s_Data = DataSceneStaticLite
+    s_SceneStaticData = DataSceneStaticLite
+    s_NavigationPlanData = DataNavigationPlan
 
-    def __init__(self, s_Header: Header, s_MapOrigin: MapOrigin, s_Data: DataSceneStaticLite):
+    def __init__(self, s_Header: Header, s_MapOrigin: MapOrigin, s_SceneStaticData: DataSceneStaticLite,
+                  s_NavigationPlanData:DataNavigationPlan):
         self.s_Header = s_Header
         self.s_MapOrigin = s_MapOrigin
-        self.s_Data = s_Data
+        self.s_SceneStaticData = s_SceneStaticData
+        self.s_NavigationPlanData = s_NavigationPlanData
 
     def serialize(self) -> TsSYSSceneStatic:
         pubsub_msg = TsSYSSceneStatic()
         pubsub_msg.s_Header = self.s_Header.serialize()
         pubsub_msg.s_MapOrigin = self.s_MapOrigin.serialize()
-        pubsub_msg.s_Data = self.s_Data.serialize()
+        pubsub_msg.s_SceneStaticData = self.s_SceneStaticData.serialize()
+        pubsub_msg.s_NavigationPlanData = self.s_NavigationPlanData.serialize()
         return pubsub_msg
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSSceneStatic):
         return cls(Header.deserialize(pubsubMsg.s_Header),
                    MapOrigin.deserialize(pubsubMsg.s_MapOrigin),
-                   DataSceneStaticLite.deserialize(pubsubMsg.s_Data))
+                   DataSceneStaticLite.deserialize(pubsubMsg.s_SceneStaticData),
+                   DataNavigationPlan.deserialize(pubsubMsg.s_NavigationPlanData))
