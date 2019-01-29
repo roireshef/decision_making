@@ -9,18 +9,19 @@ from decision_making.src.messages.scene_common_messages import Timestamp, Header
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
+    """
+    Route Plan Lane Segment Information
+
+    Args:
+        e_i_lane_segment_id: TODO: Add Comment
+        e_cst_lane_occupancy_cost: TODO: Add Comment
+        e_cst_lane_end_cost: TODO: Add Comment
+    """
     e_i_lane_segment_id = int
     e_cst_lane_occupancy_cost = float
     e_cst_lane_end_cost = float
 
     def __init__(self, e_i_lane_segment_id: int, e_cst_lane_occupancy_cost: float, e_cst_lane_end_cost: float):
-        """
-        Route Plan Lane Segment Information
-
-         param e_i_lane_segment_id: TODO: Add Comment
-         param e_cst_lane_occupancy_cost: TODO: Add Comment
-         param e_cst_lane_end_cost: TODO: Add Comment
-        """
         self.e_i_lane_segment_id = e_i_lane_segment_id
         self.e_cst_lane_occupancy_cost = e_cst_lane_occupancy_cost
         self.e_cst_lane_end_cost = e_cst_lane_end_cost
@@ -41,6 +42,15 @@ class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_l_perception_horizon_rear)
 
 class DataRoutePlan(PUBSUB_MSG_IMPL):
+    """
+    Route Plan Output Data
+
+    Args:
+        e_Cnt_num_road_segments: TODO: Add Comment
+        a_i_road_segment_ids: TODO: Add Comment
+        a_Cnt_num_lane_segments: TODO: Add Comment
+        as_route_plan_lane_segments: TODO: Add Comment
+    """
     e_Cnt_num_road_segments = int
     a_i_road_segment_ids = np.ndarray
     a_Cnt_num_lane_segments = np.ndarray
@@ -48,14 +58,6 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
 
     def __init__(self, e_Cnt_num_road_segments: int, a_i_road_segment_ids: np.ndarray, a_Cnt_num_lane_segments: np.ndarray,
                  as_route_plan_lane_segments: List[List[RoutePlanLaneSegment]]):
-        """
-        Route Planner Output
-
-         param e_Cnt_num_road_segments: TODO: Add Comment
-         param a_i_road_segment_ids: TODO: Add Comment
-         param a_Cnt_num_lane_segments: TODO: Add Comment
-         param as_route_plan_lane_segments: TODO: Add Comment
-        """
         self.e_Cnt_num_road_segments = e_Cnt_num_road_segments
         self.a_i_road_segment_ids = a_i_road_segment_ids
         self.a_Cnt_num_lane_segments = a_Cnt_num_lane_segments
@@ -86,6 +88,13 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
                    as_route_plan_lane_segments)
 
 class RoutePlan(PUBSUB_MSG_IMPL):
+    """
+    Class that represents the ROUTE_PLAN topic
+    
+    Args:
+        s_Header: TODO: Add Comment
+        s_Data: TODO: Add Comment
+    """
     s_Header = Header
     s_Data = DataRoutePlan
 
