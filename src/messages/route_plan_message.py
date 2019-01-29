@@ -95,8 +95,10 @@ class RoutePlan(PUBSUB_MSG_IMPL):
 
     def serialize(self) -> TsSYSRoutePlan:
         pubsub_msg = TsSYSRoutePlan()
+
         pubsub_msg.s_Header = self.s_Header.serialize()
         pubsub_msg.s_Data = self.s_Data.serialize()
+        
         return pubsub_msg
 
     @classmethod
