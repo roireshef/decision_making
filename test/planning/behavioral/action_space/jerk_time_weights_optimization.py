@@ -149,22 +149,25 @@ def create_full_range_of_weights(w2_from: float, w2_till: float, w12_ratio_from:
     return weights
 
 
-def get_braking_quality(distances: np.array, acc_samples: np.array) -> float:
+def get_braking_quality(distances: np.array, acc_samples: np.array) -> [float, float]:
     """
     calculate normalized center of mass of braking: late braking (less pleasant) gets higher rate than early braking
+    :param distances: array of distances from the followed object
     :param acc_samples: array of acceleration samples
-    :return: center of mass of negative acc_samples in the interval [0..1]
+    :return: 1. center of mass of negative acc_samples as function of distance from the object in the interval [0..1]
+                the higher rate the better
+             2. the rate weight: the higher accelerations the higher weight
     """
     cum_acceleration_time = cum_acceleration = 0
     min_dist = np.min(distances)
     max_dist = np.max(distances)
     for i, acc in enumerate(acc_samples):
         if acc < 0:
-            cum_acceleration_time += distances[i] * acc
+            cum_acceleration_time += acc * (distances[i] - min_dist) / (max_dist - min_dist)
             cum_acceleration += acc
     if cum_acceleration * len(acc_samples) == 0:
         return None
-    return cum_acceleration_time / (cum_acceleration * )
+    return cum_acceleration_time / cum_acceleration, max(0, np.max(-acc_samples))
 
 
 def print_success_map_for_weights_set(v0_range: np.array, vT_range: np.array, s_range: np.array,
