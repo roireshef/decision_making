@@ -9,6 +9,8 @@ from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_NAVIGATIO
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_STATIC
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_VISUALIZATION
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_ROUTE_PLAN
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TAKEOVER
 
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet
@@ -29,6 +31,13 @@ from decision_making.src.utils.metric_logger import MetricLogger
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 import rte.python.profiler as prof
 
+#added code
+from decision_making.src.utils.map_utils import MapUtils
+from decision_making.src.messages.route_plan_message import RoutePlan
+from decision_making.src.messages.takeover_message import Takeover, DataTakeover
+from decision_making.src.messages.scene_common_messages import Header, Timestamp
+from decision_making.src.planning.types import C_Y, FS_SX
+
 
 class BehavioralPlanningFacade(DmModule):
     def __init__(self, pubsub: PubSub, logger: Logger, behavioral_planner: CostBasedBehavioralPlanner,
@@ -36,7 +45,7 @@ class BehavioralPlanningFacade(DmModule):
         """
         :param pubsub:
         :param logger:
-        :param behavioral_planner: 
+        :param behavioral_planner:
         :param last_trajectory: last trajectory returned from behavioral planner.
         """
         super().__init__(pubsub=pubsub, logger=logger)
@@ -50,6 +59,7 @@ class BehavioralPlanningFacade(DmModule):
         self.pubsub.subscribe(UC_SYSTEM_STATE)
         self.pubsub.subscribe(UC_SYSTEM_NAVIGATION_PLAN)
         self.pubsub.subscribe(UC_SYSTEM_SCENE_STATIC)
+        self.pubsub.subscribe(UC_SYSTEM_ROUTE_PLAN)
 
     # TODO: unsubscribe once logic is fixed in LCM
     def _stop_impl(self):
@@ -67,6 +77,7 @@ class BehavioralPlanningFacade(DmModule):
             start_time = time.time()
             state = self._get_current_state()
 
+
             scene_static = self._get_current_scene_static()
             SceneStaticModel.get_instance().set_scene_static(scene_static)
 
@@ -83,6 +94,15 @@ class BehavioralPlanningFacade(DmModule):
                 updated_state = state
 
             navigation_plan = self._get_current_navigation_plan()
+
+            #added code
+            # get current route plan
+            route_plan = self._get_current_route_plan()
+            # calculate the takeover message
+            takeover_msg = self._calculate_takeover(route_plan , updated_state)
+            # publish takeover message
+            self._publish_takeover(takeover_msg)
+
 
             trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state, navigation_plan)
 
@@ -144,6 +164,53 @@ class BehavioralPlanningFacade(DmModule):
         self.logger.debug("Received navigation plan: %s" % nav_plan)
         return nav_plan
 
+    #added code
+    def _get_current_route_plan(self) -> RoutePlan:
+        is_success, input_route_plan = self.pubsub.get_latest_sample(topic=UC_SYSTEM_ROUTE_PLAN, timeout=1)
+        object_route_plan = RoutePlan.deserialize(input_route_plan)
+        self.logger.debug("Received route plan: %s" % object_route_plan)
+        return object_route_plan
+
+    #added code
+    def _calculate_takeover(self, route_plan:RoutePlan, state:State ) -> Takeover:
+
+        # find current lane segment ID
+        ego_lane_id = MapUtils.get_closest_lane(state.ego_state.cartesian_state[:(C_Y+1)])
+        # find current road segment ID
+        curr_road_segment_id = MapUtils.get_road_segment_id_from_lane_id(ego_lane_id)
+        # find road segment index in route plan 2-d array
+        route_plan_idx = [i for i in range(route_plan.s_Data.e_Cnt_num_road_segments) \
+                            if route_plan.s_Data.a_i_road_segment_ids[i]==curr_road_segment_id ]
+
+        assert(len(route_plan_idx)==1 and route_plan_idx[0] >= 0 and route_plan_idx[0] < route_plan.s_Data.e_Cnt_num_road_segments )
+
+        # check the end costs for the current road segment lanes
+        blockage_flag = True
+        for j in range(route_plan.s_Data.a_Cnt_num_lane_segments[route_plan_idx[0]]) :
+            if route_plan.s_Data.as_route_plan_lane_segments[route_plan_idx[0]][j].e_cst_lane_end_cost < 1 :
+                blockage_flag = False
+                break
+
+        # find station on the current lane
+        ego_station = state.ego_state.map_state[FS_SX]
+        #find length of the laen segment
+        ego_lane_length = MapUtils.current_lane_length(ego_lane_id)
+        # distance to the end of road (lane) segment
+        dist_to_end = ego_lane_length - ego_station
+
+        if blockage_flag == True and dist_to_end < 100:
+            takeover_flag = True
+        # TODO consider next road segments in checking the costs for short lane segments
+
+        # TODO check this timestamp
+        timestamp_object = Timestamp.from_seconds(state.ego_state.timestamp_in_sec)
+
+        takeover_msg = Takeover(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp_object,e_Cnt_version=0) , \
+                                s_Data = DataTakeover(takeover_flag) )
+
+        return takeover_msg
+
+
     def _get_current_scene_static(self) -> SceneStatic:
         is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=UC_SYSTEM_SCENE_STATIC, timeout=1)
 
@@ -182,6 +249,10 @@ class BehavioralPlanningFacade(DmModule):
 
     def _publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
         self.pubsub.publish(UC_SYSTEM_VISUALIZATION, visualization_message.serialize())
+
+    #added code
+    def _publish_takeover(self, takeover_msg:Takeover) -> None :
+        self.pubsub.publish(UC_SYSTEM_TAKEOVER, takeover_msg.serialize())
 
     @property
     def planner(self):
