@@ -282,7 +282,8 @@ class TrajectoryPlanningFacade(DmModule):
                 continue
 
         header = Header(0, Timestamp.from_seconds(state.ego_state.timestamp_in_sec), 0)
+        points_step = int(ctrajectories.shape[1] / MAX_NUM_POINTS_FOR_VIZ) + 1
         visualization_data = DataTrajectoryVisualization(
-            sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :(C_Y+1)],
+            sliced_ctrajectories[:, :ctrajectories.shape[1]:points_step, :(C_Y+1)],
             objects_visualizations, "")
         return TrajectoryVisualizationMsg(header, visualization_data)

@@ -77,14 +77,13 @@ class QuinticMotionPredicatesCreator:
      acceleration, distance from target vehicle, and final velocity"""
 
     def __init__(self, v0_grid: UniformGrid, a0_grid: UniformGrid, sT_grid: UniformGrid, vT_grid: UniformGrid,
-                 T_m: float, T_safety: float, predicates_resources_target_directory: str):
+                 T_m: float, predicates_resources_target_directory: str):
         """
         :param v0_grid: A grid of initial velocities by which the predicates will be created (typically constant)
         :param a0_grid: A grid of initial accelerations by which the predicates will be created (typically constant)
         :param sT_grid: A grid of initial distances from target by which the predicates will be created (typically constant)
         :param vT_grid: A grid of final velocities by which the predicates will be created (typically constant)
         :param T_m: Specification margin time interval for following/overtaking actions (typically constant)
-        :param T_safety: Safety margin time interval for following/overtaking actions (typically constant)
         :param predicates_resources_target_directory: A target directory inside resources directory where the predicates
                 will be created(typically constant)
         """
@@ -93,7 +92,6 @@ class QuinticMotionPredicatesCreator:
         self.sT_grid = sT_grid
         self.vT_grid = vT_grid
         self.T_m = T_m
-        self.T_safety = T_safety
 
         self.predicates_resources_target_directory = predicates_resources_target_directory  # 'predicates'
         self.limits = np.full(shape=[len(v0_grid), len(a0_grid), len(sT_grid), len(vT_grid)], fill_value=False)
@@ -119,6 +117,7 @@ class QuinticMotionPredicatesCreator:
         # get indices of non-nan positive T values; for nan values of T, is_in_limits = False
         valid_idxs = np.where(np.logical_and(T > 0, T <= BP_ACTION_T_LIMITS[1]))[0]
         if len(valid_idxs) == 0:
+            # for T == 0 the action is "do nothing" (ego is at the goal), then such action is valid
             return T == 0, T == 0  # T is a vector of times
 
         is_in_limits = np.full(T.shape, False)
@@ -201,11 +200,15 @@ class QuinticMotionPredicatesCreator:
 
         # sample polynomials and create ftrajectories_s
         trajectories_s = Poly1D.polyval_with_derivatives(poly_coefs, time_samples)
-        ego_trajectories = [trajectory[0:int(T[i] / TRAJECTORY_TIME_RESOLUTION) + 1]
+
+        # test longitudinal safety only for the second half of each trajectory, because in the first half ego
+        # may be safe laterally w.r.t. the followed/overtaken object
+        from_idx = [int(0.5 * T[i] / TRAJECTORY_TIME_RESOLUTION) for i, trajectory in enumerate(trajectories_s)]
+        ego_trajectories = [trajectory[from_idx[i]:int(T[i] / TRAJECTORY_TIME_RESOLUTION) + 1]
                             for i, trajectory in enumerate(trajectories_s)]
 
-        obj_trajectories = [np.c_[s_T[i] + np.linspace(0, v_T[i] * (len(ego_trajectory)-1) * TRAJECTORY_TIME_RESOLUTION,
-                                                       len(ego_trajectory)),
+        obj_trajectories = [np.c_[s_T[i] + v_T[i] * from_idx[i] * TRAJECTORY_TIME_RESOLUTION +
+                                  np.linspace(0, v_T[i] * (len(ego_trajectory)-1) * TRAJECTORY_TIME_RESOLUTION, len(ego_trajectory)),
                                   np.full(len(ego_trajectory), v_T[i]),
                                   np.zeros(len(ego_trajectory))]
                             for i, ego_trajectory in enumerate(ego_trajectories)]

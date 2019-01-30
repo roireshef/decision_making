@@ -1,4 +1,5 @@
 from decision_making.src.planning.types import LIMIT_MAX
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.test.planning.utils.optimal_control.quintic_poly_formulas import QuinticMotionPredicatesCreator
 
 import numpy as np
@@ -54,7 +55,7 @@ def jerk_time_weights_optimization():
     v0, vT, a0, s = np.ravel(v0), np.ravel(vT), np.ravel(a0), np.ravel(s)
 
     # create grid of weights
-    test_full_range = False
+    test_full_range = True
     # s_weights is a matrix Wx3, where W is a set of jerk weights (time weight is constant) for 3 aggressiveness levels
     if test_full_range:
         # test a full range of weights (~8 minutes)
@@ -91,21 +92,21 @@ def jerk_time_weights_optimization():
 
             # Calculate average (on all valid actions) acceleration profile rate.
             # Late braking (less pleasant for passengers) gets higher rate than early braking.
-            if not test_full_range:
-                rate_sum = 0.
-                rate_num = 0
-                for i in range(states_num):
-                    if vel_acc_in_limits[i, aggr] and safe_actions[i, aggr] and T_s[wi, i, aggr] <= BP_ACTION_T_LIMITS[1]:
-                        # calculate velocity & acceleration profile
-                        time_samples = np.arange(0, T[i] + EPS, TRAJECTORY_TIME_RESOLUTION)
-                        acc_poly_coefs = Math.polyder2d(poly_coefs[i:i+1], m=2)
-                        acc_samples = Math.polyval2d(acc_poly_coefs, time_samples)[0]
-                        brake_rate = get_braking_quality(acc_samples)  # calculate acceleration profile rate
-                        if brake_rate is not None:  # else there was not braking
-                            rate_sum += brake_rate
-                            rate_num += 1
-                if rate_num > 0:
-                    profile_rates[wi, aggr] = rate_sum/rate_num
+            rate_sum = 0.
+            rate_num = 0
+            for i in range(states_num):
+                if vel_acc_in_limits[i, aggr] and safe_actions[i, aggr] and T_s[wi, i, aggr] <= BP_ACTION_T_LIMITS[1]:
+                    # calculate velocity & acceleration profile
+                    time_samples = np.arange(0, T[i] + EPS, TRAJECTORY_TIME_RESOLUTION)
+                    distance_profile = QuinticPoly1D.distance_from_target(a0[i], v0[i], vT[i], s[i], T[i], T_m=SPECIFICATION_MARGIN_TIME_DELAY)
+                    acc_poly_coefs = Math.polyder2d(poly_coefs[i:i+1], m=2)
+                    acc_samples = Math.polyval2d(acc_poly_coefs, time_samples)[0]
+                    brake_rate, rate_weight = get_braking_quality(distance_profile(time_samples), acc_samples)  # calculate acceleration profile rate
+                    if brake_rate is not None:  # else there was not braking
+                        rate_sum += rate_weight * brake_rate
+                        rate_num += rate_weight
+            if rate_num > 0:
+                profile_rates[wi, aggr] = rate_sum/rate_num
 
         # combine velocity & acceleration limits with time limits and safety, to obtain states validity
         time_in_limits = (T_s[wi, :, :] <= BP_ACTION_T_LIMITS[LIMIT_MAX])
@@ -149,20 +150,23 @@ def create_full_range_of_weights(w2_from: float, w2_till: float, w12_ratio_from:
     return weights
 
 
-def get_braking_quality(acc_samples: np.array) -> float:
+def get_braking_quality(distances: np.array, acc_samples: np.array) -> [float, float]:
     """
-    calculate normalized center of mass of braking: late braking (less pleasant) gets higher rate than early braking
+    calculate normalized center of mass of braking: braking close to target (less pleasant) gets higher rate
+    :param distances: array of distances from the followed object
     :param acc_samples: array of acceleration samples
-    :return: center of mass of negative acc_samples in the interval [0..1]
+    :return: 1. center of mass of negative acc_samples as function of distance from the object;
+                the lower rate the better
+             2. the rate weight: the higher accelerations the higher weight
     """
-    cum_acceleration_time = cum_acceleration = 0
-    for i, acc in enumerate(acc_samples):
-        if acc < 0:
-            cum_acceleration_time += i * acc
-            cum_acceleration += acc
-    if cum_acceleration * len(acc_samples) == 0:
-        return None
-    return cum_acceleration_time / (cum_acceleration * len(acc_samples))
+    final_dist = distances[-1]
+    max_brake = max(0., -min(acc_samples))
+    if max_brake == 0:
+        return 0, 0
+    brake_idxs = np.where(acc_samples < 0)[0]
+    cum_brake = -np.sum(acc_samples[brake_idxs])
+    cum_brake_dist = -np.sum(acc_samples[brake_idxs] / np.maximum(1, distances[brake_idxs])) * final_dist
+    return (cum_brake_dist / cum_brake) ** 2, max_brake
 
 
 def print_success_map_for_weights_set(v0_range: np.array, vT_range: np.array, s_range: np.array,
