@@ -1,13 +1,16 @@
 from collections import OrderedDict
 
 from decision_making.src.messages.scene_static_lite_message import SceneStaticLite,DataSceneStaticLite
+from decision_making.src.messages.route_plan_message import RoutePlan,RoutePlanLaneSegment, DataRoutePlan
+
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import TeSYS_LaneMappingStatusType, TeSYS_LaneConstructionType,\
-     TeSYS_GMAuthorityType, TeSYS_MapLaneDirection, TeSYS_RoutePlanLaneSegmentAttr, TsSYS_RoutePlanLaneSegment, TsSYS_DataRoutePlan
+     TeSYS_GMAuthorityType, TeSYS_MapLaneDirection, TeSYS_RoutePlanLaneSegmentAttr, TsSYS_RoutePlanLaneSegment, TsSYS_DataRoutePlan,\
+     TsSYS_LaneSegmentConnectivity, TeSYS_ManeuverType
      
 from route_planner import RoutePlanner
 
 
-class RoutePlannerData():
+class RoutePlannerInputData():
     
     def Update_DictData(self,Scene:SceneStaticLite):
         for i in range(Scene.s_SceneStaticData.e_Cnt_num_lane_segments):
@@ -80,13 +83,15 @@ class CostBasedRoutePlanner(RoutePlanner):
         } 
         return switcher[EnumIdx]
 
-    def plan(self,RouteData:RoutePlannerData)->TsSYS_DataRoutePlan: # TODO: Set function annotaion
+    def plan(self,RouteData:RoutePlannerInputData)->DataRoutePlan: # TODO: Set function annotaion
         """Add comments"""
-        NewRoutePlan = TsSYS_DataRoutePlan 
-        for roadsegidx, (roadsegID,lanesegIDs) in enumerate(RouteData.route_lanesegments.items()):
+        NewRoutePlan = DataRoutePlan
+        for reverseroadsegidx, (roadsegID,lanesegIDs) in reversed(enumerate(RouteData.route_lanesegments.items())):
+            roadsegidx = RouteData.route_lanesegments.len()-reverseroadsegidx
             for lanesegidx, lanesegID in enumerate(lanesegIDs):
                 lanesegData = RouteData.LaneSegmentDict[lanesegID]
                 LaneOccCost = 0
+                LaneEndCost = 0
                 for Idx in range(lanesegData.e_Cnt_num_active_lane_attributes):
                     LaneAttrIdx = lanesegData.e_i_active_lane_attribute_indices[Idx]
                     LaneAttr = lanesegData.e_cmp_lane_attributes[LaneAttrIdx]
@@ -95,19 +100,28 @@ class CostBasedRoutePlanner(RoutePlanner):
                         continue
                     LaneOccCost = LaneOccCost + CostBasedRoutePlanner.LaneAttrBsdOccCost(Idx,LaneAttr)
                 LaneOccCost = min(LaneOccCost,1)
-                NewRoutePlan.as_route_plan_lane_segments[roadsegidx][lanesegidx]=SomeConstructor(lanesegID,LaneOccCost,0)
-            NewRoutePlan.e_Cnt_num_road_segments = roadsegidx
+                if (LaneOccCost==1):
+                    LaneEndCost = 1 # Can't occupy the lane, can't end up in the lane
+                elif (reverseroadsegidx==0):
+                    LaneEndCost = 0
+                else:
+                    MinDwnStreamLaneOccCost = 1
+                    for Idx in range(lanesegData.e_Cnt_downstream_lane_count):
+                        DownStreamlanesegID = lanesegData.as_downstream_lanes[Idx]
+                        NextRoadSegLanes = RouteData.route_lanesegments[reverseroadsegidx-1]
+                        if DownStreamlanesegID in NextRoadSegLanes:
+                            DownStreamlanesegIdx = NextRoadSegLanes.index(DownStreamlanesegID)
+                            DownStreamLaneOccCost= NewRoutePlan.as_route_plan_lane_segments[roadsegidx+1][DownStreamlanesegIdx]
+                            MinDwnStreamLaneOccCost = min(MinDwnStreamLaneOccCost,DownStreamLaneOccCost)
+                            
+                    
+                NewRoutePlan.as_route_plan_lane_segments[roadsegidx][lanesegidx]=RoutePlanLaneSegment(lanesegID,LaneOccCost,MinDwnStreamLaneOccCost)
+            NewRoutePlan.e_Cnt_num_road_segments = reverseroadsegidx
             NewRoutePlan.a_i_road_segment_ids[roadsegidx] = roadsegID
             NewRoutePlan.a_Cnt_num_lane_segments[roadsegidx] = lanesegidx
             
-        # Looping again over all the lanesegs for deriving the end cost from the following segment occupancy costs. Maybe there 
-        # is a more efficient (but more diff to read code ) way of handling it in the same loop where you try to populate the 
-        # previous segments end cost etc.But once you go to backtracking it will be more diffcult to handle anyway. 
-        for roadsegidx, (roadsegID,lanesegIDs) in enumerate(RouteData.route_lanesegments.items()):
-            for lanesegidx, lanesegID in enumerate(lanesegIDs):
-                if lanesegID in RoutePlannerData.LaneSegmentDict:
-                    NewRoutePlan.as_route_plan_lane_segments[roadsegidx][lanesegidx].e_cst_lane_end_cost=0
+
                 
-        pass
+        return NewRoutePlan
 
 
