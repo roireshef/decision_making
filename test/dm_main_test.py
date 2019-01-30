@@ -1,14 +1,9 @@
-from os import getpid
-
-from common_data.interface.Rte_Types.python.Rte_Types_pubsub import PubSubMessageTypes
-from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-
-from decision_making.src.infra.pubsub import PubSub
 from decision_making.src import global_constants
 from decision_making.src.dm_main import DmInitialization
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
     DM_MANAGER_NAME_FOR_LOGGING, TRAJECTORY_PLANNING_NAME_FOR_LOGGING, TRAJECTORY_TIME_RESOLUTION, \
     FIXED_TRAJECTORY_PLANNER_SLEEP_STD, FIXED_TRAJECTORY_PLANNER_SLEEP_MEAN
+from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
@@ -16,10 +11,12 @@ from decision_making.src.planning.trajectory.fixed_trajectory_planner import Fix
 from decision_making.src.planning.trajectory.trajectory_planning_facade import TrajectoryPlanningFacade
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
 from decision_making.src.planning.types import C_Y
+from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 from decision_making.test import constants
 from decision_making.test.constants import TP_MOCK_FIXED_TRAJECTORY_FILENAME
 from decision_making.test.utils_for_tests import Utils
 from mapping.src.service.map_service import MapService
+from os import getpid
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 

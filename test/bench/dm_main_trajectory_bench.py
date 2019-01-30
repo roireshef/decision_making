@@ -3,8 +3,6 @@ from os import getpid
 import numpy as np
 
 from common_data.interface.Rte_Types.python.Rte_Types_pubsub import PubSubMessageTypes
-from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
-from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
 from decision_making.src import global_constants
 from decision_making.src.dm_main import DmInitialization, NAVIGATION_PLAN_MILFORD, DEFAULT_MAP_FILE
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
@@ -37,6 +35,7 @@ from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 from decision_making.src.infra.pubsub import PubSub
+
 
 class DmMockInitialization:
 
