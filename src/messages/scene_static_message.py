@@ -1,23 +1,15 @@
 import numpy as np
-from common_data.interface.py.idl_generated_files.Rte_Types.TsSYS_SceneStatic import TsSYSSceneStatic
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_AdjacentLane import TsSYSAdjacentLane
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_BoundaryPoint import TsSYSBoundaryPoint
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_DataSceneStatic import \
+
+from common_data.interface.Rte_Types.python.sub_structures import TsSYSAdjacentLane, TsSYSBoundaryPoint, TsSYSLaneCoupling, \
+    TsSYSStaticTrafficFlowControl, TsSYSDynamicStatus, TsSYSDynamicTrafficFlowControl, \
+    TsSYSSceneLaneSegment, TsSYSLaneSegmentConnectivity
+from common_data.interface.Rte_Types.python.sub_structures import TsSYSSceneStatic
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataSceneStatic import \
     TsSYSDataSceneStatic
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_DynamicStatus import TsSYSDynamicStatus
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_DynamicTrafficFlowControl import \
-    TsSYSDynamicTrafficFlowControl
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_LaneCoupling import TsSYSLaneCoupling
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_LaneSegmentConnectivity import \
-    TsSYSLaneSegmentConnectivity
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_SceneLaneSegment import \
-    TsSYSSceneLaneSegment
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_SceneRoadIntersection import \
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneRoadIntersection import \
     TsSYSSceneRoadIntersection
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_SceneRoadSegment import \
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneRoadSegment import \
     TsSYSSceneRoadSegment
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_StaticTrafficFlowControl import \
-    TsSYSStaticTrafficFlowControl
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header
 from enum import Enum

@@ -1,6 +1,6 @@
 from logging import Logger
 
-from common_data.src.communication.pubsub.pubsub import PubSub
+from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
 

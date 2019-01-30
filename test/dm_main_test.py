@@ -1,9 +1,9 @@
 from os import getpid
 
-from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
+from common_data.interface.Rte_Types.python.Rte_Types_pubsub import PubSubMessageTypes
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 
-from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
+from decision_making.src.infra.pubsub import PubSub
 from decision_making.src import global_constants
 from decision_making.src.dm_main import DmInitialization
 from decision_making.src.global_constants import BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, \
@@ -28,8 +28,8 @@ class DmMockInitialization:
     @staticmethod
     def create_trajectory_planner() -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(PubSubMessageTypes)
 
+        pubsub = PubSub()
         # Init map
         MapService.initialize()
         predictor = RoadFollowingPredictor(logger)
