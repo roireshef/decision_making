@@ -2,6 +2,7 @@ import traceback
 from abc import ABCMeta, abstractmethod
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, FILTER_V_0_GRID, FILTER_A_0_GRID, \
     FILTER_V_T_GRID, FILTER_S_T_GRID
+from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from logging import Logger
 from typing import List, Optional
@@ -51,7 +52,11 @@ class ActionSpecFilter:
         a_0 = np.full(frenet_points_idxs.shape, 0.)
         s = s_T - action_spec.s
         v_T = vel_limit_in_points
-        wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[AggressivenessLevel.STANDARD.value]
+        if 'FilterIfAggressive' in DEFAULT_STATIC_RECIPE_FILTERING._filters.__str__():
+            most_aggressive_level = AggressivenessLevel.STANDARD
+        else:
+            most_aggressive_level = AggressivenessLevel.AGGRESSIVE
+        wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[most_aggressive_level.value]
         predicate = predicates[(ActionType.FOLLOW_VEHICLE.name.lower(), wT, wJ)]
         predicates_ret = (predicate[FILTER_V_0_GRID.get_indices(v_0), FILTER_A_0_GRID.get_indices(a_0),
                                     FILTER_S_T_GRID.get_indices(s), FILTER_V_T_GRID.get_indices(v_T)] <= 0).all()
