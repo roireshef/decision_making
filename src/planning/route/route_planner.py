@@ -1,23 +1,12 @@
 from abc import ABCMeta, abstractmethod
 from decision_making.src.messages.scene_static_lite_message import SceneStaticLite
+from cost_based_route_planner import RoutePlannerInputData
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import TsSYS_DataRoutePlan
 
 
-class RoutePlanner():
 
-    def __init__(self):
-    self.route_segments = [] # list: ordered RouteSegment's upto the variable size e_Cnt_num_road_segments
-    self.LaneSegments = {} # dict : key - segment ID, value - LaneSegmentLite. The dict should contain all the lane segments listed in self.route_segment_ids.
-
-
-    def plan(self,SceneStaticLite Scene): # TODO: Set function annotaion
-        # Create route plan
-        pass
-
-    def Update_LaneSegmentData(self,SceneStaticLite Scene):
-        for i in range(pubsubMsg.e_Cnt_num_lane_segments):
-            self.LaneSegments = lane_segments.append(Scene.DataSceneStatic.)
-        pass
-
-    def Update_RoutePlanData(self,SceneStaticLite Scene):
+    @abstractmethod
+    def plan(self,RouteData:RoutePlannerInputData)->TsSYS_DataRoutePlan: # TODO: Set function annotaion
+        """Add comments"""
         pass
 
