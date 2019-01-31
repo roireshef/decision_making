@@ -257,3 +257,6 @@ TIMESTAMP_RESOLUTION_IN_SEC = 1e-9
 
 PG_SPLIT_PICKLE_FILE_NAME = 'PG_split.pkl'
 PG_PICKLE_FILE_NAME = 'PG.pkl'
+
+# Distance ahead to raise takeover flag
+DISTANCE_TO_SET_TAKEOVER_FLAG = 100
