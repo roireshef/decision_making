@@ -138,7 +138,7 @@ class BehavioralPlanningFacade(DmModule):
 
     #added code
     def _get_current_route_plan(self) -> RoutePlan:
-        is_success, input_route_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.ROUTE_PLAN, timeout=1)
+        is_success, input_route_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"], timeout=1)
         object_route_plan = RoutePlan.deserialize(input_route_plan)
         self.logger.debug("Received route plan: %s" % object_route_plan)
         return object_route_plan
@@ -230,7 +230,7 @@ class BehavioralPlanningFacade(DmModule):
 
     #added code
     def _publish_takeover(self, takeover_msg:Takeover) -> None :
-        self.pubsub.publish(pubsub_topics.TAKEOVER, takeover_msg.serialize())
+        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TAKEOVER"], takeover_msg.serialize())
 
     @property
     def planner(self):

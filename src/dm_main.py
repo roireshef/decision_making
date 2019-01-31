@@ -105,7 +105,8 @@ class DmInitialization:
     @staticmethod
     def create_route_planner(map_file: str=DEFAULT_MAP_FILE,) -> RoutePlanningFacade:
         logger = AV_Logger.get_logger(ROUTE_PLANNING_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(PubSubMessageTypes)
+
+        pubsub = PubSub()
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
 
