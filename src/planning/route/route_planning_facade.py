@@ -1,6 +1,6 @@
 from logging import Logger
-from common_data.src.communication.pubsub.pubsub import PubSub
-from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
+from decision_making.src.infra.pubsub import PubSub
+from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
 import time
 import traceback
 
@@ -10,11 +10,11 @@ from decision_making.src.planning.route.route_planner import RoutePlanner
 from decision_making.src.utils.metric_logger import MetricLogger
 from decision_making.src.global_constants import LOG_MSG_ROUTE_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_ROUTE_PLANNER_IMPL_TIME, ROUTE_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED
-    
+
 from decision_making.src.messages.scene_static_message import SceneStatic,DataSceneStaticLite, DataNavigationPlan
 from decision_making.src.messages.route_plan_message import RoutePlan,RoutePlanLaneSegment, DataRoutePlan
 from cost_based_route_planner import RoutePlannerInputData
-    
+
 
 class RoutePlanningFacade(DmModule):
 
@@ -32,7 +32,7 @@ class RoutePlanningFacade(DmModule):
 
     def _start_impl(self):
         """Add comments"""
-        self.pubsub.subscribe(pubsub_topics.SCENE_STATIC, None)
+        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], None)
         pass
 
     def _stop_impl(self):
@@ -72,16 +72,16 @@ class RoutePlanningFacade(DmModule):
             self.logger.critical("RoutePlanningFacade: UNHANDLED EXCEPTION: %s. Trace: %s",
                                  e, traceback.format_exc())
 
-    def _get_current_scene_static(self) -> tuple[DataSceneStaticLite,DataNavigationPlan]:
-        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=pubsub_topics.SCENE_STATIC, timeout=1)
+    def _get_current_scene_static(self) -> SceneStaticLite:
+        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], timeout=1)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if serialized_scene_static is None:
             raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed',
-                                          pubsub_topics.SCENE_STATIC)
-        scene_static = SceneStatic.deserialize(serialized_scene_static)
+                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"])
+        scene_static = SceneStaticLite.deserialize(serialized_scene_static)
         self.logger.debug('%s: %f' % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static.s_SceneStaticLiteData,scene_static.s_NavigationPlanData
-    
+
     def _publish_results(self, route_plan: RoutePlan) -> None:
         self.pubsub.publish(pubsub_topics.ROUTE_PLAN, route_plan.serialize())
         self.logger.debug("{} {}".format(LOG_MSG_ROUTE_PLANNER_OUTPUT, route_plan))

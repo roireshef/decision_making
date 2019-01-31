@@ -1,11 +1,8 @@
 from collections import OrderedDict
 
-from decision_making.src.messages.scene_static_message import SceneStatic,DataSceneStaticLite,DataNavigationPlan
-from decision_making.src.messages.route_plan_message import RoutePlan,RoutePlanLaneSegment, DataRoutePlan
-
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import TeSYS_LaneMappingStatusType, TeSYS_LaneConstructionType,\
-     TeSYS_GMAuthorityType, TeSYS_MapLaneDirection, TeSYS_RoutePlanLaneSegmentAttr, TsSYS_RoutePlanLaneSegment, TsSYS_DataRoutePlan,\
-     TsSYS_LaneSegmentConnectivity, TeSYS_ManeuverType
+from decision_making.src.messages.scene_static_lite_message import SceneStaticLite,DataSceneStaticLite
+from common_data.interface.Rte_Types.python.sub_structures import TeSYS_LaneMappingStatusType, TeSYS_LaneConstructionType,\
+     TeSYS_GMAuthorityType, TeSYS_MapLaneDirection, TeSYS_RoutePlanLaneSegmentAttr, TsSYS_RoutePlanLaneSegment, TsSYS_DataRoutePlan
 
 from route_planner import RoutePlanner
 
