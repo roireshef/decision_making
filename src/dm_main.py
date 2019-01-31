@@ -8,9 +8,8 @@ from decision_making.paths import Paths
 from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_evaluator import \
     SingleLaneActionSpecEvaluator
 
-from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes
-from common_data.src.communication.pubsub.pubsub import PubSub
-from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
+from decision_making.src.infra.pubsub import PubSub
+from common_data.interface.Rte_Types.python.Rte_Types_pubsub import PubSubMessageTypes
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, \
     ROUTE_PLANNING_NAME_FOR_LOGGING, \
@@ -85,7 +84,8 @@ class DmInitialization:
     @staticmethod
     def create_state_module(map_file: str=DEFAULT_MAP_FILE) -> StateModule:
         logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(PubSubMessageTypes)
+
+        pubsub = PubSub()
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
         state_module = StateModule(pubsub, logger, None)
@@ -94,7 +94,8 @@ class DmInitialization:
     @staticmethod
     def create_navigation_planner(map_file: str=DEFAULT_MAP_FILE, nav_plan: NavigationPlanMsg=NAVIGATION_PLAN) -> NavigationFacade:
         logger = AV_Logger.get_logger(NAVIGATION_PLANNING_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(PubSubMessageTypes)
+
+        pubsub = PubSub()
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
 
@@ -116,7 +117,8 @@ class DmInitialization:
     @staticmethod
     def create_behavioral_planner(map_file: str=DEFAULT_MAP_FILE) -> BehavioralPlanningFacade:
         logger = AV_Logger.get_logger(BEHAVIORAL_PLANNING_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(PubSubMessageTypes)
+
+        pubsub = PubSub()
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
 
@@ -141,7 +143,8 @@ class DmInitialization:
     @staticmethod
     def create_trajectory_planner(map_file: str=DEFAULT_MAP_FILE) -> TrajectoryPlanningFacade:
         logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
-        pubsub = create_pubsub(PubSubMessageTypes)
+
+        pubsub = PubSub()
         # MapService should be initialized in each process according to the given map_file
         MapService.initialize(map_file)
 
