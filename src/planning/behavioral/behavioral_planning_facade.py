@@ -91,7 +91,7 @@ class BehavioralPlanningFacade(DmModule):
             # get current route plan 
             route_plan = self._get_current_route_plan()
             # calculate the takeover message
-            takeover_msg = self._calculate_takeover(route_plan , updated_state)
+            takeover_msg = self._set_takeover_message(route_plan , updated_state)
             # publish takeover message
             self._publish_takeover(takeover_msg)
 
@@ -144,7 +144,7 @@ class BehavioralPlanningFacade(DmModule):
         return object_route_plan
 
     #added code
-    def _calculate_takeover(self, route_plan:RoutePlan, state:State ) -> Takeover:
+    def _set_takeover_message(self, route_plan:RoutePlan, state:State ) -> Takeover:
         
         # find current lane segment ID
         ego_lane_id = MapUtils.get_closest_lane(state.ego_state.cartesian_state[:(C_Y+1)])
