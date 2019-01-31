@@ -70,19 +70,17 @@ class ObjectSize(PUBSUB_MSG_IMPL):
 
 class DynamicObject(PUBSUB_MSG_IMPL):
     members_remapping = {'_cached_cartesian_state': 'cartesian_state',
-                         '_cached_map_state': 'map_state',
-                         '_cached_map_state_on_host_lane': 'map_state'}
+                         '_cached_map_state': 'map_state'}
 
     e_i_ObjectID = int
     e_Cnt_Timestamp = int
     _cached_cartesian_state = CartesianExtendedState
     _cached_map_state = MapState
-    _cached_map_state_on_host_lane = MapState
     s_Size = ObjectSize
     e_r_Confidence = float
 
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, map_state_on_host_lane, size, confidence):
-        # type: (int, int, CartesianExtendedState, Optional[MapState], Optional[MapState], ObjectSize, float) -> None
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
+        # type: (int, int, Optional[CartesianExtendedState], Optional[MapState], ObjectSize, float) -> None
         """
         Data object that hold
         :param obj_id: object id
@@ -96,7 +94,6 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         self.e_Cnt_Timestamp = timestamp
         self._cached_cartesian_state = cartesian_state
         self._cached_map_state = map_state
-        self._cached_map_state_on_host_lane = map_state_on_host_lane
         self.s_Size = copy.copy(size)
         self.e_r_Confidence = confidence
 
@@ -145,14 +142,6 @@ class DynamicObject(PUBSUB_MSG_IMPL):
             self._cached_map_state = MapState(lane_frenet.cstate_to_fstate(self.cartesian_state), closest_lane_id)
         return self._cached_map_state
 
-    @property
-    def map_state_on_host_lane(self):
-        # type: () -> MapState
-        if self._cached_map_state_on_host_lane is None:
-            # TODO: Agree on the way for projecting dynamic object on host lane or on its continuation
-            raise ValueError('map_state_on_host_lane was called on object without it being cached')
-        return self._cached_map_state_on_host_lane
-
     @staticmethod
     def sec_to_ticks(time_in_seconds):
         # type: (float) -> int
@@ -188,7 +177,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param size: class ObjectSize
         :param confidence: of object's existence
         """
-        return cls(obj_id, timestamp, cartesian_state, None, None, size, confidence)
+        return cls(obj_id, timestamp, cartesian_state, None, size, confidence)
 
     @classmethod
     def create_from_map_state(cls, obj_id, timestamp, map_state, size, confidence):
@@ -201,7 +190,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param size: class ObjectSize
         :param confidence: of object's existence
         """
-        return cls(obj_id, timestamp, None, map_state, None, size, confidence)
+        return cls(obj_id, timestamp, None, map_state, size, confidence)
 
     def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None):
         # type: (CartesianExtendedState, Optional[float]) -> DynamicObject
@@ -234,18 +223,16 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     @classmethod
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSDynamicObject) -> DynamicObject
-        return cls(pubsubMsg.obj_id, pubsubMsg.timestamp
+        return cls(pubsubMsg.e_i_ObjectID, pubsubMsg.e_Cnt_Timestamp
                    , pubsubMsg._cached_cartesian_state
                    , MapState.deserialize(pubsubMsg._cached_map_state) if pubsubMsg._cached_map_state.lane_id > 0 else None
-                   , MapState.deserialize(pubsubMsg._cached_map_state) if pubsubMsg._cached_map_state.lane_id > 0 else None
-                   , ObjectSize.deserialize(pubsubMsg.size)
-                   , pubsubMsg.confidence)
+                   , ObjectSize.deserialize(pubsubMsg.s_Size)
+                   , pubsubMsg.e_r_Confidence)
 
 
-# TODO: remove map_state_on_host_lane from constructor
 class EgoState(DynamicObject):
-    def __init__(self, obj_id, timestamp, cartesian_state, map_state, map_state_on_host_lane, size, confidence):
-        # type: (int, int, CartesianExtendedState, MapState, MapState, ObjectSize, float) -> EgoState
+    def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
+        # type: (int, int, CartesianExtendedState, MapState, ObjectSize, float) -> EgoState
         """
         IMPORTANT! THE FIELDS IN THIS CLASS SHOULD NOT BE CHANGED ONCE THIS OBJECT IS INSTANTIATED
 
@@ -258,8 +245,7 @@ class EgoState(DynamicObject):
         :param confidence: of object's existence
         """
         super(self.__class__, self).__init__(obj_id=obj_id, timestamp=timestamp, cartesian_state=cartesian_state,
-                                             map_state=map_state, map_state_on_host_lane=map_state,
-                                             size=size, confidence=confidence)
+                                             map_state=map_state, size=size, confidence=confidence)
 
     def serialize(self):
         # type: () -> TsSYSEgoState
@@ -270,11 +256,10 @@ class EgoState(DynamicObject):
     @classmethod
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSEgoState) -> EgoState
-        dyn_obj = DynamicObject.deserialize(pubsubMsg.dynamic_obj)
+        dyn_obj = DynamicObject.deserialize(pubsubMsg.s_DynamicObject)
         return cls(dyn_obj.e_i_ObjectID, dyn_obj.e_Cnt_Timestamp
                    , dyn_obj._cached_cartesian_state
                    , dyn_obj._cached_map_state
-                   , dyn_obj._cached_map_state_on_host_lane
                    , dyn_obj.s_Size
                    , dyn_obj.e_r_Confidence)
 
