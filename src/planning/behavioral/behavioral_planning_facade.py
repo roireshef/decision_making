@@ -8,7 +8,7 @@ from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_to
 from common_data.src.communication.pubsub.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
-    LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED
+    LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED , DISTANCE_TO_SET_TAKEOVER_FLAG
 from decision_making.src.infra.dm_module import DmModule
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.src.messages.scene_static_message import SceneStatic
@@ -28,6 +28,7 @@ from decision_making.src.utils.map_utils import MapUtils
 from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
+from decision_making.src.planning.types import C_Y, FS_SX
 
 
 class BehavioralPlanningFacade(DmModule):
@@ -155,23 +156,34 @@ class BehavioralPlanningFacade(DmModule):
         
         assert(len(route_plan_idx)==1 and route_plan_idx[0] >= 0 and route_plan_idx[0] < route_plan.s_Data.e_Cnt_num_road_segments )
 
-        # check the end costs for the current road segment lanes
-        blockage_flag = True
-        for j in range(route_plan.s_Data.a_Cnt_num_lane_segments[route_plan_idx[0]]) :
-            if route_plan.s_Data.as_route_plan_lane_segments[route_plan_idx[0]][j].e_cst_lane_end_cost < 1 :
-                blockage_flag = False
-                break
-        
-        # find station on the current lane 
+        row_idx = route_plan_idx[0]
+
+         # find station on the current lane 
         ego_station = state.ego_state.map_state[FS_SX]
-        #find length of the laen segment
-        ego_lane_length = MapUtils.current_lane_length(ego_lane_id)
-        # distance to the end of road (lane) segment
+        #find length of the lane segment
+        ego_lane_length = MapUtils.get_lane_length(ego_lane_id)
+        # distance to the end of current road (lane) segment
         dist_to_end = ego_lane_length - ego_station 
 
-        if blockage_flag == True and dist_to_end < 100:
+        # check the end costs for the current road segment lanes
+        blockage_flag = True
+        for i in range(row_idx,route_plan.s_Data.e_Cnt_num_road_segments):
+            
+            for j in range(route_plan.s_Data.a_Cnt_num_lane_segments[i]) :
+                if route_plan.s_Data.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost < 1 :
+                    blockage_flag = False
+                    break
+
+            # check how many road segments are within the horizon
+            if i > row_idx:
+                next_road_lane_id = route_plan.s_Data.as_route_plan_lane_segments[i][0].e_i_lane_segment_id
+                lane_length = MapUtils.get_lane_length(next_road_lane_id)
+                dist_to_end += lane_length
+            if dist_to_end >= DISTANCE_TO_SET_TAKEOVER_FLAG :
+                break
+        
+        if blockage_flag == True and dist_to_end < DISTANCE_TO_SET_TAKEOVER_FLAG:
             takeover_flag = True
-        # TODO consider next road segments in checking the costs for short lane segments
 
         # TODO check this timestamp
         timestamp_object = Timestamp.from_seconds(state.ego_state.timestamp_in_sec)
