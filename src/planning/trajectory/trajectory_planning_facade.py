@@ -124,6 +124,7 @@ class TrajectoryPlanningFacade(DmModule):
             self._publish_debug(debug_results)
 
             self.logger.info("%s %s", LOG_MSG_TRAJECTORY_PLANNER_IMPL_TIME, time.time() - start_time)
+            MetricLogger.get_logger().report()
 
         except MsgDeserializationError:
             self.logger.error("TrajectoryPlanningFacade: MsgDeserializationError was raised. skipping planning. %s ",

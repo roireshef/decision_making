@@ -81,7 +81,6 @@ class QuarticMotionPredicatesCreator:
         self.vT_grid = vT_grid
 
         self.predicates_resources_target_directory = predicates_resources_target_directory  # 'predicates'
-        self.predicate = np.full(shape=[len(v0_grid), len(a0_grid), len(vT_grid)], fill_value=False)
 
     @staticmethod
     def create_quartic_motion_funcs(a_0, v_0, v_T, T):
@@ -96,7 +95,7 @@ class QuarticMotionPredicatesCreator:
                QuarticPoly1D.acceleration_profile_function(a_0, v_0, v_T, T)
 
     @staticmethod
-    def generate_predicate_value(w_T, w_J, a_0, v_0, v_T):
+    def generate_predicate_value(w_T, w_J, a_0, v_0, v_T) -> [bool, float]:
         """
         Generates the actual predicate value (true/false) for the given action,weights and scenario params
         :param w_T: weight of Time component in time-jerk cost function
@@ -107,7 +106,6 @@ class QuarticMotionPredicatesCreator:
         :return: True if given parameters will generate a feasible trajectory that meets time, velocity and
                 acceleration constraints and doesn't get into target vehicle safety zone.
         """
-
         # Get polynomial coefficients of time-jerk cost function derivative for our settings
         time_cost_derivative_poly_coefs = \
             QuarticPoly1D.time_cost_function_derivative_coefs(np.array([w_T]), np.array([w_J]),
@@ -118,12 +116,15 @@ class QuarticMotionPredicatesCreator:
         extremum_T = cost_real_roots[np.isfinite(cost_real_roots)]
 
         if len(extremum_T) == 0:
-            return False
+            return False, np.inf
 
         # The extrema which is the furthest from origin is our global minimum (might be our only minimum)
         T = extremum_T.max()
 
-        return QuarticMotionPredicatesCreator.check_validity(a_0, v_0, v_T, T)
+        in_limits = QuarticMotionPredicatesCreator.check_validity(a_0, v_0, v_T, T)
+        distance = QuarticPoly1D.distance_profile_function(a_0, v_0, v_T, T)(T) \
+            if T > 0 and in_limits else 0 if T == 0 else np.inf
+        return in_limits, distance
 
     @staticmethod
     def check_validity(a_0, v_0, v_T, T):
@@ -159,18 +160,29 @@ class QuarticMotionPredicatesCreator:
         :return:
         """
         action_type = ActionType.FOLLOW_LANE
-        for weight in jerk_time_weights:
+        predicate = np.full(shape=[len(self.v0_grid), len(self.a0_grid), len(self.vT_grid)], fill_value=False)
+        distances = np.full(shape=[len(self.v0_grid), len(self.a0_grid), len(self.vT_grid)], dtype=float, fill_value=np.inf)
+
+        for wi, weight in enumerate(jerk_time_weights):
             w_J, w_T = weight[0], weight[2]  # w_T stays the same (0.1), w_J is now to be one of [12,2,0.01]
             print('weights are: %.2f,%.2f' % (w_J, w_T))
             for k, v_0 in enumerate(self.v0_grid):
                 print('v_0 is: %.2f' % v_0)
                 for m, a_0 in enumerate(self.a0_grid):
                     for j, v_T in enumerate(self.vT_grid):
-                        self.predicate[k, m, j] = \
+                        predicate[k, m, j], distances[k, m, j] = \
                             QuarticMotionPredicatesCreator.generate_predicate_value(w_T, w_J, a_0, v_0, v_T)
 
+            # save 'limits' predicate to file
             output_predicate_file_name = '%s_limits_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
             output_predicate_file_path = Paths.get_resource_absolute_path_filename(
                 '%s/%s' % (self.predicates_resources_target_directory,
                            output_predicate_file_name))
-            BinaryReadWrite.save(array=self.predicate, file_path=output_predicate_file_path)
+            BinaryReadWrite.save(array=predicate, file_path=output_predicate_file_path)
+
+            # save actions distances to file
+            output_distances_file_name = '%s_distances_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
+            output_distances_file_path = Paths.get_resource_absolute_path_filename(
+                '%s/%s' % (self.predicates_resources_target_directory,
+                           output_distances_file_name))
+            np.save(file=output_distances_file_path, arr=distances)  # np.save adds extension .npy to the file name

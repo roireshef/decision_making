@@ -47,7 +47,7 @@ class RecipeFilter:
         directory = Paths.get_resource_absolute_path_filename(predicates_dir)
         predicates = {}
         for filename in os.listdir(directory):
-            if filename.endswith(".bin") and filter_name in filename:
+            if (filename.endswith(".bin") or filename.endswith(".npy")) and filter_name in filename:
                 predicate_path = Paths.get_resource_absolute_path_filename('%s/%s' % (predicates_dir, filename))
                 action_type = filename.split('.bin')[0].split('_' + filter_name)[0]
                 wT, wJ = [float(filename.split('.bin')[0].split('_')[4]),
@@ -56,8 +56,10 @@ class RecipeFilter:
                     predicate_shape = (len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_V_T_GRID))
                 else:
                     predicate_shape = (len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_S_T_GRID), len(FILTER_V_T_GRID))
-                predicates[(action_type, wT, wJ)] = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
-
+                if filename.endswith(".npy"):
+                    predicates[(action_type, wT, wJ)] = np.load(file=predicate_path)
+                else:
+                    predicates[(action_type, wT, wJ)] = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
         return predicates
 
     # TODO: Move to test folder when agent is in steady state (global constants don't get changed)

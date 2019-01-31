@@ -30,39 +30,34 @@ class ActionSpecFilter:
         return self.__class__.__name__
 
     @staticmethod
-    def check_velocity_limit_beyond_spec(action_spec: ActionSpec, frenet: GeneralizedFrenetSerretFrame,
-                                         frenet_points_idxs: np.array, vel_limit_in_points: np.array,
-                                         predicates: np.array):
+    def check_ability_to_brake_beyond_spec(action_spec: ActionSpec, frenet: GeneralizedFrenetSerretFrame,
+                                           frenet_points_idxs: np.array, vel_limit_in_points: np.array,
+                                           action_distances: np.array):
         """
         Given action spec and velocity limits on a subset of Frenet points, check if it's possible to brake enough
-        before arriving to these points. The ability to brake is verified using quintic 'limits' predicates.
+        before arriving to these points. The ability to brake is verified using static actions distances.
         :param action_spec: action specification
         :param frenet: generalized Frenet Serret frame
         :param frenet_points_idxs: array of indices of the Frenet frame points, having limited velocity
         :param vel_limit_in_points: array of maximal velocities at frenet_points_idxs
-        :param predicates: dictionary of quintic 'limits' predicates
+        :param action_distances: dictionary of distances of static actions
         :return: True if the agent can brake before each given point to its limited velocity
         """
-        if len(frenet_points_idxs) == 0:
-            return True  # all points beyond the spec have velocity limit higher than spec.v, so no need to brake
-
-        # test ability to brake after the the end of spec's trajectory, complying max_velocity at suspected points
-        s_T = frenet.get_s_from_index_on_frame(frenet_points_idxs, delta_s=0)
+        # create constraints for static actions per point beyond the given spec
         v_0 = np.full(frenet_points_idxs.shape, action_spec.v)
         a_0 = np.full(frenet_points_idxs.shape, 0.)
-        s = s_T - action_spec.s
-        v_T = vel_limit_in_points
+        dist_to_points = frenet.get_s_from_index_on_frame(frenet_points_idxs, delta_s=0) - action_spec.s
+
+        # retrieve distances of static actions for the most aggressive level, since they have the shortest distances
         if 'FilterIfAggressive' in DEFAULT_STATIC_RECIPE_FILTERING._filters.__str__():
             most_aggressive_level = AggressivenessLevel.STANDARD
         else:
             most_aggressive_level = AggressivenessLevel.AGGRESSIVE
         wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[most_aggressive_level.value]
-        predicate = predicates[(ActionType.FOLLOW_VEHICLE.name.lower(), wT, wJ)]
-        predicates_ret = (predicate[FILTER_V_0_GRID.get_indices(v_0), FILTER_A_0_GRID.get_indices(a_0),
-                                    FILTER_S_T_GRID.get_indices(s), FILTER_V_T_GRID.get_indices(v_T)] <= 0).all()
-        print('beyond_spec_vel_limit: spec.v=%.2f idx=%d s_T=%4.2f s=%4.2f v_T=%4.2f %d' %
-              (action_spec.v, frenet_points_idxs[0], s_T[0], s[0], v_T[0], predicates_ret))
-        return predicates_ret
+        brake_dist = action_distances[(ActionType.FOLLOW_LANE.name.lower(), wT, wJ)]
+        is_braking_possible = (brake_dist[FILTER_V_0_GRID.get_indices(v_0), FILTER_A_0_GRID.get_indices(a_0),
+                                          FILTER_V_T_GRID.get_indices(vel_limit_in_points)] < dist_to_points).all()
+        return is_braking_possible
 
 
 class ActionSpecFiltering:

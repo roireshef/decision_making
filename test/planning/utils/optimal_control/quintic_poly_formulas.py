@@ -94,8 +94,6 @@ class QuinticMotionPredicatesCreator:
         self.T_m = T_m
 
         self.predicates_resources_target_directory = predicates_resources_target_directory  # 'predicates'
-        self.limits = np.full(shape=[len(v0_grid), len(a0_grid), len(sT_grid), len(vT_grid)], fill_value=False)
-        self.safety = np.full(shape=[len(v0_grid), len(a0_grid), len(sT_grid), len(vT_grid)], fill_value=False)
 
     @staticmethod
     def generate_predicate_value(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array, s_T: np.array, T_m: float):
@@ -236,6 +234,10 @@ class QuinticMotionPredicatesCreator:
         :param action_types: a list of all action types for which predicates will be created
         :return:
         """
+        predicate_shape = [len(self.v0_grid), len(self.a0_grid), len(self.sT_grid), len(self.vT_grid)]
+        limits = np.full(shape=predicate_shape, fill_value=False)
+        safety = np.full(shape=predicate_shape, fill_value=False)
+
         for action_type in action_types:
             margin_sign = +1 if action_type == ActionType.FOLLOW_VEHICLE else -1
             T_m = self.T_m * margin_sign
@@ -251,15 +253,17 @@ class QuinticMotionPredicatesCreator:
                     print('v_0 is: %.1f' % v_0)
                     limits, safety = QuinticMotionPredicatesCreator.generate_predicate_value(
                         w_T, w_J, np.full(vT.shape, v_0), a0, vT, sT, T_m)
-                    self.limits[k] = limits.reshape((len(self.a0_grid), len(self.sT_grid), len(self.vT_grid)))
-                    self.safety[k] = safety.reshape((len(self.a0_grid), len(self.sT_grid), len(self.vT_grid)))
+                    limits[k] = limits.reshape((len(self.a0_grid), len(self.sT_grid), len(self.vT_grid)))
+                    safety[k] = safety.reshape((len(self.a0_grid), len(self.sT_grid), len(self.vT_grid)))
 
+                # save 'limits' predicates to file
                 output_limits_file_name = '%s_limits_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
                 output_predicate_file_path = Paths.get_resource_absolute_path_filename(
                     '%s/%s' % (self.predicates_resources_target_directory, output_limits_file_name))
-                BinaryReadWrite.save(array=self.limits, file_path=output_predicate_file_path)
+                BinaryReadWrite.save(array=limits, file_path=output_predicate_file_path)
 
+                # save 'safety' predicates to file
                 output_safety_file_name = '%s_safety_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
                 output_safety_file_path = Paths.get_resource_absolute_path_filename(
                     '%s/%s' % (self.predicates_resources_target_directory, output_safety_file_name))
-                BinaryReadWrite.save(array=self.safety, file_path=output_safety_file_path)
+                BinaryReadWrite.save(array=safety, file_path=output_safety_file_path)
