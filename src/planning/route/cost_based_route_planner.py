@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from decision_making.src.messages.scene_static_lite_message import SceneStaticLite,DataSceneStaticLite
+from decision_making.src.messages.scene_static_message import SceneStatic,DataSceneStaticLite,DataNavigationPlan
 from decision_making.src.messages.route_plan_message import RoutePlan,RoutePlanLaneSegment, DataRoutePlan
 
 from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import TeSYS_LaneMappingStatusType, TeSYS_LaneConstructionType,\
@@ -12,24 +12,24 @@ from route_planner import RoutePlanner
 
 class RoutePlannerInputData():
     
-    def Update_DictData(self,Scene:SceneStaticLite):
-        for i in range(Scene.s_SceneStaticData.e_Cnt_num_lane_segments):
-            self.LaneSegmentDict[Scene.s_SceneStaticData.as_scene_lane_segment[i].e_i_lane_segment_id] = \
+    def Update_DictData(self,Scene:DataSceneStaticLite):
+        for i in range(Scene.e_Cnt_num_lane_segments):
+            self.LaneSegmentDict[Scene.as_scene_lane_segment[i].e_i_lane_segment_id] = \
             Scene.s_SceneStaticData.as_scene_lane_segment[i]
-        for i in range(Scene.s_SceneStaticData.e_Cnt_num_road_segments):
-            self.RoadSegmentDict[Scene.s_SceneStaticData.as_scene_road_segment[i].e_Cnt_road_segment_id] = \
+        for i in range(Scene.e_Cnt_num_road_segments):
+            self.RoadSegmentDict[Scene.as_scene_road_segment[i].e_Cnt_road_segment_id] = \
             Scene.s_SceneStaticData.as_scene_road_segment[i]
     pass
 
-    def Update_RoutePlanData(self,Scene:SceneStaticLite):
-        self.route_roadsegments = Scene.s_NavigationPlanData.a_i_road_segment_ids
+    def Update_RoutePlanData(self,Nav:DataNavigationPlan):
+        self.route_roadsegments = Nav.a_i_road_segment_ids
         for road_seg in range(self.route_roadsegments):
             lane_seg = []
             for j in range(self.RoadSegmentDict[road_seg].e_Cnt_lane_segment_id_count):
                 lane_seg.append(self.RoadSegmentDict[road_seg].a_Cnt_lane_segment_id[j])
             self.RoadSegmentDict[road_seg]=lane_seg
         
-    def __init__(self,Scene:SceneStaticLite):
+    def __init__(self,Scene:DataSceneStaticLite,Nav:DataNavigationPlan):
         self.route_roadsegments = [] # list: ordered RouteSegment's upto the variable size e_Cnt_num_road_segments
         self.route_lanesegments = OrderedDict() # dict:  key - road segment IDs (sorted as in routeplan) , value - list(LaneSegmentID)
         self.LaneSegmentDict = {} # dict : key - lane segment ID, value - LaneSegmentLite. 
@@ -37,7 +37,7 @@ class RoutePlannerInputData():
         self.RoadSegmentDict = {} # dict : key - road segment ID, value - Road Segments. 
         #The dict should contain all the lane segments listed in self.route_segment_ids. 
         self.Update_DictData(Scene)
-        self.Update_RoutePlanData(Scene)
+        self.Update_RoutePlanData(Nav)
 
 
 
@@ -113,9 +113,10 @@ class CostBasedRoutePlanner(RoutePlanner):
                             DownStreamlanesegIdx = NextRoadSegLanes.index(DownStreamlanesegID)
                             DownStreamLaneOccCost= NewRoutePlan.as_route_plan_lane_segments[roadsegidx+1][DownStreamlanesegIdx]
                             MinDwnStreamLaneOccCost = min(MinDwnStreamLaneOccCost,DownStreamLaneOccCost)
+                    LaneEndCost = MinDwnStreamLaneOccCost
                             
                     
-                NewRoutePlan.as_route_plan_lane_segments[roadsegidx][lanesegidx]=RoutePlanLaneSegment(lanesegID,LaneOccCost,MinDwnStreamLaneOccCost)
+                NewRoutePlan.as_route_plan_lane_segments[roadsegidx][lanesegidx]=RoutePlanLaneSegment(lanesegID,LaneOccCost,LaneEndCost)
             NewRoutePlan.e_Cnt_num_road_segments = reverseroadsegidx
             NewRoutePlan.a_i_road_segment_ids[roadsegidx] = roadsegID
             NewRoutePlan.a_Cnt_num_lane_segments[roadsegidx] = lanesegidx
