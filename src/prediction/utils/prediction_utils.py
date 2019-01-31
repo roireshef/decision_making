@@ -23,10 +23,10 @@ class PredictionUtils:
 
         assert -0.5 <= ended_maneuver_params.lat_normalized <= 0.5
 
-        lane_id = object_state.map_state.lane_id
+        lane_id = object_state.map_state.e_i_LaneID
 
         # Object's initial state in Frenet frame
-        obj_init_fstate = object_state.map_state.lane_fstate
+        obj_init_fstate = object_state.map_state.a_LaneFState
 
         # Calculate object's initial state in Frenet frame according to model
         lane_width = MapUtils.get_lane_width(lane_id, s=obj_init_fstate[FS_SX])
@@ -104,7 +104,7 @@ class PredictionUtils:
         predicted_object_states = [
             dynamic_object.clone_from_map_state(timestamp_in_sec=prediction_timestamps[t_ind],
                                                 map_state=MapState(lane_fstate=predictions[t_ind],
-                                                                   lane_id=dynamic_object.map_state.lane_id)) for t_ind
+                                                                   lane_id=dynamic_object.map_state.e_i_LaneID)) for t_ind
             in
             range(len(prediction_timestamps))]
 
@@ -119,7 +119,7 @@ class PredictionUtils:
         :param state: state containing objects with different timestamps
         :return: most_recent_timestamp:  most recent timestamp among all dynamic objects and ego
         """
-        ego_timestamp_in_sec = state.ego_state.timestamp_in_sec
-        objects_timestamp_in_sec = [state.dynamic_objects[x].timestamp_in_sec for x in range(len(state.dynamic_objects))]
+        ego_timestamp_in_sec = state.s_EgoState.timestamp_in_sec
+        objects_timestamp_in_sec = [state.s_DynamicObjects[x].timestamp_in_sec for x in range(len(state.s_DynamicObjects))]
         objects_timestamp_in_sec.append(ego_timestamp_in_sec)
         return np.max(objects_timestamp_in_sec)

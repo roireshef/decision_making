@@ -64,15 +64,15 @@ def main():
         # Deserialize from dict to object
         state = ClassSerializer.deserialize(class_type=State, message=state_msg)  # type: State
         if state_message_index == 0:
-            baseline_timestamp = state.ego_state.timestamp_in_sec
-        actual_v.append(state.ego_state.v_x)
-        ego_timestamps.append(state.ego_state.timestamp_in_sec - baseline_timestamp)
-        accel.append(state.ego_state.acceleration_lon)
-        t = state.ego_state.timestamp_in_sec - baseline_timestamp
-        for dyn_obj in state.dynamic_objects:
+            baseline_timestamp = state.s_EgoState.timestamp_in_sec
+        actual_v.append(state.s_EgoState.v_x)
+        ego_timestamps.append(state.s_EgoState.timestamp_in_sec - baseline_timestamp)
+        accel.append(state.s_EgoState.acceleration_lon)
+        t = state.s_EgoState.timestamp_in_sec - baseline_timestamp
+        for dyn_obj in state.s_DynamicObjects:
             obj_id = dyn_obj.obj_id
             obj_x, obj_y = dyn_obj.x, dyn_obj.y
-            ego_x, ego_y = state.ego_state.x, state.ego_state.y
+            ego_x, ego_y = state.s_EgoState.x, state.s_EgoState.y
             obj_range = rng(ego_x, ego_y, obj_x, obj_y)
             target_vel = dyn_obj.v_x
             if obj_id in targets:

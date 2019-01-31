@@ -160,7 +160,7 @@ def unaligned_dynamic_object(predicted_cartesian_state_1_constant_yaw: Cartesian
 @pytest.fixture(scope='function')
 def aligned_ego_state(init_ego_state, unaligned_dynamic_object):
     # Changing only timestamp since ego's speed is 0
-    init_ego_state.timestamp = unaligned_dynamic_object.timestamp
+    init_ego_state.e_Cnt_Timestamp = unaligned_dynamic_object.e_Cnt_Timestamp
     yield init_ego_state
 
 

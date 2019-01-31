@@ -42,7 +42,7 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
         for dynamic_object in dynamic_objects:
             predicted_dynamic_object_states = self._predict_object(dynamic_object=dynamic_object,
                                                                    prediction_timestamp=prediction_timestamps[0])
-            predicted_dynamic_objects[dynamic_object.obj_id] = predicted_dynamic_object_states
+            predicted_dynamic_objects[dynamic_object.e_i_ObjectID] = predicted_dynamic_object_states
 
         return predicted_dynamic_objects
 
@@ -59,7 +59,7 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
         assert len(prediction_timestamps) == 1
 
         # Simple object-wise prediction
-        object_ids = [obj.obj_id for obj in state.dynamic_objects]
+        object_ids = [obj.obj_id for obj in state.s_DynamicObjects]
 
         predicted_dynamic_objects_dict = self.predict_objects(state=state, object_ids=object_ids,
                                                               prediction_timestamps=prediction_timestamps)
@@ -68,7 +68,7 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
                                      predicted_dynamic_objects_dict.values()
                                      if future_object_states[0].map_state.is_on_road() or not FILTER_OFF_ROAD_OBJECTS]
 
-        predicted_ego_state = self._predict_object(dynamic_object=state.ego_state,
+        predicted_ego_state = self._predict_object(dynamic_object=state.s_EgoState,
                                                    prediction_timestamp=prediction_timestamps[0])[0]
 
         predicted_state = state.clone_with(dynamic_objects=predicted_dynamic_objects,
@@ -89,16 +89,16 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
 
         prediction_horizon = prediction_timestamp - dynamic_object.timestamp_in_sec
 
-        predicted_s = dynamic_object.map_state.lane_fstate[FS_SX] + dynamic_object.map_state.lane_fstate[
+        predicted_s = dynamic_object.map_state.a_LaneFState[FS_SX] + dynamic_object.map_state.a_LaneFState[
             FS_SV] * prediction_horizon
-        predicted_d = dynamic_object.map_state.lane_fstate[FS_DX] + dynamic_object.map_state.lane_fstate[
+        predicted_d = dynamic_object.map_state.a_LaneFState[FS_DX] + dynamic_object.map_state.a_LaneFState[
             FS_DV] * prediction_horizon
 
         obj_final_fstate = np.array(
-            [predicted_s, dynamic_object.map_state.lane_fstate[FS_SV], 0, predicted_d,
-             dynamic_object.map_state.lane_fstate[FS_DV], 0])
+            [predicted_s, dynamic_object.map_state.a_LaneFState[FS_SV], 0, predicted_d,
+             dynamic_object.map_state.a_LaneFState[FS_DV], 0])
 
         predicted_object_states = dynamic_object.clone_from_map_state(timestamp_in_sec=prediction_timestamp,
                                                                       map_state=MapState(lane_fstate=obj_final_fstate,
-                                                                                         lane_id=dynamic_object.map_state.lane_id))
+                                                                                         lane_id=dynamic_object.map_state.e_i_LaneID))
         return [predicted_object_states]

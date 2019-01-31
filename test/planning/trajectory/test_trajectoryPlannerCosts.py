@@ -65,8 +65,8 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
     A_d_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_d))
     poly_coefs_d = QuinticPoly1D.zip_solve(A_d_inv, constraints_d)
 
-    frenet_frame = MapUtils.get_lane_frenet_frame(ego.map_state.lane_id)
-    sub_segment = FrenetSubSegment(ego.map_state.lane_id, 0, frenet_frame.s_max)
+    frenet_frame = MapUtils.get_lane_frenet_frame(ego.map_state.e_i_LaneID)
+    sub_segment = FrenetSubSegment(ego.map_state.e_i_LaneID, 0, frenet_frame.s_max)
     reference_route = GeneralizedFrenetSerretFrame.build([frenet_frame], [sub_segment])
 
     # create 3 ctrajectories

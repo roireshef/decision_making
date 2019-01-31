@@ -29,7 +29,7 @@ class ConstantVelocityManeuverClassifier(ManeuverClassifier):
         map_state = object_state.map_state
 
         # Calculate object's initial state in Frenet frame according to model
-        lane_width = MapUtils.get_lane_width(map_state.lane_id, s=map_state.lane_fstate[FS_SX])
+        lane_width = MapUtils.get_lane_width(map_state.e_i_LaneID, s=map_state.a_LaneFState[FS_SX])
 
         # Fetch trajectory parameters
         avg_s_a = 0.0
@@ -37,7 +37,7 @@ class ConstantVelocityManeuverClassifier(ManeuverClassifier):
         relative_lane = 0.0
 
         # Keep same normalized latitude in lane
-        lat = map_state.lane_fstate[FS_DX] / lane_width
+        lat = map_state.a_LaneFState[FS_DX] / lane_width
 
         return PredictionUtils.convert_to_maneuver_spec(object_state=object_state,
                                                         ended_maneuver_params=EndedManeuverParams(T_s=maneuver_horizon,

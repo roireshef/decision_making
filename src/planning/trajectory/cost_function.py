@@ -60,8 +60,8 @@ class TrajectoryPlannerCosts:
         :return: MxN matrix of obstacle costs per point, where N is trajectories number, M is trajectory length
         """
         # Filter close objects
-        close_objects = [obs for obs in state.dynamic_objects
-                   if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < PLANNING_LOOKAHEAD_DIST]
+        close_objects = [obs for obs in state.s_DynamicObjects
+                         if np.linalg.norm([obs.x - state.s_EgoState.x, obs.y - state.s_EgoState.y]) < PLANNING_LOOKAHEAD_DIST]
 
         with prof.time_range('new_compute_obstacle_costs{objects: %d, ctraj_shape: %s}' % (len(close_objects), ctrajectories.shape)):
             if len(close_objects) == 0:
@@ -75,19 +75,19 @@ class TrajectoryPlannerCosts:
             # Predict objects' future movement, then project predicted objects' states to Cartesian frame
             # TODO: this assumes predictor works with frenet frames relative to ego-lane - figure out if this is how we want to do it in the future.
             objects_predicted_ftrajectories = predictor.predict_frenet_states(
-                objects_relative_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
+                objects_relative_fstates, global_time_samples - state.s_EgoState.timestamp_in_sec)
             objects_predicted_ctrajectories = reference_route.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
 
             objects_sizes = np.array([[obs.size.length, obs.size.width] for obs in close_objects])
-            ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])
+            ego_size = np.array([state.s_EgoState.size.length, state.s_EgoState.size.width])
 
             # Compute the distance to the closest point in every object to ego's boundaries (on the length and width axes)
             distances = TrajectoryPlannerCosts.compute_distances_to_objects(
                 ctrajectories, objects_predicted_ctrajectories, objects_sizes, ego_size)
 
             # compute a flipped-sigmoid for distances in each dimension [x, y] of each point (in each trajectory)
-            k = np.array([params.obstacle_cost_x.k, params.obstacle_cost_y.k])
-            offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
+            k = np.array([params.s_ObstacleCostX.k, params.s_ObstacleCostY.k])
+            offset = np.array([params.s_ObstacleCostX.offset, params.s_ObstacleCostY.offset])
             points_offset = distances - offset
             per_dimension_cost = np.divide(1.0, (1.0+np.exp(np.minimum(np.multiply(k, points_offset), EXP_CLIP_TH))))
 
@@ -95,7 +95,7 @@ class TrajectoryPlannerCosts:
             # negative distance, i.e. collision
             per_point_cost = per_dimension_cost.prod(axis=-1)
 
-            per_trajectory_point_cost = params.obstacle_cost_x.w * np.sum(per_point_cost, axis=1)
+            per_trajectory_point_cost = params.s_ObstacleCostX.w * np.sum(per_point_cost, axis=1)
 
             return per_trajectory_point_cost
 
@@ -143,12 +143,12 @@ class TrajectoryPlannerCosts:
         deviations_costs = np.zeros((ftrajectories.shape[0], ftrajectories.shape[1]))
 
         # add to deviations_costs the costs of deviations from the left [lane, shoulder, road]
-        for sig_cost in [params.left_lane_cost, params.left_shoulder_cost, params.left_road_cost]:
+        for sig_cost in [params.s_LeftLaneCost, params.s_LeftShoulderCost, params.s_LeftRoadCost]:
             left_offsets = ftrajectories[:, :, FS_DX] - sig_cost.offset
             deviations_costs += Math.clipped_sigmoid(left_offsets, sig_cost.w, sig_cost.k)
 
         # add to deviations_costs the costs of deviations from the right [lane, shoulder, road]
-        for sig_cost in [params.right_lane_cost, params.right_shoulder_cost, params.right_road_cost]:
+        for sig_cost in [params.s_RightLaneCost, params.s_RightShoulderCost, params.s_RightRoadCost]:
             right_offsets = np.negative(ftrajectories[:, :, FS_DX]) - sig_cost.offset
             deviations_costs += Math.clipped_sigmoid(right_offsets, sig_cost.w, sig_cost.k)
         return deviations_costs
@@ -164,7 +164,7 @@ class TrajectoryPlannerCosts:
         :return: MxN matrix of jerk costs per point, where N is trajectories number, M is trajectory length.
         """
         lon_jerks, lat_jerks = Jerk.compute_jerks(ctrajectories, dt)
-        jerk_costs = params.lon_jerk_cost * lon_jerks + params.lat_jerk_cost * lat_jerks
+        jerk_costs = params.e_Wt_LonJerkCostWeight * lon_jerks + params.e_Wt_LatJerkCostWeight * lat_jerks
         return np.c_[np.zeros(jerk_costs.shape[0]), jerk_costs]
 
 

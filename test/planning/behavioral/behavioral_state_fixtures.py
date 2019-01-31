@@ -48,8 +48,8 @@ def state_with_sorrounding_objects():
             if rel_lane != RelativeLane.SAME_LANE else ego_lane_id
         prev_lane_ids, back_lon = MapUtils._get_upstream_lanes_from_distance(parallel_lane_id, ego_lane_lon, 20)
         next_sub_segments = MapUtils._advance_on_plan(parallel_lane_id, ego_lane_lon, 20, NAVIGATION_PLAN)
-        obj_lane_lons = [back_lon, ego_lane_lon, next_sub_segments[-1].s_end]
-        obj_lane_ids = [prev_lane_ids[-1], parallel_lane_id, next_sub_segments[-1].segment_id]
+        obj_lane_lons = [back_lon, ego_lane_lon, next_sub_segments[-1].e_i_SEnd]
+        obj_lane_ids = [prev_lane_ids[-1], parallel_lane_id, next_sub_segments[-1].e_i_SegmentID]
 
         for i, obj_lane_lon in enumerate(obj_lane_lons):
 
@@ -88,8 +88,8 @@ def state_with_objects_for_filtering_tracking_mode():
 
     # Generate objects at the following locations:
     next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 20, NAVIGATION_PLAN)
-    obj_lane_lon = next_sub_segments[-1].s_end
-    obj_lane_id = next_sub_segments[-1].segment_id
+    obj_lane_lon = next_sub_segments[-1].e_i_SEnd
+    obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 10.2
 
     dynamic_objects: List[DynamicObject] = list()
@@ -126,8 +126,8 @@ def state_with_objects_for_filtering_negative_sT():
 
     # Generate objects at the following locations:
     next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 3.8, NAVIGATION_PLAN)
-    obj_lane_lon = next_sub_segments[-1].s_end
-    obj_lane_id = next_sub_segments[-1].segment_id
+    obj_lane_lon = next_sub_segments[-1].e_i_SEnd
+    obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 11
 
     dynamic_objects: List[DynamicObject] = list()
@@ -164,8 +164,8 @@ def state_with_objects_for_filtering_too_aggressive():
 
     # Generate objects at the following locations:
     next_sub_segments = MapUtils._advance_on_plan(lane_id, ego_lane_lon, 58, NAVIGATION_PLAN)
-    obj_lane_lon = next_sub_segments[-1].s_end
-    obj_lane_id = next_sub_segments[-1].segment_id
+    obj_lane_lon = next_sub_segments[-1].e_i_SEnd
+    obj_lane_id = next_sub_segments[-1].e_i_SegmentID
     obj_vel = 30
 
     dynamic_objects: List[DynamicObject] = list()

@@ -86,12 +86,12 @@ def test_getStateWithExpectedEgo_getsState_modifiesEgoStateInIt(state):
     sampled_ego_state_vec = samplable_trajectory.sample(np.array([1001]))[0]
 
     # assert that ego-state has been changed
-    np.testing.assert_almost_equal(modified_state.ego_state.x, sampled_ego_state_vec[C_X])
-    np.testing.assert_almost_equal(modified_state.ego_state.y, sampled_ego_state_vec[C_Y])
-    np.testing.assert_almost_equal(modified_state.ego_state.yaw, sampled_ego_state_vec[C_YAW])
-    np.testing.assert_almost_equal(modified_state.ego_state.velocity, sampled_ego_state_vec[C_V])
-    np.testing.assert_almost_equal(modified_state.ego_state.acceleration, sampled_ego_state_vec[C_A])
-    np.testing.assert_almost_equal(modified_state.ego_state.curvature, sampled_ego_state_vec[C_K])
+    np.testing.assert_almost_equal(modified_state.s_EgoState.x, sampled_ego_state_vec[C_X])
+    np.testing.assert_almost_equal(modified_state.s_EgoState.y, sampled_ego_state_vec[C_Y])
+    np.testing.assert_almost_equal(modified_state.s_EgoState.yaw, sampled_ego_state_vec[C_YAW])
+    np.testing.assert_almost_equal(modified_state.s_EgoState.velocity, sampled_ego_state_vec[C_V])
+    np.testing.assert_almost_equal(modified_state.s_EgoState.acceleration, sampled_ego_state_vec[C_A])
+    np.testing.assert_almost_equal(modified_state.s_EgoState.curvature, sampled_ego_state_vec[C_K])
 
 
 def test_prepareVisualizationMsg_withObjects_returnsValidMsg(state):

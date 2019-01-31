@@ -39,14 +39,14 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         objects = [State.get_object_from_state(state=state, target_obj_id=obj_id)
                    for obj_id in object_ids]
 
-        objects_fstates = [obj.map_state.lane_fstate for obj in objects]
+        objects_fstates = [obj.map_state.a_LaneFState for obj in objects]
 
         first_timestamp = State.get_object_from_state(state=state, target_obj_id=object_ids[0]).timestamp_in_sec
         predictions = self.predict_frenet_states(np.array(objects_fstates), prediction_timestamps - first_timestamp)
 
         # Create a dictionary from predictions
-        predicted_objects_states_dict = {obj.obj_id: [
-            objects[obj_idx].clone_from_map_state(MapState(predictions[obj_idx, time_idx], obj.map_state.lane_id),
+        predicted_objects_states_dict = {obj.e_i_ObjectID: [
+            objects[obj_idx].clone_from_map_state(MapState(predictions[obj_idx, time_idx], obj.map_state.e_i_LaneID),
                                                   timestamp_in_sec=timestamp)
             for time_idx, timestamp in enumerate(prediction_timestamps)]
             for obj_idx, obj in enumerate(objects)}
@@ -67,7 +67,7 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         """
 
         # Simple object-wise prediction
-        object_ids = [obj.obj_id for obj in state.dynamic_objects]
+        object_ids = [obj.obj_id for obj in state.s_DynamicObjects]
 
         if action_trajectory is not None:
             extended_sampled_action_trajectory = action_trajectory.sample(time_points=prediction_timestamps)
@@ -84,13 +84,13 @@ class RoadFollowingPredictor(EgoAwarePredictor):
                                          predicted_objects_states_dict.values()]
 
             if action_trajectory is not None:
-                predicted_ego_state = state.ego_state.clone_from_cartesian_state(
+                predicted_ego_state = state.s_EgoState.clone_from_cartesian_state(
                     timestamp_in_sec=prediction_timestamps[time_idx],
                     cartesian_state=extended_sampled_action_trajectory[time_idx])
             else:
                 # Note! This uses the same ego object without deep copying it. Since EgoState should be immutable this
                 # should be OK.
-                predicted_ego_state = state.ego_state
+                predicted_ego_state = state.s_EgoState
 
             state = state.clone_with(ego_state=predicted_ego_state,
                                      dynamic_objects=predicted_dynamic_objects)

@@ -74,7 +74,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
         """
         # add a Gaussian noise to sleep time, to simulate time delays in control
         time.sleep(max(self._sleep_std * np.random.randn(), 0) + self._sleep_mean)
-        current_pos = np.array([state.ego_state.x, state.ego_state.y])
+        current_pos = np.array([state.s_EgoState.x, state.s_EgoState.y])
 
         if not self._triggered and np.all(np.linalg.norm(current_pos - self._trigger_pos) <
                                           np.linalg.norm(np.array([NEGLIGIBLE_DISPOSITION_LON,
@@ -91,7 +91,7 @@ class FixedTrajectoryPlanner(TrajectoryPlanner):
             # Currently no one does anything with the cost, the array here is dummy
             zero_trajectory_cost = np.array([0])
 
-            return FixedSamplableTrajectory(current_trajectory, state.ego_state.timestamp_in_sec), \
+            return FixedSamplableTrajectory(current_trajectory, state.s_EgoState.timestamp_in_sec), \
                    np.array([current_trajectory[:, :(C_V + 1)]]), zero_trajectory_cost
         else:
             raise NotTriggeredException("Didn't reach trigger point yet [%s]. Current localization is [%s]" %

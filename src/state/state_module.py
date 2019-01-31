@@ -122,24 +122,24 @@ class StateModule(DmModule):
                 dyn_obj = DynamicObject(obj_id=obj_loc.e_Cnt_object_id,
                                         timestamp=timestamp,
                                         cartesian_state=cartesian_state,
-                                        map_state=map_state if map_state.lane_id > 0 else None,
-                                        map_state_on_host_lane=map_state_on_host_lane if map_state_on_host_lane.lane_id > 0 else None,
+                                        map_state=map_state if map_state.e_i_LaneID > 0 else None,
+                                        map_state_on_host_lane=map_state_on_host_lane if map_state_on_host_lane.e_i_LaneID > 0 else None,
                                         size=size,
                                         confidence=confidence)
 
                 if dyn_obj.cartesian_state[C_V] < 0:
                     raise ObjectHasNegativeVelocityError('Dynamic object with id %d was received with negative velocity %f'
-                                                         % (dyn_obj.obj_id, dyn_obj.cartesian_state[C_V]))
+                                                         % (dyn_obj.e_i_ObjectID, dyn_obj.cartesian_state[C_V]))
 
                 # TODO: Figure out if we need SceneProvider to let us know if an object is not on road
 
                 # Required to verify the object has map state and that the velocity exceeds a minimal value.
-                if dyn_obj.map_state.lane_fstate[FS_SV] < VELOCITY_MINIMAL_THRESHOLD:
-                    thresholded_lane_fstate = np.copy(dyn_obj.map_state.lane_fstate)
+                if dyn_obj.map_state.a_LaneFState[FS_SV] < VELOCITY_MINIMAL_THRESHOLD:
+                    thresholded_lane_fstate = np.copy(dyn_obj.map_state.a_LaneFState)
                     thresholded_lane_fstate[FS_SV] = VELOCITY_MINIMAL_THRESHOLD
                     dyn_obj = dyn_obj.clone_from_map_state(
                         map_state=MapState(lane_fstate=thresholded_lane_fstate,
-                                           lane_id=dyn_obj.map_state.lane_id))
+                                           lane_id=dyn_obj.map_state.e_i_LaneID))
 
                 objects_list.append(dyn_obj)  # update the list of dynamic objects
 

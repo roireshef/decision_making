@@ -40,8 +40,8 @@ class BehavioralPlanningFacade(DmModule):
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
 
     def _start_impl(self):
-        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], None)
-        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_NAVIGATION_PLAN_LCM"], None)
+        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE"], None)
+        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_NAVIGATION_PLAN"], None)
         self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], None)
 
     # TODO: unsubscribe once logic is fixed in LCM
@@ -68,7 +68,7 @@ class BehavioralPlanningFacade(DmModule):
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
-                    state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
+                    state.s_EgoState, self._last_trajectory, self.logger, self.__class__.__name__):
                 updated_state = self._get_state_with_expected_ego(state)
                 self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
                                   "according to previous plan")
@@ -102,17 +102,17 @@ class BehavioralPlanningFacade(DmModule):
                                  (e, traceback.format_exc()))
 
     def _get_current_state(self) -> State:
-        is_success, input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], timeout=1)
+        is_success, input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE"], timeout=1)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if input_state is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"])
+                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE"])
         object_state = State.deserialize(input_state)
         self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, object_state))
         return object_state
 
     def _get_current_navigation_plan(self) -> NavigationPlanMsg:
-        is_success, input_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_NAVIGATION_PLAN_LCM"], timeout=1)
+        is_success, input_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_NAVIGATION_PLAN"], timeout=1)
         object_plan = NavigationPlanMsg.deserialize(input_plan)
         self.logger.debug("Received navigation plan: %s" % object_plan)
         return object_plan
@@ -136,20 +136,20 @@ class BehavioralPlanningFacade(DmModule):
         :param state: the state to process
         :return: a new state object with a new ego-vehicle localization
         """
-        current_time = state.ego_state.timestamp_in_sec
+        current_time = state.s_EgoState.timestamp_in_sec
         expected_state_vec: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
-        expected_ego_state = state.ego_state.clone_from_cartesian_state(expected_state_vec, state.ego_state.timestamp_in_sec)
+        expected_ego_state = state.s_EgoState.clone_from_cartesian_state(expected_state_vec, state.s_EgoState.timestamp_in_sec)
 
         updated_state = state.clone_with(ego_state=expected_ego_state)
 
         return updated_state
 
     def _publish_results(self, trajectory_parameters: TrajectoryParams) -> None:
-        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"], trajectory_parameters.serialize())
+        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS"], trajectory_parameters.serialize())
         self.logger.debug("{} {}".format(LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, trajectory_parameters))
 
     def _publish_visualization(self, visualization_message: BehavioralVisualizationMsg) -> None:
-        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_VISUALIZATION_LCM"], visualization_message.serialize())
+        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_VISUALIZATION"], visualization_message.serialize())
 
     @property
     def planner(self):

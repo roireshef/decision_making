@@ -53,12 +53,12 @@ class TrajectoryPlanningFacade(DmModule):
         self._last_trajectory = last_trajectory
 
     def _start_impl(self):
-        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"], None)
-        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], None)
+        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS"], None)
+        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE"], None)
         self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], None)
     def _stop_impl(self):
-        self.pubsub.unsubscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"])
-        self.pubsub.unsubscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"])
+        self.pubsub.unsubscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS"])
+        self.pubsub.unsubscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE"])
         self.pubsub.unsubscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"])
 
     def _periodic_action_impl(self):
@@ -78,38 +78,38 @@ class TrajectoryPlanningFacade(DmModule):
             params = self._get_mission_params()
 
             # Longitudinal planning horizon (Ts)
-            lon_plan_horizon = params.time - state.ego_state.timestamp_in_sec
+            lon_plan_horizon = params.e_t_Time - state.s_EgoState.timestamp_in_sec
 
-            self.logger.debug("input: target_state: %s", params.target_state)
-            self.logger.debug("input: reference_route[0]: %s", params.reference_route.points[0])
-            self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
-            self.logger.debug("input: ego: velocity: %s", state.ego_state.velocity)
+            self.logger.debug("input: target_state: %s", params.a_TargetState)
+            self.logger.debug("input: reference_route[0]: %s", params.s_ReferenceRoute.points[0])
+            self.logger.debug("input: ego: pos: (x: %f y: %f)", state.s_EgoState.x, state.s_EgoState.y)
+            self.logger.debug("input: ego: velocity: %s", state.s_EgoState.velocity)
             self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", lon_plan_horizon)
-            self.logger.debug("state: %d objects detected", len(state.dynamic_objects))
+            self.logger.debug("state: %d objects detected", len(state.s_DynamicObjects))
 
             # Tests if actual localization is close enough to desired localization, and if it is, it starts planning
             # from the DESIRED localization rather than the ACTUAL one. This is due to the nature of planning with
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
-                    state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
+                    state.s_EgoState, self._last_trajectory, self.logger, self.__class__.__name__):
                 sampled_state = self._get_state_with_expected_ego(state) if self._last_trajectory is not None else None
                 self.logger.debug(LOG_MSG_TRAJECTORY_PLAN_FROM_DESIRED,
-                                  sampled_state.ego_state.map_state,
-                                  state.ego_state.map_state)
+                                  sampled_state.s_EgoState.map_state,
+                                  state.s_EgoState.map_state)
                 updated_state = sampled_state
             else:
-                self.logger.warning(LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL, state.ego_state.map_state)
+                self.logger.warning(LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL, state.s_EgoState.map_state)
                 updated_state = state
 
-            MetricLogger.get_logger().bind(bp_time=params.bp_time)
+            MetricLogger.get_logger().bind(bp_time=params.e_Cnt_BPTime)
 
             # plan a trajectory according to specification from upper DM level
-            samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
-                plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
-                     params.cost_params)
+            samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.e_e_Strategy]. \
+                plan(updated_state, params.s_ReferenceRoute, params.a_TargetState, lon_plan_horizon,
+                     params.s_CostParams)
 
-            trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
+            trajectory_msg = self.generate_trajectory_plan(timestamp=state.s_EgoState.timestamp_in_sec,
                                                            samplable_trajectory=samplable_trajectory)
 
             self._publish_trajectory(trajectory_msg)
@@ -117,8 +117,8 @@ class TrajectoryPlanningFacade(DmModule):
 
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
-                state, ctrajectories, params.time - state.ego_state.timestamp_in_sec,
-                self._strategy_handlers[params.strategy].predictor, params.reference_route)
+                state, ctrajectories, params.e_t_Time - state.s_EgoState.timestamp_in_sec,
+                self._strategy_handlers[params.e_e_Strategy].predictor, params.s_ReferenceRoute)
 
             self._publish_debug(debug_results)
 
@@ -139,7 +139,7 @@ class TrajectoryPlanningFacade(DmModule):
                                  traceback.format_exc())
 
     # TODO: add map_origin that is sent from the outside
-    def generate_trajectory_plan(self, timestamp: float, samplable_trajectory: SamplableTrajectory):
+    def generate_trajectory_plan(self, timestamp: float, samplable_trajectory: SamplableTrajectory) -> TrajectoryPlan:
         """
         sample trajectory points from the samplable-trajectory, translate them according to ego's reference point and
         wrap them in a message to the controller
@@ -187,10 +187,10 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received state.
         :return: deserialized State
         """
-        is_success, input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], timeout=1)
+        is_success, input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE"], timeout=1)
         if input_state is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"])
+                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE"])
         object_state = State.deserialize(input_state)
         self.logger.debug('%s: %s' % (LOG_MSG_RECEIVED_STATE, object_state))
         return object_state
@@ -212,10 +212,10 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-        is_success, input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"], timeout=1)
+        is_success, input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS"], timeout=1)
         if input_params is None:
             raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed' %
-                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"])
+                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS"])
         object_params = TrajectoryParams.deserialize(input_params)
         self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, object_params)
         return object_params
@@ -235,10 +235,10 @@ class TrajectoryPlanningFacade(DmModule):
         :param state: the state to process
         :return: a new state object with a new ego-vehicle localization
         """
-        current_time = state.ego_state.timestamp_in_sec
+        current_time = state.s_EgoState.timestamp_in_sec
         expected_state_vec: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
-        expected_ego_state = state.ego_state.clone_from_cartesian_state(expected_state_vec,
-                                                                        state.ego_state.timestamp_in_sec)
+        expected_ego_state = state.s_EgoState.clone_from_cartesian_state(expected_state_vec,
+                                                                         state.s_EgoState.timestamp_in_sec)
 
         updated_state = state.clone_with(ego_state=expected_ego_state)
 
@@ -268,7 +268,7 @@ class TrajectoryPlanningFacade(DmModule):
         # visualize objects' predictions
         # TODO: create 3 GFFs in TP and convert objects' predictions on them
         objects_visualizations = []
-        for obj in state.dynamic_objects:
+        for obj in state.s_DynamicObjects:
             try:
                 obj_fstate = reference_route.cstate_to_fstate(obj.cartesian_state)
                 obj_fpredictions = predictor.predict_frenet_states(np.array([obj_fstate]),
@@ -281,7 +281,7 @@ class TrajectoryPlanningFacade(DmModule):
             except Exception:  # verify the object can be projected on reference_route
                 continue
 
-        header = Header(0, Timestamp.from_seconds(state.ego_state.timestamp_in_sec), 0)
+        header = Header(0, Timestamp.from_seconds(state.s_EgoState.timestamp_in_sec), 0)
         visualization_data = DataTrajectoryVisualization(
             sliced_ctrajectories[:, :min(MAX_NUM_POINTS_FOR_VIZ, ctrajectories.shape[1]), :(C_Y+1)],
             objects_visualizations, "")

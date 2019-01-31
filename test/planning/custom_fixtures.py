@@ -254,7 +254,7 @@ def trajectory():
 
 @pytest.fixture(scope='function')
 def behavioral_visualization_msg(trajectory_params):
-    yield BehavioralVisualizationMsg(trajectory_params.reference_route.points)
+    yield BehavioralVisualizationMsg(trajectory_params.s_ReferenceRoute.points)
 
 
 @pytest.fixture(scope='function')
