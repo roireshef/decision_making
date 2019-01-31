@@ -236,6 +236,6 @@ class BehavioralPlanningFacade(DmModule):
     def planner(self):
         return self._planner
 
-    @property
-    def predictor(self):
-        return self._predictor
+ #   @property
+ #   def predictor(self):
+ #       return self._predictor
