@@ -72,24 +72,24 @@ class RoutePlanningFacade(DmModule):
             self.logger.critical("RoutePlanningFacade: UNHANDLED EXCEPTION: %s. Trace: %s",
                                  e, traceback.format_exc())
 
-    def _get_current_scene_static(self) -> SceneStaticLite:
+    def _get_current_scene_static(self) -> tuple[DataSceneStaticLite,DataNavigationPlan]:
         is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], timeout=1)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if serialized_scene_static is None:
             raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed',
                                           pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"])
-        scene_static = SceneStaticLite.deserialize(serialized_scene_static)
+        scene_static = SceneStatic.deserialize(serialized_scene_static)
         self.logger.debug('%s: %f' % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static.s_SceneStaticLiteData,scene_static.s_NavigationPlanData
 
     def _publish_results(self, route_plan: RoutePlan) -> None:
-        self.pubsub.publish(pubsub_topics.ROUTE_PLAN, route_plan.serialize())
+        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"], route_plan.serialize())
         self.logger.debug("{} {}".format(LOG_MSG_ROUTE_PLANNER_OUTPUT, route_plan))
 
     @property
     def planner(self):
         """Add comments"""
-        return self._planner
+        return self.__planner
 
     @planner.setter
     def planner(self, planner):

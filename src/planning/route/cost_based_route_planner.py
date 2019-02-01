@@ -3,8 +3,7 @@ from collections import OrderedDict
 from decision_making.src.messages.scene_static_message import SceneStatic,DataSceneStaticLite,DataNavigationPlan
 from decision_making.src.messages.route_plan_message import RoutePlan,RoutePlanLaneSegment, DataRoutePlan
 
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import LaneMappingStatusType, LaneConstructionType,\
-     GMAuthorityType, MapLaneDirection, RoutePlanLaneSegmentAttr, TsSYS_RoutePlanLaneSegment, TsSYS_DataRoutePlan
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import TsSYS_RoutePlanLaneSegment, TsSYS_DataRoutePlan
 
 from route_planner import RoutePlanner
 from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType, MapLaneDirection, \
@@ -108,26 +107,37 @@ class DualCostRoutePlanner(RoutePlanner):
                 lanesegData = RouteData.LaneSegmentDict[lanesegID]
                 LaneOccCost = 0
                 LaneEndCost = 0
+
+                # -------------------------------------------
+                # Calculate lane occupancy costs
+                # -------------------------------------------
                 for Idx in range(lanesegData.e_Cnt_num_active_lane_attributes):
                     LaneAttrIdx = lanesegData.e_i_active_lane_attribute_indices[Idx]
                     LaneAttr = lanesegData.e_cmp_lane_attributes[LaneAttrIdx]
                     LaneAttrConf = lanesegData.e_cmp_lane_attribute_confidences[LaneAttrIdx]
                     if (LaneAttrConf<0.7):
                         continue
-                    LaneOccCost = LaneOccCost + CostBasedRoutePlanner.LaneAttrBsdOccCost(Idx,LaneAttr)
-                LaneOccCost = min(LaneOccCost,1)
+                    LaneOccCost = LaneOccCost + CostBasedRoutePlanner.LaneAttrBsdOccCost(LaneAttrIdx,LaneAttr)
+                # Normalize to the [0, 1] range
+                LaneOccCost = max(min(LaneOccCost,1),0)
+
+                # -------------------------------------------
+                # Calculate lane end costs
+                # -------------------------------------------
                 if (LaneOccCost==1):
                     LaneEndCost = 1 # Can't occupy the lane, can't end up in the lane
-                elif (reverseroadsegidx==0):
-                    LaneEndCost = 0
-                else:
+                elif (reverseroadsegidx>0):# if reverseroadsegidx=0 a.k.a last lane in current route view lane end cost = 0
+                    # as we don't know the next segment.
                     MinDwnStreamLaneOccCost = 1
-                    for Idx in range(lanesegData.e_Cnt_downstream_lane_count):
+                    # Search iteratively for the next segment lanes that are downstream to the current lane and in the route.
+                    # At this point assign the end cost of current lane = Min occ costs of all downstream lanes
+                    for Idx in range(lanesegData.e_Cnt_downstream_lane_count): # search through all downstream lanes to to current lane
                         DownStreamlanesegID = lanesegData.as_downstream_lanes[Idx]
-                        NextRoadSegLanes = RouteData.route_lanesegments[reverseroadsegidx-1]
-                        if DownStreamlanesegID in NextRoadSegLanes:
+                        NextRoadSegLanes = RouteData.route_lanesegments[reverseroadsegidx-1] # All lane IDs in next roadsegment in route
+                        if DownStreamlanesegID in NextRoadSegLanes: # verify if the downstream lane is in the route
                             DownStreamlanesegIdx = NextRoadSegLanes.index(DownStreamlanesegID)
                             DownStreamLaneOccCost= NewRoutePlan.as_route_plan_lane_segments[roadsegidx+1][DownStreamlanesegIdx]
+                            # confirm -> roadsegidx+1 in the RoutPlan == reverseroadsegidx-1 in the reversed RoutePlan
                             MinDwnStreamLaneOccCost = min(MinDwnStreamLaneOccCost,DownStreamLaneOccCost)
                     LaneEndCost = MinDwnStreamLaneOccCost
 
