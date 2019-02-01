@@ -3,10 +3,12 @@ from collections import OrderedDict
 from decision_making.src.messages.scene_static_message import SceneStatic,DataSceneStaticLite,DataNavigationPlan
 from decision_making.src.messages.route_plan_message import RoutePlan,RoutePlanLaneSegment, DataRoutePlan
 
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import TeSYS_LaneMappingStatusType, TeSYS_LaneConstructionType,\
-     TeSYS_GMAuthorityType, TeSYS_MapLaneDirection, TeSYS_RoutePlanLaneSegmentAttr, TsSYS_RoutePlanLaneSegment, TsSYS_DataRoutePlan
+from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import LaneMappingStatusType, LaneConstructionType,\
+     GMAuthorityType, MapLaneDirection, RoutePlanLaneSegmentAttr, TsSYS_RoutePlanLaneSegment, TsSYS_DataRoutePlan
      
 from route_planner import RoutePlanner
+from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType, MapLaneDirection, \
+     GMAuthorityType, LaneConstructionType
 
 
 class RoutePlannerInputData():
@@ -45,40 +47,40 @@ class CostBasedRoutePlanner(RoutePlanner):
     """Add comments"""
     
     @staticmethod
-    def MappingStatusAttrBsdOccCost(MappingStatusAttr:TeSYS_LaneMappingStatusType): # Normalized cost (0 to 1). Current implementation is binary cost. 
-        if((MappingStatusAttr==TeSYS_LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap) or 
-           (MappingStatusAttr==TeSYS_LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_MDMap)):
+    def MappingStatusAttrBsdOccCost(MappingStatusAttr:LaneMappingStatusType): # Normalized cost (0 to 1). Current implementation is binary cost. 
+        if((MappingStatusAttr==LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap) or 
+           (MappingStatusAttr==LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_MDMap)):
             return 0
         return 1
     
     @staticmethod    
-    def ConstructionZoneAttrBsdOccCost(ConstructionZoneAttr:TeSYS_LaneConstructionType): # Normalized cost (0 to 1). Current implementation is binary cost. 
-        if((ConstructionZoneAttr==TeSYS_LaneConstructionType.CeSYS_e_LaneConstructionType_Normal) or 
-           (ConstructionZoneAttr==TeSYS_LaneConstructionType.CeSYS_e_LaneConstructionType_Unknown)):
+    def ConstructionZoneAttrBsdOccCost(ConstructionZoneAttr:LaneConstructionType): # Normalized cost (0 to 1). Current implementation is binary cost. 
+        if((ConstructionZoneAttr==LaneConstructionType.CeSYS_e_LaneConstructionType_Normal) or 
+           (ConstructionZoneAttr==LaneConstructionType.CeSYS_e_LaneConstructionType_Unknown)):
             return 0
         return 1
     
     @staticmethod
-    def LaneRouteDirAttrBsdOccCost(LaneRouteDirAttr:TeSYS_MapLaneDirection): # Normalized cost (0 to 1). Current implementation is binary cost. 
-        if((LaneRouteDirAttr==TeSYS_MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle) or 
-           (LaneRouteDirAttr==TeSYS_MapLaneDirection.CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle) or
-            (LaneRouteDirAttr==TeSYS_MapLaneDirection.CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle)):
+    def LaneRouteDirAttrBsdOccCost(LaneRouteDirAttr:MapLaneDirection): # Normalized cost (0 to 1). Current implementation is binary cost. 
+        if((LaneRouteDirAttr==MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle) or 
+           (LaneRouteDirAttr==MapLaneDirection.CeSYS_e_MapLaneDirection_Left_Towards_HostVehicle) or
+            (LaneRouteDirAttr==MapLaneDirection.CeSYS_e_MapLaneDirection_Right_Towards_HostVehicle)):
             return 0
         return 1
     
     @staticmethod
-    def GMAuthorityAttrBsdOccCost(GMAuthorityAttr:TeSYS_GMAuthorityType): # Normalized cost (0 to 1). Current implementation is binary cost. 
-        if(GMAuthorityAttr==TeSYS_GMAuthorityType.CeSYS_e_GMAuthorityType_None):
+    def GMAuthorityAttrBsdOccCost(GMAuthorityAttr:GMAuthorityType): # Normalized cost (0 to 1). Current implementation is binary cost. 
+        if(GMAuthorityAttr==GMAuthorityType.CeSYS_e_GMAuthorityType_None):
             return 0
         return 1
     
     @staticmethod
     def LaneAttrBsdOccCost(EnumIdx:int,LaneAttr:int): # Equivalent of a switch-case logic 
         switcher = { 
-        TeSYS_RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus: CostBasedRoutePlanner.MappingStatusAttrBsdOccCost(LaneAttr) , 
-        TeSYS_RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA: CostBasedRoutePlanner.GMAuthorityAttrBsdOccCost(LaneAttr), 
-        TeSYS_RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction: CostBasedRoutePlanner.ConstructionZoneAttrBsdOccCost(LaneAttr), 
-        TeSYS_RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction: CostBasedRoutePlanner.LaneRouteDirAttrBsdOccCost(LaneAttr),
+        RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_MappingStatus: CostBasedRoutePlanner.MappingStatusAttrBsdOccCost(LaneAttr) , 
+        RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_GMFA: CostBasedRoutePlanner.GMAuthorityAttrBsdOccCost(LaneAttr), 
+        RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction: CostBasedRoutePlanner.ConstructionZoneAttrBsdOccCost(LaneAttr), 
+        RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction: CostBasedRoutePlanner.LaneRouteDirAttrBsdOccCost(LaneAttr),
         } 
         return switcher[EnumIdx]
 
