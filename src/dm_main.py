@@ -15,7 +15,7 @@ from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, 
     ROUTE_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
-    DM_MANAGER_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD
+    DM_MANAGER_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, ROUTE_PLANNING_MODULE_PERIOD
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
 from decision_making.src.manager.dm_trigger import DmTriggerType
@@ -103,7 +103,7 @@ class DmInitialization:
         return navigation_module
 
     @staticmethod
-    def create_route_planner(map_file: str=DEFAULT_MAP_FILE,) -> RoutePlanningFacade:
+    def create_route_planner(map_file: str=DEFAULT_MAP_FILE) -> RoutePlanningFacade:
         logger = AV_Logger.get_logger(ROUTE_PLANNING_NAME_FOR_LOGGING)
 
         pubsub = PubSub()
@@ -175,7 +175,7 @@ def main():
 
             DmProcess(lambda: DmInitialization.create_route_planner(DEFAULT_MAP_FILE),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD}),
+                      trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD}),
 
             DmProcess(lambda: DmInitialization.create_state_module(DEFAULT_MAP_FILE),
                       trigger_type=DmTriggerType.DM_TRIGGER_NONE,
