@@ -1,3 +1,6 @@
+from enum import Enum
+from typing import List
+
 import numpy as np
 
 from common_data.interface.Rte_Types.python.sub_structures import TsSYSAdjacentLane, TsSYSBoundaryPoint, TsSYSLaneCoupling, \
@@ -12,8 +15,7 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneRoadSegmen
     TsSYSSceneRoadSegment
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header
-from enum import Enum
-from typing import List
+
 
 MAX_NOMINAL_PATH_POINT_FIELDS = 10
 
@@ -227,24 +229,24 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
         pubsub_msg.e_e_road_segment_type = self.e_e_road_segment_type.value
 
         pubsub_msg.e_Cnt_upstream_segment_count = self.e_Cnt_upstream_segment_count
-        pubsub_msg.a_i_upstream_road_segment_ids = self.a_i_upstream_road_segment_ids
+        pubsub_msg.a_Cnt_upstream_road_segment_id = self.a_Cnt_upstream_road_segment_id
 
         pubsub_msg.e_Cnt_downstream_segment_count = self.e_Cnt_downstream_segment_count
-        pubsub_msg.a_i_downstream_road_segment_ids = self.a_i_downstream_road_segment_ids
+        pubsub_msg.a_Cnt_downstream_road_segment_id = self.a_Cnt_downstream_road_segment_id
 
         return pubsub_msg
 
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSSceneRoadSegment):
-        return cls(pubsubMsg.e_i_road_segment_id,
-                   pubsubMsg.e_i_road_id,
+        return cls(pubsubMsg.e_Cnt_road_segment_id,
+                   pubsubMsg.e_Cnt_road_id,
                    pubsubMsg.e_Cnt_lane_segment_id_count,
-                   pubsubMsg.a_i_lane_segment_ids[:pubsubMsg.e_Cnt_lane_segment_id_count],
+                   pubsubMsg.a_Cnt_lane_segment_id[:pubsubMsg.e_Cnt_lane_segment_id_count],
                    MapRoadSegmentType(pubsubMsg.e_e_road_segment_type),
                    pubsubMsg.e_Cnt_upstream_segment_count,
-                   pubsubMsg.a_i_upstream_road_segment_ids[:pubsubMsg.e_Cnt_upstream_segment_count],
+                   pubsubMsg.a_Cnt_upstream_road_segment_id[:pubsubMsg.e_Cnt_upstream_segment_count],
                    pubsubMsg.e_Cnt_downstream_segment_count,
-                   pubsubMsg.a_i_downstream_road_segment_ids[:pubsubMsg.e_Cnt_downstream_segment_count])
+                   pubsubMsg.a_Cnt_downstream_road_segment_id[:pubsubMsg.e_Cnt_downstream_segment_count])
 
 
 class SceneRoadIntersection(PUBSUB_MSG_IMPL):
@@ -361,6 +363,7 @@ class BoundaryPoint(PUBSUB_MSG_IMPL):
 
         return pubsub_msg
 
+    # TODO: remove hack of MapLaneMarkerType after SP fix
     @classmethod
     def deserialize(cls, pubsubMsg: TsSYSBoundaryPoint):
         return cls(pubsubMsg.e_e_lane_marker_type, pubsubMsg.e_l_s_start, pubsubMsg.e_l_s_end)
@@ -699,7 +702,8 @@ class SceneLaneSegment(PUBSUB_MSG_IMPL):
         for i in range(pubsubMsg.e_Cnt_lane_coupling_count):
             as_lane_coupling.append(LaneCoupling.deserialize(pubsubMsg.as_lane_coupling[i]))
 
-        return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_i_road_segment_id, pubsubMsg.e_e_lane_type,
+        # TODO: remove hack of constant MapLaneType after SceneProvider fix
+        return cls(pubsubMsg.e_i_lane_segment_id, pubsubMsg.e_i_road_segment_id, MapLaneType(5),
                    pubsubMsg.e_Cnt_static_traffic_flow_control_count, as_static_traffic_flow_control,
                    pubsubMsg.e_Cnt_dynamic_traffic_flow_control_count, as_dynamic_traffic_flow_control,
                    pubsubMsg.e_Cnt_left_adjacent_lane_count, as_left_adjacent_lanes,

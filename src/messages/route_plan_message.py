@@ -12,7 +12,7 @@ class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
     """
     Route Plan Lane Segment Information
 
-    Args:
+    Args:            
         e_i_lane_segment_id: TODO: Add Comment
         e_cst_lane_occupancy_cost: TODO: Add Comment
         e_cst_lane_end_cost: TODO: Add Comment
