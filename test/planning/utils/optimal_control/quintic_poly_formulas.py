@@ -251,10 +251,10 @@ class QuinticMotionPredicatesCreator:
 
                 for k, v_0 in enumerate(self.v0_grid):
                     print('v_0 is: %.1f' % v_0)
-                    limits, safety = QuinticMotionPredicatesCreator.generate_predicate_value(
+                    local_limits, local_safety = QuinticMotionPredicatesCreator.generate_predicate_value(
                         w_T, w_J, np.full(vT.shape, v_0), a0, vT, sT, T_m)
-                    limits[k] = limits.reshape((len(self.a0_grid), len(self.sT_grid), len(self.vT_grid)))
-                    safety[k] = safety.reshape((len(self.a0_grid), len(self.sT_grid), len(self.vT_grid)))
+                    limits[k] = local_limits.reshape((len(self.a0_grid), len(self.sT_grid), len(self.vT_grid)))
+                    safety[k] = local_safety.reshape((len(self.a0_grid), len(self.sT_grid), len(self.vT_grid)))
 
                 # save 'limits' predicates to file
                 output_limits_file_name = '%s_limits_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)

@@ -62,8 +62,11 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         self.logger.debug('Number of actions specified: %d (#%dS,#%dD)',
                           num_of_specified_actions, num_of_considered_static_actions, num_of_considered_dynamic_actions)
 
+        import time
+        st = time.time()
         # ActionSpec filtering
         action_specs_mask = self.action_spec_validator.filter_action_specs(action_specs, behavioral_state)
+        print('spec filter time: %f' % (time.time() - st))
 
         # State-Action Evaluation
         action_costs = self.action_spec_evaluator.evaluate(behavioral_state, action_recipes, action_specs, action_specs_mask)

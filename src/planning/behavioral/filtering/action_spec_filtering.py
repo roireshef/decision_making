@@ -44,8 +44,6 @@ class ActionSpecFilter:
         :return: True if the agent can brake before each given point to its limited velocity
         """
         # create constraints for static actions per point beyond the given spec
-        v_0 = np.full(frenet_points_idxs.shape, action_spec.v)
-        a_0 = np.full(frenet_points_idxs.shape, 0.)
         dist_to_points = frenet.get_s_from_index_on_frame(frenet_points_idxs, delta_s=0) - action_spec.s
 
         # retrieve distances of static actions for the most aggressive level, since they have the shortest distances
@@ -54,9 +52,9 @@ class ActionSpecFilter:
         else:
             most_aggressive_level = AggressivenessLevel.AGGRESSIVE
         wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[most_aggressive_level.value]
-        brake_dist = action_distances[(ActionType.FOLLOW_LANE.name.lower(), wT, wJ)]
-        is_braking_possible = (brake_dist[FILTER_V_0_GRID.get_indices(v_0), FILTER_A_0_GRID.get_indices(a_0),
-                                          FILTER_V_T_GRID.get_indices(vel_limit_in_points)] < dist_to_points).all()
+        brake_dist = action_distances[(ActionType.FOLLOW_LANE.name.lower(), wT, wJ)][
+            FILTER_V_0_GRID.get_index(action_spec.v), FILTER_A_0_GRID.get_index(0), :]
+        is_braking_possible = (brake_dist[FILTER_V_T_GRID.get_indices(vel_limit_in_points)] < dist_to_points).all()
         return is_braking_possible
 
 
