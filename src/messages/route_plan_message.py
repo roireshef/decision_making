@@ -46,18 +46,21 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
     Route Plan Output Data
 
     Args:
+        e_b_is_valid: TODO: Add Comment
         e_Cnt_num_road_segments: TODO: Add Comment
         a_i_road_segment_ids: TODO: Add Comment
         a_Cnt_num_lane_segments: TODO: Add Comment
         as_route_plan_lane_segments: TODO: Add Comment
     """
+    e_b_is_valid = bool
     e_Cnt_num_road_segments = int
     a_i_road_segment_ids = np.ndarray
     a_Cnt_num_lane_segments = np.ndarray
     as_route_plan_lane_segments = List[List[RoutePlanLaneSegment]]
 
-    def __init__(self, e_Cnt_num_road_segments: int, a_i_road_segment_ids: np.ndarray, a_Cnt_num_lane_segments: np.ndarray,
-                 as_route_plan_lane_segments: List[List[RoutePlanLaneSegment]]):
+    def __init__(self, e_b_is_valid: bool, e_Cnt_num_road_segments: int, a_i_road_segment_ids: np.ndarray,
+                 a_Cnt_num_lane_segments: np.ndarray, as_route_plan_lane_segments: List[List[RoutePlanLaneSegment]]):
+        self.e_b_is_valid = e_b_is_valid
         self.e_Cnt_num_road_segments = e_Cnt_num_road_segments
         self.a_i_road_segment_ids = a_i_road_segment_ids
         self.a_Cnt_num_lane_segments = a_Cnt_num_lane_segments
@@ -66,6 +69,7 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
     def serialize(self) -> TsSYSDataRoutePlan:
         pubsub_msg = TsSYSDataRoutePlan()
 
+        pubsub_msg.e_b_is_valid = self.e_b_is_valid
         pubsub_msg.e_Cnt_num_road_segments = self.e_Cnt_num_road_segments
         pubsub_msg.a_i_road_segment_ids = self.a_i_road_segment_ids
         pubsub_msg.a_Cnt_num_lane_segments = self.a_Cnt_num_lane_segments
@@ -82,7 +86,8 @@ class DataRoutePlan(PUBSUB_MSG_IMPL):
                                         for j in range(pubsubMsg.a_Cnt_num_lane_segments[i])] \
                                        for i in range(pubsubMsg.e_Cnt_num_road_segments)]
 
-        return cls(pubsubMsg.e_Cnt_num_road_segments,
+        return cls(pubsubMsg.e_b_is_valid,
+                   pubsubMsg.e_Cnt_num_road_segments,
                    pubsubMsg.a_i_road_segment_ids[:pubsubMsg.e_Cnt_num_road_segments],
                    pubsubMsg.a_Cnt_num_lane_segments[:pubsubMsg.e_Cnt_num_road_segments],
                    as_route_plan_lane_segments)

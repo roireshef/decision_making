@@ -56,14 +56,14 @@ def create_scene_static_from_map_api(map_api: MapAPI):
         except NextRoadNotFound:
             downstream_roads = np.array([])
         lane_ids = np.array([map_api._lane_by_address[(road_id, i)] for i in range(num_lanes)])
-        scene_road_segment = SceneRoadSegment(e_Cnt_road_segment_id=road_id, e_Cnt_road_id=0,
+        scene_road_segment = SceneRoadSegment(e_i_road_segment_id=road_id, e_i_road_id=0,
                                               e_Cnt_lane_segment_id_count=num_lanes,
-                                              a_Cnt_lane_segment_id=lane_ids,
+                                              a_i_lane_segment_ids=lane_ids,
                                               e_e_road_segment_type=MapRoadSegmentType.Normal,
                                               e_Cnt_upstream_segment_count=len(upstream_roads),
-                                              a_Cnt_upstream_road_segment_id=upstream_roads,
+                                              a_i_upstream_road_segment_ids=upstream_roads,
                                               e_Cnt_downstream_segment_count=len(downstream_roads),
-                                              a_Cnt_downstream_road_segment_id=downstream_roads)
+                                              a_i_downstream_road_segment_ids=downstream_roads)
 
         scene_road_segments.append(scene_road_segment)
     scene_lane_segments = []
@@ -76,20 +76,21 @@ def create_scene_static_from_map_api(map_api: MapAPI):
                                         MapLaneType.LocalRoadLane) for k in range(lane_ordinal)]
 
         left_adj_lanes = [AdjacentLane(map_api._lane_by_address[(road_segment_id, k)],
-                                        MovingDirection.Adjacent_or_same_dir,
-                                        MapLaneType.LocalRoadLane) for k in range(lane_ordinal+1,
-                                                                                  map_model.get_road_data(road_id).lanes_num)]
+                                       MovingDirection.Adjacent_or_same_dir,
+                                       MapLaneType.LocalRoadLane) for k in range(lane_ordinal + 1,
+                                                                                 map_model.get_road_data(
+                                                                                     road_segment_id).lanes_num)]
 
         downstream_id, upstream_id = get_connectivity_lane_segment(map_api, road_segment_id, lane_ordinal)
         lane_frenet = map_api._lane_frenet[lane_id]
         nominal_points = []
-        half_lane_width = map_api.get_road(road_id).lane_width/2
+        half_lane_width = map_api.get_road(road_segment_id).lane_width / 2
         for i in range(len(lane_frenet.O)):
             point = np.empty(len(list(NominalPathPoint)))
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value] = lane_frenet.O[i, FP_SX]
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value] = lane_frenet.O[i, FP_DX]
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_phi_heading.value] = np.arctan2(lane_frenet.T[i, 1],
-                                                                                      lane_frenet.T[i, 0])
+                                                                                            lane_frenet.T[i, 0])
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_il_curvature.value] = lane_frenet.k[i]
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_il2_curvature_rate.value] = lane_frenet.k_tag[i]
             point[NominalPathPoint.CeSYS_NominalPathPoint_e_phi_cross_slope.value] = 0
@@ -102,20 +103,22 @@ def create_scene_static_from_map_api(map_api: MapAPI):
         assert nominal_points[-1][NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] == lane_frenet.s_max
 
         left_boundry_point = [BoundaryPoint(MapLaneMarkerType.MapLaneMarkerType_SolidSingleLine_BottsDots,
-                                                     0, lane_frenet.s_max)]
+                                            0, lane_frenet.s_max)]
 
         right_boundry_point = [BoundaryPoint(MapLaneMarkerType.MapLaneMarkerType_SolidSingleLine_BottsDots,
-                                           0, lane_frenet.s_max)]
+                                             0, lane_frenet.s_max)]
 
         if not downstream_id:
             downstream_lane_segment_connectivity = []
         else:
-            downstream_lane_segment_connectivity = [LaneSegmentConnectivity(downstream_id, ManeuverType.STRAIGHT_CONNECTION)]
+            downstream_lane_segment_connectivity = [
+                LaneSegmentConnectivity(downstream_id, ManeuverType.STRAIGHT_CONNECTION)]
 
         if not upstream_id:
             upstream_lane_segment_connectivity = []
         else:
-            upstream_lane_segment_connectivity = [LaneSegmentConnectivity(upstream_id, ManeuverType.STRAIGHT_CONNECTION)]
+            upstream_lane_segment_connectivity = [
+                LaneSegmentConnectivity(upstream_id, ManeuverType.STRAIGHT_CONNECTION)]
 
         scene_lane_segments.append(SceneLaneSegment(e_i_lane_segment_id=lane_id,
                                                     e_i_road_segment_id=road_segment_id,
@@ -128,7 +131,8 @@ def create_scene_static_from_map_api(map_api: MapAPI):
                                                     as_left_adjacent_lanes=left_adj_lanes,
                                                     e_Cnt_right_adjacent_lane_count=len(right_adj_lanes),
                                                     as_right_adjacent_lanes=right_adj_lanes,
-                                                    e_Cnt_downstream_lane_count=len(downstream_lane_segment_connectivity),
+                                                    e_Cnt_downstream_lane_count=len(
+                                                        downstream_lane_segment_connectivity),
                                                     as_downstream_lanes=downstream_lane_segment_connectivity,
                                                     e_Cnt_upstream_lane_count=len(upstream_lane_segment_connectivity),
                                                     as_upstream_lanes=upstream_lane_segment_connectivity,
@@ -143,9 +147,9 @@ def create_scene_static_from_map_api(map_api: MapAPI):
                                                     e_Cnt_lane_coupling_count=0,
                                                     as_lane_coupling=[]))
 
-    header = Header(e_Cnt_SeqNum=0, s_Timestamp=Timestamp(0, 0),e_Cnt_version=0)
+    header = Header(e_Cnt_SeqNum=0, s_Timestamp=Timestamp(0, 0), e_Cnt_version=0)
     map_origin = MapOrigin(e_phi_latitude=.0, e_phi_longitude=.0, e_l_altitude=.0, s_Timestamp=Timestamp(0, 0))
-    scene_road_intersections=[]
+    scene_road_intersections = []
     data = DataSceneStatic(e_b_Valid=True,
                            s_RecvTimestamp=Timestamp(0, 0),
                            s_ComputeTimestamp=Timestamp(0, 0),
@@ -160,4 +164,3 @@ def create_scene_static_from_map_api(map_api: MapAPI):
 
     scene = SceneStatic(s_Header=header, s_MapOrigin=map_origin, s_Data=data)
     return scene
-

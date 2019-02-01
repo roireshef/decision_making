@@ -283,3 +283,6 @@ LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL = "TrajectoryPlanningFacade planning from ac
 
 # Resolution of car timestamps in sec
 TIMESTAMP_RESOLUTION_IN_SEC = 1e-9
+
+# Distance ahead to raise takeover flag
+DISTANCE_TO_SET_TAKEOVER_FLAG = 100

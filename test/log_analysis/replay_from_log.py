@@ -3,7 +3,7 @@ from typing import Dict
 
 import numpy as np
 
-from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
+from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
 from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.messages.class_serialization import ClassSerializer
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
@@ -25,6 +25,7 @@ TARGET_LOG_TIME = 57906.0
 
 # TODO: Remove temporary TP facade. used only to bypass the Lcm Ser/Deser methods
 class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
+
     def _get_current_state(self) -> State:
         """
         Returns the last received world state.
@@ -32,7 +33,7 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         then we will output the last received state.
         :return: deserialized State
         """
-        input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.STATE_LCM, timeout=1)
+        input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], timeout=1)
         object_state = ClassSerializer.deserialize(class_type=State, message=input_state)
         return object_state
 
@@ -43,7 +44,7 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-        input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.TRAJECTORY_PARAMS_LCM, timeout=1)
+        input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"], timeout=1)
         object_params = ClassSerializer.deserialize(class_type=TrajectoryParams, message=input_params)
         return object_params
 
@@ -60,8 +61,8 @@ def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
     pubsub = PubSubMock(logger=AV_Logger.get_logger(LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING))
 
     # Publish messages using pubsub mock
-    pubsub.publish(pubsub_topics.STATE_LCM, state_serialized)
-    pubsub.publish(pubsub_topics.TRAJECTORY_PARAMS_LCM, tp_params_serialized)
+    pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], state_serialized)
+    pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"], tp_params_serialized)
 
     # Initialize TP
     logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)

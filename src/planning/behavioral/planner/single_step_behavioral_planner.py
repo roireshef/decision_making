@@ -88,6 +88,7 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
 
     @prof.ProfileFunction()
     def plan(self, state: State, nav_plan: NavigationPlanMsg):
+
         action_recipes = self.action_space.recipes
 
         # create road semantic grid from the raw State object

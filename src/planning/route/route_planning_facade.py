@@ -1,8 +1,9 @@
 from logging import Logger
-from common_data.src.communication.pubsub.pubsub import PubSub
-from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
+from decision_making.src.infra.pubsub import PubSub
+from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
 import time
 import traceback
+from logging import Logger
 
 from decision_making.src.exceptions import MsgDeserializationError
 from decision_making.src.infra.dm_module import DmModule
@@ -32,7 +33,7 @@ class RoutePlanningFacade(DmModule):
 
     def _start_impl(self):
         """Add comments"""
-        self.pubsub.subscribe(pubsub_topics.SCENE_STATIC, None)
+        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], None)
         pass
 
     def _stop_impl(self):
