@@ -10,7 +10,7 @@ from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, 
     ROUTE_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \
     TRAJECTORY_PLANNING_NAME_FOR_LOGGING, \
-    DM_MANAGER_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD
+    DM_MANAGER_NAME_FOR_LOGGING, BEHAVIORAL_PLANNING_MODULE_PERIOD, TRAJECTORY_PLANNING_MODULE_PERIOD, ROUTE_PLANNING_MODULE_PERIOD
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.manager.dm_manager import DmManager
 from decision_making.src.manager.dm_process import DmProcess
@@ -150,7 +150,7 @@ def main():
 
             DmProcess(lambda: DmInitialization.create_route_planner(),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-                      trigger_args={'period': BEHAVIORAL_PLANNING_MODULE_PERIOD},
+                      trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD},
                       name='RP'),
 
             DmProcess(lambda: DmInitialization.create_state_module(),
