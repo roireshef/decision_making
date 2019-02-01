@@ -15,7 +15,7 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneRoadSegmen
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header
 from decision_making.src.messages.scene_static_enums import MapLaneType, MapRoadSegmentType, MovingDirection, ManeuverType,\
-     MapLaneMarkerType, RoadObjectType, TrafficSignalState, NominalPathPoint, 
+     MapLaneMarkerType, RoadObjectType, TrafficSignalState, NominalPathPoint
 
 MAX_NOMINAL_PATH_POINT_FIELDS = 10
 
