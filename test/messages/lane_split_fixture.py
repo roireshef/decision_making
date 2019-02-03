@@ -188,16 +188,18 @@ def scene_static_straight():
             scene_lane_segments.append(scene_lane_segment)    
             lane_seg_idx += 1
 
+
+
         # Make SceneRoadSegment
-        scene_road_segment = SceneRoadSegment(e_Cnt_road_segment_id=road_id, 
-                                            e_Cnt_road_id=ROAD_ID,
+        scene_road_segment = SceneRoadSegment(e_i_road_segment_id=road_id,
+                                            e_i_road_id=ROAD_ID,
                                             e_Cnt_lane_segment_id_count=NUM_STRAIGHT_LANE_SEGS_CROSS,
-                                            a_Cnt_lane_segment_id=current_lane_seg_ids,
+                                            a_i_lane_segment_ids=np.array([current_lane_seg_ids]),
                                             e_e_road_segment_type=MapRoadSegmentType.Normal,
                                             e_Cnt_upstream_segment_count=road_seg_upstream_count,
-                                            a_Cnt_upstream_road_segment_id=[road_seg_upstream_id],
+                                            a_i_upstream_road_segment_ids=np.array([road_seg_upstream_id]),
                                             e_Cnt_downstream_segment_count=road_seg_downstream_count,
-                                            a_Cnt_downstream_road_segment_id=[road_seg_downstream_id])
+                                            a_i_downstream_road_segment_ids=np.array([road_seg_downstream_id]))
 
         scene_road_segments.append(scene_road_segment)
 
@@ -222,7 +224,7 @@ def scene_static_straight():
 
 def add_lane_split(scene_static: SceneStatic, road_seg_split_idx: int):   
     ref_scene_road_segment = scene_static.s_Data.as_scene_road_segment[road_seg_split_idx]
-    ref_scene_road_segment_id = ref_scene_road_segment.e_Cnt_road_segment_id
+    ref_scene_road_segment_id = ref_scene_road_segment.e_i_road_segment_id
 
     current_lane_seg_ids = []
     scene_lane_segments = []
@@ -322,19 +324,20 @@ def add_lane_split(scene_static: SceneStatic, road_seg_split_idx: int):
                                               as_lane_coupling=[])
         scene_lane_segments.append(scene_lane_segment) 
 
-    scene_road_segment = SceneRoadSegment(e_Cnt_road_segment_id=road_segment_id, 
-                                          e_Cnt_road_id=ROAD_ID_SPLIT,
+    scene_road_segment = SceneRoadSegment(e_i_road_segment_id=road_segment_id,
+                                          e_i_road_id=ROAD_ID_SPLIT,
                                           e_Cnt_lane_segment_id_count=NUM_SPLIT_LANE_SEGS_LONG,
-                                          a_Cnt_lane_segment_id=current_lane_seg_ids,
+                                          a_i_lane_segment_ids=np.array(current_lane_seg_ids),
                                           e_e_road_segment_type=MapRoadSegmentType.Normal,
                                           e_Cnt_upstream_segment_count=1,
-                                          a_Cnt_upstream_road_segment_id=[ref_scene_road_segment_id],
+                                          a_i_upstream_road_segment_ids=np.array([ref_scene_road_segment_id]),
                                           e_Cnt_downstream_segment_count=0,
-                                          a_Cnt_downstream_road_segment_id=[-1])
+                                          a_i_downstream_road_segment_ids=np.array([-1]))
     
     # Fix connectivity of straight scene road segment
     ref_scene_road_segment.e_Cnt_upstream_segment_count += 1
-    ref_scene_road_segment.a_Cnt_upstream_road_segment_id.append(ref_scene_road_segment_id)
+    ref_scene_road_segment.a_i_upstream_road_segment_ids = np.append(ref_scene_road_segment.a_i_upstream_road_segment_ids,
+                                                                     ref_scene_road_segment_id)
 
     ref_scene_lane = scene_static.s_Data.as_scene_lane_segment[road_seg_split_idx * NUM_STRAIGHT_LANE_SEGS_CROSS]    
     ref_scene_lane.e_Cnt_downstream_lane_count += 1

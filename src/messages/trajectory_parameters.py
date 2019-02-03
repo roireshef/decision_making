@@ -1,9 +1,9 @@
 import numpy as np
 
-from common_data.interface.py.idl_generated_files.Rte_Types import LcmTrajectoryParameters
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmSigmoidFunctionParams import \
+from common_data.interface.Rte_Types.python.sub_structures import LcmTrajectoryParameters
+from common_data.interface.Rte_Types.python.sub_structures.LcmSigmoidFunctionParams import \
     LcmSigmoidFunctionParams
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmTrajectoryCostParams import \
+from common_data.interface.Rte_Types.python.sub_structures.LcmTrajectoryCostParams import \
     LcmTrajectoryCostParams
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy
@@ -157,13 +157,13 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
 class TrajectoryParams(PUBSUB_MSG_IMPL):
     """ Members annotations for python 2 compliant classes """
     strategy = TrajectoryPlanningStrategy
-    reference_route = FrenetSerret2DFrame
+    reference_route = GeneralizedFrenetSerretFrame
     target_state = np.ndarray
     cost_params = TrajectoryCostParams
     time = float
 
     def __init__(self, strategy, reference_route, target_state, cost_params, time, bp_time):
-        # type: (TrajectoryPlanningStrategy, FrenetSerret2DFrame, np.ndarray, TrajectoryCostParams, float)->None
+        # type: (TrajectoryPlanningStrategy, GeneralizedFrenetSerretFrame, np.ndarray, TrajectoryCostParams, float)->None
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
         :param reference_route: the frenet frame of the reference route (often the center of lane)

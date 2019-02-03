@@ -3,11 +3,11 @@ from typing import List, Optional, Dict
 
 import numpy as np
 
-from common_data.interface.py.idl_generated_files.Rte_Types.LcmState import LcmState
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmDynamicObject import LcmDynamicObject
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmEgoState import LcmEgoState
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmObjectSize import LcmObjectSize
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.LcmOccupancyState import LcmOccupancyState
+from common_data.interface.Rte_Types.python.sub_structures.LcmState import LcmState
+from common_data.interface.Rte_Types.python.sub_structures.LcmDynamicObject import LcmDynamicObject
+from common_data.interface.Rte_Types.python.sub_structures.LcmEgoState import LcmEgoState
+from common_data.interface.Rte_Types.python.sub_structures.LcmObjectSize import LcmObjectSize
+from common_data.interface.Rte_Types.python.sub_structures.LcmOccupancyState import LcmOccupancyState
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.exceptions import MultipleObjectsWithRequestedID
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TIMESTAMP_RESOLUTION_IN_SEC
@@ -233,7 +233,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         lcm_msg = LcmDynamicObject()
         lcm_msg.obj_id = self.obj_id
         lcm_msg.timestamp = self.timestamp
-        lcm_msg._cached_cartesian_state = self._cached_cartesian_state
+        lcm_msg._cached_cartesian_state = self.cartesian_state
         lcm_msg._cached_map_state = self._cached_map_state.serialize()
         lcm_msg._cached_map_state_on_host_lane = self._cached_map_state.serialize()
         lcm_msg.size = self.size.serialize()

@@ -2,8 +2,7 @@ from collections import defaultdict
 from logging import Logger
 from typing import Dict, List
 
-from common_data.src.communication.pubsub.pubsub import PubSub
-
+from decision_making.src.infra.pubsub import PubSub
 
 class PubSubMock(PubSub):
     def __init__(self, logger):

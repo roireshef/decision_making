@@ -6,8 +6,7 @@ import pytest
 from multiprocessing import Process
 from unittest.mock import MagicMock
 
-from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import PubSubMessageTypes, TRAJECTORY_PLAN
-from common_data.src.communication.pubsub.pubsub_factory import create_pubsub
+from common_data.interface.Rte_Types.python.Rte_Types_pubsub import PubSubMessageTypes, UC_SYSTEM_TRAJECTORY_PLAN
 from decision_making.paths import Paths
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.test.bench import dm_main_trajectory_bench

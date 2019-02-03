@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
-from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
-from common_data.src.communication.pubsub.pubsub import PubSub
+from decision_making.src.infra.pubsub import PubSub
+from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.scene_static_message import SceneStatic
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpaceContainer
@@ -60,12 +60,12 @@ def test_trajectoryPlanningFacade_realWerlingPlannerWithMocks_anyResult(pubsub: 
     trajectory_facade = TrajectoryPlanningFacade(pubsub=pubsub, logger=tp_logger,
                                                  strategy_handlers=strategy_handlers)
 
-    pubsub.subscribe(pubsub_topics.TRAJECTORY_PLAN, trajectory_publish_mock)
+    pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PLAN"], trajectory_publish_mock)
 
     state_module.periodic_action()
     trajectory_facade.start()
 
-    pubsub.publish(pubsub_topics.SCENE_STATIC, short_scene_static.serialize())
+    pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], short_scene_static.serialize())
 
     behavioral_facade.periodic_action()
     state_module.periodic_action()
@@ -111,7 +111,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
     navigation_facade.periodic_action()
     behavioral_planner_module = BehavioralPlanningFacade(pubsub=pubsub, logger=bp_logger, behavioral_planner=planner)
 
-    pubsub.subscribe(pubsub_topics.TRAJECTORY_PARAMS_LCM, behavioral_publish_mock)
+    pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"], behavioral_publish_mock)
 
     bp_logger.warn.assert_not_called()
     bp_logger.error.assert_not_called()
@@ -121,7 +121,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
     predictor_logger.error.assert_not_called()
     predictor_logger.critical.assert_not_called()
 
-    pubsub.publish(pubsub_topics.SCENE_STATIC, scene_static.serialize())
+    pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], scene_static.serialize())
     behavioral_planner_module.start()
     behavioral_planner_module.periodic_action()
 

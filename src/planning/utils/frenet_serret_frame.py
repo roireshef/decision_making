@@ -2,7 +2,7 @@ from typing import Tuple
 
 import numpy as np
 
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import LcmFrenetSerret2DFrame
+from common_data.interface.Rte_Types.python.sub_structures import LcmFrenetSerret2DFrame
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from scipy.interpolate.fitpack2 import UnivariateSpline
 
@@ -342,7 +342,7 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         k'(s) is the derivative of the curvature (by distance d(s))
         """
         assert np.all(np.bitwise_and(0 <= s, s <= self.s_max)), \
-            "Cannot extrapolate, desired progress (%s) is out of the curve." % s
+            "Cannot extrapolate, desired progress (%s) is out of the curve (s_max = %s)." % (s, self.s_max)
 
         O_idx, delta_s = self._get_closest_index_on_frame(s)
 
@@ -354,16 +354,17 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         T_s = self.T[O_idx] + \
               delta_s * self.k[O_idx] * self.N[O_idx] - \
               delta_s ** 2 / 2 * self.k[O_idx] ** 2 * self.T[O_idx]
+        T_s /= np.linalg.norm(T_s, axis=-1, keepdims=True)
 
         N_s = self.N[O_idx] - \
               delta_s * self.k[O_idx] * self.T[O_idx] - \
               delta_s ** 2 / 2 * self.k[O_idx] ** 2 * self.N[O_idx]
+        N_s /= np.linalg.norm(N_s, axis=-1, keepdims=True)
 
         k_s = self.k[O_idx] + \
               delta_s * self.k_tag[O_idx]
-        # delta_s ** 2 / 2 * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
 
-        k_s_tag = self.k_tag[O_idx]  # + delta_s * np.gradient(np.gradient(self.k, axis=0), axis=0)[O_idx]
+        k_s_tag = self.k_tag[O_idx]
 
         return a_s, T_s, N_s, k_s[..., 0], k_s_tag[..., 0]
 

@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABCMeta
 from logging import Logger
 
-from common_data.src.communication.pubsub.pubsub import PubSub
+from decision_making.src.infra.pubsub import PubSub
 import six
 import rte.python.profiler as prof
 

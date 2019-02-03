@@ -26,7 +26,7 @@ class MapUtils:
         """
         scene_static = SceneStaticModel.get_instance().get_scene_static()
         road_segments = scene_static.s_Data.as_scene_road_segment[:scene_static.s_Data.e_Cnt_num_road_segments]
-        return [road_segment.e_Cnt_road_segment_id for road_segment in road_segments]
+        return [road_segment.e_i_road_segment_id for road_segment in road_segments]
 
     @staticmethod
     def get_road_segment_id_from_lane_id(lane_id: int) -> int:
@@ -77,7 +77,8 @@ class MapUtils:
         N = NumpyUtils.row_wise_normal(T)
         k = nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_il_curvature.value][:, np.newaxis]
         k_tag = nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_il2_curvature_rate.value][:, np.newaxis]
-        ds = np.mean(np.diff(nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]))   # TODO: is this necessary?
+        ds = np.mean(
+            np.diff(nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]))  # TODO: is this necessary?
 
         return FrenetSerret2DFrame(points=points, T=T, N=N, k=k, k_tag=k_tag, ds=ds)
 
@@ -98,7 +99,7 @@ class MapUtils:
             adj_lanes = lane.as_left_adjacent_lanes
         else:
             raise ValueError('Relative lane must be either right or left')
-        return [adj_lane.e_Cnt_lane_segment_id for adj_lane in adj_lanes]
+        return [adj_lane.e_i_lane_segment_id for adj_lane in adj_lanes]
 
 
 
@@ -135,32 +136,66 @@ class MapUtils:
         """
         given cartesian coordinates, find the closest lane to the point
         :param cartesian_point: 2D cartesian coordinates
-        :param road_segment_id: optional argument for road_segment_id closest to the given point
         :return: closest lane segment id
         """
         x_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value
         y_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value
 
-        # TODO: Change this heuristic in the future
-        # `lane_ids` is set to either the (vertical) middle lanes of all or horizontal lanes
-        # of the given road_segment_id or to the (horizonal) lanes of the road_segment
-        # In case of the former, out of all middle lanes in all road segments, find the closest to cartesian_point,
-        #  this lane determines the closest road_segment
-        # TODO: doesn't work?
-        # if road_segment_id is None:
-        #     lane_ids = MapUtils._get_all_middle_lanes()
-        # else:
-        #     lane_ids = MapUtils.get_lanes_ids_from_road_segment_id(road_segment_id)
-        lane_ids = [lane_segment.e_i_lane_segment_id
-                    for lane_segment in SceneStaticModel.get_instance().get_scene_static().s_Data.as_scene_lane_segment]
+        map_lane_ids = np.array([lane_segment.e_i_lane_segment_id
+                                 for lane_segment in
+                                 SceneStaticModel.get_instance().get_scene_static().s_Data.as_scene_lane_segment])
 
-        min_dist_in_lanes = np.array(
-            [min(np.linalg.norm(MapUtils.get_lane(lane_id).a_nominal_path_points[:, (x_index, y_index)]
-                                - cartesian_point, axis=1)) for lane_id in lane_ids])
-        closest_lane_id = lane_ids[min_dist_in_lanes.argmin()]
+        num_points_in_map_lanes = np.array([MapUtils.get_lane(lane_id).a_nominal_path_points.shape[0]
+                                            for lane_id in map_lane_ids])
 
-        return closest_lane_id
+        num_points_in_longest_lane = np.max(num_points_in_map_lanes)
+        # create 3D matrix of all lanes' points; pad it by inf according to the largest number of lane points
+        map_lanes_xy_points = np.array([np.vstack((MapUtils.get_lane(lane_id).a_nominal_path_points[:, (x_index, y_index)],
+                                        np.full((num_points_in_longest_lane - num_points_in_map_lanes[i], 2), np.inf)))
+                                        for i, lane_id in enumerate(map_lane_ids)])
+        distances_from_lane_points = np.linalg.norm(map_lanes_xy_points - cartesian_point, axis=2)  # 2D matrix
+        closest_points_idx_per_lane = np.argmin(distances_from_lane_points, axis=1)
+        # 1D array: the minimal distances to the point per lane
+        min_dist_per_lane = distances_from_lane_points[np.arange(distances_from_lane_points.shape[0]),
+                                                       closest_points_idx_per_lane]
 
+        # find all lanes having the closest distance to the point
+        # TODO: fix map in PG_split.bin such that seam points of connected lanes will overlap,so we can use smaller atol
+        closest_lanes_idxs = np.where(np.isclose(min_dist_per_lane, min_dist_per_lane.min(), atol=0.1))[0]
+
+        if closest_lanes_idxs.size == 1:  # a single closest lane
+            return map_lane_ids[closest_lanes_idxs[0]]
+
+        # Among the closest lanes, find lanes whose closest point is internal (not start/end point of the lane).
+        # In this case (internal point) we are not expecting a numerical issue.
+        # If such lanes exist, return an arbitrary one of them.
+        lanes_with_internal_closest_point = np.where(np.logical_and(closest_points_idx_per_lane[closest_lanes_idxs] > 0,
+                                                                    closest_points_idx_per_lane[closest_lanes_idxs] <
+                                                                    num_points_in_map_lanes[closest_lanes_idxs] - 1))[0]
+        if len(lanes_with_internal_closest_point) > 0:  # then return arbitrary (first) lane with internal closest point
+            return map_lane_ids[closest_lanes_idxs[lanes_with_internal_closest_point[0]]]
+
+        # The rest of the code handles deciding on which lane to project out of two closest lanes, while they share
+        # a given mutual closest point.
+        # If cartesian_point is near a seam between two (or more) lanes, choose the closest lane according to its
+        # local yaw, such that the cartesian_point might be projected on the chosen lane.
+
+        lane_idx = closest_lanes_idxs[0]  # choose arbitrary (first) closest lane
+        lane_id = map_lane_ids[lane_idx]
+        seam_point_idx = closest_points_idx_per_lane[lane_idx]
+        # calculate a vector from the closest point to the input point
+        vec_to_input_point = cartesian_point - MapUtils.get_lane(lane_id).a_nominal_path_points[
+            seam_point_idx, (x_index, y_index)]
+        yaw_to_input_point = np.arctan2(vec_to_input_point[1], vec_to_input_point[0])
+        lane_local_yaw = MapUtils.get_lane(map_lane_ids[lane_idx]).a_nominal_path_points[
+            seam_point_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_phi_heading.value]
+        if np.cos(yaw_to_input_point - lane_local_yaw) >= 0:  # local_yaw & yaw_to_input_point create an acute angle
+            # take a lane that starts in the closest point
+            final_lane_idx = closest_lanes_idxs[closest_points_idx_per_lane[closest_lanes_idxs] == 0][0]
+        else:  # local_yaw & yaw_to_input_point create an obtuse angle ( > 90 degrees)
+            # take a lane that ends in the closest point
+            final_lane_idx = closest_lanes_idxs[closest_points_idx_per_lane[closest_lanes_idxs] > 0][0]
+        return map_lane_ids[final_lane_idx]
 
     @staticmethod
     def get_dist_to_lane_borders(lane_id: int, s: float) -> (float, float):
@@ -215,7 +250,7 @@ class MapUtils:
         :return: list of upstream lanes ids
         """
         upstream_connectivity = MapUtils.get_lane(lane_id).as_upstream_lanes
-        return [connectivity.e_Cnt_lane_segment_id for connectivity in upstream_connectivity]
+        return [connectivity.e_i_lane_segment_id for connectivity in upstream_connectivity]
 
     @staticmethod
     def get_downstream_lanes(lane_id: int) -> List[int]:
@@ -226,7 +261,7 @@ class MapUtils:
         :return: list of downstream lanes ids
         """
         downstream_connectivity = MapUtils.get_lane(lane_id).as_downstream_lanes
-        return [connectivity.e_Cnt_lane_segment_id for connectivity in downstream_connectivity]
+        return [connectivity.e_i_lane_segment_id for connectivity in downstream_connectivity]
 
     @staticmethod
     def get_lanes_ids_from_road_segment_id(road_segment_id: int) -> List[int]:
@@ -236,7 +271,7 @@ class MapUtils:
         :param road_segment_id:
         :return: sorted list of lane segments' IDs
         """
-        return list(MapUtils.get_road_segment(road_segment_id).a_Cnt_lane_segment_id)
+        return list(MapUtils.get_road_segment(road_segment_id).a_i_lane_segment_ids)
 
     @staticmethod
     def does_map_exist_backward(lane_id: int, backward_dist: float):
@@ -438,7 +473,8 @@ class MapUtils:
                     "MapUtils._advance_on_plan: Downstream lane not found for lane_id=%d" % (current_lane_id))
 
             downstream_lanes_ids_on_plan = [lid for lid in downstream_lanes_ids
-                                            if MapUtils.get_road_segment_id_from_lane_id(lid) == next_road_segment_id_on_plan]
+                                            if MapUtils.get_road_segment_id_from_lane_id(
+                    lid) == next_road_segment_id_on_plan]
 
             if len(downstream_lanes_ids_on_plan) == 0:
                 raise NavigationPlanDoesNotFitMap("Any downstream lane is not in the navigation plan %s",
@@ -505,7 +541,7 @@ class MapUtils:
         """
         scene_static = SceneStaticModel.get_instance().get_scene_static()
         road_segments = [road_segment for road_segment in scene_static.s_Data.as_scene_road_segment if
-                         road_segment.e_Cnt_road_segment_id == road_id]
+                         road_segment.e_i_road_segment_id == road_id]
         if len(road_segments) == 0:
             raise RoadNotFound('road {0} not found '.format(road_id))
         assert len(road_segments) == 1

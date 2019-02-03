@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 import numpy_indexed as npi
 
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import LcmFrenetSubsegment, LcmGeneralizedFrenetSerretFrame
+from common_data.interface.Rte_Types.python.sub_structures import LcmFrenetSubsegment, LcmGeneralizedFrenetSerretFrame
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
@@ -271,7 +271,7 @@ class GeneralizedFrenetSerretFrame(FrenetSerret2DFrame, PUBSUB_MSG_IMPL):
         lcm_msg.k = SerializationUtils.serialize_non_typed_array(self.k)
         lcm_msg.k_tag = SerializationUtils.serialize_non_typed_array(self.k_tag)
         lcm_msg.segments_id = SerializationUtils.serialize_non_typed_int_array(self._segments_id)
-        lcm_msg.segments_s_start = SerializationUtils.serialize_non_typed_int_array(self._segments_s_start)
+        lcm_msg.segments_s_start = SerializationUtils.serialize_non_typed_array(self._segments_s_start)
         lcm_msg.segments_s_offsets = SerializationUtils.serialize_non_typed_array(self._segments_s_offsets)
         lcm_msg.segments_ds = SerializationUtils.serialize_non_typed_array(self._segments_ds)
         lcm_msg.segments_point_offset = SerializationUtils.serialize_non_typed_int_array(self._segments_point_offset)
