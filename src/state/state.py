@@ -72,12 +72,12 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     members_remapping = {'_cached_cartesian_state': 'cartesian_state',
                          '_cached_map_state': 'map_state'}
 
-    e_i_ObjectID = int
-    e_Cnt_Timestamp = int
+    obj_id = int
+    timestamp = int
     _cached_cartesian_state = CartesianExtendedState
     _cached_map_state = MapState
-    s_Size = ObjectSize
-    e_r_Confidence = float
+    size = ObjectSize
+    confidence = float
 
     def __init__(self, obj_id, timestamp, cartesian_state, map_state, size, confidence):
         # type: (int, int, Optional[CartesianExtendedState], Optional[MapState], ObjectSize, float) -> None
@@ -90,12 +90,12 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         :param size: class ObjectSize
         :param confidence: of object's existence
         """
-        self.e_i_ObjectID = obj_id
-        self.e_Cnt_Timestamp = timestamp
+        self.obj_id = obj_id
+        self.timestamp = timestamp
         self._cached_cartesian_state = cartesian_state
         self._cached_map_state = map_state
-        self.s_Size = copy.copy(size)
-        self.e_r_Confidence = confidence
+        self.size = copy.copy(size)
+        self.confidence = confidence
 
     @property
     def x(self):
@@ -164,7 +164,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
 
     @property
     def timestamp_in_sec(self):
-        return DynamicObject.ticks_to_sec(self.e_Cnt_Timestamp)
+        return DynamicObject.ticks_to_sec(self.timestamp)
 
     @classmethod
     def create_from_cartesian_state(cls, obj_id, timestamp, cartesian_state, size, confidence):
@@ -195,37 +195,36 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def clone_from_cartesian_state(self, cartesian_state, timestamp_in_sec=None):
         # type: (CartesianExtendedState, Optional[float]) -> DynamicObject
         """clones self while overriding cartesian_state and optionally timestamp"""
-        return self.__class__.create_from_cartesian_state(self.e_i_ObjectID,
+        return self.__class__.create_from_cartesian_state(self.obj_id,
                                                           DynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
                                                           cartesian_state,
-                                                          self.s_Size, self.e_r_Confidence)
+                                                          self.size, self.confidence)
 
     def clone_from_map_state(self, map_state, timestamp_in_sec=None):
         # type: (MapState, Optional[float]) -> DynamicObject
         """clones self while overriding map_state and optionally timestamp"""
-        return self.create_from_map_state(self.e_i_ObjectID,
+        return self.create_from_map_state(self.obj_id,
                                           DynamicObject.sec_to_ticks(timestamp_in_sec or self.timestamp_in_sec),
                                           map_state,
-                                          self.s_Size, self.e_r_Confidence)
+                                          self.size, self.confidence)
 
     def serialize(self):
         # type: () -> TsSYSDynamicObject
         pubsub_msg = TsSYSDynamicObject()
-        pubsub_msg.e_i_ObjectID = self.e_i_ObjectID
-        pubsub_msg.e_Cnt_Timestamp = self.e_Cnt_Timestamp
-        pubsub_msg._cached_cartesian_state = self.cartesian_state
-        pubsub_msg._cached_map_state = self._cached_map_state.serialize()
-        pubsub_msg._cached_map_state_on_host_lane = self._cached_map_state.serialize()
-        pubsub_msg.s_Size = self.s_Size.serialize()
-        pubsub_msg.e_r_Confidence = self.e_r_Confidence
+        pubsub_msg.e_i_ObjectID = self.obj_id
+        pubsub_msg.e_Cnt_Timestamp = self.timestamp
+        pubsub_msg.a_e_CachedCartesianState = self.cartesian_state
+        pubsub_msg.s_CachedMapState = self._cached_map_state.serialize()
+        pubsub_msg.s_Size = self.size.serialize()
+        pubsub_msg.e_r_Confidence = self.confidence
         return pubsub_msg
 
     @classmethod
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSDynamicObject) -> DynamicObject
         return cls(pubsubMsg.e_i_ObjectID, pubsubMsg.e_Cnt_Timestamp
-                   , pubsubMsg._cached_cartesian_state
-                   , MapState.deserialize(pubsubMsg._cached_map_state) if pubsubMsg._cached_map_state.lane_id > 0 else None
+                   , pubsubMsg.a_e_CachedCartesianState
+                   , MapState.deserialize(pubsubMsg.s_CachedMapState) if pubsubMsg.s_CachedMapState.lane_id > 0 else None
                    , ObjectSize.deserialize(pubsubMsg.s_Size)
                    , pubsubMsg.e_r_Confidence)
 
@@ -257,18 +256,18 @@ class EgoState(DynamicObject):
     def deserialize(cls, pubsubMsg):
         # type: (TsSYSEgoState) -> EgoState
         dyn_obj = DynamicObject.deserialize(pubsubMsg.s_DynamicObject)
-        return cls(dyn_obj.e_i_ObjectID, dyn_obj.e_Cnt_Timestamp
+        return cls(dyn_obj.obj_id, dyn_obj.timestamp
                    , dyn_obj._cached_cartesian_state
                    , dyn_obj._cached_map_state
-                   , dyn_obj.s_Size
-                   , dyn_obj.e_r_Confidence)
+                   , dyn_obj.size
+                   , dyn_obj.confidence)
 
 
 class State(PUBSUB_MSG_IMPL):
     """ Members annotations for python 2 compliant classes """
-    s_OccupancyState = OccupancyState
-    s_DynamicObjects = List[DynamicObject]
-    s_EgoState = EgoState
+    occupancy_state = OccupancyState
+    dynamic_objects = List[DynamicObject]
+    ego_state = EgoState
 
     def __init__(self, occupancy_state: OccupancyState, dynamic_objects: List[DynamicObject], ego_state: EgoState)-> None:
         """
@@ -277,9 +276,9 @@ class State(PUBSUB_MSG_IMPL):
         :param dynamic_objects:
         :param ego_state:
         """
-        self.s_OccupancyState = occupancy_state
-        self.s_DynamicObjects = dynamic_objects
-        self.s_EgoState = ego_state
+        self.occupancy_state = occupancy_state
+        self.dynamic_objects = dynamic_objects
+        self.ego_state = ego_state
 
     def clone_with(self, occupancy_state: OccupancyState = None, dynamic_objects: List[DynamicObject] = None,
                    ego_state: EgoState = None):
@@ -287,20 +286,20 @@ class State(PUBSUB_MSG_IMPL):
         clones state object with potential overriding of specific fields.
         requires deep-copying of all fields in State.__init__ !!
         """
-        return State(occupancy_state or self.s_OccupancyState,
-                     dynamic_objects if dynamic_objects is not None else self.s_DynamicObjects,
-                     ego_state or self.s_EgoState)
+        return State(occupancy_state or self.occupancy_state,
+                     dynamic_objects if dynamic_objects is not None else self.dynamic_objects,
+                     ego_state or self.ego_state)
 
     def serialize(self):
         # type: () -> TsSYSState
         pubsub_msg = TsSYSState()
-        pubsub_msg.s_OccupancyState = self.s_OccupancyState.serialize()
+        pubsub_msg.s_OccupancyState = self.occupancy_state.serialize()
         ''' resize the list at once to the right length '''
-        pubsub_msg.e_Cnt_NumOfObjects = len(self.s_DynamicObjects)
+        pubsub_msg.e_Cnt_NumOfObjects = len(self.dynamic_objects)
 
         for i in range(pubsub_msg.e_Cnt_NumOfObjects):
-            pubsub_msg.s_DynamicObjects[i] = self.s_DynamicObjects[i].serialize()
-        pubsub_msg.s_EgoState = self.s_EgoState.serialize()
+            pubsub_msg.s_DynamicObjects[i] = self.dynamic_objects[i].serialize()
+        pubsub_msg.s_EgoState = self.ego_state.serialize()
         return pubsub_msg
 
     @classmethod

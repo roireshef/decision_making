@@ -40,8 +40,8 @@ class WerlingPlanner(TrajectoryPlanner):
 
         # The reference_route, the goal, ego and the dynamic objects are given in the global coordinate-frame.
         # The vehicle doesn't need to lay parallel to the road.
-        ego_cartesian_state = np.array([state.s_EgoState.x, state.s_EgoState.y, state.s_EgoState.yaw, state.s_EgoState.velocity,
-                                        state.s_EgoState.acceleration, state.s_EgoState.curvature])
+        ego_cartesian_state = np.array([state.ego_state.x, state.ego_state.y, state.ego_state.yaw, state.ego_state.velocity,
+                                        state.ego_state.acceleration, state.ego_state.curvature])
 
         ego_frenet_state: FrenetState2D = reference_route.cstate_to_fstate(ego_cartesian_state)
 
@@ -154,7 +154,7 @@ class WerlingPlanner(TrajectoryPlanner):
                                             time_horizon * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV])*0.5))
 
         # compute trajectory costs at sampled times
-        global_time_sample = planning_time_points + state.s_EgoState.timestamp_in_sec
+        global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
         filtered_trajectory_costs = \
             self._compute_cost(ctrajectories_filtered, ftrajectories_refiltered, state, goal_frenet_state, cost_params,
                                global_time_sample, self._predictor, self.dt, reference_route)
@@ -165,7 +165,7 @@ class WerlingPlanner(TrajectoryPlanner):
             T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]]))
 
         samplable_trajectory = SamplableWerlingTrajectory(
-            timestamp_in_sec=state.s_EgoState.timestamp_in_sec,
+            timestamp_in_sec=state.ego_state.timestamp_in_sec,
             T_s=T_s,
             T_d=T_d_vals[refiltered_indices[sorted_filtered_idxs[0]]],
             frenet_frame=reference_route,

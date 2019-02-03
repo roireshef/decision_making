@@ -119,7 +119,7 @@ class PredictionUtils:
         :param state: state containing objects with different timestamps
         :return: most_recent_timestamp:  most recent timestamp among all dynamic objects and ego
         """
-        ego_timestamp_in_sec = state.s_EgoState.timestamp_in_sec
-        objects_timestamp_in_sec = [state.s_DynamicObjects[x].timestamp_in_sec for x in range(len(state.s_DynamicObjects))]
+        ego_timestamp_in_sec = state.ego_state.timestamp_in_sec
+        objects_timestamp_in_sec = [state.dynamic_objects[x].timestamp_in_sec for x in range(len(state.dynamic_objects))]
         objects_timestamp_in_sec.append(ego_timestamp_in_sec)
         return np.max(objects_timestamp_in_sec)

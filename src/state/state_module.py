@@ -125,7 +125,7 @@ class StateModule(DmModule):
 
                 if dyn_obj.cartesian_state[C_V] < 0:
                     raise ObjectHasNegativeVelocityError('Dynamic object with id %d was received with negative velocity %f'
-                                                         % (dyn_obj.e_i_ObjectID, dyn_obj.cartesian_state[C_V]))
+                                                         % (dyn_obj.obj_id, dyn_obj.cartesian_state[C_V]))
 
                 # TODO: Figure out if we need SceneProvider to let us know if an object is not on road
 

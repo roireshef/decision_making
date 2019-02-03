@@ -18,6 +18,6 @@ class Utils:
         assert np.all(np.isclose(actual_object.map_state.a_LaneFState, expected_object.map_state.a_LaneFState, atol=1e-2))
 
         assert np.isclose(actual_object.map_state.e_i_LaneID, expected_object.map_state.e_i_LaneID, atol=1e-2)
-        assert np.isclose(actual_object.e_i_ObjectID, expected_object.e_i_ObjectID, atol=1e-2)
-        assert np.isclose(actual_object.e_Cnt_Timestamp, expected_object.e_Cnt_Timestamp, atol=1e-2)
-        assert np.isclose(actual_object.e_r_Confidence, expected_object.e_r_Confidence, atol=1e-2)
+        assert np.isclose(actual_object.obj_id, expected_object.obj_id, atol=1e-2)
+        assert np.isclose(actual_object.timestamp, expected_object.timestamp, atol=1e-2)
+        assert np.isclose(actual_object.confidence, expected_object.confidence, atol=1e-2)

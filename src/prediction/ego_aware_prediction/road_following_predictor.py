@@ -45,7 +45,7 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         predictions = self.predict_frenet_states(np.array(objects_fstates), prediction_timestamps - first_timestamp)
 
         # Create a dictionary from predictions
-        predicted_objects_states_dict = {obj.e_i_ObjectID: [
+        predicted_objects_states_dict = {obj.obj_id: [
             objects[obj_idx].clone_from_map_state(MapState(predictions[obj_idx, time_idx], obj.map_state.e_i_LaneID),
                                                   timestamp_in_sec=timestamp)
             for time_idx, timestamp in enumerate(prediction_timestamps)]
@@ -67,7 +67,7 @@ class RoadFollowingPredictor(EgoAwarePredictor):
         """
 
         # Simple object-wise prediction
-        object_ids = [obj.obj_id for obj in state.s_DynamicObjects]
+        object_ids = [obj.obj_id for obj in state.dynamic_objects]
 
         if action_trajectory is not None:
             extended_sampled_action_trajectory = action_trajectory.sample(time_points=prediction_timestamps)
@@ -84,13 +84,13 @@ class RoadFollowingPredictor(EgoAwarePredictor):
                                          predicted_objects_states_dict.values()]
 
             if action_trajectory is not None:
-                predicted_ego_state = state.s_EgoState.clone_from_cartesian_state(
+                predicted_ego_state = state.ego_state.clone_from_cartesian_state(
                     timestamp_in_sec=prediction_timestamps[time_idx],
                     cartesian_state=extended_sampled_action_trajectory[time_idx])
             else:
                 # Note! This uses the same ego object without deep copying it. Since EgoState should be immutable this
                 # should be OK.
-                predicted_ego_state = state.s_EgoState
+                predicted_ego_state = state.ego_state
 
             state = state.clone_with(ego_state=predicted_ego_state,
                                      dynamic_objects=predicted_dynamic_objects)

@@ -60,8 +60,8 @@ class TrajectoryPlannerCosts:
         :return: MxN matrix of obstacle costs per point, where N is trajectories number, M is trajectory length
         """
         # Filter close objects
-        close_objects = [obs for obs in state.s_DynamicObjects
-                         if np.linalg.norm([obs.x - state.s_EgoState.x, obs.y - state.s_EgoState.y]) < PLANNING_LOOKAHEAD_DIST]
+        close_objects = [obs for obs in state.dynamic_objects
+                         if np.linalg.norm([obs.x - state.ego_state.x, obs.y - state.ego_state.y]) < PLANNING_LOOKAHEAD_DIST]
 
         with prof.time_range('new_compute_obstacle_costs{objects: %d, ctraj_shape: %s}' % (len(close_objects), ctrajectories.shape)):
             if len(close_objects) == 0:
@@ -74,11 +74,11 @@ class TrajectoryPlannerCosts:
             # Predict objects' future movement, then project predicted objects' states to Cartesian frame
             # TODO: this assumes predictor works with frenet frames relative to ego-lane - figure out if this is how we want to do it in the future.
             objects_predicted_ftrajectories = predictor.predict_frenet_states(
-                objects_relative_fstates, global_time_samples - state.s_EgoState.timestamp_in_sec)
+                objects_relative_fstates, global_time_samples - state.ego_state.timestamp_in_sec)
             objects_predicted_ctrajectories = reference_route.ftrajectories_to_ctrajectories(objects_predicted_ftrajectories)
 
             objects_sizes = np.array([[obs.size.length, obs.size.width] for obs in close_objects])
-            ego_size = np.array([state.s_EgoState.size.length, state.s_EgoState.size.width])
+            ego_size = np.array([state.ego_state.size.length, state.ego_state.size.width])
 
             # Compute the distance to the closest point in every object to ego's boundaries (on the length and width axes)
             distances = TrajectoryPlannerCosts.compute_distances_to_objects(

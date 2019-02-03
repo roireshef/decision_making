@@ -194,7 +194,7 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
             state, goal = create_state_for_test_werlingPlanner(frenet, obs_poses, reference_route_latitude, ext, lng,
                                                                v0, vT, start_ego_lat, goal_latitude)
 
-            cost_params = CostBasedBehavioralPlanner._generate_cost_params(road_id=ROAD_ID, ego_size=state.s_EgoState.size,
+            cost_params = CostBasedBehavioralPlanner._generate_cost_params(road_id=ROAD_ID, ego_size=state.ego_state.size,
                                                                            reference_route_latitude=reference_route_latitude)
 
             # run Werling planner
@@ -203,13 +203,13 @@ def test_werlingPlanner_testCostsShaping_saveImagesForVariousScenarios():
                                                    goal=goal, time_horizon=T, cost_params=cost_params)
 
             time_samples = np.arange(0, T + np.finfo(np.float16).eps, planner.dt) + \
-                           state.s_EgoState.timestamp_in_sec
+                           state.ego_state.timestamp_in_sec
             assert time_samples.shape[0] == ctrajectories.shape[1]
 
             offsets = np.array([cost_params.s_ObstacleCostX.offset, cost_params.s_ObstacleCostY.offset])
             plottable_obs = [PlottableSigmoidBoxObstacle(state, o, cost_params.s_ObstacleCostX.k, offsets, time_samples,
                                                          planner.predictor)
-                             for o in state.s_DynamicObjects]
+                             for o in state.dynamic_objects]
 
             # create pixels grid of the visualization image and compute costs for these pixels for given time samples
             t = 0  # time index of time_samples
@@ -399,8 +399,8 @@ def visualize_test_scenario(route_points: np.array, reference_route_latitude: fl
 
         # plot ego's best position for both obstacles
         origin = pixels[0, 0, :]
-        ego = state.s_EgoState
-        for obs in state.s_DynamicObjects:
+        ego = state.ego_state
+        for obs in state.dynamic_objects:
             min_cost_y = np.argmin(z[:, int((obs.x - origin[0]) / 0.1)]) * 0.1 + origin[1]
             range_x = np.arange(-ego.size.length / 2, ego.size.length / 2 + 0.01) + obs.x
             p.plot(range_x, np.repeat(np.array([min_cost_y + ego.size.width / 2]), np.ceil(ego.size.length) + 1), '*w')

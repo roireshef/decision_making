@@ -49,7 +49,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
         """
 
         # Simple object-wise prediction
-        object_ids = [obj.obj_id for obj in state.s_DynamicObjects]
+        object_ids = [obj.obj_id for obj in state.dynamic_objects]
 
         if action_trajectory is not None:
             extended_sampled_action_trajectory = action_trajectory.sample(time_points=prediction_timestamps)
@@ -66,13 +66,13 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
                                          predicted_objects_states_dict.values()]
 
             if action_trajectory is not None:
-                predicted_ego_state = state.s_EgoState.clone_from_cartesian_state(
+                predicted_ego_state = state.ego_state.clone_from_cartesian_state(
                     timestamp_in_sec=prediction_timestamps[time_idx],
                     cartesian_state=extended_sampled_action_trajectory[time_idx])
             else:
                 predicted_ego_state = None
 
-            state = State(occupancy_state=state.s_OccupancyState,
+            state = State(occupancy_state=state.occupancy_state,
                           ego_state=predicted_ego_state,
                           dynamic_objects=predicted_dynamic_objects)
 

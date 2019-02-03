@@ -29,7 +29,7 @@ def test_AlignObjects_ExternalTimestamp_AccuratePrediction(physical_time_alignme
     assert np.isclose(actual_predicted_object.timestamp_in_sec, prediction_timestamps[0])
     Utils.assert_dyn_objects_numerical_fields_are_equal(actual_predicted_object,
                                                         predicted_dyn_object_states_constant_yaw[0])
-    actual_predicted_ego = predicted_state.s_EgoState
+    actual_predicted_ego = predicted_state.ego_state
     assert np.isclose(actual_predicted_ego.timestamp_in_sec, prediction_timestamps[0])
     Utils.assert_dyn_objects_numerical_fields_are_equal(actual_predicted_ego,
                                                         predicted_dynamic_ego_states[0])
@@ -50,7 +50,7 @@ def test_AlignObjects_ExternalTimestamp_ConstantYawAccuratePrediction(
     assert np.isclose(actual_predicted_object.timestamp_in_sec, prediction_timestamps[1])
     Utils.assert_dyn_objects_numerical_fields_are_equal(actual_predicted_object,
                                                         predicted_dyn_object_states_constant_yaw[1])
-    actual_predicted_ego = predicted_state.s_EgoState
+    actual_predicted_ego = predicted_state.ego_state
     assert np.isclose(actual_predicted_ego.timestamp_in_sec, prediction_timestamps[1])
     Utils.assert_dyn_objects_numerical_fields_are_equal(actual_predicted_ego,
                                                         predicted_dynamic_ego_states[1])

@@ -42,7 +42,7 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
         for dynamic_object in dynamic_objects:
             predicted_dynamic_object_states = self._predict_object(dynamic_object=dynamic_object,
                                                                    prediction_timestamp=prediction_timestamps[0])
-            predicted_dynamic_objects[dynamic_object.e_i_ObjectID] = predicted_dynamic_object_states
+            predicted_dynamic_objects[dynamic_object.obj_id] = predicted_dynamic_object_states
 
         return predicted_dynamic_objects
 
@@ -59,7 +59,7 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
         assert len(prediction_timestamps) == 1
 
         # Simple object-wise prediction
-        object_ids = [obj.obj_id for obj in state.s_DynamicObjects]
+        object_ids = [obj.obj_id for obj in state.dynamic_objects]
 
         predicted_dynamic_objects_dict = self.predict_objects(state=state, object_ids=object_ids,
                                                               prediction_timestamps=prediction_timestamps)
@@ -68,7 +68,7 @@ class PhysicalTimeAlignmentPredictor(EgoUnawarePredictor):
                                      predicted_dynamic_objects_dict.values()
                                      if future_object_states[0].map_state.is_on_road() or not FILTER_OFF_ROAD_OBJECTS]
 
-        predicted_ego_state = self._predict_object(dynamic_object=state.s_EgoState,
+        predicted_ego_state = self._predict_object(dynamic_object=state.ego_state,
                                                    prediction_timestamp=prediction_timestamps[0])[0]
 
         predicted_state = state.clone_with(dynamic_objects=predicted_dynamic_objects,

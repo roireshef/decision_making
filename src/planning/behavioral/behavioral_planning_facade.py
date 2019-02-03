@@ -68,7 +68,7 @@ class BehavioralPlanningFacade(DmModule):
             # Optimal Control and the fact it complies with Bellman principle of optimality.
             # THIS DOES NOT ACCOUNT FOR: yaw, velocities, accelerations, etc. Only to location.
             if LocalizationUtils.is_actual_state_close_to_expected_state(
-                    state.s_EgoState, self._last_trajectory, self.logger, self.__class__.__name__):
+                    state.ego_state, self._last_trajectory, self.logger, self.__class__.__name__):
                 updated_state = self._get_state_with_expected_ego(state)
                 self.logger.debug("BehavioralPlanningFacade ego localization was overridden to the expected-state "
                                   "according to previous plan")
@@ -136,9 +136,9 @@ class BehavioralPlanningFacade(DmModule):
         :param state: the state to process
         :return: a new state object with a new ego-vehicle localization
         """
-        current_time = state.s_EgoState.timestamp_in_sec
+        current_time = state.ego_state.timestamp_in_sec
         expected_state_vec: CartesianExtendedState = self._last_trajectory.sample(np.array([current_time]))[0]
-        expected_ego_state = state.s_EgoState.clone_from_cartesian_state(expected_state_vec, state.s_EgoState.timestamp_in_sec)
+        expected_ego_state = state.ego_state.clone_from_cartesian_state(expected_state_vec, state.ego_state.timestamp_in_sec)
 
         updated_state = state.clone_with(ego_state=expected_ego_state)
 

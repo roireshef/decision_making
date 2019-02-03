@@ -125,8 +125,8 @@ def main():
         state_msg = ClassSerializer.convert_message_to_dict(state_module_states[state_message_index])
         # Deserialize from dict to object
         state = ClassSerializer.deserialize(class_type=State, message=state_msg)  # type: State
-        actual_v.append(state.s_EgoState.v_x)
-        ego_timestamps.append(state.s_EgoState.timestamp)
+        actual_v.append(state.ego_state.v_x)
+        ego_timestamps.append(state.ego_state.timestamp)
 
     plt.plot(ego_timestamps, actual_v, '-b')
     plt.show()

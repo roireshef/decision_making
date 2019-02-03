@@ -79,12 +79,12 @@ class PlottableSigmoidBoxObstacle:
     def __init__(self, state: State, obj: DynamicObject, k: float, margin: CartesianPoint2D,
                  time_samples: np.ndarray, predictor: EgoAwarePredictor):
         # get predictions of the dynamic object in global coordinates
-        predicted_objects = predictor.predict_objects(state, [obj.e_i_ObjectID], time_samples, None)[obj.e_i_ObjectID]
+        predicted_objects = predictor.predict_objects(state, [obj.obj_id], time_samples, None)[obj.obj_id]
         poses = [obj.cartesian_state for obj in predicted_objects]
         poses[0][CURVE_YAW] = obj.yaw
         self.poses = poses
-        self.length = obj.s_Size.length
-        self.width = obj.s_Size.width
+        self.length = obj.size.length
+        self.width = obj.size.width
         self.k = k
         self.margin = margin
         self.H_inv = np.zeros((len(poses), 3, 3))

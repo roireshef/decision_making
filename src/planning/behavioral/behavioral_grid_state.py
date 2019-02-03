@@ -76,17 +76,17 @@ class BehavioralGridState(BehavioralState):
         # TODO: since this function is called also for all terminal states, consider to make a simplified version of this function
         extended_lane_frames = BehavioralGridState._create_generalized_frenet_frames(state, nav_plan)
 
-        projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.s_EgoState.cartesian_state)
+        projected_ego_fstates = {rel_lane: extended_lane_frames[rel_lane].cstate_to_fstate(state.ego_state.cartesian_state)
                                  for rel_lane in extended_lane_frames}
 
         # Dict[SemanticGridCell, List[DynamicObjectWithRoadSemantics]]
         dynamic_objects_with_road_semantics = \
-            sorted(BehavioralGridState._add_road_semantics(state.s_DynamicObjects, extended_lane_frames, projected_ego_fstates),
+            sorted(BehavioralGridState._add_road_semantics(state.dynamic_objects, extended_lane_frames, projected_ego_fstates),
                    key=lambda rel_obj: abs(rel_obj.longitudinal_distance))
 
         multi_object_grid = BehavioralGridState._project_objects_on_grid(dynamic_objects_with_road_semantics,
-                                                                         state.s_EgoState)
-        return cls(multi_object_grid, state.s_EgoState, extended_lane_frames, projected_ego_fstates)
+                                                                         state.ego_state)
+        return cls(multi_object_grid, state.ego_state, extended_lane_frames, projected_ego_fstates)
 
     @staticmethod
     @prof.ProfileFunction()
@@ -179,10 +179,10 @@ class BehavioralGridState(BehavioralState):
         :return: dictionary from RelativeLane to GeneralizedFrenetSerretFrame
         """
         # calculate unified generalized frenet frames
-        ego_lane_id = state.s_EgoState.map_state.lane_id
+        ego_lane_id = state.ego_state.map_state.lane_id
         closest_lanes_dict = MapUtils.get_closest_lane_ids(ego_lane_id)  # Dict: RelativeLane -> lane_id
         # create generalized_frames for the nearest lanes
-        suggested_ref_route_start = state.s_EgoState.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST
+        suggested_ref_route_start = state.ego_state.map_state.lane_fstate[FS_SX] - PLANNING_LOOKAHEAD_DIST
 
         # TODO: remove this hack when all unit-tests have enough margin backward
         # if there is no long enough road behind ego, set ref_route_start = 0
@@ -190,7 +190,7 @@ class BehavioralGridState(BehavioralState):
             if suggested_ref_route_start >= 0 or MapUtils.does_map_exist_backward(ego_lane_id, -suggested_ref_route_start) \
             else 0
 
-        frame_length = state.s_EgoState.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
+        frame_length = state.ego_state.map_state.lane_fstate[FS_SX] - ref_route_start + MAX_HORIZON_DISTANCE
 
         # TODO: figure out what's the best solution to deal with short/invalid lanes without crashing here.
         extended_lane_frames = {}
@@ -246,8 +246,8 @@ class BehavioralGridState(BehavioralState):
         :param ego_state: ego state for localization and size
         :return: RelativeLongitudinalPosition enum's value representing the longitudinal projection on the relative-grid
         """
-        obj_length = object.dynamic_object.s_Size.length
-        ego_length = ego_state.s_Size.length
+        obj_length = object.dynamic_object.size.length
+        ego_length = ego_state.size.length
         if object.longitudinal_distance > (obj_length / 2 + ego_length / 2 + LON_MARGIN_FROM_EGO):
             return RelativeLongitudinalPosition.FRONT
         elif object.longitudinal_distance < -(obj_length / 2 + ego_length / 2 + LON_MARGIN_FROM_EGO):

@@ -43,14 +43,14 @@ class BehavioralFacadeMock(BehavioralPlanningFacade):
         """
         try:
             state = self._get_current_state()
-            current_pos = np.array([state.s_EgoState.x, state.s_EgoState.y])
+            current_pos = np.array([state.ego_state.x, state.ego_state.y])
 
             if not self._triggered and np.all(np.abs(current_pos - self._trigger_pos) <
                                               np.array([BP_NEGLIGIBLE_DISPOSITION_LON, BP_NEGLIGIBLE_DISPOSITION_LAT])):
                 self._triggered = True
 
                 # NOTE THAT TIMESTAMP IS UPDATED HERE !
-                self._trajectory_params.e_t_Time += state.s_EgoState.timestamp_in_sec
+                self._trajectory_params.e_t_Time += state.ego_state.timestamp_in_sec
 
             if self._triggered:
                 self._publish_results(self._trajectory_params)
