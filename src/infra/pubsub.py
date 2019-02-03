@@ -1,21 +1,17 @@
 class PubSub:
 
-    @classmethod
+    @staticmethod
     def subscribe(cls, topic, callback):
         topic.register_cb(callback)
 
-    @classmethod
+    @staticmethod
     def get_latest_sample(cls, topic, timeout=0):
         return topic.get_latest_sample(timeout*1000)
 
-    @classmethod
+    @staticmethod
     def publish(cls, topic, data) :
         topic.send(data)
 
-    @classmethod
-    def get_latest_samples_list(cls, topic, timeout, max_list_length) :
-        pass
-
-    @classmethod
+    @staticmethod
     def unsubscribe(cls, topic) :
         topic.unregister_cb(None)

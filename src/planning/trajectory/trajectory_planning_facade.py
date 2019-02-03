@@ -3,7 +3,11 @@ import time
 import numpy as np
 import traceback
 from decision_making.src.infra.pubsub import PubSub
-from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
+from common_data.interface.Rte_Types.python.uc_system import uc_system_trajectory_plan
+from common_data.interface.Rte_Types.python.uc_system import uc_system_trajectory_params_lcm
+from common_data.interface.Rte_Types.python.uc_system import uc_system_state_lcm
+from common_data.interface.Rte_Types.python.uc_system import uc_system_scene_static
+from common_data.interface.Rte_Types.python.uc_system import uc_system_trajectory_visualization
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
@@ -53,13 +57,13 @@ class TrajectoryPlanningFacade(DmModule):
         self._last_trajectory = last_trajectory
 
     def _start_impl(self):
-        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"], None)
-        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], None)
-        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], None)
+        self.pubsub.subscribe(uc_system_trajectory_params_lcm, None)
+        self.pubsub.subscribe(uc_system_state_lcm, None)
+        self.pubsub.subscribe(uc_system_scene_static, None)
     def _stop_impl(self):
-        self.pubsub.unsubscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"])
-        self.pubsub.unsubscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"])
-        self.pubsub.unsubscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"])
+        self.pubsub.unsubscribe(uc_system_trajectory_params_lcm)
+        self.pubsub.unsubscribe(uc_system_state_lcm)
+        self.pubsub.unsubscribe(uc_system_scene_static)
 
     def _periodic_action_impl(self):
         """
@@ -187,20 +191,20 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received state.
         :return: deserialized State
         """
-        is_success, input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], timeout=1)
+        is_success, input_state = self.pubsub.get_latest_sample(topic=uc_system_state_lcm, timeout=1)
         if input_state is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"])
+                                          uc_system_state_lcm)
         object_state = State.deserialize(input_state)
         self.logger.debug('%s: %s' % (LOG_MSG_RECEIVED_STATE, object_state))
         return object_state
 
     def _get_current_scene_static(self) -> SceneStatic:
-        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], timeout=1)
+        is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=uc_system_scene_static, timeout=1)
         # TODO Move the raising of the exception to PubSub code.
         if serialized_scene_static is None:
             raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"])
+                                          uc_system_scene_static)
         scene_static = SceneStatic.deserialize(serialized_scene_static)
         self.logger.debug('%s: %f' % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static
@@ -212,19 +216,19 @@ class TrajectoryPlanningFacade(DmModule):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-        is_success, input_params = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"], timeout=1)
+        is_success, input_params = self.pubsub.get_latest_sample(topic=uc_system_trajectory_params_lcm, timeout=1)
         if input_params is None:
             raise MsgDeserializationError('Pubsub message queue for %s topic is empty or topic isn\'t subscribed' %
-                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS_LCM"])
+                                          uc_system_trajectory_params_lcm)
         object_params = TrajectoryParams.deserialize(input_params)
         self.logger.debug('%s: %s', LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, object_params)
         return object_params
 
     def _publish_trajectory(self, results: TrajectoryPlan) -> None:
-        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PLAN"], results.serialize())
+        self.pubsub.publish(uc_system_trajectory_plan, results.serialize())
 
     def _publish_debug(self, debug_msg: TrajectoryVisualizationMsg) -> None:
-        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_VISUALIZATION"], debug_msg.serialize())
+        self.pubsub.publish(uc_system_trajectory_visualization, debug_msg.serialize())
 
     def _get_state_with_expected_ego(self, state: State) -> State:
         """
