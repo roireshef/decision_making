@@ -9,7 +9,7 @@ from decision_making.src.planning.behavioral.evaluators.single_lane_action_spec_
     SingleLaneActionSpecEvaluator
 
 from decision_making.src.infra.pubsub import PubSub
-from common_data.interface.Rte_Types.python.Rte_Types_pubsub import PubSubMessageTypes
+from Rte_Types.python.Rte_Types_pubsub import PubSubMessageTypes
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, \
     NAVIGATION_PLANNING_NAME_FOR_LOGGING, \
     BEHAVIORAL_PLANNING_NAME_FOR_LOGGING, \

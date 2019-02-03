@@ -1,9 +1,9 @@
 import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.infra.pubsub import PubSub
-from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
-from common_data.interface.Rte_Types.python.uc_system import uc_system_scene_dynamic
-from common_data.interface.Rte_Types.python.uc_system import uc_system_state_lcm
+from Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
+from Rte_Types.python.uc_system import uc_system_scene_dynamic
+from Rte_Types.python.uc_system import uc_system_state_lcm
 from decision_making.src.exceptions import ObjectHasNegativeVelocityError
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE, \
     DEFAULT_OBJECT_Z_VALUE, VELOCITY_MINIMAL_THRESHOLD

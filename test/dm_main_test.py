@@ -1,6 +1,6 @@
 from os import getpid
 
-from common_data.interface.Rte_Types.python.Rte_Types_pubsub import PubSubMessageTypes
+from Rte_Types.python.Rte_Types_pubsub import PubSubMessageTypes
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
 
 from decision_making.src.infra.pubsub import PubSub

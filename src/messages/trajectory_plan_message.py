@@ -1,7 +1,7 @@
 import numpy as np
 
-from common_data.interface.Rte_Types.python.sub_structures import TsSYSTrajectoryPlan
-from common_data.interface.Rte_Types.python.sub_structures import TsSYSDataTrajectoryPlan
+from Rte_Types.python.sub_structures import TsSYSTrajectoryPlan
+from Rte_Types.python.sub_structures import TsSYSDataTrajectoryPlan
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL, TRAJECTORY_WAYPOINT_SIZE
 from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header
 

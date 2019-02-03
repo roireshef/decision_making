@@ -3,8 +3,8 @@ from typing import Dict
 
 import numpy as np
 
-from common_data.interface.Rte_Types.python.uc_system import uc_system_state_lcm
-from common_data.interface.Rte_Types.python.uc_system import uc_system_trajectory_params_lcm
+from Rte_Types.python.uc_system import uc_system_state_lcm
+from Rte_Types.python.uc_system import uc_system_trajectory_params_lcm
 from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.messages.class_serialization import ClassSerializer
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams

@@ -1,4 +1,4 @@
-from common_data.interface.Rte_Types.python.sub_structures.LcmMapState import LcmMapState
+from Rte_Types.python.sub_structures.LcmMapState import LcmMapState
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import FrenetState2D, FS_SX, FS_DX

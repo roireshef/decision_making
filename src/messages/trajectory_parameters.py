@@ -1,9 +1,9 @@
 import numpy as np
 
-from common_data.interface.Rte_Types.python.sub_structures import LcmTrajectoryParameters
-from common_data.interface.Rte_Types.python.sub_structures.LcmSigmoidFunctionParams import \
+from Rte_Types.python.sub_structures import LcmTrajectoryParameters
+from Rte_Types.python.sub_structures.LcmSigmoidFunctionParams import \
     LcmSigmoidFunctionParams
-from common_data.interface.Rte_Types.python.sub_structures.LcmTrajectoryCostParams import \
+from Rte_Types.python.sub_structures.LcmTrajectoryCostParams import \
     LcmTrajectoryCostParams
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.trajectory.trajectory_planning_strategy import TrajectoryPlanningStrategy

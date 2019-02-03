@@ -3,7 +3,7 @@ from typing import List
 import numpy as np
 import numpy_indexed as npi
 
-from common_data.interface.Rte_Types.python.sub_structures import LcmFrenetSubsegment, LcmGeneralizedFrenetSerretFrame
+from Rte_Types.python.sub_structures import LcmFrenetSubsegment, LcmGeneralizedFrenetSerretFrame
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
