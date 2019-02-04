@@ -24,6 +24,7 @@ from mapping.src.service.map_service import MapService
 from rte.python.logger.AV_logger import AV_Logger
 from rte.python.os import catch_interrupt_signals
 from decision_making.test.planning.route.route_plan_subscriber import RoutePlanSubscriber
+from decision_making.test.planning.route.scene_static_publisher import SceneStaticPublisher
 
 DEFAULT_MAP_FILE = Paths.get_repo_path() + '/../common_data/maps/PG_split.bin'
 
@@ -55,16 +56,16 @@ class DmInitialization:
         route_planning_module = RoutePlanningFacade(pubsub=pubsub, logger=logger, route_planner=planner)
         return route_planning_module
 
-    #@staticmethod
-    #def create_sceneStatic_publisher(map_file: str=DEFAULT_MAP_FILE) -> SceneStaticPublisher:
-    #    logger = AV_Logger.get_logger("SCENE_STATIC_PUBLISHER")
+    @staticmethod
+    def create_scene_static_publisher(map_file: str=DEFAULT_MAP_FILE) -> SceneStaticPublisher:
+       logger = AV_Logger.get_logger("SCENE_STATIC_PUBLISHER")
 
-    #    pubsub = PubSub()
-    #    # MapService should be initialized in each process according to the given map_file
-    #    MapService.initialize(map_file)
+       pubsub = PubSub()
+       # MapService should be initialized in each process according to the given map_file
+       MapService.initialize(map_file)
 
-    #    scene_publisher_module = SceneStaticPublisher(pubsub=pubsub, logger=logger)
-    #    return scene_publisher_module
+       scene_static_publisher_module = SceneStaticPublisher(pubsub=pubsub, logger=logger)
+       return scene_static_publisher_module
 
     @staticmethod
     def create_route_subscriber(map_file: str=DEFAULT_MAP_FILE) -> RoutePlanSubscriber:
@@ -85,9 +86,9 @@ def main():
 
     modules_list = \
         [
-            #DmProcess(lambda:DmInitialization.create_sceneStatic_publisher(DEFAULT_MAP_FILE),
-            #          trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
-            #          trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD})
+            DmProcess(lambda:DmInitialization.create_scene_static_publisher(DEFAULT_MAP_FILE),
+                     trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
+                     trigger_args={'period': ROUTE_PLANNING_MODULE_PERIOD}),
 
             DmProcess(lambda: DmInitialization.create_route_planner(DEFAULT_MAP_FILE),
                       trigger_type=DmTriggerType.DM_TRIGGER_PERIODIC,
@@ -107,7 +108,6 @@ def main():
         pass
     finally:
         manager.stop_modules()
-
 
 if __name__ == '__main__':
     main()
