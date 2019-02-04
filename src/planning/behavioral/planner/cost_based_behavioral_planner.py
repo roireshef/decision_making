@@ -122,7 +122,7 @@ class CostBasedBehavioralPlanner:
         goal_cstate = action_frame.fstate_to_cstate(projected_goal_fstate)
 
         # create TrajectoryParams for TP
-        trajectory_parameters = 				(reference_route=action_frame,
+        trajectory_parameters = TrajectoryParams(reference_route=action_frame,
                                                  time=action_spec.t + ego.timestamp_in_sec,
                                                  target_state=goal_cstate,
                                                  cost_params=cost_params,
