@@ -3,7 +3,7 @@ from collections import OrderedDict
 from decision_making.src.messages.scene_static_message import SceneStatic,DataSceneStaticLite,DataNavigationPlan
 from decision_making.src.messages.route_plan_message import RoutePlan,RoutePlanLaneSegment, DataRoutePlan
 
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures import TsSYS_RoutePlanLaneSegment, TsSYS_DataRoutePlan
+from common_data.interface.Rte_Types.python.sub_structures import TsSYSRoutePlanLaneSegment, TsSYSDataRoutePlan
      
 from route_planner import RoutePlanner
 from decision_making.src.messages.scene_static_enums import RoutePlanLaneSegmentAttr, LaneMappingStatusType, MapLaneDirection, \
@@ -86,7 +86,7 @@ class CostBasedRoutePlanner(RoutePlanner):
     def plan(self,RouteData:RoutePlannerInputData)->DataRoutePlan: # TODO: Set function annotaion
         """Add comments"""
         NewRoutePlan = DataRoutePlan
-        for reverseroadsegidx, (roadsegID,lanesegIDs) in reversed(enumerate(RouteData.route_lanesegments.items())):
+        for reverseroadsegidx, (roadsegID,lanesegIDs) in enumerate(reversed(RouteData.route_lanesegments.items())):
             roadsegidx = RouteData.route_lanesegments.len()-reverseroadsegidx
             for lanesegidx, lanesegID in enumerate(lanesegIDs):
                 lanesegData = RouteData.LaneSegmentDict[lanesegID]
