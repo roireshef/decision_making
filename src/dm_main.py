@@ -112,7 +112,7 @@ class DmInitialization:
 
         planner = CostBasedRoutePlanner()
 
-        route_planning_module = RoutePlanningFacade(pubsub=pubsub, logger=logger, planner=planner)
+        route_planning_module = RoutePlanningFacade(pubsub=pubsub, logger=logger, route_planner=planner)
         return route_planning_module
 
     @staticmethod
