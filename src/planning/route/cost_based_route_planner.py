@@ -17,7 +17,7 @@ class RoutePlannerInputData():
             self.LaneSegmentDict[Scene.as_scene_lane_segment[i].e_i_lane_segment_id] = \
             Scene.s_SceneStaticData.as_scene_lane_segment[i]
         for i in range(Scene.e_Cnt_num_road_segments):
-            self.RoadSegmentDict[Scene.as_scene_road_segment[i].e_Cnt_road_segment_id] = \
+            self.RoadSegmentDict[Scene.as_scene_road_segment[i].e_i_road_segment_id] = \
             Scene.s_SceneStaticData.as_scene_road_segment[i]
     pass
 
@@ -26,7 +26,7 @@ class RoutePlannerInputData():
         for road_seg in range(self.route_roadsegments):
             lane_seg = []
             for j in range(self.RoadSegmentDict[road_seg].e_Cnt_lane_segment_id_count):
-                lane_seg.append(self.RoadSegmentDict[road_seg].a_Cnt_lane_segment_id[j])
+                lane_seg.append(self.RoadSegmentDict[road_seg].a_i_lane_segment_id[j])
             self.RoadSegmentDict[road_seg]=lane_seg
 
     def __init__(self,Scene:DataSceneStaticLite,Nav:DataNavigationPlan):
@@ -112,9 +112,9 @@ class DualCostRoutePlanner(RoutePlanner):
                 # Calculate lane occupancy costs
                 # -------------------------------------------
                 for Idx in range(lanesegData.e_Cnt_num_active_lane_attributes):
-                    LaneAttrIdx = lanesegData.e_i_active_lane_attribute_indices[Idx]
-                    LaneAttr = lanesegData.e_cmp_lane_attributes[LaneAttrIdx]
-                    LaneAttrConf = lanesegData.e_cmp_lane_attribute_confidences[LaneAttrIdx]
+                    LaneAttrIdx = lanesegData.a_i_active_lane_attribute_indices[Idx]
+                    LaneAttr = lanesegData.a_cmp_lane_attributes[LaneAttrIdx]
+                    LaneAttrConf = lanesegData.a_cmp_lane_attribute_confidences[LaneAttrIdx]
                     if (LaneAttrConf<0.7):
                         continue
                     LaneOccCost = LaneOccCost + CostBasedRoutePlanner.LaneAttrBsdOccCost(LaneAttrIdx,LaneAttr)
