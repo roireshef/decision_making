@@ -1,4 +1,4 @@
-from Rte_Types.python.sub_structures import TsSYSTimestamp, TsSYSMapOrigin, TsSYSHeader
+from common_data.interface.Rte_Types.python.sub_structures import TsSYSTimestamp, TsSYSMapOrigin, TsSYSHeader
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 
 

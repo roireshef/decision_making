@@ -6,7 +6,7 @@ import pytest
 from multiprocessing import Process
 from unittest.mock import MagicMock
 from decision_making.src.infra.pubsub import PubSub
-from Rte_Types.python.uc_system import uc_system_trajectory_plan
+from common_data.interface.Rte_Types.python.uc_system import uc_system_trajectory_plan
 from decision_making.paths import Paths
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.test.bench import dm_main_trajectory_bench

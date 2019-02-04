@@ -1,6 +1,6 @@
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.state.state import State
-from Rte_Types.python.sub_structures import LcmStateVisualizationMsg
+from common_data.interface.Rte_Types.python.sub_structures import LcmStateVisualizationMsg
 
 
 class StateVisualizationMsg(PUBSUB_MSG_IMPL):

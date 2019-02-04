@@ -1,9 +1,9 @@
 from unittest.mock import MagicMock, patch
 
 from decision_making.src.infra.pubsub import PubSub
-from Rte_Types.python.uc_system import uc_system_trajectory_plan
-from Rte_Types.python.uc_system import uc_system_scene_static
-from Rte_Types.python.uc_system import uc_system_trajectory_params_lcm
+from common_data.interface.Rte_Types.python.uc_system import uc_system_trajectory_plan
+from common_data.interface.Rte_Types.python.uc_system import uc_system_scene_static
+from common_data.interface.Rte_Types.python.uc_system import uc_system_trajectory_params_lcm
 
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.scene_static_message import SceneStatic

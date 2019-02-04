@@ -2,9 +2,9 @@ from typing import List
 
 import numpy as np
 
-from Rte_Types.python.sub_structures import TsSYSTrajectoryVisualization
-from Rte_Types.python.sub_structures import TsSYSDataTrajectoryVisualization
-from Rte_Types.python.sub_structures import TsSYSPredictionsVisualization
+from common_data.interface.Rte_Types.python.sub_structures import TsSYSTrajectoryVisualization
+from common_data.interface.Rte_Types.python.sub_structures import TsSYSDataTrajectoryVisualization
+from common_data.interface.Rte_Types.python.sub_structures import TsSYSPredictionsVisualization
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Header
 

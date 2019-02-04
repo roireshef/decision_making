@@ -4,11 +4,11 @@ from logging import Logger
 
 import numpy as np
 
-from Rte_Types.python.uc_system import uc_system_state_lcm
-from Rte_Types.python.uc_system import uc_system_navigation_plan_lcm
-from Rte_Types.python.uc_system import uc_system_scene_static
-from Rte_Types.python.uc_system import uc_system_trajectory_params_lcm
-from Rte_Types.python.uc_system import uc_system_visualization_lcm
+from common_data.interface.Rte_Types.python.uc_system import uc_system_state_lcm
+from common_data.interface.Rte_Types.python.uc_system import uc_system_navigation_plan_lcm
+from common_data.interface.Rte_Types.python.uc_system import uc_system_scene_static
+from common_data.interface.Rte_Types.python.uc_system import uc_system_trajectory_params_lcm
+from common_data.interface.Rte_Types.python.uc_system import uc_system_visualization_lcm
 
 from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException

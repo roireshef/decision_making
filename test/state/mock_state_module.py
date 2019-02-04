@@ -1,7 +1,7 @@
 from logging import Logger
 
 from decision_making.src.infra.pubsub import PubSub
-from Rte_Types.python.uc_system import uc_system_state_lcm
+from common_data.interface.Rte_Types.python.uc_system import uc_system_state_lcm
 from decision_making.src.state.state import State
 from decision_making.src.state.state_module import StateModule
 

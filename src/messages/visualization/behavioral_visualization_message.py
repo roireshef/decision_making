@@ -1,6 +1,6 @@
 import numpy as np
 
-from Rte_Types.python.sub_structures import LcmBehavioralVisualizationMsg
+from common_data.interface.Rte_Types.python.sub_structures import LcmBehavioralVisualizationMsg
 from common_data.interface.py.utils.serialization_utils import SerializationUtils
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.planning.types import CartesianPath2D

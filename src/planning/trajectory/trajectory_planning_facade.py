@@ -3,11 +3,11 @@ import time
 import numpy as np
 import traceback
 from decision_making.src.infra.pubsub import PubSub
-from Rte_Types.python.uc_system import uc_system_trajectory_plan
-from Rte_Types.python.uc_system import uc_system_trajectory_params_lcm
-from Rte_Types.python.uc_system import uc_system_state_lcm
-from Rte_Types.python.uc_system import uc_system_scene_static
-from Rte_Types.python.uc_system import uc_system_trajectory_visualization
+from common_data.interface.Rte_Types.python.uc_system import uc_system_trajectory_plan
+from common_data.interface.Rte_Types.python.uc_system import uc_system_trajectory_params_lcm
+from common_data.interface.Rte_Types.python.uc_system import uc_system_state_lcm
+from common_data.interface.Rte_Types.python.uc_system import uc_system_scene_static
+from common_data.interface.Rte_Types.python.uc_system import uc_system_trajectory_visualization
 from decision_making.src.exceptions import MsgDeserializationError, NoValidTrajectoriesFound
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, TRAJECTORY_NUM_POINTS, \
     LOG_MSG_TRAJECTORY_PLANNER_MISSION_PARAMS, LOG_MSG_RECEIVED_STATE, \
