@@ -1,9 +1,10 @@
 import numpy as np
 from typing import List
 
-from common_data.interface.py.idl_generated_files.Rte_Types.TsSYS_RoutePlan import TsSYSRoutePlan
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_DataRoutePlan import TsSYSDataRoutePlan
-from common_data.interface.py.idl_generated_files.Rte_Types.sub_structures.TsSYS_RoutePlanLaneSegment import TsSYSRoutePlanLaneSegment
+from common_data.interface.Rte_Types.python.sub_structures import (
+    TsSYSRoutePlan,
+    TsSYSDataRoutePlan,
+    TsSYSRoutePlanLaneSegment)
 
 from decision_making.src.messages.scene_common_messages import Header
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL

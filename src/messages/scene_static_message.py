@@ -84,10 +84,10 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
         pubsub_msg.e_e_road_segment_type = self.e_e_road_segment_type.value
 
         pubsub_msg.e_Cnt_upstream_segment_count = self.e_Cnt_upstream_segment_count
-        pubsub_msg.a_i_upstream_road_segment_id = self.a_i_upstream_road_segment_ids
+        pubsub_msg.a_i_upstream_road_segment_ids = self.a_i_upstream_road_segment_ids
 
         pubsub_msg.e_Cnt_downstream_segment_count = self.e_Cnt_downstream_segment_count
-        pubsub_msg.a_i_downstream_road_segment_id = self.a_i_downstream_road_segment_ids
+        pubsub_msg.a_i_downstream_road_segment_ids = self.a_i_downstream_road_segment_ids
 
         return pubsub_msg
 
@@ -96,12 +96,12 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
         return cls(pubsubMsg.e_i_road_segment_id,
                    pubsubMsg.e_i_road_id,
                    pubsubMsg.e_Cnt_lane_segment_id_count,
-                   pubsubMsg.a_i_lane_segment_id[:pubsubMsg.e_Cnt_lane_segment_id_count],
+                   pubsubMsg.a_i_lane_segment_ids[:pubsubMsg.e_Cnt_lane_segment_id_count],
                    MapRoadSegmentType(pubsubMsg.e_e_road_segment_type),
                    pubsubMsg.e_Cnt_upstream_segment_count,
-                   pubsubMsg.a_i_upstream_road_segment_id[:pubsubMsg.e_Cnt_upstream_segment_count],
+                   pubsubMsg.a_i_upstream_road_segment_ids[:pubsubMsg.e_Cnt_upstream_segment_count],
                    pubsubMsg.e_Cnt_downstream_segment_count,
-                   pubsubMsg.a_i_downstream_road_segment_id[:pubsubMsg.e_Cnt_downstream_segment_count])
+                   pubsubMsg.a_i_downstream_road_segment_ids[:pubsubMsg.e_Cnt_downstream_segment_count])
 
 
 class SceneRoadIntersection(PUBSUB_MSG_IMPL):
@@ -782,8 +782,8 @@ class DataSceneStaticLite(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg: TsSYSDataSceneStaticLite):
 
         lane_segments = list()
-        for i in range(pubsubMsg.e_Cnt_num_lane_segments_lite):
-            lane_segments.append(SceneLaneSegmentLite.deserialize(pubsubMsg.as_scene_lane_segments_lite[i]))
+        for i in range(pubsubMsg.e_Cnt_num_lane_segments):
+            lane_segments.append(SceneLaneSegmentLite.deserialize(pubsubMsg.as_scene_lane_segments[i]))
 
         road_intersections = list()
         for i in range(pubsubMsg.e_Cnt_num_road_intersections):
