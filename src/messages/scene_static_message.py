@@ -1,5 +1,4 @@
 from typing import List
-
 import numpy as np
 
 from common_data.interface.Rte_Types.python.sub_structures import (
@@ -13,7 +12,8 @@ from common_data.interface.Rte_Types.python.sub_structures import (
     TsSYSLaneSegmentConnectivity,
     TsSYSSceneLaneSegmentLite,
     TsSYSDataNavigationPlan,
-    TsSYSDataSceneStaticGeometry)
+    TsSYSDataSceneStaticGeometry,
+    TsSYSDataSceneStaticLite)
 from common_data.interface.Rte_Types.python.sub_structures import TsSYSSceneStatic
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataSceneStatic import \
     TsSYSDataSceneStatic
@@ -751,8 +751,8 @@ class DataSceneStaticLite(PUBSUB_MSG_IMPL):
         self.e_Cnt_num_road_segments = e_Cnt_num_road_segments
         self.as_scene_road_segment = as_scene_road_segment
 
-    def serialize(self) -> TsSYSDataSceneStatic:
-        pubsub_msg = TsSYSDataSceneStatic()
+    def serialize(self) -> TsSYSDataSceneStaticLite:
+        pubsub_msg = TsSYSDataSceneStaticLite()
 
         pubsub_msg.e_b_Valid = self.e_b_Valid
         pubsub_msg.s_RecvTimestamp = self.s_RecvTimestamp.serialize()
@@ -775,7 +775,7 @@ class DataSceneStaticLite(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg: TsSYSDataSceneStatic):
+    def deserialize(cls, pubsubMsg: TsSYSDataSceneStaticLite):
 
         lane_segments = list()
         for i in range(pubsubMsg.e_Cnt_num_lane_segments_lite):
