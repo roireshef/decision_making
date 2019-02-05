@@ -1,7 +1,7 @@
 from traceback import format_exc
 from logging import Logger
 from time import time
-from numpy import zeros, ones
+from numpy import zeros, ones, array
 from typing import List
 
 from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
@@ -130,19 +130,20 @@ class SceneStaticPublisher(DmModule):
 
         for i in range(len(road_segment_ids)):
             for j in range(len(lane_segment_ids[0])):
-                if i == len(road_segment_ids):
+                if i == len(road_segment_ids) - 1:
                     downstream_lane_count = 0
                     downstream_lanes = self._generate_lane_segment_connectivity()
                 else:
                     downstream_lane_count = 1
-                    downstream_lanes = lane_segment_ids[i+1][j]
+                    downstream_lanes = [LaneSegmentConnectivity(e_i_lane_segment_id=lane_segment_ids[i+1][j],
+                                                                e_e_maneuver_type=ManeuverType.STRAIGHT_CONNECTION)]
 
                 num_active_lane_attributes = 4
                 active_lane_attribute_indices = [0, 1, 2, 3]
-                lane_attributes = [LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap,
-                                   GMAuthorityType.CeSYS_e_GMAuthorityType_None,
-                                   LaneConstructionType.CeSYS_e_LaneConstructionType_Normal,
-                                   MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle]
+                lane_attributes = [LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
+                                   GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
+                                   LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
+                                   MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value]
                 lane_attribute_confidences = ones(4)
                 
                 lane_segment_lite.append(SceneLaneSegmentLite(e_i_lane_segment_id=lane_segment_ids[i][j],
@@ -185,7 +186,7 @@ class SceneStaticPublisher(DmModule):
         return [SceneRoadSegment(e_i_road_segment_id=road_segment_ids[i],
                                  e_i_road_id=1,
                                  e_Cnt_lane_segment_id_count=len(lane_segment_ids),
-                                 a_i_lane_segment_ids=lane_segment_ids[i][j],
+                                 a_i_lane_segment_ids=array([lane_segment_ids[i][j]]),
                                  e_e_road_segment_type=MapRoadSegmentType.Normal,
                                  e_Cnt_upstream_segment_count=0,
                                  a_i_upstream_road_segment_ids=0,
