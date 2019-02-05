@@ -786,8 +786,8 @@ class DataSceneStaticLite(PUBSUB_MSG_IMPL):
     def deserialize(cls, pubsubMsg: TsSYSDataSceneStaticLite):
 
         lane_segments = list()
-        for i in range(pubsubMsg.e_Cnt_num_lane_segments_lite):
-            lane_segments.append(SceneLaneSegmentLite.deserialize(pubsubMsg.as_scene_lane_segments_lite[i]))
+        for i in range(pubsubMsg.e_Cnt_num_lane_segments):
+            lane_segments.append(SceneLaneSegmentLite.deserialize(pubsubMsg.as_scene_lane_segments[i]))
 
         road_intersections = list()
         for i in range(pubsubMsg.e_Cnt_num_road_intersections):

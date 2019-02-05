@@ -189,9 +189,9 @@ class SceneStaticPublisher(DmModule):
                                  a_i_lane_segment_ids=array([lane_segment_ids[i][j]]),
                                  e_e_road_segment_type=MapRoadSegmentType.Normal,
                                  e_Cnt_upstream_segment_count=0,
-                                 a_i_upstream_road_segment_ids=0,
+                                 a_i_upstream_road_segment_ids=array([0]),
                                  e_Cnt_downstream_segment_count=0,
-                                 a_i_downstream_road_segment_ids=0) \
+                                 a_i_downstream_road_segment_ids=array([0])) \
                 for i in range(len(road_segment_ids)) for j in range(len(lane_segment_ids[0]))]
     
     def _generate_road_intersections(self, num_intersections: int = 1) -> List[SceneRoadIntersection]:
