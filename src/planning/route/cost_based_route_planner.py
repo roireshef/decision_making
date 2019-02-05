@@ -14,8 +14,8 @@ class RoutePlannerInputData():
 
     def Update_DictData(self,Scene:DataSceneStaticLite):
         for i in range(Scene.e_Cnt_num_lane_segments):
-            self.LaneSegmentDict[Scene.as_scene_lane_segment[i].e_i_lane_segment_id] = \
-            Scene.s_SceneStaticData.as_scene_lane_segment[i]
+            self.LaneSegmentDict[Scene.as_scene_lane_segments[i].e_i_lane_segment_id] = \
+            Scene.s_SceneStaticData.as_scene_lane_segments[i]
         for i in range(Scene.e_Cnt_num_road_segments):
             self.RoadSegmentDict[Scene.as_scene_road_segment[i].e_i_road_segment_id] = \
             Scene.s_SceneStaticData.as_scene_road_segment[i]

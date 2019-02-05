@@ -450,25 +450,25 @@ class DataSceneStaticGeometry(PUBSUB_MSG_IMPL):
     e_b_Valid = bool
     s_RecvTimestamp = Timestamp
     s_ComputeTimestamp = Timestamp
-    e_Cnt_num_lane_segments_geometry = int
-    as_scene_lane_segment_geometry = List[SceneLaneSegmentGeometry]
+    e_Cnt_num_lane_segments = int
+    as_scene_lane_segments = List[SceneLaneSegmentGeometry]
 
 
     def __init__(self, e_b_Valid: bool, s_RecvTimestamp:Timestamp, s_ComputeTimestamp: Timestamp,
-                 e_Cnt_num_lane_segments_geometry: int, as_scene_lane_segment_geometry: List[SceneLaneSegmentGeometry]):
+                 e_Cnt_num_lane_segments: int, as_scene_lane_segments: List[SceneLaneSegmentGeometry]):
         """
         Scene provider's static scene information
         :param e_b_Valid:
         :param s_ComputeTimestamp:
-        :param e_Cnt_num_lane_segments_geometry: Total number of lane-segments(geometry) in the static scene
-        :param as_scene_lane_segment_geometry: All lane-segments(geometry) in the static scene
+        :param e_Cnt_num_lane_segments: Total number of lane-segments(geometry) in the static scene
+        :param as_scene_lane_segments: All lane-segments(geometry) in the static scene
 
         """
         self.e_b_Valid = e_b_Valid
         self.s_RecvTimestamp = s_RecvTimestamp
         self.s_ComputeTimestamp = s_ComputeTimestamp
-        self.e_Cnt_num_lane_segments_geometry = e_Cnt_num_lane_segments_geometry
-        self.as_scene_lane_segment_geometry = as_scene_lane_segment_geometry
+        self.e_Cnt_num_lane_segments = e_Cnt_num_lane_segments
+        self.as_scene_lane_segments = as_scene_lane_segments
 
     def serialize(self) -> TsSYSDataSceneStatic:
         pubsub_msg = TsSYSDataSceneStatic()
@@ -479,7 +479,7 @@ class DataSceneStaticGeometry(PUBSUB_MSG_IMPL):
 
         pubsub_msg.e_Cnt_num_lane_segments = self.e_Cnt_num_lane_segments
         for i in range(pubsub_msg.e_Cnt_num_lane_segments):
-            pubsub_msg.as_scene_lane_segment[i] = self.as_scene_lane_segment[i].serialize()
+            pubsub_msg.as_scene_lane_segments[i] = self.as_scene_lane_segments[i].serialize()
 
         return pubsub_msg
 
@@ -488,7 +488,7 @@ class DataSceneStaticGeometry(PUBSUB_MSG_IMPL):
 
         lane_segments_geometry = list()
         for i in range(pubsubMsg.e_Cnt_num_lane_segments):
-            lane_segments_geometry.append(SceneLaneSegmentGeometry.deserialize(pubsubMsg.as_scene_lane_segment_geometry[i]))
+            lane_segments_geometry.append(SceneLaneSegmentGeometry.deserialize(pubsubMsg.as_scene_lane_segments[i]))
 
 
         return cls(pubsubMsg.e_b_Valid, Timestamp.deserialize(pubsubMsg.s_RecvTimestamp),
@@ -723,7 +723,7 @@ class DataSceneStaticLite(PUBSUB_MSG_IMPL):
     e_l_perception_horizon_front = float
     e_l_perception_horizon_rear = float
     e_Cnt_num_lane_segments = int
-    as_scene_lane_segment = List[SceneLaneSegmentLite]
+    as_scene_lane_segments = List[SceneLaneSegmentLite]
     e_Cnt_num_road_intersections = int
     as_scene_road_intersection = List[SceneRoadIntersection]
     e_Cnt_num_road_segments = int
@@ -731,7 +731,7 @@ class DataSceneStaticLite(PUBSUB_MSG_IMPL):
 
     def __init__(self, e_b_Valid: bool, s_RecvTimestamp:Timestamp, s_ComputeTimestamp: Timestamp, e_l_perception_horizon_front: float,
                  e_l_perception_horizon_rear: float,
-                 e_Cnt_num_lane_segments: int, as_scene_lane_segment: List[SceneLaneSegmentLite],
+                 e_Cnt_num_lane_segments: int, as_scene_lane_segments: List[SceneLaneSegmentLite],
                  e_Cnt_num_road_intersections: int, as_scene_road_intersection: List[SceneRoadIntersection],
                  e_Cnt_num_road_segments: int, as_scene_road_segment: List[SceneRoadSegment]):
         """
@@ -741,7 +741,7 @@ class DataSceneStaticLite(PUBSUB_MSG_IMPL):
         :param e_l_perception_horizon_front: (Not relevant for M0)
         :param e_l_perception_horizon_rear: (Not relevant for M0)
         :param e_Cnt_num_lane_segments: Total number of lane-segments in the static scene
-        :param as_scene_lane_segment: All lane-segments in the static scene
+        :param as_scene_lane_segments: All lane-segments in the static scene
         :param e_Cnt_num_road_intersections: Total number of road-intersections in the static scene
         :param as_scene_road_intersection: All road-intersections in the static scene
         :param e_Cnt_num_road_segments: Total number of road-segments in the static scene
@@ -753,7 +753,7 @@ class DataSceneStaticLite(PUBSUB_MSG_IMPL):
         self.e_l_perception_horizon_front = e_l_perception_horizon_front
         self.e_l_perception_horizon_rear = e_l_perception_horizon_rear
         self.e_Cnt_num_lane_segments = e_Cnt_num_lane_segments
-        self.as_scene_lane_segment = as_scene_lane_segment
+        self.as_scene_lane_segments = as_scene_lane_segments
         self.e_Cnt_num_road_intersections = e_Cnt_num_road_intersections
         self.as_scene_road_intersection = as_scene_road_intersection
         self.e_Cnt_num_road_segments = e_Cnt_num_road_segments
@@ -770,7 +770,7 @@ class DataSceneStaticLite(PUBSUB_MSG_IMPL):
 
         pubsub_msg.e_Cnt_num_lane_segments = self.e_Cnt_num_lane_segments
         for i in range(pubsub_msg.e_Cnt_num_lane_segments):
-            pubsub_msg.as_scene_lane_segment[i] = self.as_scene_lane_segment[i].serialize()
+            pubsub_msg.as_scene_lane_segments[i] = self.as_scene_lane_segments[i].serialize()
 
         pubsub_msg.e_Cnt_num_road_intersections = self.e_Cnt_num_road_intersections
         for i in range(pubsub_msg.e_Cnt_num_road_intersections):
