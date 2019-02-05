@@ -6,7 +6,7 @@ import pytest
 from multiprocessing import Process
 from unittest.mock import MagicMock
 from decision_making.src.infra.pubsub import PubSub
-from common_data.interface.Rte_Types.python.uc_system import uc_system_trajectory_plan
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PLAN
 from decision_making.paths import Paths
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
 from decision_making.test.bench import dm_main_trajectory_bench
@@ -32,7 +32,7 @@ test_fixed_trajectory_file = Paths.get_resource_absolute_path_filename(
 #     #create pubsub and subscribe a magic mock to the perceived localization topic
 #     pubsub = PubSub()
 #     receive_output_mock = MagicMock()
-#     pubsub.subscribe(uc_system_trajectory_plan, receive_output_mock)
+#     pubsub.subscribe(UC_SYSTEM_TRAJECTORY_PLAN, receive_output_mock)
 #
 #     #load dm_main_trajectory_bench with the test trajectory file and wait for it to load
 #     dm_main_process = Process(target=dm_main_trajectory_bench.main, name='traj_bench_test',

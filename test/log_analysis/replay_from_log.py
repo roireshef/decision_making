@@ -3,8 +3,8 @@ from typing import Dict
 
 import numpy as np
 
-from common_data.interface.Rte_Types.python.uc_system import uc_system_state_lcm
-from common_data.interface.Rte_Types.python.uc_system import uc_system_trajectory_params_lcm
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_TRAJECTORY_PARAMS_LCM
 from decision_making.src.global_constants import TRAJECTORY_PLANNING_NAME_FOR_LOGGING
 from decision_making.src.messages.class_serialization import ClassSerializer
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
@@ -34,7 +34,7 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         then we will output the last received state.
         :return: deserialized State
         """
-        input_state = self.pubsub.get_latest_sample(topic=uc_system_state_lcm, timeout=1)
+        input_state = self.pubsub.get_latest_sample(topic=UC_SYSTEM_STATE_LCM, timeout=1)
         object_state = ClassSerializer.deserialize(class_type=State, message=input_state)
         return object_state
 
@@ -45,7 +45,7 @@ class TrajectoryPlanningFacadeNoLcm(TrajectoryPlanningFacade):
         then we will output the last received trajectory parameters.
         :return: deserialized trajectory parameters
         """
-        input_params = self.pubsub.get_latest_sample(topic=uc_system_trajectory_params_lcm, timeout=1)
+        input_params = self.pubsub.get_latest_sample(topic=UC_SYSTEM_TRAJECTORY_PARAMS_LCM, timeout=1)
         object_params = ClassSerializer.deserialize(class_type=TrajectoryParams, message=input_params)
         return object_params
 
@@ -62,8 +62,8 @@ def execute_tp(state_serialized: Dict, tp_params_serialized: Dict) -> None:
     pubsub = PubSubMock(logger=AV_Logger.get_logger(LCM_PUB_SUB_MOCK_NAME_FOR_LOGGING))
 
     # Publish messages using pubsub mock
-    pubsub.publish(uc_system_state_lcm, state_serialized)
-    pubsub.publish(uc_system_trajectory_params_lcm, tp_params_serialized)
+    pubsub.publish(UC_SYSTEM_STATE_LCM, state_serialized)
+    pubsub.publish(UC_SYSTEM_TRAJECTORY_PARAMS_LCM, tp_params_serialized)
 
     # Initialize TP
     logger = AV_Logger.get_logger(TRAJECTORY_PLANNING_NAME_FOR_LOGGING)
