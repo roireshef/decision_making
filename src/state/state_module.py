@@ -2,7 +2,7 @@ import numpy as np
 import rte.python.profiler as prof
 from decision_making.src.infra.pubsub import PubSub
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
-from common_data.interface.Rte_Types.python.uc_system.uc_system_scene_dynamic import UC_SYSTEM_SCENE_DYNAMIC
+from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_SCENE_DYNAMIC
 from common_data.interface.Rte_Types.python.uc_system import UC_SYSTEM_STATE_LCM
 from decision_making.src.exceptions import ObjectHasNegativeVelocityError
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE, \
