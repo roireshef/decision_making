@@ -12,9 +12,9 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
 
 class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
     """ Members annotations for python 2 compliant classes """
-    e_Prm_SigmoidW = float
-    e_Prm_SigmoidK = float
-    e_Prm_SigmoidOffset = float
+    w = float
+    k = float
+    offset = float
 
     def __init__(self, w: float, k: float, offset: float):
         """
@@ -23,16 +23,16 @@ class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
         :param k: considering sigmoid is: f(x) = w / (1 + exp(k * (x-offset)))
         :param offset: considering sigmoid is: f(x) = w / (1 + exp(k * (x-offset)))
         """
-        self.e_Prm_SigmoidW = w
-        self.e_Prm_SigmoidK = k
-        self.e_Prm_SigmoidOffset = offset
+        self.w = w
+        self.k = k
+        self.offset = offset
 
     def serialize(self) -> TsSYSSigmoidFunctionParams:
         pubsub_msg = TsSYSSigmoidFunctionParams()
 
-        pubsub_msg.e_Prm_SigmoidW = self.e_Prm_SigmoidW
-        pubsub_msg.e_Prm_SigmoidK = self.e_Prm_SigmoidK
-        pubsub_msg.e_Prm_SigmoidOffset = self.e_Prm_SigmoidOffset
+        pubsub_msg.e_Prm_SigmoidW = self.w
+        pubsub_msg.e_Prm_SigmoidK = self.k
+        pubsub_msg.e_Prm_SigmoidOffset = self.offset
 
         return pubsub_msg
 
@@ -44,25 +44,25 @@ class SigmoidFunctionParams(PUBSUB_MSG_IMPL):
 
 class TrajectoryCostParams(PUBSUB_MSG_IMPL):
     """ Members annotations for python 2 compliant classes """
-    s_ObstacleCostX = SigmoidFunctionParams
-    s_ObstacleCostY = SigmoidFunctionParams
-    s_LeftLaneCost = SigmoidFunctionParams
-    s_RightLaneCost = SigmoidFunctionParams
-    s_LeftShoulderCost = SigmoidFunctionParams
-    s_RightShoulderCost = SigmoidFunctionParams
-    s_LeftRoadCost = SigmoidFunctionParams
-    s_RightRoadCost = SigmoidFunctionParams
-    s_DistanceFromGoalCost = SigmoidFunctionParams
-    e_l_DistFromGoalLatFactor = float
-    e_Wt_LonJerkCostWeight = float
-    e_Wt_LatJerkCostWeight = float
-    e_v_VelocityLimits = Limits
-    e_a_LonAccelerationLimits = Limits
-    e_a_LatAccelerationLimits = Limits
+    obstacle_cost_x = SigmoidFunctionParams
+    obstacle_cost_y = SigmoidFunctionParams
+    left_lane_cost = SigmoidFunctionParams
+    right_lane_cost = SigmoidFunctionParams
+    left_shoulder_cost = SigmoidFunctionParams
+    right_shoulder_cost = SigmoidFunctionParams
+    left_road_cost = SigmoidFunctionParams
+    right_road_cost = SigmoidFunctionParams
+    dist_from_goal_cost = SigmoidFunctionParams
+    dist_from_goal_lat_factor = float
+    lon_jerk_cost_weight = float
+    lat_jerk_cost_weight = float
+    velocity_limits = Limits
+    lon_acceleration_limits = Limits
+    lat_acceleration_limits = Limits
 
     def __init__(self, obstacle_cost_x, obstacle_cost_y, left_lane_cost, right_lane_cost, left_shoulder_cost,
                  right_shoulder_cost, left_road_cost, right_road_cost, dist_from_goal_cost, dist_from_goal_lat_factor,
-                 lon_jerk_cost, lat_jerk_cost,
+                 lon_jerk_cost_weight, lat_jerk_cost_weight,
                  velocity_limits, lon_acceleration_limits, lat_acceleration_limits):
         # type:(SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,SigmoidFunctionParams,float,float,float,Limits,Limits,Limits)->None
         """
@@ -86,47 +86,47 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
         :param right_road_cost: defines the sigmoid cost of the right-side of the road
         :param dist_from_goal_cost: cost of distance from the target is a sigmoid.
         :param dist_from_goal_lat_factor: Weight of latitude vs. longitude in the dist from goal cost.
-        :param lon_jerk_cost: longitudinal jerk cost
-        :param lat_jerk_cost: lateral jerk cost
+        :param lon_jerk_cost_weight: longitudinal jerk cost
+        :param lat_jerk_cost_weight: lateral jerk cost
         :param velocity_limits: Limits of allowed velocity in [m/sec]
         :param lon_acceleration_limits: Limits of allowed longitudinal acceleration in [m/sec^2]
         :param lat_acceleration_limits: Limits of allowed signed lateral acceleration in [m/sec^2]
         """
-        self.s_ObstacleCostX = obstacle_cost_x
-        self.s_ObstacleCostY = obstacle_cost_y
-        self.s_LeftLaneCost = left_lane_cost
-        self.s_RightLaneCost = right_lane_cost
-        self.s_LeftShoulderCost = left_shoulder_cost
-        self.s_RightShoulderCost = right_shoulder_cost
-        self.s_LeftRoadCost = left_road_cost
-        self.s_RightRoadCost = right_road_cost
-        self.s_DistanceFromGoalCost = dist_from_goal_cost
-        self.e_l_DistFromGoalLatFactor = dist_from_goal_lat_factor
-        self.e_Wt_LonJerkCostWeight = lon_jerk_cost
-        self.e_Wt_LatJerkCostWeight = lat_jerk_cost
-        self.e_v_VelocityLimits = velocity_limits
-        self.e_a_LonAccelerationLimits = lon_acceleration_limits
-        self.e_a_LatAccelerationLimits = lat_acceleration_limits
+        self.obstacle_cost_x = obstacle_cost_x
+        self.obstacle_cost_y = obstacle_cost_y
+        self.left_lane_cost = left_lane_cost
+        self.right_lane_cost = right_lane_cost
+        self.left_shoulder_cost = left_shoulder_cost
+        self.right_shoulder_cost = right_shoulder_cost
+        self.left_road_cost = left_road_cost
+        self.right_road_cost = right_road_cost
+        self.dist_from_goal_cost = dist_from_goal_cost
+        self.dist_from_goal_lat_factor = dist_from_goal_lat_factor
+        self.lon_jerk_cost_weight = lon_jerk_cost_weight
+        self.lat_jerk_cost_weight = lat_jerk_cost_weight
+        self.velocity_limits = velocity_limits
+        self.lon_acceleration_limits = lon_acceleration_limits
+        self.lat_acceleration_limits = lat_acceleration_limits
 
     def serialize(self):
         # type: ()-> TsSYSTrajectoryCostParams
         pubsub_msg = TsSYSTrajectoryCostParams()
 
-        pubsub_msg.s_ObstacleCostX = self.s_ObstacleCostX.serialize()
-        pubsub_msg.s_ObstacleCostY = self.s_ObstacleCostY.serialize()
-        pubsub_msg.s_LeftLaneCost = self.s_LeftLaneCost.serialize()
-        pubsub_msg.s_RightLaneCost = self.s_RightLaneCost.serialize()
-        pubsub_msg.s_LeftShoulderCost = self.s_LeftShoulderCost.serialize()
-        pubsub_msg.s_RightShoulderCost = self.s_RightShoulderCost.serialize()
-        pubsub_msg.s_LeftRoadCost = self.s_LeftRoadCost.serialize()
-        pubsub_msg.s_RightRoadCost = self.s_RightRoadCost.serialize()
-        pubsub_msg.s_DistanceFromGoalCost = self.s_DistanceFromGoalCost.serialize()
-        pubsub_msg.e_l_DistFromGoalLatFactor = self.e_l_DistFromGoalLatFactor
-        pubsub_msg.e_Wt_LonJerkCostWeight = self.e_Wt_LonJerkCostWeight
-        pubsub_msg.e_Wt_LatJerkCostWeight = self.e_Wt_LatJerkCostWeight
-        pubsub_msg.e_v_VelocityLimits = self.e_v_VelocityLimits
-        pubsub_msg.e_a_LonAccelerationLimits = self.e_a_LonAccelerationLimits
-        pubsub_msg.e_a_LatAccelerationLimits = self.e_a_LatAccelerationLimits
+        pubsub_msg.s_ObstacleCostX = self.obstacle_cost_x.serialize()
+        pubsub_msg.s_ObstacleCostY = self.obstacle_cost_y.serialize()
+        pubsub_msg.s_LeftLaneCost = self.left_lane_cost.serialize()
+        pubsub_msg.s_RightLaneCost = self.right_lane_cost.serialize()
+        pubsub_msg.s_LeftShoulderCost = self.left_shoulder_cost.serialize()
+        pubsub_msg.s_RightShoulderCost = self.right_shoulder_cost.serialize()
+        pubsub_msg.s_LeftRoadCost = self.left_road_cost.serialize()
+        pubsub_msg.s_RightRoadCost = self.right_road_cost.serialize()
+        pubsub_msg.s_DistanceFromGoalCost = self.dist_from_goal_cost.serialize()
+        pubsub_msg.e_l_DistFromGoalLatFactor = self.dist_from_goal_lat_factor
+        pubsub_msg.e_Wt_LonJerkCostWeight = self.lon_jerk_cost_weight
+        pubsub_msg.e_Wt_LatJerkCostWeight = self.lat_jerk_cost_weight
+        pubsub_msg.e_v_VelocityLimits = self.velocity_limits
+        pubsub_msg.e_a_LonAccelerationLimits = self.lon_acceleration_limits
+        pubsub_msg.e_a_LatAccelerationLimits = self.lat_acceleration_limits
 
         return pubsub_msg
 
@@ -152,14 +152,15 @@ class TrajectoryCostParams(PUBSUB_MSG_IMPL):
 
 class TrajectoryParams(PUBSUB_MSG_IMPL):
     """ Members annotations for python 2 compliant classes """
-    e_e_Strategy = TrajectoryPlanningStrategy
-    s_ReferenceRoute = GeneralizedFrenetSerretFrame
-    a_TargetState = np.ndarray
-    s_CostParams = TrajectoryCostParams
-    e_t_Time = float
+    strategy = TrajectoryPlanningStrategy
+    reference_route = GeneralizedFrenetSerretFrame
+    target_state = np.ndarray
+    cost_params = TrajectoryCostParams
+    time = int
+    bp_time = float
 
     def __init__(self, strategy, reference_route, target_state, cost_params, time, bp_time):
-        # type: (TrajectoryPlanningStrategy, GeneralizedFrenetSerretFrame, np.ndarray, TrajectoryCostParams, float)->None
+        # type: (TrajectoryPlanningStrategy, GeneralizedFrenetSerretFrame, np.ndarray, TrajectoryCostParams, int, float)->None
         """
         The struct used for communicating the behavioral plan to the trajectory planner.
         :param reference_route: the frenet frame of the reference route (often the center of lane)
@@ -168,33 +169,33 @@ class TrajectoryParams(PUBSUB_MSG_IMPL):
         :param strategy: trajectory planning strategy.
         :param time: trajectory planning time-frame
         """
-        self.s_ReferenceRoute = reference_route
-        self.a_TargetState = target_state
-        self.s_CostParams = cost_params
-        self.e_e_Strategy = strategy
-        self.e_t_Time = time
-        self.e_Cnt_BPTime = bp_time
+        self.reference_route = reference_route
+        self.target_state = target_state
+        self.cost_params = cost_params
+        self.strategy = strategy
+        self.time = time
+        self.bp_time = bp_time
 
     def __str__(self):
         return str(self.to_dict(left_out_fields=['reference_route']))
 
     @property
     def desired_velocity(self):
-        return self.a_TargetState[C_V]
+        return self.target_state[C_V]
 
     def serialize(self):
         # type: ()->TsSYSTrajectoryParameters
         pubsub_msg = TsSYSTrajectoryParameters()
 
-        pubsub_msg.e_e_Strategy = self.e_e_Strategy.value
+        pubsub_msg.e_e_Strategy = self.strategy.value
 
-        pubsub_msg.s_ReferenceRoute = self.s_ReferenceRoute.serialize()
+        pubsub_msg.s_ReferenceRoute = self.reference_route.serialize()
 
-        pubsub_msg.a_TargetState = self.a_TargetState
-        pubsub_msg.s_CostParams = self.s_CostParams.serialize()
+        pubsub_msg.a_TargetState = self.target_state
+        pubsub_msg.s_CostParams = self.cost_params.serialize()
 
-        pubsub_msg.e_t_Time = self.e_t_Time
-        pubsub_msg.e_Cnt_BPTime = self.e_Cnt_BPTime
+        pubsub_msg.e_t_Time = self.time
+        pubsub_msg.e_Cnt_BPTime = self.bp_time
 
         return pubsub_msg
 

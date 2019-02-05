@@ -105,14 +105,14 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         trajectory_parameters = CostBasedBehavioralPlanner._generate_trajectory_specs(
             behavioral_state=behavioral_state, action_spec=selected_action_spec)
         visualization_message = BehavioralVisualizationMsg(
-            reference_route_points=trajectory_parameters.s_ReferenceRoute.points)
+            reference_route_points=trajectory_parameters.reference_route.points)
 
         # keeping selected actions for next iteration use
         self._last_action = action_recipes[selected_action_index]
         self._last_action_spec = selected_action_spec
 
         baseline_trajectory = CostBasedBehavioralPlanner.generate_baseline_trajectory(
-            state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters.s_ReferenceRoute,
+            state.ego_state.timestamp_in_sec, selected_action_spec, trajectory_parameters.reference_route,
             behavioral_state.projected_ego_fstates[selected_action_spec.relative_lane])
 
         self.logger.debug("Chosen behavioral action recipe %s (ego_timestamp: %.2f)",

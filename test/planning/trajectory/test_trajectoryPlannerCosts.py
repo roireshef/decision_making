@@ -65,8 +65,8 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
     A_d_inv = np.linalg.inv(QuinticPoly1D.time_constraints_tensor(T_d))
     poly_coefs_d = QuinticPoly1D.zip_solve(A_d_inv, constraints_d)
 
-    frenet_frame = MapUtils.get_lane_frenet_frame(ego.map_state.e_i_LaneID)
-    sub_segment = FrenetSubSegment(ego.map_state.e_i_LaneID, 0, frenet_frame.s_max)
+    frenet_frame = MapUtils.get_lane_frenet_frame(ego.map_state.lane_id)
+    sub_segment = FrenetSubSegment(ego.map_state.lane_id, 0, frenet_frame.s_max)
     reference_route = GeneralizedFrenetSerretFrame.build([frenet_frame], [sub_segment])
 
     # create 3 ctrajectories
@@ -89,8 +89,8 @@ def test_computeObstacleCosts_threeSRoutesOneObstacle_validScore():
     cost_params = TrajectoryCostParams(obstacle_cost_x=objects_cost_x, obstacle_cost_y=objects_cost_y,
                                        left_lane_cost=None, right_lane_cost=None, left_shoulder_cost=None,
                                        right_shoulder_cost=None, left_road_cost=None, right_road_cost=None,
-                                       dist_from_goal_cost=None, dist_from_goal_lat_factor=None, lon_jerk_cost=None,
-                                       lat_jerk_cost=None, velocity_limits=None, lon_acceleration_limits=None,
+                                       dist_from_goal_cost=None, dist_from_goal_lat_factor=None, lon_jerk_cost_weight=None,
+                                       lat_jerk_cost_weight=None, velocity_limits=None, lon_acceleration_limits=None,
                                        lat_acceleration_limits=None)
     pointwise_costs = TrajectoryPlannerCosts.compute_obstacle_costs(ctrajectories, state, cost_params, time_points,
                                                                     predictor, reference_route)

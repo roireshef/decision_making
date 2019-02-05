@@ -64,8 +64,8 @@ class WerlingPlanner(TrajectoryPlanner):
                                SX_STEPS)
 
         sv_range = np.linspace(
-            np.max((SV_OFFSET_MIN + goal_frenet_state[FS_SV], cost_params.e_v_VelocityLimits[LIMIT_MIN])),
-            np.min((SV_OFFSET_MAX + goal_frenet_state[FS_SV], cost_params.e_v_VelocityLimits[LIMIT_MAX])),
+            np.max((SV_OFFSET_MIN + goal_frenet_state[FS_SV], cost_params.velocity_limits[LIMIT_MIN])),
+            np.min((SV_OFFSET_MAX + goal_frenet_state[FS_SV], cost_params.velocity_limits[LIMIT_MAX])),
             SV_STEPS)
 
         dx_range = np.linspace(DX_OFFSET_MIN + goal_frenet_state[FS_DX],
@@ -142,11 +142,11 @@ class WerlingPlanner(TrajectoryPlanner):
                                            "goal_frenet = %s; distance from ego to goal = %f, time*approx_velocity = %f" %
                                            (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
                                             np.min(ctrajectories[:, :, C_V]), np.max(ctrajectories[:, :, C_V]),
-                                            NumpyUtils.str_log(cost_params.e_v_VelocityLimits),
+                                            NumpyUtils.str_log(cost_params.velocity_limits),
                                             np.min(ctrajectories[:, :, C_A]), np.max(ctrajectories[:, :, C_A]),
-                                            NumpyUtils.str_log(cost_params.e_a_LonAccelerationLimits),
+                                            NumpyUtils.str_log(cost_params.lon_acceleration_limits),
                                             np.min(lat_acc), np.max(lat_acc),
-                                            NumpyUtils.str_log(cost_params.e_a_LatAccelerationLimits),
+                                            NumpyUtils.str_log(cost_params.lat_acceleration_limits),
                                             len(frenet_filtered_indices), len(ftrajectories),
                                             len(cartesian_refiltered_indices), len(ctrajectories),
                                             len(refiltered_indices), len(ftrajectories),
@@ -192,9 +192,9 @@ class WerlingPlanner(TrajectoryPlanner):
         lon_velocity = ctrajectories[:, :, C_V]
 
         conforms = np.all(
-            NumpyUtils.is_in_limits(lon_velocity, cost_params.e_v_VelocityLimits) &
-            NumpyUtils.is_in_limits(lon_acceleration, cost_params.e_a_LonAccelerationLimits) &
-            NumpyUtils.is_in_limits(lat_acceleration, cost_params.e_a_LatAccelerationLimits), axis=1)
+            NumpyUtils.is_in_limits(lon_velocity, cost_params.velocity_limits) &
+            NumpyUtils.is_in_limits(lon_acceleration, cost_params.lon_acceleration_limits) &
+            NumpyUtils.is_in_limits(lat_acceleration, cost_params.lat_acceleration_limits), axis=1)
 
         return np.argwhere(conforms).flatten()
 
@@ -224,7 +224,7 @@ class WerlingPlanner(TrajectoryPlanner):
         # lateral acceleration between two adjacent sampled points (critical in the lateral case because we allow
         # shorter lateral maneuvers
         frenet_lateral_movement_is_feasible = \
-            QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_d_vals, cost_params.e_a_LatAccelerationLimits)
+            QuinticPoly1D.are_accelerations_in_limits(poly_coefs_d, T_d_vals, cost_params.lat_acceleration_limits)
 
         return np.argwhere(np.logical_and(conforms, frenet_lateral_movement_is_feasible)).flatten()
 
@@ -250,9 +250,9 @@ class WerlingPlanner(TrajectoryPlanner):
         trajectory_end_goal_diff = np.array([last_fpoints[:, FS_SX] - goal_in_frenet[FS_SX],
                                              last_fpoints[:, FS_DX] - goal_in_frenet[FS_DX]])
         trajectory_end_goal_dist = np.sqrt(trajectory_end_goal_diff[0] ** 2 +
-                                           (params.e_l_DistFromGoalLatFactor * trajectory_end_goal_diff[1]) ** 2)
-        dist_from_goal_costs = Math.clipped_sigmoid(trajectory_end_goal_dist - params.s_DistanceFromGoalCost.offset,
-                                                    params.s_DistanceFromGoalCost.w, params.s_DistanceFromGoalCost.k)
+                                           (params.dist_from_goal_lat_factor * trajectory_end_goal_diff[1]) ** 2)
+        dist_from_goal_costs = Math.clipped_sigmoid(trajectory_end_goal_dist - params.dist_from_goal_cost.offset,
+                                                    params.dist_from_goal_cost.w, params.dist_from_goal_cost.k)
 
         ''' point-wise costs: obstacles, deviations, jerk '''
         pointwise_costs = TrajectoryPlannerCosts.compute_pointwise_costs(ctrajectories, ftrajectories, state, params,

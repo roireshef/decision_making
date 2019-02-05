@@ -15,9 +15,9 @@ class Utils:
         """
 
         assert np.all(np.isclose(actual_object.cartesian_state, expected_object.cartesian_state, atol=1e-2))
-        assert np.all(np.isclose(actual_object.map_state.a_LaneFState, expected_object.map_state.a_LaneFState, atol=1e-2))
+        assert np.all(np.isclose(actual_object.map_state.lane_fstate, expected_object.map_state.lane_fstate, atol=1e-2))
 
-        assert np.isclose(actual_object.map_state.e_i_LaneID, expected_object.map_state.e_i_LaneID, atol=1e-2)
+        assert np.isclose(actual_object.map_state.lane_id, expected_object.map_state.lane_id, atol=1e-2)
         assert np.isclose(actual_object.obj_id, expected_object.obj_id, atol=1e-2)
         assert np.isclose(actual_object.timestamp, expected_object.timestamp, atol=1e-2)
         assert np.isclose(actual_object.confidence, expected_object.confidence, atol=1e-2)

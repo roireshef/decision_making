@@ -106,7 +106,7 @@ class BehavioralGridState(BehavioralState):
         """
         # calculate objects' segment map_states
         object_map_states = [obj.map_state for obj in dynamic_objects]
-        objects_segment_ids = np.array([map_state.e_i_LaneID for map_state in object_map_states])
+        objects_segment_ids = np.array([map_state.lane_id for map_state in object_map_states])
 
         # for objects on non-adjacent lane set relative_lanes[i] = None
         rel_lanes_per_obj = np.full(len(dynamic_objects), None)
@@ -148,8 +148,8 @@ class BehavioralGridState(BehavioralState):
         :param target_map_states: list of original map states of the targets
         :return: array of longitudinal differences between the targets and projected ego
         """
-        target_segment_ids = np.array([map_state.e_i_LaneID for map_state in target_map_states])
-        target_segment_fstates = np.array([map_state.a_LaneFState for map_state in target_map_states])
+        target_segment_ids = np.array([map_state.lane_id for map_state in target_map_states])
+        target_segment_fstates = np.array([map_state.lane_fstate for map_state in target_map_states])
 
         # initialize longitudinal_differences to infinity
         longitudinal_differences = np.full(len(target_segment_ids), np.inf)

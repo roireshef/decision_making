@@ -50,7 +50,7 @@ class BehavioralFacadeMock(BehavioralPlanningFacade):
                 self._triggered = True
 
                 # NOTE THAT TIMESTAMP IS UPDATED HERE !
-                self._trajectory_params.e_t_Time += state.ego_state.timestamp_in_sec
+                self._trajectory_params.time += state.ego_state.timestamp_in_sec
 
             if self._triggered:
                 self._publish_results(self._trajectory_params)

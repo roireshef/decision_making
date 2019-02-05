@@ -15,9 +15,9 @@ from typing import List, Optional
 
 
 class OccupancyState(PUBSUB_MSG_IMPL):
-    e_Cnt_Timestamp = int
-    s_FreeSpace = np.ndarray
-    s_Confidence = np.ndarray
+    timestamp = int
+    free_space = np.ndarray
+    confidence = np.ndarray
 
     def __init__(self, timestamp: int, free_space: np.ndarray, confidence: np.ndarray):
         """
@@ -26,15 +26,15 @@ class OccupancyState(PUBSUB_MSG_IMPL):
         :param free_space: array of directed segments defines a free space border
         :param confidence: array per segment
         """
-        self.e_Cnt_Timestamp = timestamp
-        self.s_FreeSpace = np.copy(free_space)
-        self.s_Confidence = np.copy(confidence)
+        self.timestamp = timestamp
+        self.free_space = np.copy(free_space)
+        self.confidence = np.copy(confidence)
 
     def serialize(self) ->TsSYSOccupancyState:
         pubsub_msg = TsSYSOccupancyState()
-        pubsub_msg.e_Cnt_Timestamp = self.e_Cnt_Timestamp
-        pubsub_msg.s_FreeSpace = SerializationUtils.serialize_non_typed_small_array(self.s_FreeSpace)
-        pubsub_msg.s_Confidence = SerializationUtils.serialize_non_typed_small_array(self.s_Confidence)
+        pubsub_msg.e_Cnt_Timestamp = self.timestamp
+        pubsub_msg.s_FreeSpace = SerializationUtils.serialize_non_typed_small_array(self.free_space)
+        pubsub_msg.s_Confidence = SerializationUtils.serialize_non_typed_small_array(self.confidence)
         return pubsub_msg
 
     @classmethod
@@ -45,21 +45,21 @@ class OccupancyState(PUBSUB_MSG_IMPL):
 
 
 class ObjectSize(PUBSUB_MSG_IMPL):
-    e_l_Length = float
-    e_l_Width = float
-    e_l_Height = float
+    length = float
+    width = float
+    height = float
 
     def __init__(self, length: float, width: float, height: float) -> None:
-        self.e_l_Length = length
-        self.e_l_Width = width
-        self.e_l_Height = height
+        self.length = length
+        self.width = width
+        self.height = height
 
     def serialize(self):
         # type: () -> TsSYSObjectSize
         pubsub_msg = TsSYSObjectSize()
-        pubsub_msg.e_l_Length = self.e_l_Length
-        pubsub_msg.e_l_Width = self.e_l_Width
-        pubsub_msg.e_l_Height = self.e_l_Height
+        pubsub_msg.e_l_Length = self.length
+        pubsub_msg.e_l_Width = self.width
+        pubsub_msg.e_l_Height = self.height
         return pubsub_msg
 
     @classmethod
@@ -129,8 +129,8 @@ class DynamicObject(PUBSUB_MSG_IMPL):
     def cartesian_state(self):
         # type: () -> CartesianExtendedState
         if self._cached_cartesian_state is None:
-            lane_frenet = MapUtils.get_lane_frenet_frame(self.map_state.e_i_LaneID)
-            self._cached_cartesian_state = lane_frenet.fstate_to_cstate(self.map_state.a_LaneFState)
+            lane_frenet = MapUtils.get_lane_frenet_frame(self.map_state.lane_id)
+            self._cached_cartesian_state = lane_frenet.fstate_to_cstate(self.map_state.lane_fstate)
         return self._cached_cartesian_state
 
     @property
@@ -224,7 +224,7 @@ class DynamicObject(PUBSUB_MSG_IMPL):
         # type: (TsSYSDynamicObject) -> DynamicObject
         return cls(pubsubMsg.e_i_ObjectID, pubsubMsg.e_Cnt_Timestamp
                    , pubsubMsg.a_e_CachedCartesianState
-                   , MapState.deserialize(pubsubMsg.s_CachedMapState) if pubsubMsg.s_CachedMapState.lane_id > 0 else None
+                   , MapState.deserialize(pubsubMsg.s_CachedMapState) if pubsubMsg.s_CachedMapState.e_i_LaneID > 0 else None
                    , ObjectSize.deserialize(pubsubMsg.s_Size)
                    , pubsubMsg.e_r_Confidence)
 
@@ -249,7 +249,7 @@ class EgoState(DynamicObject):
     def serialize(self):
         # type: () -> TsSYSEgoState
         pubsub_msg = TsSYSEgoState()
-        pubsub_msg.dynamic_obj = super(self.__class__, self).serialize()
+        pubsub_msg.s_DynamicObject = super(self.__class__, self).serialize()
         return pubsub_msg
 
     @classmethod

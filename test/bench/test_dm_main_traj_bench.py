@@ -40,7 +40,7 @@ test_fixed_trajectory_file = Paths.get_resource_absolute_path_filename(
 #     dm_main_process.start()
 #     time.sleep(2)
 #
-#     pubsub.publish(PERCEIVED_SELF_LOCALIZATION_LCM, localization_msg)
+#     pubsub.publish(PERCEIVED_SELF_LOCALIZATION, localization_msg)
 #     time.sleep(2)
 #     dm_main_process.terminate()
 #

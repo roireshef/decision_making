@@ -85,7 +85,7 @@ class StateModule(DmModule):
                 
                 self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
 
-                self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], state.serialize())
+                self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE"], state.serialize())
 
         except ObjectHasNegativeVelocityError as e:
             self.logger.error(e)
@@ -119,7 +119,7 @@ class StateModule(DmModule):
                 dyn_obj = DynamicObject(obj_id=obj_loc.e_Cnt_object_id,
                                         timestamp=timestamp,
                                         cartesian_state=cartesian_state,
-                                        map_state=map_state if map_state.e_i_LaneID > 0 else None,
+                                        map_state=map_state if map_state.lane_id > 0 else None,
                                         size=size,
                                         confidence=confidence)
 
@@ -130,12 +130,12 @@ class StateModule(DmModule):
                 # TODO: Figure out if we need SceneProvider to let us know if an object is not on road
 
                 # Required to verify the object has map state and that the velocity exceeds a minimal value.
-                if dyn_obj.map_state.a_LaneFState[FS_SV] < VELOCITY_MINIMAL_THRESHOLD:
-                    thresholded_lane_fstate = np.copy(dyn_obj.map_state.a_LaneFState)
+                if dyn_obj.map_state.lane_fstate[FS_SV] < VELOCITY_MINIMAL_THRESHOLD:
+                    thresholded_lane_fstate = np.copy(dyn_obj.map_state.lane_fstate)
                     thresholded_lane_fstate[FS_SV] = VELOCITY_MINIMAL_THRESHOLD
                     dyn_obj = dyn_obj.clone_from_map_state(
                         map_state=MapState(lane_fstate=thresholded_lane_fstate,
-                                           lane_id=dyn_obj.map_state.e_i_LaneID))
+                                           lane_id=dyn_obj.map_state.lane_id))
 
                 objects_list.append(dyn_obj)  # update the list of dynamic objects
 

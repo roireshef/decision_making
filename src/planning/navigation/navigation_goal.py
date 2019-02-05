@@ -38,8 +38,8 @@ class NavigationGoal:
         map_state = state.ego_state.map_state
         road_segment_id = MapUtils.get_road_segment_id_from_lane_id(map_state.lane_id)
         # TODO: decide relatively to which lane self.lon is given
-        if road_segment_id == self.road_segment_id and map_state.lane_fstate[FS_SX] >= self.lon:
-            if MapUtils.get_lane_ordinal(map_state.lane_id) in self.lanes_idxs:
+        if road_segment_id == self.road_segment_id and map_state.a_LaneFState[FS_SX] >= self.lon:
+            if MapUtils.get_lane_ordinal(map_state.e_i_LaneID) in self.lanes_idxs:
                 return GoalStatus.REACHED
             else:
                 return GoalStatus.MISSED

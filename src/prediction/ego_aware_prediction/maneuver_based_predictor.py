@@ -102,7 +102,7 @@ class ManeuverBasedPredictor(EgoAwarePredictor):
                                                                                   maneuver_horizon=horizon)
 
             # TODO: treat the case when we are close to the end of the segment
-            frenet_frame = MapUtils.get_lane_frenet_frame(dynamic_object.map_state.e_i_LaneID)
+            frenet_frame = MapUtils.get_lane_frenet_frame(dynamic_object.map_state.lane_id)
 
             init_time = dynamic_object.timestamp_in_sec
 

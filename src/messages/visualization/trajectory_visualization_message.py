@@ -47,22 +47,22 @@ class DataTrajectoryVisualization(PUBSUB_MSG_IMPL):
         :param e_recipe_description: String for semantic meaning of action. For example:
                                                             "static action to the left with 50 km/h".
         """
-        self.a_Trajectories = a_Trajectories
-        self.as_ActorsPredictions = as_ActorsPredictions
-        self.e_recipe_description = e_recipe_description
+        self.trajectories = a_Trajectories
+        self.as_actors_predictions = as_ActorsPredictions
+        self.recipe_description = e_recipe_description
 
     def serialize(self) -> TsSYSDataTrajectoryVisualization:
         pubsub_msg = TsSYSDataTrajectoryVisualization()
 
-        pubsub_msg.e_Cnt_NumOfPointsInTrajectory = self.a_Trajectories.shape[1]
-        pubsub_msg.e_Cnt_NumOfTrajectories = self.a_Trajectories.shape[0]
-        pubsub_msg.a_Trajectories = self.a_Trajectories
+        pubsub_msg.e_Cnt_NumOfPointsInTrajectory = self.trajectories.shape[1]
+        pubsub_msg.e_Cnt_NumOfTrajectories = self.trajectories.shape[0]
+        pubsub_msg.a_Trajectories = self.trajectories
 
-        pubsub_msg.e_Cnt_NumOfActors = len(self.as_ActorsPredictions)
+        pubsub_msg.e_Cnt_NumOfActors = len(self.as_actors_predictions)
         for i in range(pubsub_msg.e_Cnt_NumOfActors):
-            pubsub_msg.as_ActorsPredictions[i] = self.as_ActorsPredictions[i].serialize()
+            pubsub_msg.as_ActorsPredictions[i] = self.as_actors_predictions[i].serialize()
 
-        pubsub_msg.e_recipe_description = self.e_recipe_description
+        pubsub_msg.e_recipe_description = self.recipe_description
 
         return pubsub_msg
 
@@ -76,13 +76,13 @@ class DataTrajectoryVisualization(PUBSUB_MSG_IMPL):
 
 class TrajectoryVisualizationMsg(PUBSUB_MSG_IMPL):
     def __init__(self, s_Header: Header, s_Data: DataTrajectoryVisualization):
-        self.s_Header = s_Header
-        self.s_Data = s_Data
+        self.header = s_Header
+        self.data = s_Data
 
     def serialize(self) -> TsSYSTrajectoryVisualization:
         pubsub_msg = TsSYSTrajectoryVisualization()
-        pubsub_msg.s_Header = self.s_Header.serialize()
-        pubsub_msg.s_Data = self.s_Data.serialize()
+        pubsub_msg.s_Header = self.header.serialize()
+        pubsub_msg.s_Data = self.data.serialize()
         return pubsub_msg
 
     @classmethod

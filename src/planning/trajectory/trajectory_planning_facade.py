@@ -56,6 +56,7 @@ class TrajectoryPlanningFacade(DmModule):
         self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS"], None)
         self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE"], None)
         self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], None)
+
     def _stop_impl(self):
         self.pubsub.unsubscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_TRAJECTORY_PARAMS"])
         self.pubsub.unsubscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE"])
@@ -78,10 +79,10 @@ class TrajectoryPlanningFacade(DmModule):
             params = self._get_mission_params()
 
             # Longitudinal planning horizon (Ts)
-            lon_plan_horizon = params.e_t_Time - state.ego_state.timestamp_in_sec
+            lon_plan_horizon = params.time - state.ego_state.timestamp_in_sec
 
-            self.logger.debug("input: target_state: %s", params.a_TargetState)
-            self.logger.debug("input: reference_route[0]: %s", params.s_ReferenceRoute.points[0])
+            self.logger.debug("input: target_state: %s", params.target_state)
+            self.logger.debug("input: reference_route[0]: %s", params.reference_route.points[0])
             self.logger.debug("input: ego: pos: (x: %f y: %f)", state.ego_state.x, state.ego_state.y)
             self.logger.debug("input: ego: velocity: %s", state.ego_state.velocity)
             self.logger.debug("TrajectoryPlanningFacade is required to plan with time horizon = %s", lon_plan_horizon)
@@ -102,12 +103,12 @@ class TrajectoryPlanningFacade(DmModule):
                 self.logger.warning(LOG_MSG_TRAJECTORY_PLAN_FROM_ACTUAL, state.ego_state.map_state)
                 updated_state = state
 
-            MetricLogger.get_logger().bind(bp_time=params.e_Cnt_BPTime)
+            MetricLogger.get_logger().bind(bp_time=params.bp_time)
 
             # plan a trajectory according to specification from upper DM level
-            samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.e_e_Strategy]. \
-                plan(updated_state, params.s_ReferenceRoute, params.a_TargetState, lon_plan_horizon,
-                     params.s_CostParams)
+            samplable_trajectory, ctrajectories, costs = self._strategy_handlers[params.strategy]. \
+                plan(updated_state, params.reference_route, params.target_state, lon_plan_horizon,
+                     params.cost_params)
 
             trajectory_msg = self.generate_trajectory_plan(timestamp=state.ego_state.timestamp_in_sec,
                                                            samplable_trajectory=samplable_trajectory)
@@ -117,8 +118,8 @@ class TrajectoryPlanningFacade(DmModule):
 
             # publish visualization/debug data - based on short term prediction aligned state!
             debug_results = TrajectoryPlanningFacade._prepare_visualization_msg(
-                state, ctrajectories, params.e_t_Time - state.ego_state.timestamp_in_sec,
-                self._strategy_handlers[params.e_e_Strategy].predictor, params.s_ReferenceRoute)
+                state, ctrajectories, params.time - state.ego_state.timestamp_in_sec,
+                self._strategy_handlers[params.strategy].predictor, params.reference_route)
 
             self._publish_debug(debug_results)
 

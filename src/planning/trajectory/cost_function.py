@@ -85,8 +85,8 @@ class TrajectoryPlannerCosts:
                 ctrajectories, objects_predicted_ctrajectories, objects_sizes, ego_size)
 
             # compute a flipped-sigmoid for distances in each dimension [x, y] of each point (in each trajectory)
-            k = np.array([params.s_ObstacleCostX.k, params.s_ObstacleCostY.k])
-            offset = np.array([params.s_ObstacleCostX.offset, params.s_ObstacleCostY.offset])
+            k = np.array([params.obstacle_cost_x.k, params.obstacle_cost_y.k])
+            offset = np.array([params.obstacle_cost_x.offset, params.obstacle_cost_y.offset])
             points_offset = distances - offset
             per_dimension_cost = np.divide(1.0, (1.0+np.exp(np.minimum(np.multiply(k, points_offset), EXP_CLIP_TH))))
 
@@ -94,7 +94,7 @@ class TrajectoryPlannerCosts:
             # negative distance, i.e. collision
             per_point_cost = per_dimension_cost.prod(axis=-1)
 
-            per_trajectory_point_cost = params.s_ObstacleCostX.w * np.sum(per_point_cost, axis=1)
+            per_trajectory_point_cost = params.obstacle_cost_x.w * np.sum(per_point_cost, axis=1)
 
             return per_trajectory_point_cost
 
@@ -142,12 +142,12 @@ class TrajectoryPlannerCosts:
         deviations_costs = np.zeros((ftrajectories.shape[0], ftrajectories.shape[1]))
 
         # add to deviations_costs the costs of deviations from the left [lane, shoulder, road]
-        for sig_cost in [params.s_LeftLaneCost, params.s_LeftShoulderCost, params.s_LeftRoadCost]:
+        for sig_cost in [params.left_lane_cost, params.left_shoulder_cost, params.left_road_cost]:
             left_offsets = ftrajectories[:, :, FS_DX] - sig_cost.offset
             deviations_costs += Math.clipped_sigmoid(left_offsets, sig_cost.w, sig_cost.k)
 
         # add to deviations_costs the costs of deviations from the right [lane, shoulder, road]
-        for sig_cost in [params.s_RightLaneCost, params.s_RightShoulderCost, params.s_RightRoadCost]:
+        for sig_cost in [params.right_lane_cost, params.right_shoulder_cost, params.right_road_cost]:
             right_offsets = np.negative(ftrajectories[:, :, FS_DX]) - sig_cost.offset
             deviations_costs += Math.clipped_sigmoid(right_offsets, sig_cost.w, sig_cost.k)
         return deviations_costs
@@ -163,7 +163,7 @@ class TrajectoryPlannerCosts:
         :return: MxN matrix of jerk costs per point, where N is trajectories number, M is trajectory length.
         """
         lon_jerks, lat_jerks = Jerk.compute_jerks(ctrajectories, dt)
-        jerk_costs = params.e_Wt_LonJerkCostWeight * lon_jerks + params.e_Wt_LatJerkCostWeight * lat_jerks
+        jerk_costs = params.lon_jerk_cost_weight * lon_jerks + params.lat_jerk_cost_weight * lat_jerks
         return np.c_[np.zeros(jerk_costs.shape[0]), jerk_costs]
 
 
