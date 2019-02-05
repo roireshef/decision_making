@@ -13,8 +13,8 @@ from common_data.interface.Rte_Types.python.sub_structures import (
     TsSYSSceneLaneSegmentLite,
     TsSYSDataNavigationPlan,
     TsSYSDataSceneStaticGeometry,
-    TsSYSDataSceneStaticLite)
-from common_data.interface.Rte_Types.python.sub_structures import TsSYSSceneStatic
+    TsSYSDataSceneStaticLite,
+    TsSYSSceneStatic)
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataSceneStatic import \
     TsSYSDataSceneStatic
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneRoadIntersection import \
@@ -23,13 +23,17 @@ from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneRoadSegmen
     TsSYSSceneRoadSegment
 from decision_making.src.global_constants import PUBSUB_MSG_IMPL
 from decision_making.src.messages.scene_common_messages import Timestamp, MapOrigin, Header
-from decision_making.src.messages.scene_static_enums import MapLaneType, MapRoadSegmentType, MovingDirection, ManeuverType,\
-     MapLaneMarkerType, RoadObjectType, TrafficSignalState, NominalPathPoint
+from decision_making.src.messages.scene_static_enums import (
+    MapLaneType,
+    MapRoadSegmentType,
+    MovingDirection,
+    ManeuverType,
+    MapLaneMarkerType,
+    RoadObjectType,
+    TrafficSignalState,
+    NominalPathPoint)
 
 MAX_NOMINAL_PATH_POINT_FIELDS = 10
-
-
-
 
 class SceneRoadSegment(PUBSUB_MSG_IMPL):
     e_i_road_segment_id = int
