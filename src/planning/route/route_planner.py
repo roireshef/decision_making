@@ -21,17 +21,20 @@ class RoutePlannerInputData():
             self.LaneSegmentDict[Scene.as_scene_lane_segments[i].e_i_lane_segment_id] = \
             Scene.as_scene_lane_segments[i]
         for i in range(Scene.e_Cnt_num_road_segments):
-            self.RoadSegmentDict[Scene.as_scene_road_segment[i].e_i_road_segment_id] = \
-            Scene.as_scene_road_segment[i]
+            road_seg_id = Scene.as_scene_road_segment[i].e_i_road_segment_id
+            self.RoadSegmentDict[road_seg_id] = Scene.as_scene_road_segment[i]
+        
     pass
 
     def Update_RoutePlanData(self, Nav: DataNavigationPlan):
-        self.route_roadsegments = Nav.a_i_road_segment_ids
-        for road_seg in self.route_roadsegments:
+        for road_seg_idx in range(Nav.e_Cnt_num_road_segments):
+            road_seg = Nav.a_i_road_segment_ids[road_seg_idx]
+            self.route_roadsegments.append(road_seg)
             lane_seg = []
+            #print("route_roadsegments",self.route_roadsegments)
             for j in range(self.RoadSegmentDict[road_seg].e_Cnt_lane_segment_id_count):
                 lane_seg.append(self.RoadSegmentDict[road_seg].a_i_lane_segment_ids[j])
-            self.RoadSegmentDict[road_seg]=lane_seg
+            self.route_lanesegments[road_seg]=lane_seg
 
 class RoutePlanner(metaclass=ABCMeta):
     """Add comments"""

@@ -45,13 +45,15 @@ class CostBasedRoutePlanner(RoutePlanner):
         RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Construction: CostBasedRoutePlanner.ConstructionZoneAttrBsdOccCost(LaneAttr), 
         RoutePlanLaneSegmentAttr.CeSYS_e_RoutePlanLaneSegmentAttr_Direction: CostBasedRoutePlanner.LaneRouteDirAttrBsdOccCost(LaneAttr),
         } 
-        return switcher[EnumIdx]
+        return switcher[RoutePlanLaneSegmentAttr(EnumIdx)]
 
     def plan(self, RouteData: RoutePlannerInputData) -> DataRoutePlan: # TODO: Set function annotaion
         """Add comments"""
         NewRoutePlan = DataRoutePlan
+        NumOfRoadSeg = RouteData.route_lanesegments.__len__()
         for reverseroadsegidx, (roadsegID,lanesegIDs) in enumerate(reversed(RouteData.route_lanesegments.items())):
-            roadsegidx = RouteData.route_lanesegments.len()-reverseroadsegidx
+            roadsegidx = NumOfRoadSeg -reverseroadsegidx
+            AllRouteLanesInThisRoadSeg = []
             for lanesegidx, lanesegID in enumerate(lanesegIDs):
                 lanesegData = RouteData.LaneSegmentDict[lanesegID]
                 LaneOccCost = 0
@@ -90,11 +92,15 @@ class CostBasedRoutePlanner(RoutePlanner):
                             MinDwnStreamLaneOccCost = min(MinDwnStreamLaneOccCost,DownStreamLaneOccCost)
                     LaneEndCost = MinDwnStreamLaneOccCost
                             
-                    
-                NewRoutePlan.as_route_plan_lane_segments[roadsegidx][lanesegidx]=RoutePlanLaneSegment(lanesegID,LaneOccCost,LaneEndCost)
+                #print("lanesegID ",lanesegID)
+                #print("LaneOccCost ",LaneOccCost)    
+                #print("LaneEndCost ",LaneEndCost)
+                AllRouteLanesInThisRoadSeg.append(RoutePlanLaneSegment(e_i_lane_segment_id= lanesegID, \
+                    e_cst_lane_occupancy_cost = LaneOccCost,e_cst_lane_end_cost = LaneEndCost))
             NewRoutePlan.e_Cnt_num_road_segments = reverseroadsegidx
-            NewRoutePlan.a_i_road_segment_ids[roadsegidx] = roadsegID
-            NewRoutePlan.a_Cnt_num_lane_segments[roadsegidx] = lanesegidx
+            NewRoutePlan.a_i_road_segment_ids.append(roadsegID)
+            NewRoutePlan.a_Cnt_num_lane_segments.append(lanesegidx)
+            NewRoutePlan.as_route_plan_lane_segments.append(AllRouteLanesInThisRoadSeg)
             
 
                 
