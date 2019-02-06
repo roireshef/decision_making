@@ -1,7 +1,7 @@
 import traceback
 from abc import ABCMeta, abstractmethod
 from decision_making.src.global_constants import BP_JERK_S_JERK_D_TIME_WEIGHTS, FILTER_V_0_GRID, FILTER_A_0_GRID, \
-    FILTER_V_T_GRID, FILTER_S_T_GRID
+    FILTER_V_T_GRID
 from decision_making.src.planning.behavioral.default_config import DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.planning.utils.generalized_frenet_serret_frame import GeneralizedFrenetSerretFrame
 from logging import Logger
@@ -23,7 +23,7 @@ class ActionSpecFilter:
     (or one of its children) and  BehavioralState (or one of its children) even if they don't actually use them.
     """
     @abstractmethod
-    def filter(self, recipe: ActionSpec, behavioral_state: BehavioralState) -> bool:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState) -> List[ActionSpec]:
         pass
 
     def __str__(self):
@@ -54,8 +54,7 @@ class ActionSpecFilter:
         wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[most_aggressive_level.value]
         brake_dist = action_distances[(ActionType.FOLLOW_LANE.name.lower(), wT, wJ)][
             FILTER_V_0_GRID.get_index(action_spec.v), FILTER_A_0_GRID.get_index(0), :]
-        is_braking_possible = (brake_dist[FILTER_V_T_GRID.get_indices(vel_limit_in_points)] < dist_to_points).all()
-        return is_braking_possible
+        return (brake_dist[FILTER_V_T_GRID.get_indices(vel_limit_in_points)] < dist_to_points).all()
 
 
 class ActionSpecFiltering:
@@ -67,16 +66,12 @@ class ActionSpecFiltering:
         self._filters: List[ActionSpecFilter] = filters or []
         self.logger = logger
 
-    def filter_action_spec(self, action_spec: ActionSpec, behavioral_state: BehavioralState) -> bool:
-        for action_spec_filter in self._filters:
-            try:
-                if not action_spec_filter.filter(action_spec, behavioral_state):
-                    return False
-            except Exception:
-                self.logger.warning('Exception during filtering at %s: %s', self.__class__.__name__, traceback.format_exc())
-                return False
-        return True
-
     @prof.ProfileFunction()
     def filter_action_specs(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState) -> List[bool]:
-        return [self.filter_action_spec(action_spec, behavioral_state) for action_spec in action_specs]
+        for action_spec_filter in self._filters:
+            try:
+                action_specs = action_spec_filter.filter(action_specs, behavioral_state)
+            except Exception:
+                self.logger.warning('Exception during filtering at %s: %s', self.__class__.__name__, traceback.format_exc())
+                return [spec is not None for spec in action_specs]
+        return [spec is not None for spec in action_specs]

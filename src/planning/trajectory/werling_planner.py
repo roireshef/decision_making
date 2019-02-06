@@ -132,31 +132,34 @@ class WerlingPlanner(TrajectoryPlanner):
                                                 len(frenet_filtered_indices), len(ftrajectories)))
         elif len(ctrajectories_filtered) == 0:
             lat_acc = ctrajectories[:, :, C_V] ** 2 * ctrajectories[:, :, C_K]
-            valid_lat_acc_found = ((np.abs(lat_acc) < LAT_ACC_LIMITS[1]).all(axis=-1)).any()
-            valid_lon_acc_found = NumpyUtils.is_in_limits(ctrajectories[:, :, C_A], LAT_ACC_LIMITS).all(axis=-1).any()
-            raise NoValidTrajectoriesFound("No valid trajectories found. time: %f, goal: %s, state: %s.\n"
-                                           "planned velocities range [%s, %s] (limits: %s); "
-                                           "planned lon. accelerations range [%s, %s] (limits: %s); "
-                                           "planned lat. accelerations range [%s, %s] (limits: %s); "
-                                           "number of trajectories passed according to Frenet limits: %s/%s;"
-                                           "number of trajectories passed according to Cartesian limits: %s/%s;"
-                                           "number of trajectories passed according to all limits: %s/%s;\n"
-                                           "ego_frenet = %s goal_frenet = %s; "
-                                           "distance from ego to goal = %f, time*approx_velocity = %f;"
-                                           "valid_lon_acc_found=%d valid_lat_acc_found=%d" %
-                                           (T_s, NumpyUtils.str_log(goal), str(state).replace('\n', ''),
-                                            np.min(ctrajectories[:, :, C_V]), np.max(ctrajectories[:, :, C_V]),
-                                            NumpyUtils.str_log(cost_params.velocity_limits),
-                                            np.min(ctrajectories[:, :, C_A]), np.max(ctrajectories[:, :, C_A]),
-                                            NumpyUtils.str_log(cost_params.lon_acceleration_limits),
-                                            np.min(lat_acc), np.max(lat_acc),
-                                            NumpyUtils.str_log(cost_params.lat_acceleration_limits),
-                                            len(frenet_filtered_indices), len(ftrajectories),
-                                            len(cartesian_refiltered_indices), len(ctrajectories),
-                                            len(refiltered_indices), len(ftrajectories), ego_frenet_state,
-                                            goal_frenet_state, goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
-                                            time_horizon * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV])*0.5,
-                                            valid_lon_acc_found, valid_lat_acc_found))
+            valid_lat_acc = (np.abs(lat_acc) < cost_params.lat_acceleration_limits[1]).all(axis=-1)
+            valid_lon_acc = NumpyUtils.is_in_limits(ctrajectories[:, :, C_A], cost_params.lon_acceleration_limits).all(axis=-1)
+            bad_lat_acc_traj = np.argmin(valid_lat_acc)
+            worst_lat_acc_time_sample = np.argmax(np.abs(lat_acc[bad_lat_acc_traj, :]))
+            worst_lat_acc = lat_acc[bad_lat_acc_traj, worst_lat_acc_time_sample]
+            raise NoValidTrajectoriesFound(
+                "No valid trajectories found. timestamp: %f horizon_time: %f, goal: %s, state: %s.\n"
+                "planned velocities range [%s, %s] (limits: %s); "
+                "planned lon. accelerations range [%s, %s] (limits: %s); "
+                "planned lat. accelerations range [%s, %s] (limits: %s); "
+                "number of trajectories passed according to Frenet limits: %s/%s;"
+                "number of trajectories passed according to Cartesian limits: %s/%s;"
+                "number of trajectories passed according to all limits: %s/%s;\n"
+                "ego_frenet = %s goal_frenet = %s; distance from ego to goal = %f, time*approx_velocity = %f\n"
+                "valid_lon_acc=%d valid_lat_acc=%d valid_acc=%d worst_lat_acc_time=%.3f worst_lat_acc=%.3f" %
+                (state.ego_state.timestamp_in_sec, T_s, NumpyUtils.str_log(goal),
+                str(state).replace('\n', ''),
+                np.min(ctrajectories[:, :, C_V]), np.max(ctrajectories[:, :, C_V]),
+                NumpyUtils.str_log(cost_params.velocity_limits),
+                np.min(ctrajectories[:, :, C_A]), np.max(ctrajectories[:, :, C_A]),
+                NumpyUtils.str_log(cost_params.lon_acceleration_limits), np.min(lat_acc), np.max(lat_acc),
+                NumpyUtils.str_log(cost_params.lat_acceleration_limits),
+                len(frenet_filtered_indices), len(ftrajectories), len(cartesian_refiltered_indices), len(ctrajectories),
+                len(refiltered_indices), len(ftrajectories), ego_frenet_state,
+                goal_frenet_state, goal_frenet_state[FS_SX] - ego_frenet_state[FS_SX],
+                time_horizon * (ego_frenet_state[FS_SV] + goal_frenet_state[FS_SV])*0.5,
+                np.sum(valid_lon_acc), np.sum(valid_lat_acc), np.sum(np.logical_and(valid_lon_acc, valid_lat_acc)),
+                worst_lat_acc_time_sample*self.dt, worst_lat_acc))
 
         # compute trajectory costs at sampled times
         global_time_sample = planning_time_points + state.ego_state.timestamp_in_sec
