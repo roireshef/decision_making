@@ -1,5 +1,5 @@
 from typing import List
-import numpy as np
+from numpy import ndarray
 
 from common_data.interface.Rte_Types.python.sub_structures import (
     TsSYSAdjacentLane,
@@ -33,23 +33,24 @@ from decision_making.src.messages.scene_static_enums import (
     TrafficSignalState,
     NominalPathPoint)
 
+MAX_LANE_ATTRIBUTES = 8
 MAX_NOMINAL_PATH_POINT_FIELDS = 10
 
 class SceneRoadSegment(PUBSUB_MSG_IMPL):
     e_i_road_segment_id = int
     e_i_road_id = int
     e_Cnt_lane_segment_id_count = int
-    a_i_lane_segment_ids = np.ndarray
+    a_i_lane_segment_ids = ndarray
     e_e_road_segment_type = MapRoadSegmentType
     e_Cnt_upstream_segment_count = int
-    a_i_upstream_road_segment_ids = np.ndarray
+    a_i_upstream_road_segment_ids = ndarray
     e_Cnt_downstream_segment_count = int
-    a_i_downstream_road_segment_ids = np.ndarray
+    a_i_downstream_road_segment_ids = ndarray
 
     def __init__(self, e_i_road_segment_id: int, e_i_road_id: int, e_Cnt_lane_segment_id_count: int,
-                 a_i_lane_segment_ids: np.ndarray, e_e_road_segment_type: MapRoadSegmentType,
-                 e_Cnt_upstream_segment_count: int, a_i_upstream_road_segment_ids: np.ndarray,
-                 e_Cnt_downstream_segment_count: int, a_i_downstream_road_segment_ids: np.ndarray) -> None:
+                 a_i_lane_segment_ids: ndarray, e_e_road_segment_type: MapRoadSegmentType,
+                 e_Cnt_upstream_segment_count: int, a_i_upstream_road_segment_ids: ndarray,
+                 e_Cnt_downstream_segment_count: int, a_i_downstream_road_segment_ids: ndarray) -> None:
         """
         Road-segment information
         :param e_i_road_segment_id: ID of this Road-segment
@@ -107,13 +108,13 @@ class SceneRoadSegment(PUBSUB_MSG_IMPL):
 class SceneRoadIntersection(PUBSUB_MSG_IMPL):
     e_i_road_intersection_id = int
     e_Cnt_lane_coupling_count = int
-    a_i_lane_coupling_segment_ids = np.ndarray
+    a_i_lane_coupling_segment_ids = ndarray
     e_Cnt_intersection_road_segment_count = int
-    a_i_intersection_road_segment_ids = np.ndarray
+    a_i_intersection_road_segment_ids = ndarray
 
     def __init__(self, e_i_road_intersection_id: int,
-                 e_Cnt_lane_coupling_count: int, a_i_lane_coupling_segment_ids: np.ndarray,
-                 e_Cnt_intersection_road_segment_count: int, a_i_intersection_road_segment_ids: np.ndarray) -> None:
+                 e_Cnt_lane_coupling_count: int, a_i_lane_coupling_segment_ids: ndarray,
+                 e_Cnt_intersection_road_segment_count: int, a_i_intersection_road_segment_ids: ndarray) -> None:
         """
         Road-intersection information
         :param e_i_road_intersection_id: ID of this road-intersection
@@ -369,7 +370,7 @@ class SceneLaneSegmentGeometry(PUBSUB_MSG_IMPL):
     e_i_lane_segment_id = int
     e_i_road_segment_id = int
     e_Cnt_nominal_path_point_count = int
-    a_nominal_path_points = np.ndarray
+    a_nominal_path_points = ndarray
     e_Cnt_left_boundary_points_count = int
     as_left_boundary_points = List[BoundaryPoint]
     e_Cnt_right_boundary_points_count = int
@@ -377,7 +378,7 @@ class SceneLaneSegmentGeometry(PUBSUB_MSG_IMPL):
 
 
     def __init__(self, e_i_lane_segment_id: int, e_i_road_segment_id: int, e_Cnt_nominal_path_point_count: int,
-                 a_nominal_path_points: np.ndarray,
+                 a_nominal_path_points: ndarray,
                  e_Cnt_left_boundary_points_count: int, as_left_boundary_points: List[BoundaryPoint],
                  e_Cnt_right_boundary_points_count: int, as_right_boundary_points: List[BoundaryPoint]):
         """
@@ -499,13 +500,13 @@ class DataSceneStaticGeometry(PUBSUB_MSG_IMPL):
 class DataNavigationPlan(PUBSUB_MSG_IMPL):
     e_b_Valid = bool
     e_Cnt_num_road_segments = int
-    a_i_road_segment_ids = List[int]
+    a_i_road_segment_ids = ndarray
 
-    def __init__(self, e_b_Valid: bool, e_Cnt_num_road_segments: int, a_i_road_segment_ids:  List[int]):
+    def __init__(self, e_b_Valid: bool, e_Cnt_num_road_segments: int, a_i_road_segment_ids: ndarray):
         """
-        Status of Dynamic traffic-flow-control device, eg. red-yellow-green (not relevant for M0)
-        :param e_e_status:
-        :param e_Pct_confidence:
+        TODO
+        :param e_Cnt_num_road_segments:
+        :param a_i_road_segment_ids:
         """
         self.e_b_Valid = e_b_Valid
         self.e_Cnt_num_road_segments = e_Cnt_num_road_segments
@@ -521,8 +522,10 @@ class DataNavigationPlan(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg: TsSYS_DataNavigationPlan):
-        return cls(pubsubMsg.e_b_Valid, pubsubMsg.e_Cnt_num_road_segments, pubsubMsg.a_i_road_segment_ids)
+    def deserialize(cls, pubsubMsg: TsSYSDataNavigationPlan):
+        return cls(pubsubMsg.e_b_Valid,
+                   pubsubMsg.e_Cnt_num_road_segments,
+                   pubsubMsg.a_i_road_segment_ids[:pubsubMsg.e_Cnt_num_road_segments])
 
 
 
@@ -547,9 +550,9 @@ class SceneLaneSegmentLite(PUBSUB_MSG_IMPL):
     e_Cnt_lane_coupling_count = int
     as_lane_coupling = List[LaneCoupling]
     e_Cnt_num_active_lane_attributes = int
-    e_i_active_lane_attribute_indices = List[int]
-    e_cmp_lane_attributes = List[int]
-    e_cmp_lane_attribute_confidences = List[float]
+    a_i_active_lane_attribute_indices = ndarray
+    a_cmp_lane_attributes = ndarray
+    a_cmp_lane_attribute_confidences = ndarray
 
     def __init__(self, e_i_lane_segment_id: int, e_i_road_segment_id: int, e_e_lane_type: MapLaneType,
                  e_Cnt_static_traffic_flow_control_count: int,
@@ -563,8 +566,8 @@ class SceneLaneSegmentLite(PUBSUB_MSG_IMPL):
                  e_v_nominal_speed: float,
                  e_i_downstream_road_intersection_id: int, e_Cnt_lane_coupling_count: int,
                  as_lane_coupling: List[LaneCoupling], e_Cnt_num_active_lane_attributes: int,
-                 e_i_active_lane_attribute_indices: List[int],
-                 e_cmp_lane_attributes: List[int], e_cmp_lane_attribute_confidences: List[float]):
+                 a_i_active_lane_attribute_indices: ndarray,
+                 a_cmp_lane_attributes: ndarray, a_cmp_lane_attribute_confidences: ndarray):
         """
         Lane-segment information
         :param e_i_lane_segment_id: ID of this lane-segment
@@ -651,19 +654,10 @@ class SceneLaneSegmentLite(PUBSUB_MSG_IMPL):
             pubsub_msg.as_lane_coupling[i] = self.as_lane_coupling[i].serialize()
 
         pubsub_msg.e_Cnt_num_active_lane_attributes = self.e_Cnt_num_active_lane_attributes
-        for i in range(pubsub_msg.e_Cnt_num_active_lane_attributes):
-            pubsub_msg.e_i_active_lane_attribute_indices[i] = self.e_i_active_lane_attribute_indices[i]
+        pubsub_msg.a_i_active_lane_attribute_indices = self.a_i_active_lane_attribute_indices
 
-        pubsub_msg.e_cmp_lane_attributes = self.e_cmp_lane_attributes # These are sparse arrays. So copy the entire array
-        pubsub_msg.e_cmp_lane_attribute_confidences = self.e_cmp_lane_attribute_confidences # These are sparse arrays. So copy the entire array
-
-        pubsub_msg.e_Cnt_num_active_lane_attributes = self.e_Cnt_num_active_lane_attributes
-        for i in range(pubsub_msg.e_Cnt_num_active_lane_attributes):
-            pubsub_msg.e_i_active_lane_attribute_indices[i] = self.e_i_active_lane_attribute_indices[i]
-
-        pubsub_msg.e_cmp_lane_attributes = self.e_cmp_lane_attributes # These are sparse arrays. So copy the entire array
-        pubsub_msg.e_cmp_lane_attribute_confidences = self.e_cmp_lane_attribute_confidences # These are sparse arrays. So copy the entire array
-
+        pubsub_msg.a_cmp_lane_attributes = self.a_cmp_lane_attributes # These are sparse arrays. So copy the entire array
+        pubsub_msg.a_cmp_lane_attribute_confidences = self.a_cmp_lane_attribute_confidences # These are sparse arrays. So copy the entire array
 
         return pubsub_msg
 
@@ -711,8 +705,9 @@ class SceneLaneSegmentLite(PUBSUB_MSG_IMPL):
                    pubsubMsg.e_i_downstream_road_intersection_id,
                    pubsubMsg.e_Cnt_lane_coupling_count, as_lane_coupling,
                    pubsubMsg.e_Cnt_num_active_lane_attributes,
-                   pubsubMsg.e_i_active_lane_attribute_indices,
-                   pubsubMsg.e_cmp_lane_attributes,pubsubMsg.e_cmp_lane_attribute_confidences)
+                   pubsubMsg.a_i_active_lane_attribute_indices[:pubsubMsg.e_Cnt_num_active_lane_attributes],
+                   pubsubMsg.a_cmp_lane_attributes[:MAX_LANE_ATTRIBUTES],
+                   pubsubMsg.a_cmp_lane_attribute_confidences[:MAX_LANE_ATTRIBUTES])
 
 
 
