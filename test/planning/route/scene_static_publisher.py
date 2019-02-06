@@ -2,6 +2,8 @@ from traceback import format_exc
 from logging import Logger
 from time import time
 from numpy import zeros, ones, array
+from numpy import int as np_int
+from numpy import float as np_float
 from typing import List
 
 from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
@@ -112,7 +114,7 @@ class SceneStaticPublisher(DmModule):
                                                                                                                         lane_segment_ids)),
                            s_NavigationPlanData=DataNavigationPlan(e_b_Valid=True,
                                                                    e_Cnt_num_road_segments=num_road_segments,
-                                                                   a_i_road_segment_ids=navigation_plan))
+                                                                   a_i_road_segment_ids=array(navigation_plan, dtype=np_int)))
 
     def _generate_lane_segments(self, road_segment_ids: List[int] = None, num_lane_segments: int = 1,
                                 lane_segment_ids: List[List[int]] = None) -> List[SceneLaneSegmentLite]:
@@ -139,12 +141,12 @@ class SceneStaticPublisher(DmModule):
                                                                 e_e_maneuver_type=ManeuverType.STRAIGHT_CONNECTION)]
 
                 num_active_lane_attributes = 4
-                active_lane_attribute_indices = [0, 1, 2, 3]
-                lane_attributes = [LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
+                active_lane_attribute_indices = array([0, 1, 2, 3], dtype=np_int)
+                lane_attributes = array([LaneMappingStatusType.CeSYS_e_LaneMappingStatusType_HDMap.value,
                                    GMAuthorityType.CeSYS_e_GMAuthorityType_None.value,
                                    LaneConstructionType.CeSYS_e_LaneConstructionType_Normal.value,
-                                   MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value]
-                lane_attribute_confidences = ones(4)
+                                   MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value], dtype=np_int)
+                lane_attribute_confidences = ones(4, dtype=np_float)
                 
                 lane_segment_lite.append(SceneLaneSegmentLite(e_i_lane_segment_id=lane_segment_ids[i][j],
                                                               e_i_road_segment_id=road_segment_ids[i],
@@ -186,12 +188,12 @@ class SceneStaticPublisher(DmModule):
         return [SceneRoadSegment(e_i_road_segment_id=road_segment_ids[i],
                                  e_i_road_id=1,
                                  e_Cnt_lane_segment_id_count=len(lane_segment_ids),
-                                 a_i_lane_segment_ids=array(lane_segment_ids[i]),
+                                 a_i_lane_segment_ids=array(lane_segment_ids[i], dtype=np_int),
                                  e_e_road_segment_type=MapRoadSegmentType.Normal,
                                  e_Cnt_upstream_segment_count=0,
-                                 a_i_upstream_road_segment_ids=array([0]),
+                                 a_i_upstream_road_segment_ids=array([0], dtype=np_int),
                                  e_Cnt_downstream_segment_count=0,
-                                 a_i_downstream_road_segment_ids=array([0])) \
+                                 a_i_downstream_road_segment_ids=array([0], dtype=np_int)) \
                 for i in range(len(road_segment_ids))]
     
     def _generate_road_intersections(self, num_intersections: int = 1) -> List[SceneRoadIntersection]:
