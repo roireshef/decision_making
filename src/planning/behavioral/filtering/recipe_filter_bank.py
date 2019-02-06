@@ -170,8 +170,7 @@ class FilterOvertakeActions(RecipeFilter):
 
 class FilterIfNone(RecipeFilter):
     def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
-        return [(recipe and behavioral_state) is not None
-                if recipe is not None else False for recipe in recipes]
+        return [(recipe and behavioral_state) is not None for recipe in recipes]
 
 
 class FilterNonCalmActions(RecipeFilter):
