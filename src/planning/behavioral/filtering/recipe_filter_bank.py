@@ -10,20 +10,21 @@ from decision_making.src.planning.behavioral.filtering.recipe_filtering import R
 from decision_making.src.planning.types import FS_SV, FS_SA
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite, TextReadWrite
 
-# DynamicActionRecipe Filters
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
 from decision_making.src.utils.map_utils import MapUtils
+from typing import List
 
 
 class FilterActionsTowardsNonOccupiedCells(RecipeFilter):
-    def filter(self, recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
-        recipe_cell = (recipe.relative_lane, recipe.relative_lon)
-        return recipe_cell in behavioral_state.road_occupancy_grid
+    def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        return [(recipe.relative_lane, recipe.relative_lon) in behavioral_state.road_occupancy_grid
+                if recipe is not None else False for recipe in recipes]
 
 
 class FilterActionsTowardsOtherLanes(RecipeFilter):
-    def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
-        return recipe.relative_lane == RelativeLane.SAME_LANE
+    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        return [recipe.relative_lane == RelativeLane.SAME_LANE
+                if recipe is not None else False for recipe in recipes]
 
 
 class FilterBadExpectedTrajectory(RecipeFilter):
@@ -84,96 +85,116 @@ class FilterBadExpectedTrajectory(RecipeFilter):
                 return False
         return True
 
-    def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
+    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         """
         This filter checks if recipe might cause a bad action specification, meaning velocity or acceleration are too
         aggressive, action time is too long or safety will be violated by entering non-safe zone while action is being
         taken. Filtering is based on querying a boolean predicate (LUT) created offline.
-        :param recipe:
+        :param recipes:
         :param behavioral_state:
         :return: True if recipe is valid, otherwise False
         """
-        action_type = recipe.action_type
-        ego_state = behavioral_state.ego_state
-        v_0 = ego_state.map_state.lane_fstate[FS_SV]
-        a_0 = ego_state.map_state.lane_fstate[FS_SA]
-        wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
+        filter_result = [True for i in range(len(recipes))]
 
-        # The predicates currently work for follow-front car,overtake-back car or follow-lane actions.
-        if (action_type == ActionType.FOLLOW_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.FRONT) \
-                or (
-                action_type == ActionType.OVERTAKE_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.REAR):
+        for i, recipe in enumerate(recipes):
 
-            recipe_cell = (recipe.relative_lane, recipe.relative_lon)
+            if recipe is None:
+                filter_result[i] = False
+                continue
 
-            if recipe_cell not in behavioral_state.road_occupancy_grid:
-                return False
+            action_type = recipe.action_type
+            ego_state = behavioral_state.ego_state
+            v_0 = ego_state.map_state.lane_fstate[FS_SV]
+            a_0 = ego_state.map_state.lane_fstate[FS_SA]
+            wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
 
-            # pull target vehicle
-            relative_dynamic_object = behavioral_state.road_occupancy_grid[recipe_cell][0]
-            dynamic_object = relative_dynamic_object.dynamic_object
-            # safety distance is behind or ahead of target vehicle if we follow or overtake it, respectively.
-            margin_sign = +1 if recipe.action_type == ActionType.FOLLOW_VEHICLE else -1
-            # compute distance from target vehicle +/- safety margin
-            s_T = relative_dynamic_object.longitudinal_distance - (LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
-                                                      ego_state.size.length / 2 + dynamic_object.size.length / 2)
-            v_T = dynamic_object.map_state.lane_fstate[FS_SV]
+            # The predicates currently work for follow-front car,overtake-back car or follow-lane actions.
+            if (action_type == ActionType.FOLLOW_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.FRONT) \
+                    or (
+                    action_type == ActionType.OVERTAKE_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.REAR):
 
-            predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
+                recipe_cell = (recipe.relative_lane, recipe.relative_lon)
 
-            return predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
-                             FILTER_S_T_GRID.get_index(margin_sign * s_T), FILTER_V_T_GRID.get_index(v_T)] > 0
+                if recipe_cell not in behavioral_state.road_occupancy_grid:
+                    filter_result[i] = False
+                    continue
 
-        elif action_type == ActionType.FOLLOW_LANE:
+                # pull target vehicle
+                relative_dynamic_object = behavioral_state.road_occupancy_grid[recipe_cell][0]
+                dynamic_object = relative_dynamic_object.dynamic_object
+                # safety distance is behind or ahead of target vehicle if we follow or overtake it, respectively.
+                margin_sign = +1 if recipe.action_type == ActionType.FOLLOW_VEHICLE else -1
+                # compute distance from target vehicle +/- safety margin
+                s_T = relative_dynamic_object.longitudinal_distance - (LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
+                                                          ego_state.size.length / 2 + dynamic_object.size.length / 2)
+                v_T = dynamic_object.map_state.lane_fstate[FS_SV]
 
-            v_T = recipe.velocity
+                predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
 
-            predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
+                filter_result[i] = predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
+                                    FILTER_S_T_GRID.get_index(margin_sign * s_T), FILTER_V_T_GRID.get_index(v_T)] > 0
 
-            return predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
-                             FILTER_V_T_GRID.get_index(v_T)] > 0
-        else:
-            return False
+            elif action_type == ActionType.FOLLOW_LANE:
+
+                v_T = recipe.velocity
+
+                predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
+
+                filter_result[i] = predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
+                                    FILTER_V_T_GRID.get_index(v_T)] > 0
+            else:
+                filter_result[i] = False
+
+        return filter_result
 
 
 class FilterActionsTowardBackCells(RecipeFilter):
-    def filter(self, recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState):
-        return recipe.relative_lon != RelativeLongitudinalPosition.REAR
+    def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        return [recipe.relative_lon != RelativeLongitudinalPosition.REAR
+                if recipe is not None else False for recipe in recipes]
 
 
 class FilterActionsTowardBackAndParallelCells(RecipeFilter):
-    def filter(self, recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
-        return recipe.relative_lon == RelativeLongitudinalPosition.FRONT
+    def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        return [recipe.relative_lon == RelativeLongitudinalPosition.FRONT
+                if recipe is not None else False for recipe in recipes]
 
 
 class FilterOvertakeActions(RecipeFilter):
-    def filter(self, recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
-        return recipe.action_type != ActionType.OVERTAKE_VEHICLE
+    def filter(self, recipes: List[DynamicActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        return [recipe.action_type != ActionType.OVERTAKE_VEHICLE
+                if recipe is not None else False for recipe in recipes]
 
 
-# StaticActionRecipe Filters
+# General ActionRecipe Filters
 
 class FilterIfNone(RecipeFilter):
-    def filter(self, recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState) -> bool:
-        return (recipe and behavioral_state) is not None
+    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        return [(recipe and behavioral_state) is not None
+                if recipe is not None else False for recipe in recipes]
 
 
 class FilterNonCalmActions(RecipeFilter):
-    def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
-        return recipe.aggressiveness == AggressivenessLevel.CALM
+    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        return [recipe.aggressiveness == AggressivenessLevel.CALM
+                if recipe is not None else False for recipe in recipes]
 
 
 class FilterIfNoLane(RecipeFilter):
-    def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
+    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         lane_id = behavioral_state.ego_state.map_state.lane_id
-        return (recipe.relative_lane == RelativeLane.SAME_LANE or
+        return [(recipe.relative_lane == RelativeLane.SAME_LANE or
                 len(MapUtils.get_adjacent_lane_ids(lane_id, recipe.relative_lane)) > 0)
+                if recipe is not None else False for recipe in recipes]
 
 
 class FilterIfAggressive(RecipeFilter):
-    def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
-        return recipe.aggressiveness != AggressivenessLevel.AGGRESSIVE
+    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        return [recipe.aggressiveness != AggressivenessLevel.AGGRESSIVE
+                if recipe is not None else False for recipe in recipes]
+
 
 class FilterLaneChanging(RecipeFilter):
-    def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
-        return recipe.relative_lane == RelativeLane.SAME_LANE
+    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        return [recipe.relative_lane == RelativeLane.SAME_LANE
+                if recipe is not None else False for recipe in recipes]
