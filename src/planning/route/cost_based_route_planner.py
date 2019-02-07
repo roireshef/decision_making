@@ -1,3 +1,8 @@
+import numpy as np
+import pprint
+from typing import List
+
+
 from decision_making.src.messages.route_plan_message import RoutePlan,RoutePlanLaneSegment, DataRoutePlan
 
 from common_data.interface.Rte_Types.python.sub_structures import TsSYSRoutePlanLaneSegment, TsSYSDataRoutePlan
@@ -49,10 +54,16 @@ class CostBasedRoutePlanner(RoutePlanner):
 
     def plan(self, RouteData: RoutePlannerInputData) -> DataRoutePlan: # TODO: Set function annotaion
         """Add comments"""
-        NewRoutePlan = DataRoutePlan
-        NumOfRoadSeg = RouteData.route_lanesegments.__len__()
+        #
+        # NewRoutePlan = DataRoutePlan()
+        valid = True
+        num_road_segments = len(RouteData.route_roadsegments)
+        a_i_road_segment_ids = []
+        a_Cnt_num_lane_segments = []
+        as_route_plan_lane_segments = []
+
         for reverseroadsegidx, (roadsegID,lanesegIDs) in enumerate(reversed(RouteData.route_lanesegments.items())):
-            roadsegidx = NumOfRoadSeg -reverseroadsegidx
+            roadsegidx = num_road_segments - reverseroadsegidx
             AllRouteLanesInThisRoadSeg = []
             for lanesegidx, lanesegID in enumerate(lanesegIDs):
                 lanesegData = RouteData.LaneSegmentDict[lanesegID]
@@ -75,7 +86,9 @@ class CostBasedRoutePlanner(RoutePlanner):
                 # -------------------------------------------
                 # Calculate lane end costs
                 # -------------------------------------------
-                if (LaneOccCost==1):
+                if (reverseroadsegidx==0) : # the last road segment in the route; put all endcosts to 0
+                    LaneEndCost = 0
+                elif (LaneOccCost==1):
                     LaneEndCost = 1 # Can't occupy the lane, can't end up in the lane
                 elif (reverseroadsegidx>0):# if reverseroadsegidx=0 a.k.a last lane in current route view lane end cost = 0
                     # as we don't know the next segment.
@@ -87,20 +100,31 @@ class CostBasedRoutePlanner(RoutePlanner):
                         NextRoadSegLanes = RouteData.route_lanesegments[reverseroadsegidx-1] # All lane IDs in next roadsegment in route
                         if DownStreamlanesegID in NextRoadSegLanes: # verify if the downstream lane is in the route
                             DownStreamlanesegIdx = NextRoadSegLanes.index(DownStreamlanesegID)
-                            DownStreamLaneOccCost= NewRoutePlan.as_route_plan_lane_segments[roadsegidx+1][DownStreamlanesegIdx]
+                            DownStreamLaneOccCost = as_route_plan_lane_segments[reverseroadsegidx-1][DownStreamlanesegIdx].e_cst_lane_occupancy_cost
+                            # DownStreamLaneOccCost= NewRoutePlan.as_route_plan_lane_segments[roadsegidx+1][DownStreamlanesegIdx]
                             # confirm -> roadsegidx+1 in the RoutPlan == reverseroadsegidx-1 in the reversed RoutePlan
                             MinDwnStreamLaneOccCost = min(MinDwnStreamLaneOccCost,DownStreamLaneOccCost)
                     LaneEndCost = MinDwnStreamLaneOccCost
 
-                #print("lanesegID ",lanesegID)
-                #print("LaneOccCost ",LaneOccCost)
-                #print("LaneEndCost ",LaneEndCost)
-                AllRouteLanesInThisRoadSeg.append(RoutePlanLaneSegment(e_i_lane_segment_id= lanesegID, \
-                    e_cst_lane_occupancy_cost = LaneOccCost,e_cst_lane_end_cost = LaneEndCost))
-            NewRoutePlan.e_Cnt_num_road_segments = reverseroadsegidx
-            NewRoutePlan.a_i_road_segment_ids.append(roadsegID)
-            NewRoutePlan.a_Cnt_num_lane_segments.append(lanesegidx)
-            NewRoutePlan.as_route_plan_lane_segments.append(AllRouteLanesInThisRoadSeg)
+                CurrRoutePlanLaneSegment = RoutePlanLaneSegment(e_i_lane_segment_id= lanesegID, \
+                    e_cst_lane_occupancy_cost = LaneOccCost,e_cst_lane_end_cost = LaneEndCost)
+                #print("CurrRoutePlanLaneSegment",CurrRoutePlanLaneSegment)
+                AllRouteLanesInThisRoadSeg.append(CurrRoutePlanLaneSegment)
+            # NewRoutePlan.e_Cnt_num_road_segments = reverseroadsegidx
+            a_i_road_segment_ids.append(roadsegID)
+            a_Cnt_num_lane_segments.append(lanesegidx+1)
+            as_route_plan_lane_segments.append(AllRouteLanesInThisRoadSeg)
+
+
+            #print("AllRouteLanesInThisRoadSeg ")
+            #for RouteLanes in AllRouteLanesInThisRoadSeg:
+            #    print(RouteLanes)
+            #NewRoutePlan.as_route_plan_lane_segments.append(AllRouteLanesInThisRoadSeg)
+
+        NewRoutePlan = DataRoutePlan(valid, num_road_segments, np.array(a_i_road_segment_ids), \
+                                        np.array(a_Cnt_num_lane_segments),as_route_plan_lane_segments )
+        # NewRoutePlan.a_i_road_segment_ids = np.array(a_i_road_segment_ids)
+        # NewRoutePlan.a_Cnt_num_lane_segments = np.array(a_Cnt_num_lane_segments)
 
 
 
