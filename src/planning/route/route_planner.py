@@ -24,8 +24,6 @@ class RoutePlannerInputData():
             road_seg_id = Scene.as_scene_road_segment[i].e_i_road_segment_id
             self.RoadSegmentDict[road_seg_id] = Scene.as_scene_road_segment[i]
         
-    pass
-
     def Update_RoutePlanData(self, Nav: DataNavigationPlan):
         for road_seg_idx in range(Nav.e_Cnt_num_road_segments):
             road_seg = Nav.a_i_road_segment_ids[road_seg_idx]

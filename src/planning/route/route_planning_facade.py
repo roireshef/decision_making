@@ -11,6 +11,8 @@ from decision_making.src.planning.route.route_planner import RoutePlanner, Route
 from decision_making.src.utils.metric_logger import MetricLogger
 from decision_making.src.global_constants import LOG_MSG_ROUTE_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_ROUTE_PLANNER_IMPL_TIME, ROUTE_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED
+from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
+
     
 from decision_making.src.messages.scene_static_message import SceneStatic,DataSceneStaticLite, DataNavigationPlan
 from decision_making.src.messages.route_plan_message import RoutePlan,RoutePlanLaneSegment, DataRoutePlan
@@ -83,9 +85,15 @@ class RoutePlanningFacade(DmModule):
         self.logger.debug('%s: %f' % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
         return scene_static.s_SceneStaticLiteData, scene_static.s_NavigationPlanData
     
-    def _publish_results(self, route_plan: RoutePlan) -> None:
-        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"], route_plan.serialize())
-        self.logger.debug("{} {}".format(LOG_MSG_ROUTE_PLANNER_OUTPUT, route_plan))
+    def _publish_results(self, s_Data: DataRoutePlan) -> None:
+        timestamp_object = Timestamp.from_seconds(0)
+
+        final_route_plan = RoutePlan(s_Header=Header(e_Cnt_SeqNum=0, s_Timestamp=timestamp_object,e_Cnt_version=0) , \
+                                s_Data = s_Data) 
+        print("final_route_plan",s_Data.a_Cnt_num_lane_segments,s_Data.a_i_road_segment_ids,s_Data.as_route_plan_lane_segments, "\n")
+        # final_route_plan.serialize()
+        self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"], final_route_plan.serialize())
+        self.logger.debug("{} {}".format(LOG_MSG_ROUTE_PLANNER_OUTPUT, final_route_plan))
 
     @property
     def planner(self):
