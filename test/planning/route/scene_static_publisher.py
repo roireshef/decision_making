@@ -14,11 +14,11 @@ from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.messages.scene_static_message import (
     SceneStatic,
     DataSceneStaticGeometry,
-    DataSceneStaticLite,
+    DataSceneStaticBase,
     DataNavigationPlan,
     SceneLaneSegmentGeometry,
     BoundaryPoint,
-    SceneLaneSegmentLite,
+    SceneLaneSegmentBase,
     SceneRoadIntersection,
     SceneRoadSegment,
     MAX_NOMINAL_PATH_POINT_FIELDS,
@@ -98,7 +98,7 @@ class SceneStaticPublisher(DmModule):
                                                                              s_ComputeTimestamp=timestamp_object,
                                                                              e_Cnt_num_lane_segments=0,
                                                                              as_scene_lane_segments=self._generate_geometry()),
-                           s_SceneStaticLiteData=DataSceneStaticLite(e_b_Valid=True,
+                           s_SceneStaticBaseData=DataSceneStaticBase(e_b_Valid=True,
                                                                      s_RecvTimestamp=timestamp_object,
                                                                      s_ComputeTimestamp=timestamp_object,
                                                                      e_l_perception_horizon_front=50,
@@ -117,7 +117,7 @@ class SceneStaticPublisher(DmModule):
                                                                    a_i_road_segment_ids=array(navigation_plan, dtype=np_int)))
 
     def _generate_lane_segments(self, road_segment_ids: List[int] = None, num_lane_segments: int = 1,
-                                lane_segment_ids: List[List[int]] = None) -> List[SceneLaneSegmentLite]:
+                                lane_segment_ids: List[List[int]] = None) -> List[SceneLaneSegmentBase]:
         """
         Generates default lane segment geometry data
 
@@ -148,7 +148,7 @@ class SceneStaticPublisher(DmModule):
                                    MapLaneDirection.CeSYS_e_MapLaneDirection_SameAs_HostVehicle.value], dtype=np_int)
                 lane_attribute_confidences = ones(4, dtype=np_float)
                 
-                lane_segment_lite.append(SceneLaneSegmentLite(e_i_lane_segment_id=lane_segment_ids[i][j],
+                lane_segment_lite.append(SceneLaneSegmentBase(e_i_lane_segment_id=lane_segment_ids[i][j],
                                                               e_i_road_segment_id=road_segment_ids[i],
                                                               e_e_lane_type=MapLaneType.ControlledAccess_DividedRoadLane,
                                                               e_Cnt_static_traffic_flow_control_count=0,

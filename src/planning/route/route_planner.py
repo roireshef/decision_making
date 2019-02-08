@@ -2,21 +2,21 @@ from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 
 from decision_making.src.messages.route_plan_message import DataRoutePlan
-from decision_making.src.messages.scene_static_message import SceneStatic,DataSceneStaticLite,DataNavigationPlan
+from decision_making.src.messages.scene_static_message import SceneStatic,DataSceneStaticBase,DataNavigationPlan
 
 class RoutePlannerInputData():
         
-    def __init__(self, Scene: DataSceneStaticLite, Nav: DataNavigationPlan):
+    def __init__(self, Scene: DataSceneStaticBase, Nav: DataNavigationPlan):
         self.route_roadsegments = [] # list: ordered RouteSegment's upto the variable size e_Cnt_num_road_segments
         self.route_lanesegments = OrderedDict() # dict:  key - road segment IDs (sorted as in routeplan) , value - list(LaneSegmentID)
-        self.LaneSegmentDict = {} # dict : key - lane segment ID, value - LaneSegmentLite. 
+        self.LaneSegmentDict = {} # dict : key - lane segment ID, value - LaneSegmentBase. 
         #The dict should contain all the lane segments listed in self.route_segment_ids. 
         self.RoadSegmentDict = {} # dict : key - road segment ID, value - Road Segments. 
         #The dict should contain all the lane segments listed in self.route_segment_ids. 
         self.Update_DictData(Scene)
         self.Update_RoutePlanData(Nav)
     
-    def Update_DictData(self, Scene: DataSceneStaticLite):
+    def Update_DictData(self, Scene: DataSceneStaticBase):
         for i in range(Scene.e_Cnt_num_lane_segments):
             self.LaneSegmentDict[Scene.as_scene_lane_segments[i].e_i_lane_segment_id] = \
             Scene.as_scene_lane_segments[i]

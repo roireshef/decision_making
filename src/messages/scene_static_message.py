@@ -10,10 +10,10 @@ from common_data.interface.Rte_Types.python.sub_structures import (
     TsSYSDynamicTrafficFlowControl,
     TsSYSSceneLaneSegment,
     TsSYSLaneSegmentConnectivity,
-    TsSYSSceneLaneSegmentLite,
+    TsSYSSceneLaneSegmentBase,
     TsSYSDataNavigationPlan,
     TsSYSDataSceneStaticGeometry,
-    TsSYSDataSceneStaticLite,
+    TsSYSDataSceneStaticBase,
     TsSYSSceneStatic)
 from common_data.interface.Rte_Types.python.sub_structures.TsSYS_DataSceneStatic import \
     TsSYSDataSceneStatic
@@ -530,7 +530,7 @@ class DataNavigationPlan(PUBSUB_MSG_IMPL):
 
 
 
-class SceneLaneSegmentLite(PUBSUB_MSG_IMPL):
+class SceneLaneSegmentBase(PUBSUB_MSG_IMPL):
     e_i_lane_segment_id = int
     e_i_road_segment_id = int
     e_e_lane_type = MapLaneType
@@ -618,8 +618,8 @@ class SceneLaneSegmentLite(PUBSUB_MSG_IMPL):
         self.a_cmp_lane_attributes = a_cmp_lane_attributes
         self.a_cmp_lane_attribute_confidences = a_cmp_lane_attribute_confidences
 
-    def serialize(self) -> TsSYSSceneLaneSegmentLite:
-        pubsub_msg = TsSYSSceneLaneSegmentLite()
+    def serialize(self) -> TsSYSSceneLaneSegmentBase:
+        pubsub_msg = TsSYSSceneLaneSegmentBase()
 
         pubsub_msg.e_i_lane_segment_id = self.e_i_lane_segment_id
         pubsub_msg.e_i_road_segment_id = self.e_i_road_segment_id
@@ -666,7 +666,7 @@ class SceneLaneSegmentLite(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg: TsSYSSceneLaneSegmentLite):
+    def deserialize(cls, pubsubMsg: TsSYSSceneLaneSegmentBase):
         as_static_traffic_flow_control = list()
         for i in range(pubsubMsg.e_Cnt_static_traffic_flow_control_count):
             as_static_traffic_flow_control.append(
@@ -715,14 +715,14 @@ class SceneLaneSegmentLite(PUBSUB_MSG_IMPL):
 
 
 
-class DataSceneStaticLite(PUBSUB_MSG_IMPL):
+class DataSceneStaticBase(PUBSUB_MSG_IMPL):
     e_b_Valid = bool
     s_RecvTimestamp = Timestamp
     s_ComputeTimestamp = Timestamp
     e_l_perception_horizon_front = float
     e_l_perception_horizon_rear = float
     e_Cnt_num_lane_segments = int
-    as_scene_lane_segments = List[SceneLaneSegmentLite]
+    as_scene_lane_segments = List[SceneLaneSegmentBase]
     e_Cnt_num_road_intersections = int
     as_scene_road_intersection = List[SceneRoadIntersection]
     e_Cnt_num_road_segments = int
@@ -730,7 +730,7 @@ class DataSceneStaticLite(PUBSUB_MSG_IMPL):
 
     def __init__(self, e_b_Valid: bool, s_RecvTimestamp:Timestamp, s_ComputeTimestamp: Timestamp, e_l_perception_horizon_front: float,
                  e_l_perception_horizon_rear: float,
-                 e_Cnt_num_lane_segments: int, as_scene_lane_segments: List[SceneLaneSegmentLite],
+                 e_Cnt_num_lane_segments: int, as_scene_lane_segments: List[SceneLaneSegmentBase],
                  e_Cnt_num_road_intersections: int, as_scene_road_intersection: List[SceneRoadIntersection],
                  e_Cnt_num_road_segments: int, as_scene_road_segment: List[SceneRoadSegment]):
         """
@@ -758,8 +758,8 @@ class DataSceneStaticLite(PUBSUB_MSG_IMPL):
         self.e_Cnt_num_road_segments = e_Cnt_num_road_segments
         self.as_scene_road_segment = as_scene_road_segment
 
-    def serialize(self) -> TsSYSDataSceneStaticLite:
-        pubsub_msg = TsSYSDataSceneStaticLite()
+    def serialize(self) -> TsSYSDataSceneStaticBase:
+        pubsub_msg = TsSYSDataSceneStaticBase()
 
         pubsub_msg.e_b_Valid = self.e_b_Valid
         pubsub_msg.s_RecvTimestamp = self.s_RecvTimestamp.serialize()
@@ -782,11 +782,11 @@ class DataSceneStaticLite(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg: TsSYSDataSceneStaticLite):
+    def deserialize(cls, pubsubMsg: TsSYSDataSceneStaticBase):
 
         lane_segments = list()
         for i in range(pubsubMsg.e_Cnt_num_lane_segments):
-            lane_segments.append(SceneLaneSegmentLite.deserialize(pubsubMsg.as_scene_lane_segments[i]))
+            lane_segments.append(SceneLaneSegmentBase.deserialize(pubsubMsg.as_scene_lane_segments[i]))
 
         road_intersections = list()
         for i in range(pubsubMsg.e_Cnt_num_road_intersections):
@@ -808,15 +808,15 @@ class SceneStatic(PUBSUB_MSG_IMPL):
     s_Header = Header
     s_MapOrigin = MapOrigin
     s_SceneStaticGeometryData = DataSceneStaticGeometry
-    s_SceneStaticLiteData = DataSceneStaticLite
+    s_SceneStaticBaseData = DataSceneStaticBase
     s_NavigationPlanData = DataNavigationPlan
 
     def __init__(self, s_Header: Header, s_MapOrigin: MapOrigin, s_SceneStaticGeometryData: DataSceneStaticGeometry,
-                 s_SceneStaticLiteData: DataSceneStaticLite, s_NavigationPlanData:DataNavigationPlan):
+                 s_SceneStaticBaseData: DataSceneStaticBase, s_NavigationPlanData:DataNavigationPlan):
         self.s_Header = s_Header
         self.s_MapOrigin = s_MapOrigin
         self.s_SceneStaticGeometryData = s_SceneStaticGeometryData
-        self.s_SceneStaticLiteData = s_SceneStaticLiteData
+        self.s_SceneStaticBaseData = s_SceneStaticBaseData
         self.s_NavigationPlanData = s_NavigationPlanData
 
     def serialize(self) -> TsSYSSceneStatic:
@@ -824,7 +824,7 @@ class SceneStatic(PUBSUB_MSG_IMPL):
         pubsub_msg.s_Header = self.s_Header.serialize()
         pubsub_msg.s_MapOrigin = self.s_MapOrigin.serialize()
         pubsub_msg.s_SceneStaticGeometryData = self.s_SceneStaticGeometryData.serialize()
-        pubsub_msg.s_SceneStaticLiteData = self.s_SceneStaticLiteData.serialize()
+        pubsub_msg.s_SceneStaticBaseData = self.s_SceneStaticBaseData.serialize()
         pubsub_msg.s_NavigationPlanData = self.s_NavigationPlanData.serialize()
         return pubsub_msg
 
@@ -833,5 +833,5 @@ class SceneStatic(PUBSUB_MSG_IMPL):
         return cls(Header.deserialize(pubsubMsg.s_Header),
                    MapOrigin.deserialize(pubsubMsg.s_MapOrigin),
                    DataSceneStaticGeometry.deserialize(pubsubMsg.s_SceneStaticGeometryData),
-                   DataSceneStaticLite.deserialize(pubsubMsg.s_SceneStaticLiteData),
+                   DataSceneStaticBase.deserialize(pubsubMsg.s_SceneStaticBaseData),
                    DataNavigationPlan.deserialize(pubsubMsg.s_NavigationPlanData))

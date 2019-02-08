@@ -14,7 +14,7 @@ from decision_making.src.global_constants import LOG_MSG_ROUTE_PLANNER_OUTPUT, L
 from decision_making.src.messages.scene_common_messages import Header, Timestamp, MapOrigin
 
     
-from decision_making.src.messages.scene_static_message import SceneStatic,DataSceneStaticLite, DataNavigationPlan
+from decision_making.src.messages.scene_static_message import SceneStatic,DataSceneStaticBase, DataNavigationPlan
 from decision_making.src.messages.route_plan_message import RoutePlan,RoutePlanLaneSegment, DataRoutePlan
     
 
@@ -75,7 +75,7 @@ class RoutePlanningFacade(DmModule):
             self.logger.critical("RoutePlanningFacade: UNHANDLED EXCEPTION: %s. Trace: %s",
                                  e, traceback.format_exc())
 
-    def _get_current_scene_static(self) -> (DataSceneStaticLite, DataNavigationPlan):
+    def _get_current_scene_static(self) -> (DataSceneStaticBase, DataNavigationPlan):
         is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], timeout=1)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if serialized_scene_static is None:
@@ -83,7 +83,7 @@ class RoutePlanningFacade(DmModule):
                                           pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"])
         scene_static = SceneStatic.deserialize(serialized_scene_static)
         self.logger.debug('%s: %f' % (LOG_MSG_SCENE_STATIC_RECEIVED, scene_static.s_Header.s_Timestamp.timestamp_in_seconds))
-        return scene_static.s_SceneStaticLiteData, scene_static.s_NavigationPlanData
+        return scene_static.s_SceneStaticBaseData, scene_static.s_NavigationPlanData
     
     def _publish_results(self, s_Data: DataRoutePlan) -> None:
         timestamp_object = Timestamp.from_seconds(0)

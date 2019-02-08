@@ -63,7 +63,7 @@ class CostBasedRoutePlanner(RoutePlanner):
         as_route_plan_lane_segments = []
 
         for reverseroadsegidx, (roadsegID,lanesegIDs) in enumerate(reversed(RouteData.route_lanesegments.items())):
-            roadsegidx = num_road_segments - reverseroadsegidx
+            # roadsegidx = num_road_segments - reverseroadsegidx
             AllRouteLanesInThisRoadSeg = []
             for lanesegidx, lanesegID in enumerate(lanesegIDs):
                 lanesegData = RouteData.LaneSegmentDict[lanesegID]
@@ -121,12 +121,9 @@ class CostBasedRoutePlanner(RoutePlanner):
             #    print(RouteLanes)
             #NewRoutePlan.as_route_plan_lane_segments.append(AllRouteLanesInThisRoadSeg)
 
-        NewRoutePlan = DataRoutePlan(valid, num_road_segments, np.array(a_i_road_segment_ids), \
-                                        np.array(a_Cnt_num_lane_segments),as_route_plan_lane_segments )
-        # NewRoutePlan.a_i_road_segment_ids = np.array(a_i_road_segment_ids)
-        # NewRoutePlan.a_Cnt_num_lane_segments = np.array(a_Cnt_num_lane_segments)
+        NewRoutePlan = DataRoutePlan(e_b_is_valid = valid, e_Cnt_num_road_segments= num_road_segments, a_i_road_segment_ids=np.array(a_i_road_segment_ids), \
+                                        a_Cnt_num_lane_segments= np.array(a_Cnt_num_lane_segments), as_route_plan_lane_segments=as_route_plan_lane_segments )
 
-                
         return NewRoutePlan
 
 
