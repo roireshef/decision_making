@@ -30,6 +30,7 @@ class StrSerializable:
         if left_out_fields is None:
             left_out_fields = []
         ser_dict = {}
+        tmp2 = []
         self_fields = {k: v for k, v in self.__dict__.items() if (
                 k not in left_out_fields and k not in internal_left_out_fields)}
         for key, val in self_fields.items():
