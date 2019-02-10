@@ -16,12 +16,10 @@ def test_createPredicates_predicateFileMatchesCurrentPredicateGeneration():
     directory = Paths.get_resource_absolute_path_filename('predicates')
     num_trials = 1000
     T_m = SPECIFICATION_MARGIN_TIME_DELAY
-    T_safety = SAFETY_MARGIN_TIME_DELAY
     for filename in os.listdir(directory):
         if filename.endswith(".bin"):
             limits_result = np.zeros(shape=num_trials)
             result_lut = np.zeros(shape=num_trials)
-            safety_result = np.zeros(shape=num_trials)
             predicate_path = Paths.get_resource_absolute_path_filename('%s/%s' % ('predicates', filename))
             action_name = filename.split('.bin')[0].split('_limits')[0].split('_safety')[0]
 
@@ -44,7 +42,7 @@ def test_createPredicates_predicateFileMatchesCurrentPredicateGeneration():
 
                 action_type = ActionType.FOLLOW_VEHICLE if action_name == 'follow_vehicle' else ActionType.OVERTAKE_VEHICLE
                 margin_sign = +1 if action_type == ActionType.FOLLOW_VEHICLE else -1
-                limits_result[i], safety_result[i] = predicates_creator.generate_predicate_value(
+                limits_result[i] = predicates_creator.generate_predicate_value(
                     wT, wJ, np.array([v_0]), np.array([a_0]),np.array([v_T]), np.array([margin_sign*s_T]), margin_sign*T_m)
                 result_lut[i] = predicate[FILTER_V_0_GRID.get_index(v_0),
                                           FILTER_A_0_GRID.get_index(a_0),
@@ -53,5 +51,3 @@ def test_createPredicates_predicateFileMatchesCurrentPredicateGeneration():
 
             if 'limits' in filename:
                 np.testing.assert_array_almost_equal(limits_result, result_lut)
-            elif 'safety' in filename:
-                np.testing.assert_array_almost_equal(safety_result, result_lut)
