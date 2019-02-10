@@ -11,13 +11,12 @@ from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import
 from decision_making.src.planning.types import C_K, C_V, FS_SX, FS_DX
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
-
 from typing import List
 
 
-class AlwaysFalse(ActionSpecFilter):
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState) -> List[ActionSpec]:
-        return [None]*len(action_specs)
+class FilterIfNone(ActionSpecFilter):
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState) -> List[bool]:
+        return [(action_spec and behavioral_state) is not None for action_spec in action_specs]
 
 
 class FilterByLateralAcceleration(ActionSpecFilter):
@@ -25,7 +24,7 @@ class FilterByLateralAcceleration(ActionSpecFilter):
         self.predicates = FilterLimitsViolatingTrajectory.read_predicates(predicates_dir, 'limits')
         self.distances = FilterLimitsViolatingTrajectory.read_predicates(predicates_dir, 'distances')
 
-    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[ActionSpec]:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> List[bool]:
         """
         Check violation of lateral acceleration for action_specs, and beyond action_specs check ability to brake
         before all future curves using any static action.
@@ -35,11 +34,10 @@ class FilterByLateralAcceleration(ActionSpecFilter):
         meet_limits = FilterByLateralAcceleration.check_lateral_acceleration_limits(action_specs, behavioral_state)
 
         # now check ability to break before future curves beyond the baseline specs' trajectories
-        resulting_specs = []
+        filtering_res = [False]*len(action_specs)
         for spec_idx, spec in enumerate(action_specs):
 
             if spec is None or not meet_limits[spec_idx]:
-                resulting_specs.append(None)
                 continue
 
             target_lane_frenet = behavioral_state.extended_lane_frames[spec.relative_lane]  # the target GFF
@@ -54,17 +52,17 @@ class FilterByLateralAcceleration(ActionSpecFilter):
 
             # if all points beyond the spec have velocity limit higher than spec.v, so no need to brake
             if len(slow_points) == 0:
-                resulting_specs.append(spec)
-                continue  # don't remove the spec
+                filtering_res[spec_idx] = True
+                continue  # the spec passes the filter
 
             # check the ability to brake beyond the spec for all points with limited velocity
             is_able_to_brake = ActionSpecFilter.check_ability_to_brake_beyond_spec(
                 spec, behavioral_state.extended_lane_frames[spec.relative_lane],
                 beyond_spec_frenet_idxs[slow_points], points_velocity_limits[slow_points], self.distances)
 
-            resulting_specs.append(spec if is_able_to_brake else None)
+            filtering_res[spec_idx] = is_able_to_brake
 
-        return resulting_specs
+        return filtering_res
 
     @staticmethod
     def check_lateral_acceleration_limits(action_specs: List[ActionSpec], behavioral_state: BehavioralGridState) -> np.array:
