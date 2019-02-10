@@ -1,4 +1,3 @@
-from decision_making.src.planning.utils.safety_utils import SafetyUtils
 from typing import List
 
 import numpy as np
@@ -8,12 +7,12 @@ from sympy.matrices import *
 
 from decision_making.paths import Paths
 from decision_making.src.global_constants import LON_ACC_LIMITS, VELOCITY_LIMITS, \
-    BP_ACTION_T_LIMITS, EPS, SPECIFICATION_MARGIN_TIME_DELAY, TRAJECTORY_TIME_RESOLUTION, SAFETY_MARGIN_TIME_DELAY
+    BP_ACTION_T_LIMITS, EPS, SPECIFICATION_MARGIN_TIME_DELAY
 from decision_making.src.planning.behavioral.data_objects import ActionType
 from decision_making.src.planning.utils.file_utils import BinaryReadWrite
 from decision_making.src.planning.utils.math_utils import Math
 from decision_making.src.planning.utils.numpy_utils import UniformGrid
-from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D, Poly1D
+from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 
 
 class QuinticMotionSymbolicsCreator:
@@ -119,17 +118,15 @@ class QuinticMotionPredicatesCreator:
             return T == 0, T == 0  # T is a vector of times
 
         is_in_limits = np.full(T.shape, False)
-        is_safe = np.full(T.shape, False)
 
         # check actions validity: velocity & acceleration limits and longitudinal safety
-        is_in_limits[valid_idxs], is_safe[valid_idxs], _ = QuinticMotionPredicatesCreator.check_action_validity(
+        is_in_limits[valid_idxs], _ = QuinticMotionPredicatesCreator.check_action_limits(
             T[valid_idxs], v_0[valid_idxs], v_T[valid_idxs], s_T[valid_idxs], a_0[valid_idxs], T_m)
 
         # for T == 0 the actions are valid
         is_in_limits[T == 0] = True
-        is_safe[T == 0] = True
 
-        return is_in_limits, is_safe
+        return is_in_limits
 
     @staticmethod
     def calc_T_s(w_T: float, w_J: float, v_0: np.array, a_0: np.array, v_T: np.array, s_T: np.array,
@@ -159,8 +156,8 @@ class QuinticMotionPredicatesCreator:
         return np.fmax.reduce(cost_real_roots, axis=-1)
 
     @staticmethod
-    def check_action_validity(T: np.array, v_0: np.array, v_T: np.array, s_T: np.array, a_0: np.array,
-                              T_m: float = SPECIFICATION_MARGIN_TIME_DELAY) -> [np.array, np.array, np.array]:
+    def check_action_limits(T: np.array, v_0: np.array, v_T: np.array, s_T: np.array, a_0: np.array,
+                            T_m: float = SPECIFICATION_MARGIN_TIME_DELAY) -> [np.array, np.array]:
         """
         Given longitudinal action dynamics, calculate validity wrt velocity & acceleration limits, and safety of each action.
         :param T: array of action times
@@ -179,52 +176,7 @@ class QuinticMotionPredicatesCreator:
         acc_in_limits = QuinticPoly1D.are_accelerations_in_limits(poly_coefs, T, LON_ACC_LIMITS)
         vel_in_limits = QuinticPoly1D.are_velocities_in_limits(poly_coefs, T, VELOCITY_LIMITS)
         is_in_limits = np.logical_and(acc_in_limits, vel_in_limits)
-        # check safety
-        is_safe = QuinticMotionPredicatesCreator.get_lon_safety_for_action_specs(poly_coefs, T, v_T, s_T)
-        return is_in_limits, is_safe, poly_coefs
-
-    @staticmethod
-    def get_lon_safety_for_action_specs(poly_coefs: np.array, T: np.array, v_T: np.array, s_T: np.array) -> np.array:
-        """
-        Given polynomial coefficients and action specs for each polynomial, calculate longitudinal safety
-        w.r.t. the front cars with constant velocities, described by the specs.
-        :param poly_coefs: 2D matrix Nx6: N quintic polynomials of ego
-        :param T: array of action times
-        :param v_T: array of final velocities
-        :param s_T: array of initial distances from target
-        :return: boolean array of size N: longitudinal safety for each spec
-        """
-        time_samples = np.arange(0, np.max(T) + EPS, TRAJECTORY_TIME_RESOLUTION)
-
-        # sample polynomials and create ftrajectories_s
-        trajectories_s = Poly1D.polyval_with_derivatives(poly_coefs, time_samples)
-
-        # test longitudinal safety only for the second half of each trajectory, because in the first half ego
-        # may be safe laterally w.r.t. the followed/overtaken object
-        from_idx = [int(0.5 * T[i] / TRAJECTORY_TIME_RESOLUTION) for i, trajectory in enumerate(trajectories_s)]
-        ego_trajectories = [trajectory[from_idx[i]:int(T[i] / TRAJECTORY_TIME_RESOLUTION) + 1]
-                            for i, trajectory in enumerate(trajectories_s)]
-
-        obj_trajectories = [np.c_[s_T[i] + v_T[i] * from_idx[i] * TRAJECTORY_TIME_RESOLUTION +
-                                  np.linspace(0, v_T[i] * (len(ego_trajectory)-1) * TRAJECTORY_TIME_RESOLUTION, len(ego_trajectory)),
-                                  np.full(len(ego_trajectory), v_T[i]),
-                                  np.zeros(len(ego_trajectory))]
-                            for i, ego_trajectory in enumerate(ego_trajectories)]
-
-        # concatenate all trajectories to a single long trajectory
-        concat_ego_trajectory = np.concatenate(ego_trajectories)
-        concat_obj_trajectory = np.concatenate(obj_trajectories)
-
-        # calc longitudinal RSS for the long trajectory
-        concat_safe_times = SafetyUtils._get_lon_safety(concat_ego_trajectory, SAFETY_MARGIN_TIME_DELAY,
-                                                        concat_obj_trajectory, SPECIFICATION_MARGIN_TIME_DELAY, margin=0)
-
-        # split the safety results according to the original trajectories
-        trajectories_lengths = [len(trajectory) for trajectory in ego_trajectories]
-        safe_times_matrix = np.split(concat_safe_times, np.cumsum(trajectories_lengths[:-1]))
-        # AND on all time samples for each action
-        safe_specs = [action_safe_times.all() for action_safe_times in safe_times_matrix]
-        return np.array(safe_specs)
+        return is_in_limits, poly_coefs
 
     def create_predicates(self, jerk_time_weights: np.ndarray, action_types: List[ActionType]) -> None:
         """
@@ -236,7 +188,6 @@ class QuinticMotionPredicatesCreator:
         """
         predicate_shape = [len(self.v0_grid), len(self.a0_grid), len(self.sT_grid), len(self.vT_grid)]
         limits = np.full(shape=predicate_shape, fill_value=False)
-        safety = np.full(shape=predicate_shape, fill_value=False)
 
         for action_type in action_types:
             margin_sign = +1 if action_type == ActionType.FOLLOW_VEHICLE else -1
@@ -251,19 +202,12 @@ class QuinticMotionPredicatesCreator:
 
                 for k, v_0 in enumerate(self.v0_grid):
                     print('v_0 is: %.1f' % v_0)
-                    local_limits, local_safety = QuinticMotionPredicatesCreator.generate_predicate_value(
+                    local_limits = QuinticMotionPredicatesCreator.generate_predicate_value(
                         w_T, w_J, np.full(vT.shape, v_0), a0, vT, sT, T_m)
                     limits[k] = local_limits.reshape((len(self.a0_grid), len(self.sT_grid), len(self.vT_grid)))
-                    safety[k] = local_safety.reshape((len(self.a0_grid), len(self.sT_grid), len(self.vT_grid)))
 
                 # save 'limits' predicates to file
                 output_limits_file_name = '%s_limits_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
                 output_predicate_file_path = Paths.get_resource_absolute_path_filename(
                     '%s/%s' % (self.predicates_resources_target_directory, output_limits_file_name))
                 BinaryReadWrite.save(array=limits, file_path=output_predicate_file_path)
-
-                # save 'safety' predicates to file
-                output_safety_file_name = '%s_safety_wT_%.2f_wJ_%.2f.bin' % (action_type.name.lower(), w_T, w_J)
-                output_safety_file_path = Paths.get_resource_absolute_path_filename(
-                    '%s/%s' % (self.predicates_resources_target_directory, output_safety_file_name))
-                BinaryReadWrite.save(array=safety, file_path=output_safety_file_path)

@@ -75,6 +75,9 @@ GOAL_SIGMOID_OFFSET = 7                     # offset param m of going out-of-goa
 LON_JERK_COST_WEIGHT = 1.0                  # cost of longitudinal jerk
 LAT_JERK_COST_WEIGHT = 1.0                  # cost of lateral jerk
 
+SAFETY_SIGMOID_COST = 100                   # maximal cost of RSS safety (sigmoid)
+SAFETY_SIGMOID_K_PARAM = 9                  # sigmoid k (slope) param of RSS safety cost
+
 # [m/sec] speed to plan towards by default in BP
 BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 30.0  # TODO - get this value from the map
 
@@ -104,6 +107,22 @@ LAT_ACC_LIMITS = np.array([-3.0, 3.0])
 # Used to compute safe distance from other agents on road
 SPECIFICATION_MARGIN_TIME_DELAY = 2
 SAFETY_MARGIN_TIME_DELAY = 0.5
+
+# [m] minimal longitudinal safe distance between objects
+LONGITUDINAL_SAFETY_MIN_DIST = 0.5
+# [m] minimal lateral safe distance between objects
+LATERAL_SAFETY_MU = 0.5
+
+# [m/sec] lateral velocity blame threshold: in case of lateral danger,
+# if ego_lat_vel >= min(obj_lat_vel, LAT_VEL_BLAME_THRESH), then ego is blamed
+LAT_VEL_BLAME_THRESH = 0.1
+
+# [m/s^2] longitudinal acceleration of object during time delay in RSS
+LON_SAFETY_ACCEL_DURING_RESPONSE = LON_ACC_LIMITS[1]
+
+# [m/s^2] lateral acceleration of object during time delay in RSS
+LAT_SAFETY_ACCEL_DURING_RESPONSE = 0
+
 
 # [m/sec] Minimal difference of velocities to justify an overtake
 MIN_OVERTAKE_VEL = 3.5
