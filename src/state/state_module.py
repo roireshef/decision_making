@@ -58,31 +58,43 @@ class StateModule(DmModule):
     def _periodic_action_impl(self) -> None:
         pass
 
+    def create_state_from_scene_dynamic(self, scene_dynamic: SceneDynamic) -> State:
+        """
+        This methods takes an already deserialized SceneDynamic message and converts it to a State object
+        :param scene_dynamic:
+        :return: valid State object
+        """
+
+        timestamp = DynamicObject.sec_to_ticks(scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
+        occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
+        ego_map_state = MapState(lane_fstate=scene_dynamic.s_Data.s_host_localization.a_lane_frenet_pose,
+                                 lane_id=scene_dynamic.s_Data.s_host_localization.e_i_lane_segment_id)
+        ego_state = EgoState(obj_id=0,
+                             timestamp=timestamp,
+                             cartesian_state=scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
+                             map_state=ego_map_state,
+                             map_state_on_host_lane=ego_map_state,
+                             size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
+                             confidence=1.0)
+
+        if ego_state.cartesian_state[C_V] < 0:
+            raise ObjectHasNegativeVelocityError(
+                'Ego was received with negative velocity %f' % ego_state.cartesian_state[C_V])
+
+        dyn_obj_data = DynamicObjectsData(num_objects=scene_dynamic.s_Data.e_Cnt_num_objects,
+                                          objects_localization=scene_dynamic.s_Data.as_object_localization,
+                                          timestamp=timestamp)
+        dynamic_objects = self.create_dyn_obj_list(dyn_obj_data)
+        return State(occupancy_state, dynamic_objects, ego_state)
+
     @prof.ProfileFunction()
     def _scene_dynamic_callback(self, scene_dynamic: TsSYSSceneDynamic, args: Any):
         try:
             with self._scene_dynamic_lock:
+
                 self._scene_dynamic = SceneDynamic.deserialize(scene_dynamic)
-                timestamp = DynamicObject.sec_to_ticks(self._scene_dynamic.s_Data.s_RecvTimestamp.timestamp_in_seconds)
-                occupancy_state = OccupancyState(0, np.array([0]), np.array([0]))
-                ego_map_state = MapState(lane_fstate=self._scene_dynamic.s_Data.s_host_localization.a_lane_frenet_pose,
-                                         lane_id=self._scene_dynamic.s_Data.s_host_localization.e_i_lane_segment_id)
-                ego_state = EgoState(obj_id=0,
-                                     timestamp=timestamp,
-                                     cartesian_state=self._scene_dynamic.s_Data.s_host_localization.a_cartesian_pose,
-                                     map_state=ego_map_state,
-                                     map_state_on_host_lane=ego_map_state,
-                                     size=ObjectSize(EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT),
-                                     confidence=1.0)
 
-                if ego_state.cartesian_state[C_V] < 0:
-                    raise ObjectHasNegativeVelocityError('Ego was received with negative velocity %f' % ego_state.cartesian_state[C_V])
-
-                dyn_obj_data = DynamicObjectsData(num_objects=self._scene_dynamic.s_Data.e_Cnt_num_objects,
-                                                  objects_localization=self._scene_dynamic.s_Data.as_object_localization,
-                                                  timestamp=timestamp)
-                dynamic_objects = self.create_dyn_obj_list(dyn_obj_data)
-                state = State(occupancy_state, dynamic_objects, ego_state)
+                state = self.create_state_from_scene_dynamic(self._scene_dynamic)
                 
                 self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
 
