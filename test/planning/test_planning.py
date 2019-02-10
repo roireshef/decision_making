@@ -11,7 +11,6 @@ from decision_making.src.planning.behavioral.behavioral_planning_facade import B
 from decision_making.src.planning.behavioral.evaluators.rule_based_action_spec_evaluator import \
     RuleBasedActionSpecEvaluator
 from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
-from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
@@ -102,7 +101,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
     planner = SingleStepBehavioralPlanner(action_space=action_space,
                                           recipe_evaluator=None,
                                           action_spec_evaluator=RuleBasedActionSpecEvaluator(bp_logger),
-                                          action_spec_validator=ActionSpecFiltering(filters=[FilterIfNone()],
+                                          action_spec_validator=ActionSpecFiltering(filters=[],
                                                                                     logger=bp_logger),
                                           value_approximator=ZeroValueApproximator(bp_logger),
                                           predictor=predictor, logger=bp_logger)

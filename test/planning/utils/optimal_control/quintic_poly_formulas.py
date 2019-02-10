@@ -115,7 +115,7 @@ class QuinticMotionPredicatesCreator:
         valid_idxs = np.where(np.logical_and(T > 0, T <= BP_ACTION_T_LIMITS[1]))[0]
         if len(valid_idxs) == 0:
             # for T == 0 the action is "do nothing" (ego is at the goal), then such action is valid
-            return T == 0, T == 0  # T is a vector of times
+            return T == 0  # T is a vector of times
 
         is_in_limits = np.full(T.shape, False)
 
