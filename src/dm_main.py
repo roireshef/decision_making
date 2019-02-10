@@ -108,8 +108,7 @@ class DmInitialization:
         predictor = RoadFollowingPredictor(logger)
 
         action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
-                                                     DynamicActionSpace(logger, predictor,
-                                                                        DEFAULT_DYNAMIC_RECIPE_FILTERING)])
+                                                     DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
 
         recipe_evaluator = None
         action_spec_evaluator = SingleLaneActionSpecEvaluator(logger)  # RuleBasedActionSpecEvaluator(logger)

@@ -62,38 +62,6 @@ class FilterLimitsViolatingTrajectory(RecipeFilter):
             return False
 
 
-class FilterUnsafeExpectedTrajectory(RecipeFilter):
-    """
-    This filter checks longitudinal safety (by RSS) toward the followed/overtaken vehicle for quintic predicates
-    """
-    def __init__(self, predicates_dir: str):
-        if not self.validate_predicate_constants(predicates_dir):
-            raise ResourcesNotUpToDateException('Predicates files were creates with other set of constants')
-        self.predicates = self.read_predicates(predicates_dir, 'safety')
-
-    def filter(self, recipe: ActionRecipe, behavioral_state: BehavioralGridState) -> bool:
-        """
-        This filter checks if recipe might cause a longitudinally unsafe (by RSS) action specification w.r.t. the
-        followed/overtaken vehicle. Filtering is based on querying a boolean predicate (LUT) created offline.
-        :param recipe:
-        :param behavioral_state:
-        :return: True if recipe is valid, otherwise False
-        """
-        action_type = recipe.action_type
-
-        # The predicates currently work for follow-front car,overtake-back car or follow-lane actions.
-        if (action_type == ActionType.FOLLOW_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.FRONT) \
-                or (
-                action_type == ActionType.OVERTAKE_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.REAR):
-
-            return RecipeFilter.filter_follow_vehicle_action(recipe, behavioral_state, self.predicates)
-
-        elif action_type == ActionType.FOLLOW_LANE:
-            return True
-        else:
-            return False
-
-
 class FilterActionsTowardBackCells(RecipeFilter):
     def filter(self, recipe: DynamicActionRecipe, behavioral_state: BehavioralGridState):
         return recipe.relative_lon != RelativeLongitudinalPosition.REAR

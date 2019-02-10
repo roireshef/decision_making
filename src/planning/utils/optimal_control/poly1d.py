@@ -351,12 +351,12 @@ class QuinticPoly1D(Poly1D):
     @staticmethod
     def inverse_time_constraints_tensor(terminal_times: np.ndarray) -> np.ndarray:
         return np.array([
-            [[-6 / T ** 5, -3 / T ** 4, -1 / (2 * T ** 3), 6 / T ** 5, -3 / T ** 4, 1 / (2 * T ** 3)],
-             [15 / T ** 4, 8 / T ** 3, 3 / (2 * T ** 2), -15 / T ** 4, 7 / T ** 3, -1 / T ** 2],
-             [-10 / T ** 3, -6 / T ** 2, -3 / (2 * T), 10 / T ** 3, -4 / T ** 2, 1 / (2 * T)],
-             [0, 0, 1 / 2, 0, 0, 0],
+            [[1, 0, 0, 0, 0, 0],
              [0, 1, 0, 0, 0, 0],
-             [1, 0, 0, 0, 0, 0]]
+             [0, 0, 0.5, 0, 0, 0],
+             [-10 / T ** 3, -6 / T ** 2, -3 / (2 * T), 10 / T ** 3, -4 / T ** 2, 1 / (2 * T)],
+             [15 / T ** 4, 8 / T ** 3, 3 / (2 * T ** 2), -15 / T ** 4, 7 / T ** 3, -1 / T ** 2],
+             [-6 / T ** 5, -3 / T ** 4, -1 / (2 * T ** 3), 6 / T ** 5, -3 / T ** 4, 1 / (2 * T ** 3)]]
             for T in terminal_times], dtype=np.float)
 
     @staticmethod

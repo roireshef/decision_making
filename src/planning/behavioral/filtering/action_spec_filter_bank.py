@@ -97,8 +97,7 @@ class FilterByLateralAcceleration(ActionSpecFilter):
 
             # calculate polynomial coefficients of the spec's Frenet trajectory for s axis
             A_inv = QuinticPoly1D.inverse_time_constraints_tensor(specs_t)
-            poly_coefs_s = np.einsum(
-                'ijk, ik -> ij', A_inv, np.hstack((ego_fstates[:, FS_SX:FS_DX], goal_fstates[:, FS_SX:FS_DX])))
+            poly_coefs_s = QuinticPoly1D.zip_solve(A_inv, np.hstack((ego_fstates[:, FS_SX:FS_DX], goal_fstates[:, FS_SX:FS_DX])))
 
             # create Frenet trajectories for s axis for all trajectories of rel_lane and for all time samples
             ftrajectories_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, time_samples)
