@@ -79,7 +79,7 @@ SAFETY_SIGMOID_COST = 100                   # maximal cost of RSS safety (sigmoi
 SAFETY_SIGMOID_K_PARAM = 9                  # sigmoid k (slope) param of RSS safety cost
 
 # [m/sec] speed to plan towards by default in BP
-BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 30.0  # TODO - get this value from the map
+BEHAVIORAL_PLANNING_DEFAULT_DESIRED_SPEED = 23.0  # TODO - get this value from the map
 
 # [m/s] min & max velocity limits are additional parameters for TP and for Static Recipe enumeration
 VELOCITY_LIMITS = np.array([0.0, 30])
