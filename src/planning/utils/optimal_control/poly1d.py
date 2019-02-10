@@ -93,8 +93,8 @@ class Poly1D:
         """
         Given the polynomial setting, this function returns A as a tensor with the first dimension iterating
         over different values of T (time-horizon) provided in <terminal_times>
-        :param terminal_times: 1D numpy array of different values for T
-        :return: 3D numpy array of shape [len(terminal_times), cls.num_coefs(), cls.num_coefs()]
+        :param T: 1D numpy array of different terminal times
+        :return: 3D numpy array of shape [len(T), cls.num_coefs(), cls.num_coefs()]
         """
         return cls.time_constraints_tensor(np.array([T]))[0]
 

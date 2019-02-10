@@ -3,18 +3,12 @@ from typing import List
 
 import time
 
-from decision_making.src.global_constants import SPECIFICATION_MARGIN_TIME_DELAY, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
-    FILTER_V_0_GRID, FILTER_A_0_GRID, FILTER_S_T_GRID, FILTER_V_T_GRID
-from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.planning.behavioral.action_space.dynamic_action_space import DynamicActionSpace
 from decision_making.src.planning.behavioral.action_space.static_action_space import StaticActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
-from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, AggressivenessLevel, ActionType, \
-    StaticActionRecipe
+from decision_making.src.planning.behavioral.data_objects import DynamicActionRecipe, StaticActionRecipe
 from decision_making.src.planning.behavioral.filtering.recipe_filtering import RecipeFiltering
-from decision_making.src.planning.types import FS_SX, FS_SV
 from decision_making.src.prediction.ego_aware_prediction.road_following_predictor import RoadFollowingPredictor
-from decision_making.src.state.state import ObjectSize, State
 from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     behavioral_grid_state_with_objects_for_filtering_tracking_mode, \
     behavioral_grid_state_with_objects_for_filtering_negative_sT, \
@@ -23,9 +17,7 @@ from decision_making.test.planning.behavioral.behavioral_state_fixtures import \
     state_with_objects_for_filtering_too_aggressive, follow_vehicle_recipes_towards_front_cells, follow_lane_recipes
 from rte.python.logger.AV_logger import AV_Logger
 
-from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING
-from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterLimitsViolatingTrajectory, \
-    FilterUnsafeExpectedTrajectory
+from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterLimitsViolatingTrajectory
 
 import numpy as np
 
@@ -38,8 +30,7 @@ def test_filter_followVehicleTracking_filterResultsMatchExpected(
 
     predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
 
-    filtering = RecipeFiltering(filters=[FilterLimitsViolatingTrajectory('predicates'),
-                                         FilterUnsafeExpectedTrajectory('predicates')], logger=logger)
+    filtering = RecipeFiltering(filters=[FilterLimitsViolatingTrajectory('predicates')], logger=logger)
 
     # State leads to a0=0,v0=10,sT=15.5,vT=10.2
     # First three and last three are false because they're recipes of non-occupied cells
@@ -61,13 +52,13 @@ def test_filter_followVehicleSTNegative_filterResultsMatchExpected(
     logger = AV_Logger.get_logger()
     predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
 
-    filtering = RecipeFiltering(filters=[FilterLimitsViolatingTrajectory('predicates'),
-                                         FilterUnsafeExpectedTrajectory('predicates')], logger=logger)
+    filtering = RecipeFiltering(filters=[FilterLimitsViolatingTrajectory('predicates')], logger=logger)
 
     # State leads to a0=0,v0=10,sT=-0.7,vT=11
-    # Since the initial state is unsafe, all actions are unsafe and not valid.
+    # First three and last three are false because they're recipes of non-occupied cells;
+    # three middle results are True because they meet the time, velocity and acceleration constraints.
     # All ground truths checked with desmos - https://www.desmos.com/calculator/8kybpq4tta
-    expected_filter_results = np.array([False, False, False, False, False, False, False, False, False], dtype=bool)
+    expected_filter_results = np.array([False, False, False, True, True, True, False, False, False], dtype=bool)
     dynamic_action_space = DynamicActionSpace(logger, predictor, filtering=filtering)
     filter_results = np.array(dynamic_action_space.filter_recipes(follow_vehicle_recipes_towards_front_cells,
                                                                   behavioral_grid_state_with_objects_for_filtering_negative_sT))
@@ -81,12 +72,12 @@ def test_filter_followVehicleTooAggressive_filterResultsMatchExpected(
     logger = AV_Logger.get_logger()
     predictor = RoadFollowingPredictor(logger)  # TODO: adapt to new changes
 
-    filtering = RecipeFiltering(filters=[FilterLimitsViolatingTrajectory('predicates'),
-                                         FilterUnsafeExpectedTrajectory('predicates')], logger=logger)
+    filtering = RecipeFiltering(filters=[FilterLimitsViolatingTrajectory('predicates')], logger=logger)
 
     # State leads to a0=0,v0=10,sT=53.5,vT=30
     # First three and last three are false because they're recipes of non-occupied cells
-    # three middle results are false because this following scenario is too aggressive (close a gap of 20[m/s] to a target vehicle ~50[m] from us)
+    # three middle results are false because this following scenario is too aggressive (close a gap of 20[m/s]
+    # to a target vehicle ~50[m] from us)
     # calm and standard actions take too much time and aggressive violates velocity and acceleration
     # All ground truths checked with desmos - https://www.desmos.com/calculator/8kybpq4tta
     expected_filter_results = np.array([False, False, False, False, False, False, False, False, False], dtype=bool)

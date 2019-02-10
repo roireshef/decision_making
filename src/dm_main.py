@@ -27,7 +27,6 @@ from decision_making.src.planning.behavioral.behavioral_planning_facade import B
 from decision_making.src.planning.behavioral.default_config import DEFAULT_DYNAMIC_RECIPE_FILTERING, \
     DEFAULT_STATIC_RECIPE_FILTERING
 from decision_making.src.planning.behavioral.evaluators.zero_value_approximator import ZeroValueApproximator
-from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
 from decision_making.src.planning.behavioral.filtering.action_spec_filtering import ActionSpecFiltering
 from decision_making.src.planning.behavioral.planner.single_step_behavioral_planner import SingleStepBehavioralPlanner
 from decision_making.src.planning.navigation.navigation_facade import NavigationFacade
@@ -108,14 +107,13 @@ class DmInitialization:
         predictor = RoadFollowingPredictor(logger)
 
         action_space = ActionSpaceContainer(logger, [StaticActionSpace(logger, DEFAULT_STATIC_RECIPE_FILTERING),
-                                                     DynamicActionSpace(logger, predictor,
-                                                                        DEFAULT_DYNAMIC_RECIPE_FILTERING)])
+                                                     DynamicActionSpace(logger, predictor, DEFAULT_DYNAMIC_RECIPE_FILTERING)])
 
         recipe_evaluator = None
         action_spec_evaluator = SingleLaneActionSpecEvaluator(logger)  # RuleBasedActionSpecEvaluator(logger)
         value_approximator = ZeroValueApproximator(logger)
 
-        action_spec_filtering = ActionSpecFiltering(filters=[FilterIfNone()], logger=logger)
+        action_spec_filtering = ActionSpecFiltering(filters=[], logger=logger)
         planner = SingleStepBehavioralPlanner(action_space, recipe_evaluator, action_spec_evaluator,
                                               action_spec_filtering, value_approximator, predictor, logger)
 

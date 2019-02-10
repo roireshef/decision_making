@@ -18,7 +18,7 @@ class ActionSpecFilter:
     (or one of its children) and  BehavioralState (or one of its children) even if they don't actually use them.
     """
     @abstractmethod
-    def filter(self, recipe: ActionSpec, behavioral_state: BehavioralState) -> bool:
+    def filter(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState) -> List[ActionSpec]:
         pass
 
     def __str__(self):
@@ -34,17 +34,12 @@ class ActionSpecFiltering:
         self._filters: List[ActionSpecFilter] = filters or []
         self.logger = logger
 
-    def filter_action_spec(self, action_spec: ActionSpec, behavioral_state: BehavioralState) -> bool:
-        for action_spec_filter in self._filters:
-            try:
-                if not action_spec_filter.filter(action_spec, behavioral_state):
-                    return False
-            except Exception:
-                self.logger.warning('Exception during filtering at %s: %s', self.__class__.__name__, traceback.format_exc())
-                return False
-        return True
-
     @prof.ProfileFunction()
     def filter_action_specs(self, action_specs: List[ActionSpec], behavioral_state: BehavioralState) -> List[bool]:
-        return [self.filter_action_spec(action_spec, behavioral_state) for action_spec in action_specs]
-
+        for action_spec_filter in self._filters:
+            try:
+                action_specs = action_spec_filter.filter(action_specs, behavioral_state)
+            except Exception:
+                self.logger.warning('Exception during filtering at %s: %s', self.__class__.__name__, traceback.format_exc())
+                return [spec is not None for spec in action_specs]
+        return [spec is not None for spec in action_specs]

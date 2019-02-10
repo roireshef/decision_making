@@ -4,11 +4,6 @@ from decision_making.src.planning.behavioral.filtering.action_spec_filtering imp
     ActionSpecFilter
 
 
-class FilterIfNone(ActionSpecFilter):
-    def filter(self, action_spec: ActionSpec, behavioral_state: BehavioralState) -> bool:
-        return (action_spec and behavioral_state) is not None
-
-
 class AlwaysFalse(ActionSpecFilter):
     def filter(self, action_spec: ActionSpec, behavioral_state: BehavioralState) -> bool:
         return False

@@ -149,8 +149,10 @@ class FrenetSerret2DFrame(PUBSUB_MSG_IMPL):
         #       Calculate d_tag & d_tagtag as 1st and 2nd derivatives of d_x by distance
         # 1st derivative of d_x by distance: d_tag = d_v / s_v
         d_tag = np.divide(d_v, s_v, where=s_v!=0)
+        d_tag[s_v==0] = 0
         # 2nd derivative of d_x by distance: d_tagtag = (d_a - d_tag * s_a) / (s_v ** 2)
         d_tagtag = np.divide(d_a - d_tag * s_a, s_v ** 2, where=s_v!=0)
+        d_tagtag[s_v==0] = 0
 
         tan_delta_theta = d_tag / radius_ratio
         delta_theta = np.arctan2(d_tag, radius_ratio)
