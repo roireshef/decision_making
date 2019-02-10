@@ -1,3 +1,4 @@
+from decision_making.src.planning.behavioral.filtering.action_spec_filter_bank import FilterIfNone
 from unittest.mock import MagicMock, patch
 
 from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
@@ -101,7 +102,7 @@ def test_behavioralPlanningFacade_arbitraryState_returnsAnyResult(pubsub: PubSub
     planner = SingleStepBehavioralPlanner(action_space=action_space,
                                           recipe_evaluator=None,
                                           action_spec_evaluator=RuleBasedActionSpecEvaluator(bp_logger),
-                                          action_spec_validator=ActionSpecFiltering(filters=[],
+                                          action_spec_validator=ActionSpecFiltering(filters=[FilterIfNone()],
                                                                                     logger=bp_logger),
                                           value_approximator=ZeroValueApproximator(bp_logger),
                                           predictor=predictor, logger=bp_logger)
