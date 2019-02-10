@@ -100,6 +100,11 @@ class FilterOvertakeActions(RecipeFilter):
 
 # General ActionRecipe Filters
 
+class FilterIfNone(RecipeFilter):
+    def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
+        return [(recipe and behavioral_state) is not None for recipe in recipes]
+
+
 class FilterNonCalmActions(RecipeFilter):
     def filter(self, recipes: List[ActionRecipe], behavioral_state: BehavioralGridState) -> List[bool]:
         return [recipe.aggressiveness == AggressivenessLevel.CALM
