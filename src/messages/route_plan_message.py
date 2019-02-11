@@ -27,8 +27,8 @@ class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
         self.e_cst_lane_occupancy_cost = e_cst_lane_occupancy_cost
         self.e_cst_lane_end_cost = e_cst_lane_end_cost
 
-    def serialize(self) -> TsSYSDataRoutePlan:
-        pubsub_msg = TsSYSDataRoutePlan()
+    def serialize(self) -> TsSYSRoutePlanLaneSegment:
+        pubsub_msg = TsSYSRoutePlanLaneSegment()
 
         pubsub_msg.e_i_lane_segment_id = self.e_i_lane_segment_id
         pubsub_msg.e_cst_lane_occupancy_cost = self.e_cst_lane_occupancy_cost
@@ -37,10 +37,10 @@ class RoutePlanLaneSegment(PUBSUB_MSG_IMPL):
         return pubsub_msg
 
     @classmethod
-    def deserialize(cls, pubsubMsg: TsSYSDataRoutePlan):
-        return cls(pubsubMsg.e_b_Valid,
-                   pubsubMsg.e_l_perception_horizon_front,
-                   pubsubMsg.e_l_perception_horizon_rear)
+    def deserialize(cls, pubsubMsg: TsSYSRoutePlanLaneSegment):
+        return cls(pubsubMsg.e_i_lane_segment_id,
+                   pubsubMsg.e_cst_lane_occupancy_cost,
+                   pubsubMsg.e_cst_lane_end_cost)
 
 class DataRoutePlan(PUBSUB_MSG_IMPL):
     """
