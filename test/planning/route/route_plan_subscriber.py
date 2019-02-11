@@ -142,9 +142,9 @@ class RoutePlanSubscriber(DmModule):
 
     def _print_results(self, route_plan:RoutePlan, takeover_msg:Takeover) :
         
-        for i in route_plan.s_Data.e_Cnt_num_road_segments:
+        for i in range(route_plan.s_Data.e_Cnt_num_road_segments):
             print("ROAD SEGMENT: " , route_plan.s_Data.a_i_road_segment_ids[i], "\n")
-            for j in route_plan.s_Data.a_Cnt_num_lane_segments[i] :
+            for j in range(route_plan.s_Data.a_Cnt_num_lane_segments[i]):
                 print("Lane Segment ID: ", route_plan.s_Data.as_route_plan_lane_segments[i][j].e_i_lane_segment_id ,  \
                       "   Lane End Cost:  ", route_plan.s_Data.as_route_plan_lane_segments[i][j].e_cst_lane_end_cost , \
                       "   Lane Occupancy Cost:  ", route_plan.s_Data.as_route_plan_lane_segments[i][j].e_cst_lane_occupancy_cost , "\n" )
@@ -190,6 +190,8 @@ class RoutePlanSubscriber(DmModule):
             #if dist_to_end >= DISTANCE_TO_SET_TAKEOVER_FLAG :
             #    break
         
+        takeover_flag = False
+
         if blockage_flag == True and dist_to_end < DISTANCE_TO_SET_TAKEOVER_FLAG:
             takeover_flag = True
 
