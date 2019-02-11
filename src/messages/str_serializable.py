@@ -6,8 +6,8 @@ import numpy as np
 # The key of static member that determines which fields will be left out when serializing the class
 SERIALIZABLE_LEFT_OUT_FIELDS_KEY = 'left_out_fields'
 
-class StrSerializable:
 
+class StrSerializable:
     def get_internal_left_out_fields(self):
         """
         Returns the left out fields that shouldn't be serialized
@@ -18,7 +18,6 @@ class StrSerializable:
                                                       lambda a: not (isinstance(a, property)) and not (
                                                           inspect.isroutine(a)))
         internal_left_out_fields = [a[1] for a in serialization_annotation if a[0] == SERIALIZABLE_LEFT_OUT_FIELDS_KEY]
-
         return internal_left_out_fields
 
     def to_dict(self, left_out_fields=None):
@@ -27,32 +26,29 @@ class StrSerializable:
         :param: left_out_fields: A list containing the fields we want to leave out while converting to dictionary
         :return: dict containing all the fields of the class
         """
-
         internal_left_out_fields = self.get_internal_left_out_fields()
-
         if left_out_fields is None:
             left_out_fields = []
         ser_dict = {}
-        tmp2 = []
         self_fields = {k: v for k, v in self.__dict__.items() if (
                 k not in left_out_fields and k not in internal_left_out_fields)}
         for key, val in self_fields.items():
-            if issubclass(type(val), np.ndarray):
-                ser_dict[key] = {'array': val.flat.__array__().tolist(), 'shape': list(val.shape)}
-            elif issubclass(type(val), list):
-                for i in val :
-                    if issubclass(type(i), list):
-                        ser_dict[key] = {'iterable': list(map(lambda x: x.to_dict(), i))}
-                    else :
-                        ser_dict[key] = {'iterable': list(map(lambda x: x.to_dict(), val))}
-                        break   
-            elif issubclass(type(val), Enum):
-                ser_dict[key] = {'name': val.name}
-            elif issubclass(type(val), StrSerializable):
-                ser_dict[key] = val.to_dict()
-            else:
-                ser_dict[key] = val
+            ser_dict[key] = StrSerializable._serialize_element(val)
         return ser_dict
+
+    @staticmethod
+    def _serialize_element(elem):
+        if issubclass(type(elem), np.ndarray):
+            ser_elem = {'array': elem.flat.__array__().tolist(), 'shape': list(elem.shape)}
+        elif issubclass(type(elem), list):
+            ser_elem = {'iterable': list(map(lambda x: StrSerializable._serialize_element(x) if issubclass(type(x), list) else x.to_dict(), elem))}
+        elif issubclass(type(elem), Enum):
+            ser_elem = {'name': elem.name}
+        elif issubclass(type(elem), StrSerializable):
+            ser_elem = elem.to_dict()
+        else:
+            ser_elem = elem
+        return ser_elem
 
     def __str__(self):
         """
