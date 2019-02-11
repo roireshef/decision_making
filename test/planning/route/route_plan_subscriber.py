@@ -18,6 +18,7 @@ from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.takeover_message import Takeover, DataTakeover
 from decision_making.src.messages.scene_common_messages import Header, Timestamp
 from decision_making.src.planning.types import C_Y, FS_SX
+from decision_making.src.exceptions import MsgDeserializationError
 
 class StateMock() :
     def __init__(self, ego_lane_seg_id, ego_road_seg_id, ego_lane_seg_station, ego_lane_length) -> None :
@@ -82,6 +83,9 @@ class RoutePlanSubscriber(DmModule):
 
     def _get_current_route_plan(self) -> RoutePlan:
         is_success, input_route_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"], timeout=1)
+        if input_route_plan is None:
+            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_ROUTE_PLAN"])
         object_route_plan = RoutePlan.deserialize(input_route_plan)
         self.logger.debug("Received route plan: %s" % object_route_plan)
         return object_route_plan
