@@ -2,9 +2,9 @@ import pytest
 import numpy as np
 
 from decision_making.src.messages.scene_common_messages import Header, MapOrigin, Timestamp
-from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStatic, SceneRoadSegment, \
-    MapRoadSegmentType, SceneLaneSegment, MapLaneType, LaneSegmentConnectivity, ManeuverType, NominalPathPoint, \
-    MapLaneMarkerType, BoundaryPoint, AdjacentLane, MovingDirection
+from decision_making.src.messages.scene_static_message import SceneStatic, DataSceneStaticBase, DataSceneStaticGeometry, DataNavigationPlan, \
+    SceneRoadSegment, MapRoadSegmentType, SceneLaneSegmentGeometry, SceneLaneSegmentBase, \
+    MapLaneType, LaneSegmentConnectivity, ManeuverType, NominalPathPoint, MapLaneMarkerType, BoundaryPoint, AdjacentLane, MovingDirection
 from decision_making.src.planning.types import FP_SX, FP_DX
 
 from mapping.src.exceptions import NextRoadNotFound
@@ -66,7 +66,8 @@ def create_scene_static_from_map_api(map_api: MapAPI):
                                               a_i_downstream_road_segment_ids=downstream_roads)
 
         scene_road_segments.append(scene_road_segment)
-    scene_lane_segments = []
+    scene_lane_segments_base = []
+    scene_lane_segments_geo = []
     for lane_id in map_api._lane_address:
 
         road_segment_id, lane_ordinal = map_api._lane_address[lane_id]
@@ -120,47 +121,68 @@ def create_scene_static_from_map_api(map_api: MapAPI):
             upstream_lane_segment_connectivity = [
                 LaneSegmentConnectivity(upstream_id, ManeuverType.STRAIGHT_CONNECTION)]
 
-        scene_lane_segments.append(SceneLaneSegment(e_i_lane_segment_id=lane_id,
-                                                    e_i_road_segment_id=road_segment_id,
-                                                    e_e_lane_type=MapLaneType.LocalRoadLane,
-                                                    e_Cnt_static_traffic_flow_control_count=0,
-                                                    as_static_traffic_flow_control=[],
-                                                    e_Cnt_dynamic_traffic_flow_control_count=0,
-                                                    as_dynamic_traffic_flow_control=[],
-                                                    e_Cnt_left_adjacent_lane_count=len(left_adj_lanes),
-                                                    as_left_adjacent_lanes=left_adj_lanes,
-                                                    e_Cnt_right_adjacent_lane_count=len(right_adj_lanes),
-                                                    as_right_adjacent_lanes=right_adj_lanes,
-                                                    e_Cnt_downstream_lane_count=len(
-                                                        downstream_lane_segment_connectivity),
-                                                    as_downstream_lanes=downstream_lane_segment_connectivity,
-                                                    e_Cnt_upstream_lane_count=len(upstream_lane_segment_connectivity),
-                                                    as_upstream_lanes=upstream_lane_segment_connectivity,
-                                                    e_v_nominal_speed=50.0,
-                                                    e_Cnt_nominal_path_point_count=len(nominal_points),
-                                                    a_nominal_path_points=np.array(nominal_points),
-                                                    e_Cnt_left_boundary_points_count=len(left_boundry_point),
-                                                    as_left_boundary_points=left_boundry_point,
-                                                    e_Cnt_right_boundary_points_count=len(right_boundry_point),
-                                                    as_right_boundary_points=right_boundry_point,
-                                                    e_i_downstream_road_intersection_id=0,
-                                                    e_Cnt_lane_coupling_count=0,
-                                                    as_lane_coupling=[]))
+        scene_lane_segments_base.append(
+            SceneLaneSegmentBase(e_i_lane_segment_id=lane_id,
+                                 e_i_road_segment_id=road_segment_id,
+                                 e_e_lane_type=MapLaneType.LocalRoadLane,
+                                 e_Cnt_static_traffic_flow_control_count=0,
+                                 as_static_traffic_flow_control=[],
+                                 e_Cnt_dynamic_traffic_flow_control_count=0,
+                                 as_dynamic_traffic_flow_control=[],
+                                 e_Cnt_left_adjacent_lane_count=len(left_adj_lanes),
+                                 as_left_adjacent_lanes=left_adj_lanes,
+                                 e_Cnt_right_adjacent_lane_count=len(right_adj_lanes),
+                                 as_right_adjacent_lanes=right_adj_lanes,
+                                 e_Cnt_downstream_lane_count=len(
+                                     downstream_lane_segment_connectivity),
+                                 as_downstream_lanes=downstream_lane_segment_connectivity,
+                                 e_Cnt_upstream_lane_count=len(upstream_lane_segment_connectivity),
+                                 as_upstream_lanes=upstream_lane_segment_connectivity,
+                                 e_v_nominal_speed=50.0,
+                                 e_i_downstream_road_intersection_id=0,
+                                 e_Cnt_lane_coupling_count=0,
+                                 as_lane_coupling=[],
+                                 e_Cnt_num_active_lane_attributes=0,                # TODO
+                                 a_i_active_lane_attribute_indices=np.array([]),    # TODO
+                                 a_cmp_lane_attributes=np.array([]),                # TODO
+                                 a_cmp_lane_attribute_confidences=np.array([]))     # TODO
+        )
+
+        scene_lane_segments_geo.append(
+            SceneLaneSegmentGeometry(e_i_lane_segment_id=lane_id,
+                                     e_i_road_segment_id=road_segment_id,
+                                     e_Cnt_nominal_path_point_count=len(nominal_points),
+                                     a_nominal_path_points=np.array(nominal_points),
+                                     e_Cnt_left_boundary_points_count=len(left_boundry_point),
+                                     as_left_boundary_points=left_boundry_point,
+                                     e_Cnt_right_boundary_points_count=len(right_boundry_point),
+                                     as_right_boundary_points=right_boundry_point)
+        )
 
     header = Header(e_Cnt_SeqNum=0, s_Timestamp=Timestamp(0, 0), e_Cnt_version=0)
     map_origin = MapOrigin(e_phi_latitude=.0, e_phi_longitude=.0, e_l_altitude=.0, s_Timestamp=Timestamp(0, 0))
     scene_road_intersections = []
-    data = DataSceneStatic(e_b_Valid=True,
-                           s_RecvTimestamp=Timestamp(0, 0),
-                           s_ComputeTimestamp=Timestamp(0, 0),
-                           e_l_perception_horizon_front=.0,
-                           e_l_perception_horizon_rear=.0,
-                           e_Cnt_num_lane_segments=len(scene_lane_segments),
-                           as_scene_lane_segment=scene_lane_segments,
-                           e_Cnt_num_road_intersections=len(scene_road_intersections),
-                           as_scene_road_intersection=scene_road_intersections,
-                           e_Cnt_num_road_segments=len(scene_road_segments),
-                           as_scene_road_segment=scene_road_segments)
+    base_data = DataSceneStaticBase(e_b_Valid=True,
+                                    s_RecvTimestamp=Timestamp(0, 0),
+                                    s_ComputeTimestamp=Timestamp(0, 0),
+                                    e_l_perception_horizon_front=.0,
+                                    e_l_perception_horizon_rear=.0,
+                                    e_Cnt_num_lane_segments=len(scene_lane_segments_base),
+                                    as_scene_lane_segments=scene_lane_segments_base,
+                                    e_Cnt_num_road_intersections=len(scene_road_intersections),
+                                    as_scene_road_intersection=scene_road_intersections,
+                                    e_Cnt_num_road_segments=len(scene_road_segments),
+                                    as_scene_road_segment=scene_road_segments)
 
-    scene = SceneStatic(s_Header=header, s_MapOrigin=map_origin, s_Data=data)
+    geometry_data = DataSceneStaticGeometry(e_b_Valid=True,
+                                            s_RecvTimestamp=Timestamp(0, 0),
+                                            s_ComputeTimestamp=Timestamp(0, 0),
+                                            e_Cnt_num_lane_segments=len(scene_lane_segments_geo),
+                                            as_scene_lane_segments=scene_lane_segments_geo)
+
+    nav_plan_data = DataNavigationPlan(e_b_Valid=True,
+                                       e_Cnt_num_road_segments=0,
+                                       a_i_road_segment_ids=np.array([]))
+
+    scene = SceneStatic(s_Header=header, s_MapOrigin=map_origin, s_SceneStaticGeometryData=geometry_data, s_SceneStaticBaseData=base_data, s_NavigationPlanData=nav_plan_data)
     return scene
