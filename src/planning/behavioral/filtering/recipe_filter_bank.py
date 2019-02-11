@@ -1,5 +1,8 @@
+import os
+
 from decision_making.src.exceptions import ResourcesNotUpToDateException
 from decision_making.src.global_constants import *
+from decision_making.paths import Paths
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.data_objects import ActionRecipe, DynamicActionRecipe, \
     RelativeLongitudinalPosition, ActionType, RelativeLane, AggressivenessLevel
@@ -46,16 +49,14 @@ class FilterLimitsViolatingTrajectory(RecipeFilter):
         for filename in os.listdir(directory):
             if filename.endswith(".bin"):
                 predicate_path = Paths.get_resource_absolute_path_filename('%s/%s' % (predicates_dir, filename))
-                action_type = filename.split('.bin')[0].split('_predicate')[0]
+                action_type = filename.split('.bin')[0].split('_limits')[0]
                 wT, wJ = [float(filename.split('.bin')[0].split('_')[4]),
                           float(filename.split('.bin')[0].split('_')[6])]
                 if action_type == 'follow_lane':
                     predicate_shape = (len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_V_T_GRID))
                 else:
-                    predicate_shape = (
-                        len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_S_T_GRID), len(FILTER_V_T_GRID))
-                predicate = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
-                predicates[(action_type, wT, wJ)] = predicate
+                    predicate_shape = (len(FILTER_V_0_GRID), len(FILTER_A_0_GRID), len(FILTER_S_T_GRID), len(FILTER_V_T_GRID))
+                predicates[(action_type, wT, wJ)] = BinaryReadWrite.load(file_path=predicate_path, shape=predicate_shape)
 
         return predicates
 
@@ -103,6 +104,10 @@ class FilterLimitsViolatingTrajectory(RecipeFilter):
                 continue
 
             action_type = recipe.action_type
+            ego_state = behavioral_state.ego_state
+            v_0 = ego_state.map_state.lane_fstate[FS_SV]
+            a_0 = ego_state.map_state.lane_fstate[FS_SA]
+            wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
 
             # The predicates currently work for follow-front car,overtake-back car or follow-lane actions.
             if (action_type == ActionType.FOLLOW_VEHICLE and recipe.relative_lon == RelativeLongitudinalPosition.FRONT) \
@@ -115,14 +120,23 @@ class FilterLimitsViolatingTrajectory(RecipeFilter):
                     filter_result[i] = False
                     continue
 
-                filter_result[i] = RecipeFilter.filter_follow_vehicle_action(recipe, behavioral_state, self.predicates)
+                # pull target vehicle
+                relative_dynamic_object = behavioral_state.road_occupancy_grid[recipe_cell][0]
+                dynamic_object = relative_dynamic_object.dynamic_object
+                # safety distance is behind or ahead of target vehicle if we follow or overtake it, respectively.
+                margin_sign = +1 if recipe.action_type == ActionType.FOLLOW_VEHICLE else -1
+                # compute distance from target vehicle +/- safety margin
+                s_T = relative_dynamic_object.longitudinal_distance - (LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT +
+                                                          ego_state.size.length / 2 + dynamic_object.size.length / 2)
+                v_T = dynamic_object.map_state.lane_fstate[FS_SV]
+
+                predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
+
+                filter_result[i] = predicate[FILTER_V_0_GRID.get_index(v_0), FILTER_A_0_GRID.get_index(a_0),
+                                    FILTER_S_T_GRID.get_index(margin_sign * s_T), FILTER_V_T_GRID.get_index(v_T)] > 0
 
             elif action_type == ActionType.FOLLOW_LANE:
 
-                ego_state = behavioral_state.ego_state
-                v_0 = ego_state.map_state.lane_fstate[FS_SV]
-                a_0 = ego_state.map_state.lane_fstate[FS_SA]
-                wJ, _, wT = BP_JERK_S_JERK_D_TIME_WEIGHTS[recipe.aggressiveness.value]
                 v_T = recipe.velocity
 
                 predicate = self.predicates[(action_type.name.lower(), wT, wJ)]
