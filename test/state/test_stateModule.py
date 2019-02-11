@@ -3,7 +3,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from common_data.src.communication.pubsub.pubsub import PubSub
+from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.global_constants import STATE_MODULE_NAME_FOR_LOGGING, VELOCITY_MINIMAL_THRESHOLD
 from decision_making.src.scene.scene_static_model import SceneStaticModel
 from decision_making.src.messages.scene_dynamic_message import SceneDynamic
@@ -39,7 +39,7 @@ from mapping.test.model.testable_map_fixtures import ROAD_WIDTH, MAP_INFLATION_F
 #     """
 #     logger = AV_Logger.get_logger(STATE_MODULE_NAME_FOR_LOGGING)
 #
-#     state_module = StateModule(pubsub=pubsub, logger=logger,
+#     state_module = StateModule(pubsub=PubSub, logger=logger,
 #                                scene_dynamic=scene_dynamic_fix)
 #     state_module.start()
 #     # Inserting an object in_fov in order to remember it.
