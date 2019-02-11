@@ -347,7 +347,7 @@ def test_getClosestLane_nearLanesSeam_closestPointIsInternal(scene_static_pg_spl
     lane_id2 = MapUtils.get_downstream_lanes(lane_id1)[0]
     x_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value
     y_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value
-    seam_point = MapUtils.get_lane(lane_id2).a_nominal_path_points[0]
+    seam_point = MapUtils.get_lane_geometry(lane_id2).a_nominal_path_points[0]
     point_xy = seam_point[[x_index, y_index]]
     yaw = seam_point[NominalPathPoint.CeSYS_NominalPathPoint_e_phi_heading.value]
     distance_to_point = 1000
@@ -368,7 +368,7 @@ def test_getClosestLane_nearLanesSeam_laneAccordingToYaw(scene_static_pg_split):
     lane_id2 = MapUtils.get_downstream_lanes(lane_id1)[0]
     x_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value
     y_index = NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value
-    seam_point = MapUtils.get_lane(lane_id2).a_nominal_path_points[0]
+    seam_point = MapUtils.get_lane_geometry(lane_id2).a_nominal_path_points[0]
     point_xy = seam_point[[x_index, y_index]]
     yaw = seam_point[NominalPathPoint.CeSYS_NominalPathPoint_e_phi_heading.value]
     distance_to_point = 0.2

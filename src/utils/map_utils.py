@@ -4,7 +4,7 @@ import numpy as np
 
 from decision_making.src.global_constants import EPS
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
-from decision_making.src.messages.scene_static_message import NominalPathPoint, SceneLaneSegment, SceneRoadSegment
+from decision_making.src.messages.scene_static_message import NominalPathPoint, SceneLaneSegmentGeometry, SceneLaneSegmentBase, SceneRoadSegment
 from decision_making.src.planning.behavioral.data_objects import RelativeLane
 from decision_making.src.planning.types import CartesianPoint2D
 from decision_making.src.planning.utils.frenet_serret_frame import FrenetSerret2DFrame
@@ -25,7 +25,7 @@ class MapUtils:
         :return:road_segment_ids of every road in the static scene
         """
         scene_static = SceneStaticModel.get_instance().get_scene_static()
-        road_segments = scene_static.s_Data.as_scene_road_segment[:scene_static.s_Data.e_Cnt_num_road_segments]
+        road_segments = scene_static.s_SceneStaticBaseData.as_scene_road_segment[:scene_static.s_SceneStaticBaseData.e_Cnt_num_road_segments]
         return [road_segment.e_i_road_segment_id for road_segment in road_segments]
 
     @staticmethod
@@ -56,7 +56,7 @@ class MapUtils:
         :param lane_id:
         :return: lane's length
         """
-        nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points
+        nominal_points = MapUtils.get_lane_geometry(lane_id).a_nominal_path_points
         # TODO: lane length should be nominal_points[-1, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]
         ds = np.mean(np.diff(nominal_points[:, NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value]))
         return ds * (nominal_points.shape[0] - 1)
@@ -69,7 +69,7 @@ class MapUtils:
         :param lane_id:
         :return: Frenet frame
         """
-        nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points
+        nominal_points = MapUtils.get_lane_geometry(lane_id).a_nominal_path_points
 
         points = nominal_points[:, (NominalPathPoint.CeSYS_NominalPathPoint_e_l_EastX.value,
                                     NominalPathPoint.CeSYS_NominalPathPoint_e_l_NorthY.value)]
@@ -132,14 +132,14 @@ class MapUtils:
 
         map_lane_ids = np.array([lane_segment.e_i_lane_segment_id
                                  for lane_segment in
-                                 SceneStaticModel.get_instance().get_scene_static().s_Data.as_scene_lane_segment])
+                                 SceneStaticModel.get_instance().get_scene_static().s_SceneStaticBaseData.as_scene_lane_segments])
 
-        num_points_in_map_lanes = np.array([MapUtils.get_lane(lane_id).a_nominal_path_points.shape[0]
+        num_points_in_map_lanes = np.array([MapUtils.get_lane_geometry(lane_id).a_nominal_path_points.shape[0]
                                             for lane_id in map_lane_ids])
 
         num_points_in_longest_lane = np.max(num_points_in_map_lanes)
         # create 3D matrix of all lanes' points; pad it by inf according to the largest number of lane points
-        map_lanes_xy_points = np.array([np.vstack((MapUtils.get_lane(lane_id).a_nominal_path_points[:, (x_index, y_index)],
+        map_lanes_xy_points = np.array([np.vstack((MapUtils.get_lane_geometry(lane_id).a_nominal_path_points[:, (x_index, y_index)],
                                         np.full((num_points_in_longest_lane - num_points_in_map_lanes[i], 2), np.inf)))
                                         for i, lane_id in enumerate(map_lane_ids)])
         distances_from_lane_points = np.linalg.norm(map_lanes_xy_points - cartesian_point, axis=2)  # 2D matrix
@@ -173,10 +173,10 @@ class MapUtils:
         lane_id = map_lane_ids[lane_idx]
         seam_point_idx = closest_points_idx_per_lane[lane_idx]
         # calculate a vector from the closest point to the input point
-        vec_to_input_point = cartesian_point - MapUtils.get_lane(lane_id).a_nominal_path_points[
+        vec_to_input_point = cartesian_point - MapUtils.get_lane_geometry(lane_id).a_nominal_path_points[
             seam_point_idx, (x_index, y_index)]
         yaw_to_input_point = np.arctan2(vec_to_input_point[1], vec_to_input_point[0])
-        lane_local_yaw = MapUtils.get_lane(map_lane_ids[lane_idx]).a_nominal_path_points[
+        lane_local_yaw = MapUtils.get_lane_geometry(map_lane_ids[lane_idx]).a_nominal_path_points[
             seam_point_idx, NominalPathPoint.CeSYS_NominalPathPoint_e_phi_heading.value]
         if np.cos(yaw_to_input_point - lane_local_yaw) >= 0:  # local_yaw & yaw_to_input_point create an acute angle
             # take a lane that starts in the closest point
@@ -194,7 +194,7 @@ class MapUtils:
         :param s: longitude of the lane center point (w.r.t. the lane Frenet frame)
         :return: distance from the right lane border, distance from the left lane border
         """
-        nominal_points = MapUtils.get_lane(lane_id).a_nominal_path_points
+        nominal_points = MapUtils.get_lane_geometry(lane_id).a_nominal_path_points
 
         closest_s_idx = np.argmin(np.abs(nominal_points[:,
                                          NominalPathPoint.CeSYS_NominalPathPoint_e_l_s.value] - s))
@@ -386,14 +386,30 @@ class MapUtils:
 
     @staticmethod
     @raises(LaneNotFound)
-    def get_lane(lane_id: int) -> SceneLaneSegment:
+    def get_lane(lane_id: int) -> SceneLaneSegmentBase:
         """
         Retrieves lane by lane_id  according to the last message
         :param lane_id:
         :return:
         """
         scene_static = SceneStaticModel.get_instance().get_scene_static()
-        lanes = [lane for lane in scene_static.s_Data.as_scene_lane_segment if
+        lanes = [lane for lane in scene_static.s_SceneStaticBaseData.as_scene_lane_segments if
+                 lane.e_i_lane_segment_id == lane_id]
+        if len(lanes) == 0:
+            raise LaneNotFound('lane {0} not found'.format(lane_id))
+        assert len(lanes) == 1
+        return lanes[0]
+
+    @staticmethod
+    @raises(LaneNotFound)
+    def get_lane_geometry(lane_id: int) -> SceneLaneSegmentGeometry:
+        """
+        Retrieves lane geometry (nom path points/boundary points) by lane_id  according to the last message
+        :param lane_id:
+        :return:
+        """
+        scene_static_lane_geo = SceneStaticModel.get_instance().get_scene_static()
+        lanes = [lane for lane in scene_static_lane_geo.s_SceneStaticGeometryData.as_scene_lane_segments if
                  lane.e_i_lane_segment_id == lane_id]
         if len(lanes) == 0:
             raise LaneNotFound('lane {0} not found'.format(lane_id))
@@ -409,7 +425,7 @@ class MapUtils:
         :return:
         """
         scene_static = SceneStaticModel.get_instance().get_scene_static()
-        road_segments = [road_segment for road_segment in scene_static.s_Data.as_scene_road_segment if
+        road_segments = [road_segment for road_segment in scene_static.s_SceneStaticBaseData.as_scene_road_segment if
                          road_segment.e_i_road_segment_id == road_id]
         if len(road_segments) == 0:
             raise RoadNotFound('road {0} not found '.format(road_id))
