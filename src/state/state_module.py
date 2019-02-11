@@ -56,55 +56,24 @@ class StateModule(DmModule):
     def _periodic_action_impl(self) -> None:
         pass
 
-    @staticmethod
-    def create_dyn_obj_list(dyn_obj_data: DynamicObjectsData) -> List[DynamicObject]:
-        """
-        Convert serialized object perception and global localization data into a DM object (This also includes
-        computation of the object's road localization). Additionally store the object in memory as preparation for
-        the case where it will leave the field of view.
-        :param dyn_obj_data:
-        :return: List of dynamic object in DM format.
-        """
-        timestamp = dyn_obj_data.timestamp
-        objects_list = []
-        for obj_idx in range(dyn_obj_data.num_objects):
-            obj_loc = dyn_obj_data.objects_localization[obj_idx]
-            id = obj_loc.e_Cnt_object_id
-            # TODO: Handle multiple hypotheses
-            cartesian_state = obj_loc.as_object_hypothesis[0].a_cartesian_pose
-            map_state = MapState(obj_loc.as_object_hypothesis[0].a_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_i_lane_segment_id)
-            # TODO: map_state_on_host_lane now unused, see if it makes more sense to send ego lane_id in its map_state
-            map_state_on_host_lane = MapState(obj_loc.as_object_hypothesis[0].a_host_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_i_lane_segment_id)
-            size = ObjectSize(obj_loc.s_bounding_box.e_l_length,
-                              obj_loc.s_bounding_box.e_l_width,
-                              obj_loc.s_bounding_box.e_l_height)
-            confidence = obj_loc.as_object_hypothesis[0].e_r_probability
+    @prof.ProfileFunction()
+    def _scene_dynamic_callback(self, scene_dynamic: TsSYSSceneDynamic, args: Any):
+        try:
+            with self._scene_dynamic_lock:
 
-            dyn_obj = DynamicObject(obj_id=obj_loc.e_Cnt_object_id,
-                                    timestamp=timestamp,
-                                    cartesian_state=cartesian_state,
-                                    map_state=map_state if map_state.lane_id > 0 else None,
-                                    map_state_on_host_lane=map_state_on_host_lane if map_state_on_host_lane.lane_id > 0 else None,
-                                    size=size,
-                                    confidence=confidence)
+                self._scene_dynamic = SceneDynamic.deserialize(scene_dynamic)
 
-            # TODO: Handle negative velocities properly
-            if dyn_obj.cartesian_state[C_V] < 0:
-                raise ObjectHasNegativeVelocityError('Dynamic object with id %d was received with negative velocity %f'
-                                                     % (dyn_obj.obj_id, dyn_obj.cartesian_state[C_V]))
+                state = self.create_state_from_scene_dynamic(self._scene_dynamic)
 
-            # TODO: Figure out if we need SceneProvider to let us know if an object is not on road
-            # Required to verify the object has map state and that the velocity exceeds a minimal value.
-            if dyn_obj.map_state.lane_fstate[FS_SV] < VELOCITY_MINIMAL_THRESHOLD:
-                thresholded_lane_fstate = np.copy(dyn_obj.map_state.lane_fstate)
-                thresholded_lane_fstate[FS_SV] = VELOCITY_MINIMAL_THRESHOLD
-                dyn_obj = dyn_obj.clone_from_map_state(
-                    map_state=MapState(lane_fstate=thresholded_lane_fstate,
-                                       lane_id=dyn_obj.map_state.lane_id))
+                self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
 
-            objects_list.append(dyn_obj)  # update the list of dynamic objects
+                self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], state.serialize())
 
-        return objects_list
+        except ObjectHasNegativeVelocityError as e:
+            self.logger.error(e)
+
+        except Exception:
+            self.logger.error("StateModule._scene_dynamic_callback failed due to %s", format_exc())
 
     @staticmethod
     def create_state_from_scene_dynamic(scene_dynamic: SceneDynamic) -> State:
@@ -136,21 +105,52 @@ class StateModule(DmModule):
         dynamic_objects = StateModule.create_dyn_obj_list(dyn_obj_data)
         return State(occupancy_state, dynamic_objects, ego_state)
 
-    @prof.ProfileFunction()
-    def _scene_dynamic_callback(self, scene_dynamic: TsSYSSceneDynamic, args: Any):
-        try:
-            with self._scene_dynamic_lock:
+    @staticmethod
+    def create_dyn_obj_list(dyn_obj_data: DynamicObjectsData) -> List[DynamicObject]:
+        """
+        Convert serialized object perception and global localization data into a DM object (This also includes
+        computation of the object's road localization). Additionally store the object in memory as preparation for
+        the case where it will leave the field of view.
+        :param dyn_obj_data:
+        :return: List of dynamic object in DM format.
+        """
+        timestamp = dyn_obj_data.timestamp
+        objects_list = []
+        for obj_idx in range(dyn_obj_data.num_objects):
+            obj_loc = dyn_obj_data.objects_localization[obj_idx]
+            id = obj_loc.e_Cnt_object_id
+            # TODO: Handle multiple hypotheses
+            cartesian_state = obj_loc.as_object_hypothesis[0].a_cartesian_pose
+            map_state = MapState(obj_loc.as_object_hypothesis[0].a_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_i_lane_segment_id)
+            # TODO: map_state_on_host_lane now unused, see if it makes more sense to send ego lane_id in its map_state
+            map_state_on_host_lane = MapState(obj_loc.as_object_hypothesis[0].a_host_lane_frenet_pose, obj_loc.as_object_hypothesis[0].e_i_lane_segment_id)
+            size = ObjectSize(obj_loc.s_bounding_box.e_l_length,
+                              obj_loc.s_bounding_box.e_l_width,
+                              obj_loc.s_bounding_box.e_l_height)
+            confidence = obj_loc.as_object_hypothesis[0].e_r_probability
 
-                self._scene_dynamic = SceneDynamic.deserialize(scene_dynamic)
+            dyn_obj = DynamicObject(obj_id=id,
+                                    timestamp=timestamp,
+                                    cartesian_state=cartesian_state,
+                                    map_state=map_state if map_state.lane_id > 0 else None,
+                                    map_state_on_host_lane=map_state_on_host_lane if map_state_on_host_lane.lane_id > 0 else None,
+                                    size=size,
+                                    confidence=confidence)
 
-                state = self.create_state_from_scene_dynamic(self._scene_dynamic)
-                
-                self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
+            # TODO: Handle negative velocities properly
+            if dyn_obj.cartesian_state[C_V] < 0:
+                raise ObjectHasNegativeVelocityError('Dynamic object with id %d was received with negative velocity %f'
+                                                     % (dyn_obj.obj_id, dyn_obj.cartesian_state[C_V]))
 
-                self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], state.serialize())
+            # TODO: Figure out if we need SceneProvider to let us know if an object is not on road
+            # Required to verify the object has map state and that the velocity exceeds a minimal value.
+            if dyn_obj.map_state.lane_fstate[FS_SV] < VELOCITY_MINIMAL_THRESHOLD:
+                thresholded_lane_fstate = np.copy(dyn_obj.map_state.lane_fstate)
+                thresholded_lane_fstate[FS_SV] = VELOCITY_MINIMAL_THRESHOLD
+                dyn_obj = dyn_obj.clone_from_map_state(
+                    map_state=MapState(lane_fstate=thresholded_lane_fstate,
+                                       lane_id=dyn_obj.map_state.lane_id))
 
-        except ObjectHasNegativeVelocityError as e:
-            self.logger.error(e)
+            objects_list.append(dyn_obj)  # update the list of dynamic objects
 
-        except Exception:
-            self.logger.error("StateModule._scene_dynamic_callback failed due to %s", format_exc())
+        return objects_list
