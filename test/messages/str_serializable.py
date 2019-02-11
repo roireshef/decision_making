@@ -21,3 +21,5 @@ class MessageWithNestedLists(PUBSUB_MSG_IMPL):
 def test_toDict_messageWithNestedLists_terminatesSuccessfully():
     ll = MessageWithNestedLists([[SimpleStruct(1, 'one'), SimpleStruct(2, 'two')],[SimpleStruct(3, 'three')]])
     print(ll.__str__())
+
+    assert True
