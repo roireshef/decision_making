@@ -1,9 +1,9 @@
 import numpy as np
 import rte.python.profiler as prof
-from common_data.interface.py.idl_generated_files.Rte_Types.TsSYS_SceneDynamic import TsSYSSceneDynamic
-from common_data.interface.py.pubsub import Rte_Types_pubsub_topics as pubsub_topics
-from common_data.interface.py.pubsub.Rte_Types_pubsub_topics import SCENE_DYNAMIC
-from common_data.src.communication.pubsub.pubsub import PubSub
+from decision_making.src.infra.pubsub import PubSub
+from common_data.interface.Rte_Types.python.sub_structures.TsSYS_SceneDynamic import TsSYSSceneDynamic
+from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
+from common_data.interface.Rte_Types.python.uc_system.uc_system_scene_dynamic import UC_SYSTEM_SCENE_DYNAMIC
 from decision_making.src.exceptions import ObjectHasNegativeVelocityError
 from decision_making.src.global_constants import EGO_LENGTH, EGO_WIDTH, EGO_HEIGHT, LOG_MSG_STATE_MODULE_PUBLISH_STATE, \
     DEFAULT_OBJECT_Z_VALUE, VELOCITY_MINIMAL_THRESHOLD
@@ -46,7 +46,7 @@ class StateModule(DmModule):
         """
         When starting the State Module, subscribe to dynamic objects, ego state and occupancy state services.
         """
-        self.pubsub.subscribe(SCENE_DYNAMIC, self._scene_dynamic_callback)
+        self.pubsub.subscribe(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_DYNAMIC"], self._scene_dynamic_callback)
 
     # TODO - implement unsubscribe only when logic is fixed in LCM
     def _stop_impl(self) -> None:
@@ -86,7 +86,7 @@ class StateModule(DmModule):
                 
                 self.logger.debug("%s %s", LOG_MSG_STATE_MODULE_PUBLISH_STATE, state)
 
-                self.pubsub.publish(pubsub_topics.STATE_LCM, state.serialize())
+                self.pubsub.publish(pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], state.serialize())
 
         except ObjectHasNegativeVelocityError as e:
             self.logger.error(e)

@@ -4,7 +4,7 @@ from typing import Optional
 
 import numpy as np
 
-from common_data.src.communication.pubsub.pubsub import PubSub
+from decision_making.src.infra.pubsub import PubSub
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.behavioral_planning_facade import BehavioralPlanningFacade
@@ -61,3 +61,4 @@ class BehavioralFacadeMock(BehavioralPlanningFacade):
 
         except Exception as e:
             self.logger.error("BehavioralPlanningFacade error %s" % traceback.format_exc())
+
