@@ -126,5 +126,15 @@ class ActionSpaceContainer(ActionSpace):
     # TODO: figure out how to remove the for loop for better efficiency and stay consistent with ordering
     @raises(NotImplemented)
     def filter_recipes(self, action_recipes: List[ActionRecipe], behavioral_state: BehavioralState):
-        return [self.filter_recipe(action_recipe, behavioral_state)
-                for action_recipe in action_recipes]
+        grouped_actions = defaultdict(list)
+        grouped_idxs = defaultdict(list)
+        for idx, recipe in enumerate(action_recipes):
+            grouped_actions[recipe.__class__].append(recipe)
+            grouped_idxs[recipe.__class__].append(idx)
+
+        indexed_action_specs = list(itertools.chain.from_iterable(
+            [zip(grouped_idxs[action_class], self._recipe_handler[action_class].filter_recipes(action_list, behavioral_state))
+             for action_class, action_list in grouped_actions.items()]))
+
+        # returns action_specs, sorted by their initial recipe ordering
+        return [action for idx, action in sorted(indexed_action_specs, key=lambda idx_action: idx_action[0])]
