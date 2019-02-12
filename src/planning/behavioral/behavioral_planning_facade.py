@@ -102,20 +102,29 @@ class BehavioralPlanningFacade(DmModule):
                                  (e, traceback.format_exc()))
 
     def _get_current_state(self) -> State:
-        is_success, input_state = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], timeout=1)
+        """
+        Returns the last received world state.
+        We assume that if no updates have been received since the last call,
+        then we will output the last received state.
+        :return: deserialized State
+        """
+        is_success, serialized_state = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], timeout=1)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
-        if input_state is None:
-            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
-                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"])
-        object_state = State.deserialize(input_state)
-        self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, object_state))
-        return object_state
+        if serialized_state is None:
+            raise MsgDeserializationError("Waiting for data from SceneProvider/StateModule.Pubsub message queue for %s topic "
+                                          "is empty or topic isn\'t subscribed" % pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"])
+        state = State.deserialize(serialized_state)
+        self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
+        return state
 
     def _get_current_navigation_plan(self) -> NavigationPlanMsg:
-        is_success, input_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_NAVIGATION_PLAN_LCM"], timeout=1)
-        object_plan = NavigationPlanMsg.deserialize(input_plan)
-        self.logger.debug("Received navigation plan: %s" % object_plan)
-        return object_plan
+        is_success, serialized_nav_plan = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_NAVIGATION_PLAN_LCM"], timeout=1)
+        if serialized_nav_plan is None:
+            raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t subscribed" %
+                                          pubsub_topics.PubSubMessageTypes["UC_SYSTEM_NAVIGATION_PLAN_LCM"])
+        nav_plan = NavigationPlanMsg.deserialize(serialized_nav_plan)
+        self.logger.debug("Received navigation plan: %s" % nav_plan)
+        return nav_plan
 
     def _get_current_scene_static(self) -> SceneStatic:
         is_success, serialized_scene_static = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_SCENE_STATIC"], timeout=1)
