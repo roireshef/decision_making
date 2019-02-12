@@ -4,6 +4,7 @@ from typing import Optional, List, Dict
 
 import rte.python.profiler as prof
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.visualization.behavioral_visualization_message import BehavioralVisualizationMsg
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
@@ -87,13 +88,13 @@ class SingleStepBehavioralPlanner(CostBasedBehavioralPlanner):
         return selected_action_index, selected_action_spec
 
     @prof.ProfileFunction()
-    def plan(self, state: State, nav_plan: NavigationPlanMsg):
+    def plan(self, state: State, nav_plan: NavigationPlanMsg, route_plan: RoutePlan):
 
         action_recipes = self.action_space.recipes
 
         # create road semantic grid from the raw State object
         # behavioral_state contains road_occupancy_grid and ego_state
-        behavioral_state = BehavioralGridState.create_from_state(state=state, nav_plan=nav_plan, logger=self.logger)
+        behavioral_state = BehavioralGridState.create_from_state(state=state, nav_plan=nav_plan, route_plan=route_plan, logger=self.logger)
 
         # Recipe filtering
         recipes_mask = self.action_space.filter_recipes(action_recipes, behavioral_state)

@@ -96,7 +96,7 @@ class BehavioralPlanningFacade(DmModule):
             self._publish_takeover(takeover_msg)
 
 
-            trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state, navigation_plan)
+            trajectory_params, samplable_trajectory, behavioral_visualization_message = self._planner.plan(updated_state, navigation_plan, route_plan)
 
             self._last_trajectory = samplable_trajectory
 

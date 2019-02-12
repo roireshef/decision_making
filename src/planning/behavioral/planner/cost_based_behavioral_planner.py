@@ -12,6 +12,7 @@ from decision_making.src.global_constants import SHOULDER_SIGMOID_OFFSET, DEVIAT
     LAT_JERK_COST_WEIGHT, VELOCITY_LIMITS, LON_ACC_LIMITS, LAT_ACC_LIMITS, LONGITUDINAL_SAFETY_MARGIN_FROM_OBJECT, \
     LATERAL_SAFETY_MARGIN_FROM_OBJECT
 from decision_making.src.messages.navigation_plan_message import NavigationPlanMsg
+from decision_making.src.messages.route_plan_message import RoutePlan
 from decision_making.src.messages.trajectory_parameters import TrajectoryParams, TrajectoryCostParams, \
     SigmoidFunctionParams
 from decision_making.src.planning.behavioral.action_space.action_space import ActionSpace
@@ -67,9 +68,9 @@ class CostBasedBehavioralPlanner:
         pass
 
     @abstractmethod
-    def plan(self, state: State, nav_plan: NavigationPlanMsg):
+    def plan(self, state: State, nav_plan: NavigationPlanMsg, route_plan: RoutePlan):
         """
-        Given current state and navigation plan, plans the next semantic action to be carried away. This method makes
+        Given current state, navigation plan, and route plan, plans the next semantic action to be carried away. This method makes
         use of Planner components such as Evaluator,Validator and Predictor for enumerating, specifying
         and evaluating actions. Its output will be further handled and used to create a trajectory in Trajectory Planner
         and has the form of TrajectoryParams, which includes the reference route, target time, target state to be in,
