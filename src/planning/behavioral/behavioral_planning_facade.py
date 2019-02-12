@@ -6,7 +6,7 @@ import numpy as np
 
 from common_data.interface.Rte_Types.python import Rte_Types_pubsub as pubsub_topics
 from decision_making.src.infra.pubsub import PubSub
-from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException
+from decision_making.src.exceptions import MsgDeserializationError, BehavioralPlanningException, StateHasNotArrivedYet
 from decision_making.src.global_constants import LOG_MSG_BEHAVIORAL_PLANNER_OUTPUT, LOG_MSG_RECEIVED_STATE, \
     LOG_MSG_BEHAVIORAL_PLANNER_IMPL_TIME, BEHAVIORAL_PLANNING_NAME_FOR_METRICS, LOG_MSG_SCENE_STATIC_RECEIVED
 from decision_making.src.infra.dm_module import DmModule
@@ -37,6 +37,7 @@ class BehavioralPlanningFacade(DmModule):
         self._planner = behavioral_planner
         self.logger.info("Initialized Behavioral Planner Facade.")
         self._last_trajectory = last_trajectory
+        self._started_receiving_states = False
         MetricLogger.init(BEHAVIORAL_PLANNING_NAME_FOR_METRICS)
 
     def _start_impl(self):
@@ -111,8 +112,14 @@ class BehavioralPlanningFacade(DmModule):
         is_success, serialized_state = self.pubsub.get_latest_sample(topic=pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"], timeout=1)
         # TODO Move the raising of the exception to LCM code. Do the same in trajectory facade
         if serialized_state is None:
-            raise MsgDeserializationError("Waiting for data from SceneProvider/StateModule.Pubsub message queue for %s topic "
-                                          "is empty or topic isn\'t subscribed" % pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"])
+            if self._started_receiving_states:
+                # PubSub queue is empty after being non-empty for a while
+                raise MsgDeserializationError("Pubsub message queue for %s topic is empty or topic isn\'t "
+                                              "subscribed" % pubsub_topics.PubSubMessageTypes["UC_SYSTEM_STATE_LCM"])
+            else:
+                # Pubsub queue is empty since planning module is up
+                raise StateHasNotArrivedYet("Waiting for data from SceneProvider/StateModule")
+        self._started_receiving_states = True
         state = State.deserialize(serialized_state)
         self.logger.debug('{}: {}'.format(LOG_MSG_RECEIVED_STATE, state))
         return state
