@@ -12,9 +12,9 @@ from decision_making.src.planning.utils.generalized_frenet_serret_frame import G
     FrenetSubSegment
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.scene.scene_static_model import SceneStaticModel
-from decision_making.src.utils.temp_route_planner import TempRoutePlanner
 from decision_making.src.exceptions import raises, RoadNotFound, DownstreamLaneNotFound, \
     NavigationPlanTooShort, NavigationPlanDoesNotFitMap, AmbiguousNavigationPlan, UpstreamLaneNotFound, LaneNotFound
+from decision_making.test.mock.temp_route_planner import TempRoutePlanner
 
 
 class MapUtils:
