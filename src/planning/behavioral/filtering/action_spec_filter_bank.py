@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from decision_making.src.global_constants import TRAJECTORY_TIME_RESOLUTION, EPS, LAT_ACC_LIMITS, BP_ACTION_T_LIMITS, \
-    DX_OFFSET_MIN, DX_OFFSET_MAX, SAFETY_T_D_GRID_SIZE
+    DX_OFFSET_MIN, DX_OFFSET_MAX, MAX_SAFETY_T_D_GRID_SIZE
 from decision_making.src.planning.behavioral.behavioral_grid_state import BehavioralGridState
 from decision_making.src.planning.behavioral.behavioral_state import BehavioralState
 from decision_making.src.planning.behavioral.data_objects import ActionSpec, RelativeLongitudinalPosition, RelativeLane
@@ -11,7 +11,7 @@ import numpy as np
 from decision_making.src.planning.behavioral.filtering.recipe_filter_bank import FilterLimitsViolatingTrajectory
 from decision_making.src.planning.trajectory.frenet_constraints import FrenetConstraints
 from decision_making.src.planning.trajectory.werling_planner import WerlingPlanner
-from decision_making.src.planning.types import C_K, C_V, FS_SX, FS_DX
+from decision_making.src.planning.types import C_K, C_V, FS_SX, FS_DX, FrenetState2D, FrenetTrajectories2D
 from decision_making.src.planning.utils.numpy_utils import NumpyUtils
 from decision_making.src.planning.utils.optimal_control.poly1d import QuinticPoly1D
 from decision_making.src.planning.utils.safety_utils import SafetyUtils
@@ -150,8 +150,8 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
         predictor = RoadFollowingPredictor(logger)
         ego_size = behavioral_state.ego_state.size
 
+        # collect action specs into at most 3 groups, according to their target lane
         are_specs_safe = np.full(len(action_specs), True)
-
         specs_by_rel_lane = defaultdict(list)
         indices_by_rel_lane = defaultdict(list)
         for i, spec in enumerate(action_specs):
@@ -160,7 +160,6 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
                 indices_by_rel_lane[spec.relative_lane].append(i)
 
         for rel_lane in specs_by_rel_lane.keys():
-
             # if there is no front object on the target lane, then all actions are safe
             if (rel_lane, RelativeLongitudinalPosition.FRONT) not in behavioral_state.road_occupancy_grid:
                 continue
@@ -168,47 +167,12 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
             lane_specs = specs_by_rel_lane[rel_lane]
             lane_frenet = behavioral_state.extended_lane_frames[rel_lane]
             ego_init_fstate = behavioral_state.projected_ego_fstates[rel_lane]
+            T_d_grid_size = MAX_SAFETY_T_D_GRID_SIZE
+            time_points = np.arange(0, BP_ACTION_T_LIMITS[1] + EPS, TRAJECTORY_TIME_RESOLUTION)
 
-            # convert the specifications list to 2D matrix, where rows represent different specifications
-            spec_arr = np.array([[spec.t, spec.s, spec.v] for i, spec in enumerate(lane_specs) if spec is not None])
-            specs_t, specs_s, specs_v = np.split(spec_arr, 3, axis=1)
-            specs_t, specs_s, specs_v = specs_t.flatten(), specs_s.flatten(), specs_v.flatten()
-
-            # duplicate initial frenet states and create target frenet states based on the specifications
-            zeros = np.zeros_like(specs_t)
-            init_fstates = np.tile(ego_init_fstate, len(specs_t)).reshape(-1, len(ego_init_fstate))
-            goal_fstates = np.c_[specs_s, specs_v, zeros, zeros, zeros, zeros]
-
-            # calculate A_inv_d as a concatenation of inverse matrices for maximal T_d (= T_s) and for minimal T_d
-            A_inv_s = QuinticPoly1D.inverse_time_constraints_tensor(specs_t)
-            T_d_num = SAFETY_T_D_GRID_SIZE
-            T_d_arr = FilterUnsafeExpectedTrajectory._calc_T_d_grid(ego_init_fstate[FS_DX:], specs_t, T_d_num)
-            A_inv_d = QuinticPoly1D.inverse_time_constraints_tensor(T_d_arr)
-
-            # create ftrajectories_s and duplicated ftrajectories_d (for max_T_d and min_T_d)
-            constraints_s = np.concatenate((init_fstates[:, :FS_DX], goal_fstates[:, :FS_DX]), axis=1)
-            constraints_d = np.concatenate((init_fstates[:, FS_DX:], goal_fstates[:, FS_DX:]), axis=1)
-            duplicated_constraints_d = np.tile(constraints_d, T_d_num).reshape(-1, init_fstates.shape[-1])
-            poly_coefs_s = QuinticPoly1D.zip_solve(A_inv_s, constraints_s)
-            poly_coefs_d = QuinticPoly1D.zip_solve(A_inv_d, duplicated_constraints_d)
-            time_points = np.arange(0, np.max(specs_t) + EPS, TRAJECTORY_TIME_RESOLUTION)
-            ftrajectories_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, time_points)
-            ftrajectories_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_points)
-            # for any T_d < T_s, complement ftrajectories_d to the length of T_s by setting zeros
-            last_t_d_indices = np.floor(T_d_arr / TRAJECTORY_TIME_RESOLUTION).astype(int) + 1
-            for i, ftrajectory_d in enumerate(ftrajectories_d):
-                ftrajectory_d[last_t_d_indices[i]:] = 0
-
-            # set all points beyond spec.t at infinity, such that they will be safe and will not affect the result
-            end_traj_indices = np.floor(specs_t / TRAJECTORY_TIME_RESOLUTION).astype(int) + 1
-            for i, ftrajectory_s in enumerate(ftrajectories_s):
-                ftrajectory_s[end_traj_indices[i]:] = np.array([np.inf, 0, 0])
-
-            # duplicate each longitudinal trajectory T_d_num times to be aligned with lateral trajectories
-            duplicated_ftrajectories_s = np.tile(ftrajectories_s, (1, T_d_num, 1)).reshape(-1, len(time_points), 3)
-
-            # create full Frenet trajectories
-            ftrajectories = np.concatenate((duplicated_ftrajectories_s, ftrajectories_d), axis=-1)
+            # generate baseline Frenet trajectories for the relative-lane actions, with T_d grid
+            ftrajectories = FilterUnsafeExpectedTrajectory._generate_frenet_trajectories_for_relative_lane(
+                ego_init_fstate, lane_specs, T_d_grid_size, time_points)
 
             # predict objects' trajectories
             obj = behavioral_state.road_occupancy_grid[(rel_lane, RelativeLongitudinalPosition.FRONT)][0].dynamic_object
@@ -219,7 +183,7 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
             # calculate safety for each trajectory, each object, each timestamp
             safety_costs = SafetyUtils.get_safety_costs(ftrajectories, ego_size, obj_trajectories, obj_sizes)
             # for each triple (ego_trajectory, obj_trajectory, time_sample) choose minimal cost among all T_d
-            safety_costs = safety_costs.reshape(len(specs_t), T_d_num, len(obj_trajectories), len(time_points)).min(axis=1)
+            safety_costs = safety_costs.reshape(len(lane_specs), T_d_grid_size, len(obj_trajectories), len(time_points)).min(axis=1)
 
             # safe_specs = (safety_costs < 1).all(axis=(1, 2))
             # print('safe_specs: %s; specs_v %s, specs_t %s\nvel: %s\nacc: %s\ndist: %s\ncosts: %s: ' %
@@ -231,6 +195,56 @@ class FilterUnsafeExpectedTrajectory(ActionSpecFilter):
             are_specs_safe[np.array(indices_by_rel_lane[rel_lane])] = (safety_costs < 1).all(axis=(1, 2))
 
         return are_specs_safe
+
+    @staticmethod
+    def _generate_frenet_trajectories_for_relative_lane(ego_init_fstate: FrenetState2D, lane_specs: List[ActionSpec],
+                                                        T_d_grid_size: int, time_points: np.array) -> FrenetTrajectories2D:
+        """
+        Generate baseline Frenet trajectories for action specifications, with T_d grid.
+        :param ego_init_fstate: initial ego frenet state
+        :param lane_specs: action specifications list
+        :param T_d_grid_size: the size of T_d grid
+        :param time_points: array of time samples for the generated trajectories
+        :return: the generated Frenet trajectories (3D numpy array)
+        """
+        # convert the specifications list to 2D matrix, where rows represent different specifications
+        spec_arr = np.array([[spec.t, spec.s, spec.v] for i, spec in enumerate(lane_specs)])
+        specs_t, specs_s, specs_v = np.split(spec_arr, 3, axis=1)
+        specs_t, specs_s, specs_v = specs_t.flatten(), specs_s.flatten(), specs_v.flatten()
+
+        # duplicate initial frenet states and create target frenet states based on the specifications
+        zeros = np.zeros_like(specs_t)
+        init_fstates = np.tile(ego_init_fstate, len(specs_t)).reshape(-1, len(ego_init_fstate))
+        goal_fstates = np.c_[specs_s, specs_v, zeros, zeros, zeros, zeros]
+
+        # calculate A_inv_d as a concatenation of inverse matrices for maximal T_d (= T_s) and for minimal T_d
+        A_inv_s = QuinticPoly1D.inverse_time_constraints_tensor(specs_t)
+        T_d_arr = FilterUnsafeExpectedTrajectory._calc_T_d_grid(ego_init_fstate[FS_DX:], specs_t, T_d_grid_size)
+        A_inv_d = QuinticPoly1D.inverse_time_constraints_tensor(T_d_arr)
+
+        # create ftrajectories_s and duplicated ftrajectories_d (for max_T_d and min_T_d)
+        constraints_s = np.concatenate((init_fstates[:, :FS_DX], goal_fstates[:, :FS_DX]), axis=1)
+        constraints_d = np.concatenate((init_fstates[:, FS_DX:], goal_fstates[:, FS_DX:]), axis=1)
+        duplicated_constraints_d = np.tile(constraints_d, T_d_grid_size).reshape(-1, init_fstates.shape[-1])
+        poly_coefs_s = QuinticPoly1D.zip_solve(A_inv_s, constraints_s)
+        poly_coefs_d = QuinticPoly1D.zip_solve(A_inv_d, duplicated_constraints_d)
+        ftrajectories_s = QuinticPoly1D.polyval_with_derivatives(poly_coefs_s, time_points)
+        ftrajectories_d = QuinticPoly1D.polyval_with_derivatives(poly_coefs_d, time_points)
+        # for any T_d < T_s, complement ftrajectories_d to the length of T_s by setting zeros
+        last_t_d_indices = np.floor(T_d_arr / TRAJECTORY_TIME_RESOLUTION).astype(int) + 1
+        for i, ftrajectory_d in enumerate(ftrajectories_d):
+            ftrajectory_d[last_t_d_indices[i]:] = 0
+
+        # set all points beyond spec.t at infinity, such that they will be safe and will not affect the result
+        end_traj_indices = np.floor(specs_t / TRAJECTORY_TIME_RESOLUTION).astype(int) + 1
+        for i, ftrajectory_s in enumerate(ftrajectories_s):
+            ftrajectory_s[end_traj_indices[i]:] = np.array([np.inf, 0, 0])
+
+        # duplicate each longitudinal trajectory T_d_num times to be aligned with lateral trajectories
+        duplicated_ftrajectories_s = np.tile(ftrajectories_s, (1, T_d_grid_size, 1)).reshape(-1, len(time_points), 3)
+
+        # return full Frenet trajectories
+        return np.concatenate((duplicated_ftrajectories_s, ftrajectories_d), axis=-1)
 
     @staticmethod
     def _calc_T_d_grid(fstate_d: np.array, T_s: np.array, T_d_num: int) -> np.array:

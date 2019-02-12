@@ -123,7 +123,7 @@ LON_SAFETY_ACCEL_DURING_RESPONSE = LON_ACC_LIMITS[1]
 # [m/s^2] lateral acceleration of object during time delay in RSS
 LAT_SAFETY_ACCEL_DURING_RESPONSE = 0
 
-SAFETY_T_D_GRID_SIZE = 3
+MAX_SAFETY_T_D_GRID_SIZE = 3
 
 
 # [m/sec] Minimal difference of velocities to justify an overtake
