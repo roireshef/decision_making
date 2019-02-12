@@ -166,6 +166,7 @@ def test_fitFrenet_originalRoutePointsAreProjected_errorsAreLowEnough():
 
     upsampling_factor_for_test = 4
 
+    MapService.initialize()
     route_points = MapService.get_instance().get_road(20)._points
 
     # "Train" points: assumed to be sampled sufficiently dense (according to ROAD_MAP_REQUIRED_RES)

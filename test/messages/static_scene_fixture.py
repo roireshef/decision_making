@@ -39,6 +39,12 @@ def scene_static():
     return create_scene_static_from_map_api(MapService.get_instance())
 
 
+@pytest.fixture
+def scene_static_ovalmilford():
+    MapService.initialize('OvalMilford.bin')
+    return create_scene_static_from_map_api(MapService.get_instance())
+
+
 def create_scene_static_from_map_api(map_api: MapAPI):
     map_model = map_api._cached_map_model
     road_ids = map_model.get_road_ids()
