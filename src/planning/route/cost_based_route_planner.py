@@ -112,7 +112,7 @@ class CostBasedRoutePlanner(RoutePlanner):
                     # Search iteratively for the next segment lanes that are downstream to the current lane and in the route.
                     # At this point assign the end cost of current lane = Min occ costs (of all downstream lanes)
                     for Idx in range(lanesegData.e_Cnt_downstream_lane_count): # search through all downstream lanes to to current lane
-                        DownStreamlanesegID = lanesegData.as_downstream_lanes[Idx]
+                        DownStreamlanesegID = lanesegData.as_downstream_lanes[Idx].e_i_lane_segment_id
                         NextRoadSegLanes = RouteData.route_lanesegments[prev_roadsegID] # All lane IDs in downstream roadsegment in route to the 
                         #currently indexed roadsegment in the loop
                         if DownStreamlanesegID in NextRoadSegLanes: # verify if the downstream lane is in the route
@@ -121,13 +121,17 @@ class CostBasedRoutePlanner(RoutePlanner):
                             # DownStreamLaneOccCost= NewRoutePlan.as_route_plan_lane_segments[roadsegidx+1][DownStreamlanesegIdx]
                             # confirm -> roadsegidx+1 in the RoutPlan == reverseroadsegidx-1 in the reversed RoutePlan
                             MinDwnStreamLaneOccCost = min(MinDwnStreamLaneOccCost,DownStreamLaneOccCost)
+                        else:
+                            print(" DownStreamlanesegID ",DownStreamlanesegID," not found in NextRoadSegLanes ",NextRoadSegLanes)
+                            print("prev_roadsegID",prev_roadsegID)
                     LaneEndCost = MinDwnStreamLaneOccCost
-                prev_roadsegID = roadsegID
+                
                             
                 CurrRoutePlanLaneSegment = RoutePlanLaneSegment(e_i_lane_segment_id= lanesegID, \
                     e_cst_lane_occupancy_cost = LaneOccCost,e_cst_lane_end_cost = LaneEndCost)
                 #print("CurrRoutePlanLaneSegment",CurrRoutePlanLaneSegment)
                 AllRouteLanesInThisRoadSeg.append(CurrRoutePlanLaneSegment)
+            prev_roadsegID = roadsegID
             # NewRoutePlan.e_Cnt_num_road_segments = reverseroadsegidx
             a_i_road_segment_ids.insert(0,roadsegID)
             a_Cnt_num_lane_segments.insert(0,lanesegidx+1)
